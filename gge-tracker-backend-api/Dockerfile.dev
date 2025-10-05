@@ -1,0 +1,29 @@
+FROM node:20
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    libnss3 \
+    libfreetype6 \
+    libharfbuzz0b \
+    ca-certificates \
+    fonts-freefont-ttf \
+    libgdk-pixbuf2.0-dev \
+    libgtk-3-dev \
+    libxss-dev \
+    libnotify-dev \
+    libgconf-2-4 \
+    libasound2 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY package*.json ./
+RUN npm install
+RUN npx puppeteer browsers install chrome
+
+ENV REDIS_URL=redis://redis-server:6379
+EXPOSE 3000
+
+ENV HEADER="[DEV]"
+
+CMD ["npx", "nodemon"]
+

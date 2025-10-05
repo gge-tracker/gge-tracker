@@ -1,0 +1,92 @@
+const angular = require("@angular-eslint/eslint-plugin");
+const angularTemplate = require("@angular-eslint/eslint-plugin-template");
+const tseslint = require("@typescript-eslint/eslint-plugin");
+const prettierPlugin = require("eslint-plugin-prettier");
+
+module.exports = [
+  {
+    ignores: ["**/dist"],
+  },
+  {
+    files: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
+    plugins: {
+      "@angular-eslint": angular,
+      "@typescript-eslint": tseslint,
+      prettier: prettierPlugin,
+    },
+    rules: {
+      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+      "@typescript-eslint/explicit-function-return-type": "warn",
+      "prettier/prettier": ["error", { printWidth: 120 }],
+    },
+  },
+  {
+    files: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
+    rules: {},
+  },
+  {
+    files: ["**/*.html"],
+    languageOptions: {
+      parser: require("@angular-eslint/template-parser"),
+    },
+    plugins: {
+      "@angular-eslint/template": angularTemplate,
+    },
+    rules: {
+      "@angular-eslint/template/banana-in-box": "error",
+      "@angular-eslint/template/no-negated-async": "error",
+    },
+  },
+  {
+    files: ["**/*.ts"],
+    languageOptions: {
+      parser: require("@typescript-eslint/parser"),
+      parserOptions: {
+        project: "./tsconfig.json",
+        tsconfigRootDir: __dirname,
+        sourceType: "module",
+      },
+    },
+    plugins: {
+      "@typescript-eslint": tseslint,
+    },
+    rules: {
+      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+      "@typescript-eslint/explicit-function-return-type": "warn",
+      "@typescript-eslint/no-floating-promises": "error",
+      "@typescript-eslint/consistent-type-definitions": ["error", "interface"],
+      "@typescript-eslint/explicit-member-accessibility": [
+        "error",
+        {
+          accessibility: "explicit",
+          overrides: {
+            constructors: "no-public",
+          },
+        },
+      ],
+      "@typescript-eslint/member-ordering": [
+        "warn",
+        {
+          default: [
+            "signature",
+            "public-static-field",
+            "protected-static-field",
+            "private-static-field",
+
+            "public-instance-field",
+            "protected-instance-field",
+            "private-instance-field",
+            "constructor",
+            "public-static-method",
+            "protected-static-method",
+            "private-static-method",
+
+            "public-instance-method",
+            "protected-instance-method",
+            "private-instance-method",
+          ],
+        },
+      ],
+    },
+  },
+];

@@ -1,0 +1,142 @@
+<nav class="navbar px-2 navbar-expand-lg border-body border-bottom position-relative" style="z-index: 1;">
+  <div class="d-flex justify-content-between align-items-center w-100">
+    <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+      aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="lang-switch d-flex align-items-center pointer" data-bs-toggle="modal" data-bs-target="#translateModal"
+      [title]="'Changer de langue' | translate">
+      <lucide-icon class="lucide lucide-globe" [img]="Globe"></lucide-icon>
+      <span class="d-none d-lg-inline ms-1">{{ 'Langue' | translate }}</span>
+    </div>
+    <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="nav-link" [routerLink]="['/', 'players']" routerLinkActive="active">
+            <span class="position-relative">{{ 'Liste des joueurs' | translate }}</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" [routerLink]="['/', 'alliances']" routerLinkActive="active">
+            <span class="position-relative">{{ 'Liste des alliances' | translate }}</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" [routerLink]="['/', 'movements']" routerLinkActive="active">
+            <span class="position-relative">{{ 'Mouvements' | translate }}</span>
+          </a>
+        </li>
+        <li class="navbar-brand li-logo d-none d-xl-block position-relative m-0">
+          <img src="/assets/gge-logo.png" height="30px" alt="Logo" class="d-inline-block align-text-top">
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" [routerLink]="['/', 'statistics']" routerLinkActive="active">
+            <span class="position-relative">{{ 'Statistiques' | translate }} ({{ serverService.choosedServer }})</span>
+          </a>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false"
+            [ngClass]="{ 'active': isActive('/renames') }">
+            <span translate class="position-relative">{{ 'Changements de noms' | translate }} <small>(2)</small></span>
+          </a>
+          <ul class="dropdown-menu">
+            <li class="mx-0"><a class="dropdown-item" [routerLink]="['/', 'renames', 'players']"
+                routerLinkActive="active">
+                <lucide-angular class="lucide lucide-user" [img]="User"></lucide-angular>
+                {{ 'Noms de joueurs' | translate }}
+              </a></li>
+            <li class="mx-0"><a class="dropdown-item" [routerLink]="['/', 'renames', 'alliances']"
+                routerLinkActive="active">
+                <lucide-angular class="lucide lucide-users" [img]="Users"></lucide-angular>
+                {{ 'Noms d\'alliances' | translate}}
+              </a></li>
+          </ul>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false"
+            [ngClass]="{ 'active': isActive(['map', 'dungeons']) }">
+            <span translate class="position-relative">{{ 'Outils' | translate }} <small>(5)</small></span>
+          </a>
+          <ul class="dropdown-menu">
+            <li class="mx-0"><a class="dropdown-item d-flex" [routerLink]="['/', 'map']" routerLinkActive="active">
+                <img class="tool-icon" src="/assets/tools/cartography.png" alt="{{ 'Cartographie' | translate }}">
+                {{ 'Cartographie' | translate }}</a>
+            </li>
+            <li class="mx-0"><a class="dropdown-item d-flex" [routerLink]="['/', 'dungeons']" routerLinkActive="active">
+                <img class="tool-icon" src="/assets/tools/dungeons.png" alt="{{ 'Donjons' | translate }}">
+                {{ 'Forteresses' | translate }}</a>
+            </li>
+            <li class="mx-0"><a class="dropdown-item d-flex" [routerLink]="['/', 'events']" routerLinkActive="active">
+                <img class="tool-icon" src="/assets/tools/events.png" alt="{{ 'Événements' | translate }}">
+                {{ 'Événements' | translate }}</a>
+            </li>
+            <li class="mx-0"><a class="dropdown-item d-flex" [routerLink]="['/', 'castles']" routerLinkActive="active">
+                <img class="tool-icon" src="/assets/tools/castles.png" alt="{{ 'Châteaux' | translate }}">
+                {{ 'Châteaux' | translate }}</a>
+            </li>
+            <hr class="special--hr">
+            <li class="mx-0 position-relative">
+              <a class="dropdown-item d-flex" href="https://danadum.github.io/empire-rankings/" target="_blank">
+                <img class="tool-icon" src="/assets/tools/ranking.png" alt="empire-rankings.io Icon">
+                empire-rankings.io
+                <lucide-angular class="lucide lucide-external-link" [img]="ExternalLink"></lucide-angular>
+              </a>
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+    <div class="about-button me-2 discord-badge d-inline-block ms-1 text-center align-middle" style="color: #7289da;">
+      <a href="https://discord.gg/eb6WSHQqYh" target="_blank" rel="noopener" style="color: inherit"
+        class="text-decoration-none align-items-center h-100 text-center">
+        <i class="fa-brands fa-discord fa-lg"></i>
+        <span class="d-none d-lg-inline ms-1">{{ 'Discord' }}</span>
+      </a>
+    </div>
+    <div class="about-button align-items-center d-flex" [routerLink]="['/', 'about']" [title]="'A propos' | translate">
+      <lucide-icon class="lucide lucide-info" [img]="Info"></lucide-icon>
+      <span class="d-none d-lg-inline ms-1">{{ 'A propos' | translate }}</span>
+    </div>
+  </div>
+</nav>
+
+<div class="modal fade" id="translateModal" tabindex="-1" aria-labelledby="translateModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="translateModalLabel">{{ 'Changer de langue' | translate }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"
+          [attr.aria-label]="'Fermer' | translate"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-12 col-md-6" *ngIf="!isDevLanguage; else devLangSelect">
+            <div class="input-group mb-3">
+              <label class="input-group-text" for="langSelected">{{ 'Langue' | translate }}</label>
+              <select class="form-select" id="langSelected" [(ngModel)]="currentLangText">
+                <option *ngFor="let lang of languageService.langs" [value]="lang.code">{{ lang.label }}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <ng-template #devLangSelect>
+          <div class="alert alert-warning" role="alert">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <strong> Warning</strong>
+            <br>
+            <span>You are in translation development mode. You can change the language, but it will not be saved.</span>
+            <br>
+            <span><a (click)="resetTranslationMode()" class="text-decoration-underline">Click here to reset the
+                translation mode</a></span>
+          </div>
+        </ng-template>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" translate>Fermer</button>
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal" (click)="changeLanguage()"
+            translate>Valider</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

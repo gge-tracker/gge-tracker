@@ -1,0 +1,82 @@
+import { CommonModule } from '@angular/common';
+import { Component } from '@angular/core';
+
+export enum EnumTypeReleaseNote {
+  MAJOR = 'Major',
+  MINOR = 'Minor',
+  FIX = 'Fix',
+}
+
+@Component({
+  selector: 'app-release-notes',
+  standalone: true,
+  imports: [CommonModule],
+  templateUrl: './release-notes.component.html',
+  styleUrl: './release-notes.component.css',
+})
+export class ReleaseNotesComponent {
+  public readonly releaseNotes = [
+    {
+      version: 'v25-09-14',
+      type: EnumTypeReleaseNote.MINOR,
+      date: '2025-09-14',
+      items: [
+        '⚙️ [Server] Technical improvements and optimizations',
+        '✨ [Miscellaneous] Official Discord support server added: https://discord.gg/eb6WSHQqYh',
+      ],
+    },
+    {
+      version: 'v25-09-01',
+      type: EnumTypeReleaseNote.MAJOR,
+      date: '2025-09-01',
+      items: [
+        '📦 [Server] Added new servers: ES1, SA1',
+        '🛠️ [Tools] Added new tool: Realtime castle visualizer (Tools - Castles)',
+        '🛠️ [Tools] Added SA1 server to fortress tracker',
+        '🎨 [Design] General design overhaul of the application',
+      ],
+    },
+    {
+      version: 'v25-08-11',
+      type: EnumTypeReleaseNote.MINOR,
+      date: '2025-08-11',
+      items: [
+        '✨ [Miscellaneous] Added search history for player and alliance searches',
+        '🐞 [Bugfix] Fixed issue with the Polish translation not being applied correctly',
+        '🐞 [Bugfix] Fixed an issue where the cartography tool was not displaying correctly',
+      ],
+    },
+    {
+      version: 'v25-08-06',
+      type: EnumTypeReleaseNote.MAJOR,
+      date: '2025-08-06',
+      items: [
+        '📦 [Server] Added new servers: HU1, HU2',
+        '🎨 [Design] General design overhaul of the application',
+        '🐞 [Bugfix] Fixed issue with the Romanian translation not being applied correctly',
+        '🌍 [Translation] New translation available: Deutsch (German)',
+        '🛠️ [Tools] Added new indicators on player analysis page (server ranking, global ranking, number of castles, etc.)',
+        "🛠️ [Tools] Added external link to 'empire-rankings' in Tools section",
+      ],
+    },
+    {
+      version: 'v25-07-19',
+      type: EnumTypeReleaseNote.MAJOR,
+      date: '2025-07-19',
+      items: [
+        '🎨 [Design] General design overhaul of the application',
+        '🛠️ [Tools] Added new tool: Event Tracker (for Outer Realms & Beyond the Horizon)',
+        "🛠️ [Tools] Revamped Cartography tool: improved performance, new features (add or remove an alliance, change an alliance's color in the legend, etc.)",
+      ],
+    },
+    {
+      version: 'v25-07-07',
+      type: EnumTypeReleaseNote.MAJOR,
+      date: '2025-07-07',
+      items: [
+        '📦 [Server] Added new server: HANT1',
+        '🐞 [Bugfix] Fixed realtime fortress tracker tool for CZ1, RO1, FR1 and IT1',
+      ],
+    },
+  ];
+}

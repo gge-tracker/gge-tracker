@@ -1,0 +1,81 @@
+#                                   __                        __
+#    ____   ____   ____           _/  |_____________    ____ |  | __ ___________
+#   / ___\ / ___\_/ __ \   ______ \   __\_  __ \__  \ _/ ___\|  |/ // __ \_  __ \
+#  / /_/  > /_/  >  ___/  /_____/  |  |  |  | \// __ \\  \___|    <\  ___/|  | \/
+#  \___  /\___  / \___  >          |__|  |__|  (____  /\___  >__|_ \\___  >__|
+# /_____//_____/      \/                            \/     \/     \/    \/
+#
+#  Copyrights (c) 2025 - gge-tracker.com & gge-tracker contributors
+#
+# This file defines the configuration for servers used by the sitemap generator
+#
+# Structure:
+# - The root key 'servers' is expected to contain a list or mapping of server definitions
+# - Each server entry must include:
+#   - dbName: The name of the database associated with the server
+#   - code: An internal code representing the server (3-digit string)
+#
+servers:
+  FR1:
+    dbName: "empire-ranking"
+    code: "020"
+  DE1:
+    dbName: "empire-ranking-de1"
+    code: "010"
+  CZ1:
+    dbName: "empire-ranking-cz1"
+    code: "030"
+  RO1:
+    dbName: "empire-ranking-ro1"
+    code: "040"
+  NL1:
+    dbName: "empire-ranking-nl1"
+    code: "050"
+  WORLD1:
+    dbName: "empire-ranking-world1"
+    code: "060"
+  INT3:
+    dbName: "empire-ranking-int3"
+    code: "070"
+  US1:
+    dbName: "empire-ranking-us1"
+    code: "080"
+  TR1:
+    dbName: "empire-ranking-tr1"
+    code: "090"
+  BR1:
+    dbName: "empire-ranking-br1"
+    code: "095"
+  IN1:
+    dbName: "empire-ranking-in1"
+    code: "085"
+  IT1:
+    dbName: "empire-ranking-it1"
+    code: "075"
+  PL1:
+    dbName: "empire-ranking-pl1"
+    code: "065"
+  PT1:
+    dbName: "empire-ranking-pt1"
+    code: "055"
+  AU1:
+    dbName: "empire-ranking-au1"
+    code: "045"
+  ARAB1:
+    dbName: "empire-ranking-ar1"
+    code: "035"
+  HANT1:
+    dbName: "empire-ranking-hant1"
+    code: "025"
+  HU1:
+    dbName: "empire-ranking-hu1"
+    code: "015"
+  HU2:
+    dbName: "empire-ranking-hu2"
+    code: "014"
+  ES1:
+    dbName: "empire-ranking-es1"
+    code: "074"
+  SA1:
+    dbName: "empire-ranking-sa1"
+    code: "073"

@@ -1,0 +1,694 @@
+<div *ngIf="loadItem">
+  <app-loading></app-loading>
+</div>
+<div class="container-fluid">
+  <div class="container mt-4">
+    <app-server-badge *ngIf="!canvasReady && !cid"></app-server-badge>
+    <div *ngIf="!isInLoading && !canvasReady && !cid" class="mt-1 castle-selection">
+      <app-search-form #searchForm [formFilters]="null" [isInLoading]="isInLoading"
+        [inputTip]="'Rechercher un joueur' | translate" [defaultSearch]="search"
+        [searchTypes]="{ player: true, alliance: false }" (searchPlayer)="searchPlayer($event)">
+      </app-search-form>
+      <div class="castle-grid mt-4">
+        <div *ngIf="loadItemPlaceholder" class="castle-card-placeholder">
+          <div class="placeholder-shimmer"></div>
+        </div>
+        <div *ngFor="let castle of castles" class="castle-card position-relative" (click)="onCastleClick(castle)" [title]="'Voir plus' | translate">
+          <div class="position-absolute top-0 end-0 pe-2 ext-indicator"><i class="fa-solid fa-square-up-right"></i></div>
+          <div class="castle-header text-center">
+            <div class="castle-image">
+              <img [src]="getSearchCastleImg(castle)" alt="{{ castle.name }}" class="castle-img-{{castle.type}}">
+            </div>
+            <div class="castle-info row justify-content-center">
+              <div class="col-12">
+                <h5 class="castle-name">{{ castle.name }}</h5>
+                <p class="castle-type">{{ getCastleType(castle.type) | translate }}</p>
+              </div>
+              <div class="col-auto">
+                <canvas #miniMap width="50" height="50" class="castle-minimap"></canvas>
+                <p class="castle-coords">
+                  <i class="fa-solid fa-map-marker-alt"></i> {{ castle.positionX }} ; {{ castle.positionY }}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="castle-data">
+            <div class="data-item">
+              <img *ngIf="castle.wallLevel && castle.wallLevel > 0; else noWall"
+                [src]="'/assets/object/wall_level_' + castle.wallLevel + '.png'" alt="Wall image">
+              <span class="level-tag">{{ castle.wallLevel }}</span>
+            </div>
+            <div class="data-item">
+              <img *ngIf="castle.gateLevel && castle.gateLevel > 0; else noGate"
+                [src]="'/assets/object/gate_level_' + castle.gateLevel + '.png'" alt="Gate image">
+              <span class="level-tag">{{ castle.gateLevel }}</span>
+            </div>
+            <div class="data-item">
+              <img *ngIf="castle.towerLevel && castle.towerLevel > 0; else noTower"
+                [src]="'/assets/object/tower_level_' + castle.towerLevel + '.png'" alt="Tower image">
+              <span class="level-tag">{{ castle.towerLevel }}</span>
+            </div>
+            <div class="data-item">
+              <img *ngIf="castle.moatLevel && castle.moatLevel > 0; else noMoat"
+                [src]="'/assets/object/moat_classic_level_' + (castle.moatLevel > 4 ? castle.moatLevel - 4 : castle.moatLevel) + '.png'" alt="Moat image">
+              <span class="level-tag">
+                {{ castle.moatLevel > 4 ? (castle.moatLevel - 4) + "★" : castle.moatLevel }}
+              </span>
+              <ng-template #noMoat>
+                <div class="level-tag-0 moat"></div>
+              </ng-template>
+              <ng-template #noWall>
+                <div class="level-tag-0 wall"></div>
+              </ng-template>
+              <ng-template #noGate>
+                <div class="level-tag-0 gate"></div>
+              </ng-template>
+              <ng-template #noTower>
+                <div class="level-tag-0 tower"></div>
+              </ng-template>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <ng-container *ngIf="!isInLoading">
+    <div class="castle-view d-flex container" *ngIf="canvasReady && cid">
+      <aside class="castle-legend glass-card d-flex flex-column">
+        <div class="legend-header d-flex align-items-start justify-content-between">
+          <div class="legend-main d-flex align-items-center">
+            <i class="fa-solid fa-user-helmet-safety legend-icon me-2" aria-hidden="true"></i>
+            <div>
+              <h5 class="m-0 legend-title">{{ data.playerName }}</h5>
+              <div class="legend-subtitle text-muted">
+                <lucide-angular [img]="Castle" class="me-1" [size]="16"></lucide-angular>
+                <span>{{ data.castleName }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="legend-actions d-flex flex-column align-items-end">
+            <button class="btn-ghost btn-back mb-2" (click)="onBackButtonClick()" [attr.aria-label]="'Retour' | translate">
+              <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <button class="btn-ghost d-md-none legend-toggle" type="button" data-bs-toggle="collapse"
+              data-bs-target="#legendBody" aria-expanded="false" aria-controls="legendBody"
+              [title]="'Afficher les détails' | translate">
+              <i class="fa-solid fa-chevron-down"></i>
+            </button>
+          </div>
+        </div>
+        <div id="legendBody" class="legend-body collapse show d-md-block">
+          <div class="legend-grid">
+            <div class="legend-block key" [title]="'Type' | translate">
+              <div class="small label">{{ 'Type' | translate }}</div>
+              <div class="value">{{ data.castleType | translate }}</div>
+            </div>
+            <div class="legend-block key" [title]="'Coordonnées' | translate">
+              <div class="small label">{{ 'Coordonnées' | translate }}</div>
+              <div class="value">{{ data.positionX }} ; {{ data.positionY }}</div>
+            </div>
+            <div class="legend-block" [title]="'Ordre public' | translate">
+              <div class="small label">{{ 'Ordre public' | translate }}</div>
+              <div class="value">{{ formatValue(data.sumOP) }}</div>
+            </div>
+            <div class="legend-block" [title]="'Puissance' | translate">
+              <div class="small label">{{ 'Puissance' | translate }}</div>
+              <div class="value">{{ formatValue(data.sumMight) }}</div>
+            </div>
+            <div class="legend-block" [title]="'Zones occupées' | translate">
+              <div class="small label">{{ 'Zones occupées' | translate }}</div>
+              <div class="value">{{ formatValue(data.placeOccupied) }}</div>
+            </div>
+            <div class="legend-block" [title]="'Zones disponibles' | translate">
+              <div class="small label">{{ 'Zones disponibles' | translate }}</div>
+              <div class="value">{{ formatValue(data.placeNotOccupied) }}</div>
+            </div>
+            <div class="legend-block" [title]="'Bâtiments en feu' | translate">
+              <div class="small label">{{ 'Bâtiments en feu' | translate }}</div>
+              <div class="value">{{ formatValue(data.nbFire) }}</div>
+            </div>
+            <div class="legend-block progress-block mt-1" style="grid-column: 1 / -1;">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <div class="small label">{{ 'Zones occupées' | translate }}</div>
+                <div class="small fw-bold">
+                  {{ (data.placeOccupied / (data.placeOccupied + data.placeNotOccupied) * 100) | number:'1.2-2' }}%
+                </div>
+              </div>
+              <div class="progress-rail">
+                <div class="progress-fill"
+                  [style.width.%]="(data.placeOccupied / (data.placeOccupied + data.placeNotOccupied) * 100)"></div>
+              </div>
+            </div>
+            <div class="legend-block progress-block" style="grid-column: 1 / -1;">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <div class="small label">{{ 'Extensions' | translate }}</div>
+                <div class="small fw-bold">{{ data.nbFloors }}/{{data.maxFloors}}</div>
+              </div>
+              <div class="progress-rail alt">
+                <div class="progress-fill bg-success" [style.width.%]="(data.nbFloors / data.maxFloors * 100)"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+      <div class="castle-map flex-grow-1 d-flex align-items-center justify-content-center">
+        <div class="canvas-wrapper">
+          <canvas #mapCanvas width="900" height="900" (mousemove)="onMouseMove($event)" (click)="onClick($event)"
+            (mouseleave)="tooltip = null"></canvas>
+          <div *ngIf="tooltip" [style.left.px]="tooltip.x" [style.top.px]="tooltip.y" class="castle-tooltip"
+            id="tooltip">
+            <div [innerHTML]="tooltip.text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div *ngIf="canvasReady && cid">
+      <div class="table-wrapper modern-panel rounded-4 mt-3 mb-5 pb-2 dense">
+        <div class="table-toolbar d-flex align-items-center gap-2 flex-wrap px-3 pt-3">
+          <app-search-bar [attrListInput]="[]" [searchInput]="searchTerm" [placeholderInput]="('Rechercher' | translate)+ '...'"
+            [name]="'castle-search'" (searchEmitter)="searchTerm = $event; onSearchChange()"></app-search-bar>
+          <app-filter [countFilterActivated]="countFilterActivated"></app-filter>
+        </div>
+        <div class="table-responsive modern-scroll">
+          <table class="modern-table w-100">
+            <thead class="sticky-top">
+              <tr>
+                <th class="sticky-col w-100px" (click)="sortBy('building.wodID')" scope="col">
+                  #
+                  <i *ngIf="sortColumn === 'building.wodID'" class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
+                    [class.fa-arrow-down]="!sortAsc"></i>
+                </th>
+
+                <th (click)="sortBy('data.translatedName')" scope="col" class="name-col">
+                  {{ 'Nom' | translate }}
+                  <i *ngIf="sortColumn === 'data.translatedName'" class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
+                    [class.fa-arrow-down]="!sortAsc"></i>
+                </th>
+
+                <th (click)="sortBy('data.level')" scope="col" class="d-none d-sm-table-cell  w-ch-12">
+                  {{ 'Niveau' | translate }}
+                  <i *ngIf="sortColumn === 'data.level'" class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
+                    [class.fa-arrow-down]="!sortAsc"></i>
+                </th>
+
+                <th (click)="sortBy('data.publicOrder')" scope="col" class="d-none d-md-table-cell">
+                  {{ 'Ordre public' | translate }}
+                  <i *ngIf="sortColumn === 'data.publicOrder'" class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
+                    [class.fa-arrow-down]="!sortAsc"></i>
+                </th>
+
+                <th (click)="sortBy('data.burnable')" scope="col" class="d-none d-lg-table-cell w-ch-12">
+                  {{ 'Brûlable' | translate }}
+                  <i *ngIf="sortColumn === 'data.burnable'" class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
+                    [class.fa-arrow-down]="!sortAsc"></i>
+                </th>
+
+                <th (click)="sortBy('building.damageType')" scope="col" class="d-none d-xl-table-cell w-ch-12">
+                  {{ 'Dégâts (feu)' | translate }}
+                  <i *ngIf="sortColumn === 'building.damageType'" class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
+                    [class.fa-arrow-down]="!sortAsc"></i>
+                </th>
+
+                <th (click)="sortBy('data.mightValue')" scope="col" class="d-none d-sm-table-cell">
+                  {{ 'Puissance' | translate }}
+                  <i *ngIf="sortColumn === 'data.mightValue'" class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
+                    [class.fa-arrow-down]="!sortAsc"></i>
+                </th>
+
+                <th (click)="sortBy('data.totalwidth')" scope="col" class="d-none d-lg-table-cell">
+                  {{ 'Dimensions' | translate }}
+                  <i *ngIf="sortColumn === 'data.totalwidth'" class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
+                    [class.fa-arrow-down]="!sortAsc"></i>
+                </th>
+
+                <th (click)="sortBy('data.buildingGroundType')" scope="col" class="d-none d-xl-table-cell">
+                  {{ 'Catégorie' | translate }}
+                  <i *ngIf="sortColumn === 'data.buildingGroundType'" class="ms-1 fa-solid"
+                    [class.fa-arrow-up]="sortAsc" [class.fa-arrow-down]="!sortAsc"></i>
+                </th>
+
+                <th scope="col" class="items-col text-center">
+                  {{ 'Objets de construction' | translate }}
+                </th>
+              </tr>
+            </thead>
+
+            <tbody>
+              <tr *ngFor="let building of paginatedBuildings" (click)="updateSelectedItem(building)"
+                data-bs-toggle="modal" data-bs-target="#viewItemModal" [title]="'Voir plus' | translate"
+                class="pointer">
+                <td class="sticky-col id-cell">
+                  <div class="id-stack">
+                    <span>{{ building.building.wodID }}</span>
+                    <small>#{{ building.building.objectID }}</small>
+                  </div>
+                </td>
+                <td class="name-cell">
+                  <div class="d-flex align-items-center gap-2">
+                    <app-building-img [src]="getBuildingUrl(building)" [alt]="getBuildingName(building)" [size]="40"
+                      class="rounded shadow-sm flex-shrink-0"></app-building-img>
+                    <div class="text-truncate">
+                      <div class="fw-semibold text-truncate">{{ capitalizeFirstLetter(getBuildingName(building)) }}
+                      </div>
+                      <div class="mini-meta d-none d-sm-flex gap-2">
+                        <span class="badge-soft">{{ 'lvl_short_term' | translate }} {{ building.data['level'] }}</span>
+                        <span class="badge-soft d-none d-md-inline">{{ building.data['width'] }}×{{
+                          building.data['height'] }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+
+                <td class="d-none d-sm-table-cell">{{ building.data['level'] }}
+                  <span *ngIf="!building.data['upgradeWodID']" [title]="'Niveau max.' | translate">
+                    <i class="maxed fa-solid fa-star"></i>
+                  </span>
+                </td>
+                <td class="d-none d-md-table-cell ">
+                  <span class="chip-numeric">{{ building.data['publicOrder'] }}</span>
+                </td>
+
+                <td class="d-none d-lg-table-cell">
+                  <span class="chip pill" [class.chip-success]="building.data['burnable'] == 0"
+                    [class.chip-danger]="building.data['burnable'] != 0">
+                    {{ ((building.data['burnable'] == 0) ? 'Non' : 'Oui') | translate }}
+                  </span>
+                </td>
+
+                <td class="d-none d-xl-table-cell ">
+                  {{ building.building['damageFactor'] > 0 ? (building.building['damageFactor']*100 + '%') : '-' }}
+                </td>
+
+                <td class="d-none d-sm-table-cell ">
+                  <span class="chip-numeric">{{ building.data['mightValue'] }}</span>
+                </td>
+
+                <td class="d-none d-lg-table-cell text-center">{{ building.data['width'] }} x {{ building.data['height']
+                  }}</td>
+
+                <td class="d-none d-xl-table-cell ">
+
+                  <span class="chip-soft">{{ building.data['buildingGroundType'] }}</span>
+                </td>
+
+                <!-- Visual items -->
+                <td class="items-col">
+                  <div class="items-visual">
+                    <div *ngFor="let i of [1, 0, 2]" class="item-slot">
+                      <ng-container *ngIf="building.constructionItems[i]; else noItem">
+                        <div [ngStyle]="{'background-image': 'url(' + building.constructionItems[i]['boxUrl'] + ')'}"
+                          class="construction-box construction-box-1"
+                          [attr.data-level]="building.constructionItems[i]['level']"
+                          [title]="building.constructionItems[i]['translatedName'] + ' (' + getSlotTypeName(i) + ')'">
+                          <img [src]="getConstructionUrl(building.constructionItems[i])" alt="">
+                        </div>
+                      </ng-container>
+                      <ng-template #noItem>
+                        <div [ngStyle]="{'background-image': 'url(' + getDefaultBoxUrl(i) + ')'}"
+                          class="construction-box no--item" [title]="getSlotTypeName(i)"></div>
+                      </ng-template>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+              <tr *ngIf="paginatedBuildings?.length === 0">
+                <td colspan="10" class="text-center py-5">
+                  -
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination-modern d-flex justify-content-center align-items-center mt-3 gap-2">
+          <button class="btn btn-light btn-sm rounded-circle shadow-sm" (click)="changePage(-1)"
+            [disabled]="currentPage <= 1" title="{{ 'Précédent' | translate }}">
+            <i class="fa-solid fa-chevron-left"></i>
+          </button>
+          <span class="page-indicator">{{ currentPage }} / {{ totalPages }}</span>
+          <button class="btn btn-light btn-sm rounded-circle shadow-sm" (click)="changePage(1)"
+            [disabled]="currentPage >= totalPages" title="{{ 'Suivant' | translate }}">
+            <i class="fa-solid fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </ng-container>
+</div>
+
+<div class="modal fade" id="viewItemModal" tabindex="-1" aria-labelledby="viewItemModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content bg-transparent" *ngIf="selectedItem">
+      <div class="custom-modal-header">
+        <h5 class="modal-title flex-grow-1">
+          {{ capitalizeFirstLetter(getBuildingName(selectedItem)) }}
+        </h5>
+        <div class="header-actions">
+          <ng-container *ngIf="previousSelectedItem">
+            <button type="button" class="btn-back-castle pointer" (click)="updateSelectedItem(previousSelectedItem)">
+              <i class="fa-solid fa-arrow-left"></i>
+              <span>{{ 'Retour' | translate }}</span>
+            </button>
+          </ng-container>
+          <button type="button" class="btn-close-modern" data-bs-dismiss="modal">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+      <div class="modal-body modern-modal">
+        <div class="text-center mb-3 visualize-img py-5">
+          <app-building-img [src]="getBuildingUrl(selectedItem)" [alt]="getBuildingName(selectedItem)" [shadow]="true">
+          </app-building-img>
+        </div>
+        <div class="text-center mb-4">
+          <h2 class="fw-bold mb-1">{{ capitalizeFirstLetter(getBuildingName(selectedItem)) }}</h2>
+          <p class="text-white small">
+            {{ 'Niveau' | translate }} <strong>{{ selectedItem.data['level'] }}</strong>
+          </p>
+        </div>
+        <div class="row g-3 mb-4">
+          <div class="col-12 col-md-4 text-center" *ngFor="let i of [1, 0, 2]">
+            <div class="slot-card p-3 h-100 shadow-sm rounded border">
+              <h6 class="fw-semibold text-uppercase small mb-2">
+                {{ getSlotTypeName(i) }}
+              </h6>
+              <ng-container *ngIf="selectedItem.constructionItems[i]; else noConstructionItem">
+                <div [ngStyle]="{'background-image': 'url(' + selectedItem.constructionItems[i]['boxUrl'] + ')'}"
+                  class="construction-box construction-box-1 mx-auto mb-2"
+                  [attr.data-level]="selectedItem.constructionItems[i]['level']">
+                  <img [src]="getConstructionUrl(selectedItem.constructionItems[i])"
+                    [title]="selectedItem.constructionItems[i]['translatedName'] + ' (' + getSlotTypeName(i) + ')'"
+                    [alt]="selectedItem.constructionItems[i]['translatedName']" class="construction-img">
+                </div>
+
+                <ul class="list-unstyled small text-start">
+                  <li class="text-center"><b>{{
+                      capitalizeFirstLetter(selectedItem.constructionItems[i]['translatedName']) }}</b></li>
+                  <li class="text-center" [ngStyle]="{'color': selectedItem.constructionItems[i]['rarenessColor']}">
+                    <em>{{ selectedItem.constructionItems[i]['rarenessName'] }}</em>
+                  </li>
+                  <hr>
+                  <li><b>{{ 'Niveau' | translate }}:</b> {{ selectedItem.constructionItems[i]['level'] ?? ('Aucun' | translate) }}
+                  </li>
+                  <li><b>{{ 'Effet' | translate }}:</b> {{ selectedItem.constructionItems[i]['effect'] ?? ('Aucun' | translate) }}
+                  </li>
+                  <li><b>{{ 'Commentaires' | translate }} :</b> {{ selectedItem.constructionItems[i]['comment2'] ??
+                    ('Aucun' | translate) }}
+                  </li>
+                </ul>
+              </ng-container>
+              <ng-template #noConstructionItem>
+                <div [ngStyle]="{'background-image': 'url(' + getDefaultBoxUrl(i) + ')'}"
+                  class="construction-box no--item mx-auto mb-2" [title]="getSlotTypeName(i)"></div>
+                <span class="badge bg-secondary">{{ 'Aucun' | translate }}</span>
+              </ng-template>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-3 text-center pb-3">
+          <div class="col-6 col-md-4">
+            <span class="stat-label">{{ 'Ordre public' | translate }}:</span>
+            <span class="stat-value">{{ formatValue(selectedItem.data['publicOrder']) }}</span>
+          </div>
+          <div class="col-6 col-md-4">
+            <span class="stat-label">{{ 'Brûlable' | translate }}:</span>
+            <span class="stat-value">{{ ((selectedItem.data['burnable'] == 0) ? 'Non' : 'Oui') | translate }}</span>
+          </div>
+          <div class="col-6 col-md-4">
+            <span class="stat-label">{{ 'Puissance' | translate }}:</span>
+            <span class="stat-value">{{ formatValue(selectedItem.data['mightValue']) }}</span>
+          </div>
+          <div class="col-6 col-md-4">
+            <span class="stat-label">{{ 'Dimensions' | translate }}:</span>
+            <span class="stat-value">{{ selectedItem.data['width'] }} x {{ selectedItem.data['height'] }}</span>
+          </div>
+          <div class="col-6 col-md-4">
+            <span class="stat-label">{{ 'Prix de vente' | translate }}:</span>
+            <span class="stat-value">{{ selectedItem.data['sellC1'] ? formatValue(selectedItem.data['sellC1']) : ('Aucun' | translate)
+              }}</span>
+          </div>
+          <div class="col-6 col-md-4">
+            <span class="stat-label">{{ 'Commentaires' | translate }}:</span>
+            <span class="stat-value"
+              *ngIf="selectedItem.data['comment1'] || selectedItem.data['comment2']; else noStatsValue">
+              {{ selectedItem.data['comment1'] }}
+              {{ selectedItem.data['comment2'] }} </span>
+          </div>
+          <div class="col-6 col-md-4">
+            <span class="stat-label">{{ 'Effets' | translate }}:</span>
+            <span class="stat-value">
+              {{ parseEffects(selectedItem.data['effects']) }}</span>
+          </div>
+          <div class="col-6 col-md-4">
+            <span class="stat-label">{{ 'Destructible' | translate }}:</span>
+            <span class="stat-value">
+              {{ (selectedItem.data['smashable'] === undefined ? 'Oui' : 'Non') | translate }}</span>
+          </div>
+        </div>
+        <ng-container *ngIf="isBuildingDistrict(selectedItem)">
+          <h5 class="text-center">{{ 'Espace dans le quartier' | translate }} ({{ getItemsInDistrict(selectedItem).length }})</h5>
+          <hr>
+          <div class="row d-flex g-3">
+            <div class="col-4 d-flex flex-column pointer" *ngFor="let item of getItemsInDistrict(selectedItem)"
+              (click)="updateSelectedItem(item, selectedItem)">
+              <div class="text-center mb-3 visualize-img py-5">
+                <app-building-img [src]="getBuildingUrl(item)" [alt]="getBuildingName(item)" [shadow]="true"
+                  [size]="200">
+                </app-building-img>
+              </div>
+              <div class="text-center mb-4 white-space-nowrap">
+                <h4 class="fw-bold mb-1 text-truncate">{{ capitalizeFirstLetter(getBuildingName(item)) }}</h4>
+                <p class="text-white small">
+                  {{ 'Niveau' | translate }} <strong>{{ item.data['level'] }}</strong>
+                </p>
+              </div>
+            </div>
+          </div>
+        </ng-container>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="filtersModal" tabindex="-1" aria-labelledby="filtersModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content bg-transparent">
+      <div class="custom-modal-header">
+        <h5 class="modal-title flex-grow-1">{{ 'Filtrer' | translate }} <em><small>({{ visibleBuildings.length }}/{{ allVisibleBuildings.length }})</small></em></h5>
+        <div class="header-actions">
+          <button type="button" class="btn-close-modern" data-bs-dismiss="modal">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+      <div class="modal-body modern-modal">
+        <div class="filters-container row g-3">
+          <div class="col-12">
+            <div class="construction-slots">
+              <div class="row">
+                <div class="col-4 text-center">
+                  <ng-container *ngIf="filters.constructionItemsSlot2 !== null; else unAssignedSlot2">
+                    <div [ngStyle]="{'background-image': 'url(' + getDefaultBoxUrl(1, 'epic') + ')'}"
+                      [attr.data-level]="filters.constructionItemsSlot2 === 'assigned' ? 1 : 0"
+                      class="construction-box construction-box-1 mb-2" [title]="getSlotTypeName(1)"></div>
+                  </ng-container>
+                  <ng-template #unAssignedSlot2>
+                    <div [ngStyle]="{'background-image': 'url(' + getDefaultBoxUrl(1) + ')'}"
+                      class="construction-box no--item mb-2" [title]="getSlotTypeName(1)"></div>
+                  </ng-template>
+                  <app-select
+                    [items]="[
+                      { label: ('Tous' | translate), value: null },
+                      { label: ('Assigné' | translate), value: 'assigned' },
+                      { label: ('Non assigné' | translate), value: 'unassigned' }
+                    ]"
+                    [name]="'construction-item-1'" [selectedItem]="filters.constructionItemsSlot2"
+                    (selectEmitter)="filters.constructionItemsSlot2 = $event; updateFilters(); updateCdr()"></app-select>
+                </div>
+                <div class="col-4 text-center">
+                  <ng-container *ngIf="filters.constructionItemsSlot1 !== null; else unAssignedSlot1">
+                    <div [ngStyle]="{'background-image': 'url(' + getDefaultBoxUrl(0, 'legendary') + ')'}"
+                      [attr.data-level]="filters.constructionItemsSlot1 === 'assigned' ? 1 : 0"
+                      class="construction-box construction-box-1 mb-2" [title]="getSlotTypeName(0)"></div>
+                  </ng-container>
+                  <ng-template #unAssignedSlot1>
+                    <div [ngStyle]="{'background-image': 'url(' + getDefaultBoxUrl(0) + ')'}"
+                      class="construction-box no--item mb-2" [title]="getSlotTypeName(0)"></div>
+                  </ng-template>
+                  <app-select
+                    [items]="[
+                      { label: ('Tous' | translate), value: null },
+                      { label: ('Assigné' | translate), value: 'assigned' },
+                      { label: ('Non assigné' | translate), value: 'unassigned' }
+                    ]"
+                    [name]="'construction-item-0'" [selectedItem]="filters.constructionItemsSlot1"
+                    (selectEmitter)="filters.constructionItemsSlot1 = $event; updateFilters(); updateCdr()"></app-select>
+                </div>
+                <div class="col-4 text-center">
+                  <ng-container *ngIf="filters.constructionItemsSlot3 !== null; else unAssignedSlot3">
+                    <div [ngStyle]="{'background-image': 'url(' + getDefaultBoxUrl(2, 'rare') + ')'}"
+                      [attr.data-level]="filters.constructionItemsSlot3 === 'assigned' ? 1 : 0"
+                      class="construction-box construction-box-1 mb-2" [title]="getSlotTypeName(2)"></div>
+                  </ng-container>
+                  <ng-template #unAssignedSlot3>
+                    <div [ngStyle]="{'background-image': 'url(' + getDefaultBoxUrl(2) + ')'}"
+                      class="construction-box no--item mb-2" [title]="getSlotTypeName(2)"></div>
+                  </ng-template>
+                  <app-select
+                    [items]="[
+                      { label: ('Tous' | translate), value: null },
+                      { label: ('Assigné' | translate), value: 'assigned' },
+                      { label: ('Non assigné' | translate), value: 'unassigned' }
+                    ]"
+                    [name]="'construction-item-2'" [selectedItem]="filters.constructionItemsSlot3"
+                    (selectEmitter)="filters.constructionItemsSlot3 = $event; updateFilters(); updateCdr()"></app-select>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Niveau -->
+          <div class="col-12 col-md-6">
+            <label class="filter-label">{{ 'Niveau min.' | translate }}</label>
+            <app-search-bar [attrListInput]="[]" [searchInput]="filters.minLevel"
+              (searchEmitter)="filters.minLevel = $event; updateFilters()" [inputType]="'number'" [name]="'level-min'" [min]="0"
+              [placeholderInput]="'0'" [hasContent]="true"><img src="/assets/upgrade2.png" alt="{{ 'Niveau min.' | translate }}"></app-search-bar>
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="filter-label">{{ 'Niveau max.' | translate }}</label>
+            <app-search-bar [attrListInput]="[]" [searchInput]="filters.maxLevel"
+              (searchEmitter)="filters.maxLevel = $event; updateFilters()" [inputType]="'number'" [name]="'level-max'" [min]="0"
+              [placeholderInput]="'∞'" [hasContent]="true"><img src="/assets/upgrade2.png" alt="{{ 'Niveau max.' | translate }}"></app-search-bar>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label class="filter-label">{{ 'Prix de revente min.' | translate }}</label>
+            <app-search-bar [attrListInput]="[]" [searchInput]="filters.sellPriceMin"
+              (searchEmitter)="filters.sellPriceMin = $event; updateFilters()" [inputType]="'number'" [name]="'sell-price-min'" [min]="0"
+              [placeholderInput]="'0'" [hasContent]="true"><img src="/assets/gold.png" alt="{{ 'Prix de revente min.' | translate }}"></app-search-bar>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label class="filter-label">{{ 'Prix de revente max.' | translate }}</label>
+            <app-search-bar [attrListInput]="[]" [searchInput]="filters.sellPriceMax"
+              (searchEmitter)="filters.sellPriceMax = $event; updateFilters()" [inputType]="'number'" [name]="'sell-price-max'" [min]="0"
+              [placeholderInput]="'∞'" [hasContent]="true"><img src="/assets/gold.png" alt="{{ 'Prix de revente max.' | translate }}"></app-search-bar>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label class="filter-label">{{ 'Puissance min.' | translate }}</label>
+            <app-search-bar [attrListInput]="[]" [searchInput]="filters.mightMin"
+              (searchEmitter)="filters.mightMin = $event; updateFilters()" [inputType]="'number'" [name]="'might-min'" [min]="0"
+              [placeholderInput]="'0'" [hasContent]="true"><img src="/assets/might.png" alt="{{ 'Puissance min.' | translate }}"></app-search-bar>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label class="filter-label">{{ 'Puissance max.' | translate }}</label>
+            <app-search-bar [attrListInput]="[]" [searchInput]="filters.mightMax"
+              (searchEmitter)="filters.mightMax = $event; updateFilters()" [inputType]="'number'" [name]="'might-max'" [min]="0"
+              [placeholderInput]="'∞'" [hasContent]="true"><img src="/assets/might.png" alt="{{ 'Puissance max.' | translate }}"></app-search-bar>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label class="filter-label">{{ 'Dégâts min. (feu)' | translate }}</label>
+            <app-search-bar [attrListInput]="[]" [searchInput]="filters.fireDamageMin"
+              (searchEmitter)="filters.fireDamageMin = $event; updateFilters()" [inputType]="'number'" [name]="'fire-damage-min'"
+              [min]="0" [placeholderInput]="'0'" [hasContent]="true"><img src="/assets/fire2.png" alt="{{ 'Dégâts min. (feu)' | translate }}"></app-search-bar>
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="filter-label">{{ 'Dégâts max. (feu)' | translate }}</label>
+            <app-search-bar [attrListInput]="[]" [searchInput]="filters.fireDamageMax"
+              (searchEmitter)="filters.fireDamageMax = $event; updateFilters()" [inputType]="'number'" [name]="'fire-damage-max'"
+              [min]="0" [placeholderInput]="'∞'" [hasContent]="true"><img src="/assets/fire2.png" alt="{{ 'Dégâts max. (feu)' | translate }}"></app-search-bar>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label class="filter-label">{{ 'Ordre public (min)' | translate }}</label>
+            <app-search-bar [attrListInput]="[]" [searchInput]="filters.publicOrderMin"
+              (searchEmitter)="filters.publicOrderMin = $event; updateFilters()" [inputType]="'number'" [name]="'public-order-min'"
+              [min]="0" [placeholderInput]="'0'" [hasContent]="true"><img src="/assets/publicOrder.png" alt="{{ 'Ordre public (min)' | translate }}"></app-search-bar>
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="filter-label">{{ 'Ordre public (max)' | translate }}</label>
+            <app-search-bar [attrListInput]="[]" [searchInput]="filters.publicOrderMax"
+              (searchEmitter)="filters.publicOrderMax = $event; updateFilters()" [inputType]="'number'" [name]="'public-order-max'"
+              [min]="0" [placeholderInput]="'∞'" [hasContent]="true"><img src="/assets/publicOrder.png" alt="{{ 'Ordre public (max)' | translate }}"></app-search-bar>
+          </div>
+
+          <div class="col-12">
+            <label class="filter-label" for="construction-type">{{ 'Catégorie' | translate }}</label>
+            <div>
+              <app-select *ngIf="constructionTypes.length > 0" [items]="constructionTypes" [name]="'construction-type'"
+                [selectedItem]="filters.constructionType" (selectEmitter)="filters.constructionType = $event; updateFilters()">
+              </app-select>
+            </div>
+          </div>
+
+          <hr>
+
+          <div class="col-12 col-md-3 d-flex gap-3 align-items-center">
+            <div class="row text-center">
+              <div class="col-12">
+                <img src="{{ apiPath }}assets/images/fooddistrictbuildinglevel1.png" alt="{{ 'Uniquement les bâtiments dans un quartier' | translate }}" class="filter-icon"
+                  width="128">
+              </div>
+              <div class="col-12">
+                <label class="filter-switch-label" for="in-district-switch">{{ 'Uniquement les bâtiments dans un quartier' | translate }}</label>
+                <div class="mt-2"><app-switch [id]="'in-district-switch'" [defaultInput]="filters.isInDistrict"
+                    (switchEmitter)="filters.isInDistrict = $event; updateFilters()">
+                  </app-switch></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-md-3 d-flex gap-3 align-items-center">
+            <div class="row text-center">
+              <div class="col-12">
+                <img src="/assets/max-level.png" alt="{{ 'Uniquement des bâtiments de niveau maximal' | translate }}" class="filter-icon" width="128">
+              </div>
+              <div class="col-12">
+                <label class="filter-switch-label" for="max-level-switch">{{ 'Uniquement des bâtiments de niveau maximal' | translate }}</label>
+                <div class="mt-2"><app-switch [id]="'max-level-switch'" [defaultInput]="filters.hasMaxLevel"
+                    (switchEmitter)="filters.hasMaxLevel = $event; updateFilters()">
+                  </app-switch></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-md-3 d-flex gap-3 align-items-center">
+            <div class="row text-center">
+              <div class="col-12">
+                <img src="/assets/upgradable.png" alt="{{ 'Uniquement des bâtiments améliorables' | translate }}" class="filter-icon" width="128">
+              </div>
+              <div class="col-12">
+                <label class="filter-switch-label" for="upgradable-switch">{{ 'Uniquement des bâtiments améliorables' | translate }}</label>
+                <div class="mt-2"><app-switch [id]="'upgradable-switch'" [defaultInput]="filters.upgradable"
+                    (switchEmitter)="filters.upgradable = $event; updateFilters()">
+                  </app-switch></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-md-3 d-flex gap-3 align-items-center">
+            <div class="row text-center">
+              <div class="col-12">
+                <img src="/assets/burnable.png" alt="{{ 'Uniquement des bâtiments brûlables' | translate }}" class="filter-icon" width="128">
+              </div>
+              <div class="col-12">
+                <label class="filter-switch-label" for="burnable-switch">{{ 'Uniquement des bâtiments brûlables' | translate }}</label>
+                <div class="mt-2"><app-switch [id]="'burnable-switch'" [defaultInput]="filters.burnable"
+                    (switchEmitter)="filters.burnable = $event; updateFilters()">
+                  </app-switch></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<ng-template #noStatsValue>
+  <span class="stat-value">{{ 'Aucun' | translate }}</span>
+</ng-template>

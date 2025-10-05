@@ -1,0 +1,123 @@
+
+
+
+
+.alliance-icon::after {
+  content: "";
+    position: absolute;
+    height: 3px;
+    background: #a5bb4a;
+    left: 45px;
+    margin-top: 14px;
+    right: 45px;
+    z-index: 0;
+}
+
+.btn-icon {
+  width: 37px;
+  height: auto;
+}
+
+.btn-icon:hover {
+  transform: scale(1.1);
+}
+
+.btn-icon.not-favorite {
+  opacity: 0.7;
+}
+
+::ng-deep .players td.text-end {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+::ng-deep .players th, td {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.peace-icon {
+  max-height: 1.75em;
+  height: auto;
+}
+
+.btn-favorite {
+  background-color: #f0f0f0;
+  border-color: #d4d4d4;
+  color: #6c757d;
+}
+
+.peace-icon::after {
+  content: "";
+    position: absolute;
+    height: 3px;
+    background: #d7e0ddb9;
+    left: 45px;
+    margin-top: 14px;
+    right: 45px;
+    z-index: 0;
+}
+
+.ban-icon::after {
+  content: "";
+    position: absolute;
+    height: 3px;
+    background: #a8250e;
+    left: 45px;
+    margin-top: 14px;
+    right: 45px;
+    z-index: 0;
+}
+
+.inactive-icon::after {
+  content: "";
+  position: absolute;
+  height: 3px;
+  background: #d4a837;
+  left: 45px;
+  margin-top: 18px;
+  right: 45px;
+  z-index: 0;
+}
+
+.peace-icon img {
+  z-index: 1;
+  position: relative;
+}
+
+.alliance-icon img {
+  z-index: 1;
+  position: relative;
+}
+
+.ban-icon img {
+  z-index: 1;
+  position: relative;
+}
+
+.inactive-icon img {
+  z-index: 1;
+  position: relative;
+}
+
+tr.favorite {
+  font-weight: bold;
+}
+
+.pointer {
+  cursor: pointer;
+}
+
+.btn-sm {
+  --bs-btn-padding-y: 0.15rem;
+}
+
+.error-icon {
+  width: 26px;
+  height: 26px;
+}
+
+th, td {
+  text-align: center;
+}
+

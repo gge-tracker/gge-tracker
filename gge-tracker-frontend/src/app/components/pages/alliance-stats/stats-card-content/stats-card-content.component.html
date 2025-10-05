@@ -1,0 +1,31 @@
+
+<div class="row align-items-center">
+  <div class="col-auto ms-3" *ngIf="!currentTab() || currentTab() === 'Evolution'">
+    <div *ngIf="!fullScreenModalKey()" class="form-check form-switch justify-self-center">
+      <input class="form-check-input" type="checkbox" id="toggleSeriesLabels"
+        (change)="toggleSeriesLabels()" [(ngModel)]="seriesLabels()[keyStatsType()]">
+      <label class="form-check-label pointer" for="toggleSeriesLabels">
+        <span>{{ 'Afficher toutes les séries' | translate }}</span>
+      </label>
+    </div>
+  </div>
+  <div class="col-auto ms-3" *ngIf="!currentTab() || currentTab() === 'Evolution'">
+    <div *ngIf="!fullScreenModalKey()" class="form-check form-switch justify-self-center">
+      <input class="form-check-input" type="checkbox" id="cumulSeriesLabel"
+        (change)="cumulSeriesLabels()" [(ngModel)]="cumulSeries()[keyStatsType()]">
+      <label class="form-check label pointer" for="cumulSeriesLabel">
+        <span>{{ 'Cumuler' | translate }}</span>
+      </label>
+    </div>
+  </div>
+  <div class="col-auto fullscreen-key ms-auto" ngProjectAs="fullscreen">
+    <div class="open-fullscreen ms-auto" *ngIf="!fullScreenModalKey()">
+      <i class="fas fa-expand-arrows-alt"></i>
+      <button class="btn ps-1" (click)="openFullscreen.emit(keyStatsType())">{{ 'Ouvrir en plein écran' | translate }}</button>
+    </div>
+    <div class="close-fullscreen ms-auto" *ngIf="fullScreenModalKey()">
+      <i class="fas fa-compress-arrows-alt"></i>
+      <button class="btn ps-1" (click)="closeFullscreen.emit()">{{ 'Fermer le plein écran' | translate }}</button>
+    </div>
+  </div>
+</div>

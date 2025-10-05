@@ -1,0 +1,70 @@
+<div class="container mb-5 pb-0">
+  <ng-container *ngTemplateOutlet="apiLink; context: { message: 'API gge-tracker.com' }"></ng-container>
+  <div class="text-end mb-2 release-note">
+    <a href="/release-notes" class="text-decoration-none" target="_blank">
+      <i class="fa-solid fa-file-lines" style="color: #007bff;"></i>
+      &nbsp;{{ 'about.release-notes' | translate }}
+    </a>
+  </div>
+  <h1 class="text-center mb-4 mt-3">{{ 'about.title' | translate }}</h1>
+  <div class="section">
+    <p [innerHTML]="safeTranslatedIntro1"></p>
+    <p>{{ 'about.intro-2' | translate }}</p>
+    <p>{{ 'about.intro-3' | translate }}</p>
+    <p>{{ 'about.intro-4' | translate }}</p>
+    <ng-container *ngTemplateOutlet="contact"></ng-container>
+  </div>
+  <div class="section">
+    <p>{{ 'about.host' | translate }}</p>
+  </div>
+  <h1 class="text-center mb-4 mt-3">{{ 'about.contributors-title' | translate }}</h1>
+  <span>
+    {{ 'about.contributors-thanks' | translate }}
+  </span>
+  <div class="section">
+    <ng-container *ngTemplateOutlet="contributors"></ng-container>
+  </div>
+  <div class="footer mb-2 text-center">
+    <p style="font-size: 0.7rem">&copy; 2025 gge-tracker.com</p>
+  </div>
+</div>
+
+<ng-template #contributors>
+  <div class="section">
+    <div class="container mt-0 contrib-container">
+      <div class="row justify-content-left">
+        <div class="col-6 col-sm-4 col-md-3 col-lg-2 text-center mb-4" *ngFor="let contrib of orderedContribs">
+          <div class="contrib-avatar mx-auto mb-2">
+            <span class="server-badge">{{ contrib.server }}</span>
+            <span class="initials">{{ contrib.name.charAt(0).toUpperCase() }}</span>
+          </div>
+          <div class="fw-bold">{{ contrib.name }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</ng-template>
+
+<ng-template #apiLink let-message="message">
+  <div class="text-end mb-2">
+    <a href="https://petstore.swagger.io/?url=https://api.gge-tracker.com/api/v1/docs" target="_blank" class="text-decoration-none">
+      <i class="fa-solid fa-code" style="color: #007bff;"></i>
+      &nbsp;{{ message }}
+    </a>
+  </div>
+</ng-template>
+
+<ng-template #heart>
+  <span style="color: #ff00009e;">
+    <i class="fa-solid fa-heart"></i>
+  </span>
+</ng-template>
+
+<ng-template #contact>
+  <ul class="list-unstyled">
+    <li>
+      <i class="fa-brands fa-discord" style="color: #7289da;"></i>
+      <span style="color: #7289da;">&nbsp;Discord: <a target="_blank" href="https://discord.gg/eb6WSHQqYh">https://discord.gg/eb6WSHQqYh</a></span>
+    </li>
+  </ul>
+</ng-template>

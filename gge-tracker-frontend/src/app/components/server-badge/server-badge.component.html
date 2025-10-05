@@ -1,0 +1,57 @@
+<div class="btn-group me-2" role="group">
+  <button type="button" class="disabled btn btn-success btn-sm position-relative py-0">
+    <i class="fa-solid fa-plug"></i>
+    <span>&nbsp;{{ version }}</span>
+  </button>
+  <button type="button" class="btn btn-success btn-sm position-relative py-0" [title]="('Cliquer pour changer de serveur' | translate)" data-bs-toggle="modal" data-bs-target="#serverModal">
+    <i class="fa-solid fa-earth-americas"></i>
+    {{ 'Serveur' | translate }}
+    <span class="badge text-bg-light pb-0">{{ choosedServer }}</span>
+  </button>
+</div>
+
+<div class="modal fade" id="serverModal" tabindex="-1" aria-labelledby="serverModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="serverModalLabel">
+          <i class="fa-solid fa-earth-americas"></i>&nbsp;{{ 'Changer de serveur' | translate}}
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" [attr.aria-label]="'Fermer' | translate"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-12 col-md-6">
+            <div class="dropdown">
+              <button class="btn btn-server dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                <img [src]="serverService.flagsUrl[currentServer]" width="20" class="me-2" alt="{{ currentServer }}" title="{{ currentServer }}">
+                {{ serverService.mappedServersToGgeServerName[currentServer] }} ({{ currentServer }})
+              </button>
+              <ul class="dropdown-menu">
+                <li *ngFor="let server of servers | sortByOrder">
+                  <a class="dropdown-item d-flex align-items-center" (click)="currentServer = server" [ngClass]="{'fw-bold': server === currentServer}">
+                    <img [src]="serverService.flagsUrl[server]" width="20" class="me-2" alt="{{ server }}" title="{{ server }}">
+                    {{ serverService.mappedServersToGgeServerName[server] }} ({{ server }})
+                  </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li *ngFor="let server of serversInDeploy() | sortByOrder">
+                  <a class="dropdown-item d-flex align-items-center disabled">
+                    <img [src]="serverService.flagsUrl[server]" width="20" class="me-2" alt="{{ server }}" title="{{ server }}">
+                    {{ serverService.mappedServersToGgeServerName[server] }} ({{ server }})&nbsp;<em><small>({{ 'Bientôt disponible' | translate }})</small></em>
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div>
+            <span class="text-muted" *ngIf="infoDisplayed()"><em>{{ 'server-request-about' | translate: { url: 'https://gge-tracker.com/' + currentLang + '/about' } }}</em></span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" translate>Fermer</button>
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal" (click)="changeServer()" translate>Valider</button>
+        </div>
+      </div>
+    </div>
+  </div>

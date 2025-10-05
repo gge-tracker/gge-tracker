@@ -1,0 +1,46 @@
+FROM node:20-slim AS documentation
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+
+RUN npx tsc \
+    && npx swagger-jsdoc -d ./src/documentation.js
+
+FROM node:20-slim AS build
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --omit=dev
+RUN npx puppeteer browsers install chrome
+COPY --from=documentation /app/dist/api/ /app/dist/
+
+FROM node:20 AS production
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    libnss3 \
+    libfreetype6 \
+    libharfbuzz0b \
+    ca-certificates \
+    fonts-freefont-ttf \
+    libgdk-pixbuf2.0-dev \
+    libgtk-3-dev \
+    libxss-dev \
+    libnotify-dev \
+    libgconf-2-4 \
+    libasound2 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /app/dist/ /app/dist/
+COPY --from=build /app/node_modules /app/node_modules
+COPY --from=build /root/.cache/puppeteer /root/.cache/puppeteer
+
+ENV NODE_ENV=production
+ENV REDIS_URL=redis://redis-server:6379
+EXPOSE 3000
+
+CMD ["node", "dist/main.js"]

@@ -1,0 +1,4 @@
+<button class="btn-modern btn-filter" data-bs-toggle="modal" data-bs-target="#filtersModal">
+  <lucide-icon class="lucide lucide-funnel" [img]="Funnel"></lucide-icon> {{ 'Filtrer' | translate }}
+  <span class="filter-badge" *ngIf="countFilterActivated() > 0">{{ countFilterActivated() }}</span>
+</button>

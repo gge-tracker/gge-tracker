@@ -1,0 +1,3 @@
+User-agent: *
+Disallow: /maintenance
+Sitemap: https://gge-tracker.com/sitemaps/sitemap_index.xml

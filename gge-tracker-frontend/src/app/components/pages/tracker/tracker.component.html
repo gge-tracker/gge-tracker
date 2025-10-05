@@ -1,0 +1,239 @@
+<div class="container my-3 dungeons">
+  <div class="row">
+    <div class="col-12" [ngClass]="{'loading': isInLoading}">
+      <div class="search mb-2">
+        <div class="row mb-2">
+          <div class="col">
+            <div class="input-group">
+              <span class="input-group-text">
+                <img src="/assets/map.png" width="20" alt="Map Icon" />
+                &nbsp;
+                <span>{{ 'Royaume' | translate }}</span>
+              </span>
+              <ng-select [items]="realms" bindLabel="label" bindValue="key" [(ngModel)]="selectedRealm"
+                [multiple]="true" [closeOnSelect]="false" (change)="onRealmChange($event)" class="form-control">
+                <ng-template ng-option-tmp let-item="item">
+                  {{ item.label | translate }}
+                </ng-template>
+                <ng-template ng-label-tmp let-item="item">
+                  {{ item.label | translate }}
+                </ng-template>
+              </ng-select>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col">
+            <div class="input-group">
+              <app-search-bar [attrListInput]="[]" [searchInput]="filterByPlayerName"
+                (searchEmitter)="filterByPlayerName = $event" [inputType]="'string'" [name]="'player-name'"
+                [placeholderInput]="'Nom du joueur' | translate" [hasContent]="true">
+                {{ 'Pseudonyme' | translate }}
+              </app-search-bar>
+              <div class="col-auto">
+                <div class="d-flex gap-1 ms-2">
+                  <button class="btn-modern btn-search" (click)="onPlayerNameChange(filterByPlayerName!)">
+                    <lucide-icon class="lucide" [img]="Search"></lucide-icon>
+                  </button>
+                  <button class="btn-modern btn-x" (click)="resetPlayerName()">
+                    <lucide-icon class="lucide " [img]="X"></lucide-icon>
+                  </button>
+                  <button class="btn-modern btn-help" data-bs-toggle="modal" data-bs-target="#questionModal">
+                    <lucide-icon class="lucide " [img]="MessageCircleQuestionMark"></lucide-icon>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-auto">
+            <app-select
+                [items]="displayedStates"
+                [name]="'dungeon-state'"
+                [selectedItem]="'0'"
+                (selectEmitter)="changeState($event)"></app-select>
+          </div>
+          <div class="col-auto">
+            <div class="btn-group">
+              <button class="btn btn-modern" data-bs-toggle="modal" data-bs-target="#sortModal">
+                <i class="fa-solid fa-arrow-down-short-wide"></i>
+                &nbsp;{{ 'Trier' | translate }}<small>({{ activeSortCount }})</small>
+              </button>
+              <button class="btn btn-modern" data-bs-toggle="modal" data-bs-target="#pagingModal">
+                <i class="fa-solid fa-list-ol"></i>
+                &nbsp;{{ 'Pagination' | translate }}
+              </button>
+            </div>
+          </div>
+          <div class="col-auto">
+            <button class="btn btn-modern" (click)="refresh()">
+              <i class="fa-solid fa-arrows-rotate" [ngClass]="{'fa-spin': refreshDataAnimationSpinner}"></i>
+            </button>
+          </div>
+        </div>
+        <div class="row my-2 special-bg" *ngIf="!allowedServers.includes(serverService.choosedServer)">
+          <div class="col-12">
+            <i class="fa-solid fa-info-circle text-muted me-1"></i>
+            <span class="text-black">
+              <em>{{ 'server-not-available' | translate: { server: (serverService.choosedServer) } }}</em>
+            </span>
+          </div>
+        </div>
+        <div class="mb-1">
+          <app-server-badge [allowedServers]="allowedServers" [infoDisplayed]="false"></app-server-badge>
+          <span class="ms-1 badge bg-info pointer" *ngIf="responseTime > 0"
+            [title]="('Affichage des données en'  | translate) + ' ' + responseTime + 'ms'">
+            <i class="fa-solid fa-clock"></i>
+            {{ responseTime / 1000 }}s
+          </span>
+          <span class="ms-1 badge bg-info pointer" [title]="('Nombre de résultats' | translate)">
+            <i class="fa-solid fa-dungeon"></i>
+            {{ resultsCount | formatNumber }}
+          </span>
+        </div>
+        <app-table [sort]="''" [reverse]="false" [isInLoading]="isInLoading" [maxPage]="maxPage!" [page]="page"
+          [search]="''" [headers]="headers" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()"
+          (nextPage)="nextPage()">
+          <tr *ngIf="dungeons.length === 0 && !isInLoading">
+            <td colspan="10">
+              <span class="text-muted">{{ 'Aucun résultat' | translate }}</span>
+            </td>
+          </tr>
+          <tr *ngFor="let dungeon of dungeons" [ngClass]="{'table-custom': isInCooldown(dungeon)}">
+            <td>{{ dungeon.rank }}</td>
+            <td>
+              <img [src]="dungeon.image" alt="{{ dungeon.kid }}" class="img-fluid" width="20">
+              {{ getRealmName(dungeon.kid) | translate }}
+            </td>
+            <td>{{ dungeon.position }}</td>
+            <td *ngIf="headers.length === 5">
+              {{ dungeon.distance ? dungeon.distance + 'm' : '?' }}
+            </td>
+            <td>
+              <i class="fa-solid fa-dungeon special-fa" *ngIf="!isInCooldown(dungeon)"></i>
+              {{ dungeon.effectiveCooldownUntil | cooldown: dungeon.lastAttackAt }}
+            </td>
+            <td><span *ngIf="isInCooldown(dungeon)">{{ dungeon.playerName }}</span></td>
+          </tr>
+        </app-table>
+      </div>
+    </div>
+
+
+    <div class="modal fade" id="sortModal" tabindex="-1" aria-labelledby="sortModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="sortModalLabel">
+              <i class="fa-solid fa-arrow-down-short-wide"></i>&nbsp;{{ 'Trier les résultats' | translate }}
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"
+              [attr.aria-label]="'Fermer' | translate"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row">
+              <div class="col-12">
+                <span>{{ 'Plus proche d\'une position' | translate }}</span>
+                <div class="input-group mb-3">
+                  <span class="input-group-text">
+                    <span>X</span>
+                  </span>
+                  <input type="number" class="form-control" [(ngModel)]="positionX"
+                    placeholder="{{ 'Position X' | translate }}">
+                  <span class="input-group-text">
+                    <span>Y</span>
+                  </span>
+                  <input type="number" class="form-control" [(ngModel)]="positionY"
+                    placeholder="{{ 'Position Y' | translate }}">
+                  <button class="btn btn-primary" data-bs-dismiss="modal"
+                    (click)="onPositionChange(positionX, positionY)">{{ 'Rechercher' | translate }}</button>
+                  <button class="btn btn-secondary" data-bs-dismiss="modal" (click)="resetPosition()">{{ 'Réinitialiser'
+                    | translate }}</button>
+                </div>
+              </div>
+              <hr>
+              <div class="col-12">
+                <span>{{ 'Plus proche d\'un joueur' | translate }}</span>
+                <div class="input-group mb-3">
+                  <span class="input-group-text">
+                    <span>{{ 'Joueur' | translate }}</span>
+                  </span>
+                  <input type="text" class="form-control" [(ngModel)]="nearPlayerName"
+                    placeholder="{{ 'Nom du joueur' | translate }}">
+                  <button class="btn btn-primary" data-bs-dismiss="modal"
+                    (click)="onPositionChangePlayerName(nearPlayerName)">{{ 'Rechercher' | translate }}</button>
+                  <button class="btn btn-secondary" data-bs-dismiss="modal" (click)="resetPositionPlayerName()">{{
+                    'Réinitialiser' | translate }}</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="modal fade" id="pagingModal" tabindex="-1" aria-labelledby="pagingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="pagingModalLabel">
+            <i class="fa-solid fa-list-ol"></i>&nbsp;{{ 'Pagination' | translate }}
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"
+            [attr.aria-label]="'Fermer' | translate"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row">
+            <div class="col-12">
+              <span>{{ 'Nombre de résultats par page' | translate }}</span>
+              <div class="input-group mb-3">
+                <input type="number" class="form-control" [(ngModel)]="pageSize"
+                  placeholder="{{ 'Nombre de résultats' | translate }}" min="0">
+                <button class="btn btn-primary" data-bs-dismiss="modal" (click)="onPageSizeChange(pageSize)">{{
+                  'Rechercher' | translate }}</button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal" (click)="resetPageSize()">{{ 'Réinitialiser' |
+                  translate }}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="modal fade" id="rankingModal" tabindex="-1" aria-labelledby="rankingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="rankingModalLabel">
+            <i class="fa-solid fa-filter"></i>&nbsp;{{ 'Filtrer les résultats' | translate }}
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"
+            [attr.aria-label]="'Fermer' | translate"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="questionModal" tabindex="-1" aria-labelledby="questionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="questionModalLabel">
+            <i class="fa-solid fa-question"></i>&nbsp;{{ 'Aide' | translate }}
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"
+            [attr.aria-label]="'Fermer' | translate"></button>
+        </div>
+        <div class="modal-body">
+          {{ 'help-dungeon' | translate }}
+        </div>
+      </div>
+    </div>
+  </div>

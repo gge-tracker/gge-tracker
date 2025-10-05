@@ -1,0 +1,24 @@
+<div class="event-header col">
+  <h2 class="event-title">
+    {{ eventName() | translate | titlecase }}
+    <span class="event-icon-wrapper">
+      <img class="event-icon" src="/assets/{{ eventType() }}-icon.png" alt="{{ eventType() }} Icon">
+    </span>
+  </h2>
+
+  <div class="event-info-box">
+    <div class="event-info-item">
+      <lucide-icon [img]="CalendarDays" class="lucide-icon"></lucide-icon>
+      <span>
+        {{ 'Événement du 0 au 0' | translate: { start: (from() | date: ('Date_7' | translate)), end: (to() | date: ('Date_7' | translate)) } }}
+      </span>
+    </div>
+
+    <div class="event-info-item">
+      <lucide-icon [img]="Users" class="lucide-icon"></lucide-icon>
+      <span>
+        {{ nbPlayers() | formatNumber }} {{ 'Joueurs' | translate | lowercase }}
+      </span>
+    </div>
+  </div>
+</div>

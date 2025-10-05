@@ -1,0 +1,28 @@
+<!--
+    This configuration file sets up ClickHouse with default local storage only.
+    It does not use S3 or any other external storage.
+    This is suitable for setups where all data is stored locally.
+-->
+<clickhouse>
+    <path>/var/lib/clickhouse/</path>
+    <storage_configuration>
+        <disks>
+            <s3>
+                <type>local</type>
+                <path>/var/lib/clickhouse/fake_s3/</path>
+            </s3>
+        </disks>
+        <policies>
+            <hot_and_cold>
+                <volumes>
+                    <hot>
+                        <disk>default</disk>
+                    </hot>
+                    <cold>
+                        <disk>s3</disk>
+                    </cold>
+                </volumes>
+            </hot_and_cold>
+        </policies>
+    </storage_configuration>
+</clickhouse>

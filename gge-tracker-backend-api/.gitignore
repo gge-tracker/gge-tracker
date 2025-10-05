@@ -1,0 +1,21 @@
+# Project-specific ignores
+src/api/assets/
+node_modules/
+dist/
+.env
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

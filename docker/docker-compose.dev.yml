@@ -1,0 +1,136 @@
+# File: docker-compose.dev.yml
+# Use this file for development environment setup
+name: "gge-tracker-dev-environment"
+
+services:
+  # Web application running Angular with Angular CLI (development server, hot-reload)
+  frontend-angular-node:
+    extends:
+      service: frontend-angular-node
+      file: docker/docker-compose.common.yml
+    ports:
+      - "4200:4200"
+
+  # Web application running Angular with Nginx (similar to production)
+  frontend-angular-nginx:
+    extends:
+      service: frontend-angular-nginx
+      file: docker/docker-compose.common.yml
+    ports:
+      - "4201:80"
+
+  # PostgreSQL database for relational data storage
+  postgres:
+    extends:
+      service: postgres
+      file: docker/docker-compose.common.yml
+    ports:
+      - "5432:5432"
+
+  promtail:
+    extends:
+      service: promtail
+      file: docker/docker-compose.common.yml
+
+  # Prometheus for metrics collection and monitoring
+  prometheus:
+    extends:
+      service: prometheus
+      file: docker/docker-compose.common.yml
+    ports:
+      - "9090:9090"
+
+  # MariaDB database for legacy data storage and compatibility with dungeons tool (removed in future)
+  mariadb:
+    extends:
+      service: mariadb
+      file: docker/docker-compose.common.yml
+    ports:
+      - "3306:3306"
+
+  # ClickHouse database for big data analytics and fast querying of large datasets (e.g., events)
+  clickhouse:
+    extends:
+      service: clickhouse
+      file: docker/docker-compose.common.yml
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+
+  # Main backend REST API server using Express.js
+  backend-express-rest-api:
+    extends:
+      service: backend-express-rest-api
+      file: docker/docker-compose.common.yml
+    build:
+      context: ./gge-tracker-backend-api
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    container_name: backend-container
+    volumes:
+      - ./gge-tracker-backend-api:/app
+      - /app/node_modules
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis-server:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      database-migrate:
+        condition: service_completed_successfully
+
+  # Redis server for caching and session management, used by backend services
+  redis-server:
+    extends:
+      service: redis-server
+      file: docker/docker-compose.common.yml
+    ports:
+      - "6379:6379"
+
+  # Loki for log aggregation and monitoring
+  loki:
+    extends:
+      service: loki
+      file: docker/docker-compose.common.yml
+    ports:
+      - "3100:3100"
+
+  # Cadvisor for monitoring container resource usage
+  cadvisor:
+    extends:
+      service: cadvisor
+      file: docker/docker-compose.common.yml
+    ports:
+      - "8080:8080"
+
+  # ClickHouse web UI for managing ClickHouse instances
+  clickhouse-webui:
+    extends:
+      service: clickhouse-webui
+      file: docker/docker-compose.common.yml
+    ports:
+      - "8082:80"
+
+  # Grafana for data visualization and dashboarding
+  grafana:
+    extends:
+      service: grafana
+      file: docker/docker-compose.common.yml
+    ports:
+      - "3001:3000"
+
+  database-migrate:
+    extends:
+      service: database-migrate
+      file: docker/docker-compose.common.yml
+
+volumes:
+  db_data:
+  clickhouse_data:
+  pg_data:
+
+networks:
+  backend:
+    external: true

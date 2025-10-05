@@ -1,0 +1,399 @@
+<ng-template #legend>
+  <div class="legend-panel">
+    <div class="legend-header">
+      <h6>{{ 'Légende' | translate }}</h6>
+      <button class="legend-settings-btn" data-bs-toggle="modal" data-bs-target="#parametersModal">
+        <i class="fa-solid fa-wrench"></i>
+        {{ 'Paramètres' | translate }}
+      </button>
+    </div>
+
+    <div class="legend-items">
+      <div class="legend-item" *ngFor="let legend of legends"
+        (click)="watchModeAlliance === 'one' ? togglePlayerCastle(legend.name) : toggleAllianceCastles(legend.name)"
+        (keydown)="($event.key === 'Enter' || $event.key === ' ') ? (watchModeAlliance === 'one' ? togglePlayerCastle(legend.name) : toggleAllianceCastles(legend.name)) : null"
+        tabindex="0">
+
+        <div class="legend-color" [style.background-color]="legend.color"></div>
+        <div class="legend-text" [ngClass]="{ 'hidden': isPlayerHidden(legend.name) }">
+          {{ legend.name === '1' ? ('Sans alliance' | translate) : legend.name }}
+        </div>
+      </div>
+    </div>
+
+    <div class="legend-summary">
+      <div class="summary-item">
+        <div class="square-indicator"></div>
+        <span>{{ 'Chateau principal' | translate }} (x{{ quantity.castle }})</span>
+      </div>
+      <div class="summary-item">
+        <div class="circle-indicator"></div>
+        <span>{{ 'Avant-poste' | translate }} (x{{ quantity.outpost }})</span>
+      </div>
+      <div class="summary-item pointer" data-bs-toggle="modal" data-bs-target="#patriarchModal">
+        <div class="pentagone-indicator"></div>
+        <span>{{ 'Patrimoine d\'alliance' | translate }} (x{{ quantity.patriarch }})</span>
+        <em class="text-accent">&nbsp;{{ '(Détails)' | translate }}</em>
+      </div>
+    </div>
+  </div>
+</ng-template>
+
+
+<div class="container-fluid mt-3">
+  <ul class="nav nav-tabs pt-3 ps-3">
+    <li class="nav-item">
+      <button class="nav-link back" [routerLink]="['/' + currentLang + 'alliances']"
+        [ngClass]="selectedTab === 'back' ? 'active' : ''">
+        <i class="fas fa-arrow-left"></i> <span class="ms-1">{{ 'Retour' | translate }}</span>
+      </button>
+    <li class="nav-item">
+      <button class="nav-link" (click)="selectedTab = 'strategic'"
+        [ngClass]="selectedTab === 'strategic' ? 'active' : ''">
+        <img src="/assets/map.png" width="24" [alt]="'Carte' | translate "> <span class="ms-1">{{ 'Vue stratégique' |
+          translate }} (<b id="results">{{ watchModeAlliance
+            === 'one' ? nbPlayers : loadedAlliancesQuantity === -1 ? ('Chargement du nombre d\'alliances...' |
+            translate) :
+            loadedAlliancesQuantity + ' ' + ('alliances' | translate) }}</b>)</span>
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" (click)="selectedTab = 'density'" [ngClass]="selectedTab === 'density' ? 'active' : ''">
+        <i class="fas fa-fire"></i> <span class="ms-1">{{ 'Carte de densité' | translate }}</span>
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" (click)="selectedTab = 'settings'"
+        [ngClass]="selectedTab === 'settings' ? 'active' : ''">
+        <i class="fas fa-search"></i> <span class="ms-1">{{ 'Rechercher' | translate }}</span>
+      </button>
+  </ul>
+  <div id="selectedTab-container" class="bg-custom pt-3 pb-3">
+    <div class="row" [ngClass]="{ 'd-none': selectedTab === 'settings' }">
+      <div class="map-page d-flex flex-column flex-md-row">
+        <!-- Sidebar -->
+        <aside class="legend-sidebar p-2">
+          <ng-container *ngTemplateOutlet="legend"></ng-container>
+        </aside>
+
+        <!-- Main content -->
+        <main class="flex-grow-1 d-flex flex-column">
+          <div class="choice container mt-3" *ngIf="selectedWorld !== undefined">
+            <div class="row row-cols-2 row-cols-md-5 g-2 justify-content-center">
+              <div class="col" *ngFor="let world of worlds">
+                <button type="button"
+                  class="btn btn-outline-light w-100 d-flex align-items-center p-2 border border-secondary rounded shadow-sm"
+                  [ngClass]="selectedWorld === world.id ? 'bg-primary text-white selected' : 'bg-white text-dark unselected'"
+                  (click)="selectWorld(world.id)">
+                  <img *ngIf="world.icon" [src]="world.icon" alt="{{ world.name }}" class="me-2" width="24" height="24">
+                  <span class="flex-grow-1 text-start">{{ world.name | translate }}</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="row g-3 mt-3 mb-2">
+              <app-search-form #searchForm [formFilters]="formFilters" [isInLoading]="isInLoading"
+                *ngIf="watchModeAlliance !== 'one'" [alliancePlaceholder]="'Ajouter une alliance' | translate"
+                [inputTip]="'Ajouter une alliance' | translate" [defaultSearch]="search"
+                [searchTypes]="{ player: false, alliance: true }" (searchAlliance)="loadNewAlliance($event)">
+              </app-search-form>
+            </div>
+          </div>
+
+          <div id="map-container" class="flex-grow-1 d-flex flex-column"
+            [ngClass]="{ 'd-none': selectedTab !== 'strategic' }">
+            <div id="mapTitle" class="text-center mb-2"></div>
+            <div id="map" class="leaflet-map"></div>
+          </div>
+          <div [ngClass]="{ 'd-none': selectedTab !== 'density' }">
+            <div class="container resolution-input mb-3">
+              <label for="resolution" class="form-label">
+                {{ 'Résolution de la carte' | translate }}:
+              </label>
+              <input type="number" id="resolution" class="form-control" [(ngModel)]="resolution" (ngModelChange)="generateHeatmap()"
+                [min]="5" [max]="50" step="1">
+            </div>
+            <div class="heatmap-wrapper mx-auto my-4 position-relative text-center pt-2"
+              (mousemove)="onMouseMove($event)">
+              <canvas #heatmapCanvas width="650" height="650" (mousemove)="onMouseMove($event)"
+                class="heatmap-canvas shadow-lg">
+              </canvas>
+              <div class="heatmap-legend position-absolute top-0 end-0 m-3 px-3 py-1 rounded-3 shadow-sm">
+                <span class="legend-title">{{ 'Nombre de joueurs par case' | translate }}</span>
+                <em>
+
+                </em>
+                <div class="legend-gradient mt-1"></div>
+                <div class="legend-labels d-flex justify-content-between small text-muted mt-1">
+                  <span>0</span><span>{{ maxIntensity }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+
+
+      <div id="tooltip" *ngIf="tooltipVisible" [style.top.px]="tooltipY" [style.left.px]="tooltipX">
+        <strong>{{ 'Coordonnées' | translate }} :</strong> [{{ tooltipData.coords }} ± {{ resolution }}] <br>
+        <strong>{{ 'Points de puissance' | translate }} :</strong> {{ tooltipData.pp | formatNumber }} <br>
+        <strong>{{ 'Joueurs' | translate }} ({{tooltipData.players.length}}):</strong>
+        <ul>
+          <li *ngFor="let player of tooltipData.players.slice(0, 5)">
+            <span>{{ player }}</span>
+          </li>
+          <li *ngIf="tooltipData.players.length > 5">
+            <span><em>{{ 'de plus' | translate: { count: tooltipData.players.length - 5 } }}</em></span>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="container" [ngClass]="{ 'd-none': selectedTab !== 'settings' }">
+      <div class="row">
+        <app-server-badge></app-server-badge>
+        <div class="col-12">
+          <h5 class="text-center">{{ 'Nombre d\'alliances à afficher' | translate}}</h5>
+          <div class="mx-auto">
+            <div class="input-group">
+              <span class="input-group-text">
+                <img src="/assets/alliance.png" [alt]="'Alliance' | translate" [title]="'Alliance' | translate"
+                  width="32">
+              </span>
+              <input type="number" class="form-control" id="alliancesQuantity" [(ngModel)]="alliancesQuantity" min="1">
+              <div class="btn-group">
+                <button class="btn btn-primary" (click)="changeMapSize(false)">
+                  {{ 'Charger' | translate }}
+                </button>
+                <button class="btn btn-danger" (click)="changeMapSize(true)">
+                  <i class="fa-solid fa-circle-exclamation"></i>
+                  {{ 'Charger toutes les alliances' | translate }}
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="mx-auto text-center">
+          </div>
+        </div>
+        <div class="col-12 mt-3">
+          <h5 class="text-center">{{ 'Rechercher une alliance' | translate }}</h5>
+          <div class="input-group mb-3">
+            <div class="input-group-text">
+              <img src="/assets/alliance.png" [alt]="'Rechercher' | translate" [title]="'Rechercher' | translate"
+                width="32">
+            </div>
+            <input type="text" class="form-control" [placeholder]="'Rechercher une alliance' | translate"
+              [(ngModel)]="searchedAlliance">
+            <button class="btn btn-secondary" type="button" (click)="searchedAlliance = ''">
+              <i class="fas fa-times"></i>
+            </button>
+            <button class="btn btn-primary" type="button" (click)="searchAlliance()">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="patriarchModal" tabindex="-1" aria-labelledby="patriarchModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="patriarchModalLabel">{{ 'Vue d\'ensemble de l\'alliance' | translate }} ({{
+              quantity.patriarch }})
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"
+              [attr.aria-label]="'Fermer' | translate"></button>
+          </div>
+          <div class="modal-body">
+            <div class="d-flex justify-content-between monuments-quantity align-items-end">
+              <div>
+                <img src="/assets/monument.png" [alt]="'Monument' | translate" [title]="'Monument' | translate">
+                <br>
+                <span>{{ quantity.monument }}</span>
+              </div>
+              <div>
+                <img src="/assets/labo.png" [alt]="'Laboratoire' | translate" [title]="'Laboratoire' | translate">
+                <br>
+                <span>{{ quantity.laboratory }}</span>
+              </div>
+              <div>
+                <img src="/assets/tour-royale.png" [alt]="'Tour royale' | translate"
+                  [title]="'Tour royale' | translate">
+                <br>
+                <span>{{ quantity.royalTower }}</span>
+              </div>
+              <div>
+                <img src="/assets/capitale.png" [alt]="'Capitale' | translate" [title]="'Capitale' | translate">
+                <br>
+                <span>{{ quantity.capital }}</span>
+              </div>
+              <div>
+                <img src="/assets/cite-marchande.png" [alt]="'Cité marchande' | translate"
+                  [title]="'Cité marchande' | translate">
+                <br>
+                <span>{{ quantity.city }}</span>
+              </div>
+            </div>
+
+            <div class="table-wrapper rounded-3">
+              <div class="d-flex align-items-center mb-3 px-2 pt-2">
+                <i class="fa-solid fa-magnifying-glass me-2 text-muted"></i>
+                <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
+                  placeholder="{{ 'Rechercher' | translate }}..." class="form-control search-input flex-grow-1" />
+              </div>
+
+              <div class="table-responsive">
+                <table class="modern-table w-100">
+                  <thead>
+                    <tr>
+                      <th (click)="sortBy('type')">
+                        {{ 'Type de patrimoine' | translate }}
+                        <i *ngIf="sortColumn === 'type'" class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
+                          [class.fa-arrow-down]="!sortAsc"></i>
+                      </th>
+                      <th (click)="sortBy('position')">
+                        {{ 'Position' | translate }}
+                        <i *ngIf="sortColumn === 'position'" class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
+                          [class.fa-arrow-down]="!sortAsc"></i>
+                      </th>
+                      <th (click)="sortBy('owner')">
+                        {{ 'Propriétaire' | translate }}
+                        <i *ngIf="sortColumn === 'owner'" class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
+                          [class.fa-arrow-down]="!sortAsc"></i>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let monument of paginatedMonuments">
+                      <td>{{ monument.type }}</td>
+                      <td>{{ monument.position }}</td>
+                      <td><span [style.color]="monument.color">{{ monument.owner }}</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="pagination-modern d-flex justify-content-center align-items-center mt-3 gap-2">
+                <button class="btn btn-light btn-sm rounded-circle shadow-sm" (click)="changePage(-1)"
+                  [disabled]="currentPage <= 1">
+                  <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <span class="page-indicator">{{ currentPage }} / {{ totalPages }}</span>
+                <button class="btn btn-light btn-sm rounded-circle shadow-sm" (click)="changePage(1)"
+                  [disabled]="currentPage >= totalPages">
+                  <i class="fa-solid fa-chevron-right"></i>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<div class="modal fade" id="filtersModal" tabindex="-1" aria-labelledby="filtersModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="filtersModalLabel">
+          <i class="fa-solid fa-filter"></i>&nbsp;{{ 'Filtrer les résultats' | translate }}
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"
+          [attr.aria-label]="'Fermer' | translate"></button>
+      </div>
+      <div class="modal-body modal-body-filter">
+        <div class="row g-3">
+          <div class="col-12 col-sm-6" *ngFor="let filter of filters">
+            <div class="filter-card">
+              <div class="filter-img">
+                <img [src]="filter.icon" [alt]="filter.alt | translate" [title]="filter.title | translate" height="32">
+              </div>
+              <div class="filter-toggle">
+                <label class="filter-label" [for]="filter.id">{{ filter.label | translate }}</label>
+                <label class="switch">
+                  <input type="checkbox" [(ngModel)]="formFilters[filter.model]" [id]="filter.id">
+                  <span class="slider round"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="row g-4 mt-3">
+            <div class="col text-center">
+              <button class="btn btn-primary" (click)="applyFilters()" data-bs-dismiss="modal">
+                <i class="fa-solid fa-check"></i>
+                &nbsp;
+                <span>{{ 'Appliquer les filtres' | translate }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Modal modernisée -->
+<div class="modal fade" id="parametersModal" tabindex="-1" aria-labelledby="parametersModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content shadow rounded-4 border-0">
+      <div class="modal-header border-bottom-0 pb-0">
+        <h5 class="modal-title fw-semibold d-flex align-items-center gap-2" id="parametersModalLabel">
+          <i class="fa-solid fa-sliders"></i> {{ 'Paramètres' | translate }}
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"
+          [attr.aria-label]="'Fermer' | translate"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="list-group list-group-flush">
+          <div class="list-group-item d-flex justify-content-between align-items-center py-3 rounded-3 shadow-sm mb-2"
+            [style]="'background-color:'+ addTransparentToRgb(legend.color)"
+            *ngFor="let legend of legends">
+            <span class="fw-medium">{{ legend.name === '1' ? ('Sans alliance' | translate) : legend.name }}</span>
+            <div class="d-flex align-items-center gap-2">
+              <input type="color" class="form-control form-control-color p-0 shadow-none"
+                [value]="rgbToHex(legend.color)" (change)="changeItemColor(legend.name, $event.target)">
+              <button *ngIf="watchModeAlliance !== 'one'" class="btn btn-outline-danger btn-sm"
+                [title]="('Supprimer' | translate) + ' ' + (legend.name === '1' ? ('Sans alliance' | translate) : legend.name)" (click)="removeItem(legend.name)">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        <hr>
+        <div class="input-group px-2 mb-3">
+          <input type="text" #allianceAddName class="form-control" [placeholder]="'Ajouter une alliance' | translate">
+          <button class="btn btn-primary" type="button" (click)="loadNewAlliance(allianceAddName.value)">
+            <i class="fas fa-search"></i>
+          </button>
+        </div>
+        <!-- Bouton charger toutes les alliances -->
+        <div class="text-center d-grid gap-2 mx-2" *ngIf="watchModeAlliance !== 'one'">
+          <button class="btn btn-danger btn-block" (click)="changeMapSize(true)">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            {{ 'Charger toutes les alliances' | translate }}
+          </button>
+        </div>
+        <!-- Bouton afficher les sans alliances -->
+        <div class="text-center d-grid gap-2 mx-2 mt-3" *ngIf="watchModeAlliance !== 'one'">
+          <button class="btn btn-secondary btn-block" (click)="loadNewAlliance('1')">
+            <i class="fa-solid fa-ghost"></i>
+            {{ showUnallied ? ('Masquer les joueurs sans alliance' | translate) : ('Afficher les joueurs sans alliance' | translate) }}
+          </button>
+        </div>
+        <!-- Bouton sauvegarder le lien -->
+        <div class="text-center d-grid gap-2 mx-2 mt-3" *ngIf="watchModeAlliance !== 'one'">
+          <button class="btn btn-success btn-block" (click)="saveLink()">
+            <i class="fa-solid fa-link"></i>
+            {{ 'Sauvegarder le lien' | translate }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

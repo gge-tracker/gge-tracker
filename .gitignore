@@ -1,0 +1,5 @@
+**/node_modules
+**/logs/*.log
+connect.sh
+tmp/
+.env

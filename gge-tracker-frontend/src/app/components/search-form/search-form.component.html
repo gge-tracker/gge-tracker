@@ -1,0 +1,38 @@
+<div class="modern-search d-flex flex-wrap align-items-stretch justify-content-center gap-2 row">
+  <div class="search-container row">
+    <div class="search-input-wrapper col-12 col-lg">
+      <input [attr.list]="searchTypes()['player'] && searchTypes()['alliance'] ? 'search-list' : searchTypes()['player'] ? 'player-list' : 'alliance-list'"
+        #searchInput
+        type="text"
+        class="search-input"
+        [placeholder]="inputTip()"
+        [(ngModel)]="search"
+      />
+      <datalist id="search-list">
+        <option *ngFor="let search of getSearchHistory('all')" [value]="search"></option>
+      </datalist>
+      <datalist id="player-list">
+        <option *ngFor="let search of getSearchHistory('player')" [value]="search"></option>
+      </datalist>
+      <datalist id="alliance-list">
+        <option *ngFor="let search of getSearchHistory('alliance')" [value]="search"></option>
+      </datalist>
+      <lucide-icon *ngIf="search" [title]="'Réinitialiser' | translate" class="reset-icon" [img]="Reset" (click)="searchInput.value = ''; search = ''; searchFixed = ''; searchPlayer.emit(''); searchAlliance.emit('')"></lucide-icon>
+    </div>
+    <div *ngIf="searchTypes()['player']" class="col-auto">
+      <button class="btn-modern btn-player" (click)="searchFixed = search; searchPlayer.emit(searchFixed); saveResultForHistory('player', searchFixed)">
+        <lucide-icon class="lucide lucide-search" [img]="Search"></lucide-icon> {{ 'Rechercher le joueur' | translate }}
+      </button>
+    </div>
+    <div *ngIf="searchTypes()['alliance']" class="col-auto">
+      <button class="btn-modern btn-alliance" (click)="searchFixed = search; searchAlliance.emit(searchFixed); saveResultForHistory('alliance', searchFixed)">
+        <lucide-icon class="lucide lucide-search" [img]="Search"></lucide-icon> {{ !alliancePlaceholder() ? ('Rechercher l\'alliance' | translate) : alliancePlaceholder() }}
+      </button>
+    </div>
+    <div *ngIf="getFormsFilter() !== null && (searchType !== 'player' || searchFixed === '')" class="col-auto">
+      <app-filter
+        [countFilterActivated]="countFilterActivated"
+      ></app-filter>
+    </div>
+  </div>
+</div>

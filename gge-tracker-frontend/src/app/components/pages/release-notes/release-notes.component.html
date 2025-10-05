@@ -1,0 +1,36 @@
+<body class="release-notes-page">
+  <div class="container py-5">
+    <h1 class="page-title text-center mb-5">
+      Release Notes - gge-tracker.com
+    </h1>
+    <em>
+      This is a community-driven project, and I am always looking for ways to improve it.
+      If you have any suggestions or ideas, please feel free to share them :
+      <div class="d-inline-block">
+        <span class="discord">
+          <i class="fa-brands fa-discord"></i>
+          &nbsp;
+          <a href="https://discord.gg/eb6WSHQqYh" target="_blank">GGE Tracker Discord</a>
+        </span>
+      </div>. Thanks! :)
+    </em>
+    <div class="timeline mt-3">
+      <div class="release-card glass-card" *ngFor="let note of releaseNotes">
+        <div class="release-header d-flex justify-content-between align-items-center">
+          <div class="version d-flex align-items-center">
+            <span class="badge-type me-2" [ngClass]="note.type.toLowerCase()">{{ note.type }}</span>
+            <i class="fa-regular fa-bookmark me-1"></i> {{ note.version }}
+          </div>
+          <div class="date">
+            <i class="fa-regular fa-calendar"></i> {{ note.date | date:'MM/dd' }}
+          </div>
+        </div>
+        <ul class="release-items mt-3">
+          <li *ngFor="let item of note.items">
+            <i class="fa-regular fa-circle-dot"></i> {{ item }}
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</body>

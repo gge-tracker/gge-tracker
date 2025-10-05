@@ -1,0 +1,128 @@
+<div class="container my-3 movements">
+  <div class="row">
+    <div class="col-12" [ngClass]="{'loading': isInLoading}">
+      <app-search-form #searchForm [isInLoading]="isInLoading" [formFilters]="formFilters"
+        [inputTip]="'Rechercher un joueur ou une alliance' | translate" [searchTypes]="{
+          player: true,
+          alliance: true
+        }" (searchAlliance)="searchAlliance($event)" (searchPlayer)="searchPlayer($event)"></app-search-form>
+      <div class="mb-1">
+        <app-server-badge></app-server-badge>
+        <span class="ms-1 badge bg-info pointer" *ngIf="responseTime > 0"
+          [title]="('Affichage des données en' | translate) + ' ' + responseTime + 'ms'">
+          <i class="fa-solid fa-clock"></i>
+          {{ responseTime / 1000 }}s
+        </span>
+      </div>
+      <app-table [sort]="''" [reverse]="false" [isInLoading]="isInLoading" [maxPage]="maxPage!" [page]="page"
+        [search]="search" [headers]="[
+          ['playerName', 'Pseudonyme' | translate, '', true],
+          ['allianceName', 'Alliance' | translate, '/assets/min-alliance.png', true],
+          ['level', 'Niveau' | translate, '/assets/lvl.png', true],
+          ['pp', 'Points de puissance' | translate, '/assets/pp1.png', true],
+          ['castleType', 'Type' | translate, '', true],
+          ['castleType', 'Action' | translate, '', true],
+          ['positionOld', 'Description' | translate, '', true],
+          ['date', 'Date' | translate, '', true],
+          ['actions', '', '', true]
+        ]" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
+        <tr *ngIf="movements.length === 0 && !isInLoading">
+          <td colspan="10">
+            <span class="text-muted" translate>Aucun mouvement trouvé</span>
+          </td>
+        </tr>
+        <tr *ngFor="let movement of movements">
+          <td>{{ movement.rank }}</td>
+          <td>{{ movement.player }}</td>
+          <td>{{ movement.alliance ?? '-' }}</td>
+          <td>
+            {{ movement.level ? movement.level + (movement.legendaryLevel ? ('/' + movement.legendaryLevel) : '') : '0'
+            }}
+          </td>
+          <td>{{ (movement.might ? movement.might : 0) | formatNumber }}</td>
+          <td><img [src]="'/assets/castle' + movement.type + '.png'" [title]="getCastleType(movement.type) | translate"
+              [alt]="getCastleType(movement.type)"></td>
+          <td [innerHTML]="getDescription(movement.type, movement.positionOld, movement.positionNew).image"></td>
+          <td>{{ ((getDescription(movement.type, movement.positionOld, movement.positionNew).keyword) | translate) + ' '
+            + getDescription(movement.type, movement.positionOld, movement.positionNew).description }}</td>
+          <td>{{ movement.date | date: ('Date_1' | translate)}}</td>
+          <td class="text-end">
+            <div class="d-flex justify-content-end">
+              <a [routerLink]="['/', 'players']" [queryParams]="{ player: movement.player}">
+                <img src="/assets/icon_search.png" [alt]="'Voir le joueur' | translate"
+                  [title]="'Voir le joueur' | translate" height="24" class="btn-icon">
+              </a>
+              <a [routerLink]="['/', 'castles']" [queryParams]="{ search: movement.player }">
+                <img src="/assets/icon_castles.png" [alt]="'Voir les châteaux' | translate"
+                  [title]="('Voir les châteaux de' | translate) + ' ' + movement.player" height="24"
+                  class="ms-1 btn-icon">
+              </a>
+            </div>
+          </td>
+        </tr>
+      </app-table>
+    </div>
+  </div>
+
+  <div class="modal fade" id="filtersModal" tabindex="-1" aria-labelledby="filtersModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="filtersModalLabel">
+            &nbsp;<i class="fa-solid fa-filter"></i>{{ 'Filtrer les résultats' | translate}}
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"
+            [attr.aria-label]="'Fermer' | translate"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row">
+            <div class="col">
+              <label for="castleType" class="form-label" translate>{{ 'Type de position' | translate }} :</label>
+              <div class="input-group">
+                <span class="input-group-text p-1">
+                  <img [src]="'/assets/castle' + formFilters.castleType + '.png'"
+                    [alt]="'Chateau principal' | translate" [title]="'Type de position' | translate" height="40">
+                </span>
+                <select class="form-select" [(ngModel)]="formFilters.castleType">
+                  <option value="null" selected translate>Tous</option>
+                  <option value="1" translate>Chateau principal</option>
+                  <option value="3" translate>Capitale</option>
+                  <option value="4" translate>Avant-poste</option>
+                  <option value="22" translate>Cité marchande</option>
+                  <option value="23" translate>Tour royale</option>
+                  <option value="26" translate>Monument</option>
+                  <option value="28" translate>Laboratoire</option>
+                </select>
+              </div>
+            </div>
+            <!-- Filtre par type de mouvement : 1: 'Apparition', 2: 'Suppression', 3: 'Déménagement'-->
+            <div class="col">
+              <label for="movementType" class="form-label">{{ 'Type de mouvement' | translate }} :</label>
+              <div class="input-group">
+                <span class="input-group-text p-1">
+                  <img [src]="
+                    formFilters.movementType === null ? '/assets/castlenull.png' :
+                    formFilters.movementType === '1' ? '/assets/new-castle.png' :
+                    formFilters.movementType === '2' ? '/assets/ruins.png' :
+                    '/assets/moving.png'" [alt]="'Type de mouvement' | translate"
+                    [title]="'Type de mouvement' | translate" height="40">
+                </span>
+                <select class="form-select" [(ngModel)]="formFilters.movementType">
+                  <option value="null" selected translate>Tous</option>
+                  <option value="1" translate>Apparition</option>
+                  <option value="2" translate>Disparition</option>
+                  <option value="3" translate>Déménagement</option>
+                </select>
+              </div>
+            </div>
+            <div class="row mt-3">
+              <div class="col text-center">
+                <button class="btn btn-primary" (click)="applyFilters()" data-bs-dismiss="modal">
+                  <span>{{ 'Appliquer les filtres' | translate }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>

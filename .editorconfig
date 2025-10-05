@@ -1,0 +1,55 @@
+######################################################################################
+#                                     __                        __                   #
+#      ____   ____   ____           _/  |_____________    ____ |  | __ ___________   #
+#     / ___\ / ___\_/ __ \   ______ \   __\_  __ \__  \ _/ ___\|  |/ // __ \_  __ \  #
+#    / /_/  > /_/  >  ___/  /_____/  |  |  |  | \// __ \\  \___|    <\  ___/|  | \/  #
+#    \___  /\___  / \___  >          |__|  |__|  (____  /\___  >__|_ \\___  >__|     #
+#   /_____//_____/      \/                            \/     \/     \/    \/         #
+#                                                                                    #
+#                     This file is part of the gge-tracker project.                  #
+#        Copyrights (c) 2025 - gge-tracker.com & gge-tracker contributors            #
+#                                                                                    #
+# The .editorconfig file contains all the configuration settings for the project.    #
+# Please read https://editorconfig.org/ for more information about this file.        #
+#                                                                                    #
+######################################################################################
+
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+trim_trailing_whitespace = true
+charset = utf-8
+
+[*.md]
+max_line_length = 80
+
+[*.ts]
+quote_type = single
+
+[*.json]
+indent_size = 2
+
+[*.py]
+indent_size = 2
+
+[*.sh]
+indent_size = 2
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.{ts,tsx}]
+indent_size = 2
+
+[*.{js,jsx}]
+indent_size = 2
+
+[*.{html,css}]
+indent_size = 2
+
+[*.md]
+max_line_length = off
+trim_trailing_whitespace = false

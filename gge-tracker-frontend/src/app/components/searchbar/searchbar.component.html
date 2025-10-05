@@ -1,0 +1,18 @@
+
+<div [ngClass]="{'input-group': hasContent() }" class="modern-search-input-wrapper flex-nowrap">
+  <span class="input-group-text px-2" *ngIf="hasContent()">
+    <ng-content></ng-content>
+  </span>
+  <input
+    #input
+    [attr.list]="attrListInput()"
+    [placeholder]="placeholderInput()"
+    [(ngModel)]="search"
+    [ngClass]="{'changed': touched() && search !== firstValue && search !== ''}"
+    (ngModelChange)="updateSearchValue(search)"
+    [min]="min()"
+    [max]="max()"
+    class="search-input"
+    [attr.name]="name()"
+    type="{{ inputType() }}">
+</div>

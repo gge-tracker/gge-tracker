@@ -1,0 +1,87 @@
+
+<div class="container alliances my-3">
+  <div class="row">
+    <div class="col-12" [ngClass]="{'loading': isInLoading}">
+      <app-search-form
+        [isInLoading]="isInLoading"
+        [formFilters]="null"
+        [inputTip]="'Rechercher une alliance' | translate"
+        [searchTypes]="{
+          player: false,
+          alliance: true
+        }"
+        (searchAlliance)="searchAlliance($event)"
+      ></app-search-form>
+      <div class="mb-1">
+        <app-server-badge></app-server-badge>
+        <span translate class="badge bg-secondary pointer" *ngIf="!isInLoading && alliances.length === 0">Aucune alliance trouvée</span>
+        <span class="badge bg-primary pointer" *ngIf="allianceCount > 0"
+          [title]="allianceCount  + ' ' + ((allianceCount > 1 ? 'alliances' : 'alliance')  | translate) + ' ' + ((allianceCount > 1 ? 'enregistrées' : 'enregistrée') | translate)">
+          <i class="fa-solid fa-users"></i> {{ allianceCount }}
+        </span>
+        <span class="ms-1 badge bg-info pointer" *ngIf="responseTime > 0"
+          [title]="('Affichage des données en' | translate) + ' ' + responseTime + 'ms'">
+          <i class="fa-solid fa-clock"></i>
+          {{ responseTime / 1000 }}s
+        </span>
+      </div>
+
+      <app-table
+        [sort]="sort"
+        [reverse]="reverse"
+        [isInLoading]="isInLoading"
+        [maxPage]="maxPage!"
+        [page]="page"
+        [search]="search"
+        [headers]="[
+          ['name', 'Nom'],
+          ['player_count', 'Nombre de joueurs', '/assets/member-list.png'],
+          ['might_current', 'Puissance de l\'alliance', '/assets/pp1.png'],
+          ['might_all_time', 'Puissance maximale atteinte', '/assets/pp2.png'],
+          ['loot_current', 'Points de pillage hebdomadaire', '/assets/loot.png'],
+          ['loot_all_time', 'Pillage maximal atteint', '/assets/loot3.png'],
+          ['current_fame', 'Points de gloire', '/assets/glory.png'],
+          ['highest_fame', 'Gloire maximale atteinte', '/assets/glory.png'],
+          ['', '', undefined, true]
+        ]"
+        (sortOutput)="sortAlliances($event)"
+        (navigateToPage)="navigateTo($event)"
+        (previousPage)="previousPage()"
+        (nextPage)="nextPage()">
+        <tr *ngIf="alliances.length === 0">
+          <td colspan="10" translate>Aucune alliance trouvée</td>
+        </tr>
+        <tr *ngFor="let alliance of alliances">
+          <td>{{ alliance.rank }}</td>
+          <td>{{ alliance.name }}</td>
+          <td>
+            {{ alliance.playerCount }}
+            <span class="ext-link">
+              <a [routerLink]="['/', 'players']" [queryParams]="{ alliance: alliance.name }" [title]="'Voir les joueurs de l\'alliance' | translate: { alliance: alliance.name }">
+                <i class="fa-solid fa-external-link"></i>
+              </a>
+            </span>
+          </td>
+          <td [title]="alliance.mightCurrent ? (alliance.mightCurrent | formatNumber:'visual') : 0">{{ alliance.mightCurrent ? (alliance.mightCurrent | formatNumber) : 0 }}</td>
+          <td [title]="alliance.mightAllTime ? (alliance.mightAllTime | formatNumber:'visual') : 0">{{ alliance.mightAllTime ? (alliance.mightAllTime | formatNumber) : 0 }}</td>
+          <td [title]="alliance.lootCurrent ? (alliance.lootCurrent | formatNumber:'visual') : 0">{{ alliance.lootCurrent ? (alliance.lootCurrent | formatNumber) : 0 }}</td>
+          <td [title]="alliance.lootAllTime ? (alliance.lootAllTime | formatNumber:'visual') : 0">{{ alliance.lootAllTime ? (alliance.lootAllTime | formatNumber) : 0 }}</td>
+          <td [title]="alliance.currentFame ? (alliance.currentFame | formatNumber:'visual') : 0">{{ alliance.currentFame ? (alliance.currentFame | formatNumber) : 0 }}</td>
+          <td [title]="alliance.highestFame ? (alliance.highestFame | formatNumber:'visual') : 0">{{ alliance.highestFame ? (alliance.highestFame | formatNumber) : 0 }}</td>
+          <td class="text-end">
+            <div class="d-flex justify-content-end">
+              <a [routerLink]="['/', 'map', alliance.id]">
+                <img src="/assets/icon_world.png" [alt]="'Carte d\'alliance' | translate"
+                  [title]="'Carte d\'alliance' | translate" height="24" class="btn-icon">
+              </a>
+              <a [routerLink]="['/', 'alliance', alliance.id]">
+                <img src="/assets/icon_analyze.png" [alt]="'Analyser l\'alliance' | translate"
+                  [title]="'Analyser l\'alliance' | translate" height="24"
+                  class="ms-1 btn-icon">
+              </a>
+            </div>
+          </td>
+        </tr>
+      </app-table>
+    </div>
+  </div>

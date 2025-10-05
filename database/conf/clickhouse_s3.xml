@@ -1,0 +1,33 @@
+<!--
+    This configuration file sets up ClickHouse to use S3 storage for cold data.
+    This is useful for offloading older data to S3 while keeping recent data on local storage.
+    To use this configuration, ensure that the following environment variables are set:
+    - CLICKHOUSE_S3_ENDPOINT: The S3 endpoint URL (e.g., https://s3.amazonaws.com)
+    - CLICKHOUSE_S3_ACCESS_KEY_ID: Your S3 access key ID
+    - CLICKHOUSE_S3_SECRET_ACCESS_KEY: Your S3 secret access key
+-->
+<clickhouse>
+    <path>/var/lib/clickhouse/</path>
+    <storage_configuration>
+        <disks>
+            <s3>
+                <type>s3</type>
+                <endpoint from_env="CLICKHOUSE_S3_ENDPOINT"></endpoint>
+                <access_key_id from_env="CLICKHOUSE_S3_ACCESS_KEY"></access_key_id>
+                <secret_access_key from_env="CLICKHOUSE_S3_SECRET_KEY"></secret_access_key>
+            </s3>
+        </disks>
+        <policies>
+            <hot_and_cold>
+                <volumes>
+                    <hot>
+                        <disk>default</disk>
+                    </hot>
+                    <cold>
+                        <disk>s3</disk>
+                    </cold>
+                </volumes>
+            </hot_and_cold>
+        </policies>
+    </storage_configuration>
+</clickhouse>

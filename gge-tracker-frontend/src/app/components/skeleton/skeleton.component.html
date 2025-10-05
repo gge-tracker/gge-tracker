@@ -1,0 +1,38 @@
+<div id="data">
+  <app-navbar></app-navbar>
+  <div *ngFor="let toast of toastService.toasts; let i = index"
+     class="toast-container custom-toast-container">
+
+  <div
+    class="custom-toast animate-fade-in"
+    [ngClass]="{ 'toast-error' : toast.type === 'error', 'toast-info': toast.type === 'info' }"
+    role="alert"
+    aria-live="assertive"
+    aria-atomic="true">
+
+    <div class="custom-toast-header">
+      <span *ngIf="toast.type === 'error'" class="icon"><i class="fas fa-exclamation-circle"></i></span>
+      <span *ngIf="toast.type === 'info'" class="icon"><i class="fas fa-info-circle"></i></span>
+      <strong class="title">
+        {{ (toast.type === 'error' ? 'Erreur' : 'Information') | translate }}
+      </strong>
+      <small class="date">{{ toast.date | date: ('Date_5' | translate) }}</small>
+      <button type="button" class="btn-close" (click)="toastService.remove(i)"
+              [attr.aria-label]="'Fermer' | translate"></button>
+    </div>
+
+    <div class="custom-toast-body">
+      {{ toast.message | translate }}
+    </div>
+  </div>
+</div>
+
+    <div *ngIf="isInLoading">
+      <app-loading></app-loading>
+    </div>
+  <div class="container-fluid" id="main" [@fadeIn]>
+    <router-outlet></router-outlet>
+  </div>
+  <app-footer></app-footer>
+
+</div>

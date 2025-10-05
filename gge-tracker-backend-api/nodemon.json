@@ -1,0 +1,6 @@
+{
+  "verbose": true,
+  "ignore": ["dist", "node_modules", "src/assets"],
+  "ext": "ts",
+  "exec": "ts-node ./src/api/main.ts"
+}

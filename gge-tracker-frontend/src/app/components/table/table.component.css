@@ -1,0 +1,149 @@
+
+.table-custom {
+  width: 100%;
+  border-collapse: collapse;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+
+  th, td {
+    padding: 1rem 1.2rem;
+    text-align: left;
+    font-size: 0.875rem;
+    vertical-align: middle;
+  }
+
+  thead {
+    background: rgba(255, 255, 255, 0.07);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+
+    th {
+      font-weight: 600;
+      text-align: center;
+      color: #eee;
+      background: url(/assets/light-background-hover.png), #0c080081;
+      background-size: 25px;
+      cursor: pointer;
+      position: relative;
+
+      &.pointer:hover {
+        color: #d4d4d4;
+        background-color: #0c080086
+      }
+
+      img {
+        height: 28px;
+        vertical-align: middle;
+        margin-right: 0.3rem;
+      }
+
+      .sort {
+        position: absolute;
+        right: 0.6rem;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        align-items: center;
+
+        i {
+          width: 18px;
+          height: 18px;
+          color: #c7aaff;
+          opacity: 0.8;
+          transition: transform 0.2s ease;
+
+          &:hover {
+            transform: scale(1.15);
+          }
+        }
+      }
+    }
+  }
+}
+
+::ng-deep .lucide-icon > svg {
+  width: 16px;
+  height: 16px;
+  stroke: #ffffff;
+  stroke-width: 1.75;
+}
+
+::ng-deep tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+::ng-deep tbody tr &:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+::ng-deep tbody tr &.favorite {
+  background-color: rgba(255, 215, 0, 0.05);
+  border-left: 3px solid gold;
+}
+
+::ng-deep tbody tr  td {
+  color: #ddd;
+  font-size: 0.875rem;
+}
+
+::ng-deep tr.favorite > td {
+  background-color: #facb75;
+  --bs-table-striped-bg: #facb75;
+}
+
+ul {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-bottom: 0;
+  padding: 0;
+  list-style: none;
+  flex-wrap: wrap;
+
+  li {
+    a {
+      display: block;
+      padding: 0.45rem 0.8rem;
+      text-decoration: none !important;
+      border-radius: 0.6rem;
+      background: rgba(255, 255, 255, 0.03);
+      color: #d6d6d6;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.25s ease, transform 0.15s ease;
+      user-select: none;
+      backdrop-filter: blur(2px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.06);
+        transform: scale(1.03);
+      }
+
+      &.loading {
+        opacity: 0.4;
+        pointer-events: none;
+      }
+    }
+
+    &.active a {
+      background: rgba(240, 240, 240, 0.08);
+      color: #fff;
+      font-weight: 600;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    }
+
+    &.out-of-range a {
+      pointer-events: none;
+      opacity: 0.5;
+      font-style: italic;
+    }
+  }
+}

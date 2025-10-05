@@ -1,0 +1,82 @@
+<div class="row">
+  <div class="col-12 overflow-auto">
+    <table class="table table-striped table-custom position-relative">
+      <ng-template #sortTemplate let-currentSort="sort" let-currentReverse="reverse">
+        <span class="sort d-md-inline-block d-block">
+          <lucide-icon *ngIf="sort() === currentSort && !reverse()" class="ms-1 lucide-icon" [img]="ChevronsUp"></lucide-icon>
+          <lucide-icon *ngIf="sort() === currentSort && reverse()" class="ms-1 lucide-icon" [img]="ChevronsDown"
+            [class.reverse]="true"></lucide-icon>
+          <lucide-icon *ngIf="sort() !== currentSort" class="ms-1 lucide-icon" [img]="ChevronsUpDown"></lucide-icon>
+          <!-- <i class="fa-solid fa-sort-up" *ngIf="sort() === currentSort && !reverse()"></i> -->
+          <!-- <i class="fa-solid fa-sort-down" *ngIf="sort() === currentSort && reverse()"></i>
+          <i class="fa-solid fa-sort" *ngIf="sort() !== currentSort"></i> -->
+        </span>
+      </ng-template>
+      <thead class="position-relative">
+        <tr>
+          <th>#</th>
+          <th *ngFor="let header of headers()" (click)="header[3] ?? sortAlliances(header[0])"
+            [ngClass]="{ 'pointer': !header[3] }">
+            <ng-container *ngIf="header[1] && !header[2]">
+              <span>{{ header[1] | translate }}</span>
+            </ng-container>
+            <img *ngIf="header[2]" [src]="header[2]" [title]="header[1] | translate" [alt]="header[1] | translate"
+              height="41">
+            <ng-container *ngIf="!header[3]">
+              <ng-container
+                *ngTemplateOutlet="sortTemplate; context: { sort: header[0], reverse: reverse }"></ng-container>
+            </ng-container>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <ng-content></ng-content>
+      </tbody>
+    </table>
+
+  </div>
+</div>
+<ul *ngIf="maxPage() > 1">
+  <li *ngIf="page() > 1" class="page-item previous">
+    <a (click)="previousPage.emit()" (keydown.enter)="previousPage.emit()" (keydown.space)="previousPage.emit()"
+      [class.loading]="isInLoading()" tabindex="0" translate>Précédent</a>
+  </li>
+
+  <ng-container *ngIf="maxPage() && maxPage() < 6; else advancedPagination">
+    <li *ngFor="let p of allPages()" [class.active]="page() === p">
+      <a (click)="navigateToPage.emit(p)" (keydown.enter)="navigateToPage.emit(p)"
+        (keydown.space)="navigateToPage.emit(p)" [class.loading]="isInLoading()" tabindex="0">{{ p }}</a>
+    </li>
+  </ng-container>
+
+  <ng-template #advancedPagination>
+    <li *ngIf="page() > 2" class="page-item">
+      <a (click)="navigateToPage.emit(1)" (keydown.enter)="navigateToPage.emit(1)"
+        (keydown.space)="navigateToPage.emit(1)" [class.loading]="isInLoading()" tabindex="0">1</a>
+    </li>
+    <li *ngIf="page() > 3" class="out-of-range">
+      <a (click)="navigateToPage.emit(page() - 2)" (keydown.enter)="navigateToPage.emit(page() - 2)"
+        (keydown.space)="navigateToPage.emit(page() - 2)" [class.loading]="isInLoading()" tabindex="0">...</a>
+    </li>
+
+    <li *ngFor="let p of visiblePages()" [class.active]="page() === p">
+      <a (click)="navigateToPage.emit(p)" (keydown.enter)="navigateToPage.emit(p)"
+        (keydown.space)="navigateToPage.emit(p)" [class.loading]="isInLoading()" tabindex="0">{{ p }}</a>
+    </li>
+
+    <li *ngIf="page() < (maxPage() - 2)" class="out-of-range">
+      <a (click)="navigateToPage.emit(page() + 2)" (keydown.enter)="navigateToPage.emit(page() + 2)"
+        (keydown.space)="navigateToPage.emit(page() + 2)" [class.loading]="isInLoading()" tabindex="0">...</a>
+    </li>
+    <li *ngIf="page() < (maxPage() - 1)" class="page-item">
+      <a (click)="navigateToPage.emit(maxPage())" (keydown.enter)="navigateToPage.emit(maxPage())"
+        (keydown.space)="navigateToPage.emit(maxPage())" [class.loading]="isInLoading()" tabindex="0">{{ maxPage()
+        }}</a>
+    </li>
+  </ng-template>
+
+  <li *ngIf="maxPage() && page() < maxPage()" class="page-item next">
+    <a (click)="nextPage.emit()" (keydown.enter)="nextPage.emit()" (keydown.space)="nextPage.emit()"
+      [class.loading]="isInLoading()" tabindex="0" translate>Suivant</a>
+  </li>
+</ul>

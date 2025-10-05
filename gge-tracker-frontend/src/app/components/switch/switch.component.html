@@ -1,0 +1,6 @@
+<label class="switch">
+  <input type="checkbox"
+    [(ngModel)]="currentValue"
+    (ngModelChange)="updateSwitchValue(currentValue)" [id]="id()">
+  <span class="slider round"></span>
+</label>

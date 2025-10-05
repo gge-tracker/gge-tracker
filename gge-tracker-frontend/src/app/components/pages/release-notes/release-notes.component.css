@@ -1,0 +1,107 @@
+.release-notes-page {
+  background: #0f111a;
+  min-height: 100vh;
+  font-family: "Inter", "Segoe UI", sans-serif;
+  color: #f9fafb;
+}
+
+.page-title {
+  font-size: 2.3rem;
+  font-weight: 700;
+  color: #f9fafb;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 1.8rem;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  backdrop-filter: blur(4px);
+  padding: 1.5rem;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-4px);
+}
+
+.release-header .version {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #4ac7e8;
+}
+
+.release-header .date {
+  font-size: 0.95rem;
+  color: #a0aec0;
+}
+
+.release-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.release-items li {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.4rem;
+  font-size: 1rem;
+  color: #d1d5db;
+  transition: color 0.2s ease;
+}
+
+.release-items li i {
+  color: #4ac7e8;
+  margin-right: 0.6rem;
+}
+
+.release-items li:hover {
+  color: #f9fafb;
+}
+
+@media (max-width: 768px) {
+  .glass-card {
+    padding: 1rem;
+  }
+  .page-title {
+    font-size: 2rem;
+  }
+}
+
+.badge-type {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 0.25em 0.6em;
+  border-radius: 0.5rem;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.badge-type.major {
+  background: #38b2ac;
+}
+.badge-type.minor {
+  background: #ed8936;
+}
+.badge-type.fix {
+  background: #e53e3e;
+}
+
+.discord {
+  color: #7289da;
+  font-weight: 600;
+  text-decoration: none;
+}

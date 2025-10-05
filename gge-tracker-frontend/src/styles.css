@@ -1,0 +1,129 @@
+
+body, html {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  background: url("/assets/bg.png"), #819A41;
+}
+
+html:has(.fullscreen) {
+  overflow: hidden;
+}
+
+a:hover {
+  cursor: pointer;
+}
+
+.pointer {
+  cursor: pointer;
+}
+
+a.link-to-alliance {
+  text-decoration: none;
+  cursor: pointer;
+  color: #198519;
+}
+
+a.link-to-alliance:hover {
+  text-decoration: underline;
+}
+
+
+.table-custom {
+  --bs-table-bg: rgb(218, 210, 188);
+  --bs-table-striped-bg: rgb(204, 193, 163);
+  border-bottom: 1px rgb(184, 174, 148) solid !important;
+  border: 1px rgb(52, 117, 22) solid;
+}
+
+.loading {
+  animation: opacity 0.3s linear infinite 0s;
+}
+
+.btn-primary {
+  --bs-btn-bg: #3e9d95;
+  --bs-btn-hover-bg: #2d9990;
+  --bs-btn-focus-bg: #52a099;
+  --bs-btn-active-bg: #3e9d95;
+  --bs-btn-border-color: #257770;
+  --bs-btn-focus-border-color: #084e48;
+  --bs-btn-active-border-color: #084e48;
+  --bs-btn-hover-border-color: #084e48;
+}
+
+.btn-primary.disabled {
+  --bs-btn-bg: #55ada6;
+  --bs-btn-disabled-bg: #55ada6;
+  --bs-btn-disabled-border-color: #257770;
+}
+
+.modal-open {
+  padding-right: 0 !important;
+}
+
+.btn.btn-primary:disabled {
+    background-color: #55ada6;
+    border-color: #257770;
+}
+
+@keyframes opacity {
+  0% {
+    opacity: .8;
+  }
+  50% {
+    opacity: .7;
+  }
+  100% {
+    opacity: .8;
+  }
+}
+
+@font-face {
+font-family: 'Overpass-Black';
+src: url('../src/assets/fonts/Overpass/static/Overpass-Black.ttf');
+}
+
+@font-face {
+font-family: 'Overpass-Bold';
+src: url('../src/assets/fonts/Overpass/static/Overpass-Bold.ttf');
+}
+
+@font-face {
+font-family: 'Overpass-Light';
+src: url('../src/assets/fonts/Overpass/static/Overpass-Light.ttf');
+}
+
+@font-face {
+font-family: 'Overpass-Regular';
+src: url('../src/assets/fonts/Overpass/static/Overpass-Regular.ttf');
+}
+
+@font-face {
+font-family: 'Overpass-Thin';
+src: url('../src/assets/fonts/Overpass/static/Overpass-Thin.ttf');
+}
+
+@font-face {
+font-family: 'Roboto-Black';
+src: url('../src/assets/fonts/Roboto/Roboto-Black.ttf');
+}
+
+@font-face {
+font-family: 'Roboto-Bold';
+src: url('../src/assets/fonts/Roboto/Roboto-Bold.ttf');
+}
+
+@font-face {
+font-family: 'Roboto-Light';
+src: url('../src/assets/fonts/Roboto/Roboto-Light.ttf');
+}
+
+@font-face {
+font-family: 'Roboto-Regular';
+src: url('../src/assets/fonts/Roboto/Roboto-Regular.ttf');
+}
+
+@font-face {
+font-family: 'Roboto-Thin';
+src: url('../src/assets/fonts/Roboto/Roboto-Thin.ttf');
+}

@@ -1,0 +1,65 @@
+
+a.link-to-alliance {
+  text-decoration: none;
+  cursor: pointer;
+  color: #198519;
+}
+
+::ng-deep .alliances th, td {
+  text-align: center;
+  vertical-align: middle;
+}
+
+a.link-to-alliance:hover {
+  text-decoration: underline;
+}
+
+i.fa-solid.fa-external-link {
+  font-size: .7rem;
+  color: #3e9d95;
+}
+
+.btn-icon {
+  width: 37px;
+  height: auto;
+}
+
+.btn-icon:hover {
+  transform: scale(1.1);
+}
+
+.btn-icon.not-favorite {
+  opacity: 0.7;
+}
+
+::ng-deep .alliances td.text-end {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+::ng-deep .alliances th, td {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.pointer {
+  cursor: pointer;
+}
+
+.ext-link {
+  margin-left: 3px;
+  font-size: .8rem;
+}
+
+.btn-sm {
+  --bs-btn-padding-y: 0.15rem;
+}
+
+.error-icon {
+  width: 26px;
+  height: 26px;
+}
+
+th, td {
+  text-align: center;
+}

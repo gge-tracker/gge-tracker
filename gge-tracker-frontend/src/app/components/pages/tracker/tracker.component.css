@@ -1,0 +1,108 @@
+th, td {
+  text-align: center;
+}
+.special-fa {
+  color: green;
+  margin-right: 5px;
+}
+
+.btn.btn-warning {
+  background: url(/assets/light-background-hover.png), #dda969;
+  background-size: 24px;
+  background-position: center;
+  transition: all 0.3s ease;
+}
+
+:host ::ng-deep .ng-select, .input-group-text {
+  padding: 0.55rem 2.5rem 0.55rem 1rem;
+  border-radius: 12px;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 1rem;
+  transition: 0.3s;
+}
+
+:host ::ng-deep .ng-dropdown-panel {
+  padding: 0.55rem 2.5rem 0.55rem 1rem;
+  border-radius: 12px;
+  border: none;
+  background: #ffffffce;
+  color: #fff;
+  font-size: 1rem;
+}
+
+:host ::ng-deep .ng-option {
+  background: transparent !important;
+  transition: 0.3s;
+}
+
+:host ::ng-deep .ng-option:hover {
+  background: rgba(255, 255, 255, 0.25) !important;
+  transform: scale(1.02);
+}
+
+:host ::ng-deep .ng-select.ng-select-opened > .ng-select-container .ng-arrow {
+  border-color: transparent transparent #616161 !important;
+}
+
+:host ::ng-deep .ng-select .ng-arrow-wrapper .ng-arrow {
+    border-color: #616161 transparent transparent;
+}
+
+:host ::ng-deep .ng-select .ng-clear-wrapper {
+  color: #616161;
+}
+
+:host ::ng-deep .ng-select .ng-select-container {
+  background-color: transparent;
+  border: 0;
+}
+
+:host ::ng-deep .ng-select .ng-select-container:hover {
+  box-shadow: none;
+}
+
+:host ::ng-deep .ng-select.ng-select-multiple .ng-select-container .ng-value-container .ng-value {
+  background-color: rgba(255, 255, 255, 0.082);
+  padding: 3px 6px;
+  border-radius: 13px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #fff;
+}
+
+.btn-modern {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+.btn-search {
+  background: rgba(80, 180, 255, 0.2);
+}
+
+.btn-x {
+  background: rgba(255, 80, 103, 0.2);
+}
+
+.btn-help {
+  background: rgba(219, 219, 219, 0.2);
+}
+
+::ng-deep .ng-select-container {
+  border-color: #f2f2f2 !important;
+}
+
+.btn.btn-warning:hover {
+  filter: brightness(1.05);
+}
+
+.search .col-auto, .col {
+  place-self: center;
+}
+
+.special-bg {
+  background: #ff8500b5;
+  border: 2px black solid;
+  border-radius: 7px;
+}

@@ -1,0 +1,60 @@
+<div class="container my-3 renames">
+  <div class="row">
+    <div class="col-12" [ngClass]="{'loading': isInLoading}">
+      <app-search-form
+        [formFilters]="null"
+        [isInLoading]="isInLoading"
+        [inputTip]="currentViewType === 'players' ? ('Rechercher un joueur ou une alliance' | translate) : ('Rechercher une alliance' | translate)"
+        [searchTypes]="{
+          player: currentViewType === 'players',
+          alliance: true
+        }"
+        (searchAlliance)="searchAlliance($event)"
+        (searchPlayer)="searchPlayer($event)"
+      ></app-search-form>
+      <div class="mb-1">
+        <app-server-badge></app-server-badge>
+        <span class="ms-1 badge bg-info pointer" *ngIf="responseTime > 0" [title]="('Affichage des données en'  | translate) + ' ' + responseTime + 'ms'">
+          <i class="fa-solid fa-clock"></i>
+          {{ responseTime / 1000 }}s
+        </span>
+      </div>
+      <app-table
+        [sort]="''"
+        [reverse]="false"
+        [isInLoading]="isInLoading"
+        [maxPage]="maxPage!"
+        [page]="page"
+        [search]="search"
+        [headers]="headers"
+        (navigateToPage)="navigateTo($event)"
+        (previousPage)="previousPage()"
+        (nextPage)="nextPage()">
+        <tr *ngIf="renames.length === 0 && !isInLoading">
+          <td colspan="10">
+            <span class="text-muted">{{ 'Aucun résultat' | translate }}</span>
+          </td>
+        </tr>
+        <ng-container *ngIf="currentViewType === 'players'; else allianceView">
+          <tr *ngFor="let movement of renames">
+            <td>{{ movement.rank }}</td>
+            <td>{{ movement.oldPlayerName }}</td>
+            <td>{{ movement.newPlayerName }}</td>
+            <td>{{ (movement.might ? movement.might : 0) | formatNumber }}</td>
+            <td>{{ movement.alliance ?? '-' }}</td>
+            <td>{{ movement.date | date: ('Date_1' | translate)}}</td>
+          </tr>
+        </ng-container>
+        <ng-template #allianceView>
+          <tr *ngFor="let movement of renames">
+            <td>{{ movement.rank }}</td>
+            <td>{{ movement.oldPlayerName }}</td>
+            <td>{{ movement.newPlayerName }}</td>
+            <td>{{ movement.date | date: ('Date_1' | translate)}}</td>
+          </tr>
+        </ng-template>
+      </app-table>
+    </div>
+  </div>
+
+

@@ -1,0 +1,28 @@
+<div class="position-relative d-inline-block"
+     [style.width.px]="size || null">
+
+  <img
+    *ngIf="!imageError"
+    [src]="src"
+    [alt]="alt"
+    [style.max-width]="size ? (size + 'px') : '40vw'"
+    [style.max-height]="size ? (size + 'px') : '40vh'"
+    (load)="onLoad()"
+    (error)="onError()"
+    [hidden]="!imageLoaded"
+    [ngStyle]="shadow ? {'filter': 'drop-shadow(2px 4px 6px black)'} : {}"
+  />
+
+  <div
+    *ngIf="!imageLoaded && !imageError"
+    class="spinner-border text-secondary" role="status"
+  ><span class="visually-hidden">Loading...</span></div>
+
+  <img
+    *ngIf="imageError"
+    [src]="'https://upload.wikimedia.org/wikipedia/commons/c/ca/1x1.png'"
+    [alt]="'Image non disponible'"
+    [width]="1"
+    [height]="1"
+  >
+</div>

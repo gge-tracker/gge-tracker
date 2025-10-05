@@ -1,0 +1,26 @@
+{
+  "name": "empire-api",
+  "version": "1.0.1",
+  "description": "This is a fork of the original EmpireAPI (https://github.com/danadum/gge-auto-alt)",
+  "main": "/app/server.js",
+  "private": true,
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node /app/server.js"
+  },
+  "author": "ggetracker",
+  "contributors": [
+    "danadum"
+  ],
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "fast-xml-parser": "^4.2.4",
+    "puppeteer-core": "^22.13.0",
+    "undici": "^5.27.2",
+    "ws": "^8.13.0"
+  }
+}

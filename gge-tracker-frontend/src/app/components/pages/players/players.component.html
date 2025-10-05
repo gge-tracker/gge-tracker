@@ -1,0 +1,369 @@
+<div class="container players my-3">
+  <div class="row">
+    <div class="col-12" [ngClass]="{'loading': isInLoading}">
+      <app-search-form
+        #searchForm
+        [formFilters]="formFilters"
+        [isInLoading]="isInLoading"
+        [inputTip]="'Rechercher un joueur ou une alliance' | translate"
+        [defaultSearch]="search"
+        [searchTypes]="{
+          player: true,
+          alliance: true
+        }" (searchAlliance)="searchAlliance($event)" (searchPlayer)="searchPlayer($event)"></app-search-form>
+      <div class="mb-1">
+        <app-server-badge></app-server-badge>
+        <span translate class="badge bg-secondary pointer" *ngIf="!isInLoading && players.length === 0">Aucun joueur
+          trouvé</span>
+        <span class="badge bg-primary pointer" *ngIf="playerCount > 0"
+          [title]="playerCount + ' ' + ((playerCount > 1) ? ('joueurs' | translate) : ('joueur' | translate)) + ' ' + ((playerCount > 1) ? ('enregistrés' | translate) : ('enregistré' | translate))">
+          <i class="fa-solid fa-users"></i> {{ playerCount | formatNumber }}
+        </span>
+        <span class="ms-1 badge bg-info pointer" *ngIf="responseTime > 0"
+          [title]="('Affichage des données en' | translate) + ' ' + responseTime + 'ms'">
+          <i class="fa-solid fa-clock"></i>
+          {{ responseTime / 1000 }}s
+        </span>
+      </div>
+      <app-table #table [sort]="sort" [reverse]="reverse" [isInLoading]="isInLoading" [maxPage]="maxPage!" [page]="page"
+        [search]="search" [headers]="playersTableHeader" (sortOutput)="sortPlayers($event)"
+        (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
+        <tr *ngIf="players.length === 0">
+          <td colspan="12">{{ 'Aucun joueur trouvé' | translate }}</td>
+        </tr>
+        <tr *ngFor="let player of players" [ngClass]="{ 'favorite': player.isFavorite }">
+          <td>
+            {{ player.rank }}</td>
+          <td>
+            <img [style]="{ 'opacity': getOpacityForPeaceTime(player.peaceDisabledAt) }
+              "
+              *ngIf="player.peaceDisabledAt && isPeaceDisabledBefore63days(player.peaceDisabledAt)"
+              class="me-1 peace-icon" src="/assets/peace.png" [alt]="('Temps de paix' | translate) + ':'"
+              [title]="('Actuellement en protection Fin le' | translate) +  ' ' + ((player.peaceDisabledAt) | date: ('Date_3' | translate))">
+            {{ player.playerName }}
+          </td>
+          <td>
+            {{ player.level ? player.level + (player.legendaryLevel ? ('/' + player.legendaryLevel) : '') : '0' }}
+          </td>
+          <ng-container *ngIf="player.mightAllTime; else inactiveTemplate">
+            <td [title]="player.mightCurrent ? (player.mightCurrent | formatNumber:'visual') : 0">
+              {{ player.mightCurrent ? (player.mightCurrent | formatNumber) : '0' }}
+              <span *ngIf="!player.mightAllTime" class="badge bg-secondary" translate>Inactif</span>
+            </td>
+            <td [title]="player.mightAllTime ? (player.mightAllTime | formatNumber:'visual') : 0">
+              {{ player.mightAllTime ? (player.mightAllTime | formatNumber) : '' }}</td>
+            <ng-container *ngIf="player.peaceDisabledAt && !isPeaceDisabledBefore63days(player.peaceDisabledAt); else defaultRows"
+              class="badge bg-secondary">
+              <td [attr.colspan]="5+ (playersTableHeader.length > 11 ? 1 : 0)">
+                <span class="badge bg-secondary">
+                  <i class="fa-solid fa-ban"></i>
+                  {{ 'Banni jusqu\'au' | translate }} {{ ((player.peaceDisabledAt) | date: ('Date_3' | translate)) }}
+                </span>
+              </td>
+              <td>
+                <ng-container *ngIf="player.allianceName; else noAlliance">
+                  <a class="link-to-alliance" (click)="clickOnAlliance(player.allianceName)"
+                    (keydown.enter)="clickOnAlliance(player.allianceName)" tabindex="0"
+                    [title]="('Voir les membres de l\'alliance' | translate) + ' ' + player.allianceName">
+                    {{ player.allianceName }}
+                  </a>
+                </ng-container>
+                  <ng-template #noAlliance>-</ng-template>
+              </td>
+              <td class="text-end">
+                <div class="d-flex justify-content-end">
+                  <a [routerLink]="['/', 'player', player.playerId]">
+                    <img src="/assets/icon_analyze.png" [alt]="'Analyser le joueur' | translate"
+                      [title]="'Analyser le joueur' | translate" height="24" class="btn-icon">
+                  </a>
+                  <a [routerLink]="['/', 'castles']" [queryParams]="{ search: player.playerName }">
+                    <img src="/assets/icon_castles.png" [alt]="'Voir les châteaux' | translate"
+                      [title]="('Voir les châteaux de' | translate) + ' ' + player.playerName" height="24"
+                      class="ms-1 btn-icon">
+                  </a>
+                  <img [src]="'/assets/icon_friends' + (player.isFavorite ? '2' : '') + '.png'" (click)="toggleFavorite(player)"
+                    [title]="player.isFavorite ? ('Retirer des favoris' | translate) : ('Ajouter en favoris' | translate)"
+                    class="ms-1 btn-icon pointer" [ngClass]="player.isFavorite ? 'favorite' : 'not-favorite'">
+                </div>
+              </td>
+            </ng-container>
+            <ng-template #defaultRows>
+              <td [title]="player.lootCurrent ? (player.lootCurrent | formatNumber:'visual') : 0">{{ player.lootCurrent
+                ? (player.lootCurrent | formatNumber) : 0 }}</td>
+              <td [title]="player.lootAllTime ? (player.lootAllTime | formatNumber:'visual') : 0">{{ player.lootAllTime
+                ? (player.lootAllTime | formatNumber) : 0 }}</td>
+              <td [title]="player.currentFame ? (player.currentFame | formatNumber:'visual') : 0">{{ player.currentFame
+                ? (player.currentFame | formatNumber) : 0 }}</td>
+              <td [title]="player.highestFame ? (player.highestFame | formatNumber:'visual') : 0">{{ player.highestFame
+                ? (player.highestFame | formatNumber) : 0 }}</td>
+              <td [title]="player.honor ? (player.honor | formatNumber:'visual') : 0">{{ player.honor }}</td>
+              <td *ngIf="playersTableHeader.length > 11"
+                [title]="player.distance ? (player.distance | formatNumber:'visual') : 0">
+                {{ player.distance ? player.distance : '0' }}
+              </td>
+              <td>
+                <a *ngIf="player.allianceName; else defaultAllianceName" class="link-to-alliance"
+                  (click)="clickOnAlliance(player.allianceName)" (keydown.enter)="clickOnAlliance(player.allianceName)"
+                  tabindex="0" [title]="('Voir les membres de l\'alliance' | translate) + ' ' + player.allianceName">
+                  {{ player.allianceName }}
+                </a>
+                <ng-template #defaultAllianceName>
+                  {{ player.allianceName ?? '-' }}
+                </ng-template>
+              </td>
+              <td class="text-end">
+                <div class="d-flex justify-content-end">
+                  <a [routerLink]="['/', 'player', player.playerId]">
+                    <img src="/assets/icon_analyze.png" [alt]="'Analyser le joueur' | translate"
+                      [title]="'Analyser le joueur' | translate" height="24" class="btn-icon">
+                  </a>
+                  <a [routerLink]="['/', 'castles']" [queryParams]="{ search: player.playerName }">
+                    <img src="/assets/icon_castles.png" [alt]="'Voir les châteaux' | translate"
+                      [title]="('Voir les châteaux de' | translate) + ' ' + player.playerName" height="24"
+                      class="ms-1 btn-icon">
+                  </a>
+                  <img [src]="'/assets/icon_friends' + (player.isFavorite ? '2' : '') + '.png'" (click)="toggleFavorite(player)"
+                    [title]="player.isFavorite ? ('Retirer des favoris' | translate) : ('Ajouter en favoris' | translate)"
+                    class="ms-1 btn-icon pointer" [ngClass]="player.isFavorite ? 'favorite' : 'not-favorite'">
+                </div>
+              </td>
+            </ng-template>
+          </ng-container>
+          <ng-template #inactiveTemplate>
+            <td *ngFor="let i of [1, 2, 3, 4]">
+              <img src="/assets/error.png" [alt]="'Inactif' | translate" [title]="'Joueur inactif' | translate"
+                class="error-icon">
+            </td>
+            <td>
+              {{ player.allianceName ?? '-' }}
+            </td>
+            <td class="text-end" colspan="4">
+              <span *ngIf="!player.mightAllTime" class="badge bg-secondary">
+                <i class="fa-solid fa-ban"></i>
+                {{ 'Joueur inactif' | translate }}
+              </span>
+            </td>
+          </ng-template>
+        </tr>
+      </app-table>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="filtersModal" tabindex="-1" aria-labelledby="filtersModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="filtersModalLabel">
+          <i class="fa-solid fa-filter"></i>&nbsp;{{ 'Filtrer les résultats' | translate }}
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"
+          [attr.aria-label]="'Fermer' | translate"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <!-- Filtre par honneur -->
+          <div class="col-12 col-sm my-1">
+            <div class="input-group">
+              <span class="input-group-text">
+                <img src="/assets/honor.png" [alt]="'Honneur' | translate"
+                  [title]="'Filtrer par point d\'honneur' | translate" height="24">
+              </span>
+              <input type="text" class="form-control" id="levelMin" [placeholder]="'Honneur min.' | translate"
+                [(ngModel)]="formFilters.minHonor">
+              <input type="text" class="form-control" id="levelMax" [placeholder]="'Honneur max.' | translate"
+                [(ngModel)]="formFilters.maxHonor">
+            </div>
+          </div>
+          <!--  Filtre par puissance -->
+          <div class="col-12 col-sm my-1">
+            <div class="input-group">
+              <span class="input-group-text">
+                <img src="/assets/pp1.png" [alt]="'Puissance' | translate"
+                  [title]="'Filtrer par point de puissance' | translate" height="24">
+              </span>
+              <input type="text" class="form-control" id="mightMin" [placeholder]="'Puissance min.' | translate"
+                [(ngModel)]="formFilters.minMight">
+              <input type="text" class="form-control" id="mightMax" [placeholder]="'Puissance max.' | translate"
+                [(ngModel)]="formFilters.maxMight">
+            </div>
+          </div>
+        </div>
+        <div class="row mt-3">
+          <!-- Filtre par pillage -->
+          <div class="col-12 col-sm my-1">
+            <div class="input-group">
+              <span class="input-group-text">
+                <img src="/assets/loot.png" [alt]="'Pillage' | translate"
+                  [title]="'Filtrer par point de pillage' | translate" height="24">
+              </span>
+              <input type="text" class="form-control" id="lootMin" [placeholder]="'Pillage min.' | translate"
+                [(ngModel)]="formFilters.minLoot">
+              <input type="text" class="form-control" id="lootMax" [placeholder]="'Pillage max.' | translate"
+                [(ngModel)]="formFilters.maxLoot">
+            </div>
+          </div>
+          <!-- Filtre par niveau -->
+          <div class="col-12 col-sm my-1">
+            <div class="input-group">
+              <span class="input-group-text">
+                <img src="/assets/lvl.png" [alt]="'Niveau' | translate" [title]="'Filtrer par niveau' | translate"
+                  height="24">
+              </span>
+              <input type="text" class="form-control" id="levelMin" [placeholder]="'Niveau min.' | translate"
+                [(ngModel)]="formFilters.minLevel">
+              <input type="text" class="form-control" id="levelMax" [placeholder]="'Niveau max.' | translate"
+                [(ngModel)]="formFilters.maxLevel">
+            </div>
+          </div>
+        </div>
+        <div class="row mt-3">
+          <!-- Filtre par distance (pseudo) -->
+          <div class="col-12 col-sm my-1">
+            <div class="input-group">
+              <span class="input-group-text">
+                <img src="/assets/players.png" height="24"
+                  [title]="'Filtrer par distance depuis le château principal d\'un joueur' | translate"
+                  [attr.alt]="'Filtrer par distance depuis le château principal d\'un joueur' | translate">
+              </span>
+              <input type="text" class="form-control" id="playerCastleDistance"
+                [placeholder]="'Pseudonyme du joueur (château principal)' | translate"
+                [(ngModel)]="formFilters.playerCastleDistance">
+            </div>
+            <div class="form-text text-muted small" [innerHTML]="'Distance-text' | translate"></div>
+          </div>
+        </div>
+        <div class="row">
+          <!-- Filtre par alliance -->
+          <div class="col-12">
+            <div class="text-center mt-3 alliance-icon">
+              <img src="/assets/min-alliance.png" [alt]="'Alliance' | translate"
+                [title]="'Filtrer par alliance' | translate" height="32">
+            </div>
+            <div class="input-group align-items-center justify-content-center">
+              <div class="col-4 text-center">
+                <label for="alliance1" translate>Avec alliance</label>
+                <div>
+                  <input type="radio" class="form-check-input" id="alliance1" value="1"
+                    [(ngModel)]="formFilters.allianceFilter">
+                </div>
+              </div>
+              <div class="col-4 text-center">
+                <label for="alliance0" translate>Sans alliance</label>
+                <div>
+                  <input type="radio" class="form-check-input" id="alliance0" name="alliance" value="0"
+                    [(ngModel)]="formFilters.allianceFilter">
+                </div>
+              </div>
+              <div class="col-4 text-center">
+                <label for="noAlliance" translate>Pas de filtre</label>
+                <div>
+                  <input type="radio" class="form-check-input" id="noAlliance" name="alliance" value="-1"
+                    [(ngModel)]="formFilters.allianceFilter">
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Filtre par protection -->
+          <div class="col-12">
+            <div class="text-center mt-3 peace-icon">
+              <img src="/assets/peace.png" [alt]="'Protection'  | translate"
+                [title]="'Filtrer par protection' | translate" height="32">
+            </div>
+            <div class="input-group align-items-center justify-content-center">
+              <div class="col-4 text-center">
+                <label for="peace1" translate>En protection</label>
+                <div>
+                  <input type="radio" class="form-check-input" id="peace1" name="peace" value="1"
+                    [(ngModel)]="formFilters.protectionFilter">
+                </div>
+              </div>
+              <div class="col-4 text-center">
+                <label for="peace0" translate>Hors protection</label>
+                <div>
+                  <input type="radio" class="form-check-input" id="peace0" name="peace" value="0"
+                    [(ngModel)]="formFilters.protectionFilter">
+                </div>
+              </div>
+              <div class="col-4 text-center">
+                <label for="noPeace" translate>Pas de filtre</label>
+                <div>
+                  <input type="radio" class="form-check-input" id="noPeace" name="peace" value="-1" checked
+                    [(ngModel)]="formFilters.protectionFilter">
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Filtre par banissement -->
+          <div class="col-12">
+            <div class="text-center mt-3 ban-icon">
+              <img src="/assets/error.png" [alt]="'Banissement' | translate"
+                [title]="'Filtrer par banissement' | translate" height="32">
+            </div>
+            <div class="input-group align-items-center justify-content-center">
+              <div class="col-4 text-center">
+                <label for="ban1" translate>Banni</label>
+                <div>
+                  <input type="radio" class="form-check-input" id="ban1" name="ban" value="1"
+                    [(ngModel)]="formFilters.banFilter">
+                </div>
+              </div>
+              <div class="col-4 text-center">
+                <label for="ban0" translate>Non banni</label>
+                <div>
+                  <input type="radio" class="form-check-input" id="ban0" name="ban" value="0"
+                    [(ngModel)]="formFilters.banFilter">
+                </div>
+              </div>
+              <div class="col-4 text-center">
+                <label for="noBan" translate>Pas de filtre</label>
+                <div>
+                  <input type="radio" class="form-check-input" id="noBan" name="ban" value="-1" checked
+                    [(ngModel)]="formFilters.banFilter">
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Filtre par joueur inactif -->
+          <div class="col-12">
+            <div class="text-center mt-3 inactive-icon">
+              <img src="/assets/compass.png" [alt]="'Inactif' | translate"
+                [title]="'Filtrer par joueur inactif (N\'étant pas sur la carte)' | translate" height="32">
+            </div>
+            <div class="input-group align-items-center justify-content-center">
+              <div class="col-4 text-center">
+                <label for="inactive1" translate>Inactif</label>
+                <div>
+                  <input type="radio" class="form-check-input" id="inactive1" name="inactive" value="0"
+                    [(ngModel)]="formFilters.inactiveFilter">
+                </div>
+              </div>
+              <div class="col-4 text-center">
+                <label for="inactive0" translate>Actif</label>
+                <div>
+                  <input type="radio" class="form-check-input" id="inactive0" name="inactive" value="1"
+                    [(ngModel)]="formFilters.inactiveFilter">
+                </div>
+              </div>
+              <div class="col-4 text-center">
+                <label for="noInactive" translate>Pas de filtre</label>
+                <div>
+                  <input type="radio" class="form-check-input" id="noInactive" name="inactive" value="-1" checked
+                    [(ngModel)]="formFilters.inactiveFilter">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="row mt-3">
+          <div class="col text-center">
+            <button class="btn btn-primary" (click)="applyFilters()" data-bs-dismiss="modal">
+              <i class="fa-solid fa-check"></i>
+              &nbsp;
+              <span>{{ 'Appliquer les filtres' | translate }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>

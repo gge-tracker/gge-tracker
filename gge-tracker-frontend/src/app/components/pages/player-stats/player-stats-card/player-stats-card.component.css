@@ -1,0 +1,41 @@
+.cover-might {
+  border: 1px white solid;
+  color: white;
+  background-position-y: center !important;
+}
+
+.cadre-table-scroll {
+  display: inline-block;
+  height: 365px;
+  overflow-y: scroll;
+}
+.table-scroll thead th {
+  position: sticky;
+  top: 0;
+}
+
+button.btn.btn-primary.btn-sm.active {
+  background: url(/assets/light-background-hover.png), #29746e;
+  background-size: 28px;
+}
+
+.spinner-container {
+  position: absolute;
+  top: 60%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+i.fas.fa-spinner.fa-spin {
+  font-size: 6rem;
+  margin: 20px 0;
+  color: #00000045;
+}
+
+.opacity-0 {
+  opacity: 0;
+}
+
+.stats-container {
+  min-height: 40vh;
+}

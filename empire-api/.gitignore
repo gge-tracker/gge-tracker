@@ -1,0 +1,6 @@
+.env
+node_modules/
+src/config/credentials.json
+src/config/instances.json
+src/config/credentials_gbl.json
+src/config/instances_gbl.json

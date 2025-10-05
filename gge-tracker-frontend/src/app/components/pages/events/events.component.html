@@ -1,0 +1,274 @@
+<div class="container my-3 movements">
+  <div class="row g-4">
+    <div class="col-12" [ngClass]="{'loading': isInLoading}">
+      <div class="mb-2" *ngIf="!currentEvent">
+        <!-- <app-server-badge></app-server-badge>
+        <span class="ms-1 badge bg-info pointer" *ngIf="responseTime > 0"
+          [title]="('Affichage des données en' | translate) + ' ' + responseTime + 'ms'">
+          <i class="fa-solid fa-clock"></i>
+          {{ responseTime / 1000 }}s
+        </span> -->
+      </div>
+      <div class="row mt-3 row-gap-3">
+      <div *ngFor="let event of events; let i = index"
+        class="col-12 col-md-6">
+          <div
+            tabindex="0"
+            [title]="'Voir le détail' | translate"
+            (click)="onEventClick(event)"
+            (keyup.enter)="onEventClick(event)"
+            (keydown.space)="onEventClick(event)"
+            class="event-card" [ngStyle]="{'background-image': 'url(/assets/' + event.type + '.png)'}">
+            <div class="event-overlay">
+              <div class="event-header">
+                <div class="event-badge">
+                  <lucide-icon class="icons calendar-check" [img]="CalendarCheck"></lucide-icon>
+                  &nbsp;
+                  {{ 'Événement du 0 au 0' | translate: { start: (event.from | date: ('Date_7' | translate)), end: (event.to | date: ('Date_7' | translate)) } }}
+                </div>
+                  <!-- latest-->
+                <div class="event-players">
+                  <lucide-icon class="icons square-user" [img]="SquareUser"></lucide-icon>
+                  &nbsp;
+                  {{ event.playerCount | formatNumber }} {{ 'Joueurs' | translate | lowercase }}
+                </div>
+              </div>
+              <h5 class="event-title">
+                {{ getEventName(event.type) | titlecase }}
+                <span class="event-icon">
+                  <i class="fa-solid" [ngClass]="{
+                    'fa-trophy': event.type === 'outer-realms',
+                    'fa-shield-alt': event.type === 'beyond-the-horizon'
+                  }"></i>
+                </span>
+              </h5>
+              <span class="event-cta">{{ 'Voir le détail' | translate }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div *ngIf="currentEvent" class="events">
+        <!-- <div
+          class="event-card"
+          [ngStyle]="{'background-image': 'url(/assets/' + event.type + '.png)'}"
+          tabindex="0"
+          [title]="'Voir les détails de l\'événement' | translate"
+          (click)="onEventClick(event)"
+          (keyup.enter)="onEventClick(event)"
+          (keydown.space)="onEventClick(event)">
+          <div class="event-overlay">
+            <div class="event-badge">
+              Événement du {{ event.from | date: ('Date_7' | translate) }} au {{ event.to | date: ('Date_7' | translate) }}
+            </div>
+            <h5 class="event-title">
+              {{ getEventName(event.type) | titlecase }}
+              <span class="event-icon">
+                <i class="fa-solid" [ngClass]="{
+                  'fa-trophy': event.type === 'outer-realms',
+                  'fa-shield-alt': event.type === 'outer-realms'
+                }"></i>
+              </span>
+            </h5>
+            <span class="event-cta">Voir le détail</span>
+          </div>
+        </div> -->
+        <app-events-header
+          [eventName]="getEventName(eventType!)"
+          [from]="generateFromDate(currentEvent.collect_date)"
+          [to]="newDate(currentEvent.collect_date)"
+          [nbPlayers]="nbPlayers"
+          [eventType]="eventType!"
+        ></app-events-header>
+        <div class="row g-2 mb-3" [ngClass]="{'table-loading': tableLoading}">
+          <div class="col-auto">
+            <button class="back-btn" [routerLink]="['/events']">
+              <i class="fa-solid fa-arrow-left"></i>
+              <span class="d-none d-sm-inline-block">{{ 'Retour' | translate }}</span>
+            </button>
+          </div>
+          <div class="col">
+            <app-search-form
+              [isInLoading]="isInLoading"
+              [formFilters]="formFilters"
+              [inputTip]="'Rechercher le joueur' | translate"
+              [searchTypes]="{
+                player: true,
+                alliance: false
+              }"
+              (searchPlayer)="searchPlayer($event)">
+            </app-search-form>
+          </div>
+          <app-table [sort]="''" [reverse]="false" [isInLoading]="isInLoading" [maxPage]="maxPage!" [page]="page"
+            [search]="playerNameFilter" [headers]="[
+            ['playerName', 'Pseudonyme' | translate, '', true],
+            ['server', 'Serveur' | translate, '', true],
+            ['points', 'Points' | translate, '', true],
+            ['actions', 'Actions' | translate, '', true]
+          ]" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
+            <tr *ngIf="players.length === 0 && !isInLoading">
+              <td colspan="10">
+                <span class="text-muted">{{ 'Aucun joueur trouvé' | translate }}</span>
+              </td>
+            </tr>
+            <tr *ngFor="let player of players">
+              <td>{{ player.rank }}</td>
+              <td>{{ player.player_name }}</td>
+              <td><img [src]="getFlagUrl(player.server)" alt="Flag icon"> {{ player.server }}</td>
+              <td>{{ (player.point) | formatNumber }}</td>
+              <td class="text-end">
+                <div class="d-flex justify-content-end"  *ngIf="player.player_id; else noPlayerId">
+                  <a [routerLink]="['/', 'player', player.player_id]" class="btn btn-primary btn-sm">
+                    <i class="fa-solid fa-eye"></i>
+                    <span class="d-none d-sm-inline-block">&nbsp;{{ 'Analyser le joueur' | translate }}</span>
+                  </a>
+                </div>
+              </td>
+            </tr>
+          </app-table>
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-12">
+            <ng-container *ngIf="charts['nbInTop100']">
+              <ng-container *ngTemplateOutlet="chartTemplate; context: { chart: charts['nbInTop100'] }"></ng-container>
+            </ng-container>
+          </div>
+        </div>
+        <div class="row g-3 mb-4">
+          <div class="col-md-4">
+            <div class="stat-card text-center">
+              <div class="stat-icon">
+                <img src="/assets/{{ eventType }}-icon.png" alt="{{ eventType }} Icon">
+              </div>
+              <div class="stat-value">{{ (currentEvent.score_stats.max_score | formatNumber) }}</div>
+              <div class="stat-label">{{ 'Score le plus élevé atteint' | translate}}</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="stat-card text-center">
+              <div class="stat-icon">
+                <img src="/assets/{{ eventType }}-icon.png" alt="{{ eventType }} Icon">
+              </div>
+              <div class="stat-value">{{ currentEvent.score_stats.avg_score | formatNumber }}</div>
+              <div class="stat-label">{{ 'Score moyen des joueurs' | translate }}</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="stat-card text-center">
+              <div class="stat-icon">
+                <img src="/assets/{{ eventType }}-icon.png" alt="{{ eventType }} Icon">
+              </div>
+              <div class="stat-value">{{ currentEvent.score_stddev | formatNumber }}</div>
+              <div class="stat-label">{{ 'Écart type des scores (variabilité)' | translate }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+          <div class="col-md-6">
+            <ng-container *ngIf="charts['topScores']">
+              <ng-container *ngTemplateOutlet="chartTemplate; context: { chart: charts['topScores'] }"></ng-container>
+            </ng-container>
+          </div>
+          <div class="col-md-6">
+            <ng-container *ngIf="charts['serverAvgScore']">
+              <ng-container *ngTemplateOutlet="chartTemplate; context: { chart: charts['serverAvgScore'] }"></ng-container>
+            </ng-container>
+          </div>
+        </div>
+        <div class="row g-4 mb-4">
+          <div class="col-12">
+            <ng-container *ngIf="charts['top100Ratio']">
+              <ng-container *ngTemplateOutlet="chartTemplate; context: { chart: charts['top100Ratio'] }"></ng-container>
+            </ng-container>
+          </div>
+        </div>
+        <div class="row g-4">
+          <div class="col-12">
+            <ng-container *ngIf="charts['levelDistribution']">
+              <ng-container *ngTemplateOutlet="chartTemplate; context: { chart: charts['levelDistribution'] }"></ng-container>
+            </ng-container>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<ng-template #noPlayerId>
+  <a class="btn btn-primary btn-sm disabled">
+    <span class="d-none d-sm-inline-block">
+      <i class="fa-solid fa-ban"></i>
+      <span class="d-none d-sm-inline-block">&nbsp;{{ 'Aucune action' | translate }}</span>
+    </span>
+  </a>
+</ng-template>
+
+<ng-template #chartTemplate let-chart="chart">
+  <div class="apx-chart">
+    <app-charts-wrapper *ngIf="chart && isBrowser"
+      [series]="chart.series"
+      [annotations]="chart.annotations || {}"
+      [chart]="chart.chart"
+      [xaxis]="chart.xaxis"
+      [yaxis]="chart.yaxis"
+      [dataLabels]="chart.dataLabels"
+      [plotOptions]="chart.plotOptions"
+      [labels]="chart.labels || []"
+      [grid]="chart.grid"
+      [colors]="chart.colors"
+      [markers]="chart.markers || {}"
+      [fill]="chart.fill"
+      [stroke]="chart.stroke"
+      [title]="chart.title"
+      [tooltip]="chart.tooltip"
+      [legend]="chart.legend"
+    ></app-charts-wrapper>
+  </div>
+</ng-template>
+
+
+
+<div class="modal fade" id="filtersModal" tabindex="-1" aria-labelledby="filtersModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="filtersModalLabel">
+          &nbsp;<i class="fa-solid fa-filter"></i>{{ 'Filtrer les résultats' | translate}}
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" [attr.aria-label]="'Fermer' | translate"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-4">
+          <div class="col">
+            <label for="serverType" class="form-label" translate>{{ 'Serveur' | translate }} :</label>
+            <div class="input-group">
+              <span class="input-group-text p-1">
+                <ng-container *ngIf="formFilters.server && formFilters.server !== 'null'; else noServerSelected">
+                  <img [src]="getFlagUrl(formFilters.server)" [alt]="'Serveur' | translate"
+                  [title]="'Serveur' | translate" height="30">
+                </ng-container>
+                <ng-template #noServerSelected>
+                  <i class="fa-solid fa-globe"></i>
+                </ng-template>
+              </span>
+              <select class="form-select" [(ngModel)]="formFilters.server">
+                <option selected value="">{{'Tous' | translate}}</option>
+                <option *ngFor="let server of servers" [value]="server">
+                  <img [src]="getFlagUrl(server)" [alt]="server" [title]="server" height="20">
+                  {{ server }}
+                </option>
+              </select>
+            </div>
+          </div>
+          <div class="row g-4 mt-3">
+            <div class="col text-center">
+              <button class="btn btn-primary" (click)="applyFilters()" data-bs-dismiss="modal">
+                <span>{{ 'Appliquer les filtres' | translate }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

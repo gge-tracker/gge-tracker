@@ -1,0 +1,8 @@
+<div class="modern-select-wrapper">
+  <select class="modern-select" [(ngModel)]="currentItem" [attr.name]="name()" (ngModelChange)="onSelectChange()">
+    <option *ngFor="let item of listItems" [value]="item.value">
+      {{ item.label }}
+    </option>
+  </select>
+  <i class="fa-solid fa-chevron-down select-icon"></i>
+</div>
