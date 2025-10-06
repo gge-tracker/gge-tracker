@@ -1,0 +1,63 @@
+name: gge-tracker Projects CI
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'gge-tracker-backend-api/**'
+      - 'gge-tracker-frontend/**'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'gge-tracker-backend-api/**'
+      - 'gge-tracker-frontend/**'
+
+permissions:
+  pull-requests: read
+jobs:
+  # ---------------------------
+  # Backend CI
+  # ---------------------------
+  gge_tracker_backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gge-tracker-backend-api
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Build TypeScript + Swagger
+        run: |
+          npx tsc
+          npx swagger-jsdoc -d ./src/documentation.js
+      - name: Docker Build (check only)
+        run: docker build --target build -t backend-check .
+  # ---------------------------
+  # Frontend CI
+  # ---------------------------
+  gge_tracker_frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gge-tracker-frontend
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Angular Build
+        run: npm run build -- --output-path=dist --configuration=production
+      - name: Docker Build
+        run: docker build --target build -t frontend-check .

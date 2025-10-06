@@ -7,6 +7,9 @@
 ![GitHub contributors](https://img.shields.io/github/contributors-anon/gge-tracker/gge-tracker)
 ![GitHub forks](https://img.shields.io/github/forks/gge-tracker/gge-tracker?style=flat)
 ![GitHub top language](https://img.shields.io/github/languages/top/gge-tracker/gge-tracker)
+![CI](https://img.shields.io/github/actions/workflow/status/gge-tracker/gge-tracker/gge-tracker-projects.yml?branch=main)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=gge-tracker_gge-tracker&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=gge-tracker_gge-tracker)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=gge-tracker_gge-tracker&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=gge-tracker_gge-tracker)
 
 A comprehensive tracking tool for the game "<a href="https://empire.goodgamestudios.com/">Goodgame Empire</a>" (GGE), designed to help players monitor server activities, player or alliances statistics, and other game-related data.
 
