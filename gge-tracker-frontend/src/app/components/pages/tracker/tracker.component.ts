@@ -294,13 +294,13 @@ export class TrackerComponent extends GenericComponent {
         this.filterByPlayerName = this.localStorage.getItem('playerName');
       }
       if (this.localStorage.getItem('pageSize')) {
-        this.pageSize = parseInt(this.localStorage.getItem('pageSize') as string);
+        this.pageSize = Number.parseInt(this.localStorage.getItem('pageSize') as string);
       }
       if (this.localStorage.getItem('positionX')) {
-        this.positionX = parseInt(this.localStorage.getItem('positionX') as string);
+        this.positionX = Number.parseInt(this.localStorage.getItem('positionX') as string);
       }
       if (this.localStorage.getItem('positionY')) {
-        this.positionY = parseInt(this.localStorage.getItem('positionY') as string);
+        this.positionY = Number.parseInt(this.localStorage.getItem('positionY') as string);
       }
       if (this.localStorage.getItem('nearPlayerName')) {
         this.nearPlayerName = this.localStorage.getItem('nearPlayerName');

@@ -371,7 +371,7 @@ export class EventsComponent extends GenericComponent {
             void this.router.navigate(['/events']);
             return;
           }
-          this.eventId = parseInt(params['eventId']);
+          this.eventId = Number.parseInt(params['eventId']);
           this.eventType = params['eventType'] as EventType;
           const eventPlayers = await this.getEventPlayersById();
           this.responseTime = eventPlayers.response;

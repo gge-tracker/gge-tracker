@@ -20,8 +20,8 @@ export class PlayerStatsResolver implements Resolve<Promise<ApiResponse<ApiPlaye
     if (!playerId) {
       return Promise.reject('Player ID is required');
     }
-    const parsedPlayerId = parseInt(playerId, 10);
-    if (isNaN(parsedPlayerId)) {
+    const parsedPlayerId = Number.parseInt(playerId, 10);
+    if (Number.isNaN(parsedPlayerId)) {
       return Promise.reject('Invalid Player ID');
     }
     return this.apiRestService.getPlayerStatsByPlayerId(parsedPlayerId).then(async (response) => {

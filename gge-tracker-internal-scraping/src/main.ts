@@ -2711,7 +2711,7 @@ export class GenericFetchAndSaveBackend {
             let paramIndex = 1;
             for (const [playerId, entity] of chunk) {
               const playerIdNum = Number(playerId);
-              if (isNaN(playerIdNum)) {
+              if (Number.isNaN(playerIdNum)) {
                 Utils.logMessage(' [info] Invalid player ID:', playerId);
                 continue;
               }

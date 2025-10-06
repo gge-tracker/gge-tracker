@@ -579,7 +579,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     this.setMonuments();
     for (const key of Object.keys(this.stats)) {
       const object = Number(this.stats[key as keyof IRankingStatsPlayer]);
-      if (isNaN(object)) {
+      if (Number.isNaN(object)) {
         this.animatedStats[key as keyof IRankingStatsPlayer] = 0;
         continue;
       }

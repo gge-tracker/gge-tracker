@@ -152,8 +152,8 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
       });
     }
     combineLatest([this.route.queryParamMap, this.route.paramMap]).subscribe(([queryParams, routeParams]) => {
-      const size = parseInt(queryParams.get('size') || '');
-      const world = parseInt(queryParams.get('world') || '0');
+      const size = Number.parseInt(queryParams.get('size') || '');
+      const world = Number.parseInt(queryParams.get('world') || '0');
       const paramIn = queryParams.get('in');
       const colors = queryParams.get('c');
       const alliance = routeParams.get('alliance');
@@ -669,7 +669,7 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
       result
         .slice(0, 3)
         .map((x) => {
-          const hex = parseInt(x, 10).toString(16);
+          const hex = Number.parseInt(x, 10).toString(16);
           return hex.length === 1 ? '0' + hex : hex;
         })
         .join('')

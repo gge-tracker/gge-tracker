@@ -74,7 +74,7 @@ export abstract class ApiDungeons implements ApiHelper {
           .send({ error: 'Invalid server. Currently, only' + authorizedServers.join(', ') + ' are supported.' });
         return;
       }
-      const page = parseInt(request.query.page as string);
+      const page = Number.parseInt(request.query.page as string);
       if (Number.isNaN(page) || page < 1 || page > ApiHelper.MAX_RESULT_PAGE) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid page number' });
         return;
@@ -229,13 +229,19 @@ export abstract class ApiDungeons implements ApiHelper {
       }
       let isSorted = false;
       if (sortByPositionX !== null || sortByPositionY !== null) {
-        if (Number.isNaN(parseInt(sortByPositionX as string)) || Number.isNaN(parseInt(sortByPositionY as string))) {
+        if (
+          Number.isNaN(Number.parseInt(sortByPositionX as string)) ||
+          Number.isNaN(Number.parseInt(sortByPositionY as string))
+        ) {
           response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid position' });
           return;
-        } else if (parseInt(sortByPositionX as string) < 0 || parseInt(sortByPositionY as string) < 0) {
+        } else if (Number.parseInt(sortByPositionX as string) < 0 || Number.parseInt(sortByPositionY as string) < 0) {
           response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid position' });
           return;
-        } else if (parseInt(sortByPositionX as string) > 1286 || parseInt(sortByPositionY as string) > 1286) {
+        } else if (
+          Number.parseInt(sortByPositionX as string) > 1286 ||
+          Number.parseInt(sortByPositionY as string) > 1286
+        ) {
           response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid position' });
           return;
         } else {
@@ -243,7 +249,7 @@ export abstract class ApiDungeons implements ApiHelper {
         }
       }
       const MAX_NUMBER = 4000;
-      const viewPerPage = size === '0' ? MAX_NUMBER : size !== null ? parseInt(size) : 15;
+      const viewPerPage = size === '0' ? MAX_NUMBER : size !== null ? Number.parseInt(size) : 15;
       const conditions: string[] = [];
       const queryValues: any[] = [];
       const countValues: any[] = [];
@@ -420,9 +426,9 @@ export abstract class ApiDungeons implements ApiHelper {
         if (!nearPlayerName) {
           // Parameters for sorting by given position.
           // Added again here for the main query.
-          queryValues.push(parseInt(sortByPositionX as string));
-          queryValues.push(parseInt(sortByPositionX as string));
-          queryValues.push(parseInt(sortByPositionY as string));
+          queryValues.push(Number.parseInt(sortByPositionX as string));
+          queryValues.push(Number.parseInt(sortByPositionX as string));
+          queryValues.push(Number.parseInt(sortByPositionY as string));
         } else {
           // Otherwise, add the custom parameters for sorting by nearPlayerName
           queryValues.push(...customParameterValues);
@@ -483,7 +489,7 @@ export abstract class ApiDungeons implements ApiHelper {
                 last_attack: result.last_attack,
                 distance:
                   result.calculated_distance !== undefined
-                    ? parseFloat(Math.sqrt(result.calculated_distance).toFixed(1))
+                    ? Number.parseFloat(Math.sqrt(result.calculated_distance).toFixed(1))
                     : null,
               };
             });

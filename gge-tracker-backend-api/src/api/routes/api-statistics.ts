@@ -210,8 +210,8 @@ export abstract class ApiStatistics implements ApiHelper {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid event name' });
         return;
       }
-      const duration = parseInt(request.params.duration);
-      if (isNaN(duration) || duration < 0 || duration > 365) {
+      const duration = Number.parseInt(request.params.duration);
+      if (Number.isNaN(duration) || duration < 0 || duration > 365) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid duration' });
         return;
       }

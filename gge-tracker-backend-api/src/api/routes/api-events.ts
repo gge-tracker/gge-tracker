@@ -135,7 +135,7 @@ export abstract class ApiEvents implements ApiHelper {
        * --------------------------------- */
       const PAGINATION_LIMIT = 15;
       const id = request.params.id;
-      let page = parseInt(request.query.page as string) || 1;
+      let page = Number.parseInt(request.query.page as string) || 1;
       let playerNameFilter = (request.query.player_name as string) || '';
       let serverFilter = (request.query.server as string) || null;
       let eventType = request.params.eventType;
@@ -146,11 +146,11 @@ export abstract class ApiEvents implements ApiHelper {
       // Trick: we convert event type to match table name, e.g. "outer-realms" -> "outer_realms_ranking"
       // This needs to be upgraded if we add more event types in the future.
       const sqlTable = eventType.trim().replace(/-/g, '_') + '_ranking';
-      if (!id || isNaN(Number(id))) {
+      if (!id || Number.isNaN(Number(id))) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid event ID' });
         return;
       }
-      if (isNaN(page) || page < 1 || page > ApiHelper.MAX_RESULT_PAGE) {
+      if (Number.isNaN(page) || page < 1 || page > ApiHelper.MAX_RESULT_PAGE) {
         page = 1;
       }
       if (playerNameFilter) {
@@ -326,7 +326,7 @@ export abstract class ApiEvents implements ApiHelper {
       // This needs to be upgraded if we add more event types in the future.
       const sqlTable = eventType.trim().replace(/-/g, '_') + '_ranking';
       const id = request.params.id;
-      if (!id || isNaN(Number(id))) {
+      if (!id || Number.isNaN(Number(id))) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid event ID' });
         return;
       }

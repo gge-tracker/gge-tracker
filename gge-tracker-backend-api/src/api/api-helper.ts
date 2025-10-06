@@ -245,7 +245,12 @@ export abstract class ApiHelper {
    * @returns The numeric user ID if valid; otherwise, `false`.
    */
   public static getVerifiedId(userId: string | number): false | number {
-    if (isNaN(Number(userId)) || Number(userId) < 0 || Number(userId) > 99999999999 || String(userId).length <= 3) {
+    if (
+      Number.isNaN(Number(userId)) ||
+      Number(userId) < 0 ||
+      Number(userId) > 99999999999 ||
+      String(userId).length <= 3
+    ) {
       return false;
     }
     return Number(userId);
@@ -372,7 +377,7 @@ export abstract class ApiHelper {
       if (parts.length !== 3) {
         return 'Unknown';
       }
-      const year = parseInt(parts[0], 10) + 2000;
+      const year = Number.parseInt(parts[0], 10) + 2000;
       const month = parts[1].padStart(2, '0');
       const day = parts[2].padStart(2, '0');
       return `${year}-${month}-${day}`;

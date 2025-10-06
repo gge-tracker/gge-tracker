@@ -130,7 +130,7 @@ export abstract class ApiAlliances implements ApiHelper {
               highest_fame: Number(result.highest_fame),
               calculated_distance:
                 result.calculated_distance !== null
-                  ? parseFloat(Math.sqrt(result.calculated_distance).toFixed(1))
+                  ? Number.parseFloat(Math.sqrt(result.calculated_distance).toFixed(1))
                   : null,
               honor: Number(result.honor),
               max_honor: Number(result.max_honor),
@@ -268,7 +268,7 @@ export abstract class ApiAlliances implements ApiHelper {
       /* ---------------------------------
        * Validate and normalize query parameters
        * --------------------------------- */
-      let page = parseInt(request.query.page as string) || 1;
+      let page = Number.parseInt(request.query.page as string) || 1;
       let orderBy = (request.query.orderBy as string) || 'alliance_name';
       let orderType = (request.query.orderType as string) || 'ASC';
       page = page < 1 || page > ApiHelper.MAX_RESULT_PAGE ? 1 : page;

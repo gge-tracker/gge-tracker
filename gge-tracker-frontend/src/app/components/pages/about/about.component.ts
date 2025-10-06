@@ -58,7 +58,7 @@ export class AboutComponent extends GenericComponent {
     const year = '20' + versionDate.split('.')[0];
     const month = versionDate.split('.')[1];
     const day = versionDate.split('.')[2];
-    this.dateVersion = new Date(parseInt(year), parseInt(month) - 1, parseInt(day)).toLocaleDateString();
+    this.dateVersion = new Date(parseInt(year), Number.parseInt(month) - 1, Number.parseInt(day)).toLocaleDateString();
   }
 
   private constructVersion(version: string): void {

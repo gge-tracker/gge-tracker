@@ -67,7 +67,7 @@ export abstract class ApiCartography implements ApiHelper {
       // Get the limit clause based on the size parameter. However, the query does not use it
       // with parameterized queries to avoid SQL injection,  so we validate it strictly here.
       // A more complex query with OFFSET would require a different approach.
-      if (isNaN(nb)) {
+      if (Number.isNaN(nb)) {
         limit = 'LIMIT 10';
       } else if (nb < 0) {
         limit = '';

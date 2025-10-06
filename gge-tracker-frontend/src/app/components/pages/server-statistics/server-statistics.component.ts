@@ -391,7 +391,7 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
     let data = this.serverStatsData.map((d) => {
       return {
         x: d.created_at,
-        y: d[identifier]?.toString().includes('.') ? parseFloat(Number(d[identifier]).toFixed(3)) : d[identifier],
+        y: d[identifier]?.toString().includes('.') ? Number.parseFloat(Number(d[identifier]).toFixed(3)) : d[identifier],
       };
     });
     // We need to remove the null values from the data
@@ -552,8 +552,8 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
     const value = (range.target as HTMLSelectElement).value;
     this.currentChartUpdateLoading = true;
     setTimeout(() => {
-      this.rangeSelected = parseInt(value);
-      this.initChartOption('mights', this.data, parseInt(value));
+      this.rangeSelected = Number.parseInt(value);
+      this.initChartOption('mights', this.data, Number.parseInt(value));
       this.currentChartUpdateLoading = false;
     }, 100);
   }

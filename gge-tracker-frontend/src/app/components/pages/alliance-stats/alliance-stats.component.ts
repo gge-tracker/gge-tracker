@@ -1815,8 +1815,8 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     const totalPlayers = data.length;
     const totalParticipations = data.filter((player) => player.data.some((point) => (point[1] || 0) > 0)).length;
     const totalNonParticipations = totalPlayers - totalParticipations;
-    const totalParticipationsRate = parseFloat(((totalParticipations / totalPlayers) * 100).toFixed(2));
-    const totalNonParticipationsRate = parseFloat(((totalNonParticipations / totalPlayers) * 100).toFixed(2));
+    const totalParticipationsRate = Number.parseFloat(((totalParticipations / totalPlayers) * 100).toFixed(2));
+    const totalNonParticipationsRate = Number.parseFloat(((totalNonParticipations / totalPlayers) * 100).toFixed(2));
     this.initParticipationRateChart(chartKey, [totalParticipationsRate, totalNonParticipationsRate], totalPlayers);
   }
 

@@ -48,26 +48,26 @@ export abstract class ApiPlayers implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      let page = parseInt(request.query.page as string) || 1;
+      let page = Number.parseInt(request.query.page as string) || 1;
       let orderBy = (request.query.orderBy as string) || 'player_name';
       let orderType = (request.query.orderType as string) || 'ASC';
       let filterByAlliance = (request.query.alliance as string) || '';
-      let minHonor = parseInt(request.query.minHonor as string);
-      let maxHonor = parseInt(request.query.maxHonor as string);
-      let minMight = parseInt(request.query.minMight as string);
-      let maxMight = parseInt(request.query.maxMight as string);
-      let minLoot = parseInt(request.query.minLoot as string);
-      let maxLoot = parseInt(request.query.maxLoot as string);
+      let minHonor = Number.parseInt(request.query.minHonor as string);
+      let maxHonor = Number.parseInt(request.query.maxHonor as string);
+      let minMight = Number.parseInt(request.query.minMight as string);
+      let maxMight = Number.parseInt(request.query.maxMight as string);
+      let minLoot = Number.parseInt(request.query.minLoot as string);
+      let maxLoot = Number.parseInt(request.query.maxLoot as string);
       let minLevelArray = String(request.query.minLevel)?.split('/');
-      let minLevel = parseInt(minLevelArray[0]);
-      let minLegendaryLevel = parseInt(minLevelArray[1]);
+      let minLevel = Number.parseInt(minLevelArray[0]);
+      let minLegendaryLevel = Number.parseInt(minLevelArray[1]);
       let maxLevelArray = String(request.query.maxLevel)?.split('/');
-      let maxLevel = parseInt(maxLevelArray[0]);
-      let maxLegendaryLevel = parseInt(maxLevelArray[1]);
-      let allianceFilter = parseInt(request.query.allianceFilter as string);
-      let protectionFilter = parseInt(request.query.protectionFilter as string);
-      let banFilter = parseInt(request.query.banFilter as string);
-      let inactiveFilter = parseInt(request.query.inactiveFilter as string);
+      let maxLevel = Number.parseInt(maxLevelArray[0]);
+      let maxLegendaryLevel = Number.parseInt(maxLevelArray[1]);
+      let allianceFilter = Number.parseInt(request.query.allianceFilter as string);
+      let protectionFilter = Number.parseInt(request.query.protectionFilter as string);
+      let banFilter = Number.parseInt(request.query.banFilter as string);
+      let inactiveFilter = Number.parseInt(request.query.inactiveFilter as string);
       let playerNameForDistance = (request.query.playerNameForDistance as string) || '';
       page = page < 1 || page > ApiHelper.MAX_RESULT_PAGE ? 1 : page;
       const orderByValues = [
@@ -89,23 +89,25 @@ export abstract class ApiPlayers implements ApiHelper {
       if (orderType !== 'ASC' && orderType !== 'DESC') {
         orderType = 'ASC';
       }
-      minHonor = minHonor < 0 || isNaN(minHonor) || minHonor > ApiHelper.MAX_RESULT_PAGE ? -1 : minHonor;
-      maxHonor = maxHonor < 0 || isNaN(maxHonor) || maxHonor > ApiHelper.MAX_RESULT_PAGE ? -1 : maxHonor;
-      minMight = minMight < 0 || isNaN(minMight) || minMight > ApiHelper.MAX_RESULT_PAGE ? -1 : minMight;
-      maxMight = maxMight < 0 || isNaN(maxMight) || maxMight > ApiHelper.MAX_RESULT_PAGE ? -1 : maxMight;
-      minLoot = minLoot < 0 || isNaN(minLoot) || minLoot > ApiHelper.MAX_RESULT_PAGE ? -1 : minLoot;
-      maxLoot = maxLoot < 0 || isNaN(maxLoot) || maxLoot > ApiHelper.MAX_RESULT_PAGE ? -1 : maxLoot;
-      minLevel = minLevel < 0 || isNaN(minLevel) || minLevel > 1000 ? -1 : minLevel;
+      minHonor = minHonor < 0 || Number.isNaN(minHonor) || minHonor > ApiHelper.MAX_RESULT_PAGE ? -1 : minHonor;
+      maxHonor = maxHonor < 0 || Number.isNaN(maxHonor) || maxHonor > ApiHelper.MAX_RESULT_PAGE ? -1 : maxHonor;
+      minMight = minMight < 0 || Number.isNaN(minMight) || minMight > ApiHelper.MAX_RESULT_PAGE ? -1 : minMight;
+      maxMight = maxMight < 0 || Number.isNaN(maxMight) || maxMight > ApiHelper.MAX_RESULT_PAGE ? -1 : maxMight;
+      minLoot = minLoot < 0 || Number.isNaN(minLoot) || minLoot > ApiHelper.MAX_RESULT_PAGE ? -1 : minLoot;
+      maxLoot = maxLoot < 0 || Number.isNaN(maxLoot) || maxLoot > ApiHelper.MAX_RESULT_PAGE ? -1 : maxLoot;
+      minLevel = minLevel < 0 || Number.isNaN(minLevel) || minLevel > 1000 ? -1 : minLevel;
       minLegendaryLevel =
-        minLegendaryLevel < 0 || isNaN(minLegendaryLevel) || minLegendaryLevel > 1000 ? -1 : minLegendaryLevel;
-      maxLevel = maxLevel < 0 || isNaN(maxLevel) || maxLevel > 1000 ? -1 : maxLevel;
+        minLegendaryLevel < 0 || Number.isNaN(minLegendaryLevel) || minLegendaryLevel > 1000 ? -1 : minLegendaryLevel;
+      maxLevel = maxLevel < 0 || Number.isNaN(maxLevel) || maxLevel > 1000 ? -1 : maxLevel;
       maxLegendaryLevel =
-        maxLegendaryLevel < 0 || isNaN(maxLegendaryLevel) || maxLegendaryLevel > 1000 ? -1 : maxLegendaryLevel;
-      allianceFilter = isNaN(allianceFilter) || (allianceFilter !== 0 && allianceFilter !== 1) ? -1 : allianceFilter;
+        maxLegendaryLevel < 0 || Number.isNaN(maxLegendaryLevel) || maxLegendaryLevel > 1000 ? -1 : maxLegendaryLevel;
+      allianceFilter =
+        Number.isNaN(allianceFilter) || (allianceFilter !== 0 && allianceFilter !== 1) ? -1 : allianceFilter;
       protectionFilter =
-        isNaN(protectionFilter) || (protectionFilter !== 0 && protectionFilter !== 1) ? -1 : protectionFilter;
-      banFilter = isNaN(banFilter) || (banFilter !== 0 && banFilter !== 1) ? -1 : banFilter;
-      inactiveFilter = isNaN(inactiveFilter) || (inactiveFilter !== 0 && inactiveFilter !== 1) ? -1 : inactiveFilter;
+        Number.isNaN(protectionFilter) || (protectionFilter !== 0 && protectionFilter !== 1) ? -1 : protectionFilter;
+      banFilter = Number.isNaN(banFilter) || (banFilter !== 0 && banFilter !== 1) ? -1 : banFilter;
+      inactiveFilter =
+        Number.isNaN(inactiveFilter) || (inactiveFilter !== 0 && inactiveFilter !== 1) ? -1 : inactiveFilter;
       if (playerNameForDistance && playerNameForDistance.length > 40) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid player name' });
         return;
@@ -386,7 +388,7 @@ export abstract class ApiPlayers implements ApiHelper {
                 legendary_level: result.legendary_level,
                 calculated_distance:
                   result.calculated_distance !== undefined
-                    ? parseFloat(Math.sqrt(result.calculated_distance).toFixed(1))
+                    ? Number.parseFloat(Math.sqrt(result.calculated_distance).toFixed(1))
                     : null,
               };
             }),

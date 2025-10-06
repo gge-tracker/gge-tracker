@@ -388,7 +388,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     const category = String(entry?.data?.['group']).trim().toLowerCase();
     const basePath = ApiRestService.apiUrl + 'assets/images/';
     let ressource;
-    const levelIntWithoutLevel = parseInt(level.replace('level', ''), 10);
+    const levelIntWithoutLevel = Number.parseInt(level.replace('level', ''), 10);
     if (category === 'gate' || name === 'castlewall' || category === 'tower') {
       ressource = `${basePath}castlewall.png?level=${levelIntWithoutLevel}&type=${category}&quality=${name}`;
     } else if (name === 'basic' || name === 'premium') {
@@ -525,8 +525,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       if (b.isGround) return false;
       const x = b.building.positionX;
       const y = b.building.positionY;
-      const originalW = parseInt(String(b.data?.['width']));
-      const originalH = parseInt(String(b.data?.['height']));
+      const originalW = Number.parseInt(String(b.data?.['width']));
+      const originalH = Number.parseInt(String(b.data?.['height']));
       const w = b.building.rotation === 1 ? originalH : originalW;
       const h = b.building.rotation === 1 ? originalW : originalH;
       if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(w) || !Number.isFinite(h)) {
@@ -557,8 +557,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       if (b.isGround) return false;
       const x = b.building.positionX;
       const y = b.building.positionY;
-      const originalW = parseInt(String(b.data?.['width']));
-      const originalH = parseInt(String(b.data?.['height']));
+      const originalW = Number.parseInt(String(b.data?.['width']));
+      const originalH = Number.parseInt(String(b.data?.['height']));
       const w = b.building.rotation === 1 ? originalH : originalW;
       const h = b.building.rotation === 1 ? originalW : originalH;
       if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(w) || !Number.isFinite(h)) {
@@ -581,7 +581,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       `<b>${this.translations['Brûlable']}:</b> ${
         hoveredBuilding?.data?.['burnable'] === undefined
           ? this.translations['Oui']
-          : parseInt(String(hoveredBuilding?.data?.['burnable']))
+          : Number.parseInt(String(hoveredBuilding?.data?.['burnable']))
             ? this.translations['Oui']
             : this.translations['Non']
       }`,
@@ -725,8 +725,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       const { positionX, positionY, rotation } = tile.building;
       const widthElement = tile.data?.['width'] ?? '1';
       const heightElement = tile.data?.['height'] ?? '1';
-      const originalWidth = parseInt(String(widthElement));
-      const originalHeight = parseInt(String(heightElement));
+      const originalWidth = Number.parseInt(String(widthElement));
+      const originalHeight = Number.parseInt(String(heightElement));
       const width = rotation === 1 ? originalHeight : originalWidth;
       const height = rotation === 1 ? originalWidth : originalHeight;
       minX = Math.min(minX, positionX);
@@ -761,8 +761,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       if (entry.isGround || entry.building.inDistrictID !== -1) return total;
       const widthElement = entry.data?.['width'] ?? '1';
       const heightElement = entry.data?.['height'] ?? '1';
-      const originalWidth = parseInt(String(widthElement));
-      const originalHeight = parseInt(String(heightElement));
+      const originalWidth = Number.parseInt(String(widthElement));
+      const originalHeight = Number.parseInt(String(heightElement));
       const width = entry.building.rotation === 1 ? originalHeight : originalWidth;
       const height = entry.building.rotation === 1 ? originalWidth : originalHeight;
       return total + width * height;
@@ -784,8 +784,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       }
       const widthElement = entry.data?.['width'] ?? '1';
       const heightElement = entry.data?.['height'] ?? '1';
-      const originalWidth = parseInt(String(widthElement));
-      const originalHeight = parseInt(String(heightElement));
+      const originalWidth = Number.parseInt(String(widthElement));
+      const originalHeight = Number.parseInt(String(heightElement));
       const width = entry.building.rotation === 1 ? originalHeight : originalWidth;
       const height = entry.building.rotation === 1 ? originalWidth : originalHeight;
       if (
@@ -808,7 +808,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
           if (color.startsWith('#')) {
             const hex = color.slice(1);
             const h = (len: number, i: number): number =>
-              parseInt(len === 3 || len === 4 ? hex[i] + hex[i] : hex.slice(i * 2, i * 2 + 2), 16);
+              Number.parseInt(len === 3 || len === 4 ? hex[i] + hex[i] : hex.slice(i * 2, i * 2 + 2), 16);
             const len = hex.length;
             if (len === 3 || len === 4 || len === 6 || len === 8) return [h(len, 0), h(len, 1), h(len, 2)];
           }
@@ -903,7 +903,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   }
 
   private getFusionLevelPublicOrder(level: string): number {
-    const l = parseInt(level);
+    const l = Number.parseInt(level);
     if (!isNaN(l)) {
       return 100 + l * 5;
     }
@@ -1025,7 +1025,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   }
 
   private getPublicOrder(item: IMappedBuildingUnknownDataElement): number {
-    if (item['decoPoints']) return parseInt(String(item['decoPoints']));
+    if (item['decoPoints']) return Number.parseInt(String(item['decoPoints']));
     return this.getFusionLevelPublicOrder(String(item['initialFusionLevel']));
   }
 
@@ -1346,8 +1346,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     for (const f of floors) {
       const widthElement = f.data?.['width'] ?? '1';
       const heightElement = f.data?.['height'] ?? '1';
-      let w = parseInt(String(widthElement), 10);
-      let h = parseInt(String(heightElement), 10);
+      let w = Number.parseInt(String(widthElement), 10);
+      let h = Number.parseInt(String(heightElement), 10);
       if (f.building.rotation === 1) [w, h] = [h, w];
       const x1 = f.building.positionX;
       const y1 = f.building.positionY;
@@ -1367,8 +1367,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     for (const f of floors) {
       const widthElement = f.data?.['width'] ?? '1';
       const heightElement = f.data?.['height'] ?? '1';
-      let w = parseInt(String(widthElement), 10);
-      let h = parseInt(String(heightElement), 10);
+      let w = Number.parseInt(String(widthElement), 10);
+      let h = Number.parseInt(String(heightElement), 10);
       if (f.building.rotation === 1) [w, h] = [h, w];
       const sx = f.building.positionX - fxMin;
       const sy = f.building.positionY - fyMin;

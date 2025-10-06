@@ -44,17 +44,17 @@ export abstract class ApiServer implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const page = parseInt(request.query.page as string);
+      const page = Number.parseInt(request.query.page as string);
       if (Number.isNaN(page) || page < 1 || page > ApiHelper.MAX_RESULT_PAGE) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid page number' });
         return;
       }
       const filterByCastleType = Number.isNaN(parseInt(request.query.castleType as string))
         ? -1
-        : parseInt(request.query.castleType as string);
+        : Number.parseInt(request.query.castleType as string);
       const filterByMovementType = Number.isNaN(parseInt(request.query.movementType as string))
         ? -1
-        : parseInt(request.query.movementType as string);
+        : Number.parseInt(request.query.movementType as string);
       const searchInputHash = request.query.search ? ApiHelper.hashValue(request.query.search as string) : 'no_search';
       const searchTypeHash = request.query.searchType
         ? ApiHelper.hashValue(request.query.searchType as string)
@@ -273,7 +273,7 @@ export abstract class ApiServer implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const page = parseInt(request.query.page as string);
+      const page = Number.parseInt(request.query.page as string);
       if (Number.isNaN(page) || page < 1 || page > ApiHelper.MAX_RESULT_PAGE) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid page number' });
         return;
@@ -384,7 +384,7 @@ export abstract class ApiServer implements ApiHelper {
           if (error) {
             reject(error);
           } else {
-            renamesCount = parseInt(results.rows[0]['renames_count']);
+            renamesCount = Number.parseInt(results.rows[0]['renames_count']);
             resolve(null);
           }
         });

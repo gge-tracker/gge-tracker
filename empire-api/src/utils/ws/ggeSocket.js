@@ -93,7 +93,7 @@ class GgeSocket {
   async restart() {
     nbReconnects = this.nbReconnects++;
     const randomDelay = Math.floor(Math.random() * 30);
-    const defaultDelay = 120;
+    let defaultDelay = 120;
     if (nbReconnects > 0) {
       if (nbReconnects < 5) {
         const incrementalDelay = [0, 3, 5, 20, 30][Math.min(nbReconnects, 4)];
