@@ -54,6 +54,7 @@ export class ServerService {
     'HU2',
     'ES1',
     'SA1',
+    'INT1 (Soon available)',
   ];
   public mappedLangsToServers: Record<string, string[]> = {
     fr: ['FR1'],
@@ -138,6 +139,6 @@ export class ServerService {
 
   public changeServer(server: string): void {
     this.localStorage.setItem('server', server);
-    window.location.reload();
+    globalThis.location.reload();
   }
 }

@@ -151,31 +151,31 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
         onSameUrlNavigation: 'reload',
       });
     }
-    combineLatest([this.route.queryParamMap, this.route.paramMap]).subscribe(([queryParams, routeParams]) => {
-      const size = Number.parseInt(queryParams.get('size') || '');
-      const world = Number.parseInt(queryParams.get('world') || '0');
-      const paramIn = queryParams.get('in');
-      const colors = queryParams.get('c');
-      const alliance = routeParams.get('alliance');
-      const server = queryParams.get('srv') || this.serverService.currentServer;
+    combineLatest([this.route.queryParamMap, this.route.paramMap]).subscribe(([queryParameters, routeParameters]) => {
+      const size = Number.parseInt(queryParameters.get('size') || '');
+      const world = Number.parseInt(queryParameters.get('world') || '0');
+      const parameterIn = queryParameters.get('in');
+      const colors = queryParameters.get('c');
+      const alliance = routeParameters.get('alliance');
+      const server = queryParameters.get('srv') || this.serverService.currentServer;
       if (server !== this.serverService.currentServer) {
         this.serverService.changeServer(server);
       }
       this.selectedWorld = world;
       this.initMap();
-      if (size !== null && !isNaN(size)) {
+      if (size !== null && !Number.isNaN(size)) {
         void this.initWithAlliances(size);
       } else if (alliance) {
-        if (alliance === 'custom' && paramIn) {
+        if (alliance === 'custom' && parameterIn) {
           try {
-            const parsedParam = JSON.parse(decodeURIComponent(paramIn));
+            const parsedParameter = JSON.parse(decodeURIComponent(parameterIn));
             let parsedColors = [];
             try {
               parsedColors = JSON.parse(decodeURIComponent(colors || '[]') || '[]');
             } catch {
               /* empty */
             }
-            void this.initWithSpecificAlliance(parsedParam, WatchModeStats.ALL_ALLIANCES, parsedColors);
+            void this.initWithSpecificAlliance(parsedParameter, WatchModeStats.ALL_ALLIANCES, parsedColors);
           } catch {
             this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
             return;
@@ -307,8 +307,8 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
       this.downloadLoading = true;
       this.cdr.detectChanges();
       if (this.watchModeAlliance === WatchModeStats.SPECIFIC_ALLIANCE) {
-        const param = 'allianceId=' + this.route.snapshot.params['allianceId'];
-        const url: ApiResponse<Blob> = await this.apiRestService.getScreenshot(param);
+        const parameter = 'allianceId=' + this.route.snapshot.params['allianceId'];
+        const url: ApiResponse<Blob> = await this.apiRestService.getScreenshot(parameter);
         if (!url.success) throw new Error(url.error);
         const blob = url.data;
         const urlBlob = URL.createObjectURL(blob);
@@ -320,8 +320,8 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
         this.cdr.detectChanges();
         a.click();
       } else {
-        const param = 'size=' + this.alliancesQuantity;
-        const url: ApiResponse<Blob> = await this.apiRestService.getScreenshot(param);
+        const parameter = 'size=' + this.alliancesQuantity;
+        const url: ApiResponse<Blob> = await this.apiRestService.getScreenshot(parameter);
         if (!url.success) throw new Error(url.error);
         const blob = url.data;
         const urlBlob = URL.createObjectURL(blob);
@@ -341,16 +341,16 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
 
   public isPlayerHidden(player: string): boolean {
     if (this.watchModeAlliance === WatchModeStats.SPECIFIC_ALLIANCE) {
-      return !this.filteredCastles.find((entry) => entry.name === player);
+      return !this.filteredCastles.some((entry) => entry.name === player);
     } else {
-      return !this.filteredCastles.find((entry) => entry.alliance_name === player);
+      return !this.filteredCastles.some((entry) => entry.alliance_name === player);
     }
   }
 
   public generateHeatmap(): void {
-    const numCells: number = Math.ceil(this.containerSize / this.resolution);
-    this.heatmap = Array.from({ length: numCells }, () =>
-      Array.from({ length: numCells }, () => ({ pp: 0, players: [] })),
+    const numberCells: number = Math.ceil(this.containerSize / this.resolution);
+    this.heatmap = Array.from({ length: numberCells }, () =>
+      Array.from({ length: numberCells }, () => ({ pp: 0, players: [] })),
     );
     const players = this.filteredCastles;
     const t = this.translateService;
@@ -379,7 +379,7 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
 
   public searchAlliance(): void {
     if (!this.isBrowser) return;
-    window.location.href = '/map/' + this.searchedAlliance;
+    globalThis.location.href = '/map/' + this.searchedAlliance;
   }
 
   public async removeItem(allianceOrPlayerName: string): Promise<void> {
@@ -392,7 +392,7 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
       (entry) => entry.name !== allianceOrPlayerName && entry.alliance_name !== allianceOrPlayerName,
     );
     this.toggledAllianceCastles = this.toggledAllianceCastles.filter((name) => name !== allianceOrPlayerName);
-    const deepCopyCastles = JSON.parse(JSON.stringify(castles));
+    const deepCopyCastles = structuredClone(castles);
     this.initMap();
     this.castles = deepCopyCastles;
     this.filteredCastles = this.getFilteredCastles(this.castles);
@@ -477,19 +477,19 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
   public saveLink(): void {
     if (!this.isBrowser) return;
     const castleIds = this.castles.map((c) => c.alliance_id);
-    const uniqueCastleIds = Array.from(new Set(castleIds));
-    const inParam = JSON.stringify(uniqueCastleIds);
+    const uniqueCastleIds = [...new Set(castleIds)];
+    const inParameter = JSON.stringify(uniqueCastleIds);
     const colors = JSON.stringify(this.legends.map((legend) => this.rgbToHex(legend.color)));
     const world = this.selectedWorld || 0;
     const srv = this.serverService.currentServer;
-    const link = `/map/custom?s=${srv}&world=${world}&in=${encodeURIComponent(inParam)}&c=${encodeURIComponent(colors)}`;
+    const link = `/map/custom?s=${srv}&world=${world}&in=${encodeURIComponent(inParameter)}&c=${encodeURIComponent(colors)}`;
     if (link.length > 2000) {
       // If the link is too long, we show an error message (this is a limitation of the URL length)
       this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
       return;
     }
     // Copy the link to the clipboard
-    window.navigator.clipboard
+    globalThis.navigator.clipboard
       .writeText(link)
       .then(() => {
         this.toastService.add(ErrorType.COPIED_TO_CLIPBOARD, 5000, 'info');
@@ -522,7 +522,7 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     this.cdr.detectChanges();
     const response = await this.apiRestService.getCartoAllianceByName(alliance, this.selectedWorld);
     if (!response.success || response.data.length === 0) {
-      this.toastService.add(ErrorType.NO_ALLIANCE_FOUND, 50000);
+      this.toastService.add(ErrorType.NO_ALLIANCE_FOUND, 50_000);
       this.isInLoading = false;
       this.cdr.detectChanges();
       return;
@@ -541,7 +541,7 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     // We need to filter the castles to remove the ones that are already in the list
     this.castles.push(...castles);
     this.castles = this.castles.filter((entry) => entry.castles && entry.castles.length > 0);
-    const deepCopyCastles = JSON.parse(JSON.stringify(this.castles));
+    const deepCopyCastles = structuredClone(this.castles);
     this.initMap();
     this.castles = deepCopyCastles;
     this.filteredCastles = this.getFilteredCastles(this.castles);
@@ -694,13 +694,13 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
   }
 
   public hexToRgb(hex: string): string {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    const result = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex);
     if (!result) return 'rgb(0, 0, 0)';
-    return `rgb(${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)})`;
+    return `rgb(${Number.parseInt(result[1], 16)}, ${Number.parseInt(result[2], 16)}, ${Number.parseInt(result[3], 16)})`;
   }
 
   public applyFilters(): void {
-    const castles = JSON.parse(JSON.stringify(this.castles));
+    const castles = structuredClone(this.castles);
     this.initMap();
     this.castles = castles;
     this.filteredCastles = this.getFilteredCastles(this.castles);
@@ -747,28 +747,28 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     this.watchModeAlliance = watchMode;
     const alliances: ApiCartoAlliance[][] = [];
     // We check if the alliance is a number or a string
-    if (typeof alliance === 'string' && !isNaN(parseInt(alliance))) {
-      const el = await this.apiRestService.getCartoAlliance(Number(alliance), this.selectedWorld);
-      if (el.success && el.data.length > 0) {
-        alliances.push(el.data);
+    if (typeof alliance === 'string' && !Number.isNaN(Number.parseInt(alliance))) {
+      const element = await this.apiRestService.getCartoAlliance(Number(alliance), this.selectedWorld);
+      if (element.success && element.data.length > 0) {
+        alliances.push(element.data);
       } else {
         this.toastService.add(ErrorType.NO_ALLIANCE_FOUND, 5000);
         return;
       }
     } else if (Array.isArray(alliance)) {
       for (const id of alliance) {
-        const res = await this.apiRestService.getCartoAlliance(Number(id), this.selectedWorld);
-        if (res.success && res.data.length > 0) {
-          alliances.push(res.data);
+        const response = await this.apiRestService.getCartoAlliance(Number(id), this.selectedWorld);
+        if (response.success && response.data.length > 0) {
+          alliances.push(response.data);
         } else {
           this.toastService.add(ErrorType.NO_ALLIANCE_FOUND, 5000);
           return;
         }
       }
     } else {
-      const el = await this.apiRestService.getCartoAllianceByName(alliance, this.selectedWorld);
-      if (el.success && el.data.length > 0) {
-        alliances.push(el.data);
+      const element = await this.apiRestService.getCartoAllianceByName(alliance, this.selectedWorld);
+      if (element.success && element.data.length > 0) {
+        alliances.push(element.data);
       } else {
         this.toastService.add(ErrorType.NO_ALLIANCE_FOUND, 5000);
         return;
@@ -785,9 +785,9 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     setTimeout(() => {
       this.genericInit();
       if (parsedColors) {
-        for (let i = 0; i < this.legends.length; i++) {
-          if (parsedColors[i]) {
-            this.changeItemColor(this.legends[i].name, parsedColors[i]);
+        for (let index = 0; index < this.legends.length; index++) {
+          if (parsedColors[index]) {
+            this.changeItemColor(this.legends[index].name, parsedColors[index]);
           }
         }
       }
@@ -859,7 +859,7 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
 
   private addAlliances(alliances: ApiCartoMap[]): void {
     alliances.forEach((alliance: ApiCartoMap) => {
-      if (!this.alliances.find((a) => a.name === alliance.name)) {
+      if (!this.alliances.some((a) => a.name === alliance.name)) {
         this.alliances.push({
           name: alliance.name,
           castles: alliance.castles,
@@ -874,16 +874,16 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
 
   private mapCastleFromData(data: ApiCartoMap[] | ApiCartoAlliance[]): Castle[] {
     this.addAlliances(data as ApiCartoMap[]);
-    const res = data.map((entry) => {
-      const castles = entry.castles ? entry.castles : [];
-      const realmCastles = entry.castles_realm ? entry.castles_realm : [];
+    const result = data.map((entry) => {
+      const castles = entry.castles ?? [];
+      const realmCastles = entry.castles_realm ?? [];
       let selectedCastles: [number, number, number][] = [];
-      if (this.selectedWorld !== 0) {
+      if (this.selectedWorld === 0) {
+        selectedCastles = castles;
+      } else {
         selectedCastles = realmCastles
           .filter((castle: number[]) => castle[0] === this.selectedWorld)
           .map((castle: number[]) => [castle[1], castle[2], castle[3]]);
-      } else {
-        selectedCastles = castles;
       }
       return {
         name: entry.name,
@@ -893,7 +893,7 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
         alliance_name: 'alliance_name' in entry ? entry.alliance_name : undefined,
       };
     });
-    return res;
+    return result;
   }
 
   /**
@@ -929,7 +929,10 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
    */
   private initMap(): void {
     const boundSize = 100;
-    if (!this.map) {
+    if (this.map) {
+      this.clearAllProperties();
+      this.clearLayers();
+    } else {
       this.map = this.L.map('map', {
         center: [WorldSizeDimensions.X.MAX / 2, WorldSizeDimensions.Y.MAX / 2],
         zoom: -1,
@@ -942,9 +945,6 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
         ],
         crs: this.L.CRS.Simple,
       });
-    } else {
-      this.clearAllProperties();
-      this.clearLayers();
     }
     this.initRectangle();
   }
@@ -1024,37 +1024,46 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
       player.castles.forEach((castle: number[]) => {
         const target = castle[2];
         switch (target) {
-          case CastleType.CASTLE:
+          case CastleType.CASTLE: {
             this.quantity.castle++;
             break;
-          case CastleType.REALM_CASTLE:
+          }
+          case CastleType.REALM_CASTLE: {
             this.quantity.castle++;
             break;
-          case CastleType.OUTPOST:
+          }
+          case CastleType.OUTPOST: {
             this.quantity.outpost++;
             break;
-          case CastleType.MONUMENT:
+          }
+          case CastleType.MONUMENT: {
             this.quantity.monument++;
             this.quantity.patriarch++;
             break;
-          case CastleType.LABORATORY:
+          }
+          case CastleType.LABORATORY: {
             this.quantity.laboratory++;
             this.quantity.patriarch++;
             break;
-          case CastleType.CAPITAL:
+          }
+          case CastleType.CAPITAL: {
             this.quantity.capital++;
             this.quantity.patriarch++;
             break;
-          case CastleType.ROYAL_TOWER:
+          }
+          case CastleType.ROYAL_TOWER: {
             this.quantity.royalTower++;
             this.quantity.patriarch++;
             break;
-          case CastleType.CITY:
+          }
+          case CastleType.CITY: {
             this.quantity.city++;
             this.quantity.patriarch++;
             break;
-          default:
+          }
+          default: {
             break;
+          }
         }
       });
     });
@@ -1342,9 +1351,9 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
    */
   private formatPp(pp: number): string {
     if (pp < 1000) return pp.toString();
-    if (pp < 1000000) return (pp / 1000).toFixed(2) + 'K';
-    if (pp < 1000000000) return (pp / 1000000).toFixed(2) + 'M';
-    return (pp / 1000000000).toFixed(2) + 'B';
+    if (pp < 1_000_000) return (pp / 1000).toFixed(2) + 'K';
+    if (pp < 1_000_000_000) return (pp / 1_000_000).toFixed(2) + 'M';
+    return (pp / 1_000_000_000).toFixed(2) + 'B';
   }
 
   /**
@@ -1357,8 +1366,9 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
   private getPlayerColor(name: string): string {
     if (name === '1') return '#000000';
     let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    for (let index = 0; index < name.length; index++) {
+      const code = name.codePointAt(index) ?? 0;
+      hash = code + ((hash << 5) - hash);
     }
     // We use bitwise operations to generate a color based on the hash
     const r = (hash >> 16) & 255;
@@ -1380,14 +1390,14 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
   }
 
   private clearHeatMap(): void {
-    const ctx = this.canvasRef.nativeElement.getContext('2d');
-    if (!ctx) return;
-    ctx.clearRect(0, 0, this.canvasRef.nativeElement.width, this.canvasRef.nativeElement.height);
+    const context = this.canvasRef.nativeElement.getContext('2d');
+    if (!context) return;
+    context.clearRect(0, 0, this.canvasRef.nativeElement.width, this.canvasRef.nativeElement.height);
   }
 
   private drawHeatmap(): void {
-    const ctx = this.canvasRef.nativeElement.getContext('2d');
-    if (!ctx) return;
+    const context = this.canvasRef.nativeElement.getContext('2d');
+    if (!context) return;
     const canvasWidth = this.canvasRef.nativeElement.width;
     const canvasHeight = this.canvasRef.nativeElement.height;
     const rows = this.heatmap.length;
@@ -1397,8 +1407,8 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     const cellHeight = canvasHeight / rows;
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
-        ctx.fillStyle = this.getDensityColor(this.heatmap[row][col].players.length);
-        ctx.fillRect(col * cellWidth, row * cellHeight, cellWidth, cellHeight);
+        context.fillStyle = this.getDensityColor(this.heatmap[row][col].players.length);
+        context.fillRect(col * cellWidth, row * cellHeight, cellWidth, cellHeight);
       }
     }
   }

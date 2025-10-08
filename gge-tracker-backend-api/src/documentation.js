@@ -1,5 +1,5 @@
 const swaggerJsdoc = require("swagger-jsdoc");
-const fs = require("fs");
+const fs = require("node:fs");
 
 const options = {
   failOnErrors: true,

@@ -31,11 +31,11 @@ import { RateLimiterRedis } from 'rate-limiter-flexible';
 import { Request, Response, NextFunction } from 'express';
 import { ControllerManager } from './controller';
 import { ApiGgeTrackerManager } from './services/empire-api-service';
-import * as cors from 'cors';
-import * as express from 'express';
+import cors from 'cors';
+import express from 'express';
 import axios from 'axios';
-import morgan = require('morgan');
-import compression = require('compression');
+import morgan from 'morgan';
+import compression from 'compression';
 import { ApiHelper } from './api-helper';
 
 /* ------------------------------------------------
@@ -70,8 +70,8 @@ app.use(
 /* ------------------------------------------------
  *              Logging Configuration
  * ------------------------------------------------ */
-morgan.token('origin', (req) => req.headers['origin'] || '-');
-morgan.token('user-agent', (req) => req.headers['user-agent'] || '-');
+morgan.token('origin', (request) => request.headers['origin'] || '-');
+morgan.token('user-agent', (request) => request.headers['user-agent'] || '-');
 
 /* ------------------------------------------------
  *          Rate Limiter Configuration
@@ -85,13 +85,13 @@ const rateLimiter = new RateLimiterRedis({
 /* ------------------------------------------------
  *          Rate Limiter Middleware
  * ------------------------------------------------ */
-app.use((req, res, next) => {
-  const ip = req.ip;
+app.use((request, response, next) => {
+  const ip = request.ip || 'unknown';
   const bypassRatesRoutesStartWith = ['/api/v1/assets', '/api/v1/languages'];
   const bypassRatesRoutes = ['/api/v1'];
   if (
-    bypassRatesRoutesStartWith.some((route) => req.originalUrl.startsWith(route)) ||
-    bypassRatesRoutes.includes(req.originalUrl)
+    bypassRatesRoutesStartWith.some((route) => request.originalUrl.startsWith(route)) ||
+    bypassRatesRoutes.includes(request.originalUrl)
   ) {
     return next();
   }
@@ -101,7 +101,7 @@ app.use((req, res, next) => {
       next();
     })
     .catch(() => {
-      res.status(429).send({ error: 'Too many requests, please try again later.' });
+      response.status(429).send({ error: 'Too many requests, please try again later.' });
     });
 });
 
@@ -132,31 +132,31 @@ async function flushLogs(): Promise<void> {
   };
   try {
     await axios.post(LOKI_URL, lokiPayload);
-  } catch (err) {
-    ApiHelper.logError(err, flushLogs.name, null);
+  } catch (error) {
+    ApiHelper.logError(error, flushLogs.name, null);
   }
   logBuffer = [];
 }
 
-setInterval(flushLogs, 10000);
+setInterval(flushLogs, 10_000);
 
 app.use(
-  morgan((tokens, req, res) => {
-    const server = req.headers['gge-server'] || 'none';
-    const ip = req.headers['x-forwarded-for'] || req.ip;
+  morgan((tokens, request, response) => {
+    const server = request.headers['gge-server'] || 'none';
+    const ip = request.headers['x-forwarded-for'] || request.ip;
     const labels = {
       job: 'empire-backend',
       level: 'info',
-      method: tokens.method(req, res),
-      status: tokens.status(req, res),
+      method: tokens.method(request, response),
+      status: tokens.status(request, response),
       gge_server: server,
     };
     const line = {
-      url: tokens.url(req, res),
-      response_time: tokens['response-time'](req, res),
-      content_length: tokens.res(req, res, 'content-length'),
-      user_agent: tokens['user-agent'](req, res),
-      referrer: tokens.referrer(req, res),
+      url: tokens.url(request, response),
+      response_time: tokens['response-time'](request, response),
+      content_length: tokens.res(request, response, 'content-length'),
+      user_agent: tokens['user-agent'](request, response),
+      referrer: tokens.referrer(request, response),
       ip: ip,
     };
     logBuffer.push({
@@ -799,7 +799,7 @@ publicRoutes.get(
  *                       new_player_name:
  *                         type: string
  *                         description: The new player name.
- *                         example: "NewPlayerName"
+ *                         example: "updatedPlayerName"
  *       400:
  *         description: Invalid player ID or server configuration.
  *         content:
@@ -3064,12 +3064,6 @@ publicRoutes.get(
   controllerManager.getStatisticsByPlayerIdAndEventNameAndDuration.bind(controllerManager),
 );
 
-// Generate the list of public routes (these routes do not require the gge-server header)
-const listOfPublicRoutes = [];
-publicRoutes.stack.forEach((r) => {
-  listOfPublicRoutes.push(r.route.path);
-});
-
 /**
  * Express middleware that validates the presence and validity of the 'gge-server' header in incoming requests.
  *
@@ -3082,16 +3076,16 @@ publicRoutes.stack.forEach((r) => {
  * @param res - The Express response object.
  * @param next - The next middleware function in the stack.
  */
-const ggeServerMiddleware = (req: Request, res: Response, next: NextFunction): void => {
-  const language = req.headers['gge-server']?.toString();
+const ggeServerMiddleware = (request: Request, response: Response, next: NextFunction): void => {
+  const language = request.headers['gge-server']?.toString();
   if (!language) {
-    res.status(400).json({
+    response.status(400).json({
       error: "Missing server. Please provide a valid server name with the 'gge-server' header.",
       code: 'MISSING_SERVER',
     });
     return;
   } else if (!apiGgeTrackerManager.isValidServer(language)) {
-    res.status(400).json({
+    response.status(400).json({
       error: "Invalid server. Please provide a valid server name with the 'gge-server' header.",
       code: 'INVALID_SERVER',
     });
@@ -3099,7 +3093,7 @@ const ggeServerMiddleware = (req: Request, res: Response, next: NextFunction): v
   }
   const server = apiGgeTrackerManager.get(language);
   if (!server) {
-    res.status(500).json({
+    response.status(500).json({
       error: 'Server configuration not found.',
       code: 'INTERNAL_SERVER_ERROR',
     });
@@ -3108,10 +3102,10 @@ const ggeServerMiddleware = (req: Request, res: Response, next: NextFunction): v
   // Attach some useful info to the request object
   // This will be used in the controllers
   // to get the right database connection
-  req['pg_pool'] = apiGgeTrackerManager.getPgSqlPool(language);
-  req['mysql_pool'] = apiGgeTrackerManager.getSqlPool(language);
-  req['language'] = language;
-  req['code'] = server.code;
+  request['pg_pool'] = apiGgeTrackerManager.getPgSqlPool(language);
+  request['mysql_pool'] = apiGgeTrackerManager.getSqlPool(language);
+  request['language'] = language;
+  request['code'] = server.code;
   next();
 };
 
@@ -3130,7 +3124,7 @@ async function main(): Promise<void> {
     .listen(APPLICATION_PORT, async () => {
       await controllerManager.initBrowser().catch((error) => {
         console.error('Error initializing browser:', error);
-        process.exit(1);
+        throw new Error('Error initializing browser');
       });
       printHeader();
     })
@@ -3144,17 +3138,17 @@ async function main(): Promise<void> {
  * The header uses ANSI escape codes for colored output
  */
 function printHeader(): void {
-  console.log(` \u001b[34m
-  \u001b[34m                                              __                        __
-  \u001b[34m              ____   ____   ____           _/  |_____________    ____ |  | __ ___________
-  \u001b[34m              / ___\\ / ___\\_/ __ \\   ______ \\   __\\_  __ \\__  \\ _/ ___\\|  |/ // __ \\_  __ \\
-  \u001b[34m            / /_/  > /_/  >  ___/  /_____/  |  |  |  | \\// __ \\\\  \\___|    <\\  ___/|  | \\/
-  \u001b[34m            \\___  /\\___  / \\___  >          |__|  |__|  (____  /\\___  >__|_ \\\\___  >__|
-  \u001b[34m            /_____//_____/      \\/                            \\/     \\/     \\/    \\/
-  \u001b[34m
-  \u001b[32m                            🟢 GGE Tracker API running at PORT: ${APPLICATION_PORT}
+  console.log(` \u001B[34m
+  \u001B[34m                                              __                        __
+  \u001B[34m              ____   ____   ____           _/  |_____________    ____ |  | __ ___________
+  \u001B[34m              / ___\\ / ___\\_/ __ \\   ______ \\   __\\_  __ \\__  \\ _/ ___\\|  |/ // __ \\_  __ \\
+  \u001B[34m            / /_/  > /_/  >  ___/  /_____/  |  |  |  | \\// __ \\\\  \\___|    <\\  ___/|  | \\/
+  \u001B[34m            \\___  /\\___  / \\___  >          |__|  |__|  (____  /\\___  >__|_ \\\\___  >__|
+  \u001B[34m            /_____//_____/      \\/                            \\/     \\/     \\/    \\/
+  \u001B[34m
+  \u001B[32m                            🟢 GGE Tracker API running at PORT: ${APPLICATION_PORT}
           `);
-  console.log('\u001b[0m');
+  console.log('\u001B[0m');
 }
 
 void main();

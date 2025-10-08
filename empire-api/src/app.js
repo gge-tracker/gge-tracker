@@ -2,7 +2,7 @@ import express from 'express';
 import commands from './data/commands.json' assert { type: 'json' };
 import { setNestedValue } from './utils/nestedHeaders.js';
 
-export default function (sockets) {
+export default function createApp(sockets) {
   const app = express();
 
   app.use((req, res, next) => {

@@ -20,11 +20,11 @@ export class MaintenanceComponent {
   private waitLastUpdate(): void {
     void this.apiRest.getLastUpdates(false).then((data) => {
       if (data.success) {
-        window.location.href = '/';
+        globalThis.location.href = '/';
       } else {
         setTimeout(() => {
           this.waitLastUpdate();
-        }, 10000);
+        }, 10_000);
       }
     });
   }

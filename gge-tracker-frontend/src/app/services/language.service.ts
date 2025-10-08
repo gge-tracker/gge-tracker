@@ -38,7 +38,7 @@ export class LanguageService {
   public setCurrentLang(lang: string): void {
     if (this.acceptLangs.includes(lang)) {
       this.localStorage.setItem('lang', lang);
-      window.location.reload();
+      globalThis.location.reload();
     }
   }
 

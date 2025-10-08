@@ -13,12 +13,12 @@ export class CooldownPipe implements PipeTransform, OnDestroy {
   private translations: Record<string, string> = {};
 
   constructor(
-    private ref: ChangeDetectorRef,
+    private reference: ChangeDetectorRef,
     private zone: NgZone,
   ) {
     this.zone.runOutsideAngular(() => {
       this.timer = setInterval(() => {
-        this.zone.run(() => this.ref.markForCheck());
+        this.zone.run(() => this.reference.markForCheck());
       }, 1000);
     });
     this.translateService
@@ -43,7 +43,7 @@ export class CooldownPipe implements PipeTransform, OnDestroy {
 
   public transform(cooldown: string, lastAttackDate: string): string {
     const updatedDate = new Date(cooldown);
-    const endTime = new Date(updatedDate.getTime());
+    const endTime = new Date(updatedDate);
     const now = new Date();
     // We are adding 1 second to the end time to ensure that the cooldown is considered over after the last second
     const remaining = endTime.getTime() - now.getTime() + 1000;
@@ -63,14 +63,14 @@ export class CooldownPipe implements PipeTransform, OnDestroy {
         return this.translations['Attaquable'];
       }
       const elapsedTime = `${hours}${this.translations['heures']} ${minutes}${this.translations['minutes']} ${seconds}${this.translations['secondes']}`;
-      if (Number(hours) > 480000) {
+      if (Number(hours) > 480_000) {
         return this.translations['Attaquable'] + ' (?)';
       }
       return this.translations['Attaquable'] + ' (' + this.translations['depuis'] + ' ' + elapsedTime + ')';
     }
     const totalSeconds = Math.floor(remaining / 1000);
-    const days = Math.floor(totalSeconds / 86400);
-    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const days = Math.floor(totalSeconds / 86_400);
+    const hours = Math.floor((totalSeconds % 86_400) / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60)
       .toString()
       .padStart(2, '0');

@@ -68,7 +68,7 @@ export class TrackerComponent extends GenericComponent {
     'Bientôt attaquable (< 5min)': 2,
     'Bientôt attaquable (< 1h)': 3,
   };
-  public displayedStates = Object.entries(this.states).map(([label, value]) => ({ label, value: String(value) }));
+  public displayedStates = Object.entries(this.states).map(this.mapStateEntry);
   public realms: Realm[] = [
     { key: 2, label: 'Le Glacier éternel' },
     { key: 1, label: 'Les Sables brûlants' },
@@ -341,6 +341,10 @@ export class TrackerComponent extends GenericComponent {
     );
   }
 
+  private mapStateEntry([label, value]: [string, number]): { label: string; value: string } {
+    return { label, value: String(value) };
+  }
+
   private mapDungeonsFromApi(dungeons: ApiDungeonsResponse, rankFunction: (rank: number) => number): Dungeon[] {
     if (dungeons.pagination) {
       this.maxPage = dungeons.pagination.total_pages;
@@ -367,14 +371,18 @@ export class TrackerComponent extends GenericComponent {
 
   private getDungeonImage(kid: number): string {
     switch (kid) {
-      case 1:
+      case 1: {
         return 'assets/dungeon1.png';
-      case 2:
+      }
+      case 2: {
         return 'assets/dungeon2.png';
-      case 3:
+      }
+      case 3: {
         return 'assets/dungeon3.png';
-      default:
+      }
+      default: {
         return 'assets/dungeon_default.png';
+      }
     }
   }
 

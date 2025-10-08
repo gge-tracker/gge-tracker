@@ -7,6 +7,7 @@
 //
 //  Copyrights (c) 2025 - gge-tracker.com & gge-tracker contributors
 //
+import * as fs from 'fs';
 
 /**
  * Utility class providing logging and progress reporting functionalities.
@@ -67,7 +68,6 @@ class Utils {
       } else {
         fileName = `/app/logs/${year}-${month}-${day}-${hour}h-${minutes}m-${server}.log`;
       }
-      const fs = require('fs');
       fs.writeFileSync(fileName, Utils.currentLogs.join('\n'));
     } catch (error) {
       console.error('Error in logsAllFile', error);

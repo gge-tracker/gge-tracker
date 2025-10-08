@@ -1,8 +1,8 @@
 import * as express from 'express';
+import { RedisClientType } from 'redis';
 import { ApiDocumentation } from './routes/api-documentation';
 import { ApiHelper } from './api-helper';
 import { ApiGgeTrackerManager, GgeTrackerServers } from './services/empire-api-service';
-import { RedisClientType } from 'redis';
 import { ApiEvents } from './routes/api-events';
 import { ApiOffers } from './routes/api-offers';
 import { ApiStatus } from './routes/api-status';
@@ -16,7 +16,7 @@ import { ApiAlliances } from './routes/api-alliances';
 import { ApiPlayers } from './routes/api-players';
 import { ApiStatistics } from './routes/api-statistics';
 import { QueueService } from './services/queue-service';
-import { puppeteerSingleton } from './singleton/puppeteerSingleton';
+import { puppeteerSingleton } from './singleton/puppeteer-singleton';
 
 /**
  * Manages API controller endpoints for the Gge Tracker backend.
@@ -48,7 +48,7 @@ export class ControllerManager {
    * @private
    * @see ApiGgeTrackerManager
    */
-  private apiGgeTrackerManager: ApiGgeTrackerManager;
+  private readonly apiGgeTrackerManager: ApiGgeTrackerManager;
   /**
    * The Redis client instance used for interacting with the Redis data store.
    * Provides methods for performing various Redis operations such as get, set, and delete.
@@ -58,7 +58,7 @@ export class ControllerManager {
    *
    * @private
    */
-  private redisClient: RedisClientType<any>;
+  private readonly redisClient: RedisClientType<any>;
   /**
    * Service queue instance for managing castle-related asynchronous tasks.
    *
@@ -68,7 +68,7 @@ export class ControllerManager {
    *
    * @private
    */
-  private castleQueue = new QueueService();
+  private readonly castleQueue = new QueueService();
 
   constructor(apiGgeTrackerManager: ApiGgeTrackerManager, redisClient: RedisClientType<any>) {
     this.apiGgeTrackerManager = apiGgeTrackerManager;
@@ -81,150 +81,149 @@ export class ControllerManager {
     await puppeteerSingleton.getBrowser();
   }
 
-  public getDocumentation(req: express.Request, res: express.Response): void {
-    void ApiDocumentation.getDocumentation(req, res);
+  public getDocumentation(request: express.Request, response: express.Response): void {
+    void ApiDocumentation.getDocumentation(request, response);
   }
 
-  public getStatus(req: express.Request, res: express.Response): void {
-    void ApiStatus.getStatus(req, res);
+  public getStatus(request: express.Request, response: express.Response): void {
+    void ApiStatus.getStatus(request, response);
   }
 
-  public getServers(req: express.Request, res: express.Response): void {
-    void ApiStatus.getServers(req, res);
+  public getServers(request: express.Request, response: express.Response): void {
+    void ApiStatus.getServers(request, response);
   }
 
-  public updateAssets(req: express.Request, res: express.Response): void {
-    void ApiAssets.updateAssets(req, res);
+  public updateAssets(request: express.Request, response: express.Response): void {
+    void ApiAssets.updateAssets(request, response);
   }
 
-  public getGeneratedImage(req: express.Request, res: express.Response): void {
-    void ApiAssets.getGeneratedImage(req, res);
+  public getGeneratedImage(request: express.Request, response: express.Response): void {
+    void ApiAssets.getGeneratedImage(request, response);
   }
 
-  public getAsset(req: express.Request, res: express.Response): void {
-    void ApiAssets.getAsset(req, res);
+  public getAsset(request: express.Request, response: express.Response): void {
+    void ApiAssets.getAsset(request, response);
   }
 
-  public getItems(req: express.Request, res: express.Response): void {
-    void ApiAssets.getItems(req, res);
+  public getItems(request: express.Request, response: express.Response): void {
+    void ApiAssets.getItems(request, response);
   }
 
-  public getLanguage(req: express.Request, res: express.Response): void {
-    void ApiAssets.getLanguage(req, res);
+  public getLanguage(request: express.Request, response: express.Response): void {
+    void ApiAssets.getLanguage(request, response);
   }
 
-  public getEvents(req: express.Request, res: express.Response): void {
+  public getEvents(request: express.Request, response: express.Response): void {
     // Events are stored only on FR1 database (centralized database)
-    void ApiEvents.getEvents(req, res, this.apiGgeTrackerManager.getPgSqlPool(GgeTrackerServers.FR1));
+    void ApiEvents.getEvents(request, response, this.apiGgeTrackerManager.getPgSqlPool(GgeTrackerServers.FR1));
   }
 
-  public getEventPlayers(req: express.Request, res: express.Response): void {
+  public getEventPlayers(request: express.Request, response: express.Response): void {
     // Events are stored only on FR1 database (centralized database)
-    void ApiEvents.getEventPlayers(req, res, this.apiGgeTrackerManager.getPgSqlPool(GgeTrackerServers.FR1));
+    void ApiEvents.getEventPlayers(request, response, this.apiGgeTrackerManager.getPgSqlPool(GgeTrackerServers.FR1));
   }
 
-  public getDataEventType(req: express.Request, res: express.Response): void {
+  public getDataEventType(request: express.Request, response: express.Response): void {
     // Events are stored only on FR1 database (centralized database)
-    void ApiEvents.getDataEventType(req, res, this.apiGgeTrackerManager.getPgSqlPool(GgeTrackerServers.FR1));
+    void ApiEvents.getDataEventType(request, response, this.apiGgeTrackerManager.getPgSqlPool(GgeTrackerServers.FR1));
   }
 
-  public getOffers(req: express.Request, res: express.Response): void {
-    void ApiOffers.getOffers(req, res);
+  public getOffers(request: express.Request, response: express.Response): void {
+    void ApiOffers.getOffers(request, response);
   }
 
-  public getPlayersUpdatesByAlliance(req: express.Request, res: express.Response): void {
-    void ApiUpdates.getPlayersUpdatesByAlliance(req, res);
+  public getPlayersUpdatesByAlliance(request: express.Request, response: express.Response): void {
+    void ApiUpdates.getPlayersUpdatesByAlliance(request, response);
   }
 
-  public getNamesUpdates(req: express.Request, res: express.Response): void {
-    void ApiUpdates.getNamesUpdates(req, res);
+  public getNamesUpdates(request: express.Request, response: express.Response): void {
+    void ApiUpdates.getNamesUpdates(request, response);
   }
 
-  public getAlliancesUpdates(req: express.Request, res: express.Response): void {
-    void ApiUpdates.getAlliancesUpdates(req, res);
+  public getAlliancesUpdates(request: express.Request, response: express.Response): void {
+    void ApiUpdates.getAlliancesUpdates(request, response);
   }
 
-  public getDungeons(req: express.Request, res: express.Response): void {
-    void ApiDungeons.getDungeons(req, res);
+  public getDungeons(request: express.Request, response: express.Response): void {
+    void ApiDungeons.getDungeons(request, response);
   }
 
-  public getServerMovements(req: express.Request, res: express.Response): void {
-    void ApiServer.getMovements(req, res);
+  public getServerMovements(request: express.Request, response: express.Response): void {
+    void ApiServer.getMovements(request, response);
   }
 
-  public getServerRenames(req: express.Request, res: express.Response): void {
-    void ApiServer.getRenames(req, res);
+  public getServerRenames(request: express.Request, response: express.Response): void {
+    void ApiServer.getRenames(request, response);
   }
 
-  public getServerStatistics(req: express.Request, res: express.Response): void {
-    void ApiServer.getStatistics(req, res);
+  public getServerStatistics(request: express.Request, response: express.Response): void {
+    void ApiServer.getStatistics(request, response);
   }
 
-  public getCartographyBySize(req: express.Request, res: express.Response): void {
-    void ApiCartography.getCartographyBySize(req, res);
+  public getCartographyBySize(request: express.Request, response: express.Response): void {
+    void ApiCartography.getCartographyBySize(request, response);
   }
 
-  public getCartographyByAllianceName(req: express.Request, res: express.Response): void {
-    void ApiCartography.getCartographyByAllianceName(req, res);
+  public getCartographyByAllianceName(request: express.Request, response: express.Response): void {
+    void ApiCartography.getCartographyByAllianceName(request, response);
   }
 
-  public getCastleById(req: express.Request, res: express.Response): void {
+  public getCastleById(request: express.Request, response: express.Response): void {
     // Queue the castle requests to avoid overloading the server with multiple requests at the same time
-    this.castleQueue.enqueue(req, res, ApiCastle.getCastleById);
+    this.castleQueue.enqueue(request, response, ApiCastle.getCastleById);
   }
 
-  public getCastleByPlayerName(req: express.Request, res: express.Response): void {
+  public getCastleByPlayerName(request: express.Request, response: express.Response): void {
     // Queue the castle requests to avoid overloading the server with multiple requests at the same time
-    this.castleQueue.enqueue(req, res, ApiCastle.getCastleByPlayerName);
+    this.castleQueue.enqueue(request, response, ApiCastle.getCastleByPlayerName);
   }
 
-  public getCartographyByAllianceId(req: express.Request, res: express.Response): void {
-    void ApiCartography.getCartographyByAllianceId(req, res);
+  public getCartographyByAllianceId(request: express.Request, response: express.Response): void {
+    void ApiCartography.getCartographyByAllianceId(request, response);
   }
 
-  public getAllianceByAllianceId(req: express.Request, res: express.Response): void {
-    void ApiAlliances.getAllianceByAllianceId(req, res);
+  public getAllianceByAllianceId(request: express.Request, response: express.Response): void {
+    void ApiAlliances.getAllianceByAllianceId(request, response);
   }
 
-  public getAllianceByAllianceName(req: express.Request, res: express.Response): void {
-    void ApiAlliances.getAllianceByAllianceName(req, res);
+  public getAllianceByAllianceName(request: express.Request, response: express.Response): void {
+    void ApiAlliances.getAllianceByAllianceName(request, response);
   }
 
-  public getAlliances(req: express.Request, res: express.Response): void {
-    void ApiAlliances.getAlliances(req, res);
+  public getAlliances(request: express.Request, response: express.Response): void {
+    void ApiAlliances.getAlliances(request, response);
   }
 
-  public getTopPlayersByPlayerId(req: express.Request, res: express.Response): void {
+  public getTopPlayersByPlayerId(request: express.Request, response: express.Response): void {
     // Legacy endpoint, disabled for now. May be re-enabled in the future if needed.
-    res.status(501).send({ error: 'This endpoint is temporarily disabled.' });
-    return;
+    response.status(501).send({ error: 'This endpoint is temporarily disabled.' });
   }
 
-  public getPlayers(req: express.Request, res: express.Response): void {
-    void ApiPlayers.getPlayers(req, res);
+  public getPlayers(request: express.Request, response: express.Response): void {
+    void ApiPlayers.getPlayers(request, response);
   }
 
-  public getPlayersByPlayerName(req: express.Request, res: express.Response): void {
-    void ApiPlayers.getPlayersByPlayerName(req, res);
+  public getPlayersByPlayerName(request: express.Request, response: express.Response): void {
+    void ApiPlayers.getPlayersByPlayerName(request, response);
   }
 
-  public getStatisticsByAllianceId(req: express.Request, res: express.Response): void {
-    void ApiStatistics.getStatisticsByAllianceId(req, res);
+  public getStatisticsByAllianceId(request: express.Request, response: express.Response): void {
+    void ApiStatistics.getStatisticsByAllianceId(request, response);
   }
 
-  public getPulsedStatisticsByAllianceId(req: express.Request, res: express.Response): void {
-    void ApiStatistics.getPulsedStatisticsByAllianceId(req, res);
+  public getPulsedStatisticsByAllianceId(request: express.Request, response: express.Response): void {
+    void ApiStatistics.getPulsedStatisticsByAllianceId(request, response);
   }
 
-  public getRankingByPlayerId(req: express.Request, res: express.Response): void {
-    void ApiStatistics.getRankingByPlayerId(req, res);
+  public getRankingByPlayerId(request: express.Request, response: express.Response): void {
+    void ApiStatistics.getRankingByPlayerId(request, response);
   }
 
-  public getStatisticsByPlayerId(req: express.Request, res: express.Response): void {
-    void ApiStatistics.getStatisticsByPlayerId(req, res);
+  public getStatisticsByPlayerId(request: express.Request, response: express.Response): void {
+    void ApiStatistics.getStatisticsByPlayerId(request, response);
   }
 
-  public getStatisticsByPlayerIdAndEventNameAndDuration(req: express.Request, res: express.Response): void {
-    void ApiStatistics.getStatisticsByPlayerIdAndEventNameAndDuration(req, res);
+  public getStatisticsByPlayerIdAndEventNameAndDuration(request: express.Request, response: express.Response): void {
+    void ApiStatistics.getStatisticsByPlayerIdAndEventNameAndDuration(request, response);
   }
 }

@@ -281,8 +281,8 @@ export abstract class ApiCastle implements ApiHelper {
        * --------------------------------- */
       const castleObject = data['content']['gcl']['C'];
       const castlesAI = castleObject.find((c: any) => c.KID === 0)['AI'];
-      const mappedCastles = castlesAI.reduce((acc: any[], castle: any) => {
-        acc.push({
+      const mappedCastles = castlesAI.reduce((accumulator: any[], castle: any) => {
+        accumulator.push({
           kingdomId: 0,
           id: Number(ApiHelper.addCountryCode(castle.AI[3], request['code'])),
           positionX: castle.AI[1],
@@ -296,7 +296,7 @@ export abstract class ApiCastle implements ApiHelper {
           moatLevel: castle.AI[9],
           equipmentUniqueIdSkin: castle.AI[17],
         });
-        return acc;
+        return accumulator;
       }, []);
       response.status(ApiHelper.HTTP_OK).send(mappedCastles);
     } catch (error) {

@@ -26,17 +26,22 @@ export class QueueService {
    * - `res`: The Express `Response` object used to send a response back to the client.
    * - `handler`: An asynchronous function that processes the request and response.
    */
-  private queue: { req: Request; res: Response; handler: (req: Request, res: Response) => Promise<any> }[] = [];
+  private queue: { req: Request; res: Response; handler: (request: Request, response: Response) => Promise<any> }[] =
+    [];
 
   /**
    * Adds a new request, response, and handler function to the processing queue and triggers the next queue execution.
    *
-   * @param req - The Express request object to be enqueued.
-   * @param res - The Express response object to be enqueued.
+   * @param request - The Express request object to be enqueued.
+   * @param response - The Express response object to be enqueued.
    * @param handler - An asynchronous function that handles the request and response.
    */
-  public enqueue(req: Request, res: Response, handler: (req: Request, res: Response) => Promise<any>): void {
-    this.queue.push({ req, res, handler });
+  public enqueue(
+    request: Request,
+    response: Response,
+    handler: (request_: Request, response_: Response) => Promise<any>,
+  ): void {
+    this.queue.push({ req: request, res: response, handler });
     void this.runNext();
   }
 
@@ -58,9 +63,9 @@ export class QueueService {
     this.running = true;
     try {
       await job.handler(job.req, job.res);
-    } catch (err) {
+    } catch (error) {
       const date = new Date().toISOString();
-      console.error(`[${date}] QueueService error:`, err);
+      console.error(`[${date}] QueueService error:`, error);
       if (!job.res.headersSent) {
         job.res.status(500).json({ error: 'Internal Server Error. Please try again later.' });
       }

@@ -39,7 +39,7 @@
           <tr *ngFor="let movement of renames">
             <td>{{ movement.rank }}</td>
             <td>{{ movement.oldPlayerName }}</td>
-            <td>{{ movement.newPlayerName }}</td>
+            <td>{{ movement.updatedPlayerName }}</td>
             <td>{{ (movement.might ? movement.might : 0) | formatNumber }}</td>
             <td>{{ movement.alliance ?? '-' }}</td>
             <td>{{ movement.date | date: ('Date_1' | translate)}}</td>
@@ -49,7 +49,7 @@
           <tr *ngFor="let movement of renames">
             <td>{{ movement.rank }}</td>
             <td>{{ movement.oldPlayerName }}</td>
-            <td>{{ movement.newPlayerName }}</td>
+            <td>{{ movement.updatedPlayerName }}</td>
             <td>{{ movement.date | date: ('Date_1' | translate)}}</td>
           </tr>
         </ng-template>

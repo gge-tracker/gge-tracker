@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 
 import { SearchType } from '@ggetracker-interfaces/empire-ranking';
-import { UtilsService } from '@ggetracker-services/utils.service';
+import { UtilitiesService } from '@ggetracker-services/utilities.service';
 import { HardDrive, LucideAngularModule, Search, Filter, Eraser } from 'lucide-angular';
 import { FilterComponent } from '../filter/filter.component';
 
@@ -27,7 +27,7 @@ export class SearchFormComponent implements OnChanges, OnInit {
   public inputTip = input.required<string>();
   public searchTypes = input.required<Record<SearchType, boolean>>();
   public isInLoading = input.required<boolean>();
-  public utilsService = inject(UtilsService);
+  public utilitiesService = inject(UtilitiesService);
   public searchPlayer = output<string>();
   public searchAlliance = output<string>();
   public filterActive = false;
@@ -57,7 +57,7 @@ export class SearchFormComponent implements OnChanges, OnInit {
 
   public getLocalStorageSearchHistory(): Record<string, string[]> {
     try {
-      return JSON.parse(window.localStorage.getItem('searchHistory') || '{}');
+      return JSON.parse(globalThis.localStorage.getItem('searchHistory') || '{}');
     } catch (error) {
       console.error('Error parsing search history from localStorage', error);
     }
@@ -66,7 +66,7 @@ export class SearchFormComponent implements OnChanges, OnInit {
 
   public saveResultForHistory(category: SearchType, search: string): void {
     try {
-      if (typeof window === 'undefined') return;
+      if (globalThis.window === undefined) return;
       const history = this.getLocalStorageSearchHistory();
       if (history[category] && history[category].length > 5) {
         history[category].pop();
@@ -79,11 +79,11 @@ export class SearchFormComponent implements OnChanges, OnInit {
         history[category].splice(index, 1);
       }
       history[category].unshift(search);
-      window.localStorage.setItem('searchHistory', JSON.stringify(history));
+      globalThis.localStorage.setItem('searchHistory', JSON.stringify(history));
     } catch (error) {
       console.error('Error saving search history to localStorage', error);
       try {
-        window.localStorage.setItem('searchHistory', JSON.stringify({}));
+        globalThis.localStorage.setItem('searchHistory', JSON.stringify({}));
       } catch (error) {
         console.error('Error clearing search history in localStorage', error);
       }
@@ -92,7 +92,7 @@ export class SearchFormComponent implements OnChanges, OnInit {
 
   public getSearchHistory(category: SearchType | 'all'): string[] {
     try {
-      if (typeof window === 'undefined') return [];
+      if (globalThis.window === undefined) return [];
       if (category === 'all') {
         const history = this.getLocalStorageSearchHistory();
         return Object.values(history).flat() as string[];

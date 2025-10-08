@@ -41,10 +41,10 @@ export class TableComponent {
     if (page === 2) pageCutHigh += 1;
     if (page === maxPage) pageCutLow -= 2;
     if (page === maxPage) pageCutLow -= 1;
-    return Array.from({ length: pageCutHigh - pageCutLow + 1 }, (_, i) => pageCutLow + i);
+    return Array.from({ length: pageCutHigh - pageCutLow + 1 }, (_, index) => pageCutLow + index);
   }
 
   public allPages(): number[] {
-    return Array.from({ length: this.maxPage() || 1 }, (_, i) => i + 1);
+    return Array.from({ length: this.maxPage() || 1 }, (_, index) => index + 1);
   }
 }

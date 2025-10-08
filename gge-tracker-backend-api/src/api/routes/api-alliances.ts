@@ -1,6 +1,6 @@
 import * as express from 'express';
 import * as pg from 'pg';
-import { ApiHelper } from '../api-helper';
+import { ApiHelper } from './../api-helper';
 import { formatInTimeZone } from 'date-fns-tz';
 
 /**
@@ -71,8 +71,8 @@ export abstract class ApiAlliances implements ApiHelper {
       let playerY = null;
       if (playerNameForDistance) {
         // If player name is provided, get player's main castle coordinates
-        let paramIndex = 1;
-        const playerQuery = `SELECT castles FROM players WHERE LOWER(name) = $${paramIndex++} LIMIT 1`;
+        let parameterIndex = 1;
+        const playerQuery = `SELECT castles FROM players WHERE LOWER(name) = $${parameterIndex++} LIMIT 1`;
         const playerResults: any[] = await new Promise((resolve, reject) => {
           pool.query(playerQuery, [playerNameForDistance], (error, results) => {
             if (error) reject(error);
@@ -108,7 +108,6 @@ export abstract class ApiAlliances implements ApiHelper {
       pool.query(query, parameters, async (error, results) => {
         if (error) {
           response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: 'An exception occurred' });
-          return;
         } else {
           if (!results || results.rowCount === 0) {
             // HTTP 200 to avoid leaking valid IDs. This needs to be handled in the frontend.
@@ -129,9 +128,9 @@ export abstract class ApiAlliances implements ApiHelper {
               current_fame: Number(result.current_fame),
               highest_fame: Number(result.highest_fame),
               calculated_distance:
-                result.calculated_distance !== null
-                  ? Number.parseFloat(Math.sqrt(result.calculated_distance).toFixed(1))
-                  : null,
+                result.calculated_distance === null
+                  ? null
+                  : Number.parseFloat(Math.sqrt(result.calculated_distance).toFixed(1)),
               honor: Number(result.honor),
               max_honor: Number(result.max_honor),
               peace_disabled_at: result.peace_disabled_at,
@@ -203,7 +202,7 @@ export abstract class ApiAlliances implements ApiHelper {
       /* ---------------------------------
        * Build and execute SQL query
        * --------------------------------- */
-      let paramIndex = 1;
+      let parameterIndex = 1;
       const query: string = `
         SELECT
             A.id AS alliance_id,
@@ -220,7 +219,7 @@ export abstract class ApiAlliances implements ApiHelper {
         LEFT JOIN
             players P ON A.id = P.alliance_id
         WHERE
-            LOWER(A.name) = $${paramIndex++}
+            LOWER(A.name) = $${parameterIndex++}
         GROUP BY
             A.id
         LIMIT 1;
@@ -327,7 +326,7 @@ export abstract class ApiAlliances implements ApiHelper {
       /* ---------------------------------
        * Fetch paginated alliance data
        * --------------------------------- */
-      let paramIndex = 1;
+      let parameterIndex = 1;
       const query = `
         SELECT
             A.id AS alliance_id,
@@ -349,7 +348,7 @@ export abstract class ApiAlliances implements ApiHelper {
         HAVING
             COUNT(P.id) > 0
         ORDER BY ${orderBy} ${orderType}
-        LIMIT $${paramIndex++} OFFSET $${paramIndex++};
+        LIMIT $${parameterIndex++} OFFSET $${parameterIndex++};
     `;
       const sqlDuration = Date.now();
       (request['pg_pool'] as pg.Pool).query(
@@ -417,7 +416,7 @@ export abstract class ApiAlliances implements ApiHelper {
    * - Results are ordered by the player's current might in descending order.
    */
   private static getAllianceByAllianceIdSQLQuery(): string {
-    let paramIndex = 1;
+    let parameterIndex = 1;
     return `
       SELECT
         A.name AS alliance_name,
@@ -440,13 +439,13 @@ export abstract class ApiAlliances implements ApiHelper {
         (
           POWER(
           LEAST(
-              ABS(CAST(MC.castle_x AS INTEGER) - $${paramIndex++}),
-              1287 - ABS(CAST(MC.castle_x AS INTEGER) - $${paramIndex++})
+              ABS(CAST(MC.castle_x AS INTEGER) - $${parameterIndex++}),
+              1287 - ABS(CAST(MC.castle_x AS INTEGER) - $${parameterIndex++})
           ),
           2
           ) +
           POWER(
-          ABS(CAST(MC.castle_y AS INTEGER) - $${paramIndex++}),
+          ABS(CAST(MC.castle_y AS INTEGER) - $${parameterIndex++}),
           2
           )
         ) AS calculated_distance
@@ -464,7 +463,7 @@ export abstract class ApiAlliances implements ApiHelper {
         LIMIT 1
         ) AS MC ON true
       WHERE
-        A.id = $${paramIndex++}
+        A.id = $${parameterIndex++}
       AND
         P.castles IS NOT NULL AND jsonb_array_length(P.castles) > 0
       ORDER BY

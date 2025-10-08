@@ -17,7 +17,7 @@ import {
   Users,
 } from 'lucide-angular';
 
-import pkg from '../../../../package.json';
+import package_ from '../../../../package.json';
 import { LanguageService } from '@ggetracker-services/language.service';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
 import { ServerService } from '@ggetracker-services/server.service';
@@ -49,12 +49,12 @@ export class NavbarComponent {
   private _isDevLanguage: boolean = this.localStorage.getItem('lang_dev') !== null || false;
 
   constructor() {
-    this.version = 'v' + pkg.version.split('-')[0];
+    this.version = 'v' + package_.version.split('-')[0];
   }
 
   public resetTranslationMode(): void {
     this.localStorage.removeItem('lang_dev');
-    window.location.reload();
+    globalThis.location.reload();
   }
 
   public isActive(route: string | string[]): boolean {

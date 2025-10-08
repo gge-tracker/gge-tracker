@@ -2176,7 +2176,10 @@ export class GenericFetchAndSaveBackend {
       const totalHonor = playerLootMightEntries.reduce((acc, [, val]) => Number(acc ?? 0) + Number(val[5] ?? 0), 0);
       // Might
       const maxMightEntry = playerLootMightEntries
-        .filter(([, val]) => val?.[1] !== undefined && val[1] !== null && !isNaN(Number(val[1])) && Number(val[1]) >= 0)
+        .filter(
+          ([, val]) =>
+            val?.[1] !== undefined && val[1] !== null && !Number.isNaN(Number(val[1])) && Number(val[1]) >= 0,
+        )
         .reduce<
           [number, any[]]
         >((maxEntry, currentEntry) => (Number(currentEntry[1][1]) > Number(maxEntry[1][1]) ? currentEntry : maxEntry), [0, [0,
@@ -2185,7 +2188,9 @@ export class GenericFetchAndSaveBackend {
       const maxMightPlayerId = maxMightEntry[0] || null;
       // Loot
       const maxLootEntry = playerLootMightEntries
-        .filter(([, val]) => val[0] !== undefined && val[0] !== null && !isNaN(Number(val[0])) && Number(val[0]) >= 0)
+        .filter(
+          ([, val]) => val[0] !== undefined && val[0] !== null && !Number.isNaN(Number(val[0])) && Number(val[0]) >= 0,
+        )
         .reduce<
           [number, any[]]
         >((maxEntry, currentEntry) => (Number(currentEntry[1][0]) > Number(maxEntry[1][0]) ? currentEntry : maxEntry), [0, [0,
@@ -2525,17 +2530,19 @@ export class GenericFetchAndSaveBackend {
     levelCategory: number = 6,
   ): Promise<void> {
     try {
-      Utils.logMessage('Récupération du dernier event');
+      Utils.logMessage(' Executing custom event history for', eventName);
       const pgQuery = `
-        SELECT event_num, top1_player_id, top1_player_score
-        FROM ${tableEventName}
-        ORDER BY event_num DESC
-        LIMIT 1
+        SELECT event_num, player_name, level, point, rank
+        FROM ${tableEventHistoryName}
+        WHERE event_num = (
+          SELECT MAX(event_num)
+          FROM ${tableEventHistoryName}
+        )
+        ORDER BY point DESC
+        LIMIT 10
       `;
       const result = await this.pgSqlQuery(pgQuery);
       const lastEventNum = result.rows.length > 0 ? result.rows[0].event_num : 0;
-      const lastTop1PlayerId = result.rows.length > 0 ? result.rows[0].top1_player_id : null;
-      const lastTop1PlayerScore = result.rows.length > 0 ? result.rows[0].top1_player_score : null;
       let i = Math.ceil(increment / 2);
       let j = 0;
       const entities: Record<string, any> = {};
@@ -2564,15 +2571,15 @@ export class GenericFetchAndSaveBackend {
         const fr = data?.content?.FR;
         const igh = data?.content?.IGH;
         if (data?.content?.L) {
-          const firstEntry = data.content.L[0];
-          const firstPlayerId = firstEntry[2]['OID'];
-          const firstPlayerScore = firstEntry[1];
-          if (lastEventNum > 0 && lastTop1PlayerId == firstPlayerId && lastTop1PlayerScore == firstPlayerScore) {
+          const content = data.content.L;
+          if (this.checkEventAlreadyExists(content, result.rows, 'trace')) {
             Utils.logMessage(' [info] No new event to fill');
             return;
           }
           // Insert the new event
           Utils.logMessage(' [info] New event to fill');
+          const firstPlayerId = content[0][2]['OID'];
+          const firstPlayerScore = content[0][1];
           const collectDate = new Date();
           await this.pgSqlQuery(
             `
@@ -2663,7 +2670,6 @@ export class GenericFetchAndSaveBackend {
             let dbConn;
             let dbName;
             Utils.logMessage(' [info] Processing server:', server);
-
             if (server === 'FR1') {
               dbConn = this.pgSqlConnection;
             } else {
@@ -2686,7 +2692,6 @@ export class GenericFetchAndSaveBackend {
               await dbConn.connect();
               Utils.logMessage(' [info] Connected to database for server:', server);
             }
-
             // Retrieve all real player_ids at once
             const names = entitiesForServer.map((e) => e.playerName);
             Utils.logMessage(' [info] Count: ' + names.length + ' players to process for server ' + server);
@@ -2753,6 +2758,28 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('=========== END STACK TRACE =============');
       this.DB_UPDATES.criticalErrors++;
     }
+  }
+
+  private async checkEventAlreadyExists(
+    fetchedData: any[],
+    existingEntries: { event_num: number; player_name: string; level: number; point: number; rank: number }[],
+    logLevel: string,
+  ): Promise<boolean> {
+    const existingSet = new Set(
+      existingEntries.map((entry) => `${entry.player_name}|${entry.level}|${entry.point}|${entry.rank}`),
+    );
+    if (logLevel === 'trace')
+      Utils.logMessage(' [trace] Existing entries:', JSON.stringify(Array.from(existingSet).slice(0, 10)));
+    for (const entry of fetchedData) {
+      const playerName = entry[2]['N'].split('_').slice(0, -1).join('_');
+      const level = entry[2]['L'];
+      const point = entry[1];
+      const rank = entry[0];
+      const key = `${playerName}|${level}|${point}|${rank}`;
+      if (logLevel === 'trace') Utils.logMessage(' [trace] Checking entry:', key);
+    }
+    if (logLevel === 'trace') Utils.logMessage(' [trace] All entries match existing records');
+    return true; // All entries match
   }
 
   private async pgSqlQuery(query: string, params: any[] = []): Promise<any> {

@@ -3,8 +3,8 @@ import { Component, inject, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 
-import pkg from '../../../../package.json';
-import { SortByOrderPipe } from '@ggetracker-pipes/sortByOrder.pipe';
+import package_ from '../../../../package.json';
+import { SortByOrderPipe } from '@ggetracker-pipes/sort-by-order.pipe';
 import { ServerService } from '@ggetracker-services/server.service';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 
@@ -26,7 +26,7 @@ export class ServerBadgeComponent extends GenericComponent {
 
   constructor() {
     super();
-    this.constructVersion(pkg.version);
+    this.constructVersion(package_.version);
   }
 
   public get currentServer(): string {

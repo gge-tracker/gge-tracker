@@ -118,7 +118,7 @@ export abstract class ApiStatistics implements ApiHelper {
       /* ---------------------------------
        * Build query
        * --------------------------------- */
-      let paramIndex = 1;
+      let parameterIndex = 1;
       const query = `
         SELECT
             players.name AS player_name,
@@ -126,7 +126,7 @@ export abstract class ApiStatistics implements ApiHelper {
             alliances.id AS alliance_id
         FROM players LEFT JOIN alliances
         ON players.alliance_id = alliances.id
-        WHERE players.id = $${paramIndex++} `;
+        WHERE players.id = $${parameterIndex++} `;
       const pool = ApiHelper.ggeTrackerManager.getPgSqlPoolFromRequestId(playerId);
       const code = ApiHelper.getCountryCode(String(playerId));
       if (!pool || !code) {
@@ -156,8 +156,13 @@ export abstract class ApiStatistics implements ApiHelper {
 
       try {
         let basicTables = ApiHelper.ggeTrackerManager.getOlapEventTables();
-        const olapDbName = ApiHelper.ggeTrackerManager.getOlapDatabaseFromRequestId(Number(playerId));
-        const { diffs, points } = await this.getPlayerEventStatistics(playerId, olapDbName, undefined, basicTables);
+        const olapDatabaseName = ApiHelper.ggeTrackerManager.getOlapDatabaseFromRequestId(Number(playerId));
+        const { diffs, points } = await this.getPlayerEventStatistics(
+          playerId,
+          olapDatabaseName,
+          undefined,
+          basicTables,
+        );
         const data = { diffs, player_name: playerName, alliance_name: allianceName, alliance_id: allianceId, points };
         void ApiHelper.updateCache(cacheKey, data);
         response.status(ApiHelper.HTTP_OK).send(data);
@@ -225,7 +230,7 @@ export abstract class ApiStatistics implements ApiHelper {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
         return;
       }
-      let paramIndex = 1;
+      let parameterIndex = 1;
 
       /* ---------------------------------
        * Build query
@@ -237,7 +242,7 @@ export abstract class ApiStatistics implements ApiHelper {
           alliances.id AS alliance_id
         FROM players LEFT JOIN alliances
         ON players.alliance_id = alliances.id
-        WHERE players.id = $${paramIndex++} `;
+        WHERE players.id = $${parameterIndex++} `;
       const pool = ApiHelper.ggeTrackerManager.getPgSqlPoolFromRequestId(playerId);
       const code = ApiHelper.getCountryCode(String(playerId));
       if (!pool || !code) {
@@ -265,8 +270,8 @@ export abstract class ApiStatistics implements ApiHelper {
         return;
       }
       try {
-        const olapDbName = ApiHelper.ggeTrackerManager.getOlapDatabaseFromRequestId(Number(playerId));
-        const { diffs, points } = await this.getPlayerEventStatistics(playerId, olapDbName, duration, eventName);
+        const olapDatabaseName = ApiHelper.ggeTrackerManager.getOlapDatabaseFromRequestId(Number(playerId));
+        const { diffs, points } = await this.getPlayerEventStatistics(playerId, olapDatabaseName, duration, eventName);
         const data = { diffs, player_name: playerName, alliance_name: allianceName, alliance_id: allianceId, points };
         void ApiHelper.updateCache(cacheKey, data);
         response.status(ApiHelper.HTTP_OK).send(data);
@@ -398,7 +403,7 @@ export abstract class ApiStatistics implements ApiHelper {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
         return;
       }
-      let paramIndex = 1;
+      let parameterIndex = 1;
 
       /* ---------------------------------
        * Server and country code extraction
@@ -437,7 +442,7 @@ export abstract class ApiStatistics implements ApiHelper {
           FROM players
         ) AS players
         LEFT JOIN alliances ON players.alliance_id = alliances.id
-        WHERE players.id = $${paramIndex++}
+        WHERE players.id = $${parameterIndex++}
         LIMIT 1;
       `;
       const query_global_rank = `
@@ -543,17 +548,17 @@ export abstract class ApiStatistics implements ApiHelper {
       /* ---------------------------------
        * Database connection and player IDs retrieval
        * --------------------------------- */
-      let paramIndex = 1;
-      const sqlQueryIds = `SELECT id FROM players WHERE alliance_id = $${paramIndex++}`;
+      let parameterIndex = 1;
+      const sqlQueryIds = `SELECT id FROM players WHERE alliance_id = $${parameterIndex++}`;
       const realAllianceId = ApiHelper.removeCountryCode(allianceId);
       const code = ApiHelper.getCountryCode(String(allianceId));
       const pool = ApiHelper.ggeTrackerManager.getPgSqlPoolFromRequestId(allianceId);
       if (!pool || !realAllianceId) {
         return { error: 'Invalid alliance ID' };
       }
-      const sqlQueryIdsParams = [realAllianceId];
+      const sqlQueryIdsParameters = [realAllianceId];
       const sqlQueryIdsResult: any[] | undefined = await new Promise((resolve, reject) => {
-        pool.query(sqlQueryIds, sqlQueryIdsParams, (error, results) => {
+        pool.query(sqlQueryIds, sqlQueryIdsParameters, (error, results) => {
           if (error) {
             reject(error);
           } else {
@@ -607,8 +612,8 @@ export abstract class ApiStatistics implements ApiHelper {
             });
             dates_stop[table] = new Date();
             resolve(null);
-          } catch (err) {
-            reject(err);
+          } catch (error) {
+            reject(error);
           }
         });
       });
@@ -654,7 +659,7 @@ export abstract class ApiStatistics implements ApiHelper {
     olapDatabase: string,
     serverCode: string,
   ): Promise<any> {
-    const db = pgPool;
+    const database_ = pgPool;
     const database = olapDatabase;
     try {
       /* ---------------------------------
@@ -665,16 +670,16 @@ export abstract class ApiStatistics implements ApiHelper {
       /* ---------------------------------
        * Retrieve player IDs for the alliance
        * --------------------------------- */
-      let paramIndex = 1;
-      const sqlQueryIds = `SELECT id FROM players WHERE alliance_id = $${paramIndex++}`;
-      const sqlQueryIdsParams = [ApiHelper.removeCountryCode(allianceId)];
+      let parameterIndex = 1;
+      const sqlQueryIds = `SELECT id FROM players WHERE alliance_id = $${parameterIndex++}`;
+      const sqlQueryIdsParameters = [ApiHelper.removeCountryCode(allianceId)];
       const players: any[] = await new Promise((resolve, reject) => {
-        db.query(sqlQueryIds, sqlQueryIdsParams, (error, results) => {
+        database_.query(sqlQueryIds, sqlQueryIdsParameters, (error, results) => {
           if (error) reject(error);
           else resolve(results.rows);
         });
       });
-      if (!players.length) return { error: 'No players found' };
+      if (players.length === 0) return { error: 'No players found' };
       const ids = players.map((p) => p.id);
       const idList = ids.join(',');
 
@@ -684,12 +689,12 @@ export abstract class ApiStatistics implements ApiHelper {
       const now = new Date();
       const fromDate7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       const fromDate24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      const fromDateStr7d = fromDate7d.toISOString().slice(0, 19).replace('T', ' ');
-      const fromDateStr24h = fromDate24h.toISOString().slice(0, 19).replace('T', ' ');
+      const fromDateString7d = fromDate7d.toISOString().slice(0, 19).replace('T', ' ');
+      const fromDateString24h = fromDate24h.toISOString().slice(0, 19).replace('T', ' ');
       const fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
       const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-      const fromDateStr = fromDate.toISOString().slice(0, 10); // 'YYYY-MM-DD'
-      const toDateStr = yesterday.toISOString().slice(0, 10); // 'YYYY-MM-DD'
+      const fromDateString = fromDate.toISOString().slice(0, 10); // 'YYYY-MM-DD'
+      const toDateString = yesterday.toISOString().slice(0, 10); // 'YYYY-MM-DD'
 
       /* ---------------------------------
        * Build queries
@@ -698,7 +703,7 @@ export abstract class ApiStatistics implements ApiHelper {
       const mightHourlyQuery = `
         SELECT toStartOfHour(created_at) AS hour, sum(point) AS total
         FROM ${database}.player_might_history
-        WHERE player_id IN (${idList}) AND created_at >= '${fromDateStr7d}'
+        WHERE player_id IN (${idList}) AND created_at >= '${fromDateString7d}'
         GROUP BY hour
         ORDER BY hour
       `;
@@ -709,7 +714,7 @@ export abstract class ApiStatistics implements ApiHelper {
             SELECT toDate(created_at) AS day, player_id, argMax(point, created_at) - argMin(point, created_at) AS diff
             FROM ${database}.player_might_history
             WHERE player_id IN (${idList})
-            AND toDate(created_at) BETWEEN '${fromDateStr}' AND '${toDateStr}'
+            AND toDate(created_at) BETWEEN '${fromDateString}' AND '${toDateString}'
             GROUP BY day, player_id
         )
         GROUP BY day
@@ -729,7 +734,7 @@ export abstract class ApiStatistics implements ApiHelper {
             min(point) AS min_point
           FROM ${database}.player_might_history
           WHERE player_id IN (${idList})
-            AND toDate(created_at) BETWEEN '${fromDateStr}' AND '${toDateStr}'
+            AND toDate(created_at) BETWEEN '${fromDateString}' AND '${toDateString}'
           GROUP BY day, player_id
         ) AS sub
         GROUP BY day
@@ -743,7 +748,7 @@ export abstract class ApiStatistics implements ApiHelper {
           argMax(point, created_at) - argMin(point, created_at) AS diff,
           argMax(point, created_at) AS current
         FROM ${database}.player_might_history
-        WHERE player_id IN (${idList}) AND created_at >= '${fromDateStr24h}'
+        WHERE player_id IN (${idList}) AND created_at >= '${fromDateString24h}'
         GROUP BY player_id
         ORDER BY diff DESC
         LIMIT 5
@@ -756,7 +761,7 @@ export abstract class ApiStatistics implements ApiHelper {
           argMax(point, created_at) - argMin(point, created_at) AS diff,
           argMax(point, created_at) AS current
         FROM ${database}.player_might_history
-        WHERE player_id IN (${idList}) AND created_at >= '${fromDateStr7d}'
+        WHERE player_id IN (${idList}) AND created_at >= '${fromDateString7d}'
         GROUP BY player_id
         ORDER BY diff DESC
         LIMIT 5
@@ -769,7 +774,7 @@ export abstract class ApiStatistics implements ApiHelper {
             argMax(point, created_at) - argMin(point, created_at) AS diff,
             argMax(point, created_at) AS current
           FROM ${database}.player_might_history
-          WHERE player_id IN (${idList}) AND created_at >= '${fromDateStr24h}'
+          WHERE player_id IN (${idList}) AND created_at >= '${fromDateString24h}'
           GROUP BY player_id
           HAVING diff < 0
           ORDER BY diff ASC
@@ -783,7 +788,7 @@ export abstract class ApiStatistics implements ApiHelper {
           argMax(point, created_at) - argMin(point, created_at) AS diff,
           argMax(point, created_at) AS current
         FROM ${database}.player_might_history
-        WHERE player_id IN (${idList}) AND created_at >= '${fromDateStr7d}'
+        WHERE player_id IN (${idList}) AND created_at >= '${fromDateString7d}'
         GROUP BY player_id
         HAVING diff < 0
         ORDER BY diff ASC
@@ -856,8 +861,8 @@ export abstract class ApiStatistics implements ApiHelper {
         top_might_loss_24h: topMightLossResul24h,
         top_might_loss_7d: topMightLossResult7d,
       };
-    } catch (err) {
-      return { error: err.message };
+    } catch (error) {
+      return { error: error.message };
     }
   }
 
@@ -882,7 +887,7 @@ export abstract class ApiStatistics implements ApiHelper {
    */
   private static async getPlayerEventStatistics(
     playerId: number,
-    olapDb: string,
+    olapDatabase: string,
     createdAtDiffLimit?: number,
     eventTables: string | string[] = ApiHelper.ggeTrackerManager.getOlapEventTables(),
   ): Promise<any> {
@@ -908,7 +913,7 @@ export abstract class ApiStatistics implements ApiHelper {
         return new Promise(async (resolve, reject) => {
           dates_start[table] = new Date();
           try {
-            const database = olapDb;
+            const database = olapDatabase;
             if (!database) {
               reject(new Error('Database not specified'));
               return;
@@ -962,8 +967,8 @@ export abstract class ApiStatistics implements ApiHelper {
             }
             dates_stop[table] = new Date();
             resolve(null);
-          } catch (err) {
-            reject(err);
+          } catch (error) {
+            reject(error);
           }
         });
       });

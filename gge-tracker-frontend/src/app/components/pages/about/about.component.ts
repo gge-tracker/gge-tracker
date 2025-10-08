@@ -1,7 +1,7 @@
 import { NgFor, NgTemplateOutlet } from '@angular/common';
 import { Component, inject } from '@angular/core';
 
-import pkg from '../../../../../package.json';
+import package_ from '../../../../../package.json';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { TranslatePipe } from '@ngx-translate/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
@@ -34,13 +34,12 @@ export class AboutComponent extends GenericComponent {
     { name: 'Fear', server: 'DE1' },
     { name: 'nitro0ogen', server: 'SA1' },
   ];
-  private _orderedContribs = this.contribs.sort((a, b) => a.name.localeCompare(b.name));
 
   constructor() {
     super();
     this.isInLoading = false;
-    this.constructDateVersion(pkg.version);
-    this.constructVersion(pkg.version);
+    this.constructDateVersion(package_.version);
+    this.constructVersion(package_.version);
   }
 
   public ngOnInit(): void {
@@ -48,8 +47,8 @@ export class AboutComponent extends GenericComponent {
       .get('about.intro-1', {
         heart: `<span style="color: #ff00009e;"><i class="fa-solid fa-heart"></i></span>`,
       })
-      .subscribe((res: string) => {
-        this.safeTranslatedIntro1 = this.sanitizer.bypassSecurityTrustHtml(res);
+      .subscribe((result: string) => {
+        this.safeTranslatedIntro1 = this.sanitizer.bypassSecurityTrustHtml(result);
       });
   }
 
@@ -58,7 +57,11 @@ export class AboutComponent extends GenericComponent {
     const year = '20' + versionDate.split('.')[0];
     const month = versionDate.split('.')[1];
     const day = versionDate.split('.')[2];
-    this.dateVersion = new Date(parseInt(year), Number.parseInt(month) - 1, Number.parseInt(day)).toLocaleDateString();
+    this.dateVersion = new Date(
+      Number.parseInt(year),
+      Number.parseInt(month) - 1,
+      Number.parseInt(day),
+    ).toLocaleDateString();
   }
 
   private constructVersion(version: string): void {
@@ -68,6 +71,6 @@ export class AboutComponent extends GenericComponent {
   }
 
   public get orderedContribs(): { name: string; server: string }[] {
-    return this._orderedContribs;
+    return this.contribs.sort((a, b) => a.name.localeCompare(b.name));
   }
 }

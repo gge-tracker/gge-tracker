@@ -85,11 +85,9 @@ export class PlayersComponent extends GenericComponent implements OnInit {
   private localStorage = inject(LocalStorageService);
 
   public ngOnInit(): void {
-    if (typeof window === 'undefined') return;
+    if (globalThis.window === undefined) return;
     const sort = this.localStorage.getItem('sort');
-    if (sort) {
-      if (sort === 'distance' && this.formFilters.playerCastleDistance !== '') this.sort = sort;
-    }
+    if (sort && sort === 'distance' && this.formFilters.playerCastleDistance !== '') this.sort = sort;
     const reverse = this.localStorage.getItem('reverse');
     if (reverse === 'true') {
       this.reverse = true;
@@ -101,15 +99,15 @@ export class PlayersComponent extends GenericComponent implements OnInit {
       this.formFilters.playerCastleDistance = playerNameForDistance;
       this.addHeaderTableBlock();
     }
-    const urlParams = this.route.snapshot.queryParams;
-    if (urlParams['alliance']) {
-      this.search = urlParams['alliance'];
+    const urlParameters = this.route.snapshot.queryParams;
+    if (urlParameters['alliance']) {
+      this.search = urlParameters['alliance'];
       this.isInLoading = false;
       void this.searchAlliance(this.search);
       this.isInLoading = false;
       this.cdr.detectChanges();
-    } else if (urlParams['player']) {
-      this.search = urlParams['player'];
+    } else if (urlParameters['player']) {
+      this.search = urlParameters['player'];
       this.isInLoading = false;
       void this.searchPlayer(this.search);
       this.isInLoading = false;
@@ -232,20 +230,20 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     if (this.page === 2) pageCutHigh += 1;
     if (this.page === this.maxPage) pageCutLow -= 2;
     if (this.page === this.maxPage - 1) pageCutLow -= 1;
-    return Array.from({ length: pageCutHigh - pageCutLow + 1 }, (_, i) => pageCutLow + i);
+    return Array.from({ length: pageCutHigh - pageCutLow + 1 }, (_, index) => pageCutLow + index);
   }
 
   public allPages(): number[] {
-    return Array.from({ length: this.maxPage || 1 }, (_, i) => i + 1);
+    return Array.from({ length: this.maxPage || 1 }, (_, index) => index + 1);
   }
 
   public async applyFilters(): Promise<void> {
     this.isInLoading = true;
     this.page = 1;
-    if (this.formFilters.playerCastleDistance !== '') {
-      void this.onAddDistanceColumn();
-    } else {
+    if (this.formFilters.playerCastleDistance === '') {
       void this.resetDistanceColumn();
+    } else {
+      void this.onAddDistanceColumn();
     }
     await this.init();
     this.searchForm.updateNbFilterActivated();
@@ -280,13 +278,13 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     this.localStorage.removeItem('allianceDistancePlayerName_' + this.apiRestService.serverService.choosedServer);
     this.cdr.detectChanges();
     if (this.playersTableHeader.length === 12) {
-      this.playersTableHeader.splice(this.playersTableHeader.length - 3, 1);
+      this.playersTableHeader.splice(-3, 1);
       this.cdr.detectChanges();
     }
   }
 
   public async sortPlayers(sort: string): Promise<void> {
-    if (typeof window === 'undefined') return;
+    if (globalThis.window === undefined) return;
     if (this.isInLoading || (this.searchType === 'player' && this.search !== '')) return;
     this.isInLoading = true;
     this.cdr.detectChanges();
@@ -313,19 +311,19 @@ export class PlayersComponent extends GenericComponent implements OnInit {
   }
 
   public toggleFavorite(player: Player): void {
-    const favoriesStr = this.localStorage.getItem('favories');
-    let favoriteIds: number[] = favoriesStr ? JSON.parse(favoriesStr) : [];
+    const favoriesString = this.localStorage.getItem('favories');
+    let favoriteIds: number[] = favoriesString ? JSON.parse(favoriesString) : [];
     if (!Array.isArray(favoriteIds)) {
       this.localStorage.setItem('favories', JSON.stringify([]));
       favoriteIds = [];
     }
     const index = favoriteIds.indexOf(player.playerId);
-    if (index !== -1) {
-      favoriteIds.splice(index, 1);
-      player.isFavorite = false;
-    } else {
+    if (index === -1) {
       favoriteIds.push(player.playerId);
       player.isFavorite = true;
+    } else {
+      favoriteIds.splice(index, 1);
+      player.isFavorite = false;
     }
 
     this.cdr.detectChanges();
@@ -340,7 +338,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
         undefined,
         undefined,
       ];
-      this.playersTableHeader.splice(this.playersTableHeader.length - 2, 0, block);
+      this.playersTableHeader.splice(-2, 0, block);
     }
   }
 
@@ -408,10 +406,10 @@ export class PlayersComponent extends GenericComponent implements OnInit {
         this.search ?? undefined,
         this.constructFilters(),
       );
-    } catch (e: unknown) {
+    } catch (error: unknown) {
       this.isInLoading = false;
       this.cdr.detectChanges();
-      throw e; // Re-throw the error to be handled in the calling function
+      throw error; // Re-throw the error to be handled in the calling function
     }
   }
 
@@ -448,13 +446,13 @@ export class PlayersComponent extends GenericComponent implements OnInit {
       this.cdr.detectChanges();
     } catch {
       this.isInLoading = false;
-      if (this.formFilters.playerCastleDistance !== '') {
+      if (this.formFilters.playerCastleDistance === '') {
+        this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
+      } else {
         this.toastService.add(ErrorType.NO_PLAYER_FOUND, 5000);
         this.formFilters.playerCastleDistance = '';
         this.localStorage.removeItem('allianceDistancePlayerName_' + this.apiRestService.serverService.choosedServer);
         void this.resetDistanceColumn();
-      } else {
-        this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
       }
       this.cdr.detectChanges();
     }

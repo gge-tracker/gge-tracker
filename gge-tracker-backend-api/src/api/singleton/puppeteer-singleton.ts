@@ -1,15 +1,10 @@
-import puppeteer = require('puppeteer');
+import * as puppeteer from 'puppeteer';
 
 /**
  * Singleton class to manage a single Puppeteer browser instance.
  *
  * Ensures that only one browser instance is launched and reused throughout the application.
  * Handles concurrent launch attempts and automatically relaunches the browser if it crashes.
- *
- * @example
- * const puppeteerSingleton = new PuppeteerSingleton();
- * const browser = await puppeteerSingleton.getBrowser();
- * const page = await puppeteerSingleton.newPage();
  *
  * @remarks
  * - Uses a set of recommended arguments for headless operation and security.
@@ -23,21 +18,18 @@ class PuppeteerSingleton {
    * This property is either a `puppeteer.Browser` object when the browser is initialized,
    * or `null` if the browser has not been launched or has been closed.
    */
-  private browser: puppeteer.Browser | null;
+  private browser: puppeteer.Browser | null = null;
   /**
    * Indicates whether the Puppeteer browser instance is currently in the process of launching.
    * Used to prevent multiple simultaneous launch attempts.
    */
-  private launching: boolean;
+  private launching: boolean = false;
 
   /**
    * Initializes a new instance of the class.
    * Sets the `browser` property to `null` and the `launching` flag to `false`.
    */
-  constructor() {
-    this.browser = null;
-    this.launching = false;
-  }
+  constructor() {}
 
   /**
    * Retrieves the current Puppeteer browser instance.
@@ -60,7 +52,7 @@ class PuppeteerSingleton {
    *
    * @returns {Promise<puppeteer.Page>} A promise that resolves to the newly created Puppeteer page.
    */
-  public async newPage(): Promise<puppeteer.Page> {
+  public async createPage(): Promise<puppeteer.Page> {
     const browser = await this.getBrowser();
     const page = await browser.newPage();
     return page;
@@ -77,7 +69,7 @@ class PuppeteerSingleton {
    */
   private async launchBrowser(): Promise<puppeteer.Browser> {
     if (this.launching) {
-      while (this.launching) await new Promise((res) => setTimeout(res, 50));
+      while (this.launching) await new Promise((resolve) => setTimeout(resolve, 50));
       return this.browser;
     }
 
@@ -111,7 +103,7 @@ class PuppeteerSingleton {
       const date = new Date().toISOString();
       console.error(`[Puppeteer] The browser crashed at ${date}. Relaunching...`);
       this.browser = null;
-      this.launchBrowser().catch((err) => console.error('[Puppeteer] Relaunch failed', err));
+      this.launchBrowser().catch((error) => console.error('[Puppeteer] Relaunch failed', error));
     });
     this.launching = false;
     return this.browser;

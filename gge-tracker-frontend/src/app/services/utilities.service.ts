@@ -9,7 +9,7 @@ import { ApiLastUpdates, ErrorType } from '@ggetracker-interfaces/empire-ranking
 @Injectable({
   providedIn: 'root',
 })
-export class UtilsService {
+export class UtilitiesService {
   public lastUpdate?: string;
   public dataSubject = new BehaviorSubject<ApiLastUpdates | null>(null);
   public data$ = this.dataSubject.asObservable();
@@ -24,14 +24,14 @@ export class UtilsService {
   public loadLastUpdates(): void {
     void this.apiRestService.getLastUpdates(true).then((response) => {
       try {
-        if (!response.success) throw new Error();
+        if (!response.success) throw new Error('Error fetching last updates');
         const lastUpdate = response.data;
         this.dataSubject.next(lastUpdate);
         const dateLoot = new Date(lastUpdate.last_update['loot']);
         const dateMight = new Date(lastUpdate.last_update['might']);
         setInterval(() => {
           void this.updateRefreshDate(dateLoot, dateMight);
-        }, 60000);
+        }, 60_000);
         void this.updateRefreshDate(dateLoot, dateMight);
       } catch {
         this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);

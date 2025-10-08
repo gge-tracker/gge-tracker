@@ -51,9 +51,9 @@ export abstract class ApiStatus implements ApiHelper {
        * --------------------------------- */
       const lastUpdateSorted = Object.keys(lastUpdate)
         .sort((a, b) => new Date(lastUpdate[b]).getTime() - new Date(lastUpdate[a]).getTime())
-        .reduce((obj: any, key: string) => {
-          obj[key] = new Date(lastUpdate[key]).toISOString();
-          return obj;
+        .reduce((object: any, key: string) => {
+          object[key] = new Date(lastUpdate[key]).toISOString();
+          return object;
         }, {});
       const lastUpdateLoot = lastUpdate['loot'] ? new Date(lastUpdate['loot']).getTime() : 0;
       const lastUpdateMight = lastUpdate['might'] ? new Date(lastUpdate['might']).getTime() : 0;
@@ -116,7 +116,7 @@ export abstract class ApiStatus implements ApiHelper {
        * Fetch server names and cache the result
        * --------------------------------- */
       const servers = ApiHelper.ggeTrackerManager.getAllServerNames();
-      await ApiHelper.redisClient.setEx(cachedKey, 86400, JSON.stringify(servers));
+      await ApiHelper.redisClient.setEx(cachedKey, 86_400, JSON.stringify(servers));
       response.status(ApiHelper.HTTP_OK).send(servers);
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);

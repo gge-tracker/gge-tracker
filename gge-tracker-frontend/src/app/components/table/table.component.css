@@ -8,8 +8,8 @@
   backdrop-filter: blur(6px);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
 
-  th, td {
-    padding: 1rem 1.2rem;
+  th {
+    padding: 1rem 1.1rem;
     text-align: left;
     font-size: 0.875rem;
     vertical-align: middle;
@@ -111,7 +111,7 @@ ul {
       text-decoration: none !important;
       border-radius: 0.6rem;
       background: rgba(255, 255, 255, 0.03);
-      color: #d6d6d6;
+      color: #d6d6d6 !important;
       font-size: 0.85rem;
       font-weight: 500;
       cursor: pointer;

@@ -1,9 +1,9 @@
-import { DatabaseManager } from '../databases';
 import * as mysql from 'mysql';
 import * as pg from 'pg';
-import { ApiHelper } from '../api-helper';
 import { ClickHouse } from 'clickhouse';
-import { IApiToken } from '../interfaces/interfaces';
+import { DatabaseManager } from './../databases';
+import { ApiHelper } from './../api-helper';
+import { IApiToken } from './../interfaces/interfaces';
 
 /**
  * Enum representing the available GGE Tracker server identifiers.

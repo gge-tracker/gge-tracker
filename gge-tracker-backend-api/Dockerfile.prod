@@ -1,3 +1,16 @@
+######################################################################################
+#                                     __                        __                   #
+#      ____   ____   ____           _/  |_____________    ____ |  | __ ___________   #
+#     / ___\ / ___\_/ __ \   ______ \   __\_  __ \__  \ _/ ___\|  |/ // __ \_  __ \  #
+#    / /_/  > /_/  >  ___/  /_____/  |  |  |  | \// __ \\  \___|    <\  ___/|  | \/  #
+#    \___  /\___  / \___  >          |__|  |__|  (____  /\___  >__|_ \\___  >__|     #
+#   /_____//_____/      \/                            \/     \/     \/    \/         #
+#                                                                                    #
+#                     This file is part of the gge-tracker project.                  #
+#        Copyrights (c) 2025 - gge-tracker.com & gge-tracker contributors            #
+#                                                                                    #
+######################################################################################
+
 FROM node:20-slim AS documentation
 
 WORKDIR /app
@@ -19,20 +32,21 @@ RUN npx puppeteer browsers install chrome
 COPY --from=documentation /app/dist/api/ /app/dist/
 
 FROM node:20 AS production
+# Node 20 (and not slim) is required for puppeteer to work properly
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y \
-    libnss3 \
-    libfreetype6 \
-    libharfbuzz0b \
     ca-certificates \
     fonts-freefont-ttf \
+    libasound2 \
+    libfreetype6 \
+    libgconf-2-4 \
     libgdk-pixbuf2.0-dev \
     libgtk-3-dev \
-    libxss-dev \
+    libharfbuzz0b \
     libnotify-dev \
-    libgconf-2-4 \
-    libasound2 \
+    libnss3 \
+    libxss-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/dist/ /app/dist/

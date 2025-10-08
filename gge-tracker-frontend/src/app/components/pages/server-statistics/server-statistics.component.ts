@@ -52,7 +52,7 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
   private data: AllianceStatsData[] = [];
 
   public ngOnInit(): void {
-    const lastUpdate = this.utilsService.data$.subscribe((data) => {
+    const lastUpdate = this.utilitiesService.data$.subscribe((data) => {
       if (data) {
         this.lastUpdate = data.last_update.might;
         lastUpdate.unsubscribe();
@@ -63,113 +63,117 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
       if (data.success) {
         const dataStats = data.data;
         this.serverStatsData = dataStats;
-        const lastData = this.initLastData(dataStats[dataStats.length - 1]);
-        const prevData = this.initLastData(dataStats[dataStats.length - 2]);
-        this.cards.push({
-          identifier: 'avg_honor',
-          label: 'Honneur moyen',
-          logo: 'assets/honor2.png',
-          value: this.customFormatter(lastData.avg_honor, 0),
-          valueCompare: lastData.avg_honor - prevData.avg_honor,
-          avg: this.formatAvg(lastData.avg_honor - prevData.avg_honor),
-        });
-        this.cards.push({
-          identifier: 'total_honor',
-          label: 'Honneur cumulé',
-          logo: 'assets/honor2.png',
-          value: this.customFormatter(lastData.total_honor, 0),
-          valueCompare: lastData.total_honor - prevData.total_honor,
-          avg: this.formatAvg(lastData.total_honor - prevData.total_honor, 0),
-        });
-        this.cards.push({
-          identifier: 'avg_might',
-          label: 'Puissance moyenne',
-          logo: 'assets/pp3.png',
-          value: this.customFormatter(lastData.avg_might, 0),
-          valueCompare: lastData.avg_might - prevData.avg_might,
-          avg: this.formatAvg(lastData.avg_might - prevData.avg_might, 0),
-        });
-        this.cards.push({
-          identifier: 'max_might',
-          label: 'Puissance maximale',
-          logo: 'assets/pp3.png',
-          value: this.customFormatter(lastData.max_might, 0),
-          valueCompare: lastData.max_might - prevData.max_might,
-          avg: this.formatAvg(lastData.max_might - prevData.max_might, 0),
-        });
-        this.cards.push({
-          identifier: 'total_might',
-          label: 'Puissance cumulée',
-          logo: 'assets/pp3.png',
-          value: this.customFormatter(lastData.total_might, 0),
-          valueCompare: lastData.total_might - prevData.total_might,
-          avg: this.formatAvg(lastData.total_might - prevData.total_might, 0),
-        });
+        const lastData = this.initLastData(dataStats.at(-1));
+        const previousData = this.initLastData(dataStats.at(-2));
+        this.cards.push(
+          {
+            identifier: 'avg_honor',
+            label: 'Honneur moyen',
+            logo: 'assets/honor2.png',
+            value: this.customFormatter(lastData.avg_honor, 0),
+            valueCompare: lastData.avg_honor - previousData.avg_honor,
+            avg: this.formatAvg(lastData.avg_honor - previousData.avg_honor),
+          },
+          {
+            identifier: 'total_honor',
+            label: 'Honneur cumulé',
+            logo: 'assets/honor2.png',
+            value: this.customFormatter(lastData.total_honor, 0),
+            valueCompare: lastData.total_honor - previousData.total_honor,
+            avg: this.formatAvg(lastData.total_honor - previousData.total_honor, 0),
+          },
+          {
+            identifier: 'avg_might',
+            label: 'Puissance moyenne',
+            logo: 'assets/pp3.png',
+            value: this.customFormatter(lastData.avg_might, 0),
+            valueCompare: lastData.avg_might - previousData.avg_might,
+            avg: this.formatAvg(lastData.avg_might - previousData.avg_might, 0),
+          },
+          {
+            identifier: 'max_might',
+            label: 'Puissance maximale',
+            logo: 'assets/pp3.png',
+            value: this.customFormatter(lastData.max_might, 0),
+            valueCompare: lastData.max_might - previousData.max_might,
+            avg: this.formatAvg(lastData.max_might - previousData.max_might, 0),
+          },
+          {
+            identifier: 'total_might',
+            label: 'Puissance cumulée',
+            logo: 'assets/pp3.png',
+            value: this.customFormatter(lastData.total_might, 0),
+            valueCompare: lastData.total_might - previousData.total_might,
+            avg: this.formatAvg(lastData.total_might - previousData.total_might, 0),
+          },
+        );
         const avgLevel =
           Number(this.customFormatter(lastData.avg_level, 0)) > 70
             ? ('70/' + (Number(this.customFormatter(lastData.avg_level, 0)) - 70)).toString()
             : Number(this.customFormatter(lastData.avg_level, 0)).toString();
-        this.cards.push({
-          identifier: 'avg_level',
-          label: 'Niveau moyen',
-          logo: 'assets/xp2.png',
-          value: avgLevel,
-          valueCompare: lastData.avg_level - prevData.avg_level,
-          avg: this.formatAvg(lastData.avg_level - prevData.avg_level, 3),
-        });
-        this.cards.push({
-          identifier: 'avg_loot',
-          label: 'Pillage hebdo moyen',
-          logo: 'assets/loot4.png',
-          value: this.customFormatter(lastData.avg_loot, 0),
-          valueCompare: lastData.avg_loot - prevData.avg_loot,
-          avg: this.formatAvg(lastData.avg_loot - prevData.avg_loot, 0),
-        });
-        this.cards.push({
-          identifier: 'max_loot',
-          label: 'Pillage hebdo maximal',
-          logo: 'assets/loot4.png',
-          value: this.customFormatter(lastData.max_loot, 0),
-          valueCompare: lastData.max_loot - prevData.max_loot,
-          avg: this.formatAvg(lastData.max_loot - prevData.max_loot, 0),
-        });
-        this.cards.push({
-          identifier: 'total_loot',
-          label: 'Pillage hebdo cumulé',
-          logo: 'assets/loot4.png',
-          value: this.customFormatter(lastData.total_loot, 0),
-          valueCompare: lastData.total_loot - prevData.total_loot,
-          avg: this.formatAvg(lastData.total_loot - prevData.total_loot, 0),
-        });
-        this.cards.push({
-          identifier: 'players_count',
-          label: 'Nombre de joueurs',
-          logo: 'assets/players.png',
-          value: this.customFormatter(lastData.players_count, 0),
-          valueCompare: lastData.players_count - prevData.players_count,
-          avg: this.formatAvg(lastData.players_count - prevData.players_count, 0),
-        });
-        this.cards.push({
-          identifier: 'players_who_changed_alliance',
-          label: "Nombre de joueurs ayant changé d'alliance",
-          logo: 'assets/players.png',
-          value: this.customFormatter(lastData.players_who_changed_alliance, 0),
-          valueCompare: lastData.players_who_changed_alliance - prevData.players_who_changed_alliance,
-          avg: this.formatAvg(lastData.players_who_changed_alliance - prevData.players_who_changed_alliance, 0),
-        });
-        this.cards.push({
-          identifier: 'players_who_changed_name',
-          label: 'Nombre de joueurs ayant changé de pseudonyme',
-          logo: 'assets/players.png',
-          value: this.customFormatter(lastData.players_who_changed_name, 0),
-          valueCompare: lastData.players_who_changed_name - prevData.players_who_changed_name,
-          avg: this.formatAvg(lastData.players_who_changed_name - prevData.players_who_changed_name, 0),
-        });
+        this.cards.push(
+          {
+            identifier: 'avg_level',
+            label: 'Niveau moyen',
+            logo: 'assets/xp2.png',
+            value: avgLevel,
+            valueCompare: lastData.avg_level - previousData.avg_level,
+            avg: this.formatAvg(lastData.avg_level - previousData.avg_level, 3),
+          },
+          {
+            identifier: 'avg_loot',
+            label: 'Pillage hebdo moyen',
+            logo: 'assets/loot4.png',
+            value: this.customFormatter(lastData.avg_loot, 0),
+            valueCompare: lastData.avg_loot - previousData.avg_loot,
+            avg: this.formatAvg(lastData.avg_loot - previousData.avg_loot, 0),
+          },
+          {
+            identifier: 'max_loot',
+            label: 'Pillage hebdo maximal',
+            logo: 'assets/loot4.png',
+            value: this.customFormatter(lastData.max_loot, 0),
+            valueCompare: lastData.max_loot - previousData.max_loot,
+            avg: this.formatAvg(lastData.max_loot - previousData.max_loot, 0),
+          },
+          {
+            identifier: 'total_loot',
+            label: 'Pillage hebdo cumulé',
+            logo: 'assets/loot4.png',
+            value: this.customFormatter(lastData.total_loot, 0),
+            valueCompare: lastData.total_loot - previousData.total_loot,
+            avg: this.formatAvg(lastData.total_loot - previousData.total_loot, 0),
+          },
+          {
+            identifier: 'players_count',
+            label: 'Nombre de joueurs',
+            logo: 'assets/players.png',
+            value: this.customFormatter(lastData.players_count, 0),
+            valueCompare: lastData.players_count - previousData.players_count,
+            avg: this.formatAvg(lastData.players_count - previousData.players_count, 0),
+          },
+          {
+            identifier: 'players_who_changed_alliance',
+            label: "Nombre de joueurs ayant changé d'alliance",
+            logo: 'assets/players.png',
+            value: this.customFormatter(lastData.players_who_changed_alliance, 0),
+            valueCompare: lastData.players_who_changed_alliance - previousData.players_who_changed_alliance,
+            avg: this.formatAvg(lastData.players_who_changed_alliance - previousData.players_who_changed_alliance, 0),
+          },
+          {
+            identifier: 'players_who_changed_name',
+            label: 'Nombre de joueurs ayant changé de pseudonyme',
+            logo: 'assets/players.png',
+            value: this.customFormatter(lastData.players_who_changed_name, 0),
+            valueCompare: lastData.players_who_changed_name - previousData.players_who_changed_name,
+            avg: this.formatAvg(lastData.players_who_changed_name - previousData.players_who_changed_name, 0),
+          },
+        );
         const rate = lastData.events_participation_rate;
         Object.keys(rate).forEach((key) => {
           let label = '';
           let logo = '';
-          if (Number(key) === 46 && lastData.event_nomad_points && prevData.event_nomad_points) {
+          if (Number(key) === 46 && lastData.event_nomad_points && previousData.event_nomad_points) {
             label = 'Taux de participation aux nomades';
             logo = 'assets/nomads.png';
             this.cards.push({
@@ -177,10 +181,10 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
               label: 'Points nomades cumulés',
               logo: 'assets/nomads.png',
               value: this.customFormatter(lastData.event_nomad_points, 0),
-              valueCompare: lastData.event_nomad_points - prevData.event_nomad_points,
-              avg: this.formatAvg(lastData.event_nomad_points - prevData.event_nomad_points, 0),
+              valueCompare: lastData.event_nomad_points - previousData.event_nomad_points,
+              avg: this.formatAvg(lastData.event_nomad_points - previousData.event_nomad_points, 0),
             });
-          } else if (Number(key) === 51 && lastData.event_samurai_points && prevData.event_samurai_points) {
+          } else if (Number(key) === 51 && lastData.event_samurai_points && previousData.event_samurai_points) {
             label = 'Taux de participation aux samouraïs';
             logo = 'assets/samurai.png';
             this.cards.push({
@@ -188,10 +192,10 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
               label: 'Points samouraïs cumulés',
               logo: 'assets/samurai.png',
               value: this.customFormatter(lastData.event_samurai_points, 0),
-              valueCompare: lastData.event_samurai_points - prevData.event_samurai_points,
-              avg: this.formatAvg(lastData.event_samurai_points - prevData.event_samurai_points, 0),
+              valueCompare: lastData.event_samurai_points - previousData.event_samurai_points,
+              avg: this.formatAvg(lastData.event_samurai_points - previousData.event_samurai_points, 0),
             });
-          } else if (Number(key) === 44 && lastData.event_war_realms_points && prevData.event_war_realms_points) {
+          } else if (Number(key) === 44 && lastData.event_war_realms_points && previousData.event_war_realms_points) {
             label = 'Taux de participation aux guerres des royaumes';
             logo = 'assets/war_realms.png';
             this.cards.push({
@@ -199,13 +203,13 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
               label: 'Points guerre des royaumes cumulés',
               logo: 'assets/war_realms.png',
               value: this.customFormatter(lastData.event_war_realms_points, 0),
-              valueCompare: lastData.event_war_realms_points - prevData.event_war_realms_points,
-              avg: this.formatAvg(lastData.event_war_realms_points - prevData.event_war_realms_points, 0),
+              valueCompare: lastData.event_war_realms_points - previousData.event_war_realms_points,
+              avg: this.formatAvg(lastData.event_war_realms_points - previousData.event_war_realms_points, 0),
             });
           } else if (
             Number(key) === 30 &&
             lastData.event_berimond_kingdom_points &&
-            prevData.event_berimond_kingdom_points
+            previousData.event_berimond_kingdom_points
           ) {
             label = 'Taux de participation aux royaumes de Berimond';
             logo = 'assets/berimond.png';
@@ -214,10 +218,13 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
               label: 'Points royaumes de Berimond cumulés',
               logo: 'assets/berimond.png',
               value: this.customFormatter(lastData.event_berimond_kingdom_points, 0),
-              valueCompare: lastData.event_berimond_kingdom_points - prevData.event_berimond_kingdom_points,
-              avg: this.formatAvg(lastData.event_berimond_kingdom_points - prevData.event_berimond_kingdom_points, 0),
+              valueCompare: lastData.event_berimond_kingdom_points - previousData.event_berimond_kingdom_points,
+              avg: this.formatAvg(
+                lastData.event_berimond_kingdom_points - previousData.event_berimond_kingdom_points,
+                0,
+              ),
             });
-          } else if (Number(key) === 58 && lastData.event_bloodcrow_points && prevData.event_bloodcrow_points) {
+          } else if (Number(key) === 58 && lastData.event_bloodcrow_points && previousData.event_bloodcrow_points) {
             label = 'Taux de participation aux corbeaux de sang';
             logo = 'assets/bloodcrow.png';
             this.cards.push({
@@ -225,8 +232,8 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
               label: 'Points corbeaux de sang cumulés',
               logo: 'assets/bloodcrow.png',
               value: this.customFormatter(lastData.event_bloodcrow_points, 0),
-              valueCompare: lastData.event_bloodcrow_points - prevData.event_bloodcrow_points,
-              avg: this.formatAvg(lastData.event_bloodcrow_points - prevData.event_bloodcrow_points, 0),
+              valueCompare: lastData.event_bloodcrow_points - previousData.event_bloodcrow_points,
+              avg: this.formatAvg(lastData.event_bloodcrow_points - previousData.event_bloodcrow_points, 0),
             });
           }
           if (label && logo) {
@@ -242,22 +249,24 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
             });
           }
         });
-        this.cards.push({
-          identifier: 'alliance_count',
-          label: "Nombre d'alliances",
-          logo: 'assets/alliance2.png',
-          value: this.customFormatter(lastData.alliance_count, 0),
-          valueCompare: lastData.alliance_count - prevData.alliance_count,
-          avg: this.formatAvg(lastData.alliance_count - prevData.alliance_count, 0),
-        });
-        this.cards.push({
-          identifier: 'alliances_changed_name',
-          label: 'Alliances ayant changé de nom',
-          logo: 'assets/alliance2.png',
-          value: this.customFormatter(lastData.alliances_changed_name, 0),
-          valueCompare: lastData.alliances_changed_name - prevData.alliances_changed_name,
-          avg: this.formatAvg(lastData.alliances_changed_name - prevData.alliances_changed_name, 0),
-        });
+        this.cards.push(
+          {
+            identifier: 'alliance_count',
+            label: "Nombre d'alliances",
+            logo: 'assets/alliance2.png',
+            value: this.customFormatter(lastData.alliance_count, 0),
+            valueCompare: lastData.alliance_count - previousData.alliance_count,
+            avg: this.formatAvg(lastData.alliance_count - previousData.alliance_count, 0),
+          },
+          {
+            identifier: 'alliances_changed_name',
+            label: 'Alliances ayant changé de nom',
+            logo: 'assets/alliance2.png',
+            value: this.customFormatter(lastData.alliances_changed_name, 0),
+            valueCompare: lastData.alliances_changed_name - previousData.alliances_changed_name,
+            avg: this.formatAvg(lastData.alliances_changed_name - previousData.alliances_changed_name, 0),
+          },
+        );
         this.isInLoading = false;
         this.cdr.detectChanges();
         this.isInLoading = false;
@@ -272,18 +281,18 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
    */
   public getUnitByValue(value: number): { value: number; unit: string } {
     let unit = '';
-    if (value >= 1000 && value < 1000000) {
+    if (value >= 1000 && value < 1_000_000) {
       unit = 'k';
       value /= 1000;
-    } else if (value >= 1000000 && value < 1000000000) {
+    } else if (value >= 1_000_000 && value < 1_000_000_000) {
       unit = 'M';
-      value /= 1000000;
-    } else if (value >= 1000000000 && value < 1000000000000) {
+      value /= 1_000_000;
+    } else if (value >= 1_000_000_000 && value < 1_000_000_000_000) {
       unit = 'G';
-      value /= 1000000000;
-    } else if (value >= 1000000000000) {
+      value /= 1_000_000_000;
+    } else if (value >= 1_000_000_000_000) {
       unit = 'T';
-      value /= 1000000000000;
+      value /= 1_000_000_000_000;
     }
     return { value, unit };
   }
@@ -310,8 +319,8 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
           enabled: true,
         },
         events: {
-          beforeZoom: function (ctx): void {
-            ctx.w.config.xaxis.range = undefined;
+          beforeZoom: function (context): void {
+            context.w.config.xaxis.range = undefined;
           },
         },
         toolbar: {
@@ -391,7 +400,9 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
     let data = this.serverStatsData.map((d) => {
       return {
         x: d.created_at,
-        y: d[identifier]?.toString().includes('.') ? Number.parseFloat(Number(d[identifier]).toFixed(3)) : d[identifier],
+        y: d[identifier]?.toString().includes('.')
+          ? Number.parseFloat(Number(d[identifier]).toFixed(3))
+          : d[identifier],
       };
     });
     // We need to remove the null values from the data
@@ -400,14 +411,14 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
     this.charts['statistics'].yaxis = {
       labels: {
         formatter: (value: number): string => {
-          return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
         },
       },
     };
     this.charts['statistics'].tooltip = {
       y: {
         formatter: (value: number): string => {
-          return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
         },
       },
       x: {
@@ -419,9 +430,9 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
         x: string;
         y: string | number | null | Record<string, { id: string; point: number }[]>;
       }[] = [];
-      for (let i = data.length - 1; i >= 0; i--) {
-        if (data[i].y === 0) {
-          const slice = data.slice(i);
+      for (let index = data.length - 1; index >= 0; index--) {
+        if (data[index].y === 0) {
+          const slice = data.slice(index);
           lastData = slice.map((d) => {
             return { x: d.x, y: d.y };
           });
@@ -435,7 +446,9 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
         },
       ];
       this.charts['statistics'].xaxis.min = new Date(lastData[0].x).getTime();
-      this.charts['statistics'].xaxis.max = new Date(lastData[lastData.length - 1].x).getTime();
+      if (lastData.at(-1)) {
+        this.charts['statistics'].xaxis.max = new Date(lastData.at(-1)!.x).getTime();
+      }
     } else if (identifier === 'avg_level') {
       this.charts['statistics'].series = [
         {
@@ -447,7 +460,7 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
         labels: {
           formatter: (value: number): string => {
             const level = value > 70 ? '70/' + (Math.round(value) - 70) : Math.round(value);
-            return level.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return level.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
           },
         },
       };
@@ -456,7 +469,7 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
         // @ts-expect-error: formatter is not a recognized property but is used for configuration
         y.formatter = (value: number): string => {
           const level = value > 70 ? '70/' + (Math.round(value) - 70) : Math.round(value);
-          return level.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return level.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
         };
       }
     } else {
@@ -500,30 +513,32 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
       nightStart.setDate(nightStart.getDate() + 1);
       const nextMorningStart = new Date(morningStart);
       nextMorningStart.setDate(nextMorningStart.getDate() + 1);
-      annotations.push({
-        x: new Date(morningStart).setHours(0, 0, 0, 0),
-        x2: morningStart.getTime(),
-        fillColor: '#2196F3',
-        opacity: 0.1,
-      });
-      annotations.push({
-        x: morningStart.getTime(),
-        x2: afternoonStart.getTime(),
-        fillColor: '#FFEB3B',
-        opacity: 0.2,
-      });
-      annotations.push({
-        x: afternoonStart.getTime(),
-        x2: eveningStart.getTime(),
-        fillColor: '#4CAF50',
-        opacity: 0.2,
-      });
-      annotations.push({
-        x: eveningStart.getTime(),
-        x2: nightStart.getTime(),
-        fillColor: '#F44336',
-        opacity: 0.2,
-      });
+      annotations.push(
+        {
+          x: new Date(morningStart).setHours(0, 0, 0, 0),
+          x2: morningStart.getTime(),
+          fillColor: '#2196F3',
+          opacity: 0.1,
+        },
+        {
+          x: morningStart.getTime(),
+          x2: afternoonStart.getTime(),
+          fillColor: '#FFEB3B',
+          opacity: 0.2,
+        },
+        {
+          x: afternoonStart.getTime(),
+          x2: eveningStart.getTime(),
+          fillColor: '#4CAF50',
+          opacity: 0.2,
+        },
+        {
+          x: eveningStart.getTime(),
+          x2: nightStart.getTime(),
+          fillColor: '#F44336',
+          opacity: 0.2,
+        },
+      );
       currentTime = new Date(nextMorningStart);
     }
     const name = this.charts['statistics'].series[0].name;
@@ -539,12 +554,12 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
     this.selectedTab = tab;
   }
 
-  public customFormatter(val: number, precision: number): string {
-    return val.toFixed(precision).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  public customFormatter(value: number, precision: number): string {
+    return value.toFixed(precision).replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
   }
 
   public formatAvg(value: number, toFixed = 3): string {
-    return (value > 0 ? '+' + value.toFixed(toFixed) : value.toFixed(toFixed)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return (value > 0 ? '+' + value.toFixed(toFixed) : value.toFixed(toFixed)).replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
   }
 
   public async changeRange(range: Event): Promise<void> {
@@ -587,14 +602,14 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
     const nbAlliances = this.nbAlliances;
     const indice = 100;
     const rangeOptions = [];
-    for (let i = 100; i <= nbAlliances; i += indice) {
+    for (let index = 100; index <= nbAlliances; index += indice) {
       rangeOptions.push({
-        value: i,
-        label: `${i}`,
-        selected: i === this.rangeSelected,
+        value: index,
+        label: `${index}`,
+        selected: index === this.rangeSelected,
       });
     }
-    if (!rangeOptions.find((r) => r.value === nbAlliances)) {
+    if (!rangeOptions.some((r) => r.value === nbAlliances)) {
       rangeOptions.push({
         value: nbAlliances,
         label: `Toutes les alliances (${nbAlliances})`,
@@ -659,7 +674,7 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
     if (series.length > limit) {
       series.length = limit;
     }
-    const total = series.reduce((acc, cur) => acc + cur.y, 0);
+    const total = series.reduce((accumulator, current) => accumulator + current.y, 0);
     series.forEach((d) => {
       d.x = `${d.x} (${((d.y / total) * 100).toFixed(2)}%)`;
     });
@@ -674,7 +689,7 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
       tooltip: {
         y: {
           formatter: (value: number): string => {
-            return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' (points de puissance)';
+            return value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',') + ' (points de puissance)';
           },
         },
       },
@@ -687,36 +702,36 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
             ranges: [
               {
                 from: 0,
-                to: 1000000,
+                to: 1_000_000,
                 color: '#CD363A',
               },
               {
-                from: 1000000,
-                to: 10000000,
+                from: 1_000_000,
+                to: 10_000_000,
                 color: '#FFA500',
               },
               {
-                from: 10000000,
-                to: 50000000,
+                from: 10_000_000,
+                to: 50_000_000,
                 color: '#f0fc03',
               },
               {
-                from: 50000000,
-                to: 200000000,
+                from: 50_000_000,
+                to: 200_000_000,
                 color: '#32CD32',
               },
               {
-                from: 200000000,
-                to: 1000000000,
+                from: 200_000_000,
+                to: 1_000_000_000,
                 color: '#3eb5c7',
               },
               {
-                from: 1000000000,
-                to: 5000000000,
+                from: 1_000_000_000,
+                to: 5_000_000_000,
                 color: '#0000FF',
               },
               {
-                from: 5000000000,
+                from: 5_000_000_000,
                 to: this.data[0].total_might + 1,
                 color: '#701cba',
               },
@@ -762,7 +777,7 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
       yaxis: {
         labels: {
           formatter: (value: number): string => {
-            return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
           },
         },
       },

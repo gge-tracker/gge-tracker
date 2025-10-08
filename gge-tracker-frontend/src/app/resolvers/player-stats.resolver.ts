@@ -18,11 +18,11 @@ export class PlayerStatsResolver implements Resolve<Promise<ApiResponse<ApiPlaye
   public async resolve(route: ActivatedRouteSnapshot): Promise<ApiResponse<ApiPlayerStatsByPlayerId>> {
     const playerId = route.paramMap.get('playerId');
     if (!playerId) {
-      return Promise.reject('Player ID is required');
+      throw 'Player ID is required';
     }
     const parsedPlayerId = Number.parseInt(playerId, 10);
     if (Number.isNaN(parsedPlayerId)) {
-      return Promise.reject('Invalid Player ID');
+      throw 'Invalid Player ID';
     }
     return this.apiRestService.getPlayerStatsByPlayerId(parsedPlayerId).then(async (response) => {
       if (response.success) {

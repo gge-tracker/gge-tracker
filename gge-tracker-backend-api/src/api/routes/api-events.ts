@@ -145,7 +145,7 @@ export abstract class ApiEvents implements ApiHelper {
       }
       // Trick: we convert event type to match table name, e.g. "outer-realms" -> "outer_realms_ranking"
       // This needs to be upgraded if we add more event types in the future.
-      const sqlTable = eventType.trim().replace(/-/g, '_') + '_ranking';
+      const sqlTable = eventType.trim().replaceAll('-', '_') + '_ranking';
       if (!id || Number.isNaN(Number(id))) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid event ID' });
         return;
@@ -182,19 +182,19 @@ export abstract class ApiEvents implements ApiHelper {
         ${playerNameFilter ? `AND LOWER(player_name) LIKE $${index++}` : ''}
         ${serverFilter ? `AND O.server = $${index++}` : ''}
         `;
-      const countParams: (string | number)[] = [id];
+      const countParameters: (string | number)[] = [id];
       if (playerNameFilter) {
-        countParams.push(`%${playerNameFilter}%`);
+        countParameters.push(`%${playerNameFilter}%`);
       }
       if (serverFilter) {
-        countParams.push(serverFilter);
+        countParameters.push(serverFilter);
       }
 
       /* ---------------------------------
        * Query paginated results
        * --------------------------------- */
       const countResult = await new Promise<{ total: number }>((resolve, reject) => {
-        eventPgDbpool.query(countQuery, countParams, (error, results) => {
+        eventPgDbpool.query(countQuery, countParameters, (error, results) => {
           if (error) {
             reject(error);
           } else {
@@ -219,31 +219,31 @@ export abstract class ApiEvents implements ApiHelper {
       /* ---------------------------------
        * Construct main query
        * --------------------------------- */
-      let paramIndex = 1;
+      let parameterIndex = 1;
       const offset = (page - 1) * PAGINATION_LIMIT;
       const query = `
         SELECT player_id, player_name, rank, point, server
         FROM ${sqlTable}
-        WHERE event_num = $${paramIndex++}
-        ${playerNameFilter ? `AND LOWER(player_name) LIKE $${paramIndex++}` : ''}
-        ${serverFilter ? `AND server = $${paramIndex++}` : ''}
+        WHERE event_num = $${parameterIndex++}
+        ${playerNameFilter ? `AND LOWER(player_name) LIKE $${parameterIndex++}` : ''}
+        ${serverFilter ? `AND server = $${parameterIndex++}` : ''}
         ORDER BY rank
-        LIMIT $${paramIndex++} OFFSET $${paramIndex++}
+        LIMIT $${parameterIndex++} OFFSET $${parameterIndex++}
         `;
-      const params: (string | number)[] = [id];
+      const parameters: (string | number)[] = [id];
       if (playerNameFilter) {
-        params.push(`%${playerNameFilter}%`);
+        parameters.push(`%${playerNameFilter}%`);
       }
       if (serverFilter) {
-        params.push(serverFilter);
+        parameters.push(serverFilter);
       }
-      params.push(PAGINATION_LIMIT, offset);
+      parameters.push(PAGINATION_LIMIT, offset);
 
       /* ---------------------------------
        * Query from DB
        * --------------------------------- */
       const results = await new Promise<any[]>((resolve, reject) => {
-        eventPgDbpool.query(query, params, (error, results) => {
+        eventPgDbpool.query(query, parameters, (error, results) => {
           if (error) {
             reject(error);
           } else {
@@ -324,7 +324,7 @@ export abstract class ApiEvents implements ApiHelper {
       }
       // Trick: we convert event type to match table name, e.g. "outer-realms" -> "outer_realms_ranking"
       // This needs to be upgraded if we add more event types in the future.
-      const sqlTable = eventType.trim().replace(/-/g, '_') + '_ranking';
+      const sqlTable = eventType.trim().replaceAll('-', '_') + '_ranking';
       const id = request.params.id;
       if (!id || Number.isNaN(Number(id))) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid event ID' });
@@ -449,9 +449,9 @@ export abstract class ApiEvents implements ApiHelper {
         { query: query_event_info, params: [id] },
       ];
       const results = await Promise.all(
-        requests.map((req) => {
+        requests.map((request_) => {
           return new Promise((resolve, reject) => {
-            eventPgDbpool.query(req.query, req.params, (error, result) => {
+            eventPgDbpool.query(request_.query, request_.params, (error, result) => {
               if (error) {
                 reject(error);
               } else {

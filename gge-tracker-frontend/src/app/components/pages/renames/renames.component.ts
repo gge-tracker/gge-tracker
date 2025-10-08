@@ -44,18 +44,18 @@ export class RenamesComponent extends GenericComponent {
 
   constructor() {
     super();
-    this.route.paramMap.subscribe((params) => {
-      this.currentViewType = (params.get('type') as 'players' | 'alliances') || 'players';
+    this.route.paramMap.subscribe((parameters) => {
+      this.currentViewType = (parameters.get('type') as 'players' | 'alliances') || 'players';
       if (this.currentViewType === 'alliances') {
         this.headers = [
           ['oldPlayerName', 'Ancien nom', '', true],
-          ['newPlayerName', 'Nouveau nom', '', true],
+          ['updatedPlayerName', 'Nouveau nom', '', true],
           ['date', 'Date de changement', '', true],
         ];
       } else if (this.currentViewType === 'players') {
         this.headers = [
           ['oldPlayerName', 'Ancien pseudonyme', '', true],
-          ['newPlayerName', 'Nouveau pseudonyme', '', true],
+          ['updatedPlayerName', 'Nouveau pseudonyme', '', true],
           ['pp', 'Points de puissance', '/assets/pp1.png', true],
           ['allianceName', 'Alliance', '/assets/min-alliance.png', true],
           ['date', 'Date de changement', '', true],
@@ -154,11 +154,11 @@ export class RenamesComponent extends GenericComponent {
     if (this.page === 2) pageCutHigh += 1;
     if (this.page === this.maxPage) pageCutLow -= 2;
     if (this.page === this.maxPage - 1) pageCutLow -= 1;
-    return Array.from({ length: pageCutHigh - pageCutLow + 1 }, (_, i) => pageCutLow + i);
+    return Array.from({ length: pageCutHigh - pageCutLow + 1 }, (_, index) => pageCutLow + index);
   }
 
   public allPages(): number[] {
-    return Array.from({ length: this.maxPage || 1 }, (_, i) => i + 1);
+    return Array.from({ length: this.maxPage || 1 }, (_, index) => index + 1);
   }
 
   private mapMovementsFromApi(renames: ApiRenamesResponse, rankFunction: (rank: number) => number): Rename[] {
@@ -174,7 +174,7 @@ export class RenamesComponent extends GenericComponent {
         alliance: movement.alliance_name,
         date: movement.date,
         might: movement.player_might,
-        newPlayerName: movement.new_player_name,
+        updatedPlayerName: movement.new_player_name,
         oldPlayerName: movement.old_player_name,
       };
     });

@@ -1,5 +1,5 @@
 /**
- * environment.prod.ts
+ * environment.production.ts
  * This file contains environment variables for the production environment.
  * It is used during the build process when the `--configuration=production` flag is provided.
  * For development builds, `environment.ts` is used instead.

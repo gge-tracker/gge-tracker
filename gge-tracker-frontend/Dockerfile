@@ -1,3 +1,16 @@
+######################################################################################
+#                                     __                        __                   #
+#      ____   ____   ____           _/  |_____________    ____ |  | __ ___________   #
+#     / ___\ / ___\_/ __ \   ______ \   __\_  __ \__  \ _/ ___\|  |/ // __ \_  __ \  #
+#    / /_/  > /_/  >  ___/  /_____/  |  |  |  | \// __ \\  \___|    <\  ___/|  | \/  #
+#    \___  /\___  / \___  >          |__|  |__|  (____  /\___  >__|_ \\___  >__|     #
+#   /_____//_____/      \/                            \/     \/     \/    \/         #
+#                                                                                    #
+#                     This file is part of the gge-tracker project.                  #
+#        Copyrights (c) 2025 - gge-tracker.com & gge-tracker contributors            #
+#                                                                                    #
+######################################################################################
+
 FROM node:20-slim AS build
 
 WORKDIR /app
@@ -6,7 +19,7 @@ RUN npm ci
 COPY . .
 ARG BUILD_ENV=prod
 RUN if [ "$BUILD_ENV" = "beta" ]; then cp src/app/app.component.html.beta src/app/app.component.html; fi
-RUN if [ "$BUILD_ENV" = "beta" ]; then cp src/environments/environment.prod-beta.ts src/environments/environment.prod.ts; fi
+RUN if [ "$BUILD_ENV" = "beta" ]; then cp src/environments/environment.production-beta.ts src/environments/environment.production.ts; fi
 RUN npm run build --output-path=dist --configuration=production
 
 FROM node:20-slim AS production

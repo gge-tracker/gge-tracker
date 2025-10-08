@@ -75,7 +75,7 @@
         <app-events-header
           [eventName]="getEventName(eventType!)"
           [from]="generateFromDate(currentEvent.collect_date)"
-          [to]="newDate(currentEvent.collect_date)"
+          [to]="createDate(currentEvent.collect_date)"
           [nbPlayers]="nbPlayers"
           [eventType]="eventType!"
         ></app-events-header>

@@ -1,6 +1,19 @@
+##########################################################################################
+#                                     __                        __                       #
+#      ____   ____   ____           _/  |_____________    ____ |  | __ ___________       #
+#     / ___\ / ___\_/ __ \   ______ \   __\_  __ \__  \ _/ ___\|  |/ // __ \_  __ \      #
+#    / /_/  > /_/  >  ___/  /_____/  |  |  |  | \// __ \\  \___|    <\  ___/|  | \/      #
+#    \___  /\___  / \___  >          |__|  |__|  (____  /\___  >__|_ \\___  >__|         #
+#   /_____//_____/      \/                            \/     \/     \/    \/             #
+#                                                                                        #
+#                     This file is part of the gge-tracker project.                      #
+#        Copyrights (c) 2025 - gge-tracker.com & gge-tracker contributors                #
+#                                                                                        #
+##########################################################################################
+
 # File: docker-compose.dev.yml
 # Use this file for development environment setup
-name: "gge-tracker-dev-environment"
+name: gge-tracker
 
 services:
   # Web application running Angular with Angular CLI (development server, hot-reload)
@@ -104,14 +117,6 @@ services:
       file: docker/docker-compose.common.yml
     ports:
       - "8080:8080"
-
-  # ClickHouse web UI for managing ClickHouse instances
-  clickhouse-webui:
-    extends:
-      service: clickhouse-webui
-      file: docker/docker-compose.common.yml
-    ports:
-      - "8082:80"
 
   # Grafana for data visualization and dashboarding
   grafana:

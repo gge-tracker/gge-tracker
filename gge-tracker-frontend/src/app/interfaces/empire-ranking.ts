@@ -78,7 +78,7 @@ export interface Rename {
   might: number | null;
   alliance: string | null;
   oldPlayerName: string;
-  newPlayerName: string;
+  updatedPlayerName: string;
   date: string;
 }
 
@@ -281,7 +281,7 @@ export interface ApiPagination {
   total_items_count: number;
 }
 
-export interface ApiDungeonsRes {
+export interface ApiDungeonsResource {
   kid: number;
   position_x: number;
   position_y: number;
@@ -375,7 +375,7 @@ export interface ApiRenamesResponse extends ApiGenericResponse {
 }
 
 export interface ApiDungeonsResponse extends ApiGenericResponse {
-  dungeons: ApiDungeonsRes[];
+  dungeons: ApiDungeonsResource[];
 }
 
 export interface ApiPlayersResponse extends ApiGenericResponse {

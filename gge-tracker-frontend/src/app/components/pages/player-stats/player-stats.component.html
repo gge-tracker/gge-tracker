@@ -29,7 +29,7 @@
           <span class="position-absolute top-50 start-50 translate-middle text-white fs-1" style="width: max-content">
             {{ playerName }}</span>
           <div id="allianceList">
-            <a href="/castles?search={{ playerName }}" [title]="'Voir les châteaux de ' + playerName">
+            <a href="/castles?search={{ playerName }}" [title]="'Voir les châteaux' | translate">
               <img src="/assets/icon_castles.png" width="50" [alt]="'Paramètres' | translate" class="img-fluid mt-3">
             </a>
             <div class="d-inline-block alliance-more-info position-relative" [attr.data-updates]="allianceUpdates!.length-1">

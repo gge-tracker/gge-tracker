@@ -5,17 +5,17 @@ import { Injectable, Inject } from '@angular/core';
   providedIn: 'root',
 })
 export class WindowService {
-  constructor(@Inject(DOCUMENT) private _doc: Document) {}
+  constructor(@Inject(DOCUMENT) private _document: Document) {}
 
   public getWindow(): (Window & typeof globalThis) | null {
-    return this._doc.defaultView;
+    return this._document.defaultView;
   }
 
   public getLocation(): Location {
-    return this._doc.location;
+    return this._document.location;
   }
 
   public createElement(tag: string): HTMLElement {
-    return this._doc.createElement(tag);
+    return this._document.createElement(tag);
   }
 }

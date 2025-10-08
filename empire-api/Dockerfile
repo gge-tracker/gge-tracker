@@ -1,20 +1,34 @@
-# syntax = docker/dockerfile:1
+######################################################################################
+#                                     __                        __                   #
+#      ____   ____   ____           _/  |_____________    ____ |  | __ ___________   #
+#     / ___\ / ___\_/ __ \   ______ \   __\_  __ \__  \ _/ ___\|  |/ // __ \_  __ \  #
+#    / /_/  > /_/  >  ___/  /_____/  |  |  |  | \// __ \\  \___|    <\  ___/|  | \/  #
+#    \___  /\___  / \___  >          |__|  |__|  (____  /\___  >__|_ \\___  >__|     #
+#   /_____//_____/      \/                            \/     \/     \/    \/         #
+#                                                                                    #
+#                     This file is part of the gge-tracker project.                  #
+#        Copyrights (c) 2025 - gge-tracker.com & gge-tracker contributors            #
+#                                                                                    #
+######################################################################################
 
-ARG NODE_VERSION=19.0.0
-FROM node:${NODE_VERSION}-slim as build
+FROM node:20-slim AS build
 
 LABEL fly_launch_runtime="NodeJS"
 
 WORKDIR /app
 ENV NODE_ENV=production
 
-RUN apt-get update -qq && \
-    apt-get install -y python-is-python3 pkg-config build-essential
+RUN apt-get update -qq && apt-get install -y \
+    build-essential \
+    pkg-config \
+    python-is-python3
 
 COPY src .
 COPY package*.json ./
 
-RUN if [ ! -f config/credentials.json ] || [ ! -f config/instances.json ]; then echo "Error: config/credentials.json and/or config/instances.json not found!"; exit 1; fi
+RUN if [ ! -f config/credentials.json ] || [ ! -f config/instances.json ]; then \
+    echo "Error: config/credentials.json and/or config/instances.json not found!"; exit 1; \
+fi
 
 ARG HAS_GBL
 RUN if [ "${HAS_GBL}" = "true" ]; then \
@@ -24,20 +38,20 @@ fi
 
 RUN npm install --omit=dev
 
-FROM node:${NODE_VERSION}-alpine
+FROM node:20-alpine
 
 RUN apk add --no-cache \
+    bash \
+    ca-certificates \
     chromium \
-    xvfb \
-    nss \
+    curl \
+    dbus \
     freetype \
     harfbuzz \
-    ca-certificates \
+    nss \
     ttf-freefont \
-    bash \
-    dbus \
     udev \
-    curl \
+    xvfb \
     && rm -rf /var/cache/apk/*
 
 ENV CHROME_PATH=/usr/bin/chromium-browser

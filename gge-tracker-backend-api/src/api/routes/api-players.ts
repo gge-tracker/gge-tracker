@@ -134,7 +134,7 @@ export abstract class ApiPlayers implements ApiHelper {
       let totalPages = 0;
       let playerCount = 0;
       let countQuery: string;
-      let paramIndex = 1;
+      let parameterIndex = 1;
       let query: string = `
         SELECT
           P.id AS player_id,
@@ -164,13 +164,13 @@ export abstract class ApiPlayers implements ApiHelper {
           (
             POWER(
               LEAST(
-                ABS(CAST(MC.castle_x AS INTEGER) - $${paramIndex++}),
-                1287 - ABS(CAST(MC.castle_x AS INTEGER) - $${paramIndex++})
+                ABS(CAST(MC.castle_x AS INTEGER) - $${parameterIndex++}),
+                1287 - ABS(CAST(MC.castle_x AS INTEGER) - $${parameterIndex++})
               ),
               2
               ) +
               POWER(
-              ABS(CAST(MC.castle_y AS INTEGER) - $${paramIndex++}),
+              ABS(CAST(MC.castle_y AS INTEGER) - $${parameterIndex++}),
               2
             )
           ) AS calculated_distance`;
@@ -199,51 +199,51 @@ export abstract class ApiPlayers implements ApiHelper {
       /* ---------------------------------
        * Filter results
        * --------------------------------- */
-      const otherParams: (string | number)[] = [];
+      const otherParameters: (string | number)[] = [];
       const filters: string[] = [];
       if (filterByAlliance && filterByAlliance !== '') {
-        filters.push(`A.name = $${paramIndex++}`);
-        otherParams.push(filterByAlliance);
+        filters.push(`A.name = $${parameterIndex++}`);
+        otherParameters.push(filterByAlliance);
       }
-      if (minHonor >= 0 && !isNaN(minHonor)) {
-        filters.push(`P.honor >= $${paramIndex++}`);
-        otherParams.push(minHonor);
+      if (minHonor >= 0 && !Number.isNaN(minHonor)) {
+        filters.push(`P.honor >= $${parameterIndex++}`);
+        otherParameters.push(minHonor);
       }
-      if (maxHonor >= 0 && !isNaN(maxHonor)) {
-        filters.push(`P.honor <= $${paramIndex++}`);
-        otherParams.push(maxHonor);
+      if (maxHonor >= 0 && !Number.isNaN(maxHonor)) {
+        filters.push(`P.honor <= $${parameterIndex++}`);
+        otherParameters.push(maxHonor);
       }
-      if (minMight >= 0 && !isNaN(minMight)) {
-        filters.push(`P.might_current >= $${paramIndex++}`);
-        otherParams.push(minMight);
+      if (minMight >= 0 && !Number.isNaN(minMight)) {
+        filters.push(`P.might_current >= $${parameterIndex++}`);
+        otherParameters.push(minMight);
       }
-      if (maxMight >= 0 && !isNaN(maxMight)) {
-        filters.push(`P.might_current <= $${paramIndex++}`);
-        otherParams.push(maxMight);
+      if (maxMight >= 0 && !Number.isNaN(maxMight)) {
+        filters.push(`P.might_current <= $${parameterIndex++}`);
+        otherParameters.push(maxMight);
       }
-      if (minLoot >= 0 && !isNaN(minLoot)) {
-        filters.push(`P.loot_current >= $${paramIndex++}`);
-        otherParams.push(minLoot);
+      if (minLoot >= 0 && !Number.isNaN(minLoot)) {
+        filters.push(`P.loot_current >= $${parameterIndex++}`);
+        otherParameters.push(minLoot);
       }
-      if (maxLoot >= 0 && !isNaN(maxLoot)) {
-        filters.push(`P.loot_current <= $${paramIndex++}`);
-        otherParams.push(maxLoot);
+      if (maxLoot >= 0 && !Number.isNaN(maxLoot)) {
+        filters.push(`P.loot_current <= $${parameterIndex++}`);
+        otherParameters.push(maxLoot);
       }
-      if (minLevel >= 0 && !isNaN(minLevel)) {
-        filters.push(`P.level >= $${paramIndex++}`);
-        otherParams.push(minLevel);
+      if (minLevel >= 0 && !Number.isNaN(minLevel)) {
+        filters.push(`P.level >= $${parameterIndex++}`);
+        otherParameters.push(minLevel);
       }
-      if (minLegendaryLevel >= 0 && !isNaN(minLegendaryLevel)) {
-        filters.push(`P.legendary_level >= $${paramIndex++}`);
-        otherParams.push(minLegendaryLevel);
+      if (minLegendaryLevel >= 0 && !Number.isNaN(minLegendaryLevel)) {
+        filters.push(`P.legendary_level >= $${parameterIndex++}`);
+        otherParameters.push(minLegendaryLevel);
       }
-      if (maxLevel >= 0 && !isNaN(maxLevel)) {
-        filters.push(`P.level <= $${paramIndex++}`);
-        otherParams.push(maxLevel);
+      if (maxLevel >= 0 && !Number.isNaN(maxLevel)) {
+        filters.push(`P.level <= $${parameterIndex++}`);
+        otherParameters.push(maxLevel);
       }
-      if (maxLegendaryLevel >= 0 && !isNaN(maxLegendaryLevel)) {
-        filters.push(`P.legendary_level <= $${paramIndex++}`);
-        otherParams.push(maxLegendaryLevel);
+      if (maxLegendaryLevel >= 0 && !Number.isNaN(maxLegendaryLevel)) {
+        filters.push(`P.legendary_level <= $${parameterIndex++}`);
+        otherParameters.push(maxLegendaryLevel);
       }
       if (allianceFilter === 0) {
         filters.push(`P.alliance_id IS NULL`);
@@ -268,7 +268,11 @@ export abstract class ApiPlayers implements ApiHelper {
       if (filters.length > 0) {
         query += `WHERE ${filters.join(' AND ')} \n    `;
       }
-      const params: any[] = otherParams.concat([ApiHelper.PAGINATION_LIMIT, (page - 1) * ApiHelper.PAGINATION_LIMIT]);
+      const parameters: any[] = [
+        ...otherParameters,
+        ApiHelper.PAGINATION_LIMIT,
+        (page - 1) * ApiHelper.PAGINATION_LIMIT,
+      ];
 
       /* ---------------------------------
        * Execute count query (pagination)
@@ -278,8 +282,8 @@ export abstract class ApiPlayers implements ApiHelper {
         countQuery += `WHERE ${filters.join(' AND ')} \n    `;
         if (playerNameDistanceFilterActive) {
           // Tricky part, we need to re-index the $ parameters for the count query
-          countQuery = countQuery.replace(/\$(\d+)/g, (match, p1) => {
-            return `$${parseInt(p1) - 3}`;
+          countQuery = countQuery.replaceAll(/\$(\d+)/g, (match, p1) => {
+            return `$${Number.parseInt(p1) - 3}`;
           });
         }
       }
@@ -288,7 +292,7 @@ export abstract class ApiPlayers implements ApiHelper {
        * Query count results
        * --------------------------------- */
       await new Promise((resolve, reject) => {
-        (request['pg_pool'] as pg.Pool).query(countQuery, otherParams, (error, results) => {
+        (request['pg_pool'] as pg.Pool).query(countQuery, otherParameters, (error, results) => {
           if (error) {
             reject(error);
           } else {
@@ -318,14 +322,14 @@ export abstract class ApiPlayers implements ApiHelper {
         query += `ORDER BY ${orderBy} ${orderType}`;
         if (orderBy === 'level') query += `, legendary_level ${orderType}`;
       }
-      query += ` LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
+      query += ` LIMIT $${parameterIndex++} OFFSET $${parameterIndex++}`;
       // Performance issue
       const sqlDuration = Date.now();
       let playerX = null;
       let playerY = null;
       if (playerNameForDistance && playerNameForDistance !== '') {
-        paramIndex = 1;
-        const playerQuery = `SELECT castles FROM players WHERE LOWER(name) = $${paramIndex++} LIMIT 1`;
+        parameterIndex = 1;
+        const playerQuery = `SELECT castles FROM players WHERE LOWER(name) = $${parameterIndex++} LIMIT 1`;
         const playerResults: any[] = await new Promise((resolve, reject) => {
           (request['pg_pool'] as pg.Pool).query(playerQuery, [playerNameForDistance], (error, results) => {
             if (error) reject(error);
@@ -342,13 +346,13 @@ export abstract class ApiPlayers implements ApiHelper {
           playerX = selectedKid[0][0];
           playerY = selectedKid[0][1];
         }
-        params.unshift(playerX, playerX, playerY);
+        parameters.unshift(playerX, playerX, playerY);
       }
 
       /* ---------------------------------
        * Execute final query
        * --------------------------------- */
-      (request['pg_pool'] as pg.Pool).query(query, params, (error, results) => {
+      (request['pg_pool'] as pg.Pool).query(query, parameters, (error, results) => {
         if (error) {
           response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
         } else {
@@ -387,9 +391,9 @@ export abstract class ApiPlayers implements ApiHelper {
                 level: result.level,
                 legendary_level: result.legendary_level,
                 calculated_distance:
-                  result.calculated_distance !== undefined
-                    ? Number.parseFloat(Math.sqrt(result.calculated_distance).toFixed(1))
-                    : null,
+                  result.calculated_distance === undefined
+                    ? null
+                    : Number.parseFloat(Math.sqrt(result.calculated_distance).toFixed(1)),
               };
             }),
           };
@@ -454,7 +458,7 @@ export abstract class ApiPlayers implements ApiHelper {
       /* ---------------------------------
        * Build query
        * --------------------------------- */
-      let paramIndex = 1;
+      let parameterIndex = 1;
       const query: string = `
         SELECT
           P.id AS player_id,
@@ -478,7 +482,7 @@ export abstract class ApiPlayers implements ApiHelper {
         LEFT JOIN
           alliances A ON P.alliance_id = A.id
         WHERE
-          LOWER(P.name) = $${paramIndex++}
+          LOWER(P.name) = $${parameterIndex++}
         LIMIT 1;
       `;
 

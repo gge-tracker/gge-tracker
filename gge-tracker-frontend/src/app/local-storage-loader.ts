@@ -13,8 +13,8 @@ export class LocalStorageTranslateLoader implements TranslateLoader {
       try {
         const json = JSON.parse(localLang);
         return of(json);
-      } catch (e) {
-        console.error('Erreur parsing lang_dev from localStorage', e);
+      } catch (error) {
+        console.error('Erreur parsing lang_dev from localStorage', error);
         return of({});
       }
     }

@@ -11,7 +11,7 @@ import { ApiHelper } from '../api-helper';
  * @implements {ApiHelper}
  */
 export abstract class ApiOffers implements ApiHelper {
-  public static getOffers(request: express.Request, response: express.Response): void {
+  public static async getOffers(request: express.Request, response: express.Response): Promise<void> {
     response.status(ApiHelper.HTTP_BAD_REQUEST).send({ message: 'Offers endpoint is under construction.' });
   }
 }

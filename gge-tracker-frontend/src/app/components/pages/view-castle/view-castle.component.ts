@@ -207,7 +207,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     this.cid = cid ? +cid : null;
     const search = this.route.snapshot.queryParamMap.get('search');
     await this.translateKeys();
-    if (cid && !isNaN(+cid)) {
+    if (cid && !Number.isNaN(+cid)) {
       void this.fetchCastleData(+cid);
     } else if (search) {
       this.search = search;
@@ -251,7 +251,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   public formatValue(value: number | string | number | boolean | null): string {
     const regex = /\B(?=(\d{3})+(?!\d))/g;
     return Number.isInteger(value) && value !== null
-      ? value.toString().replace(regex, ',')
+      ? value.toString().replaceAll(regex, ',')
       : this.translations['Inconnu'];
   }
 
@@ -281,20 +281,24 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     const basePath = ApiRestService.apiUrl + 'assets/images/';
     let path, level;
     switch (castle.type) {
-      case 1:
+      case 1: {
         path = 'keepbuilding';
         level = castle.keepLevel;
         break;
-      case 3:
+      }
+      case 3: {
         path = 'capitalmapobject';
         break;
-      case 22:
+      }
+      case 22: {
         path = 'metropolmapobject';
         break;
-      case 4:
+      }
+      case 4: {
         path = 'outpostmapobject';
         level = castle.keepLevel;
         break;
+      }
     }
     return `${basePath}${path}${level ? `level${level}.png` : 'basic.png'}`;
   }
@@ -314,9 +318,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     const defaultItems = this.allVisibleBuildings;
     const filters = this.filters;
     const filteredItems = defaultItems.filter((item) => {
-      const { positionX, positionY } = item.building;
-      if (filters.isInDistrict === true && (positionX >= 0 || positionY >= 0 || !item.building.inDistrictID))
-        return false;
+      const { positionX, positionY, inDistrictID } = item.building;
+      if (filters.isInDistrict === true && (positionX >= 0 || positionY >= 0 || !inDistrictID)) return false;
       if (filters.hasMaxLevel === true && item.data['upgradeWodID']) return false;
       if (filters.upgradable === true && !item.data['upgradeWodID']) return false;
       if (filters.burnable === true && item.data['burnable'] == 0) return false;
@@ -365,9 +368,9 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.setAttribute('download', filename);
-    document.body.appendChild(link);
+    document.body.append(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
   }
 
   public isBuildingDistrict(entry: IMappedBuildingWithGround): boolean {
@@ -426,8 +429,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     return this.getLangKey(String(data?.['name']), String(data?.['type']), String(data?.['group']));
   }
 
-  public capitalizeFirstLetter(val: string | number | boolean | null): string {
-    return String(val).charAt(0).toUpperCase() + String(val).slice(1);
+  public capitalizeFirstLetter(value: string | number | boolean | null): string {
+    return String(value).charAt(0).toUpperCase() + String(value).slice(1);
   }
 
   public changePage(delta: number): void {
@@ -450,7 +453,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       this.previousSelectedItem = null;
     }
     this.selectedItem = item;
-    document.getElementById('viewItemModal')?.scrollTo(0, 0);
+    document.querySelector('#viewItemModal')?.scrollTo(0, 0);
     this.cdr.detectChanges();
   }
 
@@ -468,19 +471,19 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
    * @param imgSrc The source URL of the image.
    */
   public addImgToCanvas(
-    ctx: CanvasRenderingContext2D,
+    context: CanvasRenderingContext2D,
     x: number,
     y: number,
     w: number,
     h: number,
-    imgSrc?: string,
+    imgSource?: string,
   ): void {
-    if (imgSrc) {
+    if (imgSource) {
       const img = new Image();
-      img.src = imgSrc;
-      img.onload = (): void => {
-        ctx.drawImage(img, x + w / 2 - 16, y + h / 2 - 16, 30, 30);
-      };
+      img.src = imgSource;
+      img.addEventListener('load', (): void => {
+        context.drawImage(img, x + w / 2 - 16, y + h / 2 - 16, 30, 30);
+      });
     }
   }
 
@@ -507,8 +510,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     const object = this.castleObject;
     if (!object) return 0;
     const list = [...object.data.buildings, ...object.data.defenses, ...object.data.gates, ...object.data.towers];
-    const sum = list.reduce((acc, entry) => {
-      return acc + (Number(entry.data?.[item]) || 0);
+    const sum = list.reduce((accumulator, entry) => {
+      return accumulator + (Number(entry.data?.[item]) || 0);
     }, 0);
     return sum;
   }
@@ -575,7 +578,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     const name = this.capitalizeFirstLetter(this.getBuildingName(hoveredBuilding));
     const objectID = hoveredBuilding.building?.objectID;
     let info = [
-      `<b>${name !== '-' ? name : 'OID:' + objectID}</b> (${this.translations['Niveau']} ${hoveredBuilding.data?.['level']})`,
+      `<b>${name === '-' ? 'OID:' + objectID : name}</b> (${this.translations['Niveau']} ${hoveredBuilding.data?.['level']})`,
       '',
       `<b>${this.translations['Ordre public']}:</b> ${this.formatValue(Number(hoveredBuilding?.data['publicOrder'])) ?? this.translations['Inconnu']}`,
       `<b>${this.translations['Brûlable']}:</b> ${
@@ -585,12 +588,12 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
             ? this.translations['Oui']
             : this.translations['Non']
       }`,
-      `<b>${this.translations['Puissance']}:</b> ${this.formatValue(parseInt(String(hoveredBuilding?.data?.['mightValue']))) ?? this.translations['Inconnu']}`,
+      `<b>${this.translations['Puissance']}:</b> ${this.formatValue(Number.parseInt(String(hoveredBuilding?.data?.['mightValue']))) ?? this.translations['Inconnu']}`,
       `<b>${this.translations['Commentaires']}:</b> ${
         hoveredBuilding?.data?.['comment1'] ?? ''
       }${hoveredBuilding?.data?.['comment2'] ? ', ' + (hoveredBuilding?.data?.['comment2'] ?? this.translations['Aucun']) : ''}`,
       `<b>${this.translations['Dimensions']}:</b> ${hoveredBuilding ? `${hoveredBuilding.data?.['width']}x${hoveredBuilding.data?.['height']}` : this.translations['Inconnu']}`,
-      `<b>${this.translations['Prix de vente']}:</b> ${this.formatValue(parseInt(String(hoveredBuilding?.data?.['sellC1']))) ?? this.translations['Inconnu']}`,
+      `<b>${this.translations['Prix de vente']}:</b> ${this.formatValue(Number.parseInt(String(hoveredBuilding?.data?.['sellC1']))) ?? this.translations['Inconnu']}`,
     ];
 
     if (districtItems.length > 0) {
@@ -627,12 +630,11 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     } else {
       this.tooltip = null;
     }
-
-    const tooltipHeight = window.document.getElementById('tooltip')?.offsetHeight || 0;
-    const tooltipWidth = (window.document.getElementById('tooltip')?.offsetWidth || 0) + 16;
-    if (tooltipHeight + 30 + event.pageY > window.innerHeight) {
-      if (this.tooltip) this.tooltip.y = window.innerHeight - tooltipHeight - 10;
-    }
+    const tooltipElement = globalThis.document.querySelector('#tooltip') as HTMLElement | null;
+    const tooltipHeight = tooltipElement?.offsetHeight || 0;
+    const tooltipWidth = (tooltipElement?.offsetWidth || 0) + 16;
+    if (tooltipHeight + 30 + event.pageY > window.innerHeight && this.tooltip)
+      this.tooltip.y = window.innerHeight - tooltipHeight - 10;
     if (this.tooltip && this.tooltip.x + tooltipWidth > window.innerWidth) {
       this.tooltip.x = window.innerWidth - tooltipWidth - 10;
     }
@@ -644,14 +646,18 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     }
     slotTypeID = String(slotTypeID);
     switch (slotTypeID) {
-      case '1':
+      case '1': {
         return (this.languageJsonData['CI_PRIMARYSLOT'] as string) || '-';
-      case '0':
+      }
+      case '0': {
         return (this.languageJsonData['CI_APPEARANCESLOT'] as string) || '-';
-      case '2':
+      }
+      case '2': {
         return (this.languageJsonData['CI_SECONDARYSLOT'] as string) || '-';
-      default:
+      }
+      default: {
         return '';
+      }
     }
   }
 
@@ -769,25 +775,29 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     }, 0);
   }
 
+  private roundedTo2Decimals(value: number): number {
+    return Math.round(value * 100) / 100;
+  }
+
   private drawBuildings(): void {
     this.computeGridMetrics(this.canvasRef.nativeElement);
-    const ctx = this.canvasRef.nativeElement.getContext('2d');
-    if (!ctx) return;
+    const context = this.canvasRef.nativeElement.getContext('2d');
+    if (!context) return;
     const canvas = this.canvasRef.nativeElement;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    this.drawFloorPerimeter(ctx);
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    this.drawFloorPerimeter(context);
     for (const entry of this.buildings) {
-      const { positionX, positionY } = entry.building;
-      if (positionX < 0 && positionY < 0 && entry.building.inDistrictID) {
-        this.addBuildingToDistrict(entry.building.inDistrictID, entry);
+      const { positionX, positionY, inDistrictID, rotation } = entry.building;
+      if (positionX < 0 && positionY < 0 && inDistrictID) {
+        this.addBuildingToDistrict(inDistrictID, entry);
         continue;
       }
       const widthElement = entry.data?.['width'] ?? '1';
       const heightElement = entry.data?.['height'] ?? '1';
       const originalWidth = Number.parseInt(String(widthElement));
       const originalHeight = Number.parseInt(String(heightElement));
-      const width = entry.building.rotation === 1 ? originalHeight : originalWidth;
-      const height = entry.building.rotation === 1 ? originalWidth : originalHeight;
+      const width = rotation === 1 ? originalHeight : originalWidth;
+      const height = rotation === 1 ? originalWidth : originalHeight;
       if (
         positionX + width < this.minX ||
         positionX > this.maxX ||
@@ -796,27 +806,32 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       ) {
         continue;
       }
-      function roundedTo2Decimals(value: number): number {
-        return Math.round(value * 100) / 100;
-      }
-      const x = roundedTo2Decimals(this.offsetX + (positionX - this.minX) * this.cellSize);
-      const y = roundedTo2Decimals(this.offsetY + (positionY - this.minY) * this.cellSize);
-      const w = roundedTo2Decimals(width * this.cellSize);
-      const h = roundedTo2Decimals(height * this.cellSize);
-      if (!entry.isGround) {
+      const x = this.roundedTo2Decimals(this.offsetX + (positionX - this.minX) * this.cellSize);
+      const y = this.roundedTo2Decimals(this.offsetY + (positionY - this.minY) * this.cellSize);
+      const w = this.roundedTo2Decimals(width * this.cellSize);
+      const h = this.roundedTo2Decimals(height * this.cellSize);
+      if (entry.isGround) {
+        const colors = ['#000000ff', '#3a2121ff'];
+        context.fillStyle = colors[0];
+        context.fillRect(x, y, w, h);
+      } else {
         function parseToRgb(color: string): [number, number, number] {
           if (color.startsWith('#')) {
             const hex = color.slice(1);
-            const h = (len: number, i: number): number =>
-              Number.parseInt(len === 3 || len === 4 ? hex[i] + hex[i] : hex.slice(i * 2, i * 2 + 2), 16);
-            const len = hex.length;
-            if (len === 3 || len === 4 || len === 6 || len === 8) return [h(len, 0), h(len, 1), h(len, 2)];
+            const h = (length: number, index: number): number =>
+              Number.parseInt(
+                length === 3 || length === 4 ? hex[index] + hex[index] : hex.slice(index * 2, index * 2 + 2),
+                16,
+              );
+            const length = hex.length;
+            if (length === 3 || length === 4 || length === 6 || length === 8)
+              return [h(length, 0), h(length, 1), h(length, 2)];
           }
           const m = color.match(/rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
           if (m) return [Number(m[1]), Number(m[2]), Number(m[3])];
           return [128, 128, 128];
         }
-        const rgbStr = (r: number, g: number, b: number): string => `rgb(${r},${g},${b})`;
+        const rgbString = (r: number, g: number, b: number): string => `rgb(${r},${g},${b})`;
         function adjust([r, g, b]: [number, number, number], f: number): [number, number, number] {
           return [
             Math.min(255, Math.max(0, Math.round(r * f))),
@@ -832,7 +847,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
           return { x: sx, y: sy, w: sw, h: sh };
         }
         function drawCellModern(
-          ctx: CanvasRenderingContext2D,
+          context_: CanvasRenderingContext2D,
           x: number,
           y: number,
           w: number,
@@ -841,29 +856,25 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
         ): void {
           const { x: px, y: py, w: pw, h: ph } = snapRect(x, y, w, h);
           const base = parseToRgb(baseColor);
-          const grad = ctx.createLinearGradient(px, py, px, py + ph);
+          const grad = context_.createLinearGradient(px, py, px, py + ph);
           const top = adjust(base, 1.15);
           const bottom = adjust(base, 0.85);
-          grad.addColorStop(0, rgbStr(...top));
-          grad.addColorStop(1, rgbStr(...bottom));
-          ctx.fillStyle = grad;
-          ctx.fillRect(px, py, pw, ph);
+          grad.addColorStop(0, rgbString(...top));
+          grad.addColorStop(1, rgbString(...bottom));
+          context_.fillStyle = grad;
+          context_.fillRect(px, py, pw, ph);
           if (pw >= 2 && ph >= 2) {
-            ctx.fillStyle = rgbStr(...adjust(base, 1.25));
-            ctx.fillRect(px, py, pw, 1); // top
-            ctx.fillRect(px, py, 1, ph); // left
-            ctx.fillStyle = rgbStr(...adjust(base, 0.7));
-            ctx.fillRect(px, py + ph - 1, pw, 1); // bottom
-            ctx.fillRect(px + pw - 1, py, 1, ph); // right
+            context_.fillStyle = rgbString(...adjust(base, 1.25));
+            context_.fillRect(px, py, pw, 1); // top
+            context_.fillRect(px, py, 1, ph); // left
+            context_.fillStyle = rgbString(...adjust(base, 0.7));
+            context_.fillRect(px, py + ph - 1, pw, 1); // bottom
+            context_.fillRect(px + pw - 1, py, 1, ph); // right
           }
         }
         const nameElement = entry.data?.['name'] ?? 'Unknown';
         const [color] = this.getItemColor(String(nameElement));
-        drawCellModern(ctx, x, y, w, h, color);
-      } else {
-        const colors = ['#000000ff', '#3a2121ff'];
-        ctx.fillStyle = colors[0];
-        ctx.fillRect(x, y, w, h);
+        drawCellModern(context, x, y, w, h, color);
       }
     }
     this.cdr.detectChanges();
@@ -878,8 +889,9 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     }
 
     let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    for (let index = 0; index < name.length; index++) {
+      //hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      hash = (name.codePointAt(index) || 0) + ((hash << 5) - hash);
     }
 
     let r1 = (hash >> 16) & 255;
@@ -904,7 +916,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
 
   private getFusionLevelPublicOrder(level: string): number {
     const l = Number.parseInt(level);
-    if (!isNaN(l)) {
+    if (!Number.isNaN(l)) {
       return 100 + l * 5;
     }
     return 0;
@@ -950,7 +962,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     const tryPlacement = (
       order: IMappedBuildingWithGround[],
     ): { buildings: IMappedBuildingWithGround[]; score: number } => {
-      const buildings: IMappedBuildingWithGround[] = JSON.parse(JSON.stringify(initialBuildings));
+      const buildings: IMappedBuildingWithGround[] = structuredClone(initialBuildings);
       const occupancy = constructionMap.map((row) => [...row]);
 
       for (const b of order) {
@@ -1009,7 +1021,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
           Number(a.data['width']) * Number(a.data['height']) - Number(b.data['width']) * Number(b.data['height']),
       ),
     ];
-    for (let i = 0; i < tryOrders; i++) {
+    for (let index = 0; index < tryOrders; index++) {
       orders.push([...movable].sort(() => Math.random() - 0.5));
     }
 
@@ -1075,14 +1087,14 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     return target || '-';
   }
 
-  private upperAllKeys(obj: { [key: string]: string | string[] }): { [key: string]: string | string[] } {
-    if (typeof obj !== 'object' || obj === null) return obj;
-    const newObj: { [key: string]: string | string[] } = {};
-    for (const key of Object.keys(obj)) {
+  private upperAllKeys(object: { [key: string]: string | string[] }): { [key: string]: string | string[] } {
+    if (typeof object !== 'object' || object === null) return object;
+    const uppercasedObject: { [key: string]: string | string[] } = {};
+    for (const key of Object.keys(object)) {
       const upperKey = key.toUpperCase();
-      newObj[upperKey] = obj[key];
+      uppercasedObject[upperKey] = object[key];
     }
-    return newObj;
+    return uppercasedObject;
   }
 
   private getFormatedLevel(level: number, legendaryLevel: number): string {
@@ -1116,21 +1128,26 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     if (sortColumn) {
       const nestedColumn = sortColumn.split('.');
       filtered = [...filtered].sort((a, b) => {
-        const aValue = nestedColumn.reduce<any>((obj, key) => obj?.[key], a) ?? '';
-        const bValue = nestedColumn.reduce<any>((obj, key) => obj?.[key], b) ?? '';
+        const aValue = nestedColumn.reduce<any>((object, key) => object?.[key], a) ?? '';
+        const bValue = nestedColumn.reduce<any>((object, key) => object?.[key], b) ?? '';
         const type = typeof aValue;
-        if (type === 'string') {
-          return (
-            ('' + aValue).localeCompare('' + bValue, undefined, {
-              sensitivity: 'base',
-            }) * (this.sortAsc ? 1 : -1)
-          );
-        } else if (type === 'number') {
-          return (aValue - bValue) * (this.sortAsc ? 1 : -1);
-        } else if (type === 'boolean') {
-          return (aValue === bValue ? 0 : aValue ? 1 : -1) * (this.sortAsc ? 1 : -1);
-        } else {
-          return 0;
+        switch (type) {
+          case 'string': {
+            return (
+              ('' + aValue).localeCompare('' + bValue, undefined, {
+                sensitivity: 'base',
+              }) * (this.sortAsc ? 1 : -1)
+            );
+          }
+          case 'number': {
+            return (aValue - bValue) * (this.sortAsc ? 1 : -1);
+          }
+          case 'boolean': {
+            return (aValue === bValue ? 0 : aValue ? 1 : -1) * (this.sortAsc ? 1 : -1);
+          }
+          default: {
+            return 0;
+          }
         }
       });
     }
@@ -1180,17 +1197,17 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     };
     for (const castleDataCategory of Object.entries(castleData.data)) {
       const [category, data] = castleDataCategory;
-      for (let i = 0; i < data.length; i++) {
+      for (const [index, datum] of data.entries()) {
         const item = {
-          ...data[i],
-          internalID: '#' + data[i].objectID,
+          ...datum,
+          internalID: '#' + datum.objectID,
         };
         const b = buildingItems.find((object: { [key: string]: string | number }) => object['wodID'] === item.wodID);
         if (!b) {
           console.warn(`Item with wodID ${item.wodID} not found in items.`);
           continue;
         }
-        result.data[category as keyof typeof castleData.data][i] = {
+        result.data[category as keyof typeof castleData.data][index] = {
           building: item,
           data: this.mapDataObject(b),
           constructionItems: {},
@@ -1238,14 +1255,12 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
         isGround: false,
       })),
     ];
-    this.grounds = [
-      ...result.data.grounds.map((ground) => ({
-        building: ground.building,
-        data: ground.data,
-        constructionItems: ground.constructionItems,
-        isGround: true,
-      })),
-    ];
+    this.grounds = result.data.grounds.map((ground) => ({
+      building: ground.building,
+      data: ground.data,
+      constructionItems: ground.constructionItems,
+      isGround: true,
+    }));
     this.visibleBuildings = [
       ...result.data.gates.map((gates) => ({
         building: gates.building,
@@ -1289,11 +1304,11 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     });
     this.constructionTypes = c
       .filter((item): item is { label: string; value: string } => !!item)
-      .reduce((acc: { label: string; value: string }[], current) => {
-        if (!acc.find((item) => item.value === current.value)) {
-          acc.push(current);
+      .reduce((accumulator: { label: string; value: string }[], current) => {
+        if (!accumulator.some((item) => item.value === current.value)) {
+          accumulator.push(current);
         }
-        return acc;
+        return accumulator;
       }, [])
       .sort((a, b) => a.label.localeCompare(b.label));
     this.constructionTypes.unshift({ label: this.translations['Tous'], value: null });
@@ -1309,7 +1324,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   ): number[][] {
     const width = maxX - minX;
     const height = maxY - minY;
-    const map = Array.from({ length: height }, () => Array(width).fill(0));
+    const map: number[][] = Array.from({ length: height }, () => Array.from<number>({ length: width }).fill(0));
     for (const tile of grounds) {
       const gx = tile.building.positionX - minX;
       const gy = tile.building.positionY - minY;
@@ -1336,7 +1351,9 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     }
   }
 
-  private drawFloorPerimeter(ctx: CanvasRenderingContext2D): void {
+  private edgeKey = (sx: number, sy: number, ex: number, ey: number): string => `${sx},${sy}->${ex},${ey}`;
+
+  private drawFloorPerimeter(context: CanvasRenderingContext2D): void {
     const floors = this.castleObject?.data.grounds || [];
     if (!floors || floors.length === 0) return;
     let fxMin = Infinity,
@@ -1360,7 +1377,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     }
     const gridW = Math.max(1, fxMax - fxMin);
     const gridH = Math.max(1, fyMax - fyMin);
-    const grid = new Array(gridH);
+    const grid: Uint8Array[] = Array.from({ length: gridH });
     for (let y = 0; y < gridH; y++) {
       grid[y] = new Uint8Array(gridW);
     }
@@ -1404,32 +1421,31 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     }
     const edgeUsed = new Set<string>();
     const polygons: Pt[][] = [];
-    const edgeKey = (sx: number, sy: number, ex: number, ey: number): string => `${sx},${sy}->${ex},${ey}`;
     for (const [startKey, ends] of edges) {
       const startPts = startKey.split(',').map(Number);
       const sx = startPts[0],
         sy = startPts[1];
-      for (const end of ends.slice()) {
+      for (const end of ends) {
         const ex = end.x,
           ey = end.y;
-        const k = edgeKey(sx, sy, ex, ey);
+        const k = this.edgeKey(sx, sy, ex, ey);
         if (edgeUsed.has(k)) continue;
         const poly: Pt[] = [];
-        let curX = sx,
-          curY = sy;
+        let currentX = sx,
+          currentY = sy;
         let nextX = ex,
           nextY = ey;
-        poly.push({ x: curX, y: curY });
+        poly.push({ x: currentX, y: currentY });
         edgeUsed.add(k);
         while (true) {
-          curX = nextX;
-          curY = nextY;
-          poly.push({ x: curX, y: curY });
-          const curKey = `${curX},${curY}`;
-          const list = edges.get(curKey) ?? [];
+          currentX = nextX;
+          currentY = nextY;
+          poly.push({ x: currentX, y: currentY });
+          const currentKey = `${currentX},${currentY}`;
+          const list = edges.get(currentKey) ?? [];
           let found = false;
           for (const candidate of list) {
-            const k2 = edgeKey(curX, curY, candidate.x, candidate.y);
+            const k2 = this.edgeKey(currentX, currentY, candidate.x, candidate.y);
             if (!edgeUsed.has(k2)) {
               edgeUsed.add(k2);
               nextX = candidate.x;
@@ -1447,9 +1463,9 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     if (polygons.length === 0) return;
     const polygonArea = (poly: Pt[]): number => {
       let area = 0;
-      for (let i = 0; i < poly.length; i++) {
-        const a = poly[i];
-        const b = poly[(i + 1) % poly.length];
+      for (let index = 0; index < poly.length; index++) {
+        const a = poly[index];
+        const b = poly[(index + 1) % poly.length];
         area += a.x * b.y - b.x * a.y;
       }
       return Math.abs(area) / 2;
@@ -1472,31 +1488,31 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     });
     if (pointsPx.length < 2) return;
     const borderSize = 15;
-    ctx.save();
-    ctx.lineJoin = 'miter';
-    ctx.lineCap = 'butt';
+    context.save();
+    context.lineJoin = 'miter';
+    context.lineCap = 'butt';
 
-    ctx.beginPath();
-    ctx.moveTo(pointsPx[0].x, pointsPx[0].y);
-    for (let i = 1; i < pointsPx.length; i++) ctx.lineTo(pointsPx[i].x, pointsPx[i].y);
-    ctx.closePath();
-    ctx.lineWidth = borderSize * 3;
-    ctx.strokeStyle = 'rgba(34,169,187,0.42)';
-    ctx.translate(-ctx.lineWidth / 2, -ctx.lineWidth / 2);
-    ctx.stroke();
-    ctx.translate(ctx.lineWidth / 2, ctx.lineWidth / 2);
+    context.beginPath();
+    context.moveTo(pointsPx[0].x, pointsPx[0].y);
+    for (let index = 1; index < pointsPx.length; index++) context.lineTo(pointsPx[index].x, pointsPx[index].y);
+    context.closePath();
+    context.lineWidth = borderSize * 3;
+    context.strokeStyle = 'rgba(34,169,187,0.42)';
+    context.translate(-context.lineWidth / 2, -context.lineWidth / 2);
+    context.stroke();
+    context.translate(context.lineWidth / 2, context.lineWidth / 2);
 
-    ctx.beginPath();
-    ctx.moveTo(pointsPx[0].x, pointsPx[0].y);
-    for (let i = 1; i < pointsPx.length; i++) ctx.lineTo(pointsPx[i].x, pointsPx[i].y);
-    ctx.closePath();
-    ctx.lineWidth = borderSize;
-    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-    ctx.translate(-ctx.lineWidth / 2, -ctx.lineWidth / 2);
-    ctx.stroke();
-    ctx.translate(ctx.lineWidth / 2, ctx.lineWidth / 2);
+    context.beginPath();
+    context.moveTo(pointsPx[0].x, pointsPx[0].y);
+    for (let index = 1; index < pointsPx.length; index++) context.lineTo(pointsPx[index].x, pointsPx[index].y);
+    context.closePath();
+    context.lineWidth = borderSize;
+    context.strokeStyle = 'rgba(0,0,0,0.5)';
+    context.translate(-context.lineWidth / 2, -context.lineWidth / 2);
+    context.stroke();
+    context.translate(context.lineWidth / 2, context.lineWidth / 2);
 
-    ctx.restore();
+    context.restore();
   }
 
   private mapDataObject(data: IMappedBuildingUnknownDataElement): IMappedBuildingUnknownDataElement {
@@ -1517,12 +1533,15 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
 
   private getBaseNameTextId(slotTypeID: string): string | null {
     switch (slotTypeID) {
-      case '0':
+      case '0': {
         return 'ci_appearance';
-      case '1':
+      }
+      case '1': {
         return 'ci_primary';
-      case '2':
+      }
+      case '2': {
         return 'ci_secondary';
+      }
     }
     return null;
   }
@@ -1537,7 +1556,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
 
   private mapConstructionItemObject(data: IMappedBuildingUnknownDataElement): IMappedBuildingUnknownDataElement {
     try {
-      const RARENESS_COLORS = { 0: 10686223, 1: 8816262, 2: 6983196, 3: 9058259, 4: 15687936 };
+      const RARENESS_COLORS = { 0: 10_686_223, 1: 8_816_262, 2: 6_983_196, 3: 9_058_259, 4: 15_687_936 };
       const RARENESS_NAMES = this.getRarenessNames();
       function toHex(value: number): string {
         return '#' + value.toString(16).padStart(6, '0');
@@ -1545,24 +1564,24 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       if (!this.languageJsonData) {
         throw new Error('Language JSON data is not loaded');
       }
-      const [eId, eValue] = String(data['effects']).split('&');
-      let eC = this.effects.find((e) => e['effectID'] === eId);
+      const [effectId, effectValue] = String(data['effects']).split('&');
+      let effectCode = this.effects.find((effect) => effect['effectID'] === effectId);
       if (data['effects']) {
-        const key = eC && eC['name'];
+        const key = effectCode && effectCode['name'];
         const name = this.languageJsonData[('equip_effect_description_' + key).toUpperCase()];
         if (name) {
-          eC = {
-            name: (name as String).replace('{0}', String(eValue)),
+          effectCode = {
+            name: (name as String).replace('{0}', String(effectValue)),
           };
         } else {
           const name = this.languageJsonData[('ci_effect_' + key).toUpperCase()];
           if (name) {
-            eC = {
-              name: (name as String).replace('{0}', String(eValue)),
+            effectCode = {
+              name: (name as String).replace('{0}', String(effectValue)),
             };
           } else {
-            const target = eValue.split('+');
-            eC = {
+            const target = effectValue.split('+');
+            effectCode = {
               name: (this.languageJsonData[('ci_effect_' + key + '_' + target[0]).toUpperCase()] as String).replace(
                 '{0}',
                 String(target[1]),
@@ -1573,7 +1592,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       } else {
         if (data['decoPoints']) {
           const name = this.languageJsonData['ci_effect_decoPoints'.toUpperCase()];
-          eC = {
+          effectCode = {
             name: (name as String).replace('{0}', String(data['decoPoints'])),
           };
         } else {
@@ -1619,7 +1638,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
             if (data[key] !== undefined) {
               const count = data[key];
               const name = this.languageJsonData[('ci_effect_' + key).toUpperCase()];
-              eC = {
+              effectCode = {
                 name: (name as String).replace('{0}', String(count)),
               };
             }
@@ -1647,7 +1666,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
           ],
         ),
         boxUrl: this.getBoxUrl(data),
-        effect: eC ? eC['name'] : null,
+        effect: effectCode ? effectCode['name'] : null,
       };
     } catch (error) {
       console.error('Error in transformData:', error);
@@ -1656,22 +1675,22 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   }
 
   private drawMiniMaps(): void {
-    this.miniMaps.forEach((canvasRef, index) => {
+    this.miniMaps.forEach((canvasReference, index) => {
       const castle = this.castles[index];
-      const ctx = canvasRef.nativeElement.getContext('2d');
-      if (!ctx) return;
-      ctx.clearRect(0, 0, this.miniSize, this.miniSize);
-      ctx.fillStyle = '#929E3F';
-      ctx.fillRect(0, 0, this.miniSize, this.miniSize);
+      const context = canvasReference.nativeElement.getContext('2d');
+      if (!context) return;
+      context.clearRect(0, 0, this.miniSize, this.miniSize);
+      context.fillStyle = '#929E3F';
+      context.fillRect(0, 0, this.miniSize, this.miniSize);
       const x = (castle.positionX / this.mapSize) * this.miniSize;
       const y = (castle.positionY / this.mapSize) * this.miniSize;
-      ctx.fillStyle = 'red';
-      ctx.beginPath();
-      ctx.arc(x, y, 3, 0, 2 * Math.PI);
-      ctx.fill();
-      ctx.strokeStyle = '#be0404ff';
-      ctx.lineWidth = 1;
-      ctx.stroke();
+      context.fillStyle = 'red';
+      context.beginPath();
+      context.arc(x, y, 3, 0, 2 * Math.PI);
+      context.fill();
+      context.strokeStyle = '#be0404ff';
+      context.lineWidth = 1;
+      context.stroke();
     });
   }
 
@@ -1689,23 +1708,25 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     } else {
       const splitEffects = areaSpecificEffects.split(',');
       const effects = [];
-      let i = -1;
+      let index = -1;
       for (const effect of splitEffects) {
-        i++;
+        index++;
         const [id, value] = effect.split('&');
-        const findEffect = this.effects.find((e) => e['effectID'] === id);
+        const findEffect = this.effects.find((effect) => effect['effectID'] === id);
         if (!findEffect) {
           console.warn(`Effect with ID ${id} not found in effects.`);
           continue;
         }
         const tries = ['effect_name_' + findEffect['name'], 'equip_effect_description_' + findEffect['name']];
-        effects[i] = null;
-        let currentName: string | null = effects[i];
+        effects[index] = null;
+        let currentName: string | null = effects[index];
         for (const tryKey of tries) {
           if (currentName) break;
           const name = this.languageJsonData[tryKey.toUpperCase()];
           if (name) {
-            const searchType = this.effectTypes.find((e) => e['effectTypeID'] === findEffect['effectTypeID']);
+            const searchType = this.effectTypes.find(
+              (effectType) => effectType['effectTypeID'] === findEffect['effectTypeID'],
+            );
             const name2 = this.languageJsonData[('ci_effect_' + searchType!['name']).toUpperCase()];
             if (name2) {
               currentName = String(name2).replace('{0}', value);
@@ -1725,9 +1746,11 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
             }
           }
         }
-        effects[i] = currentName;
+        effects[index] = currentName;
         if (!currentName) {
-          const searchType = this.effectTypes.find((e) => e['effectTypeID'] === findEffect['effectTypeID']);
+          const searchType = this.effectTypes.find(
+            (effectType) => effectType['effectTypeID'] === findEffect['effectTypeID'],
+          );
           console.warn(`Effect name for ${findEffect['name']} not found in language data.`, searchType, data, value);
         }
       }
@@ -1738,126 +1761,186 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   private getEffectValue(name: string): string {
     name = name.trim().toUpperCase();
     switch (name) {
-      case 'Woodproduction'.toUpperCase():
+      case 'Woodproduction'.toUpperCase(): {
         return GenericTextIds.VALUE_NOMINAL_ADD;
-      case 'Stoneproduction'.toUpperCase():
+      }
+      case 'Stoneproduction'.toUpperCase(): {
         return GenericTextIds.VALUE_NOMINAL_ADD;
-      case 'Foodproduction'.toUpperCase():
+      }
+      case 'Foodproduction'.toUpperCase(): {
         return GenericTextIds.VALUE_NOMINAL_ADD;
-      case 'Coalproduction'.toUpperCase():
+      }
+      case 'Coalproduction'.toUpperCase(): {
         return '';
-      case 'Oilproduction'.toUpperCase():
+      }
+      case 'Oilproduction'.toUpperCase(): {
         return '';
-      case 'Glassproduction'.toUpperCase():
+      }
+      case 'Glassproduction'.toUpperCase(): {
         return '';
-      case 'Ironproduction'.toUpperCase():
+      }
+      case 'Ironproduction'.toUpperCase(): {
         return '';
-      case 'Woodboost'.toUpperCase():
+      }
+      case 'Woodboost'.toUpperCase(): {
         return '';
-      case 'Stoneboost'.toUpperCase():
+      }
+      case 'Stoneboost'.toUpperCase(): {
         return '';
-      case 'Foodboost'.toUpperCase():
+      }
+      case 'Foodboost'.toUpperCase(): {
         return '';
-      case 'alliFoodProductionBonus'.toUpperCase():
+      }
+      case 'alliFoodProductionBonus'.toUpperCase(): {
         return '';
-      case 'Coalboost'.toUpperCase():
+      }
+      case 'Coalboost'.toUpperCase(): {
         return '';
-      case 'Oilboost'.toUpperCase():
+      }
+      case 'Oilboost'.toUpperCase(): {
         return '';
-      case 'Glassboost'.toUpperCase():
+      }
+      case 'Glassboost'.toUpperCase(): {
         return '';
-      case 'Ironboost'.toUpperCase():
+      }
+      case 'Ironboost'.toUpperCase(): {
         return '';
-      case 'Foodreduction'.toUpperCase():
+      }
+      case 'Foodreduction'.toUpperCase(): {
         return '';
-      case 'Hideout'.toUpperCase():
+      }
+      case 'Hideout'.toUpperCase(): {
         return '';
-      case 'decoPoints'.toUpperCase():
+      }
+      case 'decoPoints'.toUpperCase(): {
         return GenericTextIds.VALUE_NOMINAL_ADD;
-      case 'Population'.toUpperCase():
+      }
+      case 'Population'.toUpperCase(): {
         return '';
-      case 'woodStorage'.toUpperCase():
+      }
+      case 'woodStorage'.toUpperCase(): {
         return GenericTextIds.VALUE_NOMINAL_ADD;
-      case 'stoneStorage'.toUpperCase():
+      }
+      case 'stoneStorage'.toUpperCase(): {
         return GenericTextIds.VALUE_NOMINAL_ADD;
-      case 'foodStorage'.toUpperCase():
+      }
+      case 'foodStorage'.toUpperCase(): {
         return GenericTextIds.VALUE_NOMINAL_ADD;
-      case 'coalStorage'.toUpperCase():
+      }
+      case 'coalStorage'.toUpperCase(): {
         return GenericTextIds.VALUE_NOMINAL_ADD;
-      case 'oilStorage'.toUpperCase():
+      }
+      case 'oilStorage'.toUpperCase(): {
         return GenericTextIds.VALUE_NOMINAL_ADD;
-      case 'glassStorage'.toUpperCase():
+      }
+      case 'glassStorage'.toUpperCase(): {
         return GenericTextIds.VALUE_NOMINAL_ADD;
-      case 'ironStorage'.toUpperCase():
+      }
+      case 'ironStorage'.toUpperCase(): {
         return GenericTextIds.VALUE_NOMINAL_ADD;
-      case 'honeyStorage'.toUpperCase():
+      }
+      case 'honeyStorage'.toUpperCase(): {
         return GenericTextIds.VALUE_NOMINAL_ADD;
-      case 'meadStorage'.toUpperCase():
+      }
+      case 'meadStorage'.toUpperCase(): {
         return GenericTextIds.VALUE_NOMINAL_ADD;
-      case 'beefStorage'.toUpperCase():
+      }
+      case 'beefStorage'.toUpperCase(): {
         return GenericTextIds.VALUE_NOMINAL_ADD;
-      case 'marketCarriages'.toUpperCase():
+      }
+      case 'marketCarriages'.toUpperCase(): {
         return GenericTextIds.VALUE_NOMINAL_ADD;
-      case 'sightRadiusBonus'.toUpperCase():
+      }
+      case 'sightRadiusBonus'.toUpperCase(): {
         return '';
-      case 'commanderSize'.toUpperCase():
+      }
+      case 'commanderSize'.toUpperCase(): {
         return '';
-      case 'guardSize'.toUpperCase():
+      }
+      case 'guardSize'.toUpperCase(): {
         return '';
-      case 'spySize'.toUpperCase():
+      }
+      case 'spySize'.toUpperCase(): {
         return '';
-      case 'buildingCostReduction'.toUpperCase():
+      }
+      case 'buildingCostReduction'.toUpperCase(): {
         return '';
-      case 'shownTravelBonus'.toUpperCase():
+      }
+      case 'shownTravelBonus'.toUpperCase(): {
         return '';
-      case 'islandAlliancePoints'.toUpperCase():
+      }
+      case 'islandAlliancePoints'.toUpperCase(): {
         return '';
-      case 'buildSpeedBoost'.toUpperCase():
+      }
+      case 'buildSpeedBoost'.toUpperCase(): {
         return '';
-      case 'surviveBoost'.toUpperCase():
+      }
+      case 'surviveBoost'.toUpperCase(): {
         return GenericTextIds.VALUE_PERCENTAGE_SUBTRACT;
-      case 'hospitalCapacity'.toUpperCase():
+      }
+      case 'hospitalCapacity'.toUpperCase(): {
         return GenericTextIds.VALUE_NOMINAL_ADD;
-      case 'hospitalSlots'.toUpperCase():
+      }
+      case 'hospitalSlots'.toUpperCase(): {
         return '';
-      case 'recruitCostReduction'.toUpperCase():
+      }
+      case 'recruitCostReduction'.toUpperCase(): {
         return GenericTextIds.VALUE_PERCENTAGE_SUBTRACT;
-      case 'stackSize'.toUpperCase():
+      }
+      case 'stackSize'.toUpperCase(): {
         return GenericTextIds.VALUE_NOMINAL_ADD;
-      case 'healSpeed'.toUpperCase():
+      }
+      case 'healSpeed'.toUpperCase(): {
         return GenericTextIds.VALUE_PERCENTAGE_ADD;
-      case 'recruitSpeedBoost'.toUpperCase():
+      }
+      case 'recruitSpeedBoost'.toUpperCase(): {
         return GenericTextIds.VALUE_PERCENTAGE_ADD;
-      case 'unitWallCount'.toUpperCase():
+      }
+      case 'unitWallCount'.toUpperCase(): {
         return GenericTextIds.VALUE_NOMINAL_ADD;
-      case 'unboostedFoodProduction'.toUpperCase():
+      }
+      case 'unboostedFoodProduction'.toUpperCase(): {
         return GenericTextIds.VALUE_NOMINAL_ADD;
-      case 'unboostedWoodProduction'.toUpperCase():
+      }
+      case 'unboostedWoodProduction'.toUpperCase(): {
         return GenericTextIds.VALUE_NOMINAL_ADD;
-      case 'unboostedStoneProduction'.toUpperCase():
+      }
+      case 'unboostedStoneProduction'.toUpperCase(): {
         return GenericTextIds.VALUE_NOMINAL_ADD;
-      case 'espionageTravelBoost'.toUpperCase():
+      }
+      case 'espionageTravelBoost'.toUpperCase(): {
         return GenericTextIds.VALUE_PERCENTAGE_ADD;
-      case 'defensiveToolsCostsReduction'.toUpperCase():
+      }
+      case 'defensiveToolsCostsReduction'.toUpperCase(): {
         return GenericTextIds.VALUE_PERCENTAGE_SUBTRACT;
-      case 'defensiveToolsSpeedBoost'.toUpperCase():
+      }
+      case 'defensiveToolsSpeedBoost'.toUpperCase(): {
         return GenericTextIds.VALUE_PERCENTAGE_ADD;
-      case 'feastCostsReduction'.toUpperCase():
+      }
+      case 'feastCostsReduction'.toUpperCase(): {
         return GenericTextIds.VALUE_PERCENTAGE_SUBTRACT;
-      case 'offensiveToolsCostsReduction'.toUpperCase():
+      }
+      case 'offensiveToolsCostsReduction'.toUpperCase(): {
         return GenericTextIds.VALUE_PERCENTAGE_SUBTRACT;
-      case 'offensiveToolsSpeedBoost'.toUpperCase():
+      }
+      case 'offensiveToolsSpeedBoost'.toUpperCase(): {
         return GenericTextIds.VALUE_PERCENTAGE_ADD;
-      case 'ReduceResearchResourceCosts'.toUpperCase():
+      }
+      case 'ReduceResearchResourceCosts'.toUpperCase(): {
         return GenericTextIds.VALUE_PERCENTAGE_SUBTRACT;
-      case 'XPBoostBuildBuildings'.toUpperCase():
+      }
+      case 'XPBoostBuildBuildings'.toUpperCase(): {
         return GenericTextIds.VALUE_PERCENTAGE_ADD;
-      case 'districtSlots'.toUpperCase():
+      }
+      case 'districtSlots'.toUpperCase(): {
         return '';
-      case 'Meadreduction'.toUpperCase():
+      }
+      case 'Meadreduction'.toUpperCase(): {
         return GenericTextIds.VALUE_PERCENTAGE_SUBTRACT;
-      case 'Beefreduction'.toUpperCase():
+      }
+      case 'Beefreduction'.toUpperCase(): {
         return GenericTextIds.VALUE_PERCENTAGE_SUBTRACT;
+      }
     }
     return '';
   }

@@ -65,8 +65,8 @@ export class TroopsAnimationComponent implements OnInit, OnDestroy {
 
   public async initTroops(): Promise<void> {
     this.troops = [];
-    for (let i = 0; i < this.maxTroops; i++) {
-      this.troops.push(this.createTroop(i));
+    for (let index = 0; index < this.maxTroops; index++) {
+      this.troops.push(this.createTroop(index));
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
   }
@@ -100,54 +100,62 @@ export class TroopsAnimationComponent implements OnInit, OnDestroy {
       dx = 0,
       dy = 0;
     switch (edge) {
-      case 'top':
+      case 'top': {
         x = Math.random() * containerRect.width;
         y = -this.size;
         dx = (Math.random() - 0.5) * 1;
         dy = 0.8 + Math.random() * 0.4;
         break;
-      case 'bottom':
+      }
+      case 'bottom': {
         x = Math.random() * containerRect.width;
         y = containerRect.height + this.size;
         dx = (Math.random() - 0.5) * 1;
         dy = -(0.8 + Math.random() * 0.4);
         break;
-      case 'left':
+      }
+      case 'left': {
         x = -this.size;
         y = Math.random() * containerRect.height;
         dx = 0.8 + Math.random() * 0.4;
         dy = (Math.random() - 0.5) * 1;
         break;
-      case 'right':
+      }
+      case 'right': {
         x = containerRect.width + this.size;
         y = Math.random() * containerRect.height;
         dx = -(0.8 + Math.random() * 0.4);
         dy = (Math.random() - 0.5) * 1;
         break;
-      case 'top-left':
+      }
+      case 'top-left': {
         x = -this.size;
         y = -this.size;
         dx = 0.8 + Math.random() * 0.4;
         dy = 0.8 + Math.random() * 0.4;
         break;
-      case 'top-right':
+      }
+      case 'top-right': {
         x = containerRect.width + this.size;
         y = -this.size;
         dx = -(0.8 + Math.random() * 0.4);
         dy = 0.8 + Math.random() * 0.4;
         break;
-      case 'bottom-left':
+      }
+      case 'bottom-left': {
         x = -this.size;
         y = containerRect.height + this.size;
         dx = 0.8 + Math.random() * 0.4;
         dy = -(0.8 + Math.random() * 0.4);
         break;
-      case 'bottom-right':
+      }
+      case 'bottom-right': {
         x = containerRect.width + this.size;
         y = containerRect.height + this.size;
         dx = -(0.8 + Math.random() * 0.4);
         dy = -(0.8 + Math.random() * 0.4);
         break;
+      }
     }
     const minSpeed = 20;
     const maxSpeed = 60;
@@ -167,7 +175,7 @@ export class TroopsAnimationComponent implements OnInit, OnDestroy {
   private animate(): void {
     const containerRect = this.container.nativeElement.getBoundingClientRect();
     const deltaTime = 16 / 1000;
-    this.troops.forEach((troop, idx) => {
+    this.troops.forEach((troop, index) => {
       troop.x += troop.dx * troop.speed * deltaTime;
       troop.y += troop.dy * troop.speed * deltaTime;
       if (
@@ -176,7 +184,7 @@ export class TroopsAnimationComponent implements OnInit, OnDestroy {
         troop.y < -this.size * 2 ||
         troop.y > containerRect.height + this.size * 2
       ) {
-        this.troops[idx] = this.createTroop(troop.id);
+        this.troops[index] = this.createTroop(troop.id);
       }
     });
 

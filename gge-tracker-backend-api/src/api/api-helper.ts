@@ -1,6 +1,6 @@
 import { RedisClientType } from 'redis';
 import { ApiGgeTrackerManager } from './services/empire-api-service';
-import * as crypto from 'crypto';
+import * as crypto from 'node:crypto';
 import * as express from 'express';
 
 /**
@@ -40,7 +40,7 @@ enum Status {
 export abstract class ApiHelper {
   public static readonly PAGINATION_LIMIT = 15;
   public static readonly REDIS_KEY_GGE_VERSION = 'gge_build_version';
-  public static readonly MAX_RESULT_PAGE = 999999999;
+  public static readonly MAX_RESULT_PAGE = 999_999_999;
   public static readonly HTTP_OK = Status.OK;
   public static readonly HTTP_CREATED = Status.CREATED;
   public static readonly HTTP_BAD_REQUEST = Status.BAD_REQUEST;
@@ -146,8 +146,8 @@ export abstract class ApiHelper {
    */
   public static logError(error: any, methodName: string, request: express.Request): void {
     const uniqueId = crypto.randomBytes(4).toString('hex');
-    const redColor = '\u001b[31m';
-    const resetColor = '\u001b[0m';
+    const redColor = '\u001B[31m';
+    const resetColor = '\u001B[0m';
     console.log('');
     const colorize = (text: string): string => this.colorize(text, redColor, resetColor);
     console.log(colorize(`----- ERROR LOG START #${uniqueId} -----`));
@@ -159,8 +159,8 @@ export abstract class ApiHelper {
       console.error(colorize(`* Error:\n${String(error)}`));
     }
     console.log(colorize(`* Method: ${methodName}`));
-    if (request && request.query) console.log(colorize(`* Query:\n${JSON.stringify(request.query, null, 2)}`));
-    if (request && request.params) console.log(colorize(`* Params:\n${JSON.stringify(request.params, null, 2)}`));
+    if (request?.query) console.log(colorize(`* Query:\n${JSON.stringify(request.query, null, 2)}`));
+    if (request?.params) console.log(colorize(`* Params:\n${JSON.stringify(request.params, null, 2)}`));
     console.log(colorize(`----- ERROR LOG END #${uniqueId} -----`));
   }
 
@@ -173,8 +173,8 @@ export abstract class ApiHelper {
    */
   public static async getAssets(): Promise<Buffer> {
     if (this.file) return this.file;
-    const fs = await import('fs');
-    const path = await import('path');
+    const fs = await import('node:fs');
+    const path = await import('node:path');
     this.file = await fs.promises.readFile(path.join(__dirname, './assets/assets.json'));
     return this.file;
   }
@@ -192,11 +192,9 @@ export abstract class ApiHelper {
    */
   public static async updateCache(key: string, data: any, cacheTTL = 1200, noJsonMode = false): Promise<void> {
     try {
-      if (noJsonMode) {
-        await this.redisClient.setEx(key, cacheTTL, data);
-      } else {
-        await this.redisClient.setEx(key, cacheTTL, JSON.stringify(data));
-      }
+      await (noJsonMode
+        ? this.redisClient.setEx(key, cacheTTL, data)
+        : this.redisClient.setEx(key, cacheTTL, JSON.stringify(data)));
     } catch (error) {
       const date = new Date().toISOString();
       console.error(`[${date}] Redis cache update error for key "${key}":`, error);
@@ -215,11 +213,7 @@ export abstract class ApiHelper {
    */
   public static verifySearch(username: string | null): false | string {
     if (!username) return '';
-    if (username && username.length > 40) {
-      return false;
-    } else {
-      return String(username).trim().toLowerCase();
-    }
+    return username && username.length > 40 ? false : String(username).trim().toLowerCase();
   }
 
   /**
@@ -248,7 +242,7 @@ export abstract class ApiHelper {
     if (
       Number.isNaN(Number(userId)) ||
       Number(userId) < 0 ||
-      Number(userId) > 99999999999 ||
+      Number(userId) > 99_999_999_999 ||
       String(userId).length <= 3
     ) {
       return false;
@@ -315,11 +309,11 @@ export abstract class ApiHelper {
   public static async fetchWithFallback(url: string): Promise<Response> {
     const retries = 3;
     // Rewrite URL to use CDN proxy if it matches the specified pattern
-    if (url && url.startsWith('https://empire-html5.goodgamestudios.com/default/')) {
+    if (url?.startsWith('https://empire-html5.goodgamestudios.com/default/')) {
       url = 'https://cdn.gge-tracker.com?url=' + url;
       console.log(`[CDN] Rewritten URL to use CDN proxy: ${url}`);
     }
-    for (let i = 0; i < retries; i++) {
+    for (let index = 0; index < retries; index++) {
       try {
         const response = await fetch(url);
         if (!response.ok) throw new Error('Network response was not ok');
@@ -332,7 +326,7 @@ export abstract class ApiHelper {
         return response;
       } catch (error) {
         console.error('Fetch error:', error);
-        if (i === retries - 1) throw error;
+        if (index === retries - 1) throw error;
       }
     }
     throw new Error('Max retries reached');

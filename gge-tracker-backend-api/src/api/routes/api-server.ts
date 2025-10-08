@@ -49,10 +49,10 @@ export abstract class ApiServer implements ApiHelper {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid page number' });
         return;
       }
-      const filterByCastleType = Number.isNaN(parseInt(request.query.castleType as string))
+      const filterByCastleType = Number.isNaN(Number.parseInt(request.query.castleType as string))
         ? -1
         : Number.parseInt(request.query.castleType as string);
-      const filterByMovementType = Number.isNaN(parseInt(request.query.movementType as string))
+      const filterByMovementType = Number.isNaN(Number.parseInt(request.query.movementType as string))
         ? -1
         : Number.parseInt(request.query.movementType as string);
       const searchInputHash = request.query.search ? ApiHelper.hashValue(request.query.search as string) : 'no_search';
@@ -91,27 +91,27 @@ export abstract class ApiServer implements ApiHelper {
       /* ---------------------------------
        * Build query filters
        * --------------------------------- */
-      let paramIndex = 1;
+      let parameterIndex = 1;
       const conditions: string[] = [];
       const values: any[] = [];
       if (filterByCastleType !== -1) {
-        conditions.push(`M.castle_type = $${paramIndex++}`);
+        conditions.push(`M.castle_type = $${parameterIndex++}`);
         values.push(filterByCastleType);
       }
       if (filterByMovementType !== -1) {
-        conditions.push(`M.movement_type = $${paramIndex++}`);
-        const val = filterByMovementType === 1 ? 'add' : filterByMovementType === 2 ? 'remove' : 'move';
-        values.push(val);
+        conditions.push(`M.movement_type = $${parameterIndex++}`);
+        const value = filterByMovementType === 1 ? 'add' : filterByMovementType === 2 ? 'remove' : 'move';
+        values.push(value);
       }
       if (searchType && searchType === 'player' && searchInput) {
-        conditions.push(`P.name = $${paramIndex++}`);
+        conditions.push(`P.name = $${parameterIndex++}`);
         values.push(searchInput);
       }
       if (allianceId) {
-        conditions.push(`A.id = $${paramIndex++}`);
+        conditions.push(`A.id = $${parameterIndex++}`);
         values.push(ApiHelper.removeCountryCode(Number(allianceId)));
       } else if (searchType && searchType === 'alliance' && searchInput) {
-        conditions.push(`A.name = $${paramIndex++}`);
+        conditions.push(`A.name = $${parameterIndex++}`);
         values.push(searchInput);
       }
 
@@ -190,7 +190,7 @@ export abstract class ApiServer implements ApiHelper {
       if (conditions.length > 0) {
         query += ` WHERE ` + conditions.join(' AND ');
       }
-      query += ` ORDER BY M.created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex++};`;
+      query += ` ORDER BY M.created_at DESC LIMIT $${parameterIndex++} OFFSET $${parameterIndex++};`;
 
       /* ---------------------------------
        * Execute main query
@@ -303,11 +303,7 @@ export abstract class ApiServer implements ApiHelper {
         return;
       }
       let mainTableName: string;
-      if (showType === 'players') {
-        mainTableName = 'player_name_update_history';
-      } else {
-        mainTableName = 'alliance_update_history';
-      }
+      mainTableName = showType === 'players' ? 'player_name_update_history' : 'alliance_update_history';
 
       /* ---------------------------------
        * Build cache key
@@ -324,32 +320,28 @@ export abstract class ApiServer implements ApiHelper {
       /* ---------------------------------
        * Build query filters
        * --------------------------------- */
-      let paramIndex = 1;
+      let parameterIndex = 1;
       const conditions: string[] = [];
       const values: any[] = [];
-      if (searchType && searchType === 'player' && searchInput) {
-        if (showType === 'players') {
-          conditions.push(`LOWER(R.old_name) = $${paramIndex++} OR LOWER(R.new_name) = $${paramIndex++}`);
-          values.push(searchInput.trim().toLowerCase());
-          values.push(searchInput.trim().toLowerCase());
-        }
+      if (searchType && searchType === 'player' && searchInput && showType === 'players') {
+        conditions.push(`LOWER(R.old_name) = $${parameterIndex++} OR LOWER(R.new_name) = $${parameterIndex++}`);
+        values.push(searchInput.trim().toLowerCase(), searchInput.trim().toLowerCase());
       }
       if (searchType && searchType === 'alliance' && searchInput) {
         if (showType === 'players') {
-          conditions.push(`LOWER(A.name) = $${paramIndex++}`);
+          conditions.push(`LOWER(A.name) = $${parameterIndex++}`);
           values.push(searchInput.trim().toLowerCase());
         } else {
-          conditions.push(`LOWER(R.old_name) = $${paramIndex++} OR LOWER(R.new_name) = $${paramIndex++}`);
-          values.push(searchInput.trim().toLowerCase());
-          values.push(searchInput.trim().toLowerCase());
+          conditions.push(`LOWER(R.old_name) = $${parameterIndex++} OR LOWER(R.new_name) = $${parameterIndex++}`);
+          values.push(searchInput.trim().toLowerCase(), searchInput.trim().toLowerCase());
         }
       }
       if (allianceId) {
         if (showType === 'players') {
-          conditions.push(`A.id = $${paramIndex++}`);
+          conditions.push(`A.id = $${parameterIndex++}`);
           values.push(ApiHelper.removeCountryCode(Number(allianceId)));
         } else {
-          conditions.push(`R.alliance_id = $${paramIndex++}`);
+          conditions.push(`R.alliance_id = $${parameterIndex++}`);
           values.push(ApiHelper.removeCountryCode(Number(allianceId)));
         }
       }
@@ -410,8 +402,9 @@ export abstract class ApiServer implements ApiHelper {
        * Execute main query
        * --------------------------------- */
       let query = '';
-      if (showType === 'players') {
-        query = `
+      query =
+        showType === 'players'
+          ? `
           SELECT
             R.created_at,
             P.name AS player_name,
@@ -425,9 +418,8 @@ export abstract class ApiServer implements ApiHelper {
             players P ON R.player_id = P.id
           LEFT JOIN
             alliances A ON P.alliance_id = A.id
-        `;
-      } else {
-        query = `
+        `
+          : `
           SELECT
             R.created_at,
             R.old_name,
@@ -435,11 +427,10 @@ export abstract class ApiServer implements ApiHelper {
           FROM
             alliance_update_history R
         `;
-      }
       if (conditions.length > 0) {
         query += ` WHERE ` + conditions.join(' AND ');
       }
-      query += ` ORDER BY R.created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex++};`;
+      query += ` ORDER BY R.created_at DESC LIMIT $${parameterIndex++} OFFSET $${parameterIndex++};`;
 
       /* ---------------------------------
        * Execute query
@@ -532,18 +523,18 @@ export abstract class ApiServer implements ApiHelper {
           /* ---------------------------------
            * Process results
            * --------------------------------- */
-          const res = results.rows.map((result: any) => {
+          const prepareResponse = results.rows.map((result: any) => {
             const rate = result.events_participation_rate
               ? result.events_participation_rate
-                  .replace(/([{,])(\s*)(\w+)(\s*):/g, '$1"$3":')
-                  .replace(/(\w+):/g, '"$1":')
-                  .replace(/(\d+):/g, '"$1":')
+                  .replaceAll(/([,{])(\s*)(\w+)(\s*):/g, '$1"$3":')
+                  .replaceAll(/(\w+):/g, '"$1":')
+                  .replaceAll(/(\d+):/g, '"$1":')
               : '{}';
             const eventsTop3Names = result.events_top_3_names
               ? result.events_top_3_names
-                  .replace(/([{,])(\s*)(\w+)(\s*):/g, '$1"$3":')
-                  .replace(/(\w+):/g, '"$1":')
-                  .replace(/(\d+):/g, '"$1":')
+                  .replaceAll(/([,{])(\s*)(\w+)(\s*):/g, '$1"$3":')
+                  .replaceAll(/(\w+):/g, '"$1":')
+                  .replaceAll(/(\d+):/g, '"$1":')
               : '{}';
 
             return {
@@ -598,8 +589,8 @@ export abstract class ApiServer implements ApiHelper {
           /* ---------------------------------
            * Cache update and response
            * --------------------------------- */
-          void ApiHelper.updateCache(cachedKey, res);
-          response.status(ApiHelper.HTTP_OK).send(res);
+          void ApiHelper.updateCache(cachedKey, prepareResponse);
+          response.status(ApiHelper.HTTP_OK).send(prepareResponse);
         }
       });
     } catch (error) {

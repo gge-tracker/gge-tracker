@@ -36,7 +36,7 @@ interface GenericChartConfig {
   xaxisCategories?: string[];
   horizontal?: boolean;
   extraOptions?: Partial<ApexOptions>;
-  tooltipFormatter?: (value: number, opts: { dataPointIndex: number }) => string;
+  tooltipFormatter?: (value: number, options: { dataPointIndex: number }) => string;
 }
 
 export interface EventList {
@@ -88,6 +88,7 @@ export class EventsComponent extends GenericComponent {
     isFiltered: false,
   };
   public translations: Record<string, string> = {};
+
   public servers = [
     'FR1',
     'DE1',
@@ -126,7 +127,7 @@ export class EventsComponent extends GenericComponent {
     'LT1',
     'INT1',
     'HIS1',
-  ].sort((a, b) => a.localeCompare(b));
+  ].sort(EventsComponent.serverSort);
 
   private eventId: number | null = null;
   private languageService = inject(LanguageService);
@@ -139,6 +140,10 @@ export class EventsComponent extends GenericComponent {
     });
   }
 
+  private static serverSort(a: string, b: string): number {
+    return a.localeCompare(b);
+  }
+
   public onEventClick(event: EventList): void {
     if (event.type === EventType.OUTER_REALM) {
       void this.router.navigate(['/events', 'outer-realms', event.id]);
@@ -149,12 +154,15 @@ export class EventsComponent extends GenericComponent {
 
   public getEventName(type: string): string {
     switch (type) {
-      case EventType.OUTER_REALM:
+      case EventType.OUTER_REALM: {
         return this.translations['Royaume extérieur'];
-      case EventType.BEYOND_THE_HORIZON:
+      }
+      case EventType.BEYOND_THE_HORIZON: {
         return this.translations['Lacis'];
-      default:
+      }
+      default: {
         return '';
+      }
     }
   }
 
@@ -261,7 +269,7 @@ export class EventsComponent extends GenericComponent {
     return d;
   }
 
-  public newDate(date: string): Date {
+  public createDate(date: string): Date {
     return new Date(date);
   }
 
@@ -354,8 +362,8 @@ export class EventsComponent extends GenericComponent {
 
   private async init(): Promise<void> {
     try {
-      this.route.params.subscribe(async (params) => {
-        if (Object.keys(params).length === 0) {
+      this.route.params.subscribe(async (parameters) => {
+        if (Object.keys(parameters).length === 0) {
           const events = await this.getEventList();
           this.responseTime = events.response;
           this.events = events.data.events.map((event) => ({
@@ -365,14 +373,17 @@ export class EventsComponent extends GenericComponent {
             to: new Date(event.collect_date),
             playerCount: event.player_count,
           }));
-        } else if (params['eventId'] !== undefined && !isNaN(parseInt(params['eventId']))) {
-          if (params['eventType'] !== EventType.OUTER_REALM && params['eventType'] !== EventType.BEYOND_THE_HORIZON) {
+        } else if (parameters['eventId'] !== undefined && !Number.isNaN(Number.parseInt(parameters['eventId']))) {
+          if (
+            parameters['eventType'] !== EventType.OUTER_REALM &&
+            parameters['eventType'] !== EventType.BEYOND_THE_HORIZON
+          ) {
             this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
             void this.router.navigate(['/events']);
             return;
           }
-          this.eventId = Number.parseInt(params['eventId']);
-          this.eventType = params['eventType'] as EventType;
+          this.eventId = Number.parseInt(parameters['eventId']);
+          this.eventType = parameters['eventType'] as EventType;
           const eventPlayers = await this.getEventPlayersById();
           this.responseTime = eventPlayers.response;
           this.players = eventPlayers.data.players;
@@ -518,7 +529,8 @@ export class EventsComponent extends GenericComponent {
         shared: false,
         x: { format: dateFormat },
         y: {
-          formatter: (value: number) => (value !== null ? value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '?'),
+          formatter: (value: number) =>
+            value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ','),
         },
       },
       dataLabels: { enabled: false },
@@ -526,7 +538,8 @@ export class EventsComponent extends GenericComponent {
       legend: { show: true, showForZeroSeries: true },
       yaxis: {
         labels: {
-          formatter: (value: number) => (value !== null ? value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '?'),
+          formatter: (value: number) =>
+            value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ','),
         },
         min: 0,
         logarithmic: logarithmic,

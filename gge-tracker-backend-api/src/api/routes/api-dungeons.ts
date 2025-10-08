@@ -93,14 +93,15 @@ export abstract class ApiDungeons implements ApiHelper {
       let sortByPositionX = request.query.positionX ? (request.query.positionX as string) : null;
       let sortByPositionY = request.query.positionY ? (request.query.positionY as string) : null;
       const nearPlayerName = request.query.nearPlayerName ? (request.query.nearPlayerName as string) : null;
-      const size = request.query.size ? (request.query.size as string) : null;
+      const sizeValue = Number(request.query.size);
+      const size = !Number.isNaN(sizeValue) && sizeValue > 0 ? String(sizeValue) : null;
       filtersKids.forEach((kid: any) => {
         if (Number(kid) < 0 || Number(kid) > 9) {
           response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid kid' });
           return;
         }
       });
-      if (filtersKids.length == 0) {
+      if (filtersKids.length === 0) {
         response.status(ApiHelper.HTTP_OK).send({
           dungeons: [],
           pagination: {
@@ -112,7 +113,10 @@ export abstract class ApiDungeons implements ApiHelper {
         });
         return;
       }
-      if ((filterByAttackCooldown && Number(filterByAttackCooldown) < 0) || Number(filterByAttackCooldown) > 99999999) {
+      if (
+        (filterByAttackCooldown && Number(filterByAttackCooldown) < 0) ||
+        Number(filterByAttackCooldown) > 99_999_999
+      ) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid attack cooldown' });
         return;
       }
@@ -214,7 +218,7 @@ export abstract class ApiDungeons implements ApiHelper {
           sortPositionKid3 ? sortPositionKid3[1] : 0,
         );
       }
-      if (filtersKids.length == 0) {
+      if (filtersKids.length === 0) {
         // If no valid kids remain after filtering, return empty result
         response.status(ApiHelper.HTTP_OK).send({
           dungeons: [],
@@ -249,7 +253,7 @@ export abstract class ApiDungeons implements ApiHelper {
         }
       }
       const MAX_NUMBER = 4000;
-      const viewPerPage = size === '0' ? MAX_NUMBER : size !== null ? Number.parseInt(size) : 15;
+      const viewPerPage = size === '0' ? MAX_NUMBER : size === null ? 15 : Number.parseInt(size);
       const conditions: string[] = [];
       const queryValues: any[] = [];
       const countValues: any[] = [];
@@ -301,17 +305,24 @@ export abstract class ApiDungeons implements ApiHelper {
         // 2: Dungeons that will be attackable within the next 5 minutes
         // 3: Dungeons that will be attackable within the next 60 minutes
         switch (filterByAttackCooldown) {
-          case '1':
+          case '1': {
             conditions.push(`(${realCooldownExpr} <= NOW())`);
             break;
-          case '2':
-            conditions.push(`(${realCooldownExpr} > NOW())`);
-            conditions.push(`TIMESTAMPDIFF(SECOND, NOW(), ${realCooldownExpr}) <= 300`);
+          }
+          case '2': {
+            conditions.push(
+              `(${realCooldownExpr} > NOW())`,
+              `TIMESTAMPDIFF(SECOND, NOW(), ${realCooldownExpr}) <= 300`,
+            );
             break;
-          case '3':
-            conditions.push(`(${realCooldownExpr} > NOW())`);
-            conditions.push(`TIMESTAMPDIFF(SECOND, NOW(), ${realCooldownExpr}) <= 3600`);
+          }
+          case '3': {
+            conditions.push(
+              `(${realCooldownExpr} > NOW())`,
+              `TIMESTAMPDIFF(SECOND, NOW(), ${realCooldownExpr}) <= 3600`,
+            );
             break;
+          }
         }
       }
       /* ---------------------------------
@@ -346,14 +357,14 @@ export abstract class ApiDungeons implements ApiHelper {
        * In count query and if sorted, calculate distance for sorting
        * --------------------------------- */
       if (isSorted) {
-        if (!nearPlayerName) {
+        if (nearPlayerName) {
+          query += `, ${customSql}`;
+        } else {
           // /!\ Improvement note: This calculation might be improved in the future
           query += `,(
             POWER(LEAST(ABS(CAST(D.position_x AS SIGNED) - ?), 1287 - ABS(CAST(D.position_x AS SIGNED) - ?)), 2) +
             POWER(ABS(CAST(D.position_y AS SIGNED) - ?), 2)
         ) AS calculated_distance`;
-        } else {
-          query += `, ${customSql}`;
         }
       }
       query += `
@@ -363,7 +374,7 @@ export abstract class ApiDungeons implements ApiHelper {
        * Player join if filtering by player name
        * --------------------------------- */
       if (playerId !== null) {
-        const playerIdCondStr = `
+        const playerIdCondString = `
           LEFT JOIN (
           SELECT kid, position_x, position_y, player_id, MAX(last_attack_at) AS last_attack_at
           FROM dungeon_player_state
@@ -371,8 +382,8 @@ export abstract class ApiDungeons implements ApiHelper {
           GROUP BY kid, position_x, position_y, player_id
           ) DPS ON D.kid = DPS.kid AND D.position_x = DPS.position_x AND D.position_y = DPS.position_y AND DPS.player_id = ${mysql.escape(playerId)}
         `;
-        query += playerIdCondStr;
-        countQuery += playerIdCondStr;
+        query += playerIdCondString;
+        countQuery += playerIdCondString;
       }
       if (conditions.length > 0) {
         countQuery += ` WHERE ` + conditions.join(' AND ');
@@ -408,7 +419,21 @@ export abstract class ApiDungeons implements ApiHelper {
       if (conditions.length > 0) {
         query += ` WHERE ` + conditions.join(' AND ');
       }
-      if (!isSorted) {
+      if (isSorted) {
+        query += ` ORDER BY calculated_distance ASC`;
+        if (nearPlayerName) {
+          // Otherwise, add the custom parameters for sorting by nearPlayerName
+          queryValues.push(...customParameterValues);
+        } else {
+          // Parameters for sorting by given position.
+          // Added again here for the main query.
+          queryValues.push(
+            Number.parseInt(sortByPositionX as string),
+            Number.parseInt(sortByPositionX as string),
+            Number.parseInt(sortByPositionY as string),
+          );
+        }
+      } else {
         // Default sorting: Dungeons that can be attacked now first, then by shortest cooldown
         // and finally by oldest updated dungeons.
         // Dungeons that can be attacked now have last_attack < NOW()
@@ -421,25 +446,12 @@ export abstract class ApiDungeons implements ApiHelper {
               ELSE NULL
           END ASC,
           effective_cooldown_until ASC`;
-      } else {
-        query += ` ORDER BY calculated_distance ASC`;
-        if (!nearPlayerName) {
-          // Parameters for sorting by given position.
-          // Added again here for the main query.
-          queryValues.push(Number.parseInt(sortByPositionX as string));
-          queryValues.push(Number.parseInt(sortByPositionX as string));
-          queryValues.push(Number.parseInt(sortByPositionY as string));
-        } else {
-          // Otherwise, add the custom parameters for sorting by nearPlayerName
-          queryValues.push(...customParameterValues);
-        }
       }
       /* ---------------------------------
        * Finalize query with pagination
        * --------------------------------- */
       query += ` LIMIT ? OFFSET ?;`;
-      queryValues.push(...filtersKids);
-      queryValues.push(viewPerPage, (page - 1) * viewPerPage);
+      queryValues.push(...filtersKids, viewPerPage, (page - 1) * viewPerPage);
       (request['mysql_pool'] as mysql.Pool).query(query, queryValues, (error, results) => {
         if (error) {
           response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
@@ -488,9 +500,9 @@ export abstract class ApiDungeons implements ApiHelper {
                 effective_cooldown_until: result.effective_cooldown_until,
                 last_attack: result.last_attack,
                 distance:
-                  result.calculated_distance !== undefined
-                    ? Number.parseFloat(Math.sqrt(result.calculated_distance).toFixed(1))
-                    : null,
+                  result.calculated_distance === undefined
+                    ? null
+                    : Number.parseFloat(Math.sqrt(result.calculated_distance).toFixed(1)),
               };
             });
             const responseContent = {

@@ -1,19 +1,9 @@
-import type {
-  Map as LeafletMap,
-  Layer as LeafletLayer,
-  LayerGroup as LeafletLayerGroup,
-  Circle as LeafletCircle,
-  Rectangle as LeafletRectangle,
-  Polygon as LeafletPolygon,
-  Polyline as LeafletPolyline,
+export {
+  type Map as LeafletMap,
+  type LayerGroup as LeafletLayerGroup,
+  type Layer as LeafletLayer,
+  type Rectangle as LeafletRectangle,
+  type Circle as LeafletCircle,
+  type Polyline as LeafletPolyline,
+  type Polygon as LeafletPolygon,
 } from 'leaflet';
-
-export type {
-  LeafletMap,
-  LeafletLayer,
-  LeafletLayerGroup,
-  LeafletCircle,
-  LeafletRectangle,
-  LeafletPolygon,
-  LeafletPolyline,
-};

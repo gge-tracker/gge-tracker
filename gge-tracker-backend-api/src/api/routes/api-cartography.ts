@@ -62,7 +62,7 @@ export abstract class ApiCartography implements ApiHelper {
       /* ---------------------------------
        * Query database and format result
        * --------------------------------- */
-      const regex = /^[0-9]+$/;
+      const regex = /^\d+$/;
       let limit = '';
       // Get the limit clause based on the size parameter. However, the query does not use it
       // with parameterized queries to avoid SQL injection,  so we validate it strictly here.
@@ -173,7 +173,7 @@ export abstract class ApiCartography implements ApiHelper {
       /* ---------------------------------
        * Query database
        * --------------------------------- */
-      let paramIndex = 1;
+      let parameterIndex = 1;
       let query = '';
       if (allianceName === '1') {
         // Special case for frontend: get players without alliance but with castles
@@ -207,15 +207,15 @@ export abstract class ApiCartography implements ApiHelper {
           INNER JOIN
               alliances A ON P.alliance_id = A.id
           WHERE
-              LOWER(A.name) = LOWER($${paramIndex++})
+              LOWER(A.name) = LOWER($${parameterIndex++})
           AND P.castles IS NOT NULL
           AND P.castles != '[]'
           ORDER BY
               castles DESC;
       `;
       }
-      const params = allianceName === '1' ? [] : [allianceName];
-      (request['pg_pool'] as pg.Pool).query(query, params, (error, results) => {
+      const parameters = allianceName === '1' ? [] : [allianceName];
+      (request['pg_pool'] as pg.Pool).query(query, parameters, (error, results) => {
         if (error) {
           response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
         } else {
@@ -292,7 +292,7 @@ export abstract class ApiCartography implements ApiHelper {
       /* ---------------------------------
        * Query database
        * --------------------------------- */
-      let paramIndex = 1;
+      let parameterIndex = 1;
       const query = `
         SELECT
             P.name,
@@ -306,7 +306,7 @@ export abstract class ApiCartography implements ApiHelper {
         INNER JOIN
             alliances A ON P.alliance_id = A.id
         WHERE
-            alliance_id = $${paramIndex++}
+            alliance_id = $${parameterIndex++}
         ORDER BY
             castles DESC;
         `;

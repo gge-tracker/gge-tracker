@@ -9,7 +9,7 @@ import { ApiRestService } from '@ggetracker-services/api-rest.service';
 import { LanguageService } from '@ggetracker-services/language.service';
 import { RankingService } from '@ggetracker-services/ranking.service';
 import { ToastService } from '@ggetracker-services/toast.service';
-import { UtilsService } from '@ggetracker-services/utils.service';
+import { UtilitiesService } from '@ggetracker-services/utilities.service';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
@@ -24,10 +24,9 @@ export class GenericComponent {
   public platformId = inject(PLATFORM_ID);
   public apiRestService = inject(ApiRestService);
   public toastService = inject(ToastService);
-  public utilsService = inject(UtilsService);
+  public utilitiesService = inject(UtilitiesService);
   public rankingService = inject(RankingService);
   public route = inject(ActivatedRoute);
-  public utils = inject(UtilsService);
   public langageService = inject(LanguageService);
   public router = inject(Router);
   public meta = inject(Meta);
@@ -37,7 +36,6 @@ export class GenericComponent {
   private rendererFactory = inject(RendererFactory2);
 
   constructor() {
-    this.isInLoading = true;
     this.isBrowser = isPlatformBrowser(this.platformId);
     this.renderer = this.rendererFactory.createRenderer(null, null);
   }
@@ -45,7 +43,7 @@ export class GenericComponent {
   public getOpacityForPeaceTime(peaceDisabledAt: string | null): number {
     if (!peaceDisabledAt) return 1;
     // Calculate the time difference in seconds
-    const timeInSeconds = Math.abs(new Date().getTime() - new Date(peaceDisabledAt).getTime()) / 1000;
+    const timeInSeconds = Math.abs(Date.now() - new Date(peaceDisabledAt).getTime()) / 1000;
     if (timeInSeconds < 60 * 60 * 12) return 0.2;
     if (timeInSeconds < 60 * 60 * 24) return 0.4;
     if (timeInSeconds < 60 * 60 * 24 * 7) return 0.6;
@@ -90,24 +88,33 @@ export class GenericComponent {
    */
   public getCastleType(type: number): string {
     switch (type) {
-      case CastleType.CASTLE:
+      case CastleType.CASTLE: {
         return CastleTypeDefaultTranslation.CASTLE;
-      case CastleType.REALM_CASTLE:
+      }
+      case CastleType.REALM_CASTLE: {
         return CastleTypeDefaultTranslation.CASTLE;
-      case CastleType.OUTPOST:
+      }
+      case CastleType.OUTPOST: {
         return CastleTypeDefaultTranslation.OUTPOST;
-      case CastleType.MONUMENT:
+      }
+      case CastleType.MONUMENT: {
         return CastleTypeDefaultTranslation.MONUMENT;
-      case CastleType.LABORATORY:
+      }
+      case CastleType.LABORATORY: {
         return CastleTypeDefaultTranslation.LABORATORY;
-      case CastleType.CAPITAL:
+      }
+      case CastleType.CAPITAL: {
         return CastleTypeDefaultTranslation.CAPITAL;
-      case CastleType.ROYAL_TOWER:
+      }
+      case CastleType.ROYAL_TOWER: {
         return CastleTypeDefaultTranslation.ROYAL_TOWER;
-      case CastleType.CITY:
+      }
+      case CastleType.CITY: {
         return CastleTypeDefaultTranslation.CITY;
-      default:
+      }
+      default: {
         return CastleTypeDefaultTranslation.UNKNOWN;
+      }
     }
   }
 
@@ -318,7 +325,7 @@ export class GenericComponent {
     const existingScripts = document.querySelectorAll('script[type="application/ld+json"]');
     existingScripts.forEach((script) => {
       if (script.parentNode) {
-        script.parentNode.removeChild(script);
+        script.remove();
       }
     });
   }

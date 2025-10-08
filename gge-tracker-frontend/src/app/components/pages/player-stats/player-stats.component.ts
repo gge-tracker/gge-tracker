@@ -146,14 +146,14 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
   }
 
   public async ngOnInit(): Promise<void> {
-    this.route.params.subscribe(async (params) => {
+    this.route.params.subscribe(async (parameters) => {
       this.isInLoading = true;
       this.cdr.detectChanges();
-      const playerId = params['playerId'];
-      if (playerId && !isNaN(playerId) && playerId > 0) {
+      const playerId = parameters['playerId'];
+      if (playerId && !Number.isNaN(playerId) && playerId > 0) {
         try {
           const response: ApiResponse<ApiPlayerStatsByPlayerId> = this.route.snapshot.data['stats'];
-          if (response.success === false) throw new Error();
+          if (response.success === false) throw new Error('API Error');
           const data = response.data;
           this.playerName = data.player_name;
           this.addStructuredPlayerData({
@@ -161,12 +161,12 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
             url: `gge-tracker.com/player/${playerId}`,
             alliance: data.alliance_name,
             might:
-              data.points.player_might_history.length > 0
-                ? data.points.player_might_history[data.points.player_might_history.length - 1].point
+              data.points.player_might_history.length > 0 && data.points.player_might_history.at(-1)
+                ? data.points.player_might_history.at(-1)!.point
                 : 0,
           });
           if (!data.points || Object.keys(data.points).length === 0) {
-            this.toastService.add(ErrorType.ERROR_OCCURRED, 20000);
+            this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
             void this.router.navigate(['/']);
             return;
           }
@@ -185,11 +185,11 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
             this.cdr.detectChanges();
           });
         } catch {
-          this.toastService.add(ErrorType.ERROR_OCCURRED, 20000);
+          this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
           void this.router.navigate(['/']);
         }
       } else {
-        this.toastService.add(ErrorType.ERROR_OCCURRED, 20000);
+        this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
         void this.router.navigate(['/']);
       }
     });
@@ -211,18 +211,24 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
    */
   public getEventName(eventId: number): string {
     switch (eventId) {
-      case 44:
+      case 44: {
         return 'Guerre des royaumes';
-      case 51:
+      }
+      case 51: {
         return 'Samouraïs';
-      case 46:
+      }
+      case 46: {
         return 'Nomades';
-      case 30:
+      }
+      case 30: {
         return 'Royaume de Berimond';
-      case 58:
+      }
+      case 58: {
         return 'Corbeaux de sang';
-      default:
+      }
+      default: {
         return 'Invasion de Berimond';
+      }
     }
   }
 
@@ -282,8 +288,8 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     if (this.playerId === undefined) {
       return false;
     }
-    const favoriesStr = this.localStorage.getItem('favories');
-    let favoriteIds: string[] = favoriesStr ? JSON.parse(favoriesStr) : [];
+    const favoriesString = this.localStorage.getItem('favories');
+    let favoriteIds: string[] = favoriesString ? JSON.parse(favoriesString) : [];
     if (!Array.isArray(favoriteIds)) {
       this.localStorage.setItem('favories', JSON.stringify([]));
       favoriteIds = [];
@@ -292,14 +298,14 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
   }
 
   public removePlayerFromFavorites(): void {
-    const favoriesStr = this.localStorage.getItem('favories');
-    let favoriteIds: string[] = favoriesStr ? JSON.parse(favoriesStr) : [];
+    const favoriesString = this.localStorage.getItem('favories');
+    let favoriteIds: string[] = favoriesString ? JSON.parse(favoriesString) : [];
     if (!Array.isArray(favoriteIds)) {
       this.localStorage.setItem('favories', JSON.stringify([]));
       favoriteIds = [];
     }
-    const playerIdNum = Number(this.playerId);
-    favoriteIds = favoriteIds.filter((id) => id !== playerIdNum.toString());
+    const playerIdNumber = Number(this.playerId);
+    favoriteIds = favoriteIds.filter((id) => id !== playerIdNumber.toString());
     this.localStorage.setItem('favories', JSON.stringify(favoriteIds));
     this.cdr.detectChanges();
   }
@@ -330,17 +336,17 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
   }
 
   public addPlayerToFavorites(): void {
-    const favoriesStr = this.localStorage.getItem('favories');
-    let favoriteIds: string[] = favoriesStr ? JSON.parse(favoriesStr) : [];
+    const favoriesString = this.localStorage.getItem('favories');
+    let favoriteIds: string[] = favoriesString ? JSON.parse(favoriesString) : [];
 
     if (!Array.isArray(favoriteIds)) {
       this.localStorage.setItem('favories', JSON.stringify([]));
       favoriteIds = [];
     }
 
-    const playerIdNum = Number(this.playerId);
-    if (!favoriteIds.includes(playerIdNum.toString())) {
-      favoriteIds.push(playerIdNum.toString());
+    const playerIdNumber = Number(this.playerId);
+    if (!favoriteIds.includes(playerIdNumber.toString())) {
+      favoriteIds.push(playerIdNumber.toString());
     }
     this.localStorage.setItem('favories', JSON.stringify(favoriteIds));
     this.cdr.detectChanges();
@@ -375,8 +381,8 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
               fontSize: '16px',
               color: undefined,
               offsetY: 76,
-              formatter: function (val): string {
-                return val + '%';
+              formatter: function (value): string {
+                return value + '%';
               },
             },
           },
@@ -406,7 +412,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
         },
         y: {
           formatter: function (value): string {
-            return value > 0 ? value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') : value === null ? '?' : '0';
+            return value > 0 ? value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',') : value === null ? '?' : '0';
           },
         },
       },
@@ -469,7 +475,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
       yaxis: {
         labels: {
           formatter: function (value): string {
-            return value === null ? '?' : value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
           },
         },
         min: 0,
@@ -512,14 +518,14 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
   private setGenericVariations(
     data: ApiGenericData[],
     key: keyof ApiGenericData = 'point',
-    customConditionFn?: (data: ApiGenericData[], i: number) => boolean,
+    customConditionFunction?: (data: ApiGenericData[], index: number) => boolean,
   ): void {
     const dataWithVariation = data as EventGenericVariation[];
-    for (let i = 0; i < data.length; i++) {
-      if (i === 0 || (customConditionFn && customConditionFn(data, i))) {
-        dataWithVariation[i]['variation'] = 0;
+    for (let index = 0; index < data.length; index++) {
+      if (index === 0 || (customConditionFunction && customConditionFunction(data, index))) {
+        dataWithVariation[index]['variation'] = 0;
       } else {
-        dataWithVariation[i]['variation'] = Number(data[i][key]) - Number(data[i - 1][key]);
+        dataWithVariation[index]['variation'] = Number(data[index][key]) - Number(data[index - 1][key]);
       }
     }
   }
@@ -530,16 +536,16 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
   ): { name: string; data: [number, number][] }[] {
     return seriesList.map((serie) => {
       if (serie.data.length === 0) return { ...serie, data: [] };
-      const originalStart = Math.floor(serie.data[0][0] / 3600000) * 3600000;
-      const newData = serie.data.map(([timestamp, value]) => {
-        const alignedTimestamp = Math.floor(timestamp / 3600000) * 3600000;
+      const originalStart = Math.floor(serie.data[0][0] / 3_600_000) * 3_600_000;
+      const alignedData = serie.data.map(([timestamp, value]) => {
+        const alignedTimestamp = Math.floor(timestamp / 3_600_000) * 3_600_000;
         const offset = alignedTimestamp - originalStart;
-        const newTimestamp = referenceDate.getTime() + offset;
-        return [newTimestamp, value] as [number, number];
+        const alignedTimestampResult = referenceDate.getTime() + offset;
+        return [alignedTimestampResult, value] as [number, number];
       });
       return {
         ...serie,
-        data: newData,
+        data: alignedData,
       };
     });
   }
@@ -571,7 +577,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     if (!this.playerId) return;
     const stats = await this.apiRestService.getRankingStatsByPlayerId(this.playerId);
     if (stats.success === false) {
-      this.toastService.add(ErrorType.ERROR_OCCURRED, 20000);
+      this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
       return;
     }
     this.stats = this.mapStatsFromData(stats.data);
@@ -764,7 +770,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
       const dates = [];
       const current = new Date(start);
       while (current <= end) {
-        dates.push(current.toISOString().replace('T', ' ').substring(0, 16));
+        dates.push(current.toISOString().replace('T', ' ').slice(0, 16));
         current.setHours(current.getHours() + 1);
       }
       return dates;
@@ -780,7 +786,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     }
     // Step 3: Extract dates and points from lootPoints
     const dates = lootPoints.map((point) => {
-      return point['date'].substring(0, point['date'].length - 5) + '00';
+      return point['date'].slice(0, Math.max(0, point['date'].length - 5)) + '00';
     });
     const points = lootPoints.map((point) => point['point']);
     const fillData = (weekHours: string[]): (number | null)[] => {
@@ -788,7 +794,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
       return weekHours.map((hour) => {
         const hourDate = new Date(hour);
         const isMondayMidnight = hourDate.getDay() === 1 && hourDate.getHours() === 0;
-        const pointIndex = dates.findIndex((date) => date === hour);
+        const pointIndex = dates.indexOf(hour);
         if (isMondayMidnight) {
           return 0;
         }
@@ -847,9 +853,9 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     });
     this.initChartOption('loot', series, colors);
     this.charts['loot'].xaxis.type = 'datetime';
-    const weekHoursRef = allWeeksHours[0];
-    for (let i = 1; i < weekHoursRef.length; i++) {
-      allWeeksHours[i] = weekHoursRef;
+    const weekHoursReference = allWeeksHours[0];
+    for (let index = 1; index < weekHoursReference.length; index++) {
+      allWeeksHours[index] = weekHoursReference;
     }
     this.charts['loot'].xaxis.categories = allWeeksHours.flat(); // Flatten the array
     const labels = this.charts['loot'].xaxis.labels;
@@ -875,8 +881,8 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     const NeedPMFormat = this.languageService.getCurrentLang() === 'en';
     const tooltipX = this.charts['loot'].tooltip.x;
     if (!tooltipX) return;
-    tooltipX.formatter = function (val): string {
-      const date = new Date(val);
+    tooltipX.formatter = function (value): string {
+      const date = new Date(value);
       const dayName = days[date.getDay()];
       const hours = date.getHours().toString().padStart(2, '0');
       const minutes = date.getMinutes().toString().padStart(2, '0');
@@ -893,7 +899,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     const yLabels = this.charts['loot'].yaxis.labels;
     if (!yLabels) return;
     yLabels.formatter = function (value): string {
-      return value !== null ? value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '-';
+      return value === null ? '-' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
     };
   }
 
@@ -905,18 +911,18 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
    */
   private getUnitByValue(value: number): string {
     let unit = '';
-    if (value >= 1000 && value < 1000000) {
+    if (value >= 1000 && value < 1_000_000) {
       unit = 'k';
       value /= 1000;
-    } else if (value >= 1000000 && value < 1000000000) {
+    } else if (value >= 1_000_000 && value < 1_000_000_000) {
       unit = 'M';
-      value /= 1000000;
-    } else if (value >= 1000000000 && value < 1000000000000) {
+      value /= 1_000_000;
+    } else if (value >= 1_000_000_000 && value < 1_000_000_000_000) {
       unit = 'G';
-      value /= 1000000000;
-    } else if (value >= 1000000000000) {
+      value /= 1_000_000_000;
+    } else if (value >= 1_000_000_000_000) {
       unit = 'T';
-      value /= 1000000000000;
+      value /= 1_000_000_000_000;
     }
     return value.toFixed(2) + unit;
   }
@@ -925,8 +931,9 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     const series: ApexAxisChartSeries = [];
     for (const event of eventData) {
       const currentDate = new Date();
-      const lastDate = new Date(event[event.length - 1][0]);
-      let lastPoint: number | string | null = event[event.length - 1][1];
+      const lastEvent = event.at(-1);
+      const lastDate = lastEvent ? new Date(lastEvent[0]) : new Date();
+      let lastPoint: number | string | null = lastEvent ? lastEvent[1] : 0;
       if (!lastPoint) {
         lastPoint = 0;
       }
@@ -935,11 +942,11 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
       if (lastDate.getTime() < currentDate.getTime()) {
         const locale = this.languageService.getCurrentLang();
         const firstDate = new Date(event[0][0]);
-        const lastDate = new Date(event[event.length - 1][0]);
+        const lastDateForName = lastEvent ? new Date(lastEvent[0]) : new Date();
         const name =
           this.translateService.instant('Événement du 0 au 0', {
             start: firstDate.toLocaleDateString(locale).slice(0, -5),
-            end: lastDate.toLocaleDateString(locale).slice(0, -5),
+            end: lastDateForName.toLocaleDateString(locale).slice(0, -5),
           }) + ` (${lastPoint})`;
         series.push({
           name,
@@ -956,47 +963,47 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
   }
 
   private groupEventDataByTimeGaps(
-    eventDataSegmentsRef: ApiGenericData[][],
+    eventDataSegmentsReference: ApiGenericData[][],
     data: EventGenericVariation[],
     timeGap: number = 24 * 60 * 60 * 1000,
   ): [number, number][][] {
     let currentEvent: ApiGenericData[] = [];
-    for (let i = 0; i < data.length; i++) {
-      if (i > 0) {
-        const date1 = new Date(data[i - 1]['date']);
-        const date2 = new Date(data[i]['date']);
+    for (let index = 0; index < data.length; index++) {
+      if (index > 0) {
+        const date1 = new Date(data[index - 1]['date']);
+        const date2 = new Date(data[index]['date']);
         if (date2.getTime() - date1.getTime() > timeGap) {
           if (currentEvent.length > 0) {
-            eventDataSegmentsRef ??= [];
-            eventDataSegmentsRef.push(currentEvent);
+            eventDataSegmentsReference ??= [];
+            eventDataSegmentsReference.push(currentEvent);
           }
           currentEvent = [];
         }
       }
       currentEvent.push({
-        date: data[i]['date'],
-        point: data[i]['point'],
+        date: data[index]['date'],
+        point: data[index]['point'],
       });
     }
     if (currentEvent.length > 0) {
-      if (!eventDataSegmentsRef) {
-        eventDataSegmentsRef = [];
+      if (!eventDataSegmentsReference) {
+        eventDataSegmentsReference = [];
       }
-      eventDataSegmentsRef.push(currentEvent);
+      eventDataSegmentsReference.push(currentEvent);
     } else {
-      if (!eventDataSegmentsRef) {
-        eventDataSegmentsRef = [];
+      if (!eventDataSegmentsReference) {
+        eventDataSegmentsReference = [];
       }
     }
-    return eventDataSegmentsRef.map((event) => {
-      return event.map((e) => {
-        return [new Date(e['date']).getTime(), e['point']];
+    return eventDataSegmentsReference.map((event) => {
+      return event.map((event) => {
+        return [new Date(event['date']).getTime(), event['point']];
       });
     });
   }
 
   private getPointsAndDates(data: EventGenericVariation[]): { dates: string[]; points: number[] } {
-    const dates = data.map((point) => point.date.substring(0, point.date.length - 3));
+    const dates = data.map((point) => point.date.slice(0, Math.max(0, point.date.length - 3)));
     const points = data.map((point) => point.point);
     return { dates, points };
   }
@@ -1026,26 +1033,28 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
       if (data && data.updates && data.updates.length > 0) {
         data.updates.sort((a, b) => this.compareDate(a, b));
         this.allianceUpdates = [];
-        const firstAlliance = data.updates[data.updates.length - 1];
-        for (let i = 0; i < data.updates.length; i++) {
-          this.allianceUpdates[i] = {
-            id: data.updates[i]['new_alliance_id'],
-            date: data.updates[i]['date'],
-            alliance: data.updates[i]['new_alliance_name'],
+        const firstAlliance = data.updates.at(-1);
+        for (let index = 0; index < data.updates.length; index++) {
+          this.allianceUpdates[index] = {
+            id: data.updates[index]['new_alliance_id'],
+            date: data.updates[index]['date'],
+            alliance: data.updates[index]['new_alliance_name'],
             duration:
-              i > 0
-                ? this.getDateDiff(data.updates[i]['date'], data.updates[i - 1]['date'])
+              index > 0
+                ? this.getDateDiff(data.updates[index]['date'], data.updates[index - 1]['date'])
                 : this.translateService.instant('depuis') +
                   ' ' +
-                  this.getDateDiff(data.updates[i]['date'], new Date().toISOString()),
+                  this.getDateDiff(data.updates[index]['date'], new Date().toISOString()),
           };
         }
-        this.allianceUpdates.push({
-          id: firstAlliance['old_alliance_id'],
-          date: null,
-          alliance: firstAlliance['old_alliance_name'],
-          duration: '-',
-        });
+        if (firstAlliance) {
+          this.allianceUpdates.push({
+            id: firstAlliance['old_alliance_id'],
+            date: null,
+            alliance: firstAlliance['old_alliance_name'],
+            duration: '-',
+          });
+        }
       } else {
         this.setDefaultAlliance();
       }
@@ -1057,24 +1066,26 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
       if (data && data.updates && data.updates.length > 0) {
         data.updates.sort((a, b) => this.compareDate(a, b));
         this.playerUpdates = [];
-        const firstPlayer = data.updates[data.updates.length - 1];
-        for (let i = 0; i < data.updates.length; i++) {
-          this.playerUpdates[i] = {
-            date: data.updates[i]['date'],
-            player: data.updates[i]['new_player_name'],
+        const firstPlayer = data.updates.at(-1);
+        for (let index = 0; index < data.updates.length; index++) {
+          this.playerUpdates[index] = {
+            date: data.updates[index]['date'],
+            player: data.updates[index]['new_player_name'],
             duration:
-              i > 0
-                ? this.getDateDiff(data.updates[i]['date'], data.updates[i - 1]['date'])
+              index > 0
+                ? this.getDateDiff(data.updates[index]['date'], data.updates[index - 1]['date'])
                 : this.translateService.instant('depuis') +
                   ' ' +
-                  this.getDateDiff(data.updates[i]['date'], new Date().toISOString()),
+                  this.getDateDiff(data.updates[index]['date'], new Date().toISOString()),
           };
         }
-        this.playerUpdates.push({
-          date: null,
-          player: firstPlayer['old_player_name'],
-          duration: '-',
-        });
+        if (firstPlayer) {
+          this.playerUpdates.push({
+            date: null,
+            player: firstPlayer['old_player_name'],
+            duration: '-',
+          });
+        }
       }
     }
   }
@@ -1083,37 +1094,46 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     this.stats?.castles.forEach((castle: number[]) => {
       const target = castle[3];
       switch (target) {
-        case CastleType.CASTLE:
+        case CastleType.CASTLE: {
           this.quantity.castle++;
           break;
-        case CastleType.REALM_CASTLE:
+        }
+        case CastleType.REALM_CASTLE: {
           this.quantity.castle++;
           break;
-        case CastleType.OUTPOST:
+        }
+        case CastleType.OUTPOST: {
           this.quantity.outpost++;
           break;
-        case CastleType.MONUMENT:
+        }
+        case CastleType.MONUMENT: {
           this.quantity.monument++;
           this.quantity.patriarch++;
           break;
-        case CastleType.LABORATORY:
+        }
+        case CastleType.LABORATORY: {
           this.quantity.laboratory++;
           this.quantity.patriarch++;
           break;
-        case CastleType.CAPITAL:
+        }
+        case CastleType.CAPITAL: {
           this.quantity.capital++;
           this.quantity.patriarch++;
           break;
-        case CastleType.ROYAL_TOWER:
+        }
+        case CastleType.ROYAL_TOWER: {
           this.quantity.royalTower++;
           this.quantity.patriarch++;
           break;
-        case CastleType.CITY:
+        }
+        case CastleType.CITY: {
           this.quantity.city++;
           this.quantity.patriarch++;
           break;
-        default:
+        }
+        default: {
           break;
+        }
       }
     });
   }

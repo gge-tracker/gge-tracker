@@ -1,9 +1,9 @@
 import * as express from 'express';
-import * as fs from 'fs';
+import * as fs from 'node:fs';
 import { ApiHelper } from '../api-helper';
-import path = require('path');
+import path from 'node:path';
 import axios from 'axios';
-import { puppeteerSingleton } from '../singleton/puppeteerSingleton';
+import { puppeteerSingleton } from '../singleton/puppeteer-singleton';
 import { Page } from 'puppeteer';
 
 declare global {
@@ -111,11 +111,11 @@ export abstract class ApiAssets implements ApiHelper {
       /* ---------------------------------
        * Read and filter items data from local JSON file
        * --------------------------------- */
-      const itemsData = await fs.promises.readFile(path.join(__dirname, './../assets/items.json'), 'utf-8');
-      const filteredItems = JSON.parse(itemsData);
-      const keysToKeep = ['versionInfo', 'effects', 'effecttypes', 'buildings', 'constructionItems'];
+      const itemsData = await fs.promises.readFile(path.join(__dirname, './../assets/items.json'));
+      const filteredItems = JSON.parse(itemsData.toString());
+      const keysToKeep = new Set(['versionInfo', 'effects', 'effecttypes', 'buildings', 'constructionItems']);
       for (const key of Object.keys(filteredItems)) {
-        if (!keysToKeep.includes(key)) {
+        if (!keysToKeep.has(key)) {
           delete filteredItems[key];
         }
       }
@@ -218,11 +218,11 @@ export abstract class ApiAssets implements ApiHelper {
        * Validate parameters
        * --------------------------------- */
       const asset = String(request.params.asset).trim().toLowerCase();
-      if (!asset || String(asset).trim() === '' || String(asset).length > 100 || !/^[a-z0-9\._-]+$/.test(asset)) {
+      if (!asset || String(asset).trim() === '' || String(asset).length > 100 || !/^[\d._a-z-]+$/.test(asset)) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Asset parameter is required' });
         return;
       }
-      const ext = path.extname(asset);
+      const extension = path.extname(asset);
       // Build current domain URI. This is used for production and localhost with port.
       const currentDomainUri =
         request.protocol +
@@ -233,7 +233,7 @@ export abstract class ApiAssets implements ApiHelper {
             ? ':' + request.get('host')?.split(':')[1]
             : ''
           : '');
-      if (ext !== '.js' && ext !== '.json' && ext !== '.webp' && ext !== '.png') {
+      if (extension !== '.js' && extension !== '.json' && extension !== '.webp' && extension !== '.png') {
         response
           .status(ApiHelper.HTTP_BAD_REQUEST)
           .send({ error: 'Invalid asset type. Supported types are: .js, .json, .webp, .png' });
@@ -264,8 +264,8 @@ export abstract class ApiAssets implements ApiHelper {
         }
       }
       const json = JSON.parse(file.toString());
-      const assetWithoutExt = asset.replace(/\.[^/.]+$/, '');
-      const url = json[assetWithoutExt];
+      const assetWithoutExtension = asset.replace(/\.[^./]+$/, '');
+      const url = json[assetWithoutExtension];
       const languageCacheBuildVersion = (await ApiHelper.redisClient.get(ApiHelper.REDIS_KEY_GGE_VERSION)) || '0';
       /* ---------------------------------
        * Check Redis cache for asset
@@ -275,25 +275,29 @@ export abstract class ApiAssets implements ApiHelper {
       if (cachedData) {
         // If cached, serve from cache based on type, with a cache-control of 30 days
         response.setHeader('Cache-Control', 'public, max-age=2592000');
-        switch (ext) {
-          case '.png':
+        switch (extension) {
+          case '.png': {
             response.setHeader('Content-Type', 'image/png');
             const pngBuffer = Buffer.from(cachedData, 'base64');
             response.status(ApiHelper.HTTP_OK).send(pngBuffer);
             return;
-          case '.webp':
+          }
+          case '.webp': {
             response.setHeader('Content-Type', 'image/webp');
             const imgBuffer = Buffer.from(cachedData, 'base64');
             response.status(ApiHelper.HTTP_OK).send(imgBuffer);
             return;
-          case '.json':
+          }
+          case '.json': {
             response.setHeader('Content-Type', 'application/json');
             response.status(ApiHelper.HTTP_OK).json(JSON.parse(cachedData));
             return;
-          case '.js':
+          }
+          case '.js': {
             response.setHeader('Content-Type', 'application/javascript');
             response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
             return;
+          }
         }
       }
       if (!url) {
@@ -303,41 +307,47 @@ export abstract class ApiAssets implements ApiHelper {
       /* ---------------------------------
        * Fetch asset from remote source and serve it
        * --------------------------------- */
-      if (ext === '.png' || ext === '.webp') {
-        const imageResp = await ApiHelper.fetchWithFallback(url);
-        if (!imageResp.ok) {
-          response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: 'Sprite sheet not found' });
+      switch (extension) {
+        case '.png':
+        case '.webp': {
+          const imageResp = await ApiHelper.fetchWithFallback(url);
+          if (!imageResp.ok) {
+            response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: 'Sprite sheet not found' });
+            return;
+          }
+          const spriteBuf = Buffer.from(await imageResp.arrayBuffer());
+          const finalBuffer = Buffer.concat([spriteBuf]);
+          if (extension === '.png') response.setHeader('Content-Type', 'image/png');
+          else response.setHeader('Content-Type', 'image/webp');
+          response.setHeader('Cache-Control', 'public, max-age=2592000');
+          await ApiHelper.updateCache(cachedKey, finalBuffer.toString('base64'), 60 * 60 * 24);
+          response.status(ApiHelper.HTTP_OK).send(finalBuffer);
           return;
         }
-        const spriteBuf = Buffer.from(await imageResp.arrayBuffer());
-        const finalBuffer = Buffer.concat([spriteBuf]);
-        if (ext === '.png') response.setHeader('Content-Type', 'image/png');
-        else response.setHeader('Content-Type', 'image/webp');
-        response.setHeader('Cache-Control', 'public, max-age=2592000');
-        await ApiHelper.updateCache(cachedKey, finalBuffer.toString('base64'), 60 * 60 * 24);
-        response.status(ApiHelper.HTTP_OK).send(finalBuffer);
-        return;
-      } else if (ext === '.json') {
-        const jsonUrl = url.replace(/\.[^/.]+$/, '.json');
-        const jsonResp = await ApiHelper.fetchWithFallback(jsonUrl);
-        const jsonData = JSON.parse(await jsonResp.text());
-        jsonData.images[0] = currentDomainUri + '/api/v1/assets/common/' + assetWithoutExt + '.webp';
-        response.setHeader('Content-Type', 'application/json');
-        response.setHeader('Cache-Control', 'public, max-age=2592000');
-        await ApiHelper.updateCache(cachedKey, jsonData, 60 * 60 * 24);
-        response.status(ApiHelper.HTTP_OK).send(jsonData);
-        return;
-      } else if (ext === '.js') {
-        const jsUrl = url.replace(/\.[^/.]+$/, '.js');
-        const jsResp = await ApiHelper.fetchWithFallback(jsUrl);
-        const jsData = await jsResp.text();
-        response.setHeader('Content-Type', 'application/javascript');
-        response.setHeader('Cache-Control', 'public, max-age=2592000');
-        await ApiHelper.updateCache(cachedKey, JSON.stringify(jsData), 60 * 60 * 24, true);
-        response.status(ApiHelper.HTTP_OK).send(jsData);
-        return;
-      } else {
-        throw new Error('Unsupported asset type');
+        case '.json': {
+          const jsonUrl = url.replace(/\.[^./]+$/, '.json');
+          const jsonResp = await ApiHelper.fetchWithFallback(jsonUrl);
+          const jsonData = JSON.parse(await jsonResp.text());
+          jsonData.images[0] = currentDomainUri + '/api/v1/assets/common/' + assetWithoutExtension + '.webp';
+          response.setHeader('Content-Type', 'application/json');
+          response.setHeader('Cache-Control', 'public, max-age=2592000');
+          await ApiHelper.updateCache(cachedKey, jsonData, 60 * 60 * 24);
+          response.status(ApiHelper.HTTP_OK).send(jsonData);
+          return;
+        }
+        case '.js': {
+          const jsUrl = url.replace(/\.[^./]+$/, '.js');
+          const jsResp = await ApiHelper.fetchWithFallback(jsUrl);
+          const jsData = await jsResp.text();
+          response.setHeader('Content-Type', 'application/javascript');
+          response.setHeader('Cache-Control', 'public, max-age=2592000');
+          await ApiHelper.updateCache(cachedKey, JSON.stringify(jsData), 60 * 60 * 24, true);
+          response.status(ApiHelper.HTTP_OK).send(jsData);
+          return;
+        }
+        default: {
+          throw new Error('Unsupported asset type');
+        }
       }
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
@@ -394,8 +404,8 @@ export abstract class ApiAssets implements ApiHelper {
       let asset = String(request.params.asset)
         .trim()
         .toLowerCase()
-        .replace(/\.[^/.]+$/, '');
-      if (!asset || asset.length > 100 || !/^[a-z0-9_-]+$/.test(asset)) {
+        .replace(/\.[^./]+$/, '');
+      if (!asset || asset.length > 100 || !/^[\d_a-z-]+$/.test(asset)) {
         response
           .status(ApiHelper.HTTP_BAD_REQUEST)
           .send({ error: 'Invalid asset parameter. Please check the asset format.' });
@@ -426,31 +436,31 @@ export abstract class ApiAssets implements ApiHelper {
       const frames: number[][] = jsonData.frames;
       const w = Math.max(...frames.map((frame) => frame[2] - frame[0]));
       const h = Math.max(...frames.map((frame) => frame[3] - frame[1]));
-      page = await puppeteerSingleton.newPage();
+      page = await puppeteerSingleton.createPage();
       await page.addScriptTag({ url: 'https://code.createjs.com/1.0.0/createjs.min.js' });
       await page.addScriptTag({ url: 'https://code.createjs.com/1.0.0/easeljs.min.js' });
       await page.addScriptTag({ url: 'https://code.createjs.com/1.0.0/tweenjs.min.js' });
       await page.addScriptTag({ url: currentDomainUri + `/api/v1/assets/common/${asset}.js` });
       const name = await page.evaluate(() => {
-        if (!window.Library) return null;
-        return Object.keys(window.Library)[0];
+        if (!globalThis.Library) return;
+        return Object.keys(globalThis.Library)[0];
       });
-      page.on('pageerror', (err) => {
-        console.error('[Browser pageerror]', err);
+      page.on('pageerror', (error) => {
+        console.error('[Browser pageerror]', error);
       });
-      page.on('requestfailed', (req) => {
-        console.error('[Browser requestfailed]', req.url(), req.failure()?.errorText);
+      page.on('requestfailed', (request_) => {
+        console.error('[Browser requestfailed]', request_.url(), request_.failure()?.errorText);
       });
       await page.evaluate(
         (name, asset, w, h, level, type) => {
           return new Promise((resolve, reject) => {
-            const canvas = window.document.createElement('canvas');
+            const canvas = globalThis.document.createElement('canvas');
             canvas.width = w;
             canvas.height = h;
             canvas.id = 'canvas';
-            window.document.body.appendChild(canvas);
-            const stage = new window.createjs.Stage(canvas);
-            const loader = window.AssetLoader;
+            globalThis.document.body.append(canvas);
+            const stage = new globalThis.createjs.Stage(canvas);
+            const loader = globalThis.AssetLoader;
             if (!loader) {
               console.error('window.AssetLoader est introuvable.');
               return reject(new Error('window.AssetLoader introuvable'));
@@ -459,32 +469,43 @@ export abstract class ApiAssets implements ApiHelper {
             loader.setCrossOrigin?.('anonymous');
             loader.on('complete', () => {
               let building;
-              if (window.Library[name][name]) {
-                building = new window.Library[name][name]();
+              if (globalThis.Library[name][name]) {
+                building = new globalThis.Library[name][name]();
               } else if (type) {
                 // Special handling for certain building types. This is a bit hacky but works for now.
                 // This is retried from the original GGE code.
                 const l = 'Level' + level;
-                if (type === 'gate') {
-                  const n = `Basic_Gate_${l}`;
-                  building = new window.Library[name][n]();
-                } else if (type === 'defence') {
-                  const n = `Castlewall_Defence_${l}`;
-                  building = new window.Library[name][n]();
-                } else if (type === 'tower') {
-                  const n = `Guard_Tower_${l}`;
-                  building = new window.Library[name][n]();
-                } else {
-                  resolve(false);
+                switch (type) {
+                  case 'gate': {
+                    const n = `Basic_Gate_${l}`;
+                    building = new globalThis.Library[name][n]();
+
+                    break;
+                  }
+                  case 'defence': {
+                    const n = `Castlewall_Defence_${l}`;
+                    building = new globalThis.Library[name][n]();
+
+                    break;
+                  }
+                  case 'tower': {
+                    const n = `Guard_Tower_${l}`;
+                    building = new globalThis.Library[name][n]();
+
+                    break;
+                  }
+                  default: {
+                    resolve(false);
+                  }
                 }
-              } else if (window.Library[name]) {
+              } else if (globalThis.Library[name]) {
                 const l = 'Level' + level;
                 const names = name.split('_');
-                const lastPart = names[names.length - 1];
+                const lastPart = names.at(-1);
                 names.pop();
                 const baseName = names.join('_');
                 const n = baseName + '_' + l + '_' + lastPart;
-                building = new window.Library[name][n]();
+                building = new globalThis.Library[name][n]();
               } else {
                 resolve(false);
               }
@@ -510,9 +531,9 @@ export abstract class ApiAssets implements ApiHelper {
               stage.update();
               resolve(true);
             });
-            loader.on('error', (e) => {
-              console.error('Preload error', e);
-              reject(new Error('Loader error: ' + e));
+            loader.on('error', (error: { message?: string; target?: any }) => {
+              console.error('Preload error', error);
+              reject(new Error('Loader error: ' + (error?.message ?? error)));
             });
             // Here, we can use local loading from our server to avoid CORS and bandwidth issues.
             // We assume the assets are served from /api/v1/assets/common/ endpoint.
@@ -534,7 +555,7 @@ export abstract class ApiAssets implements ApiHelper {
       );
       const pngBuffer = await page
         .evaluate(async () => {
-          const canvas = document.getElementById('canvas') as HTMLCanvasElement;
+          const canvas = document.querySelector('#canvas') as HTMLCanvasElement;
           return canvas.toDataURL('image/png');
         })
         .then((dataUrl) => {
@@ -548,10 +569,10 @@ export abstract class ApiAssets implements ApiHelper {
       response.setHeader('Cache-Control', 'public, max-age=2592000');
       await ApiHelper.updateCache(cachedKey, pngBuffer.toString('base64'), 60 * 60 * 24, true);
       response.send(pngBuffer);
-    } catch (err) {
+    } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
-      ApiHelper.logError(err, 'getGeneratedImage', request);
+      ApiHelper.logError(error, 'getGeneratedImage', request);
     } finally {
       if (page) {
         // Ensure the Puppeteer page is closed to free resources
@@ -582,17 +603,17 @@ export abstract class ApiAssets implements ApiHelper {
     const itemsAssetsUri = ApiHelper.ASSETS_BASE_URL + '/assets/';
     const gameIndexUri = ApiHelper.ASSETS_BASE_URL + '/index.html';
     // Fetch the main index.html to find the DLL preload link
-    const indexRes = await ApiHelper.fetchWithFallback(gameIndexUri);
-    if (!indexRes.ok) throw new Error('Failed to fetch index.html: ' + indexRes.status);
-    const indexHtml = await indexRes.text();
+    const indexResult = await ApiHelper.fetchWithFallback(gameIndexUri);
+    if (!indexResult.ok) throw new Error('Failed to fetch index.html: ' + indexResult.status);
+    const indexHtml = await indexResult.text();
     const dllMatch = indexHtml.match(/<link\s+id=["']dll["']\s+rel=["']preload["']\s+href=["']([^"']+)["']/i);
     if (!dllMatch) throw new Error('DLL preload link not found');
     const dllRelativeUrl = dllMatch[1];
     const dllUrl = `${ApiHelper.ASSETS_BASE_URL}/${dllRelativeUrl}`;
-    const dllRes = await ApiHelper.fetchWithFallback(dllUrl);
-    if (!dllRes.ok) throw new Error('Failed to fetch ggs.dll.js: ' + dllRes.status);
-    const text = await dllRes.text();
-    const regex = /itemassets\/[^\s"'`<>]+?--\d+/g;
+    const dllResource = await ApiHelper.fetchWithFallback(dllUrl);
+    if (!dllResource.ok) throw new Error('Failed to fetch ggs.dll.js: ' + dllResource.status);
+    const text = await dllResource.text();
+    const regex = /itemassets\/[^\s"'<>`]+?--\d+/g;
     const matches = [...text.matchAll(regex)];
     const uniquePaths = [...new Set(matches.map((m) => m[0]))];
     const imageUrlMap = {};
@@ -601,11 +622,14 @@ export abstract class ApiAssets implements ApiHelper {
       const fileName = path.split('/').pop();
       const nameWithTimestamp = fileName.split('--')[0];
       const cleanNameRaw = nameWithTimestamp;
-      const cleanName = cleanNameRaw.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const cleanName = cleanNameRaw.toLowerCase().replaceAll(/[^\da-z]/g, '');
       imageUrlMap[cleanName] = `${itemsAssetsUri}${path}.webp`;
     }
     console.log(`${Object.keys(imageUrlMap).length} assets found.`);
-    await fs.promises.writeFile(path.join(__dirname, './../assets/assets.json'), JSON.stringify(imageUrlMap, null, 2));
+    await fs.promises.writeFile(
+      path.join(__dirname, './../assets/assets.json'),
+      JSON.stringify(imageUrlMap, undefined, 2),
+    );
   }
 
   /**
@@ -622,14 +646,15 @@ export abstract class ApiAssets implements ApiHelper {
    */
   private static async updateItems(): Promise<void> {
     const itemsVersionUri = `${ApiHelper.ASSETS_BASE_URL}/items/ItemsVersion.properties`;
-    const itemsVersionRes = await ApiHelper.fetchWithFallback(itemsVersionUri);
-    if (!itemsVersionRes.ok) throw new Error('Failed to fetch ItemsVersion.properties: ' + itemsVersionRes.status);
-    const itemsVersionText = await itemsVersionRes.text();
+    const itemsVersionResource = await ApiHelper.fetchWithFallback(itemsVersionUri);
+    if (!itemsVersionResource.ok)
+      throw new Error('Failed to fetch ItemsVersion.properties: ' + itemsVersionResource.status);
+    const itemsVersionText = await itemsVersionResource.text();
     const versionNumber = itemsVersionText.match(/CastleItemXMLVersion=(\d+\.\d+)/)?.[1];
     const itemsJsonUri = `${ApiHelper.ASSETS_BASE_URL}/items/items_v${versionNumber}.json`;
-    const itemsJsonRes = await ApiHelper.fetchWithFallback(itemsJsonUri);
-    if (!itemsJsonRes.ok) throw new Error('Failed to fetch items JSON: ' + itemsJsonRes.status);
-    const itemsJsonText = await itemsJsonRes.text();
+    const itemsJsonResource = await ApiHelper.fetchWithFallback(itemsJsonUri);
+    if (!itemsJsonResource.ok) throw new Error('Failed to fetch items JSON: ' + itemsJsonResource.status);
+    const itemsJsonText = await itemsJsonResource.text();
     await fs.promises.writeFile(path.join(__dirname, './../assets/items.json'), itemsJsonText);
   }
 }

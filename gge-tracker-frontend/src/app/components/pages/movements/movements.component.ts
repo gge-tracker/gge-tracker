@@ -144,11 +144,11 @@ export class MovementsComponent extends GenericComponent {
     if (this.page === this.maxPage) pageCutLow -= 2;
     if (this.page === this.maxPage - 1) pageCutLow -= 1;
 
-    return Array.from({ length: pageCutHigh - pageCutLow + 1 }, (_, i) => pageCutLow + i);
+    return Array.from({ length: pageCutHigh - pageCutLow + 1 }, (_, index) => pageCutLow + index);
   }
 
   public allPages(): number[] {
-    return Array.from({ length: this.maxPage || 1 }, (_, i) => i + 1);
+    return Array.from({ length: this.maxPage || 1 }, (_, index) => index + 1);
   }
 
   public async applyFilters(): Promise<void> {
@@ -200,8 +200,8 @@ export class MovementsComponent extends GenericComponent {
         this.movements = this.mapMovementsFromApi(movements.data, (index: number) => index + 1);
         this.isInLoading = false;
       } else {
-        this.activatedRoute.queryParams.subscribe(async (params) => {
-          const player = params['player'];
+        this.activatedRoute.queryParams.subscribe(async (parameters) => {
+          const player = parameters['player'];
           if (!player) return;
           this.page = 1;
           this.search = player;

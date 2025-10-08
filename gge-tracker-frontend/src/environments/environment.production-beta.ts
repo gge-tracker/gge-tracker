@@ -1,5 +1,5 @@
 /**
- * environment.prod.beta.ts
+ * environment.production.beta.ts
  * This file contains environment variables for the production beta environment.
  * It is used during the build process when the `--configuration=production-beta` flag is provided.
  * For development builds, `environment.ts` is used instead.

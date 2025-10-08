@@ -34,12 +34,12 @@ export class DatabaseManager {
    * @param dbName - The name of the database to connect to.
    * @returns A MySQL connection pool instance configured with environment variables and the specified database.
    */
-  protected createConnectionPool(dbName: string): mysql.Pool {
+  protected createConnectionPool(databaseName: string): mysql.Pool {
     return mysql.createPool({
       host: process.env.MYSQL_HOST,
       user: process.env.MYSQL_USER,
       password: process.env.MYSQL_PASSWORD,
-      database: dbName,
+      database: databaseName,
       connectionLimit: 15,
       timeout: 10 * 1000,
     });
@@ -56,12 +56,12 @@ export class DatabaseManager {
    * and a connection timeout of 10 seconds. Connection details such as host, user, and password
    * are sourced from environment variables: `POSTGRES_HOST`, `POSTGRES_USER`, and `POSTGRES_PASSWORD`.
    */
-  protected createPostgresPool(dbName: string): pg.Pool {
+  protected createPostgresPool(databaseName: string): pg.Pool {
     return new pg.Pool({
       host: process.env.POSTGRES_HOST,
       user: process.env.POSTGRES_USER,
       password: process.env.POSTGRES_PASSWORD,
-      database: dbName,
+      database: databaseName,
       port: 5432,
       max: 100,
       idleTimeoutMillis: 10 * 1000,
@@ -81,19 +81,19 @@ export class DatabaseManager {
    *   - `mysql`: An object mapping keys to MySQL connection pools.
    *   - `postgres`: An object mapping keys to PostgreSQL connection pools.
    */
-  protected createConnectionPools(dbNames: { [key: string]: string }): {
+  protected createConnectionPools(databaseNames: { [key: string]: string }): {
     mysql: { [key: string]: mysql.Pool };
     postgres: { [key: string]: pg.Pool };
   } {
     const mysqlPools: { [key: string]: mysql.Pool } = {};
     const postgresPools: { [key: string]: pg.Pool } = {};
     console.log('[DB] Creating connection pools...');
-    for (const [key, dbName] of Object.entries(dbNames)) {
+    for (const [key, databaseName] of Object.entries(databaseNames)) {
       try {
-        if (key !== 'GLOBAL') mysqlPools[key] = this.createConnectionPool(dbName);
-        postgresPools[key] = this.createPostgresPool(dbName);
-        console.log(`[DB] Connection pool created for ${key} with database ${dbName}`);
-        console.log(`[DB] Postgres connection pool created for ${key} with database ${dbName}`);
+        if (key !== 'GLOBAL') mysqlPools[key] = this.createConnectionPool(databaseName);
+        postgresPools[key] = this.createPostgresPool(databaseName);
+        console.log(`[DB] Connection pool created for ${key} with database ${databaseName}`);
+        console.log(`[DB] Postgres connection pool created for ${key} with database ${databaseName}`);
       } catch (error) {
         console.error(`[DB] Error creating connection pools for ${key}:`, error);
       }

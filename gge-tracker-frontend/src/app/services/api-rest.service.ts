@@ -83,11 +83,11 @@ export class ApiRestService {
       const data = await response.json();
       if (data.error) return { success: false, error: data.error };
       return { success: true, data };
-    } catch (e: unknown) {
-      if (doNotUpdateLocation && e instanceof Error) {
-        const message = e.message;
+    } catch (error: unknown) {
+      if (doNotUpdateLocation && error instanceof Error) {
+        const message = error.message;
         if (message.includes('Failed to fetch') || message.includes('ERR_CONNECTION_REFUSED')) {
-          window.location.replace('/maintenance');
+          globalThis.location.replace('/maintenance');
         }
       }
       return { success: false, error: ErrorType.ERROR_OCCURRED };
@@ -101,11 +101,11 @@ export class ApiRestService {
    * @returns A promise that resolves to the data fetched from the API
    */
   public async getGenericData<T, A extends unknown[]>(
-    method: (...args: A) => Promise<ApiResponse<T>>,
-    ...args: A
+    method: (...arguments_: A) => Promise<ApiResponse<T>>,
+    ...arguments_: A
   ): Promise<{ data: T; response: number }> {
     const startTimer = Date.now();
-    const data = await method(...args);
+    const data = await method(...arguments_);
     if (data.success === false) throw new Error(data.error);
     const response = Date.now() - startTimer;
     return { data: data.data, response };

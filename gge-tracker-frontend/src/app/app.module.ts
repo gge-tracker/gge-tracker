@@ -18,7 +18,7 @@ import { SkeletonComponent } from '@ggetracker-components/skeleton/skeleton.comp
 import { LocalStorageTranslateLoader } from './local-storage-loader';
 
 export function DynamicTranslateLoaderFactory(http: HttpClient): TranslateLoader {
-  const isBrowser = typeof window !== 'undefined';
+  const isBrowser = globalThis.window !== undefined;
   if (isBrowser && localStorage.getItem('lang_dev')) {
     return new LocalStorageTranslateLoader();
   } else {

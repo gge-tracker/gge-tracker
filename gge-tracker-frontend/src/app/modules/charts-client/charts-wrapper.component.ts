@@ -64,27 +64,27 @@ export class ChartsWrapperComponent implements OnInit {
   public async ngOnInit(): Promise<void> {
     if (isPlatformBrowser(this.platformId)) {
       const { ChartsClientComponent } = await import('./charts-client.component');
-      const componentRef = this.vcr.createComponent(ChartsClientComponent, {
+      const componentReference = this.vcr.createComponent(ChartsClientComponent, {
         injector: this.injector,
       });
-      componentRef.setInput('series', this.series());
-      componentRef.setInput('chart', this.chart());
-      componentRef.setInput('xaxis', this.xaxis());
-      componentRef.setInput('annotations', this.annotations());
-      componentRef.setInput('yaxis', this.yaxis());
-      componentRef.setInput('dataLabels', this.dataLabels());
-      componentRef.setInput('plotOptions', this.plotOptions());
-      componentRef.setInput('labels', this.labels());
-      componentRef.setInput('grid', this.grid());
-      componentRef.setInput('colors', this.colors());
-      componentRef.setInput('markers', this.markers());
-      componentRef.setInput('fill', this.fill());
-      componentRef.setInput('stroke', this.stroke());
-      componentRef.setInput('title', this.title());
-      componentRef.setInput('tooltip', this.tooltip());
-      componentRef.setInput('legend', this.legend());
-      componentRef.setInput('forecastDataPoints', this.forecastDataPoints());
-      componentRef.instance.chartComponentOutput.subscribe((output) => {
+      componentReference.setInput('series', this.series());
+      componentReference.setInput('chart', this.chart());
+      componentReference.setInput('xaxis', this.xaxis());
+      componentReference.setInput('annotations', this.annotations());
+      componentReference.setInput('yaxis', this.yaxis());
+      componentReference.setInput('dataLabels', this.dataLabels());
+      componentReference.setInput('plotOptions', this.plotOptions());
+      componentReference.setInput('labels', this.labels());
+      componentReference.setInput('grid', this.grid());
+      componentReference.setInput('colors', this.colors());
+      componentReference.setInput('markers', this.markers());
+      componentReference.setInput('fill', this.fill());
+      componentReference.setInput('stroke', this.stroke());
+      componentReference.setInput('title', this.title());
+      componentReference.setInput('tooltip', this.tooltip());
+      componentReference.setInput('legend', this.legend());
+      componentReference.setInput('forecastDataPoints', this.forecastDataPoints());
+      componentReference.instance.chartComponentOutput.subscribe((output) => {
         this.chartComponentOutput.emit(output);
       });
     }

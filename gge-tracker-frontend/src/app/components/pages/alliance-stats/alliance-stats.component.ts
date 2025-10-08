@@ -399,11 +399,11 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   }
 
   public formatAvg(value: number, toFixed = 3): string {
-    return value.toFixed(toFixed).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return value.toFixed(toFixed).replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
   }
 
-  public customFormatter(val: number, precision: number): string {
-    return val.toFixed(precision).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  public customFormatter(value: number, precision: number): string {
+    return value.toFixed(precision).replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
   }
 
   public openFullscreen(chartKey: keyof typeof ApiPlayerStatsType): void {
@@ -562,35 +562,42 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     const serieChoosen = this.graphPages[graphKey];
     this.graphPages[graphKey] = serieChoosen - 1;
     switch (graphKey) {
-      case ApiPlayerStatsType.might:
+      case ApiPlayerStatsType.might: {
         this.seriesLabels.might = true;
         this.initMightHistoryData(this.data);
         break;
-      case ApiPlayerStatsType.berimond_kingdom:
+      }
+      case ApiPlayerStatsType.berimond_kingdom: {
         this.seriesLabels.berimond_kingdom = true;
         this.initBerimondKingdomData(this.data);
         break;
-      case ApiPlayerStatsType.war_realms:
+      }
+      case ApiPlayerStatsType.war_realms: {
         this.seriesLabels.war_realms = true;
         this.initWarRealmsData(this.data);
         break;
-      case ApiPlayerStatsType.bloodcrow:
+      }
+      case ApiPlayerStatsType.bloodcrow: {
         this.seriesLabels.bloodcrow = true;
         this.initBloodcrowData(this.data);
         break;
-      case ApiPlayerStatsType.nomad:
+      }
+      case ApiPlayerStatsType.nomad: {
         this.seriesLabels.nomad = true;
         this.initNomadData(this.data);
         break;
-      case ApiPlayerStatsType.samurai:
+      }
+      case ApiPlayerStatsType.samurai: {
         this.seriesLabels.samurai = true;
         this.initSamuraiData(this.data);
         break;
-      case ApiPlayerStatsType.loot:
+      }
+      case ApiPlayerStatsType.loot: {
         this.graphPages[graphKey] = serieChoosen + 1;
         this.seriesLabels.loot = true;
         this.initLootHistoryData(this.data);
         break;
+      }
     }
     this.cdr.detectChanges();
   }
@@ -605,35 +612,42 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       return;
     this.graphPages[graphKey] = serieChoosen + 1;
     switch (graphKey) {
-      case ApiPlayerStatsType.might:
+      case ApiPlayerStatsType.might: {
         this.seriesLabels.might = true;
         this.initMightHistoryData(this.data);
         break;
-      case ApiPlayerStatsType.berimond_kingdom:
+      }
+      case ApiPlayerStatsType.berimond_kingdom: {
         this.seriesLabels.berimond_kingdom = true;
         this.initBerimondKingdomData(this.data);
         break;
-      case ApiPlayerStatsType.war_realms:
+      }
+      case ApiPlayerStatsType.war_realms: {
         this.seriesLabels.war_realms = true;
         this.initWarRealmsData(this.data);
         break;
-      case ApiPlayerStatsType.bloodcrow:
+      }
+      case ApiPlayerStatsType.bloodcrow: {
         this.seriesLabels.bloodcrow = true;
         this.initBloodcrowData(this.data);
         break;
-      case ApiPlayerStatsType.nomad:
+      }
+      case ApiPlayerStatsType.nomad: {
         this.seriesLabels.nomad = true;
         this.initNomadData(this.data);
         break;
-      case ApiPlayerStatsType.samurai:
+      }
+      case ApiPlayerStatsType.samurai: {
         this.seriesLabels.samurai = true;
         this.initSamuraiData(this.data);
         break;
-      case ApiPlayerStatsType.loot:
+      }
+      case ApiPlayerStatsType.loot: {
         this.graphPages[graphKey] = serieChoosen - 1;
         this.seriesLabels.loot = true;
         this.initLootHistoryData(this.data);
         break;
+      }
     }
     this.cdr.detectChanges();
   }
@@ -665,7 +679,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     this.localStorage.removeItem('allianceDistancePlayerName_' + this.apiRestService.serverService.choosedServer);
     this.cdr.detectChanges();
     if (this.membersTableHeader.length === 11) {
-      this.membersTableHeader.splice(this.membersTableHeader.length - 2, 1);
+      this.membersTableHeader.splice(-2, 1);
       this.cdr.detectChanges();
     }
   }
@@ -688,7 +702,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         undefined,
         undefined,
       ];
-      this.membersTableHeader.splice(this.membersTableHeader.length - 1, 0, block);
+      this.membersTableHeader.splice(-1, 0, block);
     }
   }
 
@@ -726,8 +740,16 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     }
     // Sort players based on the selected property
     let playerProperty: keyof Player;
-    if (sort !== 'level') {
-      playerProperty = sort.replace(/_(\w)/g, (match, p1) => p1.toUpperCase()) as keyof Player;
+    if (sort === 'level') {
+      // If the property is 'level', sort by level and legendary level
+      this.players = this.players.sort((a, b) => {
+        const aLevelValue = (a.level || 0) + (a.legendaryLevel || 0);
+        const bLevelValue = (b.level || 0) + (b.legendaryLevel || 0);
+        if (this.reverse) return bLevelValue - aLevelValue;
+        return aLevelValue - bLevelValue;
+      });
+    } else {
+      playerProperty = sort.replaceAll(/_(\w)/g, (match, p1) => p1.toUpperCase()) as keyof Player;
       // If the property is not 'level', sort by that property
       this.players = this.players.sort((a, b) => {
         const aValue = a[playerProperty] ?? 0;
@@ -741,18 +763,10 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
           return (aValue as string).localeCompare(bValue as string);
         }
       });
-    } else {
-      // If the property is 'level', sort by level and legendary level
-      this.players = this.players.sort((a, b) => {
-        const aLevelValue = (a.level || 0) + (a.legendaryLevel || 0);
-        const bLevelValue = (b.level || 0) + (b.legendaryLevel || 0);
-        if (this.reverse) return bLevelValue - aLevelValue;
-        return aLevelValue - bLevelValue;
-      });
     }
     const nbPlayers = this.players.length;
     this.players = this.players.map((player, index) => {
-      player.rank = !this.reverse ? nbPlayers - index : index + 1;
+      player.rank = this.reverse ? index + 1 : nbPlayers - index;
       return player;
     });
     this.cdr.detectChanges();
@@ -765,7 +779,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   public openModal1(): void {
     const target = this.el.nativeElement.querySelector('.katex-target');
     katex.render(
-      '\\text{Might}_{\\text{day}} = \\frac{1}{N} \\sum_{i=1}^{N} \\left( M_i^{\\text{end}} - M_i^{\\text{start}} \\right)',
+      String.raw`\text{Might}_{\text{day}} = \frac{1}{N} \sum_{i=1}^{N} \left( M_i^{\text{end}} - M_i^{\text{start}} \right)`,
       target,
       {
         displayMode: true,
@@ -781,7 +795,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   public openModal2(): void {
     const target = this.el.nativeElement.querySelector('.katex-target-var');
     katex.render(
-      '\\text{Might}_{\\text{day}} = \\frac{1}{N} \\sum_{i=1}^{N} \\left( \\max(M_i^{\\text{day}}) - \\min(M_i^{\\text{day}}) \\right)',
+      String.raw`\text{Might}_{\text{day}} = \frac{1}{N} \sum_{i=1}^{N} \left( \max(M_i^{\text{day}}) - \min(M_i^{\text{day}}) \right)`,
       target,
       {
         displayMode: true,
@@ -808,10 +822,8 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       //await this.loadProgressEventPlayerStats();
       this.progressCalcFinished = true;
       this.progressCalcInProgress = false;
-    } else if (tab === 'movements') {
-      if (this.movementsResponseTime === 0) {
-        await this.initMovements();
-      }
+    } else if (tab === 'movements' && this.movementsResponseTime === 0) {
+      await this.initMovements();
     }
     if (tab === 'health') {
       await this.loadHealthEventPlayerStats();
@@ -826,17 +838,17 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     let response = await this.apiRestService.getAllianceStats(this.allianceId, this.playerNameForDistance);
     if (response.success === false) {
       if (response.error === 'Invalid player name') {
-        this.toastService.add(ErrorType.NO_PLAYER_FOUND, 20000);
+        this.toastService.add(ErrorType.NO_PLAYER_FOUND, 20_000);
         void this.resetDistanceColumn();
         this.localStorage.setItem('allianceDistancePlayerName_' + this.apiRestService.serverService.choosedServer, '');
         this.playerNameForDistance = '';
         response = await this.apiRestService.getAllianceStats(this.allianceId, '');
         if (response.success === false) {
-          this.toastService.add(ErrorType.ERROR_OCCURRED, 20000);
+          this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
           return;
         }
       } else {
-        this.toastService.add(ErrorType.ERROR_OCCURRED, 20000);
+        this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
         return;
       }
     }
@@ -844,7 +856,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   }
 
   private init(): void {
-    const lastUpdate = this.utilsService.data$.subscribe((data) => {
+    const lastUpdate = this.utilitiesService.data$.subscribe((data) => {
       if (data) {
         this.lastUpdate = data.last_update.might;
         lastUpdate.unsubscribe();
@@ -862,10 +874,10 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       this.message = this.loadingMessages[this.currentMessageIndex];
       this.cdr.detectChanges();
     }, 2000);
-    this.route.params.subscribe(async (params) => {
-      const allianceId = params['allianceId'];
+    this.route.params.subscribe(async (parameters) => {
+      const allianceId = parameters['allianceId'];
       this.allianceId = allianceId;
-      if (allianceId && !isNaN(allianceId) && allianceId > 0) {
+      if (allianceId && !Number.isNaN(allianceId) && allianceId > 0) {
         try {
           const data = await this.getAllianceMembers();
           if (!data) return;
@@ -877,32 +889,35 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
               undefined,
               undefined,
             ];
-            this.membersTableHeader.splice(this.membersTableHeader.length - 1, 0, block);
+            this.membersTableHeader.splice(-1, 0, block);
           }
           this.addPageTitle(data.alliance_name);
           this.allianceName = data.alliance_name;
           const updatesPlayers = await this.apiRestService.getUpdatePlayersAlliance(allianceId);
           if (updatesPlayers.success === false) {
-            this.toastService.add(ErrorType.ERROR_OCCURRED, 20000);
+            this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
             return;
           }
           this.updatesPlayers = updatesPlayers.data.updates;
           this.processUpdatesData();
           const globalResponse = await this.apiRestService.getServerGlobalStats();
           if (globalResponse.success === false) {
-            this.toastService.add(ErrorType.ERROR_OCCURRED, 20000);
+            this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
             return;
           }
           const globalData = globalResponse.data;
-          this.initCards(globalData[globalData.length - 1]);
+          const lastGlobalData = globalData.at(-1);
+          if (lastGlobalData) {
+            this.initCards(lastGlobalData);
+          }
           this.isInLoading = false;
           this.cdr.detectChanges();
         } catch {
-          this.toastService.add(ErrorType.ERROR_OCCURRED, 20000);
+          this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
           this.isInLoading = false;
         }
       } else {
-        this.toastService.add(ErrorType.ERROR_OCCURRED, 20000);
+        this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
         this.isInLoading = false;
         void this.router.navigate(['/']);
         return;
@@ -946,16 +961,16 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       });
     });
 
-    this.groupedUpdates = Array.from(groupedByDate.values()).sort((a, b) => b.date.localeCompare(a.date));
+    this.groupedUpdates = [...groupedByDate.values()].sort((a, b) => b.date.localeCompare(a.date));
     this.groupedUpdatedByMonths = this.groupedUpdates.reduce(
-      (acc, update) => {
+      (accumulator, update) => {
         const [year, month] = update.date.split('-');
         const key = `${year}-${month}`;
-        if (!acc[key]) {
-          acc[key] = [];
+        if (!accumulator[key]) {
+          accumulator[key] = [];
         }
-        acc[key].push(update);
-        return acc;
+        accumulator[key].push(update);
+        return accumulator;
       },
       {} as Record<string, GroupedUpdatesByDate[]>,
     );
@@ -999,37 +1014,32 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       const nextMorningStart = new Date(morningStart);
       nextMorningStart.setDate(nextMorningStart.getDate() + 1);
 
-      // First part of the day (00h-06h)
-      annotations.push({
-        x: new Date(morningStart).setHours(0, 0, 0, 0),
-        x2: morningStart.getTime(),
-        fillColor: '#2196F3',
-        opacity: 0.1,
-      });
-
-      // Second part of the day (06h-12h)
-      annotations.push({
-        x: morningStart.getTime(),
-        x2: afternoonStart.getTime(),
-        fillColor: '#FFEB3B',
-        opacity: 0.2,
-      });
-
-      // Third part of the day (12h-18h)
-      annotations.push({
-        x: afternoonStart.getTime(),
-        x2: eveningStart.getTime(),
-        fillColor: '#4CAF50',
-        opacity: 0.2,
-      });
-
-      // Fourth part of the day (18h-00h)
-      annotations.push({
-        x: eveningStart.getTime(),
-        x2: nightStart.getTime(),
-        fillColor: '#F44336',
-        opacity: 0.2,
-      });
+      annotations.push(
+        {
+          x: new Date(morningStart).setHours(0, 0, 0, 0),
+          x2: morningStart.getTime(),
+          fillColor: '#2196F3',
+          opacity: 0.1,
+        },
+        {
+          x: morningStart.getTime(),
+          x2: afternoonStart.getTime(),
+          fillColor: '#FFEB3B',
+          opacity: 0.2,
+        },
+        {
+          x: afternoonStart.getTime(),
+          x2: eveningStart.getTime(),
+          fillColor: '#4CAF50',
+          opacity: 0.2,
+        },
+        {
+          x: eveningStart.getTime(),
+          x2: nightStart.getTime(),
+          fillColor: '#F44336',
+          opacity: 0.2,
+        },
+      );
 
       currentTime = new Date(nextMorningStart);
     }
@@ -1039,7 +1049,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   private async loadHealthEventPlayerStats(): Promise<void> {
     const data = await this.apiRestService.getPlayerStatsPulsedForAlliance(this.allianceId);
     if (data.success === false) {
-      this.toastService.add(ErrorType.ERROR_OCCURRED, 20000);
+      this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
       return;
     }
     const healthResponse = data.data;
@@ -1127,13 +1137,16 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     const nbByDates = this.groupedUpdatedByMonths;
     for (const key in nbByDates) {
       this.nbMovementsByMonth[key] = { movements: 0, leaves: 0, joins: 0 };
-      this.nbMovementsByMonth[key].movements = nbByDates[key].reduce((acc, update) => acc + update.updates.length, 0);
+      this.nbMovementsByMonth[key].movements = nbByDates[key].reduce(
+        (accumulator, update) => accumulator + update.updates.length,
+        0,
+      );
       this.nbMovementsByMonth[key].leaves = nbByDates[key].reduce(
-        (acc, update) => acc + update.updates.filter((u) => u.action === 'left').length,
+        (accumulator, update) => accumulator + update.updates.filter((u) => u.action === 'left').length,
         0,
       );
       this.nbMovementsByMonth[key].joins = nbByDates[key].reduce(
-        (acc, update) => acc + update.updates.filter((u) => u.action === 'joined').length,
+        (accumulator, update) => accumulator + update.updates.filter((u) => u.action === 'joined').length,
         0,
       );
     }
@@ -1151,49 +1164,53 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     data: [number, number][],
     timeGap: number = 24 * 60 * 60 * 1000,
   ): [number, number][][] {
-    data = Array.from(new Set(data.map((item) => JSON.stringify(item)))).map((item) => JSON.parse(item));
+    data = [...new Set(data.map((item) => JSON.stringify(item)))].map((item) => JSON.parse(item));
     // Data is sorted by timestamp to ensure correct grouping
     data.sort((a, b) => a[0] - b[0]);
     let currentEvent: ApiGenericData[] = [];
-    let eventDataSegmentsRef: ApiGenericData[][] = [];
+    let eventDataSegmentsReference: ApiGenericData[][] = [];
     // Iterate through the data and group by time gaps to create segments
-    for (let i = 0; i < data.length; i++) {
-      if (i > 0) {
-        const date1 = data[i - 1][0];
-        const date2 = data[i][0];
+    for (let index = 0; index < data.length; index++) {
+      if (index > 0) {
+        const date1 = data[index - 1][0];
+        const date2 = data[index][0];
         if (date2 - date1 > timeGap) {
           if (currentEvent.length > 0) {
-            eventDataSegmentsRef ??= [];
-            eventDataSegmentsRef.push(currentEvent);
+            eventDataSegmentsReference ??= [];
+            eventDataSegmentsReference.push(currentEvent);
           }
           currentEvent = [];
         }
       }
       currentEvent.push({
-        date: new Date(data[i][0]).toISOString(),
-        point: data[i][1],
+        date: new Date(data[index][0]).toISOString(),
+        point: data[index][1],
       });
     }
     if (currentEvent.length > 0) {
-      eventDataSegmentsRef ??= [];
-      eventDataSegmentsRef.push(currentEvent);
+      eventDataSegmentsReference ??= [];
+      eventDataSegmentsReference.push(currentEvent);
     }
-    return eventDataSegmentsRef.map((event) => {
-      return event.map((e) => {
-        return [new Date(e.date).getTime(), e.point];
+    return eventDataSegmentsReference.map((event) => {
+      return event.map((event) => {
+        return [new Date(event.date).getTime(), event.point];
       });
     });
   }
 
   private generateEventTitle(eventTimestamps: [number, number][]): string {
     const currentDate = new Date();
-    const lastDate = new Date(eventTimestamps[eventTimestamps.length - 1][0]);
+    const lastTimestamp = eventTimestamps.at(-1);
+    if (!lastTimestamp) {
+      return this.translateService.instant('Événement en cours');
+    }
+    const lastDate = new Date(lastTimestamp[0]);
     lastDate.setHours(lastDate.getHours() + 3);
 
     const locale = this.languageService.getCurrentLang();
     if (lastDate.getTime() < currentDate.getTime()) {
       const firstDate = new Date(eventTimestamps[0][0]);
-      const lastDate = new Date(eventTimestamps[eventTimestamps.length - 1][0]);
+      const lastDate = new Date(eventTimestamps.at(-1)![0]);
       const name = this.translateService.instant('Événement du 0 au 0', {
         start: firstDate.toLocaleDateString(locale).slice(0, -5),
         end: lastDate.toLocaleDateString(locale).slice(0, -5),
@@ -1206,7 +1223,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
 
   private getPointsAndDates(data: EventGenericVariation[]): { dates: string[]; points: number[] } {
     const dates = data.map((point) => {
-      const date = point['date'].substring(0, point['date'].length - 3);
+      const date = point['date'].slice(0, Math.max(0, point['date'].length - 3));
       return date;
     });
     const points = data.map((point) => {
@@ -1276,7 +1293,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     const timestampsByHour = weekHours.map((hour) => new Date(hour).getTime());
     const showedEndOfWeek = new Date(endOfWeek);
     showedEndOfWeek.setUTCDate(showedEndOfWeek.getUTCDate() - 1);
-    if (startOfWeek.getTime() < 1737349200000) {
+    if (startOfWeek.getTime() < 1_737_349_200_000) {
       this.graphPages[ApiPlayerStatsType.loot] = serieChoosen - 1;
       return;
     }
@@ -1318,21 +1335,21 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         const score = playerScoresByTimestamp.get(hourTimestamp) || 0;
         return [hourTimestamp, score];
       });
-      for (let i = 1; i < alignedData.length; i++) {
-        const [currentTimestamp, currentScore] = alignedData[i];
-        const [, previousScore] = alignedData[i - 1];
+      for (let index = 1; index < alignedData.length; index++) {
+        const [currentTimestamp, currentScore] = alignedData[index];
+        const [, previousScore] = alignedData[index - 1];
         const isMondayReset =
           new Date(currentTimestamp).getUTCDay() === 1 && new Date(currentTimestamp).getUTCHours() === 1;
         if (isMondayReset) continue;
         if (currentScore === 0 && previousScore !== null && previousScore > currentScore) {
-          const hasFutureHigherPoint = alignedData.slice(i + 1).some(([, futureScore]) => {
+          const hasFutureHigherPoint = alignedData.slice(index + 1).some(([, futureScore]) => {
             return futureScore !== null && futureScore > currentScore;
           });
           if (hasFutureHigherPoint) {
-            let j = i;
-            while (j < alignedData.length && alignedData[j][1] === 0) {
-              hoursToRemove.add(alignedData[j][0]);
-              j++;
+            let index_ = index;
+            while (index_ < alignedData.length && alignedData[index_][1] === 0) {
+              hoursToRemove.add(alignedData[index_][0]);
+              index_++;
             }
           }
         }
@@ -1352,7 +1369,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       if (serieChoosen === 0) {
         lastValue = Math.max(...alignedData.map(([, score]) => score || 0));
       } else {
-        lastValue = alignedData[alignedData.length - 1][1] ?? 0;
+        lastValue = alignedData.at(-1)?.[1] ?? 0;
       }
       if (lastValue === 0) continue;
       const { v, unit } = this.getUnitByValue(lastValue);
@@ -1411,7 +1428,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       const segmentData = segment.data;
       segmentData.forEach((point) => allDates.add(point[0]));
     });
-    return Array.from(allDates).sort((a, b) => a - b);
+    return [...allDates].sort((a, b) => a - b);
   }
 
   private initGenericEventData(
@@ -1460,7 +1477,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       for (const [, playerData] of playerMap.entries()) {
         const { playerName, segments } = playerData;
 
-        const lastValue = segments.data[segments.data.length - 1]?.[1] ?? 0;
+        const lastValue = segments.data.at(-1)?.[1] ?? 0;
         const { v, unit } = this.getUnitByValue(lastValue);
 
         const segment = {
@@ -1548,7 +1565,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       const alignedData: [number, number][] = selectedTimestamps.map((timestamp) => {
         return [timestamp, playerScoresByTimestamp[timestamp] || 0];
       });
-      const lastValue = alignedData[alignedData.length - 1]?.[1] ?? 0;
+      const lastValue = alignedData.at(-1)?.[1] ?? 0;
       if (lastValue === 0) continue; // If the player is completely inactive, skip them
       const { v, unit } = this.getUnitByValue(lastValue);
 
@@ -1626,22 +1643,22 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
    * If the value is less than 1000, it returns the value as is with no unit.
    */
   private getUnitByValue(value: string | number): { v: string; unit: string } {
-    if (typeof value !== 'number' || !isNaN(value)) {
+    if (typeof value !== 'number' || !Number.isNaN(value)) {
       value = Number(value);
     }
     let unit = '';
-    if (value >= 1000 && value < 1000000) {
+    if (value >= 1000 && value < 1_000_000) {
       unit = 'k';
       value /= 1000;
-    } else if (value >= 1000000 && value < 1000000000) {
+    } else if (value >= 1_000_000 && value < 1_000_000_000) {
       unit = 'M';
-      value /= 1000000;
-    } else if (value >= 1000000000 && value < 1000000000000) {
+      value /= 1_000_000;
+    } else if (value >= 1_000_000_000 && value < 1_000_000_000_000) {
       unit = 'G';
-      value /= 1000000000;
-    } else if (value >= 1000000000000) {
+      value /= 1_000_000_000;
+    } else if (value >= 1_000_000_000_000) {
       unit = 'T';
-      value /= 1000000000000;
+      value /= 1_000_000_000_000;
     }
     return { v: value.toFixed(2), unit };
   }
@@ -1653,8 +1670,8 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
    */
   private getPlayerColor(name: string): string {
     let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    for (let index = 0; index < name.length; index++) {
+      hash = (name.codePointAt(index) || 0) + ((hash << 5) - hash);
     }
     // Extract RGB values from the hash
     const r = (hash >> 16) & 255;
@@ -1693,7 +1710,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     const dates = [];
     const current = new Date(start);
     while (current <= end) {
-      dates.push(current.toISOString().replace('T', ' ').substring(0, 16));
+      dates.push(current.toISOString().replace('T', ' ').slice(0, 16));
       current.setHours(current.getHours() + 1);
     }
     return dates;
@@ -1713,7 +1730,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         // @ts-expect-error: Property 'formatter' does not exist on type 'TooltipOptions'
         y: {
           formatter: function (value): string | undefined {
-            return value > 0 ? value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') : undefined;
+            return value > 0 ? value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',') : undefined;
           },
         },
       },
@@ -1761,7 +1778,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       yaxis: {
         labels: {
           formatter: function (value): string {
-            return value === null ? '?' : value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
           },
         },
         min: 0,
@@ -1849,9 +1866,9 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     const formatDate = this.translateService.instant('Date_7'); // 'dd/MM'
     for (const item of data) {
       const currentDate = new Date(item.date);
-      const targetedDateStr = format(currentDate, formatDate);
+      const targetedDateString = format(currentDate, formatDate);
       dailyAvgMightChange.push({
-        x: targetedDateStr,
+        x: targetedDateString,
         y: Number(item.avg_diff.toFixed(0)),
       });
     }
@@ -1859,8 +1876,8 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   }
 
   private getBasicBarChart(data: { date: string; avg_diff: number }[], serieName: string): ChartOptions {
-    const getUnitByValue = (value: number): { v: string; unit: string } => this.getUnitByValue(value);
     const mp = this.translateService.instant('Points de puissance');
+    const getUnitByValue = this.getUnitByValue;
     return {
       series: [
         {
@@ -1889,12 +1906,12 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       },
       dataLabels: {
         enabled: true,
-        formatter: function (val: number): string {
-          if (val === null || val === undefined) return '0';
+        formatter: function (value: number): string {
+          if (value === null || value === undefined) return '0';
           return (
-            (val < 0 ? '-' : '+') +
-            Number(getUnitByValue(Math.abs(val)).v).toFixed(0) +
-            getUnitByValue(Math.abs(val)).unit
+            (value < 0 ? '-' : '+') +
+            Number(getUnitByValue(Math.abs(value)).v).toFixed(0) +
+            getUnitByValue(Math.abs(value)).unit
           );
         },
         offsetY: -10,
@@ -1919,7 +1936,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       yaxis: {
         labels: {
           formatter: function (value): string {
-            return value === null ? '?' : value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
           },
         },
         forceNiceScale: true,
@@ -1929,33 +1946,33 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
           colors: {
             ranges: [
               {
-                from: -9999999999,
-                to: -1000000,
+                from: -9_999_999_999,
+                to: -1_000_000,
                 color: '#c70000',
               },
               {
-                from: -1000000,
-                to: -50000,
+                from: -1_000_000,
+                to: -50_000,
                 color: '#ff0000',
               },
               {
-                from: -50000,
+                from: -50_000,
                 to: 0,
                 color: '#f09797',
               },
               {
                 from: 0,
-                to: 50000,
+                to: 50_000,
                 color: '#afedb7',
               },
               {
-                from: 50000,
-                to: 1000000,
+                from: 50_000,
+                to: 1_000_000,
                 color: '#3bc47e',
               },
               {
-                from: 1000000,
-                to: 9999999999,
+                from: 1_000_000,
+                to: 9_999_999_999,
                 color: '#127a45',
               },
             ],
@@ -1966,7 +1983,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       tooltip: {
         y: {
           formatter: function (value): string {
-            return value === null ? '?' : value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' ' + mp;
+            return value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',') + ' ' + mp;
           },
         },
       },
@@ -2054,7 +2071,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         },
         y: {
           formatter: function (value): string {
-            return value > 0 ? value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') : value === null ? '?' : '0';
+            return value > 0 ? value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',') : value === null ? '?' : '0';
           },
         },
       },
@@ -2089,7 +2106,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       yaxis: {
         labels: {
           formatter: function (value): string {
-            return value === null ? '?' : value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
           },
         },
         forceNiceScale: true,
@@ -2152,7 +2169,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         logBase: logBase,
         labels: {
           formatter: function (value): string {
-            return value === 0 ? '?' : value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return value === 0 ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
           },
         },
       },
@@ -2203,15 +2220,15 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         width: 2,
       },
       legend: {
-        formatter: (val, opts): string => {
+        formatter: (value, options): string => {
           return (
-            val +
+            value +
             ':' +
-            Math.round((totalPlayers * opts.w.globals.series[opts.seriesIndex]) / 100) +
+            Math.round((totalPlayers * options.w.globals.series[options.seriesIndex]) / 100) +
             ' ' +
             this.translateService.instant('Membres').toLowerCase() +
             ' (' +
-            Math.round(opts.w.globals.series[opts.seriesIndex]) +
+            Math.round(options.w.globals.series[options.seriesIndex]) +
             '%)'
           );
         },
@@ -2279,12 +2296,12 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       this.cdr.detectChanges();
       await new Promise((resolve) => setTimeout(resolve, 1000));
       if (response.success === false) {
-        this.toastService.add(ErrorType.ERROR_OCCURRED, 20000);
+        this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
         return;
       }
       playersData = response.data.points;
     } catch {
-      this.toastService.add(ErrorType.ERROR_OCCURRED, 20000);
+      this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
       return;
     }
     this.data = playersData;
@@ -2299,60 +2316,19 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
 
   private initCards(serverStatsToCompare: ApiServerStats): void {
     const translatedTitle = this.translateService.instant('Moy. globale');
-    const avgHonor = this.players.reduce((acc, player) => acc + player.honor, 0) / this.players.length;
-    this.cards.push({
-      identifier: 'avg_honor',
-      label: 'Honneur moyen',
-      logo: 'assets/honor2.png',
-      value: this.customFormatter(avgHonor, 0),
-      valueCompare: avgHonor - serverStatsToCompare.avg_honor,
-      avg: translatedTitle + ' : ' + this.formatAvg(serverStatsToCompare.avg_honor, 0),
-    });
-    this.cards.push({
-      identifier: 'total_honor',
-      label: 'Honneur cumulé',
-      logo: 'assets/honor2.png',
-      value: this.customFormatter(
-        this.players.reduce((acc, player) => acc + player.honor, 0),
-        0,
-      ),
-      valueCompare: 0,
-      avg: '',
-    });
-    const avgMightCurrent = this.players.reduce((acc, player) => acc + player.mightCurrent, 0) / this.players.length;
-    this.cards.push({
-      identifier: 'avg_might',
-      label: 'Puissance moyenne',
-      logo: 'assets/pp3.png',
-      value: this.customFormatter(avgMightCurrent, 0),
-      valueCompare: avgMightCurrent - serverStatsToCompare.avg_might,
-      avg: translatedTitle + ' : ' + this.formatAvg(serverStatsToCompare.avg_might, 0),
-    });
-    const maxMightByAPlayer = this.players.reduce((acc, player) => Math.max(acc, player.mightCurrent), 0);
+    const avgHonor = this.players.reduce((accumulator, player) => accumulator + player.honor, 0) / this.players.length;
+    const avgMightCurrent =
+      this.players.reduce((accumulator, player) => accumulator + player.mightCurrent, 0) / this.players.length;
+    const maxMightByAPlayer = this.players.reduce(
+      (accumulator, player) => Math.max(accumulator, player.mightCurrent),
+      0,
+    );
     const maxMightPlayerName = this.players.find((player) => player.mightCurrent === maxMightByAPlayer)?.playerName;
-    this.cards.push({
-      identifier: 'max_might',
-      label: 'Puissance maximale',
-      logo: 'assets/pp3.png',
-      value: this.customFormatter(maxMightByAPlayer, 0),
-      valueCompare: 0,
-      avg: maxMightPlayerName || '-',
-    });
-    this.cards.push({
-      identifier: 'total_might',
-      label: 'Puissance cumulée',
-      logo: 'assets/pp3.png',
-      value: this.customFormatter(
-        this.players.reduce((acc, player) => acc + player.mightCurrent, 0),
-        0,
-      ),
-      valueCompare: 0,
-      avg: '',
-    });
     const avgLevelNormal =
-      this.players.reduce((acc, player) => acc + Number(player.level) || 0, 0) / this.players.length;
+      this.players.reduce((accumulator, player) => accumulator + Number(player.level) || 0, 0) / this.players.length;
     const avgLegendaryLevel =
-      this.players.reduce((acc, player) => acc + Number(player.legendaryLevel) || 0, 0) / this.players.length;
+      this.players.reduce((accumulator, player) => accumulator + Number(player.legendaryLevel) || 0, 0) /
+      this.players.length;
     const avgLevel = avgLevelNormal + avgLegendaryLevel;
     const avgLevelFormat =
       Number(avgLevel) > 70
@@ -2363,55 +2339,104 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       Number(avgServerLevel) > 70
         ? '70/' + this.customFormatter(Number(avgServerLevel) - 70, 0)
         : this.customFormatter(Number(avgServerLevel), 0);
-    this.cards.push({
-      identifier: 'avg_level',
-      label: 'Niveau moyen',
-      logo: 'assets/xp2.png',
-      value: avgLevelFormat,
-      valueCompare: Number(avgLevel) - Number(avgServerLevel),
-      avg: translatedTitle + ' : ' + avgServerLevelFormat,
-    });
-    this.cards.push({
-      identifier: 'avg_loot',
-      label: 'Pillage hebdo moyen',
-      logo: 'assets/loot4.png',
-      value: this.customFormatter(
-        this.players.reduce((acc, player) => acc + player.lootCurrent, 0),
-        0,
-      ),
-      valueCompare: serverStatsToCompare.avg_loot,
-      avg: translatedTitle + ' : ' + this.formatAvg(serverStatsToCompare.avg_loot, 0),
-    });
-    const maxLootByAPlayer = this.players.reduce((acc, player) => Math.max(acc, player.lootCurrent), 0);
+    const maxLootByAPlayer = this.players.reduce((accumulator, player) => Math.max(accumulator, player.lootCurrent), 0);
     const maxLootPlayerName = this.players.find((player) => player.lootCurrent === maxLootByAPlayer)?.playerName;
-    this.cards.push({
-      identifier: 'max_loot',
-      label: 'Pillage hebdo maximal',
-      logo: 'assets/loot4.png',
-      value: this.customFormatter(maxLootByAPlayer, 0),
-      valueCompare: 0,
-      avg: maxLootPlayerName || '-',
-    });
     const percentOfTotalLoot =
-      this.players.reduce((acc, player) => acc + player.lootCurrent, 0) / serverStatsToCompare.total_loot;
-    this.cards.push({
-      identifier: 'total_loot',
-      label: 'Pillage hebdo cumulé',
-      logo: 'assets/loot4.png',
-      value: this.customFormatter(
-        this.players.reduce((acc, player) => acc + player.lootCurrent, 0),
-        0,
-      ),
-      valueCompare: 0,
-      avg: this.formatAvg(percentOfTotalLoot * 100, 2) + this.translateService.instant('% du total'),
-    });
-    this.cards.push({
-      identifier: 'players_count',
-      label: 'Nombre de joueurs',
-      logo: 'assets/players.png',
-      value: this.players.length.toString(),
-      valueCompare: 0,
-      avg: '',
-    });
+      this.players.reduce((accumulator, player) => accumulator + player.lootCurrent, 0) /
+      serverStatsToCompare.total_loot;
+    this.cards.push(
+      {
+        identifier: 'avg_honor',
+        label: 'Honneur moyen',
+        logo: 'assets/honor2.png',
+        value: this.customFormatter(avgHonor, 0),
+        valueCompare: avgHonor - serverStatsToCompare.avg_honor,
+        avg: translatedTitle + ' : ' + this.formatAvg(serverStatsToCompare.avg_honor, 0),
+      },
+      {
+        identifier: 'total_honor',
+        label: 'Honneur cumulé',
+        logo: 'assets/honor2.png',
+        value: this.customFormatter(
+          this.players.reduce((accumulator, player) => accumulator + player.honor, 0),
+          0,
+        ),
+        valueCompare: 0,
+        avg: '',
+      },
+      {
+        identifier: 'avg_might',
+        label: 'Puissance moyenne',
+        logo: 'assets/pp3.png',
+        value: this.customFormatter(avgMightCurrent, 0),
+        valueCompare: avgMightCurrent - serverStatsToCompare.avg_might,
+        avg: translatedTitle + ' : ' + this.formatAvg(serverStatsToCompare.avg_might, 0),
+      },
+      {
+        identifier: 'max_might',
+        label: 'Puissance maximale',
+        logo: 'assets/pp3.png',
+        value: this.customFormatter(maxMightByAPlayer, 0),
+        valueCompare: 0,
+        avg: maxMightPlayerName || '-',
+      },
+      {
+        identifier: 'total_might',
+        label: 'Puissance cumulée',
+        logo: 'assets/pp3.png',
+        value: this.customFormatter(
+          this.players.reduce((accumulator, player) => accumulator + player.mightCurrent, 0),
+          0,
+        ),
+        valueCompare: 0,
+        avg: '',
+      },
+      {
+        identifier: 'avg_level',
+        label: 'Niveau moyen',
+        logo: 'assets/xp2.png',
+        value: avgLevelFormat,
+        valueCompare: Number(avgLevel) - Number(avgServerLevel),
+        avg: translatedTitle + ' : ' + avgServerLevelFormat,
+      },
+      {
+        identifier: 'avg_loot',
+        label: 'Pillage hebdo moyen',
+        logo: 'assets/loot4.png',
+        value: this.customFormatter(
+          this.players.reduce((accumulator, player) => accumulator + player.lootCurrent, 0),
+          0,
+        ),
+        valueCompare: serverStatsToCompare.avg_loot,
+        avg: translatedTitle + ' : ' + this.formatAvg(serverStatsToCompare.avg_loot, 0),
+      },
+      {
+        identifier: 'max_loot',
+        label: 'Pillage hebdo maximal',
+        logo: 'assets/loot4.png',
+        value: this.customFormatter(maxLootByAPlayer, 0),
+        valueCompare: 0,
+        avg: maxLootPlayerName || '-',
+      },
+      {
+        identifier: 'total_loot',
+        label: 'Pillage hebdo cumulé',
+        logo: 'assets/loot4.png',
+        value: this.customFormatter(
+          this.players.reduce((accumulator, player) => accumulator + player.lootCurrent, 0),
+          0,
+        ),
+        valueCompare: 0,
+        avg: this.formatAvg(percentOfTotalLoot * 100, 2) + this.translateService.instant('% du total'),
+      },
+      {
+        identifier: 'players_count',
+        label: 'Nombre de joueurs',
+        logo: 'assets/players.png',
+        value: this.players.length.toString(),
+        valueCompare: 0,
+        avg: '',
+      },
+    );
   }
 }

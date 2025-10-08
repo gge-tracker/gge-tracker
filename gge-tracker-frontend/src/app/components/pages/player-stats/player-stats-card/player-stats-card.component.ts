@@ -92,16 +92,21 @@ export class PlayerStatsCardComponent implements AfterViewInit, OnInit {
 
   public getHourPeriod(period: 'day' | 'week' | 'month' | 'year'): number {
     switch (period) {
-      case 'day':
+      case 'day': {
         return 1;
-      case 'week':
+      }
+      case 'week': {
         return 7;
-      case 'month':
+      }
+      case 'month': {
         return 30;
-      case 'year':
+      }
+      case 'year': {
         return 365;
-      default:
+      }
+      default: {
         return 7;
+      }
     }
   }
 
@@ -129,46 +134,47 @@ export class PlayerStatsCardComponent implements AfterViewInit, OnInit {
       const targetChart = chart.component;
       if (!targetChart) return;
       switch (period) {
-        case 'day':
+        case 'day': {
           if (categories.length < 24) {
-            targetChart.zoomX(new Date(categories[0]).getTime(), new Date(categories[categories.length - 1]).getTime());
+            targetChart.zoomX(new Date(categories[0]).getTime(), new Date(categories.at(-1)!).getTime());
           } else {
-            targetChart.zoomX(
-              new Date(categories[categories.length - 24]).getTime(),
-              new Date(categories[categories.length - 1]).getTime(),
-            );
+            targetChart.zoomX(new Date(categories.at(-24)!).getTime(), new Date(categories.at(-1)!).getTime());
           }
           break;
-        case 'week':
+        }
+        case 'week': {
           if (categories.length < 7 * 24) {
-            targetChart.zoomX(new Date(categories[0]).getTime(), new Date(categories[categories.length - 1]).getTime());
+            targetChart.zoomX(new Date(categories[0]).getTime(), new Date(categories.at(-1)!).getTime());
           } else {
             targetChart.zoomX(
               new Date(categories[categories.length - 7 * 24]).getTime(),
-              new Date(categories[categories.length - 1]).getTime(),
+              new Date(categories.at(-1)!).getTime(),
             );
           }
           break;
-        case 'month':
+        }
+        case 'month': {
           if (categories.length < 30 * 24) {
-            targetChart.zoomX(new Date(categories[0]).getTime(), new Date(categories[categories.length - 1]).getTime());
+            targetChart.zoomX(new Date(categories[0]).getTime(), new Date(categories.at(-1)!).getTime());
           } else {
             targetChart.zoomX(
               new Date(categories[categories.length - 30 * 24]).getTime(),
-              new Date(categories[categories.length - 1]).getTime(),
+              new Date(categories.at(-1)!).getTime(),
             );
           }
           break;
-        case 'year':
+        }
+        case 'year': {
           if (categories.length < 365 * 24) {
-            targetChart.zoomX(new Date(categories[0]).getTime(), new Date(categories[categories.length - 1]).getTime());
+            targetChart.zoomX(new Date(categories[0]).getTime(), new Date(categories.at(-1)!).getTime());
           } else {
             targetChart.zoomX(
               new Date(categories[categories.length - 365 * 24]).getTime(),
-              new Date(categories[categories.length - 1]).getTime(),
+              new Date(categories.at(-1)!).getTime(),
             );
           }
           break;
+        }
       }
     });
     this.cdr.detectChanges();
@@ -176,16 +182,21 @@ export class PlayerStatsCardComponent implements AfterViewInit, OnInit {
 
   public getIcon(selectedChart: string): string {
     switch (selectedChart) {
-      case ChartTypes.EVOLUTION:
+      case ChartTypes.EVOLUTION: {
         return 'fas fa-chart-line';
-      case ChartTypes.PARTICIPATION_RATE:
+      }
+      case ChartTypes.PARTICIPATION_RATE: {
         return 'fa-solid fa-circle-notch';
-      case ChartTypes.RADAR:
+      }
+      case ChartTypes.RADAR: {
         return 'fas fa-chart-pie';
-      case ChartTypes.TABLE:
+      }
+      case ChartTypes.TABLE: {
         return 'fas fa-table';
-      default:
+      }
+      default: {
         return 'fas fa-chart-line';
+      }
     }
   }
 

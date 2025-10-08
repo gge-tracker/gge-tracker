@@ -74,8 +74,8 @@ export class ChartsClientComponent implements AfterViewInit {
   public ngAfterViewInit(): void {
     // After the view initializes, we can access the chart component if needed.
     if (this.chartComponent && this.chartComponent.length > 0) {
-      const componentRef = this.chartComponent.first;
-      this.chartComponentOutput.emit(componentRef);
+      const componentReference = this.chartComponent.first;
+      this.chartComponentOutput.emit(componentReference);
     }
   }
 }
