@@ -38,7 +38,7 @@ jobs:
           npx tsc
           npx swagger-jsdoc -d ./src/documentation.js
       - name: Docker Build (check only)
-        run: docker build --target build -t backend-check .
+        run: docker build --target build -t backend-check Dockerfile.prod
   # ---------------------------
   # Frontend CI
   # ---------------------------

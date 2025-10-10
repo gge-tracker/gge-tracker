@@ -684,6 +684,10 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     }
   }
 
+  public getDefaultTableDistanceEntry(): [string, string, (string | undefined)?, (boolean | undefined)?] {
+    return ['distance', 'Distance (m)', undefined, undefined];
+  }
+
   public async onAddDistanceColumn(): Promise<void> {
     if (!this.playerNameForDistance?.trim()) return;
     this.isDistanceIsInLoading = true;
@@ -696,12 +700,8 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     if (!data) return;
     this.players = this.mapPlayersFromApi(data.players);
     if (this.membersTableHeader.length === 10) {
-      const block: [string, string, (string | undefined)?, (boolean | undefined)?] = [
-        'distance',
-        'Distance (m)',
-        undefined,
-        undefined,
-      ];
+      const block: [string, string, (string | undefined)?, (boolean | undefined)?] =
+        this.getDefaultTableDistanceEntry();
       this.membersTableHeader.splice(-1, 0, block);
     }
   }
@@ -855,6 +855,38 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     return response.data;
   }
 
+  private async processAllianceInit(allianceId: number): Promise<void> {
+    const data = await this.getAllianceMembers();
+    if (!data) return;
+    this.players = this.mapPlayersFromApi(data.players);
+    if (this.membersTableHeader.length === 10 && this.playerNameForDistance !== '') {
+      const block: [string, string, (string | undefined)?, (boolean | undefined)?] =
+        this.getDefaultTableDistanceEntry();
+      this.membersTableHeader.splice(-1, 0, block);
+    }
+    this.addPageTitle(data.alliance_name);
+    this.allianceName = data.alliance_name;
+    const updatesPlayers = await this.apiRestService.getUpdatePlayersAlliance(allianceId);
+    if (updatesPlayers.success === false) {
+      this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
+      return;
+    }
+    this.updatesPlayers = updatesPlayers.data.updates;
+    this.processUpdatesData();
+    const globalResponse = await this.apiRestService.getServerGlobalStats();
+    if (globalResponse.success === false) {
+      this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
+      return;
+    }
+    const globalData = globalResponse.data;
+    const lastGlobalData = globalData.at(-1);
+    if (lastGlobalData) {
+      this.initCards(lastGlobalData);
+    }
+    this.isInLoading = false;
+    this.cdr.detectChanges();
+  }
+
   private init(): void {
     const lastUpdate = this.utilitiesService.data$.subscribe((data) => {
       if (data) {
@@ -879,39 +911,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       this.allianceId = allianceId;
       if (allianceId && !Number.isNaN(allianceId) && allianceId > 0) {
         try {
-          const data = await this.getAllianceMembers();
-          if (!data) return;
-          this.players = this.mapPlayersFromApi(data.players);
-          if (this.membersTableHeader.length === 10 && this.playerNameForDistance !== '') {
-            const block: [string, string, (string | undefined)?, (boolean | undefined)?] = [
-              'distance',
-              'Distance (m)',
-              undefined,
-              undefined,
-            ];
-            this.membersTableHeader.splice(-1, 0, block);
-          }
-          this.addPageTitle(data.alliance_name);
-          this.allianceName = data.alliance_name;
-          const updatesPlayers = await this.apiRestService.getUpdatePlayersAlliance(allianceId);
-          if (updatesPlayers.success === false) {
-            this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
-            return;
-          }
-          this.updatesPlayers = updatesPlayers.data.updates;
-          this.processUpdatesData();
-          const globalResponse = await this.apiRestService.getServerGlobalStats();
-          if (globalResponse.success === false) {
-            this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
-            return;
-          }
-          const globalData = globalResponse.data;
-          const lastGlobalData = globalData.at(-1);
-          if (lastGlobalData) {
-            this.initCards(lastGlobalData);
-          }
-          this.isInLoading = false;
-          this.cdr.detectChanges();
+          await this.processAllianceInit(allianceId);
         } catch {
           this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
           this.isInLoading = false;
@@ -1727,10 +1727,9 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         x: {
           format: dateFormat,
         },
-        // @ts-expect-error: Property 'formatter' does not exist on type 'TooltipOptions'
         y: {
-          formatter: function (value): string | undefined {
-            return value > 0 ? value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',') : undefined;
+          formatter: function (value): string {
+            return value > 0 ? value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
           },
         },
       },
@@ -2071,7 +2070,9 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         },
         y: {
           formatter: function (value): string {
-            return value > 0 ? value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',') : value === null ? '?' : '0';
+            if (value === null) return '?';
+            if (value > 0) return value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return '0';
           },
         },
       },

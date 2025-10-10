@@ -294,7 +294,8 @@ export abstract class ApiPlayers implements ApiHelper {
       await new Promise((resolve, reject) => {
         (request['pg_pool'] as pg.Pool).query(countQuery, otherParameters, (error, results) => {
           if (error) {
-            reject(error);
+            ApiHelper.logError(error, 'getPlayers_countQuery', request);
+            reject(new Error('An error occurred. Please try again later.'));
           } else {
             playerCount = results.rows[0]['player_count'];
             totalPages = Math.ceil(playerCount / ApiHelper.PAGINATION_LIMIT);
@@ -332,8 +333,12 @@ export abstract class ApiPlayers implements ApiHelper {
         const playerQuery = `SELECT castles FROM players WHERE LOWER(name) = $${parameterIndex++} LIMIT 1`;
         const playerResults: any[] = await new Promise((resolve, reject) => {
           (request['pg_pool'] as pg.Pool).query(playerQuery, [playerNameForDistance], (error, results) => {
-            if (error) reject(error);
-            else resolve(results.rows);
+            if (error) {
+              ApiHelper.logError(error, 'getPlayer_castles_query', request);
+              reject(new Error('An error occurred. Please try again later.'));
+            } else {
+              resolve(results.rows);
+            }
           });
         });
         if (playerResults.length === 0) {

@@ -196,7 +196,8 @@ export abstract class ApiEvents implements ApiHelper {
       const countResult = await new Promise<{ total: number }>((resolve, reject) => {
         eventPgDbpool.query(countQuery, countParameters, (error, results) => {
           if (error) {
-            reject(error);
+            ApiHelper.logError(error, 'getEventPlayers_countQuery', request);
+            reject(new Error('An error occurred. Please try again later.'));
           } else {
             resolve(results.rows[0]);
           }
@@ -245,7 +246,8 @@ export abstract class ApiEvents implements ApiHelper {
       const results = await new Promise<any[]>((resolve, reject) => {
         eventPgDbpool.query(query, parameters, (error, results) => {
           if (error) {
-            reject(error);
+            ApiHelper.logError(error, 'getEventPlayers_query', request);
+            reject(new Error('An error occurred. Please try again later.'));
           } else {
             resolve(results.rows);
           }
@@ -453,7 +455,8 @@ export abstract class ApiEvents implements ApiHelper {
           return new Promise((resolve, reject) => {
             eventPgDbpool.query(request_.query, request_.params, (error, result) => {
               if (error) {
-                reject(error);
+                ApiHelper.logError(error, 'getDataEventType', request);
+                reject(new Error('An error occurred. Please try again later.'));
               } else {
                 resolve(result.rows);
               }

@@ -175,7 +175,7 @@ export class TroopsAnimationComponent implements OnInit, OnDestroy {
   private animate(): void {
     const containerRect = this.container.nativeElement.getBoundingClientRect();
     const deltaTime = 16 / 1000;
-    this.troops.forEach((troop, index) => {
+    for (const troop of this.troops) {
       troop.x += troop.dx * troop.speed * deltaTime;
       troop.y += troop.dy * troop.speed * deltaTime;
       if (
@@ -184,9 +184,9 @@ export class TroopsAnimationComponent implements OnInit, OnDestroy {
         troop.y < -this.size * 2 ||
         troop.y > containerRect.height + this.size * 2
       ) {
-        this.troops[index] = this.createTroop(troop.id);
+        this.troops[this.troops.indexOf(troop)] = this.createTroop(troop.id);
       }
-    });
+    }
 
     this.animationFrameId = requestAnimationFrame(() => this.animate());
   }

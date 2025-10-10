@@ -26,12 +26,6 @@ class PuppeteerSingleton {
   private launching: boolean = false;
 
   /**
-   * Initializes a new instance of the class.
-   * Sets the `browser` property to `null` and the `launching` flag to `false`.
-   */
-  constructor() {}
-
-  /**
    * Retrieves the current Puppeteer browser instance.
    * If the browser is not already launched, it will launch a new instance before returning it.
    *

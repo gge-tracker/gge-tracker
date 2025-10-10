@@ -140,7 +140,8 @@ export abstract class ApiStatistics implements ApiHelper {
       const data: any = await new Promise((resolve, reject) => {
         pool.query(query, [ApiHelper.removeCountryCode(playerId)], (error, results) => {
           if (error) {
-            reject(error);
+            ApiHelper.logError(error, 'getStatisticsByPlayerId_query', request);
+            reject(new Error('An error occurred. Please try again later.'));
           } else {
             resolve(results.rows[0]);
           }
@@ -256,7 +257,8 @@ export abstract class ApiStatistics implements ApiHelper {
       const data: any = await new Promise((resolve, reject) => {
         pool.query(query, [ApiHelper.removeCountryCode(playerId)], (error, results) => {
           if (error) {
-            reject(error);
+            ApiHelper.logError(error, 'getStatisticsByPlayerIdAndEventNameAndDuration_query', request);
+            reject(new Error('An error occurred. Please try again later.'));
           } else {
             resolve(results.rows[0]);
           }
@@ -466,7 +468,8 @@ export abstract class ApiStatistics implements ApiHelper {
       const p1 = new Promise((resolve, reject) => {
         pool.query(query_internal_rank, [ApiHelper.removeCountryCode(playerId)], (error, results) => {
           if (error) {
-            reject(error);
+            ApiHelper.logError(error, 'getRankingByPlayerId_query', request);
+            reject(new Error('An error occurred. Please try again later.'));
           } else {
             resolve(results.rows[0]);
           }
@@ -478,7 +481,8 @@ export abstract class ApiStatistics implements ApiHelper {
           [ApiHelper.removeCountryCode(playerId), server.trim().toLowerCase()],
           (error, results) => {
             if (error) {
-              reject(error);
+              ApiHelper.logError(error, 'getRankingByPlayerId_query', request);
+              reject(new Error('An error occurred. Please try again later.'));
             } else {
               resolve(results.rows[0]);
             }
@@ -560,7 +564,7 @@ export abstract class ApiStatistics implements ApiHelper {
       const sqlQueryIdsResult: any[] | undefined = await new Promise((resolve, reject) => {
         pool.query(sqlQueryIds, sqlQueryIdsParameters, (error, results) => {
           if (error) {
-            reject(error);
+            reject(new Error('An error occurred. Please try again later.'));
           } else {
             resolve(results.rows);
           }
@@ -583,7 +587,7 @@ export abstract class ApiStatistics implements ApiHelper {
           try {
             const database = ApiHelper.ggeTrackerManager.getOlapDatabaseFromRequestId(allianceId);
             if (!database) {
-              reject(new Error('Database not specified'));
+              reject(new Error('An error occurred. Please try again later.'));
               return;
             }
             dates_start[table] = new Date();
@@ -613,7 +617,7 @@ export abstract class ApiStatistics implements ApiHelper {
             dates_stop[table] = new Date();
             resolve(null);
           } catch (error) {
-            reject(error);
+            reject(new Error(error.message));
           }
         });
       });
@@ -675,7 +679,7 @@ export abstract class ApiStatistics implements ApiHelper {
       const sqlQueryIdsParameters = [ApiHelper.removeCountryCode(allianceId)];
       const players: any[] = await new Promise((resolve, reject) => {
         database_.query(sqlQueryIds, sqlQueryIdsParameters, (error, results) => {
-          if (error) reject(error);
+          if (error) reject(new Error(error.message));
           else resolve(results.rows);
         });
       });
@@ -915,7 +919,7 @@ export abstract class ApiStatistics implements ApiHelper {
           try {
             const database = olapDatabase;
             if (!database) {
-              reject(new Error('Database not specified'));
+              reject(new Error('An error occurred. Please try again later.'));
               return;
             }
             dates_start[table] = new Date();
@@ -923,8 +927,8 @@ export abstract class ApiStatistics implements ApiHelper {
               // Special handling for tables without event_dates. They will return only actual entries.
               const query = `
                 SELECT
-                    created_at,
-                    point
+                  created_at,
+                  point
                 FROM ${database}.${table}
                 WHERE player_id = ${ApiHelper.removeCountryCode(playerId)}
                 ${createdAtDiffLimitQueryOlap}
@@ -968,7 +972,7 @@ export abstract class ApiStatistics implements ApiHelper {
             dates_stop[table] = new Date();
             resolve(null);
           } catch (error) {
-            reject(error);
+            reject(new Error(error.message));
           }
         });
       });

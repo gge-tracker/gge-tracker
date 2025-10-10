@@ -20,11 +20,6 @@ export abstract class ApiStatus implements ApiHelper {
    *                  as well as `language` and `code` properties for server identification.
    * @param response - The Express response object used to send the status data or error information.
    * @returns A Promise that resolves when the response has been sent.
-   *
-   * @remarks
-   * - Queries the `parameters` table for records with `id` between 2 and 9.
-   * - Determines if an update is in progress by comparing the `updated_at` timestamps of "loot" and "might".
-   * - Responds with HTTP 200 and a JSON object on success, or HTTP 500 with an error message on failure.
    */
   public static async getStatus(request: express.Request, response: express.Response): Promise<void> {
     try {
@@ -36,7 +31,8 @@ export abstract class ApiStatus implements ApiHelper {
       await new Promise((resolve, reject) => {
         request['pg_pool'].query(queryParameter, (error, results) => {
           if (error) {
-            reject(error);
+            ApiHelper.logError(error, 'getStatus_query', request);
+            reject(new Error('An error occurred. Please try again later.'));
           } else {
             results.rows.forEach((result: any) => {
               lastUpdate[result.identifier] = result.updated_at;

@@ -462,8 +462,7 @@ export abstract class ApiAssets implements ApiHelper {
             const stage = new globalThis.createjs.Stage(canvas);
             const loader = globalThis.AssetLoader;
             if (!loader) {
-              console.error('window.AssetLoader est introuvable.');
-              return reject(new Error('window.AssetLoader introuvable'));
+              return reject(new Error('AssetLoader not found'));
             }
             loader.maintainScriptOrder = true;
             loader.setCrossOrigin?.('anonymous');
@@ -516,8 +515,8 @@ export abstract class ApiAssets implements ApiHelper {
               stage.update();
               const bounds = building.getBounds() || building.nominalBounds;
               if (!bounds) {
-                console.error(`Bounds not found for ${name}`);
-                return reject(new Error(`Bounds not found (${name})`));
+                ApiHelper.logError(new Error(`Bounds not found`), 'getGeneratedImage', request);
+                return reject(new Error(`An error occurred while generating the image`));
               }
               const centerX = bounds.x + bounds.width / 2;
               const centerY = bounds.y + bounds.height / 2;
@@ -533,7 +532,7 @@ export abstract class ApiAssets implements ApiHelper {
             });
             loader.on('error', (error: { message?: string; target?: any }) => {
               console.error('Preload error', error);
-              reject(new Error('Loader error: ' + (error?.message ?? error)));
+              reject(new Error('Loader error: ' + error));
             });
             // Here, we can use local loading from our server to avoid CORS and bandwidth issues.
             // We assume the assets are served from /api/v1/assets/common/ endpoint.

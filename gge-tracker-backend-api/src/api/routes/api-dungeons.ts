@@ -150,8 +150,12 @@ export abstract class ApiDungeons implements ApiHelper {
             playerQuery,
             [nearPlayerName.trim().toLowerCase()],
             (error, results) => {
-              if (error) reject(error);
-              else resolve(results.rows);
+              if (error) {
+                ApiHelper.logError(error, 'getDungeons_nearPlayerName', request);
+                reject(new Error('An error occurred. Please try again later.'));
+              } else {
+                resolve(results.rows);
+              }
             },
           );
         });
@@ -234,17 +238,12 @@ export abstract class ApiDungeons implements ApiHelper {
       let isSorted = false;
       if (sortByPositionX !== null || sortByPositionY !== null) {
         if (
-          Number.isNaN(Number.parseInt(sortByPositionX as string)) ||
-          Number.isNaN(Number.parseInt(sortByPositionY as string))
-        ) {
-          response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid position' });
-          return;
-        } else if (Number.parseInt(sortByPositionX as string) < 0 || Number.parseInt(sortByPositionY as string) < 0) {
-          response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid position' });
-          return;
-        } else if (
-          Number.parseInt(sortByPositionX as string) > 1286 ||
-          Number.parseInt(sortByPositionY as string) > 1286
+          Number.isNaN(Number.parseInt(sortByPositionX)) ||
+          Number.isNaN(Number.parseInt(sortByPositionY)) ||
+          Number.parseInt(sortByPositionX) < 0 ||
+          Number.parseInt(sortByPositionY) < 0 ||
+          Number.parseInt(sortByPositionX) > 1286 ||
+          Number.parseInt(sortByPositionY) > 1286
         ) {
           response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid position' });
           return;
@@ -268,8 +267,12 @@ export abstract class ApiDungeons implements ApiHelper {
             playerQuery,
             [filterByPlayerName.trim().toLowerCase()],
             (error, results) => {
-              if (error) reject(error);
-              else resolve(results.rows);
+              if (error) {
+                ApiHelper.logError(error, 'getDungeons_countQuery', request);
+                reject(new Error('An error occurred. Please try again later.'));
+              } else {
+                resolve(results.rows);
+              }
             },
           );
         });
@@ -394,7 +397,8 @@ export abstract class ApiDungeons implements ApiHelper {
       await new Promise((resolve, reject) => {
         (request['mysql_pool'] as mysql.Pool).query(countQuery, countValues, (error, results) => {
           if (error) {
-            reject(error);
+            ApiHelper.logError(error, 'getDungeons_countQuery', request);
+            reject(new Error('An error occurred. Please try again later.'));
           } else {
             dungeonsCount = results[0]['dungeons_count'];
             resolve(null);
@@ -428,9 +432,9 @@ export abstract class ApiDungeons implements ApiHelper {
           // Parameters for sorting by given position.
           // Added again here for the main query.
           queryValues.push(
-            Number.parseInt(sortByPositionX as string),
-            Number.parseInt(sortByPositionX as string),
-            Number.parseInt(sortByPositionY as string),
+            Number.parseInt(sortByPositionX),
+            Number.parseInt(sortByPositionX),
+            Number.parseInt(sortByPositionY),
           );
         }
       } else {

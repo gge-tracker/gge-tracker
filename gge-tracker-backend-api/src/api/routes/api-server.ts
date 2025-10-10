@@ -139,7 +139,8 @@ export abstract class ApiServer implements ApiHelper {
       await new Promise((resolve, reject) => {
         (request['pg_pool'] as pg.Pool).query(countQuery, values, (error, results) => {
           if (error) {
-            reject(error);
+            ApiHelper.logError(error, 'getMovements_countQuery', request);
+            reject(new Error('An error occurred. Please try again later.'));
           } else {
             movementsCount = results.rows[0]['movements_count'];
             resolve(null);
@@ -374,7 +375,8 @@ export abstract class ApiServer implements ApiHelper {
       await new Promise((resolve, reject) => {
         (request['pg_pool'] as pg.Pool).query(countQuery, values, (error, results) => {
           if (error) {
-            reject(error);
+            ApiHelper.logError(error, 'getRenames_countQuery', request);
+            reject(new Error('An error occurred. Please try again later.'));
           } else {
             renamesCount = Number.parseInt(results.rows[0]['renames_count']);
             resolve(null);

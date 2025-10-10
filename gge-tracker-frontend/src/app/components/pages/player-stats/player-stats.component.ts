@@ -412,7 +412,9 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
         },
         y: {
           formatter: function (value): string {
-            return value > 0 ? value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',') : value === null ? '?' : '0';
+            if (value === null) return '?';
+            if (value > 0) return value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return '0';
           },
         },
       },
@@ -522,7 +524,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
   ): void {
     const dataWithVariation = data as EventGenericVariation[];
     for (let index = 0; index < data.length; index++) {
-      if (index === 0 || (customConditionFunction && customConditionFunction(data, index))) {
+      if (index === 0 || customConditionFunction?.(data, index)) {
         dataWithVariation[index]['variation'] = 0;
       } else {
         dataWithVariation[index]['variation'] = Number(data[index][key]) - Number(data[index - 1][key]);

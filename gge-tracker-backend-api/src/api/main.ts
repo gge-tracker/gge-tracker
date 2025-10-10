@@ -28,11 +28,10 @@
 import { config } from 'dotenv';
 import { createClient } from 'redis';
 import { RateLimiterRedis } from 'rate-limiter-flexible';
-import { Request, Response, NextFunction } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { ControllerManager } from './controller';
 import { ApiGgeTrackerManager } from './services/empire-api-service';
 import cors from 'cors';
-import express from 'express';
 import axios from 'axios';
 import morgan from 'morgan';
 import compression from 'compression';

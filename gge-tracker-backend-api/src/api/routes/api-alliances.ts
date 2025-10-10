@@ -75,8 +75,12 @@ export abstract class ApiAlliances implements ApiHelper {
         const playerQuery = `SELECT castles FROM players WHERE LOWER(name) = $${parameterIndex++} LIMIT 1`;
         const playerResults: any[] = await new Promise((resolve, reject) => {
           pool.query(playerQuery, [playerNameForDistance], (error, results) => {
-            if (error) reject(error);
-            else resolve(results.rows);
+            if (error) {
+              ApiHelper.logError(error, 'getAllianceByAllianceId', request);
+              reject(new Error('An error occurred. Please try again later.'));
+            } else {
+              resolve(results.rows);
+            }
           });
         });
         if (playerResults.length === 0) {
@@ -107,6 +111,7 @@ export abstract class ApiAlliances implements ApiHelper {
       const parameters = [playerX, playerX, playerY, ApiHelper.removeCountryCode(allianceId)];
       pool.query(query, parameters, async (error, results) => {
         if (error) {
+          ApiHelper.logError(error, 'getAllianceByAllianceId', request);
           response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: 'An exception occurred' });
         } else {
           if (!results || results.rowCount === 0) {
@@ -311,7 +316,8 @@ export abstract class ApiAlliances implements ApiHelper {
       const promiseCountQuery = new Promise((resolve, reject) => {
         (request['pg_pool'] as pg.Pool).query(countQuery, (error, results) => {
           if (error) {
-            reject(error);
+            ApiHelper.logError(error, 'getAlliances', request);
+            reject(new Error('An error occurred. Please try again later.'));
           } else {
             allianceCount = results.rows[0]['alliance_count'];
             totalPages = Math.ceil(allianceCount / ApiHelper.PAGINATION_LIMIT);
