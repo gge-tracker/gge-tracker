@@ -20,7 +20,8 @@ if (!ID_SERVER || !PG_DB || !CLICKHOUSE_DB || !logSuffix || !CONNECTION_LIMIT) {
   process.exit(1);
 }
 
-const BASE_API_URL: string = 'http://empire-api:3000/EmpireEx_' + ID_SERVER + '/';
+const BASE_API_URL: string =
+  ID_SERVER === 'null' ? 'http://empire-api:3000/EmpireEx/' : 'http://empire-api:3000/EmpireEx_' + ID_SERVER + '/';
 const DATABASE_CONFIG = {
   host: 'mariadb',
   user: process.env.SQL_USER,

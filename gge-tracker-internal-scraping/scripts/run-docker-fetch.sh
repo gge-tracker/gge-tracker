@@ -38,5 +38,6 @@ docker run --rm --network backend --env-file=$BASE_SCRIPT_DIR/.env \
     -e CLICKHOUSE_DB=$CLICKHOUSE_DB \
     -e LOG_SUFFIX=$LOG_SUFFIX \
     -e CONNECTION_LIMIT=$CONNECTION_LIMIT \
+    --cpus="0.5" \
     -v $BASE_SCRIPT_DIR/logs:/app/logs \
     gge-tracker-internal-scraping dist/fetch-and-save.js

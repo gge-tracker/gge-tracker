@@ -13,8 +13,6 @@
 
 FROM node:20-alpine
 
-RUN apk add --no-cache cpulimit bash
-
 WORKDIR /app
 
 COPY package*.json ./
@@ -27,5 +25,5 @@ COPY config/ ./config/
 
 RUN npx tsc
 
-ENTRYPOINT ["cpulimit", "-l", "10", "--", "node"]
+ENTRYPOINT ["node"]
 CMD ["dist/main.js"]
