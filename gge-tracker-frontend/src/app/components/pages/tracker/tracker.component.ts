@@ -76,7 +76,7 @@ export class TrackerComponent extends GenericComponent {
   ];
   public selectedRealm: number[] = [2];
   public filterByKid: number[] = [2];
-  public allowedServers = ['FR1', 'RO1', 'IT1', 'CZ1', 'SA1'];
+  public allowedServers = ['FR1', 'RO1', 'IT1', 'CZ1', 'SA1', 'DE1'];
   private localStorage = inject(LocalStorageService);
 
   constructor() {

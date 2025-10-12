@@ -14,19 +14,19 @@ export class BuildingImgComponent {
   @Input() public size?: number;
   @Input() public shadow?: boolean = false;
 
-  @Output() public loaded = new EventEmitter<void>();
-  @Output() public error = new EventEmitter<void>();
+  @Output() public loadedEmit = new EventEmitter<void>();
+  @Output() public errorEmit = new EventEmitter<void>();
 
   public imageLoaded = false;
   public imageError = false;
 
   public onLoad(): void {
     this.imageLoaded = true;
-    this.loaded.emit();
+    this.loadedEmit.emit();
   }
 
   public onError(): void {
     this.imageError = true;
-    this.error.emit();
+    this.errorEmit.emit();
   }
 }

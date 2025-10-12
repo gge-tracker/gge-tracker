@@ -175,9 +175,11 @@ export class GenericFetchAndSaveBackend {
           console.error('Error on URL:', url, err);
         }
         // Throttle management
+        const delay = (ms: number): Promise<void> => new Promise((res) => setTimeout(res, ms));
         intervalTimer++;
-        if (intervalTimer % 20 === 0) {
-          await new Promise((resolve) => setTimeout(resolve, 100));
+        if (intervalTimer === 25) {
+          await delay(100);
+          intervalTimer = 0;
         }
         done++;
         const percent = (done / totalRequests) * 100;
@@ -198,7 +200,7 @@ export class GenericFetchAndSaveBackend {
     const elapsedTimeInSeconds = Math.floor(elapsedTime / 1000);
     const elapsedTimeInMinutes = Math.floor(elapsedTimeInSeconds / 60);
     console.log(
-      'Time taken to retrieve dungeons:',
+      '\nTime taken to retrieve dungeons:',
       elapsedTimeInSeconds,
       'seconds (',
       elapsedTimeInMinutes,
@@ -215,8 +217,7 @@ export class GenericFetchAndSaveBackend {
     }
     const placeholders = dungeonMaps.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ');
     await this.connection.execute(
-      `INSERT INTO dungeons (kid, position_x, position_y, attack_cooldown, player_id, total_attack_count, updated_at)
-            VALUES ${placeholders}`,
+      `INSERT INTO dungeons (kid, position_x, position_y, attack_cooldown, player_id, total_attack_count, updated_at) VALUES ${placeholders}`,
       values,
     );
     console.log('\nDungeons list updated successfully for world', worldNumber, '\n');

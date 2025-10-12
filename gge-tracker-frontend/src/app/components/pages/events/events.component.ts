@@ -126,6 +126,7 @@ export class EventsComponent extends GenericComponent {
     'JP1',
     'LT1',
     'INT1',
+    'CN1',
     'HIS1',
   ].sort(EventsComponent.serverSort);
 

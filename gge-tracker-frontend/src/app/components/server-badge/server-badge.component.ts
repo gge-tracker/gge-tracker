@@ -21,7 +21,7 @@ export class ServerBadgeComponent extends GenericComponent {
   public version = '';
   public shortVersion = '';
   public dateVersion = '';
-  public serversInDeployList = [];
+  public serversInDeployList = ['E4K-BR1', 'E4K-HANT1'];
   public serverService = inject(ServerService);
 
   constructor() {

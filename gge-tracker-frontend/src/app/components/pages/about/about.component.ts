@@ -1,5 +1,5 @@
 import { NgFor, NgTemplateOutlet } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 
 import package_ from '../../../../../package.json';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
@@ -13,7 +13,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
   templateUrl: './about.component.html',
   styleUrl: './about.component.css',
 })
-export class AboutComponent extends GenericComponent {
+export class AboutComponent extends GenericComponent implements OnInit {
   public version = '';
   public shortVersion = '';
   public dateVersion = '';

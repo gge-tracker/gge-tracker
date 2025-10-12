@@ -54,7 +54,9 @@ export class ServerService {
     'HU2',
     'ES1',
     'SA1',
-    'INT1 (Soon available)',
+    'INT1',
+    'RU1',
+    'CN1',
   ];
   public mappedLangsToServers: Record<string, string[]> = {
     fr: ['FR1'],
@@ -75,6 +77,8 @@ export class ServerService {
     hu: ['HU1', 'HU2'],
     es: ['ES1'],
     sa: ['SA1'],
+    ru: ['RU1'],
+    cn: ['CN1'],
   };
   public mappedServersToGgeServerName: Record<string, string> = {
     FR1: 'France',
@@ -98,6 +102,11 @@ export class ServerService {
     HU2: 'Hungary: 2',
     ES1: 'Spain',
     SA1: 'Saudi Arabia',
+    INT1: 'International: 1',
+    'E4K-BR1': 'Empire Four Kingdoms - Brazil',
+    'E4K-HANT1': 'Empire Four Kingdoms - Chinese (Traditional)',
+    RU1: 'Russia',
+    CN1: 'China',
   };
 
   public flagsUrl: Record<string, string> = {
@@ -122,6 +131,11 @@ export class ServerService {
     HU2: 'https://flagsapi.com/HU/flat/64.png',
     ES1: 'https://flagsapi.com/ES/flat/64.png',
     SA1: 'https://flagsapi.com/SA/flat/64.png',
+    INT1: '/assets/int_flag.png',
+    'E4K-BR1': 'https://flagsapi.com/BR/flat/64.png',
+    'E4K-HANT1': 'https://flagsapi.com/CN/flat/64.png',
+    RU1: 'https://flagsapi.com/RU/flat/64.png',
+    CN1: 'https://flagsapi.com/CN/flat/64.png',
   };
   private languageService = inject(LanguageService);
   private localStorage = inject(LocalStorageService);

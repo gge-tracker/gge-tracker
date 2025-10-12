@@ -15,28 +15,31 @@ import { IApiToken } from './../interfaces/interfaces';
  * @enum {string}
  */
 export enum GgeTrackerServers {
-  FR1 = 'FR1',
-  DE1 = 'DE1',
-  CZ1 = 'CZ1',
-  RO1 = 'RO1',
-  NL1 = 'NL1',
-  WORLD1 = 'WORLD1',
-  INT3 = 'INT3',
-  US1 = 'US1',
-  TR1 = 'TR1',
-  BR1 = 'BR1',
-  IN1 = 'IN1',
-  IT1 = 'IT1',
-  PL1 = 'PL1',
-  PT1 = 'PT1',
-  AU1 = 'AU1',
   ARAB1 = 'ARAB1',
+  AU1 = 'AU1',
+  BR1 = 'BR1',
+  CZ1 = 'CZ1',
+  DE1 = 'DE1',
+  ES1 = 'ES1',
+  FR1 = 'FR1',
+  GLOBAL = 'GLOBAL',
   HANT1 = 'HANT1',
+  CN1 = 'CN1',
   HU1 = 'HU1',
   HU2 = 'HU2',
-  ES1 = 'ES1',
+  IN1 = 'IN1',
+  INT1 = 'INT1',
+  INT3 = 'INT3',
+  IT1 = 'IT1',
+  NL1 = 'NL1',
+  PL1 = 'PL1',
+  PT1 = 'PT1',
+  RO1 = 'RO1',
+  RU1 = 'RU1',
   SA1 = 'SA1',
-  GLOBAL = 'GLOBAL',
+  TR1 = 'TR1',
+  US1 = 'US1',
+  WORLD1 = 'WORLD1',
 }
 
 /**
@@ -227,6 +230,24 @@ export class ApiGgeTrackerManager extends DatabaseManager {
       code: '073',
       zone: 'EmpireEx_32',
     },
+    [GgeTrackerServers.INT1]: {
+      databases: { sql: BASE_SQL_DB_NAME + '-int1', olap: BASE_OLAP_DB_NAME + '_int1' },
+      outer_name: 'INT1',
+      code: '071',
+      zone: 'EmpireEx',
+    },
+    [GgeTrackerServers.RU1]: {
+      databases: { sql: BASE_SQL_DB_NAME + '-ru1', olap: BASE_OLAP_DB_NAME + '_ru1' },
+      outer_name: 'RU1',
+      code: '031',
+      zone: 'EmpireEx_14',
+    },
+    [GgeTrackerServers.CN1]: {
+      databases: { sql: BASE_SQL_DB_NAME + '-cn1', olap: BASE_OLAP_DB_NAME + '_cn1' },
+      outer_name: 'CN1',
+      code: '026',
+      zone: 'EmpireEx_27',
+    },
     [GgeTrackerServers.GLOBAL]: {
       databases: { sql: BASE_SQL_DB_NAME + '-global', olap: '' },
       outer_name: '',
@@ -243,9 +264,15 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    */
   constructor() {
     super();
-    const { mysql, postgres } = this.createConnectionPools(this.getAllSqlDatabases());
-    this.mysqlPools = mysql;
-    this.postgresPools = postgres;
+    try {
+      this.checkServerConfig();
+      const { mysql, postgres } = this.createConnectionPools(this.getAllSqlDatabases());
+      this.mysqlPools = mysql;
+      this.postgresPools = postgres;
+    } catch (error) {
+      console.error('Error initializing ApiGgeTrackerManager:', error);
+      throw error;
+    }
   }
 
   /**
@@ -479,12 +506,6 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    *
    * @returns {Promise<ClickHouse>} A promise that resolves to a configured ClickHouse client instance.
    *
-   * @remarks
-   * The ClickHouse client is configured using the following environment variables:
-   * - `CLICKHOUSE_HOST`: The hostname or IP address of the ClickHouse server.
-   * - `CLICKHOUSE_USER`: The username for basic authentication.
-   * - `CLICKHOUSE_PASSWORD`: The password for basic authentication.
-   *
    * The client is set to connect over HTTP on port 8123, with JSON format responses and no gzip compression.
    * Additional configuration options such as session timeout and output formatting are also set.
    */
@@ -511,5 +532,41 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    */
   public getOlapEventTables(): string[] {
     return this.SQL_EVENT_TABLES;
+  }
+
+  /**
+   * Validates the server configuration stored on this.servers.
+   *
+   * Performs the following checks for each configured server:
+   * 1. Ensures the server code is exactly 3 characters long, except for the special
+   *    case identified by GgeTrackerServers.GLOBAL.
+   * 2. Verifies that none of the configured database identifiers (SQL or OLAP)
+   *    contain the literal string 'null', which indicates a misconfiguration.
+   * 3. Detects duplicate server codes across different server entries and reports
+   *    all other server keys that share the same code.
+   *
+   * If any of the above validations fail, an Error is thrown describing the
+   * specific problem and the affected server(s).
+   *
+   * @throws {Error} If a non-global server has a code length different from 3.
+   * @throws {Error} If any database name (SQL or OLAP) contains the string 'null'.
+   * @throws {Error} If one or more other servers share the same server code (duplicates).
+   * @returns {void} No return value; function will throw on invalid configuration.
+   */
+  private checkServerConfig(): void {
+    Object.entries(this.servers).forEach(([key, server]) => {
+      if (server.code.length !== 3 && key !== GgeTrackerServers.GLOBAL) {
+        throw new Error(`Server code for ${key} must be exactly 3 characters long.`);
+      } else if (server.databases.sql.includes('null') || server.databases.olap.includes('null')) {
+        throw new Error(`Server ${key} has 'null' in its database name, please check the configuration.`);
+      }
+      const duplicates = Object.entries(this.servers).filter(
+        ([otherKey, otherServer]) => otherKey !== key && otherServer.code === server.code,
+      );
+      if (duplicates.length > 0) {
+        const duplicateKeys = duplicates.map(([dupKey]) => dupKey).join(', ');
+        throw new Error(`Server code ${server.code} for ${key} is duplicated in servers: ${duplicateKeys}`);
+      }
+    });
   }
 }

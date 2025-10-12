@@ -30,9 +30,12 @@ A comprehensive tracking tool for the game "<a href="https://empire.goodgamestud
 ## Installation
 
 ```bash
-git clone https://github.com/gge-tracker/gge-tracker.git
-cd gge-tracker
+# Clone the repository
+git clone https://github.com/gge-tracker/gge-tracker.git && cd gge-tracker
 # Create a .env file in the root directory with necessary environment variables (see .env.example for reference)
+cp .env.example .env && nano .env
+# Start the application using Docker Compose (Install Docker and Docker Compose if not already installed)
+docker network create backend
 docker-compose up --build
 ```
 

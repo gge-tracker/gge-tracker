@@ -17,6 +17,15 @@ export enum EnumTypeReleaseNote {
 export class ReleaseNotesComponent {
   public readonly releaseNotes = [
     {
+      version: 'v25-10-12',
+      type: EnumTypeReleaseNote.MINOR,
+      date: '2025-10-12',
+      items: [
+        '📦 [Server] Added new servers: INT1, RU1, CN1',
+        '📦 [Server] Added DE1 server to realtime fortress tracker tool',
+      ],
+    },
+    {
       version: 'v25-09-14',
       type: EnumTypeReleaseNote.MINOR,
       date: '2025-09-14',

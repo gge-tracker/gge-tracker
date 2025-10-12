@@ -14,3 +14,8 @@
   background: #00000018;
     border: 1px #e0e0e0ef solid;
 }
+
+.dropdown-menu.show {
+  max-height: 65vh;
+  overflow-y: auto;
+}

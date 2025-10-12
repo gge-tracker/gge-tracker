@@ -93,7 +93,7 @@ img {
   background: rgb(18 25 0 / 50%) url(/assets/light-background-hover.png);
   border: 2px solid #00000069;
   border-radius: 15px;
-  transition: transform 0.3sease, box-shadow 0.3sease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
   width: 250px;
   background-size: 45px;
   color: #fff;

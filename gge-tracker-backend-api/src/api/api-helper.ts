@@ -51,13 +51,20 @@ export abstract class ApiHelper {
   public static readonly GGE_BASE_URL = 'https://empire-html5.goodgamestudios.com';
   public static readonly ASSETS_BASE_URL = this.GGE_BASE_URL + '/default';
   public static readonly CONFIG_BASE_URL = this.GGE_BASE_URL + '/config';
+  /**
+   * Application-wide timezone used for parsing, formatting and displaying dates/times.
+   * @deprecated @todo Remove this constant and migrate to using UTC everywhere.
+   */
   public static readonly APPLICATION_TIMEZONE = 'Europe/Paris';
-  public static readonly API_VERSION = '25.09.14-beta';
+  public static readonly API_VERSION = '25.10.12-beta';
   public static readonly API_VERSION_RELEASE_DATE = this.formatReleaseDate(this.API_VERSION);
 
   public static file: Buffer | null = null;
   public static redisClient: RedisClientType<any>;
   public static ggeTrackerManager: ApiGgeTrackerManager;
+  /**
+   * Supported language codes for the official Goodgame Empire assets and translations.
+   */
   public static readonly GGE_SUPPORTED_LANGUAGES = [
     'en',
     'ar',

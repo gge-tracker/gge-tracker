@@ -63,7 +63,7 @@ export abstract class ApiDungeons implements ApiHelper {
       // Authorized servers only, because dungeon data is not available for all servers.
       // However, in the future, we need to take out this configuration and expose it
       // in a separated file or from database.
-      const authorizedServers = ['FR1', 'RO1', 'CZ1', 'IT1', 'SA1'];
+      const authorizedServers = ['FR1', 'RO1', 'CZ1', 'IT1', 'SA1', 'DE1'];
       // List of banned player IDs. Populate as needed.
       // This is to prevent certain players from being included in the results.
       // This is not used for now, but kept in case we need it in the future.
