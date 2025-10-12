@@ -415,7 +415,7 @@ export abstract class ApiAssets implements ApiHelper {
        * Check Redis cache for generated image
        * --------------------------------- */
       const languageCacheBuildVersion = (await ApiHelper.redisClient.get(ApiHelper.REDIS_KEY_GGE_VERSION)) || '0';
-      const cachedKey = `assets_image_${languageCacheBuildVersion}_${asset}`;
+      const cachedKey = `assets_image_${languageCacheBuildVersion}_${asset}_${level}_${type}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.setHeader('Content-Type', 'image/png');
@@ -478,19 +478,16 @@ export abstract class ApiAssets implements ApiHelper {
                   case 'gate': {
                     const n = `Basic_Gate_${l}`;
                     building = new globalThis.Library[name][n]();
-
                     break;
                   }
                   case 'defence': {
                     const n = `Castlewall_Defence_${l}`;
                     building = new globalThis.Library[name][n]();
-
                     break;
                   }
                   case 'tower': {
                     const n = `Guard_Tower_${l}`;
                     building = new globalThis.Library[name][n]();
-
                     break;
                   }
                   default: {

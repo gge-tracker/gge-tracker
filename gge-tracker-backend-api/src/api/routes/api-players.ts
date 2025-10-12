@@ -251,12 +251,12 @@ export abstract class ApiPlayers implements ApiHelper {
         filters.push(`P.alliance_id IS NOT NULL`);
       }
       if (protectionFilter === 0) {
-        if (banFilter !== 1) filters.push(`P.peace_disabled_at IS NULL OR P.peace_disabled_at <= NOW()`);
+        if (banFilter !== 1) filters.push(`(P.peace_disabled_at IS NULL OR P.peace_disabled_at <= NOW())`);
       } else if (protectionFilter === 1) {
         filters.push(`P.peace_disabled_at IS NOT NULL AND P.peace_disabled_at > NOW()`);
       }
       if (banFilter === 0) {
-        filters.push(`P.peace_disabled_at IS NULL OR P.peace_disabled_at <= NOW() + INTERVAL '63 days'`);
+        filters.push(`(P.peace_disabled_at IS NULL OR P.peace_disabled_at <= NOW() + INTERVAL '63 days')`);
       } else if (banFilter === 1) {
         filters.push(`P.peace_disabled_at > NOW() + INTERVAL '63 days'`);
       }
@@ -287,7 +287,6 @@ export abstract class ApiPlayers implements ApiHelper {
           });
         }
       }
-
       /* ---------------------------------
        * Query count results
        * --------------------------------- */
