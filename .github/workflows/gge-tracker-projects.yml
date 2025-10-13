@@ -3,14 +3,9 @@ name: gge-tracker Projects CI
 on:
   push:
     branches: [ "main" ]
-    paths:
-      - 'gge-tracker-backend-api/**'
-      - 'gge-tracker-frontend/**'
   pull_request:
     branches: [ "main" ]
-    paths:
-      - 'gge-tracker-backend-api/**'
-      - 'gge-tracker-frontend/**'
+  workflow_dispatch:
 
 permissions:
   pull-requests: read
@@ -25,6 +20,13 @@ jobs:
         working-directory: gge-tracker-backend-api
     steps:
       - uses: actions/checkout@v3
+      - name: Detect backend changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - 'gge-tracker-backend-api/**'
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
@@ -49,6 +51,13 @@ jobs:
         working-directory: gge-tracker-frontend
     steps:
       - uses: actions/checkout@v3
+      - name: Detect frontend changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            frontend:
+              - 'gge-tracker-frontend/**'
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
