@@ -27,6 +27,9 @@ jobs:
           filters: |
             backend:
               - 'gge-tracker-backend-api/**'
+      - name: Skip if no backend changes
+        if: steps.changes.outputs.backend != 'true'
+        run: echo "No backend changes detected, skipping backend job." && exit 0
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
@@ -58,6 +61,9 @@ jobs:
           filters: |
             frontend:
               - 'gge-tracker-frontend/**'
+      - name: Skip if no frontend changes
+        if: steps.changes.outputs.frontend != 'true'
+        run: echo "No frontend changes detected, skipping frontend job." && exit 0
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
