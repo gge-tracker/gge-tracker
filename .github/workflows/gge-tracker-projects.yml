@@ -3,14 +3,9 @@ name: gge-tracker Projects CI
 on:
   push:
     branches: [ "main" ]
-    paths:
-      - 'gge-tracker-backend-api/**'
-      - 'gge-tracker-frontend/**'
   pull_request:
     branches: [ "main" ]
-    paths:
-      - 'gge-tracker-backend-api/**'
-      - 'gge-tracker-frontend/**'
+  workflow_dispatch:
 
 permissions:
   pull-requests: read
@@ -25,6 +20,16 @@ jobs:
         working-directory: gge-tracker-backend-api
     steps:
       - uses: actions/checkout@v3
+      - name: Detect backend changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - 'gge-tracker-backend-api/**'
+      - name: Skip if no backend changes
+        if: steps.changes.outputs.backend != 'true'
+        run: echo "No backend changes detected, skipping backend job." && exit 0
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
@@ -49,6 +54,16 @@ jobs:
         working-directory: gge-tracker-frontend
     steps:
       - uses: actions/checkout@v3
+      - name: Detect frontend changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            frontend:
+              - 'gge-tracker-frontend/**'
+      - name: Skip if no frontend changes
+        if: steps.changes.outputs.frontend != 'true'
+        run: echo "No frontend changes detected, skipping frontend job." && exit 0
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
