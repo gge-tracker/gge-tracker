@@ -68,7 +68,7 @@ export class TrackerComponent extends GenericComponent {
     'Bientôt attaquable (< 5min)': 2,
     'Bientôt attaquable (< 1h)': 3,
   };
-  public displayedStates = Object.entries(this.states).map(this.mapStateEntry);
+  public displayedStates: { label: string; value: string }[] = [];
   public realms: Realm[] = [
     { key: 2, label: 'Le Glacier éternel' },
     { key: 1, label: 'Les Sables brûlants' },
@@ -97,7 +97,9 @@ export class TrackerComponent extends GenericComponent {
   }
 
   public changeState(input: string | null): void {
-    const targetItem = this.displayedStates.find((item) => item.value === input);
+    const targetItem = Object.entries(this.states)
+      .map(this.mapStateEntry)
+      .find((item) => item.value === input);
     if (targetItem) this.onStateChange(targetItem.label as keyof typeof this.states);
   }
 
@@ -274,6 +276,10 @@ export class TrackerComponent extends GenericComponent {
 
   private init(): void {
     try {
+      this.displayedStates = Object.entries(this.states).map(this.mapStateEntry);
+      this.displayedStates.forEach((state) => {
+        state.label = this.translateService.instant(state.label);
+      });
       this.activeSortCount = 0;
       this.page = 1;
       const realm = this.localStorage.getItem('selectedRealm');

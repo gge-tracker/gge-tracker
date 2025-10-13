@@ -46,7 +46,7 @@
             </div>
           </div>
           <div class="col-auto">
-            <app-select
+            <app-select *ngIf="displayedStates && displayedStates.length > 0"
                 [items]="displayedStates"
                 [name]="'dungeon-state'"
                 [selectedItem]="'0'"
