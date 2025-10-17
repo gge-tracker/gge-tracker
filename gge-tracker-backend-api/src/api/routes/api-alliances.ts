@@ -363,7 +363,6 @@ export abstract class ApiAlliances implements ApiHelper {
         (error, results) => {
           if (error) {
             response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
-            return;
           } else {
             /* ---------------------------------
              * Format and send response
@@ -395,7 +394,6 @@ export abstract class ApiAlliances implements ApiHelper {
             };
             void ApiHelper.updateCache(cachedKey, responseContent);
             response.status(ApiHelper.HTTP_OK).send(responseContent);
-            return;
           }
         },
       );

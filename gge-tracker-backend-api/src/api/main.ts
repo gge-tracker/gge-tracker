@@ -43,7 +43,9 @@ import { ApiHelper } from './api-helper';
 const redisClient = createClient({
   url: process.env.REDIS_URL,
 });
-void redisClient.connect();
+redisClient.connect().catch((error) => {
+  console.error('Redis connection failed:', error);
+});
 redisClient.on('error', (error) => {
   throw new Error(error.message);
 });
@@ -3150,4 +3152,6 @@ function printHeader(): void {
   console.log('\u001B[0m');
 }
 
-void main();
+main().catch((error) => {
+  console.error('BackendAPI initialization error', error);
+});

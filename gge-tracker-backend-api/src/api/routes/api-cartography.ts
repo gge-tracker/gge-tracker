@@ -69,8 +69,6 @@ export abstract class ApiCartography implements ApiHelper {
       // A more complex query with OFFSET would require a different approach.
       if (Number.isNaN(nb)) {
         limit = 'LIMIT 10';
-      } else if (nb < 0) {
-        limit = '';
       } else if (regex.test(nb.toString())) {
         limit = `LIMIT ${nb}`;
       } else {
@@ -78,21 +76,21 @@ export abstract class ApiCartography implements ApiHelper {
       }
       const query = `
         WITH ranked_alliances AS (
-            SELECT
-                alliance_id,
-                SUM(might_current) AS total_might
-            FROM players
-            WHERE alliance_id IS NOT NULL
-            GROUP BY alliance_id
-            ORDER BY total_might DESC
-            ${limit})
+          SELECT
+            alliance_id,
+            SUM(might_current) AS total_might
+          FROM players
+          WHERE alliance_id IS NOT NULL
+          GROUP BY alliance_id
+          ORDER BY total_might DESC
+          ${limit})
         SELECT
-            P.name,
-            P.castles AS castles,
-            P.castles_realm AS castles_realm,
-            P.might_current,
-            A.id AS alliance_id,
-            A.name AS alliance_name
+          P.name,
+          P.castles AS castles,
+          P.castles_realm AS castles_realm,
+          P.might_current,
+          A.id AS alliance_id,
+          A.name AS alliance_name
         FROM players P
         INNER JOIN alliances A ON P.alliance_id = A.id
         INNER JOIN ranked_alliances RA ON P.alliance_id = RA.alliance_id
@@ -118,7 +116,6 @@ export abstract class ApiCartography implements ApiHelper {
            * --------------------------------- */
           void ApiHelper.updateCache(cachedKey, rows);
           response.status(ApiHelper.HTTP_OK).send(rows);
-          return;
         }
       });
     } catch (error) {
@@ -313,7 +310,6 @@ export abstract class ApiCartography implements ApiHelper {
       pgPool.query(query, [ApiHelper.removeCountryCode(allianceId)], (error, results) => {
         if (error) {
           response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
-          return;
         } else {
           /* ---------------------------------
            * Format results
@@ -330,7 +326,6 @@ export abstract class ApiCartography implements ApiHelper {
           });
           void ApiHelper.updateCache(cachedKey, formattedResults);
           response.status(ApiHelper.HTTP_OK).send(formattedResults);
-          return;
         }
       });
     } catch (error) {

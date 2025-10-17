@@ -57,44 +57,19 @@ export abstract class ApiDungeons implements ApiHelper {
    */
   public static async getDungeons(request: express.Request, response: express.Response): Promise<void> {
     try {
-      /* ---------------------------------
-       * Validate parameters
-       * --------------------------------- */
-      // Authorized servers only, because dungeon data is not available for all servers.
-      // However, in the future, we need to take out this configuration and expose it
-      // in a separated file or from database.
-      const authorizedServers = ['FR1', 'RO1', 'CZ1', 'IT1', 'SA1', 'DE1'];
       // List of banned player IDs. Populate as needed.
       // This is to prevent certain players from being included in the results.
       // This is not used for now, but kept in case we need it in the future.
       const bannedPlayersId = [];
-      if (!authorizedServers.includes(request['language'])) {
-        response
-          .status(ApiHelper.HTTP_BAD_REQUEST)
-          .send({ error: 'Invalid server. Currently, only' + authorizedServers.join(', ') + ' are supported.' });
-        return;
-      }
+      /* ---------------------------------
+       * Validate parameters
+       * --------------------------------- */
       const page = Number.parseInt(request.query.page as string);
-      if (Number.isNaN(page) || page < 1 || page > ApiHelper.MAX_RESULT_PAGE) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid page number' });
-        return;
-      }
-      // By default, we show only type 2 dungeons
-      let filterByKid = request.query.filterByKid ? (request.query.filterByKid as string) : '[2]';
-      if (filterByKid && !Array.isArray(JSON.parse(filterByKid))) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid kid' });
-        return;
-      }
-      let filtersKids = JSON.parse(filterByKid);
-      const filterByAttackCooldown = request.query.filterByAttackCooldown
-        ? (request.query.filterByAttackCooldown as string)
-        : null;
-      const filterByPlayerName = request.query.filterByPlayerName ? (request.query.filterByPlayerName as string) : null;
-      let sortByPositionX = request.query.positionX ? (request.query.positionX as string) : null;
-      let sortByPositionY = request.query.positionY ? (request.query.positionY as string) : null;
-      const nearPlayerName = request.query.nearPlayerName ? (request.query.nearPlayerName as string) : null;
-      const sizeValue = Number(request.query.size);
-      const size = !Number.isNaN(sizeValue) && sizeValue > 0 ? String(sizeValue) : null;
+      const filterByKid = request.query.filterByKid ? (request.query.filterByKid as string) : '[2]';
+      if (!this.validateRequest(request, response, filterByKid, page)) return;
+      const dungeonParameters = this.constructDungeonsInitialParameters(filterByKid, request);
+      let { filtersKids, sortByPositionX, sortByPositionY } = dungeonParameters;
+      const { filterByAttackCooldown, filterByPlayerName, nearPlayerName, size } = dungeonParameters;
       filtersKids.forEach((kid: any) => {
         if (Number(kid) < 0 || Number(kid) > 9) {
           response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid kid' });
@@ -102,15 +77,7 @@ export abstract class ApiDungeons implements ApiHelper {
         }
       });
       if (filtersKids.length === 0) {
-        response.status(ApiHelper.HTTP_OK).send({
-          dungeons: [],
-          pagination: {
-            current_page: 1,
-            total_pages: 1,
-            current_items_count: 0,
-            total_items_count: 0,
-          },
-        });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send(this.defaultResponseContent([], 1, 1, 0, 0));
         return;
       }
       if (
@@ -188,51 +155,16 @@ export abstract class ApiDungeons implements ApiHelper {
         filtersKids = filtersKids.filter((kid: number) => {
           return target.castles_realm.some((castle: number[]) => castle[0] === kid && castle[3] === 12);
         });
-        // Custom SQL to calculate distance considering the kid (kingdom)
-        // and wrapping around the map edges.
-        // The map width is considered to be 1287 units for wrapping calculations.
-        // If a kid does not have a castle, it assigns a large distance (999999) to effectively exclude it.
-        // /!\ Improvement note: This calculation might be improved in the future
-        customSql = `
-          LEAST(
-              CASE WHEN D.kid = 1 THEN
-                  POWER(LEAST(ABS(CAST(D.position_x AS SIGNED) - ?), 1287 - ABS(CAST(D.position_x AS SIGNED) - ?)), 2) +
-                  POWER(ABS(CAST(D.position_y AS SIGNED) - ?), 2)
-              ELSE 999999 END,
-              CASE WHEN D.kid = 2 THEN
-                  POWER(LEAST(ABS(CAST(D.position_x AS SIGNED) - ?), 1287 - ABS(CAST(D.position_x AS SIGNED) - ?)), 2) +
-                  POWER(ABS(CAST(D.position_y AS SIGNED) - ?), 2)
-              ELSE 999999 END,
-              CASE WHEN D.kid = 3 THEN
-                  POWER(LEAST(ABS(CAST(D.position_x AS SIGNED) - ?), 1287 - ABS(CAST(D.position_x AS SIGNED) - ?)), 2) +
-                  POWER(ABS(CAST(D.position_y AS SIGNED) - ?), 2)
-              ELSE 999999 END
-          ) AS calculated_distance
-        `;
+        customSql = this.getCalculatedDistanceSql();
         // Parameters for the three possible castle positions (kid 1, 2, 3)
-        customParameterValues.push(
-          sortPositionKid1 ? sortPositionKid1[0] : 0,
-          sortPositionKid1 ? sortPositionKid1[0] : 0,
-          sortPositionKid1 ? sortPositionKid1[1] : 0,
-          sortPositionKid2 ? sortPositionKid2[0] : 0,
-          sortPositionKid2 ? sortPositionKid2[0] : 0,
-          sortPositionKid2 ? sortPositionKid2[1] : 0,
-          sortPositionKid3 ? sortPositionKid3[0] : 0,
-          sortPositionKid3 ? sortPositionKid3[0] : 0,
-          sortPositionKid3 ? sortPositionKid3[1] : 0,
-        );
+        const s1 = sortPositionKid1 || [0, 0];
+        const s2 = sortPositionKid2 || [0, 0];
+        const s3 = sortPositionKid3 || [0, 0];
+        customParameterValues.push(s1[0], s1[0], s1[1], s2[0], s2[0], s2[1], s3[0], s3[0], s3[1]);
       }
       if (filtersKids.length === 0) {
         // If no valid kids remain after filtering, return empty result
-        response.status(ApiHelper.HTTP_OK).send({
-          dungeons: [],
-          pagination: {
-            current_page: 1,
-            total_pages: 1,
-            current_items_count: 0,
-            total_items_count: 0,
-          },
-        });
+        response.status(ApiHelper.HTTP_OK).send(this.defaultResponseContent([], 1, 1, 0, 0));
         return;
       }
       let isSorted = false;
@@ -289,12 +221,12 @@ export abstract class ApiDungeons implements ApiHelper {
           }
           realCooldownExpr = `
             CASE
-                WHEN DPS.last_attack_at IS NOT NULL
-                THEN GREATEST(
+              WHEN DPS.last_attack_at IS NOT NULL
+              THEN GREATEST(
                 TIMESTAMPADD(SECOND, D.attack_cooldown, D.updated_at),
                 TIMESTAMPADD(SECOND, 432000, DPS.last_attack_at)
-                )
-                ELSE TIMESTAMPADD(SECOND, D.attack_cooldown, D.updated_at)
+              )
+              ELSE TIMESTAMPADD(SECOND, D.attack_cooldown, D.updated_at)
             END
         `;
         }
@@ -348,12 +280,12 @@ export abstract class ApiDungeons implements ApiHelper {
           D.player_id,
           ${realCooldownExpr} AS effective_cooldown_until,
           (
-              SELECT MAX(DPSt.last_attack_at)
-              FROM dungeon_player_state DPSt
-              WHERE DPSt.kid = D.kid
-                  AND DPSt.position_x = D.position_x
-                  AND DPSt.position_y = D.position_y
-                  AND DPSt.player_id = D.player_id
+            SELECT MAX(DPSt.last_attack_at)
+            FROM dungeon_player_state DPSt
+            WHERE DPSt.kid = D.kid
+              AND DPSt.position_x = D.position_x
+              AND DPSt.position_y = D.position_y
+              AND DPSt.player_id = D.player_id
           ) AS last_attack
       `;
       /* ---------------------------------
@@ -408,16 +340,7 @@ export abstract class ApiDungeons implements ApiHelper {
       const totalPages = Math.ceil(dungeonsCount / viewPerPage);
       // If the requested page exceeds total pages, return empty result
       if (page > totalPages) {
-        const responseContent = {
-          dungeons: [],
-          pagination: {
-            current_page: page,
-            total_pages: totalPages,
-            current_items_count: 0,
-            total_items_count: dungeonsCount,
-          },
-        };
-        response.status(ApiHelper.HTTP_OK).send(responseContent);
+        response.status(ApiHelper.HTTP_OK).send(this.defaultResponseContent([], page, totalPages, dungeonsCount, 0));
         return;
       }
       if (conditions.length > 0) {
@@ -446,8 +369,8 @@ export abstract class ApiDungeons implements ApiHelper {
         query += `
           ORDER BY
           CASE
-              WHEN last_attack < NOW() THEN last_attack
-              ELSE NULL
+            WHEN last_attack < NOW() THEN last_attack
+            ELSE NULL
           END ASC,
           effective_cooldown_until ASC`;
       }
@@ -509,16 +432,9 @@ export abstract class ApiDungeons implements ApiHelper {
                     : Number.parseFloat(Math.sqrt(result.calculated_distance).toFixed(1)),
               };
             });
-            const responseContent = {
-              dungeons,
-              pagination: {
-                current_page: page,
-                total_pages: totalPages,
-                current_items_count: dungeons.length,
-                total_items_count: dungeonsCount,
-              },
-            };
-            response.status(ApiHelper.HTTP_OK).send(responseContent);
+            response
+              .status(ApiHelper.HTTP_OK)
+              .send(this.defaultResponseContent(dungeons, page, totalPages, dungeonsCount, dungeons.length));
             // There is no need to cache this data because it changes frequently
             // and users expect always fresh data.
             return;
@@ -531,5 +447,114 @@ export abstract class ApiDungeons implements ApiHelper {
       ApiHelper.logError(error, 'getDungeons', request);
       return;
     }
+  }
+
+  private static validateRequest(
+    request: express.Request,
+    response: express.Response,
+    filterByKid?: string,
+    page?: number,
+  ): boolean {
+    // Authorized servers only, because dungeon data is not available for all servers.
+    // However, in the future, we need to take out this configuration and expose it
+    // in a separated file or from database.
+    const authorizedServers = ['FR1', 'RO1', 'CZ1', 'IT1', 'SA1', 'DE1'];
+    if (!authorizedServers.includes(request['language'])) {
+      response
+        .status(ApiHelper.HTTP_BAD_REQUEST)
+        .send({ error: 'Invalid server. Currently, only ' + authorizedServers.join(', ') + ' are supported.' });
+      return false;
+    }
+    if (Number.isNaN(page) || page < 1 || page > ApiHelper.MAX_RESULT_PAGE) {
+      response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid page number' });
+      return false;
+    }
+    if (filterByKid && !Array.isArray(JSON.parse(filterByKid))) {
+      response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid kid' });
+      return false;
+    }
+    return true;
+  }
+
+  private static defaultResponseContent(
+    dungeons: any[],
+    currentPage: number,
+    totalPages: number,
+    totalItemsCount: number,
+    currentItemsCount: number,
+  ) {
+    return {
+      dungeons: dungeons || [],
+      pagination: {
+        current_page: currentPage || 1,
+        total_pages: totalPages || 1,
+        current_items_count: currentItemsCount || 0,
+        total_items_count: totalItemsCount || 0,
+      },
+    };
+  }
+  /**
+   * Get the SQL query for calculating the distance between dungeons.
+   * This SQL snippet calculates the distance considering the kingdom (kid)
+   * and wrapping around the map edges.
+   * The map width is considered to be 1287 units for wrapping calculations.
+   * If a kid does not have a castle, it assigns a large distance (999999)
+   * to effectively exclude it.
+   *
+   * /!\ Improvement note: This calculation shall be improved in the future
+   * @returns The SQL query string.
+   */
+  private static getCalculatedDistanceSql(): string {
+    return `
+      LEAST(
+        CASE WHEN D.kid = 1 THEN
+          POWER(LEAST(ABS(CAST(D.position_x AS SIGNED) - ?), 1287 - ABS(CAST(D.position_x AS SIGNED) - ?)), 2) +
+          POWER(ABS(CAST(D.position_y AS SIGNED) - ?), 2)
+        ELSE 999999 END,
+        CASE WHEN D.kid = 2 THEN
+          POWER(LEAST(ABS(CAST(D.position_x AS SIGNED) - ?), 1287 - ABS(CAST(D.position_x AS SIGNED) - ?)), 2) +
+          POWER(ABS(CAST(D.position_y AS SIGNED) - ?), 2)
+        ELSE 999999 END,
+        CASE WHEN D.kid = 3 THEN
+          POWER(LEAST(ABS(CAST(D.position_x AS SIGNED) - ?), 1287 - ABS(CAST(D.position_x AS SIGNED) - ?)), 2) +
+          POWER(ABS(CAST(D.position_y AS SIGNED) - ?), 2)
+        ELSE 999999 END
+      ) AS calculated_distance
+    `;
+  }
+
+  private static constructDungeonsInitialParameters(
+    filterByKid: string,
+    request: express.Request,
+  ): {
+    filtersKids: any[];
+    filterByAttackCooldown: string | null;
+    filterByPlayerName: string | null;
+    sortByPositionX: string | null;
+    sortByPositionY: string | null;
+    nearPlayerName: string | null;
+    sizeValue: number;
+    size: string | null;
+  } {
+    const filtersKids = JSON.parse(filterByKid);
+    const filterByAttackCooldown = request.query.filterByAttackCooldown
+      ? (request.query.filterByAttackCooldown as string)
+      : null;
+    const filterByPlayerName = request.query.filterByPlayerName ? (request.query.filterByPlayerName as string) : null;
+    const sortByPositionX = request.query.positionX ? (request.query.positionX as string) : null;
+    const sortByPositionY = request.query.positionY ? (request.query.positionY as string) : null;
+    const nearPlayerName = request.query.nearPlayerName ? (request.query.nearPlayerName as string) : null;
+    const sizeValue = Number(request.query.size);
+    const size = !Number.isNaN(sizeValue) && sizeValue > 0 ? String(sizeValue) : null;
+    return {
+      filtersKids,
+      filterByAttackCooldown,
+      filterByPlayerName,
+      sortByPositionX,
+      sortByPositionY,
+      nearPlayerName,
+      sizeValue,
+      size,
+    };
   }
 }

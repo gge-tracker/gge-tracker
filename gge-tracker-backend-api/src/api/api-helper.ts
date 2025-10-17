@@ -59,9 +59,6 @@ export abstract class ApiHelper {
   public static readonly API_VERSION = '25.10.12-beta';
   public static readonly API_VERSION_RELEASE_DATE = this.formatReleaseDate(this.API_VERSION);
 
-  public static file: Buffer | null = null;
-  public static redisClient: RedisClientType<any>;
-  public static ggeTrackerManager: ApiGgeTrackerManager;
   /**
    * Supported language codes for the official Goodgame Empire assets and translations.
    */
@@ -113,6 +110,34 @@ export abstract class ApiHelper {
     [Status.NOT_FOUND]: 'Not Found',
     [Status.INTERNAL_SERVER_ERROR]: 'An internal server error occurred. Please try again later.',
   };
+
+  private static _file: Buffer | null = null;
+  private static _redisClient: RedisClientType<any>;
+  private static _ggeTrackerManager: ApiGgeTrackerManager;
+
+  public static set file(file: Buffer) {
+    this._file = file;
+  }
+
+  public static get file(): Buffer | null {
+    return this._file;
+  }
+
+  public static set redisClient(client: RedisClientType<any>) {
+    this._redisClient = client;
+  }
+
+  public static get redisClient(): RedisClientType<any> {
+    return this._redisClient;
+  }
+
+  public static set ggeTrackerManager(api: ApiGgeTrackerManager) {
+    this._ggeTrackerManager = api;
+  }
+
+  public static get ggeTrackerManager(): ApiGgeTrackerManager {
+    return this._ggeTrackerManager;
+  }
 
   /**
    * Returns an HTTP response object containing the status code and its corresponding message.
