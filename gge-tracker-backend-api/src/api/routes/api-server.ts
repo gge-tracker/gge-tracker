@@ -44,25 +44,25 @@ export abstract class ApiServer implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const page = Number.parseInt(request.query.page as string);
+      const page = Number.parseInt(String(request.query.page || '')) || 1;
       if (Number.isNaN(page) || page < 1 || page > ApiHelper.MAX_RESULT_PAGE) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid page number' });
         return;
       }
-      const filterByCastleType = Number.isNaN(Number.parseInt(request.query.castleType as string))
+      const filterByCastleType = Number.isNaN(Number.parseInt(String(request.query.castleType)))
         ? -1
-        : Number.parseInt(request.query.castleType as string);
-      const filterByMovementType = Number.isNaN(Number.parseInt(request.query.movementType as string))
+        : Number.parseInt(String(request.query.castleType));
+      const filterByMovementType = Number.isNaN(Number.parseInt(String(request.query.movementType)))
         ? -1
-        : Number.parseInt(request.query.movementType as string);
-      const searchInputHash = request.query.search ? ApiHelper.hashValue(request.query.search as string) : 'no_search';
+        : Number.parseInt(String(request.query.movementType));
+      const searchInputHash = request.query.search ? ApiHelper.hashValue(String(request.query.search)) : 'no_search';
       const searchTypeHash = request.query.searchType
-        ? ApiHelper.hashValue(request.query.searchType as string)
+        ? ApiHelper.hashValue(String(request.query.searchType))
         : 'no_search';
       const viewPerPage = 10;
-      const searchInput = request.query.search ? (request.query.search as string) : null;
-      const searchType = request.query.searchType ? (request.query.searchType as string) : null;
-      const allianceId = request.query.allianceId ? (request.query.allianceId as string) : null;
+      const searchInput = request.query.search ? String(request.query.search) : null;
+      const searchType = request.query.searchType ? String(request.query.searchType) : null;
+      const allianceId = request.query.allianceId ? String(request.query.allianceId) : null;
       const allianceIdHash = allianceId ? ApiHelper.hashValue(allianceId) : 'no_search';
       if (filterByMovementType !== -1 && (filterByMovementType < 1 || filterByMovementType > 3)) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid movement type' });
@@ -274,19 +274,19 @@ export abstract class ApiServer implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const page = Number.parseInt(request.query.page as string);
+      const page = Number.parseInt(String(request.query.page));
       if (Number.isNaN(page) || page < 1 || page > ApiHelper.MAX_RESULT_PAGE) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid page number' });
         return;
       }
-      const searchInputHash = request.query.search ? ApiHelper.hashValue(request.query.search as string) : 'no_search';
+      const searchInputHash = request.query.search ? ApiHelper.hashValue(String(request.query.search)) : 'no_search';
       const searchTypeHash = request.query.searchType
-        ? ApiHelper.hashValue(request.query.searchType as string)
+        ? ApiHelper.hashValue(String(request.query.searchType))
         : 'no_search';
-      const allianceId = request.query.allianceId ? (request.query.allianceId as string) : null;
+      const allianceId = request.query.allianceId ? String(request.query.allianceId) : null;
       const viewPerPage = 15;
-      const searchInput = ApiHelper.verifySearch(request.query.search ? (request.query.search as string) : null);
-      const searchType = request.query.searchType ? (request.query.searchType as string) : null;
+      const searchInput = ApiHelper.verifySearch(request.query.search ? String(request.query.search) : null);
+      const searchType = request.query.searchType ? String(request.query.searchType) : null;
       if (searchType !== 'player' && searchType !== 'alliance' && searchType !== null) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid search type' });
         return;
@@ -298,7 +298,7 @@ export abstract class ApiServer implements ApiHelper {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid alliance ID' });
         return;
       }
-      const showType = request.query.showType ? (request.query.showType as string) : 'players';
+      const showType = request.query.showType ? String(request.query.showType) : 'players';
       if (showType !== 'players' && showType !== 'alliances') {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid show type' });
         return;

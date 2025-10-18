@@ -48,28 +48,28 @@ export abstract class ApiPlayers implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      let page = Number.parseInt(request.query.page as string) || 1;
-      let orderBy = (request.query.orderBy as string) || 'player_name';
-      let orderType = (request.query.orderType as string) || 'ASC';
-      let filterByAlliance = (request.query.alliance as string) || '';
-      let minHonor = Number.parseInt(request.query.minHonor as string);
-      let maxHonor = Number.parseInt(request.query.maxHonor as string);
-      let minMight = Number.parseInt(request.query.minMight as string);
-      let maxMight = Number.parseInt(request.query.maxMight as string);
-      let minLoot = Number.parseInt(request.query.minLoot as string);
-      let maxLoot = Number.parseInt(request.query.maxLoot as string);
+      let page = Number.parseInt(String(request.query.page)) || 1;
+      let minHonor = Number.parseInt(String(request.query.minHonor));
+      let maxHonor = Number.parseInt(String(request.query.maxHonor));
+      let minMight = Number.parseInt(String(request.query.minMight));
+      let maxMight = Number.parseInt(String(request.query.maxMight));
+      let minLoot = Number.parseInt(String(request.query.minLoot));
+      let maxLoot = Number.parseInt(String(request.query.maxLoot));
       let minLevelArray = String(request.query.minLevel)?.split('/');
       let minLevel = Number.parseInt(minLevelArray[0]);
       let minLegendaryLevel = Number.parseInt(minLevelArray[1]);
       let maxLevelArray = String(request.query.maxLevel)?.split('/');
       let maxLevel = Number.parseInt(maxLevelArray[0]);
       let maxLegendaryLevel = Number.parseInt(maxLevelArray[1]);
-      let allianceFilter = Number.parseInt(request.query.allianceFilter as string);
-      let protectionFilter = Number.parseInt(request.query.protectionFilter as string);
-      let banFilter = Number.parseInt(request.query.banFilter as string);
-      let inactiveFilter = Number.parseInt(request.query.inactiveFilter as string);
-      let playerNameForDistance = (request.query.playerNameForDistance as string) || '';
-      page = page < 1 || page > ApiHelper.MAX_RESULT_PAGE ? 1 : page;
+      let allianceFilter = Number.parseInt(String(request.query.allianceFilter));
+      let protectionFilter = Number.parseInt(String(request.query.protectionFilter));
+      let banFilter = Number.parseInt(String(request.query.banFilter));
+      let inactiveFilter = Number.parseInt(String(request.query.inactiveFilter));
+      let playerNameForDistance = String(request.query.playerNameForDistance || '');
+      let orderBy = String(request.query.orderBy || 'player_name');
+      let filterByAlliance = String(request.query.alliance || '');
+      let orderType = String(request.query.orderType || 'ASC');
+      page = Number.isNaN(page) || page < 1 || page > ApiHelper.MAX_RESULT_PAGE ? 1 : page;
       const orderByValues = [
         'player_name',
         'loot_current',

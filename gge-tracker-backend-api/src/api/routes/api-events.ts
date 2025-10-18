@@ -135,9 +135,9 @@ export abstract class ApiEvents implements ApiHelper {
        * --------------------------------- */
       const PAGINATION_LIMIT = 15;
       const id = request.params.id;
-      let page = Number.parseInt(request.query.page as string) || 1;
+      let page = Number.parseInt(String(request.query.page)) || 1;
       let playerNameFilter = (request.query.player_name as string) || '';
-      let serverFilter = (request.query.server as string) || null;
+      let serverFilter = request.query.server ? String(request.query.server) : null;
       let eventType = request.params.eventType;
       if (eventType !== 'outer-realms' && eventType !== 'beyond-the-horizon') {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid event type' });

@@ -64,8 +64,8 @@ export abstract class ApiDungeons implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const page = Number.parseInt(request.query.page as string);
-      const filterByKid = request.query.filterByKid ? (request.query.filterByKid as string) : '[2]';
+      const page = Number.parseInt(String(request.query.page));
+      const filterByKid = request.query.filterByKid ? String(request.query.filterByKid) : '[2]';
       if (!this.validateRequest(request, response, filterByKid, page)) return;
       const dungeonParameters = this.constructDungeonsInitialParameters(filterByKid, request);
       let { filtersKids, sortByPositionX, sortByPositionY } = dungeonParameters;
@@ -482,7 +482,15 @@ export abstract class ApiDungeons implements ApiHelper {
     totalPages: number,
     totalItemsCount: number,
     currentItemsCount: number,
-  ) {
+  ): {
+    dungeons: any[];
+    pagination: {
+      current_page: number;
+      total_pages: number;
+      current_items_count: number;
+      total_items_count: number;
+    };
+  } {
     return {
       dungeons: dungeons || [],
       pagination: {
@@ -538,12 +546,12 @@ export abstract class ApiDungeons implements ApiHelper {
   } {
     const filtersKids = JSON.parse(filterByKid);
     const filterByAttackCooldown = request.query.filterByAttackCooldown
-      ? (request.query.filterByAttackCooldown as string)
+      ? String(request.query.filterByAttackCooldown)
       : null;
-    const filterByPlayerName = request.query.filterByPlayerName ? (request.query.filterByPlayerName as string) : null;
-    const sortByPositionX = request.query.positionX ? (request.query.positionX as string) : null;
-    const sortByPositionY = request.query.positionY ? (request.query.positionY as string) : null;
-    const nearPlayerName = request.query.nearPlayerName ? (request.query.nearPlayerName as string) : null;
+    const filterByPlayerName = request.query.filterByPlayerName ? String(request.query.filterByPlayerName) : null;
+    const sortByPositionX = request.query.positionX ? String(request.query.positionX) : null;
+    const sortByPositionY = request.query.positionY ? String(request.query.positionY) : null;
+    const nearPlayerName = request.query.nearPlayerName ? String(request.query.nearPlayerName) : null;
     const sizeValue = Number(request.query.size);
     const size = !Number.isNaN(sizeValue) && sizeValue > 0 ? String(sizeValue) : null;
     return {

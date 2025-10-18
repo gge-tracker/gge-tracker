@@ -249,13 +249,17 @@ export abstract class ApiHelper {
   }
 
   /**
-   * Generates an MD5 hash of the provided string value.
+   * Generates a SHA256 hash of the provided string value.
+   * If the input string exceeds 50 characters, it is truncated to the
+   * first 50 characters before hashing.
    *
    * @param value - The input string to hash.
-   * @returns The hexadecimal representation of the MD5 hash.
+   * @returns The hexadecimal representation of the SHA256 hash.
    */
   public static hashValue(value: string): string {
-    return crypto.createHash('md5').update(value).digest('hex');
+    const MAX_SEARCH_LEN = 50;
+    if (value.length > MAX_SEARCH_LEN) value = value.slice(0, MAX_SEARCH_LEN);
+    return crypto.createHash('sha256').update(value).digest('hex');
   }
 
   /**
