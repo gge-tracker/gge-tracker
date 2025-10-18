@@ -1417,9 +1417,9 @@ export class GenericFetchAndSaveBackend {
       loot_all_time = null;
     }
     const pgSqlQueryPlayer = `
-            INSERT INTO players (id, name, alliance_id, might_current, might_all_time, loot_current, loot_all_time)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-        `;
+      INSERT INTO players (id, name, alliance_id, might_current, might_all_time, loot_current, loot_all_time)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `;
     const player = this.currentPlayers.find((p) => p.playerId == playerId);
     if (!player) {
       try {
@@ -1505,9 +1505,9 @@ export class GenericFetchAndSaveBackend {
           );
           const pgSqlQueryUpdatePlayerName = 'UPDATE players SET name = $1 WHERE id = $2';
           const pgSqlQueryInsertPlayerNameUpdateHistory = `
-                        INSERT INTO player_name_update_history (player_id, old_name, new_name)
-                        VALUES ($1, $2, $3)
-                    `;
+            INSERT INTO player_name_update_history (player_id, old_name, new_name)
+            VALUES ($1, $2, $3)
+          `;
           await Promise.all([
             this.pgSqlQuery(pgSqlQueryUpdatePlayerName, [playerName, playerId]),
             this.pgSqlQuery(pgSqlQueryInsertPlayerNameUpdateHistory, [playerId, currentPlayerName, playerName]),
@@ -2056,7 +2056,8 @@ export class GenericFetchAndSaveBackend {
                   remaining_peace_time = $8,
                   level = GREATEST(COALESCE(level, 0), $9),
                   legendary_level = GREATEST(COALESCE(legendary_level, 0), $10),
-                  peace_disabled_at = $11
+                  peace_disabled_at = $11,
+                  updated_at = CURRENT_TIMESTAMP
                 WHERE id = $12
               `;
               await this.addPlayerInDatabase(
@@ -2088,6 +2089,10 @@ export class GenericFetchAndSaveBackend {
             } else {
               await this.removePlayerFromDatabase(id);
             }
+          } else if (data && data.error === 'Timeout') {
+            // Player is not found, remove from database
+            Utils.logMessage(' [Info] Player data timeout, removing player from database', id);
+            await this.removePlayerFromDatabase(id);
           }
         } catch (error) {
           Utils.logMessage(' [KO] Error', id);
@@ -2098,9 +2103,9 @@ export class GenericFetchAndSaveBackend {
           const pgSqlQuery = `
             UPDATE players
             SET
-                castles = NULL,
-                castles_realm = NULL,
-                alliance_id = NULL
+              castles = NULL,
+              castles_realm = NULL,
+              alliance_id = NULL
             WHERE id = $1
           `;
           try {

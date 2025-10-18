@@ -42,7 +42,7 @@ export abstract class ApiAlliances implements ApiHelper {
         return;
       }
       let playerNameForDistance = request.query.playerNameForDistance
-        ? (request.query.playerNameForDistance as string)
+        ? String(request.query.playerNameForDistance)
         : '';
       if (playerNameForDistance && playerNameForDistance.length > 40) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid player name' });
@@ -272,9 +272,9 @@ export abstract class ApiAlliances implements ApiHelper {
       /* ---------------------------------
        * Validate and normalize query parameters
        * --------------------------------- */
-      let page = Number.parseInt(request.query.page as string) || 1;
-      let orderBy = (request.query.orderBy as string) || 'alliance_name';
-      let orderType = (request.query.orderType as string) || 'ASC';
+      let page = Number.parseInt(String(request.query.page)) || 1;
+      let orderBy = String(request.query.orderBy || 'alliance_name');
+      let orderType = String(request.query.orderType || 'ASC');
       page = page < 1 || page > ApiHelper.MAX_RESULT_PAGE ? 1 : page;
       const orderByValues: string[] = [
         'alliance_name',
@@ -363,7 +363,6 @@ export abstract class ApiAlliances implements ApiHelper {
         (error, results) => {
           if (error) {
             response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
-            return;
           } else {
             /* ---------------------------------
              * Format and send response
@@ -395,7 +394,6 @@ export abstract class ApiAlliances implements ApiHelper {
             };
             void ApiHelper.updateCache(cachedKey, responseContent);
             response.status(ApiHelper.HTTP_OK).send(responseContent);
-            return;
           }
         },
       );

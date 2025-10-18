@@ -83,7 +83,7 @@ export abstract class ApiCastle implements ApiHelper {
         return;
       }
       const data = await responseData.json();
-      if (!data || !data['content'] || !data['content']['gca']) {
+      if (!data?.content?.gca) {
         response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: 'No castles found for this player' });
         return;
       }
@@ -252,7 +252,7 @@ export abstract class ApiCastle implements ApiHelper {
        * --------------------------------- */
       const query = `SELECT id FROM players WHERE LOWER(name) = LOWER($1) AND castles IS NOT NULL AND castles != '[]' LIMIT 1;`;
       const result = await (request['pg_pool'] as pg.Pool).query(query, [playerName]);
-      if (!result || !result.rows || result.rows.length === 0 || !result.rows[0].id) {
+      if (!result?.rows || result.rows.length === 0 || !result.rows[0].id) {
         response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: 'Player not found' });
         return;
       }
@@ -272,7 +272,7 @@ export abstract class ApiCastle implements ApiHelper {
         return;
       }
       const data = await responseData.json();
-      if (!data || !data['content'] || !data['content']['O'] || !data['content']['O']['AP']) {
+      if (!data?.content?.O?.AP) {
         response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: 'No castles found for this player' });
         return;
       }
