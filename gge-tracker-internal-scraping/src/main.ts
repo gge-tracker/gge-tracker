@@ -2090,8 +2090,8 @@ export class GenericFetchAndSaveBackend {
           const pgSqlQuery = `
             UPDATE players
             SET
-              castles = NULL,
-              castles_realm = NULL,
+              castles = [],
+              castles_realm = [],
               alliance_id = NULL
             WHERE id = $1
           `;
