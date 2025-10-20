@@ -51,8 +51,8 @@ export abstract class ApiStatistics implements ApiHelper {
       /* ---------------------------------
        * Cache validation
        * --------------------------------- */
-      const cacheKey = `statistics:alliances:${allianceId}`;
-      const cachedData = await ApiHelper.redisClient.get(cacheKey);
+      const cachedKey = `statistics:alliances:${allianceId}`;
+      const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
         return;
@@ -64,7 +64,7 @@ export abstract class ApiStatistics implements ApiHelper {
       try {
         const { diffs, points } = await this.getPlayersEventsStatisticsFromAllianceId(allianceId);
         const data = { diffs, points };
-        void ApiHelper.updateCache(cacheKey, data);
+        void ApiHelper.updateCache(cachedKey, data);
         response.status(ApiHelper.HTTP_OK).send(data);
       } catch (error) {
         console.error('Error executing queries:', error);

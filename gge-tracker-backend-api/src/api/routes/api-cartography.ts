@@ -52,7 +52,8 @@ export abstract class ApiCartography implements ApiHelper {
       /* ---------------------------------
        * Check cache
        * --------------------------------- */
-      const cachedKey = request['language'] + '/carto/size/' + nb;
+      const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${request['language']}`)) || '1';
+      const cachedKey = request['language'] + `:${cacheVersion}:` + '/carto/size/' + nb;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
@@ -161,7 +162,8 @@ export abstract class ApiCartography implements ApiHelper {
       /* ---------------------------------
        * Check cache
        * --------------------------------- */
-      const cachedKey = request['language'] + '/carto/alliance-name/' + encodedAllianceName;
+      const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${request['language']}`)) || '1';
+      const cachedKey = request['language'] + `:${cacheVersion}:` + '/carto/alliance-name/' + encodedAllianceName;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));

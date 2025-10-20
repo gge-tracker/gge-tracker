@@ -119,8 +119,10 @@ export abstract class ApiPlayers implements ApiHelper {
       /* ---------------------------------
        * Cache validation
        * --------------------------------- */
+      const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${request['language']}`)) || '1';
       const cachedKey =
         request['language'] +
+        `:${cacheVersion}:` +
         `players-page-${page}-orderBy-${orderBy}-orderType-${orderType}-alliance-${encodedAlliance}-minHonor-${minHonor}-maxHonor-${maxHonor}-minMight-${minMight}-maxMight-${maxMight}-minLoot-${minLoot}-maxLoot-${maxLoot}-minLevel-${minLevel}-${minLegendaryLevel}-maxLevel-${maxLevel}-${maxLegendaryLevel}-allianceFilter-${allianceFilter}-protectionFilter-${protectionFilter}-banFilter-${banFilter}-inactiveFilter-${inactiveFilter}-playerNameForDistance-${encodedPlayerNameForDistance}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
@@ -452,8 +454,9 @@ export abstract class ApiPlayers implements ApiHelper {
        * Cache validation
        * --------------------------------- */
       const encodedPlayerName = encodeURIComponent(playerName);
-      const cacheKey = request['language'] + `players:${encodedPlayerName}`;
-      const cachedData = await ApiHelper.redisClient.get(cacheKey);
+      const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${request['language']}`)) || '1';
+      const cachedKey = request['language'] + `:${cacheVersion}:` + `players:${encodedPlayerName}`;
+      const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
         return;
@@ -530,7 +533,7 @@ export abstract class ApiPlayers implements ApiHelper {
           /* ---------------------------------
            * Update cache
            * --------------------------------- */
-          void ApiHelper.updateCache(cacheKey, resultMapped);
+          void ApiHelper.updateCache(cachedKey, resultMapped);
           response.status(ApiHelper.HTTP_OK).send(resultMapped);
         }
       });

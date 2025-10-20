@@ -78,10 +78,11 @@ export abstract class ApiServer implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const cacheVersion = (await ApiHelper.redisClient.get(request['language'] + '-server-movements')) || '1';
+      const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${request['language']}`)) || '1';
       const cachedKey =
         request['language'] +
-        `-${cacheVersion}-server-movements-page-${page}-search-${searchInputHash}-type-${searchTypeHash}-castleType-${filterByCastleType}-movementType-${filterByMovementType}-allianceId-${allianceIdHash}`;
+        `:${cacheVersion}:` +
+        `server-movements-page-${page}-search-${searchInputHash}-type-${searchTypeHash}-castleType-${filterByCastleType}-movementType-${filterByMovementType}-allianceId-${allianceIdHash}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
@@ -309,8 +310,10 @@ export abstract class ApiServer implements ApiHelper {
       /* ---------------------------------
        * Build cache key
        * --------------------------------- */
+      const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${request['language']}`)) || '1';
       const cachedKey =
         request['language'] +
+        `:${cacheVersion}:` +
         `server-renames-page-${page}-search-${searchInputHash}-type-${searchTypeHash}-showType-${showType}-allianceId-${allianceId}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
@@ -501,7 +504,8 @@ export abstract class ApiServer implements ApiHelper {
       /* ---------------------------------
        * Check cache
        * --------------------------------- */
-      const cachedKey = request['language'] + 'server-global-statistics';
+      const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${request['language']}`)) || '1';
+      const cachedKey = request['language'] + `:${cacheVersion}:` + 'server-global-statistics';
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));

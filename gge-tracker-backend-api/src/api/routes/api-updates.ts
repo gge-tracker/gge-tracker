@@ -51,7 +51,8 @@ export abstract class ApiUpdates implements ApiHelper {
       /* ---------------------------------
        * Cache check
        * --------------------------------- */
-      const cachedKey = request['language'] + `updates:alliances:${allianceId}:players`;
+      const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${request['language']}`)) || '1';
+      const cachedKey = request['language'] + `:${cacheVersion}:` + `updates:alliances:${allianceId}:players`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
@@ -162,7 +163,8 @@ export abstract class ApiUpdates implements ApiHelper {
       /* ---------------------------------
        * Cache check
        * --------------------------------- */
-      const cachedKey = request['language'] + `updates:${playerId}:names`;
+      const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${request['language']}`)) || '1';
+      const cachedKey = request['language'] + `:${cacheVersion}:` + `updates:${playerId}:names`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
@@ -259,7 +261,8 @@ export abstract class ApiUpdates implements ApiHelper {
       /* ---------------------------------
        * Check Cache
        * --------------------------------- */
-      const cachedKey = request['language'] + `updates:${playerId}:alliances`;
+      const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${request['language']}`)) || '1';
+      const cachedKey = request['language'] + `:${cacheVersion}:` + `updates:${playerId}:alliances`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));

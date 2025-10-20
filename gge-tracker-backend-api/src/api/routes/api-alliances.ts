@@ -63,7 +63,17 @@ export abstract class ApiAlliances implements ApiHelper {
       playerNameForDistance = playerNameForDistance.trim().toLowerCase();
       const encodedAllianceId = encodeURIComponent(allianceId);
       const encodedPlayerNameForDistance = encodeURIComponent(playerNameForDistance);
-      const cachedKey = request['language'] + `alliances:${encodedAllianceId}:${encodedPlayerNameForDistance}`;
+      const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${request['language']}`)) || '1';
+      const cachedKey =
+        request['language'] + `:${cacheVersion}:` + `alliances:${encodedAllianceId}:${encodedPlayerNameForDistance}`;
+      /* ---------------------------------
+       * Check cache
+       * --------------------------------- */
+      const cachedData = await ApiHelper.redisClient.get(cachedKey);
+      if (cachedData) {
+        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        return;
+      }
       /* ---------------------------------
        * Execute queries and process results
        * --------------------------------- */
@@ -95,14 +105,6 @@ export abstract class ApiAlliances implements ApiHelper {
           playerX = selectedKid[0][0];
           playerY = selectedKid[0][1];
         }
-      }
-      /* ---------------------------------
-       * Check cache
-       * --------------------------------- */
-      const cachedData = await ApiHelper.redisClient.get(cachedKey);
-      if (cachedData) {
-        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
-        return;
       }
       /* ---------------------------------
        * Build and execute main query
@@ -198,8 +200,9 @@ export abstract class ApiAlliances implements ApiHelper {
        * --------------------------------- */
       const encodedAllianceName = encodeURIComponent(allianceName);
       // This is a protected endpoint, so we can assume pg_pool and code are always set
-      const cacheKey = request['language'] + `alliances:${encodedAllianceName}`;
-      const cachedData = await ApiHelper.redisClient.get(cacheKey);
+      const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${request['language']}`)) || '1';
+      const cachedKey = request['language'] + `:${cacheVersion}:` + `alliances:${encodedAllianceName}`;
+      const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
         return;
@@ -210,23 +213,23 @@ export abstract class ApiAlliances implements ApiHelper {
       let parameterIndex = 1;
       const query: string = `
         SELECT
-            A.id AS alliance_id,
-            A.name AS alliance_name,
-            SUM(P.might_current) AS might_current,
-            SUM(P.might_all_time) AS might_all_time,
-            SUM(P.loot_current) AS loot_current,
-            SUM(P.loot_all_time) AS loot_all_time,
-            SUM(P.current_fame) AS current_fame,
-            SUM(P.highest_fame) AS highest_fame,
-            COUNT(P.id) AS player_count
+          A.id AS alliance_id,
+          A.name AS alliance_name,
+          SUM(P.might_current) AS might_current,
+          SUM(P.might_all_time) AS might_all_time,
+          SUM(P.loot_current) AS loot_current,
+          SUM(P.loot_all_time) AS loot_all_time,
+          SUM(P.current_fame) AS current_fame,
+          SUM(P.highest_fame) AS highest_fame,
+          COUNT(P.id) AS player_count
         FROM
-            alliances A
+          alliances A
         LEFT JOIN
-            players P ON A.id = P.alliance_id
+          players P ON A.id = P.alliance_id
         WHERE
-            LOWER(A.name) = $${parameterIndex++}
+          LOWER(A.name) = $${parameterIndex++}
         GROUP BY
-            A.id
+          A.id
         LIMIT 1;
         `;
       /* ---------------------------------
@@ -255,7 +258,7 @@ export abstract class ApiAlliances implements ApiHelper {
             highest_fame: result.highest_fame,
             player_count: result.player_count,
           };
-          void ApiHelper.updateCache(cacheKey, mappedResult);
+          void ApiHelper.updateCache(cachedKey, mappedResult);
           response.status(ApiHelper.HTTP_OK).send(mappedResult);
         }
       });
@@ -295,7 +298,9 @@ export abstract class ApiAlliances implements ApiHelper {
       /* ---------------------------------
        * Check cache
        * --------------------------------- */
-      const cachedKey = request['language'] + `alliances-page-${page}-orderBy-${orderBy}-orderType-${orderType}`;
+      const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${request['language']}`)) || '1';
+      const cachedKey =
+        request['language'] + `:${cacheVersion}:` + `alliances-page-${page}-orderBy-${orderBy}-orderType-${orderType}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
