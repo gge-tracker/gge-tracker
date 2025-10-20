@@ -19,3 +19,13 @@
   max-height: 65vh;
   overflow-y: auto;
 }
+
+.sticky-search-box {
+  top: 0;
+  background: white;
+  z-index: 10;
+  left: 0;
+  right: 0;
+  position: sticky;
+  border-bottom: 1px #d2d2d2 solid;
+}

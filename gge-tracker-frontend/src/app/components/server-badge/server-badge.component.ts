@@ -21,8 +21,9 @@ export class ServerBadgeComponent extends GenericComponent {
   public version = '';
   public shortVersion = '';
   public dateVersion = '';
-  public serversInDeployList = ['E4K-BR1', 'E4K-HANT1'];
+  public serversInDeployList = [];
   public serverService = inject(ServerService);
+  public filteredServerInput: string = '';
 
   constructor() {
     super();
@@ -38,9 +39,11 @@ export class ServerBadgeComponent extends GenericComponent {
   }
 
   public get servers(): string[] {
-    const allowed = this.allowedServers();
-    if (allowed) return allowed;
-    return this.serverService.servers;
+    const servers = this.allowedServers() ?? this.serverService.servers;
+    return servers.filter(
+      (server) =>
+        this.filteredServerInput.length === 0 || server.toLowerCase().includes(this.filteredServerInput.toLowerCase()),
+    );
   }
 
   public get choosedServer(): string {
