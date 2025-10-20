@@ -39,7 +39,15 @@ export enum GgeTrackerServers {
   SA1 = 'SA1',
   TR1 = 'TR1',
   US1 = 'US1',
+  GR1 = 'GR1',
   WORLD1 = 'WORLD1',
+  E4K_HANT1 = 'E4K_HANT1',
+  E4K_BR1 = 'E4K_BR1',
+  E4K_FR1 = 'E4K_FR1',
+  E4K_DE1 = 'E4K_DE1',
+  E4K_DE2 = 'E4K_DE2',
+  E4K_US1 = 'E4K_US1',
+  E4K_INT2 = 'E4K_INT2',
 }
 
 /**
@@ -55,6 +63,9 @@ export const BASE_SQL_DB_NAME = 'empire-ranking';
  * But OLAP database name is not changed for legacy reason.
  */
 export const BASE_OLAP_DB_NAME = 'empire_ranking';
+
+export const BASE_SQL_E4K_DB_NAME = 'ggetracker-e4k';
+export const BASE_OLAP_E4K_DB_NAME = 'ggetracker_e4k';
 
 /**
  * Manages server configurations, database pools, and utility methods for the GGE Tracker API.
@@ -248,11 +259,59 @@ export class ApiGgeTrackerManager extends DatabaseManager {
       code: '026',
       zone: 'EmpireEx_27',
     },
+    [GgeTrackerServers.GR1]: {
+      databases: { sql: BASE_SQL_DB_NAME + '-gr1', olap: BASE_OLAP_DB_NAME + '_gr1' },
+      outer_name: 'GR1',
+      code: '011',
+      zone: 'EmpireEx_27',
+    },
     [GgeTrackerServers.GLOBAL]: {
       databases: { sql: BASE_SQL_DB_NAME + '-global', olap: '' },
       outer_name: '',
       code: '',
       zone: '',
+    },
+    [GgeTrackerServers.E4K_HANT1]: {
+      databases: { sql: BASE_SQL_E4K_DB_NAME + '-hant1', olap: BASE_OLAP_E4K_DB_NAME + '_hant1' },
+      outer_name: 'E4K_HANT1',
+      code: '462',
+      zone: 'EmpirefourkingdomsExGG_30',
+    },
+    [GgeTrackerServers.E4K_BR1]: {
+      databases: { sql: BASE_SQL_E4K_DB_NAME + '-br1', olap: BASE_OLAP_E4K_DB_NAME + '_br1' },
+      outer_name: 'E4K_BR1',
+      code: '202',
+      zone: 'EmpirefourkingdomsExGG_13',
+    },
+    [GgeTrackerServers.E4K_FR1]: {
+      databases: { sql: BASE_SQL_E4K_DB_NAME + '-fr1', olap: BASE_OLAP_E4K_DB_NAME + '_fr1' },
+      outer_name: 'E4K_FR1',
+      code: '164',
+      zone: 'EmpirefourkingdomsExGG_2',
+    },
+    [GgeTrackerServers.E4K_DE1]: {
+      databases: { sql: BASE_SQL_E4K_DB_NAME + '-de1', olap: BASE_OLAP_E4K_DB_NAME + '_de1' },
+      outer_name: 'E4K_DE1',
+      code: '121',
+      zone: 'EmpirefourkingdomsExGG',
+    },
+    [GgeTrackerServers.E4K_DE2]: {
+      databases: { sql: BASE_SQL_E4K_DB_NAME + '-de2', olap: BASE_OLAP_E4K_DB_NAME + '_de2' },
+      outer_name: 'E4K_DE2',
+      code: '192',
+      zone: 'EmpirefourkingdomsExGG_28',
+    },
+    [GgeTrackerServers.E4K_US1]: {
+      databases: { sql: BASE_SQL_E4K_DB_NAME + '-us1', olap: BASE_OLAP_E4K_DB_NAME + '_us1' },
+      outer_name: 'E4K_US1',
+      code: '203',
+      zone: 'EmpirefourkingdomsExGG_4',
+    },
+    [GgeTrackerServers.E4K_INT2]: {
+      databases: { sql: BASE_SQL_E4K_DB_NAME + '-int2', olap: BASE_OLAP_E4K_DB_NAME + '_int2' },
+      outer_name: 'E4K_INT2',
+      code: '186',
+      zone: 'EmpirefourkingdomsExGG_21',
     },
   };
 

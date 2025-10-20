@@ -20,18 +20,19 @@ export class AboutComponent extends GenericComponent implements OnInit {
   public safeTranslatedIntro1!: SafeHtml;
   public sanitizer = inject(DomSanitizer);
   private contribs = [
+    { name: '0din0', server: 'IT1' },
     { name: 'Ausone', server: 'FR1' },
+    { name: 'Aznoknis', server: 'LIVE' },
     { name: 'Danadum', server: 'FR1' },
+    { name: 'Fear', server: 'DE1' },
     { name: 'Kevin', server: 'NL1' },
     { name: 'Rubriq', server: 'FR1' },
     { name: 'Satana', server: 'RO1' },
+    { name: 'Sekyra', server: 'CZ1' },
+    { name: 'Thomas', server: 'NL1' },
+    { name: 'WillTheBoss', server: 'RO1' },
     { name: 'Wojts8', server: 'PL1' },
     { name: 'Xenon', server: 'INT3' },
-    { name: '0din0', server: 'IT1' },
-    { name: 'Sekyra', server: 'CZ1' },
-    { name: 'WillTheBoss', server: 'RO1' },
-    { name: 'Aznoknis', server: 'LIVE' },
-    { name: 'Fear', server: 'DE1' },
     { name: 'nitro0ogen', server: 'SA1' },
   ];
 

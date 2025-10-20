@@ -57,6 +57,14 @@ export class ServerService {
     'INT1',
     'RU1',
     'CN1',
+    'GR1',
+    'E4K_BR1',
+    'E4K_HANT1',
+    'E4K_FR1',
+    'E4K_DE1',
+    'E4K_DE2',
+    'E4K_US1',
+    'E4K_INT2',
   ];
   public mappedLangsToServers: Record<string, string[]> = {
     fr: ['FR1'],
@@ -103,10 +111,16 @@ export class ServerService {
     ES1: 'Spain',
     SA1: 'Saudi Arabia',
     INT1: 'International: 1',
-    'E4K-BR1': 'Empire Four Kingdoms - Brazil',
-    'E4K-HANT1': 'Empire Four Kingdoms - Chinese (Traditional)',
     RU1: 'Russia',
     CN1: 'China',
+    GR1: 'Greece',
+    E4K_BR1: 'Empire Four Kingdoms - Brazil 1',
+    E4K_HANT1: 'Empire Four Kingdoms - Chinese (Traditional)',
+    E4K_FR1: 'Empire Four Kingdoms - France 1',
+    E4K_DE1: 'Empire Four Kingdoms - Germany 1',
+    E4K_DE2: 'Empire Four Kingdoms - Germany 2',
+    E4K_US1: 'Empire Four Kingdoms - United States 1',
+    E4K_INT2: 'Empire Four Kingdoms - International 2',
   };
 
   public flagsUrl: Record<string, string> = {
@@ -132,10 +146,16 @@ export class ServerService {
     ES1: 'https://flagsapi.com/ES/flat/64.png',
     SA1: 'https://flagsapi.com/SA/flat/64.png',
     INT1: '/assets/int_flag.png',
-    'E4K-BR1': 'https://flagsapi.com/BR/flat/64.png',
-    'E4K-HANT1': 'https://flagsapi.com/CN/flat/64.png',
     RU1: 'https://flagsapi.com/RU/flat/64.png',
     CN1: 'https://flagsapi.com/CN/flat/64.png',
+    GR1: 'https://flagsapi.com/GR/flat/64.png',
+    E4K_BR1: 'https://flagsapi.com/BR/flat/64.png',
+    E4K_HANT1: 'https://flagsapi.com/CN/flat/64.png',
+    E4K_FR1: 'https://flagsapi.com/FR/flat/64.png',
+    E4K_DE1: 'https://flagsapi.com/DE/flat/64.png',
+    E4K_DE2: 'https://flagsapi.com/DE/flat/64.png',
+    E4K_US1: 'https://flagsapi.com/US/flat/64.png',
+    E4K_INT2: '/assets/int_flag.png',
   };
   private languageService = inject(LanguageService);
   private localStorage = inject(LocalStorageService);
