@@ -143,6 +143,7 @@ services:
       - REDIS_URL=redis://redis-server:6379
       - INTERNAL_SECRET=${INTERNAL_SECRET}
       - GGE_API_URL=${GGE_API_URL}:${GGE_API_PORT}
+      - GGE_API_URL_REALTIME=${GGE_API_URL_REALTIME}:${GGE_API_PORT_REALTIME}
     depends_on:
       mariadb:
         condition: service_healthy
