@@ -1,0 +1,25 @@
+<div class="container">
+  <div class="category-switch">
+    <button *ngFor="let category of categories | keyvalue" class="category-button" (click)="onCategoryChange(category.key)">
+      {{ category.key }} {{ category.value }}
+    </button>
+  </div>
+  <div class="row">
+    <div *ngFor="let offer of selectedCategoryOffer" class="offer-card col-4">
+      <img [src]="offer.teaserImg" alt="{{ offer.name }}" class="offer-image" width="200" />
+      <div class="offer-details">
+        <h3 class="offer-name">{{ offer.name }}</h3>
+        <p class="offer-price">{{ offer.formattedPrice }} {{ offer.currencyCode }}</p>
+        <p class="offer-description">{{ offer.description }}</p>
+      </div>
+      <div class="offer-rewards">
+        <div *ngFor="let reward of offer.rewards" class="reward-item">
+          <img *ngIf="reward.iconUrl" [src]="reward.iconUrl" alt="{{ reward.title }}" class="reward-image" width="50" />
+          <span class="reward-quantity">&nbsp;x{{ reward.qty }}</span>
+          <h5 class="reward-title">{{ reward.title }}</h5>
+          <span class="reward-desc">{{ reward.desc }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,45 +1,42 @@
 import { Component, OnInit } from '@angular/core';
-
-import { ApiOffer, Offer } from '@ggetracker-interfaces/empire-ranking';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-offers',
   standalone: true,
-  imports: [],
+  imports: [CommonModule],
   templateUrl: './offers.component.html',
   styleUrl: './offers.component.css',
 })
 export class OffersComponent extends GenericComponent implements OnInit {
-  public offers: Offer[] = [];
+  public offers: Record<string, any> = {};
+  public selectedCategoryOffer: any[] = [];
+  public categories: Record<string, number> = {};
 
   public ngOnInit(): void {
     void this.apiRestService.getOffers().then((offers) => {
-      if (offers.success) {
-        this.offers = this.mapOfferFromApiResponse(offers.data.offers);
-        this.isInLoading = false;
+      this.offers = offers;
+      for (const category in this.offers) {
+        if (this.offers.hasOwnProperty(category) && this.offers[category]?.data?.offers) {
+          this.offers[category].data.offers = this.offers[category].data.offers.map((offer: any) => {
+            return {
+              ...offer,
+              formattedPrice: (Number(offer.price) / 100).toFixed(2),
+            };
+          });
+        }
       }
+      for (const category in offers) {
+        if (offers.hasOwnProperty(category) && offers[category].data?.offers?.length > 0) {
+          this.categories[category] = offers[category].data?.offers?.length;
+        }
+      }
+      this.isInLoading = false;
     });
   }
 
-  private mapOfferFromApiResponse(offers: ApiOffer[]): Offer[] {
-    return offers.map((offer: ApiOffer) => {
-      return {
-        startAt: offer.start_at,
-        endAt: offer.end_at,
-        offer: offer.offer,
-        offerType: offer.offer_type,
-        serverType: offer.server_type,
-        worldType: offer.world_type,
-        isActive: this.isActiveOffer(offer.start_at, offer.end_at),
-      };
-    });
-  }
-
-  private isActiveOffer(startAt: string, endAt: string): boolean {
-    const now = new Date();
-    const startDate = new Date(startAt);
-    const endDate = new Date(endAt);
-    return now >= startDate && now <= endDate;
+  public onCategoryChange(category: string): void {
+    this.selectedCategoryOffer = this.offers[category].data.offers;
   }
 }
