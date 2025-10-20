@@ -482,7 +482,7 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     const colors = JSON.stringify(this.legends.map((legend) => this.rgbToHex(legend.color)));
     const world = this.selectedWorld || 0;
     const srv = this.serverService.currentServer;
-    const link = `/map/custom?s=${srv}&world=${world}&in=${encodeURIComponent(inParameter)}&c=${encodeURIComponent(colors)}`;
+    const link = `gge-tracker.com/map/custom?s=${srv}&world=${world}&in=${encodeURIComponent(inParameter)}&c=${encodeURIComponent(colors)}`;
     if (link.length > 2000) {
       // If the link is too long, we show an error message (this is a limitation of the URL length)
       this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
