@@ -309,7 +309,7 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
     this.selectedCard = card;
     const specialIdentifier = identifier == 'alliances_changed_name' || identifier == 'players_who_changed_name';
     const curveStroke = specialIdentifier ? 'straight' : 'straight';
-    this.charts['statistics'] = {
+    const chart: ChartOptions = {
       series: [],
       chart: {
         type: specialIdentifier ? 'area' : 'area',
@@ -408,14 +408,14 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
     // We need to remove the null values from the data
     data = data.filter((d) => d.y !== null);
     data.sort((a, b) => new Date(a.x).getTime() - new Date(b.x).getTime());
-    this.charts['statistics'].yaxis = {
+    chart.yaxis = {
       labels: {
         formatter: (value: number): string => {
           return value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
         },
       },
     };
-    this.charts['statistics'].tooltip = {
+    chart.tooltip = {
       y: {
         formatter: (value: number): string => {
           return value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -439,24 +439,24 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
           break;
         }
       }
-      this.charts['statistics'].series = [
+      chart.series = [
         {
           name: card.label,
           data: lastData,
         },
       ];
-      this.charts['statistics'].xaxis.min = new Date(lastData[0].x).getTime();
+      chart.xaxis.min = new Date(lastData[0].x).getTime();
       if (lastData.at(-1)) {
-        this.charts['statistics'].xaxis.max = new Date(lastData.at(-1)!.x).getTime();
+        chart.xaxis.max = new Date(lastData.at(-1)!.x).getTime();
       }
     } else if (identifier === 'avg_level') {
-      this.charts['statistics'].series = [
+      chart.series = [
         {
           name: card.label,
           data,
         },
       ];
-      this.charts['statistics'].yaxis = {
+      chart.yaxis = {
         labels: {
           formatter: (value: number): string => {
             const level = value > 70 ? '70/' + (Math.round(value) - 70) : Math.round(value);
@@ -464,7 +464,7 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
           },
         },
       };
-      const y = this.charts['statistics'].tooltip.y;
+      const y = chart.tooltip.y;
       if (y) {
         // @ts-expect-error: formatter is not a recognized property but is used for configuration
         y.formatter = (value: number): string => {
@@ -488,7 +488,7 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
         });
         data.sort((a, b) => new Date(a.x).getTime() - new Date(b.x).getTime());
       }
-      this.charts['statistics'].series = [
+      chart.series = [
         {
           name: card.label,
           data,
@@ -541,12 +541,18 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
       );
       currentTime = new Date(nextMorningStart);
     }
-    const name = this.charts['statistics'].series[0].name;
+    const name = chart.series[0].name;
     if (name !== undefined) {
-      this.charts['statistics'].series[0].name = this.translateService.instant(name);
-      const annotations = this.charts['statistics'].annotations;
+      chart.series[0].name = this.translateService.instant(name);
+      const annotations = chart.annotations;
       if (annotations) annotations.xaxis = annotations.xaxis || [];
     }
+    // Remove 'statistics' chart if already exists
+    if (this.charts['statistics']) {
+      delete this.charts['statistics'];
+    }
+    this.cdr.detectChanges();
+    this.charts['statistics'] = chart;
     this.cdr.detectChanges();
   }
 
