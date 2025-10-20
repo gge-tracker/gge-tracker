@@ -8,7 +8,7 @@
     <div class="lang-switch d-flex align-items-center pointer" data-bs-toggle="modal" data-bs-target="#translateModal"
       [title]="'Changer de langue' | translate">
       <lucide-icon class="lucide lucide-globe" [img]="Globe"></lucide-icon>
-      <span class="d-none d-lg-inline ms-1">{{ 'Langue' | translate }}</span>
+      <span class="d-none d-xxl-inline ms-1">{{ 'Langue' | translate }}</span>
     </div>
     <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
       <ul class="navbar-nav">
@@ -87,16 +87,22 @@
         </li>
       </ul>
     </div>
-    <div class="about-button me-2 discord-badge d-inline-block ms-1 text-center align-middle" style="color: #7289da;">
+    <div class="ext-link-button me-2 github-badge d-inline-block ms-1 text-center align-middle" style="color: #333;" title="GitHub">
+      <a href="https://github.com/gge-tracker/gge-tracker" target="_blank" rel="noopener" style="color: inherit"
+        class="text-decoration-none align-items-center h-100 text-center">
+        <i class="fa-brands fa-github fa-lg"></i>
+      </a>
+    </div>
+    <div class="ext-link-button me-2 discord-badge d-inline-block ms-1 text-center align-middle" style="color: #7289da;">
       <a href="https://discord.gg/eb6WSHQqYh" target="_blank" rel="noopener" style="color: inherit"
         class="text-decoration-none align-items-center h-100 text-center">
         <i class="fa-brands fa-discord fa-lg"></i>
-        <span class="d-none d-lg-inline ms-1">{{ 'Discord' }}</span>
+        <span class="d-none d-xxl-inline ms-1">{{ 'Discord' }}</span>
       </a>
     </div>
     <div class="about-button align-items-center d-flex" [routerLink]="['/', 'about']" [title]="'A propos' | translate">
       <lucide-icon class="lucide lucide-info" [img]="Info"></lucide-icon>
-      <span class="d-none d-lg-inline ms-1">{{ 'A propos' | translate }}</span>
+      <span class="d-none d-xxl-inline ms-1">{{ 'A propos' | translate }}</span>
     </div>
   </div>
 </nav>
