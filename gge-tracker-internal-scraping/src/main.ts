@@ -347,33 +347,20 @@ export class GenericFetchAndSaveBackend {
       await new Promise((resolve) => setTimeout(resolve, 3000));
       Utils.logMessage('* Processing Might points (8/9)');
       await this.fillMightPointsHistory();
-      const redisClient = createClient({
-        url: 'redis://redis-server:6379',
-        socket: {
-          reconnectStrategy: (retries) => Math.min(retries * 50, 2000),
-          keepAlive: 5000,
-        },
-      });
-      await redisClient.connect();
-      setInterval(async () => {
-        try {
-          await redisClient.ping();
-        } catch (err) {
-          console.error('Redis ping failed', err);
-        }
-      }, 30000); // Every 30 seconds
-      await redisClient.incr(this.server + '-server-movements');
       await this.updateParameter('might', 1);
       await new Promise((resolve) => setTimeout(resolve, 1000));
       Utils.logMessage('* Updating player might and loot current/total (9/9)');
       await this.updatePlayersMightAndLoot();
-      await redisClient.incr(this.server + '-server-movements');
       Utils.logMessage('* Updating server statistics');
       await this.updateServerStatistics();
       Utils.logMessage('* Updating inactive players');
       await this.updateInactivePlayers();
-      await redisClient.incr(this.server + '-server-movements');
       const end = new Date();
+      const redisClient = createClient({
+        url: 'redis://redis-server:6379',
+      });
+      await redisClient.connect();
+      await redisClient.incr(`fill-version:${this.server}`);
       await this.updateParameter('is_currently_updating', 0);
       await this.updateParameter('duration', Math.round((end.getTime() - start.getTime()) / 1000));
       Utils.logMessage('');
@@ -1338,7 +1325,7 @@ export class GenericFetchAndSaveBackend {
   }
 
   private async removePlayerFromDatabase(playerId: number): Promise<void> {
-    const pgSqlQuery = 'UPDATE players SET castles = NULL WHERE id = $1';
+    const pgSqlQuery = 'UPDATE players SET castles = NULL AND alliance_id = NULL WHERE id = $1';
     Utils.logMessage(' [Info] Deleting player', playerId);
     try {
       await this.pgSqlQuery(pgSqlQuery, [playerId]);
@@ -2578,7 +2565,7 @@ export class GenericFetchAndSaveBackend {
         const igh = data?.content?.IGH;
         if (data?.content?.L) {
           const content = data.content.L;
-          if (this.checkEventAlreadyExists(content, result.rows, 'trace')) {
+          if (await this.checkEventAlreadyExists(content, result.rows, 'trace')) {
             Utils.logMessage(' [info] No new event to fill');
             return;
           }
@@ -2783,6 +2770,12 @@ export class GenericFetchAndSaveBackend {
       const rank = entry[0];
       const key = `${playerName}|${level}|${point}|${rank}`;
       if (logLevel === 'trace') Utils.logMessage(' [trace] Checking entry:', key);
+      if (!existingSet.has(key)) {
+        if (logLevel === 'trace') {
+          Utils.logMessage(` [trace] Entry not found in existing records: ${key}`);
+        }
+        return false; // Found a non-matching entry
+      }
     }
     if (logLevel === 'trace') Utils.logMessage(' [trace] All entries match existing records');
     return true; // All entries match
