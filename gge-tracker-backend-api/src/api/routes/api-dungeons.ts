@@ -2,6 +2,7 @@ import * as express from 'express';
 import { ApiHelper } from '../api-helper';
 import * as pg from 'pg';
 import * as mysql from 'mysql';
+import { AuthorizedServersEnum } from '../interfaces/authorized-servers-special-features-enum';
 
 /**
  * Provides API endpoints for retrieving dungeon data with various filters and sorting options.
@@ -458,7 +459,7 @@ export abstract class ApiDungeons implements ApiHelper {
     // Authorized servers only, because dungeon data is not available for all servers.
     // However, in the future, we need to take out this configuration and expose it
     // in a separated file or from database.
-    const authorizedServers = ['FR1', 'RO1', 'CZ1', 'IT1', 'SA1', 'DE1'];
+    const authorizedServers = Object.values(AuthorizedServersEnum);
     if (!authorizedServers.includes(request['language'])) {
       response
         .status(ApiHelper.HTTP_BAD_REQUEST)
