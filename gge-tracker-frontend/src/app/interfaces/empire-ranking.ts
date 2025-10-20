@@ -586,6 +586,8 @@ export interface ApiPlayerCastleNameResponse {
   towerLevel: number;
   moatLevel: number;
   equipmentUniqueIdSkin: number;
+  equipment?: any;
+  isAvailable: boolean;
 }
 
 export interface ApiRankingStatsPlayer {

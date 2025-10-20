@@ -1,6 +1,7 @@
 import * as express from 'express';
 import { ApiHelper } from '../api-helper';
 import * as pg from 'pg';
+import { AuthorizedServersEnum } from '../interfaces/authorized-servers-special-features-enum';
 
 /**
  * Abstract class providing API endpoints related to castle data retrieval and analysis.
@@ -33,8 +34,18 @@ export abstract class ApiCastle implements ApiHelper {
        * Validate parameters
        * --------------------------------- */
       const castleId = ApiHelper.getVerifiedId(request.params.castleId);
+      const kingdomId = Number.parseInt(String(request.query.kingdomId || '0'));
+      const serverName = ApiHelper.ggeTrackerManager.getServerNameFromRequestId(castleId || 1);
       if (castleId === false || castleId === undefined) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid castle id' });
+        return;
+      } else if (Number.isNaN(kingdomId) || kingdomId < 0 || kingdomId > 3) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid kingdom id' });
+        return;
+      } else if (kingdomId > 0 && !Object.values(AuthorizedServersEnum).includes(serverName as AuthorizedServersEnum)) {
+        response
+          .status(ApiHelper.HTTP_BAD_REQUEST)
+          .send({ error: 'This server is not authorized for the kingdom ' + kingdomId + ' (special feature)' });
         return;
       }
 
@@ -52,7 +63,7 @@ export abstract class ApiCastle implements ApiHelper {
       /* ---------------------------------
        * Fetch from GGE API
        * --------------------------------- */
-      const basePath = process.env.GGE_API_URL;
+      const basePath = kingdomId === 0 ? process.env.GGE_API_URL : process.env.GGE_API_URL_REALTIME;
       // Step 1 : Send 'gbl' request  to clear previous context
       await fetch(`${basePath}/${ApiHelper.ggeTrackerManager.getZoneFromRequestId(castleId)}/gbl/null`, {
         method: 'GET',
@@ -62,7 +73,7 @@ export abstract class ApiCastle implements ApiHelper {
         },
       });
       // Step 2 : Send 'jca' request to get castle analysis data
-      const apiUrl = `${basePath}/${ApiHelper.ggeTrackerManager.getZoneFromRequestId(castleId)}/jca/"CID":${globalCastleId},"KID":0`;
+      const apiUrl = `${basePath}/${ApiHelper.ggeTrackerManager.getZoneFromRequestId(castleId)}/jca/"CID":${globalCastleId},"KID":${kingdomId}`;
       const responseData = await fetch(apiUrl, {
         method: 'GET',
         headers: {
@@ -196,7 +207,7 @@ export abstract class ApiCastle implements ApiHelper {
       /* ---------------------------------
        * Cache results and send response
        * --------------------------------- */
-      void ApiHelper.updateCache(cachedKey, responseContent, 60);
+      void ApiHelper.updateCache(cachedKey, responseContent, 360);
       response.status(ApiHelper.HTTP_OK).send(responseContent);
       return;
     } catch (error) {
@@ -280,10 +291,18 @@ export abstract class ApiCastle implements ApiHelper {
        * Format results
        * --------------------------------- */
       const castleObject = data['content']['gcl']['C'];
-      const castlesAI = castleObject.find((c: any) => c.KID === 0)['AI'];
+      const castlesAIBase = castleObject
+        .filter((c: any) => [0, 1, 2, 3].includes(c.KID))
+        .map((c: any) => c.AI.map((ai: any) => ({ ...ai, KID: c.KID })));
+      const castlesAI = castlesAIBase.flat();
+      const serverName = ApiHelper.ggeTrackerManager.getServerNameFromRequestId(
+        code as number,
+      ) as AuthorizedServersEnum;
+      const authorizedServers = Object.values(AuthorizedServersEnum);
       const mappedCastles = castlesAI.reduce((accumulator: any[], castle: any) => {
         accumulator.push({
-          kingdomId: 0,
+          kingdomId: castle.KID,
+          isAvailable: castle.KID === 0 ? true : authorizedServers.includes(serverName),
           id: Number(ApiHelper.addCountryCode(castle.AI[3], request['code'])),
           positionX: castle.AI[1],
           positionY: castle.AI[2],

@@ -134,10 +134,9 @@ export class ApiRestService {
     return { success: true, data: response.data };
   }
 
-  public async getOffers(): Promise<ApiResponse<ApiOffersResponse>> {
-    const response = await this.apiFetch<ApiOffersResponse>(`${ApiRestService.apiUrl}offers`);
-    if (!response.success) return response;
-    return { success: true, data: response.data };
+  public async getOffers(): Promise<any> {
+    const response = await fetch('/assets/offers.json');
+    return response.json();
   }
 
   /**
@@ -508,9 +507,12 @@ export class ApiRestService {
     return { success: true, data: response.data };
   }
 
-  public async getCastlePlayerDataByCastleID(castleId: number): Promise<ApiResponse<ApiPlayerCastleDataResponse>> {
+  public async getCastlePlayerDataByCastleID(
+    castleId: number,
+    kingdomId: number,
+  ): Promise<ApiResponse<ApiPlayerCastleDataResponse>> {
     const response = await this.apiFetch<ApiPlayerCastleDataResponse>(
-      `${ApiRestService.apiUrl}castle/analysis/${castleId}`,
+      `${ApiRestService.apiUrl}castle/analysis/${castleId}?kingdomId=${kingdomId}`,
     );
     if (!response.success) return response;
     return { success: true, data: response.data };

@@ -10,7 +10,7 @@ import {
   ViewChildren,
 } from '@angular/core';
 import { ApiRestService } from '@ggetracker-services/api-rest.service';
-import { DecimalPipe, NgFor, NgIf, NgStyle } from '@angular/common';
+import { DecimalPipe, NgClass, NgFor, NgIf, NgStyle } from '@angular/common';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import {
@@ -18,6 +18,7 @@ import {
   ApiPlayerCastleDataResponse,
   ApiPlayerCastleNameResponse,
   ApiResponse,
+  CastleType,
   ConstructionItem,
   ErrorType,
   IMappedBuildingElement,
@@ -34,6 +35,7 @@ import { LoadingComponent } from '@ggetracker-components/loading/loading.compone
 import { SwitchComponent } from '@ggetracker-components/switch/switch.component';
 import { ISelectItem, SelectComponent } from '@ggetracker-components/select/select.component';
 import { IMappedBuildingWithGround, Pt, GenericTextIds } from '@ggetracker-interfaces/view-castle';
+import { ServerService } from '@ggetracker-services/server.service';
 
 @Component({
   selector: 'app-view-castle',
@@ -43,6 +45,7 @@ import { IMappedBuildingWithGround, Pt, GenericTextIds } from '@ggetracker-inter
     SearchFormComponent,
     TranslatePipe,
     NgFor,
+    NgClass,
     DecimalPipe,
     LucideAngularModule,
     LoadingComponent,
@@ -197,6 +200,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     'Objets de construction': '',
   };
   private cdr = inject(ChangeDetectorRef);
+  private serverService = inject(ServerService);
 
   constructor() {
     super();
@@ -205,10 +209,11 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   public async ngOnInit(): Promise<void> {
     const cid = this.route.snapshot.queryParamMap.get('analysis');
     this.cid = cid ? +cid : null;
+    const kid = this.route.snapshot.queryParamMap.get('kid');
     const search = this.route.snapshot.queryParamMap.get('search');
     await this.translateKeys();
     if (cid && !Number.isNaN(+cid)) {
-      void this.fetchCastleData(+cid);
+      void this.fetchCastleData(+cid, +(kid || 0));
     } else if (search) {
       this.search = search;
       void this.searchPlayer(search);
@@ -225,12 +230,21 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
+  public getSkinFromUniqueId(castleJsonData: any, uniqueId: string): any {
+    const equipment = castleJsonData.equipments.find((equip: any) => equip.equipmentID === uniqueId) || null;
+    if (equipment) {
+      return castleJsonData.worldmapskins.find((skin: any) => skin.skinID === equipment.skinID) || null;
+    }
+    return null;
+  }
+
   public async searchPlayer(playerName: string): Promise<void> {
     if (!playerName) return;
     this.clearAllParameters();
     this.loadItemPlaceholder = true;
     await this.router.navigate([], { queryParams: { search: playerName } });
     this.search = playerName;
+    const castleJsonData = await this.fetchCastleJsonItems();
     const castleResponse = await this.getCastleData();
     if (!castleResponse.success) {
       console.error('Failed to fetch player data:', castleResponse);
@@ -239,7 +253,12 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       this.cdr.detectChanges();
       return;
     }
-    this.castles = castleResponse.data;
+    this.castles = castleResponse.data.map((castle) => ({
+      ...castle,
+      equipment: castle.equipmentUniqueIdSkin
+        ? this.getSkinFromUniqueId(castleJsonData, String(castle.equipmentUniqueIdSkin))
+        : null,
+    }));
     this.isInLoading = false;
     this.cdr.detectChanges();
     this.drawMiniMaps();
@@ -253,6 +272,11 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     return Number.isInteger(value) && value !== null
       ? value.toString().replaceAll(regex, ',')
       : this.translations['Inconnu'];
+  }
+
+  public displayUnavailableCastleMessage(): void {
+    const message = this.translateService.instant('server-not-available', { server: this.serverService.choosedServer });
+    this.toastService.add(message, 15_000, 'error');
   }
 
   public async updateJsonImageDimension(entry: IMappedBuildingWithGround): Promise<void> {
@@ -277,28 +301,43 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     return `${basePath}constructionitem${name}.png`;
   }
 
-  public getSearchCastleImg(castle: ApiPlayerCastleNameResponse): string {
+  public getSpecialSkin(castleType: string, name: string): string {
+    const basePath = ApiRestService.apiUrl + 'assets/common/';
+    //outpostmapobjectspecialspringbell
+    const cleanCastleType = castleType.toLowerCase().trim().replaceAll('\-_', '');
+    const cleanName = name.toLowerCase().trim().replaceAll('\-_', '');
+    return `${basePath}${cleanCastleType}mapobjectspecial${cleanName}.png`;
+  }
+
+  public getSearchCastleImg(castle: ApiPlayerCastleNameResponse, displayEquipment = false): string {
     const basePath = ApiRestService.apiUrl + 'assets/images/';
-    let path, level;
+    let path, level, eqName;
     switch (castle.type) {
-      case 1: {
+      case CastleType.REALM_CASTLE:
+      case CastleType.CASTLE: {
         path = 'keepbuilding';
         level = castle.keepLevel;
+        eqName = 'castlemapobject';
         break;
       }
-      case 3: {
+      case CastleType.CAPITAL: {
         path = 'capitalmapobject';
         break;
       }
-      case 22: {
+      case CastleType.CITY: {
         path = 'metropolmapobject';
         break;
       }
-      case 4: {
+      case CastleType.OUTPOST: {
         path = 'outpostmapobject';
         level = castle.keepLevel;
         break;
       }
+    }
+    if (displayEquipment && castle.equipment) {
+      const cleanName = castle.equipment?.name.toLowerCase().trim().replaceAll('\-_', '');
+      const suffix = cleanName === 'sand' ? 'sand802icon' : cleanName;
+      return `${basePath}${eqName ?? path}special${suffix}.png`;
     }
     return `${basePath}${path}${level ? `level${level}.png` : 'basic.png'}`;
   }
@@ -491,8 +530,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     this.isInLoading = true;
     const cid = castleData.id;
     this.cid = cid;
-    await this.router.navigate([], { queryParams: { analysis: cid } });
-    await this.fetchCastleData(+cid);
+    await this.router.navigate([], { queryParams: { analysis: cid, kid: castleData.kingdomId } });
+    await this.fetchCastleData(+cid, +(castleData.kingdomId || 0));
     this.cdr.detectChanges();
     return;
   }
@@ -665,8 +704,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     return await this.apiRestService.getCastlePlayerDataByName(this.search);
   }
 
-  private async fetchCastleData(cid: number): Promise<void> {
-    const castleResponse = await this.apiRestService.getCastlePlayerDataByCastleID(cid);
+  private async fetchCastleData(cid: number, kid: number): Promise<void> {
+    const castleResponse = await this.apiRestService.getCastlePlayerDataByCastleID(cid, kid);
     if (!castleResponse.success) {
       console.error('Failed to fetch castle data:', castleResponse);
       return;
@@ -1674,21 +1713,39 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     }
   }
 
+  private getColorMap(castle: ApiPlayerCastleNameResponse): string[] {
+    switch (castle.kingdomId) {
+      case 0: {
+        return ['#929E3F', '#0e0e0e56'];
+      }
+      case 1: {
+        return ['#e3d191', '#0e0e0e56'];
+      }
+      case 2: {
+        return ['#f3f2f2', '#0e0e0e56'];
+      }
+      case 3: {
+        return ['#46362a', '#ffffff56'];
+      }
+    }
+    return [];
+  }
+
   private drawMiniMaps(): void {
     this.miniMaps.forEach((canvasReference, index) => {
       const castle = this.castles[index];
       const context = canvasReference.nativeElement.getContext('2d');
       if (!context) return;
       context.clearRect(0, 0, this.miniSize, this.miniSize);
-      context.fillStyle = '#929E3F';
+      context.fillStyle = this.getColorMap(castle)[0];
       context.fillRect(0, 0, this.miniSize, this.miniSize);
       const x = (castle.positionX / this.mapSize) * this.miniSize;
       const y = (castle.positionY / this.mapSize) * this.miniSize;
-      context.fillStyle = 'red';
+      context.fillStyle = this.getColorMap(castle)[1];
       context.beginPath();
       context.arc(x, y, 3, 0, 2 * Math.PI);
       context.fill();
-      context.strokeStyle = '#be0404ff';
+      context.strokeStyle = this.getColorMap(castle)[1];
       context.lineWidth = 1;
       context.stroke();
     });

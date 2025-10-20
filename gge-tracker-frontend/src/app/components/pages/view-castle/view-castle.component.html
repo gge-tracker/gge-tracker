@@ -13,7 +13,11 @@
         <div *ngIf="loadItemPlaceholder" class="castle-card-placeholder">
           <div class="placeholder-shimmer"></div>
         </div>
-        <div *ngFor="let castle of castles" class="castle-card position-relative" (click)="onCastleClick(castle)" [title]="'Voir plus' | translate">
+        <div *ngFor="let castle of castles"
+          class="castle-card position-relative kid-{{ castle.kingdomId }}"
+          [ngClass]="{ unavailable: !castle.isAvailable }"
+          (click)="castle.isAvailable ? onCastleClick(castle) : displayUnavailableCastleMessage()"
+          [title]="castle.isAvailable ? ('Voir plus' | translate) : ''">
           <div class="position-absolute top-0 end-0 pe-2 ext-indicator"><i class="fa-solid fa-square-up-right"></i></div>
           <div class="castle-header text-center">
             <div class="castle-image">

@@ -113,7 +113,15 @@ export abstract class ApiAssets implements ApiHelper {
        * --------------------------------- */
       const itemsData = await fs.promises.readFile(path.join(__dirname, './../assets/items.json'));
       const filteredItems = JSON.parse(itemsData.toString());
-      const keysToKeep = new Set(['versionInfo', 'effects', 'effecttypes', 'buildings', 'constructionItems']);
+      const keysToKeep = new Set([
+        'versionInfo',
+        'effects',
+        'effecttypes',
+        'buildings',
+        'constructionItems',
+        'worldmapskins',
+        'equipments',
+      ]);
       for (const key of Object.keys(filteredItems)) {
         if (!keysToKeep.has(key)) {
           delete filteredItems[key];

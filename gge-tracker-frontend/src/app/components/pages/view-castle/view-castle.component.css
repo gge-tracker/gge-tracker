@@ -9,6 +9,21 @@
   font-size: 12px;
   white-space: nowrap;
 }
+.kid-0 .castle-image {
+  background-color: #919e3fb6;
+}
+
+.kid-1 .castle-image {
+  background-color: #e3d191b6;
+}
+
+.kid-2 .castle-image {
+  background-color: #f3f2f2b6;
+}
+
+.kid-3 .castle-image {
+  background-color: #46362ab6;
+}
 
 .castle-minimap {
   border: 1px solid #7e8a32;
@@ -119,7 +134,7 @@
   cursor: pointer;
   justify-content: space-between;
 }
-.castle-card:hover {
+.castle-card:not(.unavailable):hover {
   transform: translateY(-3px);
   box-shadow: 0 6px 16px rgba(0,0,0,0.12);
 }
@@ -129,6 +144,13 @@
   align-items: center;
   gap: 1rem;
 }
+
+.unavailable {
+  opacity: .3;
+  cursor: default;
+  user-select: none;
+}
+
 .castle-image {
   display: flex;
   align-items: center;
@@ -137,7 +159,8 @@
   height: 90px;
   border-radius: 16px;
   border: 1px solid rgb(255 255 255 / 8%);
-  background: rgba(255, 255, 255, 0.04);
+  background: url('/assets/light-background-hover.png');
+  background-size: 15px;
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
   box-shadow: 0 4px 8px rgb(0 0 0 / 5%);
@@ -153,7 +176,7 @@
   display: none !important;
 }
 
-.castle-image:hover {
+.castle-card:not(.unavailable) .castle-image:hover {
   transform: translateY(-2px) scale(1.03);
 }
 
@@ -163,7 +186,7 @@
   transition: transform 0.25s ease;
 }
 
-.castle-image:hover img {
+.castle-card:not(.unavailable) .castle-image:hover img {
   transform: scale(1.05);
 }
 .castle-info {
