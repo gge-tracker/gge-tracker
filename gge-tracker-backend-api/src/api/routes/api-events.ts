@@ -96,7 +96,7 @@ export abstract class ApiEvents implements ApiHelper {
           /* ---------------------------------
            * Update cache and send response
            * --------------------------------- */
-          void ApiHelper.updateCache(cachedKey, { events });
+          void ApiHelper.updateCache(cachedKey, { events }, 3600 * 3);
           response.status(ApiHelper.HTTP_OK).send({ events });
         }
       });
@@ -279,11 +279,11 @@ export abstract class ApiEvents implements ApiHelper {
         players,
         pagination,
       };
-      const cacheTtl = 60 * 60;
 
       /* ---------------------------------
        * Update cache and send response
        * --------------------------------- */
+      const cacheTtl = 60 * 60 * 12; // 12 hours
       await ApiHelper.redisClient.setEx(cachedKey, cacheTtl, JSON.stringify(responseData));
       response.status(ApiHelper.HTTP_OK).send(responseData);
     } catch (error) {
