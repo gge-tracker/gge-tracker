@@ -19,7 +19,7 @@ class GgeSocket {
   async log(message, ...args) {
     const day = new Date().toLocaleDateString();
     const time = new Date().toLocaleTimeString();
-    console.log(`[${day} ${time}] [${this.serverHeader}] ${message}`, ...args);
+    console.log(`[${day} ${time}] [EP][${this.serverHeader}] ${message}`, ...args);
   }
 
   async connect() {
