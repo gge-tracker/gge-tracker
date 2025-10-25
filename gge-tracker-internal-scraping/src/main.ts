@@ -65,6 +65,7 @@ export class GenericFetchAndSaveBackend {
   private connection: mysql.Pool;
   private pgSqlConnection: pg.Pool;
   private currentPlayers: PlayerDatabase[] = [];
+  private isE4KServer: boolean = false;
   private readonly ENV_LT = {
     war_realms: 44,
     samurai: 51,
@@ -87,6 +88,7 @@ export class GenericFetchAndSaveBackend {
     this.CLICKHOUSE_CONFIG = CLICKHOUSE_CONFIG ? CLICKHOUSE_CONFIG : undefined;
     this.PGSQL_CONFIG = PGSQL_CONFIG;
     this.server = server;
+    this.isE4KServer = String(server).toLowerCase().startsWith('e4k');
     this.createNewPool();
   }
 
@@ -314,6 +316,8 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('=====================================');
       Utils.logMessage(' [info] Starting fill process');
       Utils.logMessage(' [info] Current environment:', this.CURRENT_ENV);
+      Utils.logMessage(' [info] Target server:', this.server);
+      Utils.logMessage(' [info] isE4KServer:', this.isE4KServer ? 'Yes' : 'No');
       Utils.logMessage('=====================================');
       await new Promise((resolve) => setTimeout(resolve, 3000));
       // Request a full clear of parameters
@@ -436,7 +440,7 @@ export class GenericFetchAndSaveBackend {
       SELECT kid, position_x, position_y
       FROM dungeons
       WHERE attack_cooldown = 0
-          OR TIMESTAMPADD(SECOND, attack_cooldown, updated_at) <= NOW()`);
+      OR TIMESTAMPADD(SECOND, attack_cooldown, updated_at) <= NOW()`);
     const start = new Date();
     const totalRequests = rows.length;
     for (const row of rows) {
@@ -606,7 +610,7 @@ export class GenericFetchAndSaveBackend {
         Utils.logMessage(error);
         Utils.logMessage('=========== END STACK TRACE =============');
       }
-      let { lt, increment, tableName, levelCategorySize } = args;
+      let { lt, tableName, levelCategorySize } = args;
       let i: number;
       let j: number;
       let c: boolean = true;
@@ -627,10 +631,9 @@ export class GenericFetchAndSaveBackend {
         Utils.logMessage('Starting to retrieve statistics for category', levelCategory, '(of', levelCategorySize + ')');
         c = true;
         j = 0;
-        i = Math.ceil(increment / 2);
-        let data = await this.fetchDataAndReturn(lt, levelCategory, i);
+        let data = await this.fetchDataAndReturn(lt, levelCategory, 1);
         if (!data || data['return_code'] != '0') {
-          if (i < 10 && levelCategory == 1) {
+          if (j === 0 && levelCategory == 1) {
             Utils.logMessage(' [info] No event active (0)');
             return;
           } else {
@@ -647,6 +650,10 @@ export class GenericFetchAndSaveBackend {
           Utils.logMessage(' [info] No event active (1)');
           return;
         }
+        const contentList = data?.content?.L ?? [];
+        const increment = contentList.length;
+        i = Math.ceil(increment / 2);
+
         const max = data?.content?.LR ?? 50000;
         if (max && Number(max) >= 0) {
           if (data?.content?.L) {
@@ -784,7 +791,7 @@ export class GenericFetchAndSaveBackend {
       let i: number;
       let j: number;
       let c: boolean = true;
-      let increment: number = 10;
+      let increment: number = this.isE4KServer ? 6 : 10;
       const levelCategorySize: number = 6;
       const playerList: {
         [key: string]: { uid: number; name: string; allianceID: number; allianceName?: string; mightPoints: number };
@@ -992,7 +999,7 @@ export class GenericFetchAndSaveBackend {
       let i: number;
       let j: number;
       let c: boolean = true;
-      let increment: number = 10;
+      let increment: number = this.isE4KServer ? 6 : 10;
       const levelCategorySize: number = 1;
 
       const playerList: {
@@ -1325,7 +1332,7 @@ export class GenericFetchAndSaveBackend {
   }
 
   private async removePlayerFromDatabase(playerId: number): Promise<void> {
-    const pgSqlQuery = 'UPDATE players SET castles = NULL AND alliance_id = NULL WHERE id = $1';
+    const pgSqlQuery = "UPDATE players SET castles = '[]'::jsonb, alliance_id = NULL WHERE id = $1";
     Utils.logMessage(' [Info] Deleting player', playerId);
     try {
       await this.pgSqlQuery(pgSqlQuery, [playerId]);
@@ -1856,26 +1863,26 @@ export class GenericFetchAndSaveBackend {
     }
     Utils.logMessage('Update players table with temporary data');
     await this.pgSqlQuery(`
-            UPDATE players p
-            SET
-                loot_current = tmp.loot_current,
-                might_current = tmp.might_current,
-                loot_all_time = GREATEST(COALESCE(p.loot_all_time, 0), tmp.loot_all_time),
-                might_all_time = GREATEST(COALESCE(p.might_all_time, 0), tmp.might_all_time),
-                castles = tmp.castles,
-                castles_realm = tmp.castles_realm,
-                honor = tmp.honor,
-                max_honor = GREATEST(COALESCE(p.max_honor, 0), tmp.max_honor),
-                remaining_peace_time = tmp.remaining_peace_time,
-                level = GREATEST(COALESCE(p.level, 0), tmp.level),
-                legendary_level = GREATEST(COALESCE(p.legendary_level, 0), tmp.legendary_level),
-                highest_fame = GREATEST(COALESCE(p.highest_fame, 0), tmp.highest_fame),
-                current_fame = tmp.current_fame,
-                remaining_relocation_time = tmp.remaining_relocation_time,
-                peace_disabled_at = tmp.peace_disabled_at,
-                updated_at = CURRENT_TIMESTAMP
-            FROM tmp_players_update tmp
-            WHERE p.id = tmp.id
+      UPDATE players p
+      SET
+        loot_current = tmp.loot_current,
+        might_current = tmp.might_current,
+        loot_all_time = GREATEST(COALESCE(p.loot_all_time, 0), tmp.loot_all_time),
+        might_all_time = GREATEST(COALESCE(p.might_all_time, 0), tmp.might_all_time),
+        castles = tmp.castles,
+        castles_realm = tmp.castles_realm,
+        honor = tmp.honor,
+        max_honor = GREATEST(COALESCE(p.max_honor, 0), tmp.max_honor),
+        remaining_peace_time = tmp.remaining_peace_time,
+        level = GREATEST(COALESCE(p.level, 0), tmp.level),
+        legendary_level = GREATEST(COALESCE(p.legendary_level, 0), tmp.legendary_level),
+        highest_fame = GREATEST(COALESCE(p.highest_fame, 0), tmp.highest_fame),
+        current_fame = tmp.current_fame,
+        remaining_relocation_time = tmp.remaining_relocation_time,
+        peace_disabled_at = tmp.peace_disabled_at,
+        updated_at = CURRENT_TIMESTAMP
+      FROM tmp_players_update tmp
+      WHERE p.id = tmp.id
         `);
   }
 
