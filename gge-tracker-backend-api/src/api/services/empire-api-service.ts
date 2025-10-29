@@ -3,7 +3,7 @@ import * as pg from 'pg';
 import { ClickHouse } from 'clickhouse';
 import { DatabaseManager } from './../databases';
 import { ApiHelper } from './../api-helper';
-import { IApiToken } from './../interfaces/interfaces';
+import { IApiToken, ILimitedApiToken } from './../interfaces/interfaces';
 
 /**
  * Enum representing the available GGE Tracker server identifiers.
@@ -29,6 +29,7 @@ export enum GgeTrackerServers {
   HU2 = 'HU2',
   IN1 = 'IN1',
   INT1 = 'INT1',
+  INT2 = 'INT2',
   INT3 = 'INT3',
   IT1 = 'IT1',
   NL1 = 'NL1',
@@ -40,6 +41,18 @@ export enum GgeTrackerServers {
   TR1 = 'TR1',
   US1 = 'US1',
   GR1 = 'GR1',
+  ASIA1 = 'ASIA1',
+  ES2 = 'ES2',
+  LT1 = 'LT1',
+  SKN1 = 'SKN1',
+  BG1 = 'BG1',
+  SK1 = 'SK1',
+  GB1 = 'GB1',
+  KR1 = 'KR1',
+  JP1 = 'JP1',
+  HIS1 = 'HIS1',
+  AE1 = 'AE1',
+  EG1 = 'EG1',
   WORLD1 = 'WORLD1',
   E4K_HANT1 = 'E4K_HANT1',
   E4K_BR1 = 'E4K_BR1',
@@ -114,12 +127,12 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    * @see GgeTrackerServers
    * @see IApiToken
    */
-  private readonly servers: { [K in keyof typeof GgeTrackerServers]: IApiToken } = {
-    [GgeTrackerServers.FR1]: {
-      databases: { sql: BASE_SQL_DB_NAME, olap: BASE_OLAP_DB_NAME },
-      outer_name: 'FR1',
-      code: '020',
-      zone: 'EmpireEx_3',
+  private readonly servers: { [K in keyof typeof GgeTrackerServers]: IApiToken | ILimitedApiToken } = {
+    [GgeTrackerServers.INT1]: {
+      databases: { sql: BASE_SQL_DB_NAME + '-int1', olap: BASE_OLAP_DB_NAME + '_int1' },
+      outer_name: 'INT1',
+      code: '071',
+      zone: 'EmpireEx',
     },
     [GgeTrackerServers.DE1]: {
       databases: { sql: BASE_SQL_DB_NAME + '-de1', olap: BASE_OLAP_DB_NAME + '_de1' },
@@ -127,65 +140,17 @@ export class ApiGgeTrackerManager extends DatabaseManager {
       code: '010',
       zone: 'EmpireEx_2',
     },
+    [GgeTrackerServers.FR1]: {
+      databases: { sql: BASE_SQL_DB_NAME, olap: BASE_OLAP_DB_NAME },
+      outer_name: 'FR1',
+      code: '020',
+      zone: 'EmpireEx_3',
+    },
     [GgeTrackerServers.CZ1]: {
       databases: { sql: BASE_SQL_DB_NAME + '-cz1', olap: BASE_OLAP_DB_NAME + '_cz1' },
       outer_name: 'CZ1',
       code: '030',
       zone: 'EmpireEx_4',
-    },
-    [GgeTrackerServers.RO1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-ro1', olap: BASE_OLAP_DB_NAME + '_ro1' },
-      outer_name: 'RO1',
-      code: '040',
-      zone: 'EmpireEx_15',
-    },
-    [GgeTrackerServers.NL1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-nl1', olap: BASE_OLAP_DB_NAME + '_nl1' },
-      outer_name: 'NL1',
-      code: '050',
-      zone: 'EmpireEx_11',
-    },
-    [GgeTrackerServers.WORLD1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-world1', olap: BASE_OLAP_DB_NAME + '_world1' },
-      outer_name: 'LIVE',
-      code: '060',
-      zone: 'EmpireEx_46',
-    },
-    [GgeTrackerServers.INT3]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-int3', olap: BASE_OLAP_DB_NAME + '_int3' },
-      outer_name: 'INT3',
-      code: '070',
-      zone: 'EmpireEx_43',
-    },
-    [GgeTrackerServers.US1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-us1', olap: BASE_OLAP_DB_NAME + '_us1' },
-      outer_name: 'US1',
-      code: '080',
-      zone: 'EmpireEx_21',
-    },
-    [GgeTrackerServers.TR1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-tr1', olap: BASE_OLAP_DB_NAME + '_tr1' },
-      outer_name: 'TR1',
-      code: '090',
-      zone: 'EmpireEx_10',
-    },
-    [GgeTrackerServers.BR1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-br1', olap: BASE_OLAP_DB_NAME + '_BR1' },
-      outer_name: 'BR1',
-      code: '095',
-      zone: 'EmpireEx_20',
-    },
-    [GgeTrackerServers.IN1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-in1', olap: BASE_OLAP_DB_NAME + '_IN1' },
-      outer_name: 'IN1',
-      code: '085',
-      zone: 'EmpireEx_26',
-    },
-    [GgeTrackerServers.IT1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-it1', olap: BASE_OLAP_DB_NAME + '_IT1' },
-      outer_name: 'IT1',
-      code: '075',
-      zone: 'EmpireEx_9',
     },
     [GgeTrackerServers.PL1]: {
       databases: { sql: BASE_SQL_DB_NAME + '-pl1', olap: BASE_OLAP_DB_NAME + '_PL1' },
@@ -199,35 +164,10 @@ export class ApiGgeTrackerManager extends DatabaseManager {
       code: '055',
       zone: 'EmpireEx_6',
     },
-    [GgeTrackerServers.AU1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-au1', olap: BASE_OLAP_DB_NAME + '_au1' },
-      outer_name: 'AU1',
-      code: '045',
-      zone: 'EmpireEx_22',
-    },
-    [GgeTrackerServers.ARAB1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-ar1', olap: BASE_OLAP_DB_NAME + '_ar1' },
-      outer_name: 'ARAB1',
-      code: '035',
-      zone: 'EmpireEx_35',
-    },
-    [GgeTrackerServers.HANT1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-hant1', olap: BASE_OLAP_DB_NAME + '_hant1' },
-      outer_name: 'HANT',
-      code: '025',
-      zone: 'EmpireEx_37',
-    },
-    [GgeTrackerServers.HU1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-hu1', olap: BASE_OLAP_DB_NAME + '_hu1' },
-      outer_name: 'HU1',
-      code: '015',
-      zone: 'EmpireEx_12',
-    },
-    [GgeTrackerServers.HU2]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-hu2', olap: BASE_OLAP_DB_NAME + '_hu2' },
-      outer_name: 'HU2',
-      code: '014',
-      zone: 'EmpireEx_17',
+    [GgeTrackerServers.INT2]: {
+      outer_name: 'INT2',
+      zone: 'EmpireEx_7',
+      disabled: true,
     },
     [GgeTrackerServers.ES1]: {
       databases: { sql: BASE_SQL_DB_NAME + '-es1', olap: BASE_OLAP_DB_NAME + '_es1' },
@@ -235,23 +175,106 @@ export class ApiGgeTrackerManager extends DatabaseManager {
       code: '074',
       zone: 'EmpireEx_8',
     },
-    [GgeTrackerServers.SA1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-sa1', olap: BASE_OLAP_DB_NAME + '_sa1' },
-      outer_name: 'SA1',
-      code: '073',
-      zone: 'EmpireEx_32',
+    [GgeTrackerServers.IT1]: {
+      databases: { sql: BASE_SQL_DB_NAME + '-it1', olap: BASE_OLAP_DB_NAME + '_IT1' },
+      outer_name: 'IT1',
+      code: '075',
+      zone: 'EmpireEx_9',
     },
-    [GgeTrackerServers.INT1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-int1', olap: BASE_OLAP_DB_NAME + '_int1' },
-      outer_name: 'INT1',
-      code: '071',
-      zone: 'EmpireEx',
+    [GgeTrackerServers.TR1]: {
+      databases: { sql: BASE_SQL_DB_NAME + '-tr1', olap: BASE_OLAP_DB_NAME + '_tr1' },
+      outer_name: 'TR1',
+      code: '090',
+      zone: 'EmpireEx_10',
+    },
+    [GgeTrackerServers.NL1]: {
+      databases: { sql: BASE_SQL_DB_NAME + '-nl1', olap: BASE_OLAP_DB_NAME + '_nl1' },
+      outer_name: 'NL1',
+      code: '050',
+      zone: 'EmpireEx_11',
+    },
+    [GgeTrackerServers.HU1]: {
+      databases: { sql: BASE_SQL_DB_NAME + '-hu1', olap: BASE_OLAP_DB_NAME + '_hu1' },
+      outer_name: 'HU1',
+      code: '015',
+      zone: 'EmpireEx_12',
+    },
+    [GgeTrackerServers.SKN1]: {
+      outer_name: 'SKN1',
+      zone: 'EmpireEx_13',
+      disabled: true,
     },
     [GgeTrackerServers.RU1]: {
       databases: { sql: BASE_SQL_DB_NAME + '-ru1', olap: BASE_OLAP_DB_NAME + '_ru1' },
       outer_name: 'RU1',
       code: '031',
       zone: 'EmpireEx_14',
+    },
+    [GgeTrackerServers.RO1]: {
+      databases: { sql: BASE_SQL_DB_NAME + '-ro1', olap: BASE_OLAP_DB_NAME + '_ro1' },
+      outer_name: 'RO1',
+      code: '040',
+      zone: 'EmpireEx_15',
+    },
+    [GgeTrackerServers.BG1]: {
+      outer_name: 'BG1',
+      zone: 'EmpireEx_16',
+      disabled: true,
+    },
+    [GgeTrackerServers.HU2]: {
+      databases: { sql: BASE_SQL_DB_NAME + '-hu2', olap: BASE_OLAP_DB_NAME + '_hu2' },
+      outer_name: 'HU2',
+      code: '014',
+      zone: 'EmpireEx_17',
+    },
+    [GgeTrackerServers.SK1]: {
+      outer_name: 'SK1',
+      zone: 'EmpireEx_18',
+      disabled: true,
+    },
+    [GgeTrackerServers.GB1]: {
+      outer_name: 'GB1',
+      zone: 'EmpireEx_19',
+      disabled: true,
+    },
+    [GgeTrackerServers.BR1]: {
+      databases: { sql: BASE_SQL_DB_NAME + '-br1', olap: BASE_OLAP_DB_NAME + '_BR1' },
+      outer_name: 'BR1',
+      code: '095',
+      zone: 'EmpireEx_20',
+    },
+    [GgeTrackerServers.US1]: {
+      databases: { sql: BASE_SQL_DB_NAME + '-us1', olap: BASE_OLAP_DB_NAME + '_us1' },
+      outer_name: 'US1',
+      code: '080',
+      zone: 'EmpireEx_21',
+    },
+    [GgeTrackerServers.AU1]: {
+      databases: { sql: BASE_SQL_DB_NAME + '-au1', olap: BASE_OLAP_DB_NAME + '_au1' },
+      outer_name: 'AU1',
+      code: '045',
+      zone: 'EmpireEx_22',
+    },
+    [GgeTrackerServers.KR1]: {
+      outer_name: 'KR1',
+      zone: 'EmpireEx_23',
+      disabled: true,
+    },
+    [GgeTrackerServers.JP1]: {
+      outer_name: 'JP1',
+      zone: 'EmpireEx_24',
+      disabled: true,
+    },
+    [GgeTrackerServers.HIS1]: {
+      outer_name: 'HIS1',
+      zone: 'EmpireEx_25',
+      disabled: true,
+    },
+    [GgeTrackerServers.IN1]: {
+      databases: { sql: BASE_SQL_DB_NAME + '-in1', olap: BASE_OLAP_DB_NAME + '_IN1' },
+      outer_name: 'IN1',
+      code: '085',
+      zone: 'EmpireEx_26',
     },
     [GgeTrackerServers.CN1]: {
       databases: { sql: BASE_SQL_DB_NAME + '-cn1', olap: BASE_OLAP_DB_NAME + '_cn1' },
@@ -263,7 +286,68 @@ export class ApiGgeTrackerManager extends DatabaseManager {
       databases: { sql: BASE_SQL_DB_NAME + '-gr1', olap: BASE_OLAP_DB_NAME + '_gr1' },
       outer_name: 'GR1',
       code: '011',
-      zone: 'EmpireEx_27',
+      zone: 'EmpireEx_28',
+    },
+    [GgeTrackerServers.LT1]: {
+      outer_name: 'LT1',
+      zone: 'EmpireEx_29',
+      disabled: true,
+    },
+    // EmpireEx_30 does not exist
+    // EmpireEx_31 does not exist
+    [GgeTrackerServers.SA1]: {
+      databases: { sql: BASE_SQL_DB_NAME + '-sa1', olap: BASE_OLAP_DB_NAME + '_sa1' },
+      outer_name: 'SA1',
+      code: '073',
+      zone: 'EmpireEx_32',
+    },
+    [GgeTrackerServers.AE1]: {
+      outer_name: 'AE1',
+      zone: 'EmpireEx_33',
+      disabled: true,
+    },
+    [GgeTrackerServers.EG1]: {
+      outer_name: 'EG1',
+      zone: 'EmpireEx_34',
+      disabled: true,
+    },
+    [GgeTrackerServers.ARAB1]: {
+      databases: { sql: BASE_SQL_DB_NAME + '-ar1', olap: BASE_OLAP_DB_NAME + '_ar1' },
+      outer_name: 'ARAB1',
+      code: '035',
+      zone: 'EmpireEx_35',
+    },
+    [GgeTrackerServers.ASIA1]: {
+      outer_name: 'ASIA1',
+      zone: 'EmpireEx_36',
+      disabled: true,
+    },
+    [GgeTrackerServers.HANT1]: {
+      databases: { sql: BASE_SQL_DB_NAME + '-hant1', olap: BASE_OLAP_DB_NAME + '_hant1' },
+      outer_name: 'HANT',
+      code: '025',
+      zone: 'EmpireEx_37',
+    },
+    [GgeTrackerServers.ES2]: {
+      outer_name: 'ES2',
+      zone: 'EmpireEx_38',
+      disabled: true,
+    },
+    // EmpireEx_39 does not exist
+    // EmpireEx_40 does not exist
+    // EmpireEx_41 does not exist
+    // EmpireEx_42 does not exist
+    [GgeTrackerServers.INT3]: {
+      databases: { sql: BASE_SQL_DB_NAME + '-int3', olap: BASE_OLAP_DB_NAME + '_int3' },
+      outer_name: 'INT3',
+      code: '070',
+      zone: 'EmpireEx_43',
+    },
+    [GgeTrackerServers.WORLD1]: {
+      databases: { sql: BASE_SQL_DB_NAME + '-world1', olap: BASE_OLAP_DB_NAME + '_world1' },
+      outer_name: 'LIVE',
+      code: '060',
+      zone: 'EmpireEx_46',
     },
     [GgeTrackerServers.GLOBAL]: {
       databases: { sql: BASE_SQL_DB_NAME + '-global', olap: '' },
@@ -354,6 +438,15 @@ export class ApiGgeTrackerManager extends DatabaseManager {
     return serverName in this.servers;
   }
 
+  public getActivatedServerValues(): IApiToken[] {
+    // If server has disabled property, it is considered activated
+    return Object.values(this.servers).filter((server) => 'code' in server) as IApiToken[];
+  }
+
+  public getActivatedServerEntries(): [string, IApiToken][] {
+    return Object.entries(this.servers).filter(([, server]) => 'code' in server) as [string, IApiToken][];
+  }
+
   /**
    * Checks if the provided code is a valid server code.
    *
@@ -366,7 +459,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
     if (!code || typeof code !== 'string' || code.length !== 3) {
       return false;
     }
-    return Object.values(this.servers).some((server) => server.code === code);
+    return this.getActivatedServerValues().some((server) => server.code === code);
   }
 
   /**
@@ -376,7 +469,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    * @returns The corresponding `IApiToken` object if found; otherwise, `null`.
    */
   public getOuterServer(serverName: GgeTrackerServers): IApiToken | null {
-    return Object.values(this.servers).find((server) => server.outer_name === serverName) || null;
+    return this.getActivatedServerValues().find((server) => server.outer_name === serverName) || null;
   }
 
   /**
@@ -387,9 +480,13 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    */
   public getServerByCode(code: string): IApiToken | null {
     if (this.isValidCode(code)) {
-      return Object.values(this.servers).find((server) => server.code === code) || null;
+      return this.getActivatedServerValues().find((server) => server.code === code) || null;
     }
     return null;
+  }
+
+  public getServerByZone(zone: string): IApiToken | ILimitedApiToken | null {
+    return Object.values(this.servers).find((server) => server.zone === zone) || null;
   }
 
   /**
@@ -400,7 +497,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    * @returns The zone string if a matching server entry is found; otherwise, returns null.
    */
   public getZoneFromRequestId(playerId: number): string | null {
-    const entry = Object.entries(this.servers).find(
+    const entry = this.getActivatedServerEntries().find(
       (token) => token[1].code === ApiHelper.getCountryCode(playerId.toString()),
     );
     if (entry) {
@@ -430,7 +527,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    * @returns The server name as a string if a matching server is found; otherwise, `null`.
    */
   public getServerNameFromRequestId(playerId: number): string | null {
-    const entry = Object.entries(this.servers).find(
+    const entry = this.getActivatedServerEntries().find(
       (token) => token[1].code === ApiHelper.getCountryCode(playerId.toString()),
     );
     if (entry) {
@@ -469,7 +566,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    * @returns The PostgreSQL pool associated with the player's server, or `null` if not found.
    */
   public getPgSqlPoolFromRequestId(playerId: number): pg.Pool | null {
-    const entry = Object.entries(this.servers).find(
+    const entry = this.getActivatedServerEntries().find(
       (token) => token[1].code === ApiHelper.getCountryCode(playerId.toString()),
     );
     if (entry) {
@@ -498,7 +595,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    * @returns The name of the OLAP database if found; otherwise, `null`.
    */
   public getOlapDatabaseFromRequestId(playerId: number): string | null {
-    const entry = Object.entries(this.servers).find(
+    const entry = this.getActivatedServerEntries().find(
       (token) => token[1].code === ApiHelper.getCountryCode(playerId.toString()),
     );
     if (entry) {
@@ -535,7 +632,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    * @returns An object where each key corresponds to a server name from `GgeTrackerServers` and the value is the associated SQL database connection string.
    */
   public getAllSqlDatabases(): { [K in keyof typeof GgeTrackerServers]: string } {
-    return Object.fromEntries(Object.entries(this.servers).map(([key, server]) => [key, server.databases.sql])) as {
+    return Object.fromEntries(this.getActivatedServerEntries().map(([key, server]) => [key, server.databases.sql])) as {
       [K in keyof typeof GgeTrackerServers]: string;
     };
   }
@@ -546,7 +643,9 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    * @returns An object where each key corresponds to a server name from `GgeTrackerServers` and each value is the associated OLAP database connection string.
    */
   public getAllOlapDatabases(): { [K in keyof typeof GgeTrackerServers]: string } {
-    return Object.fromEntries(Object.entries(this.servers).map(([key, server]) => [key, server.databases.olap])) as {
+    return Object.fromEntries(
+      this.getActivatedServerEntries().map(([key, server]) => [key, server.databases.olap]),
+    ) as {
       [K in keyof typeof GgeTrackerServers]: string;
     };
   }
@@ -557,7 +656,8 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    * @returns {string[]} An array containing the names of all servers.
    */
   public getAllServerNames(): string[] {
-    return Object.keys(this.servers);
+    // A available server is any server defined in this.servers as IApiToken and not ILimitedApiToken
+    return Object.keys(this.servers).filter((key) => 'code' in this.servers[key]);
   }
 
   /**
@@ -613,13 +713,13 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    * @returns {void} No return value; function will throw on invalid configuration.
    */
   private checkServerConfig(): void {
-    Object.entries(this.servers).forEach(([key, server]) => {
+    this.getActivatedServerEntries().forEach(([key, server]) => {
       if (server.code.length !== 3 && key !== GgeTrackerServers.GLOBAL) {
         throw new Error(`Server code for ${key} must be exactly 3 characters long.`);
       } else if (server.databases.sql.includes('null') || server.databases.olap.includes('null')) {
         throw new Error(`Server ${key} has 'null' in its database name, please check the configuration.`);
       }
-      const duplicates = Object.entries(this.servers).filter(
+      const duplicates = this.getActivatedServerEntries().filter(
         ([otherKey, otherServer]) => otherKey !== key && otherServer.code === server.code,
       );
       if (duplicates.length > 0) {

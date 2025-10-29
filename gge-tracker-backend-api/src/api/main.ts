@@ -412,6 +412,10 @@ publicRoutes.get('/servers', controllerManager.getServers.bind(controllerManager
  */
 publicRoutes.get('/events/list', controllerManager.getEvents.bind(controllerManager));
 
+publicRoutes.get('/grand-tournament/dates', controllerManager.getGrandTournamentEventDates.bind(controllerManager));
+
+publicRoutes.get('/grand-tournament/alliances', controllerManager.getGrandTournamentEvents.bind(controllerManager));
+
 /**
  * @swagger
  * /events/{eventType}/{id}/players:

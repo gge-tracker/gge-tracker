@@ -1,0 +1,60 @@
+<div class="container my-3 tournaments">
+  <div class="row g-4">
+    <div class="col-12" [ngClass]="{'loading': isInLoading}">
+      <h2 class="mb-4">Grand Tournament Alliances</h2>
+      <app-search-form
+        #searchForm
+        [formFilters]="null"
+        [isInLoading]="isInLoading"
+        [inputTip]="'Rechercher un joueur ou une alliance' | translate"
+        [defaultSearch]="search"
+        [searchTypes]="{
+          player: false,
+          alliance: true
+        }" (searchAlliance)="searchAlliance($event)">
+      </app-search-form>
+      <div class="text-center my-3">
+        <div *ngFor="let i of [1,2,3,4,5]" class="d-inline-block px-2 division-element" (click)="changeDivision(i)"><img [src]="'/assets/gt/division' + i + '.png'"></div>
+      </div>
+        <app-table [sort]="''" [reverse]="false" [isInLoading]="isDataLoading" [maxPage]="pagination.total_pages" [page]="pagination.current_page"
+          [search]="search" [headers]="[
+          ['allianceName', 'Alliance' | translate, '/assets/min-alliance.png', true],
+          ['server', 'Server' | translate, '', true],
+          ['points', 'Points' | translate, '', true],
+          ['currentDivision', 'Division' | translate, '', true],
+          ['currentSubdivision', 'Subdivision' | translate, '', true],
+          ['rankInSubDivision', 'Rank in Subdivision' | translate, '', true],
+          ['actions', 'Actions' | translate, '', true],
+        ]" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
+          <tr *ngIf="alliances.length === 0 && !isDataLoading">
+            <td colspan="10">
+              <span class="text-muted">{{ 'Aucune alliance' | translate }}</span>
+            </td>
+          </tr>
+          <tr *ngFor="let alliance of alliances">
+            <td>{{ alliance.calculatedRank }}</td>
+            <td>
+              {{ alliance.alliance_name }}
+            </td>
+            <td>
+              {{ alliance.server }}
+            </td>
+            <td>
+              {{ alliance.score | number }}
+            </td>
+            <td>
+              <img src="/assets/gt/division{{ division.current_division }}.png" [width]="42" [title]="'Division ' + divisionNames[division.current_division-1]" [alt]="'Division ' + divisionNames[division.current_division-1]" /></td>
+            <td>subdivision {{ alliance.subdivision }}</td>
+            <td>{{ alliance.rank }}</td>
+            <td class="text-end">
+              <a [ngClass]="{'disabled': alliance.disabled}" [routerLink]="['/', 'alliance', alliance.alliance_id]">
+                <img src="/assets/icon_analyze.png" [alt]="'Analyser l\'alliance' | translate"
+                  [title]="'Analyser l\'alliance' | translate" height="24"
+                  class="ms-1 btn-icon">
+              </a>
+            </td>
+          </tr>
+        </app-table>
+      </div>
+  </div>
+</div>

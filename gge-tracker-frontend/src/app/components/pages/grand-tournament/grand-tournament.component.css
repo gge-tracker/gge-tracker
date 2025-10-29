@@ -1,0 +1,27 @@
+.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.btn-icon {
+  width: 37px;
+  height: auto;
+}
+
+.btn-icon:hover {
+  transform: scale(1.1);
+}
+
+::ng-deep .alliances th, td {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.division-element {
+  transition: transform 0.2s;
+}
+
+.division-element:hover {
+  cursor: pointer;
+  transform: scale(1.1);
+}

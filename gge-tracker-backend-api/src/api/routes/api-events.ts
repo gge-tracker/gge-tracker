@@ -2,6 +2,7 @@ import * as express from 'express';
 import { ApiHelper } from '../api-helper';
 import * as pg from 'pg';
 import { formatInTimeZone } from 'date-fns-tz';
+import { GgeTrackerServers } from '../services/empire-api-service';
 
 /**
  * Abstract class providing API endpoints for event-related data.
@@ -51,23 +52,23 @@ export abstract class ApiEvents implements ApiHelper {
        * --------------------------------- */
       const query = `
         SELECT
-            e.event_num,
-            e.collect_date,
-            COUNT(*) AS player_count,
-            'outer_realms' AS type
+          e.event_num,
+          e.collect_date,
+          COUNT(*) AS player_count,
+          'outer_realms' AS type
         FROM outer_realms_event e
         INNER JOIN outer_realms_ranking r
-            ON e.event_num = r.event_num
+          ON e.event_num = r.event_num
         GROUP BY e.event_num, e.collect_date
         UNION ALL
         SELECT
-            e.event_num,
-            e.collect_date,
-            COUNT(*) AS player_count,
-            'beyond_the_horizon' AS type
+          e.event_num,
+          e.collect_date,
+          COUNT(*) AS player_count,
+          'beyond_the_horizon' AS type
         FROM beyond_the_horizon_event e
         INNER JOIN beyond_the_horizon_ranking r
-            ON e.event_num = r.event_num
+          ON e.event_num = r.event_num
         GROUP BY e.event_num, e.collect_date
         ORDER BY collect_date DESC;
       `;
@@ -105,6 +106,214 @@ export abstract class ApiEvents implements ApiHelper {
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getEvents', request);
       return;
+    }
+  }
+
+  public static async getGrandTournamentEventDates(
+    request: express.Request,
+    response: express.Response,
+  ): Promise<void> {
+    try {
+      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServers.GLOBAL);
+      // get dates with hour (without minutes and seconds)
+      const query = `
+        SELECT DISTINCT to_char (created_at, 'yyyy-MM-dd HH24:00:00') AS created_at
+        FROM great_tournament
+        ORDER BY created_at DESC
+      `;
+      const { rows } = await pgPool.query(query);
+      const eventDates: string[] = rows.map((row) => row.created_at);
+      response.status(ApiHelper.HTTP_OK).json({ eventDates });
+    } catch (error) {
+      const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
+      response.status(code).send({ error: message });
+      ApiHelper.logError(error, 'getGrandTournamentEventDates', request);
+      return;
+    }
+  }
+
+  // public static async getGrandTournament(request: express.Request, response: express.Response): Promise<void> {
+  //   try {
+  //     const maxAlliancesPerPage = 10;
+  //     const date = request.query.date ? new Date(String(request.query.date)) : null;
+  //     const division_id = request.query.division_id ? Number.parseInt(String(request.query.division_id)) : 5;
+  //     const pagination_page = request.query.page ? Number.parseInt(String(request.query.page)) : 1;
+
+  //     const offset = (pagination_page - 1) * maxAlliancesPerPage;
+  //     const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServers.GLOBAL);
+
+  //     let index = 2;
+  //     const queryAlliances = `
+  //       SELECT
+  //         server_id, division_id, subdivision_id, alliance_id, alliance_name, rank, score, created_at
+  //       FROM great_tournament
+  //       WHERE ($1::timestamp IS NULL OR (created_at >= $1::timestamp AND created_at < $1::timestamp + interval '1 hour'))
+  //         AND division_id = $${index++}
+  //       ORDER BY created_at DESC, division_id, rank
+  //       LIMIT $${index++} OFFSET $${index++}
+  //     `;
+
+  //     index = 2;
+  //     const queryTotal = `
+  //       SELECT COUNT(*) AS total_items
+  //       FROM great_tournament
+  //       WHERE ($1::timestamp IS NULL OR (created_at >= $1::timestamp AND created_at < $1::timestamp + interval '1 hour'))
+  //         AND subdivision_id = $${index++}
+  //     `;
+
+  //     const queryMaxSubdivision = `
+  //       SELECT MAX(subdivision_id) AS max_subdivision_id
+  //       FROM great_tournament
+  //       WHERE ($1::timestamp IS NULL OR (created_at >= $1::timestamp AND created_at < $1::timestamp + interval '1 hour'))
+  //         AND division_id = $2
+  //     `;
+
+  //     const baseParameters: (string | number | Date)[] = [date, division_id];
+  //     const [alliancesResult, totalResult, maxSubdivResult] = await Promise.all([
+  //       pgPool.query(queryAlliances, [...baseParameters, maxAlliancesPerPage, offset]),
+  //       pgPool.query(queryTotal, [...baseParameters]),
+  //       pgPool.query(queryMaxSubdivision, [...baseParameters]),
+  //     ]);
+
+  //     const alliances = alliancesResult.rows.map((row) => {
+  //       const serverObject = ApiHelper.ggeTrackerManager.getServerByZone(
+  //         'EmpireEx' + (row.server_id === 1 ? '' : '_' + row.server_id),
+  //       );
+  //       const serverCode = serverObject && 'code' in serverObject ? serverObject.code : '999';
+  //       return {
+  //         alliance_id: Number.parseInt(row.alliance_id + serverCode) || null,
+  //         alliance_name: row.alliance_name,
+  //         server: serverObject?.outer_name || null,
+  //         rank: row.rank,
+  //         subdivision: row.subdivision_id,
+  //         score: Number.parseInt(row.score),
+  //       };
+  //     });
+
+  //     const total_items = Number.parseInt(totalResult.rows[0]?.total_items || '0');
+  //     const total_pages = Math.max(1, Math.ceil(total_items / maxAlliancesPerPage));
+  //     const max_subdivision_id = Number.parseInt(maxSubdivResult.rows[0]?.max_subdivision_id || '1');
+
+  //     response.status(ApiHelper.HTTP_OK).send({
+  //       event: {
+  //         division: {
+  //           current_division: division_id,
+  //           min_division: 1,
+  //           max_division: 5,
+  //         },
+  //         subdivision: {
+  //           current_subdivision: null,
+  //           min_subdivision: 1,
+  //           max_subdivision: max_subdivision_id,
+  //         },
+  //         alliances,
+  //       },
+  //       pagination: {
+  //         current_page: pagination_page,
+  //         total_pages,
+  //         current_items_count: alliances.length,
+  //         total_items_count: total_items,
+  //       },
+  //     });
+  //   } catch (error: any) {
+  //     response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).json({ error: error.message });
+  //   }
+  // }
+
+  public static async getGrandTournament(request: express.Request, response: express.Response): Promise<void> {
+    try {
+      const maxAlliancesPerPage = 10;
+      const date = request.query.date ? new Date(String(request.query.date)) : null;
+      const division_id = request.query.division_id ? Number.parseInt(String(request.query.division_id)) : 5;
+      const subdivision_id = request.query.subdivision_id
+        ? Number.parseInt(String(request.query.subdivision_id))
+        : undefined;
+      const pagination_page = request.query.page ? Number.parseInt(String(request.query.page)) : 1;
+
+      const offset = (pagination_page - 1) * maxAlliancesPerPage;
+
+      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServers.GLOBAL);
+
+      let index = 2;
+      const queryAlliances = `
+        SELECT
+          server_id, division_id, subdivision_id, alliance_id, alliance_name, rank, score, created_at
+        FROM great_tournament
+        WHERE ($1::timestamp IS NULL OR (created_at >= $1::timestamp AND created_at < $1::timestamp + interval '1 hour'))
+          AND division_id = $${index++}
+        ${subdivision_id ? `AND subdivision_id = $${index++}` : ''}
+        ORDER BY created_at DESC, division_id, ${subdivision_id ? 'subdivision_id, rank' : 'score DESC, rank'}
+        LIMIT $${index++} OFFSET $${index++}
+      `;
+
+      index = 2;
+      const queryTotal = `
+        SELECT COUNT(*) AS total_items
+        FROM great_tournament
+        WHERE ($1::timestamp IS NULL OR (created_at >= $1::timestamp AND created_at < $1::timestamp + interval '1 hour'))
+          AND division_id = $${index++}
+          ${subdivision_id ? `AND subdivision_id = $${index++}` : ''}
+      `;
+
+      const queryMaxSubdivision = `
+        SELECT MAX(subdivision_id) AS max_subdivision_id
+        FROM great_tournament
+        WHERE ($1::timestamp IS NULL OR (created_at >= $1::timestamp AND created_at < $1::timestamp + interval '1 hour'))
+          AND division_id = $2
+      `;
+
+      const baseParameters: (string | number | Date)[] = [date, division_id];
+      if (subdivision_id) {
+        baseParameters.push(subdivision_id);
+      }
+      const [alliancesResult, totalResult, maxSubdivResult] = await Promise.all([
+        pgPool.query(queryAlliances, [...baseParameters, maxAlliancesPerPage, offset]),
+        pgPool.query(queryTotal, [...baseParameters]),
+        pgPool.query(queryMaxSubdivision, [date, division_id]),
+      ]);
+
+      const alliances = alliancesResult.rows.map((row) => {
+        const serverObject = ApiHelper.ggeTrackerManager.getServerByZone(
+          'EmpireEx' + (row.server_id === 1 ? '' : '_' + row.server_id),
+        );
+        const serverCode = serverObject && 'code' in serverObject ? serverObject.code : '999';
+        return {
+          alliance_id: Number.parseInt(row.alliance_id + serverCode) || null,
+          alliance_name: row.alliance_name,
+          server: serverObject?.outer_name || null,
+          rank: row.rank,
+          score: Number.parseInt(row.score),
+          subdivision: row.subdivision_id,
+        };
+      });
+
+      const total_items = Number.parseInt(totalResult.rows[0]?.total_items || '0');
+      const total_pages = Math.max(1, Math.ceil(total_items / maxAlliancesPerPage));
+      const max_subdivision_id = Number.parseInt(maxSubdivResult.rows[0]?.max_subdivision_id || '1');
+
+      response.status(ApiHelper.HTTP_OK).send({
+        event: {
+          division: {
+            current_division: division_id,
+            min_division: 1,
+            max_division: 5,
+          },
+          subdivision: {
+            current_subdivision: subdivision_id,
+            min_subdivision: 1,
+            max_subdivision: max_subdivision_id,
+          },
+          alliances,
+        },
+        pagination: {
+          current_page: pagination_page,
+          total_pages,
+          current_items_count: alliances.length,
+          total_items_count: total_items,
+        },
+      });
+    } catch (error: any) {
+      response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).json({ error: error.message });
     }
   }
 

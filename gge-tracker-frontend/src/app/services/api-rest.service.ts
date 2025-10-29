@@ -518,6 +518,24 @@ export class ApiRestService {
     return { success: true, data: response.data };
   }
 
+  // public async getGrandTournamentDates(): Promise<ApiResponse<any>> {
+  //   const response = await this.apiFetch<any>(`${ApiRestService.apiUrl}grand_tournament/dates`);
+  //   if (!response.success) return response;
+  //   return { success: true, data: response.data };
+  // }
+
+  // public async getGrandTournamentAlliances(
+  //   date: string,
+  //   divisionId: number,
+  //   subdivisionId: number,
+  // ): Promise<ApiResponse<any>> {
+  //   const response = await this.apiFetch<any>(
+  //     `${ApiRestService.apiUrl}grand_tournament/alliances?date=${date}&division_id=${divisionId}&subdivision_id=${subdivisionId}`,
+  //   );
+  //   if (!response.success) return response;
+  //   return { success: true, data: response.data };
+  // }
+
   /**
    * Get the players of an outer realm event by its ID
    * @param id The ID of the outer realm event

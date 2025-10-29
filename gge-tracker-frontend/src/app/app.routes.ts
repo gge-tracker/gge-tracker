@@ -18,6 +18,7 @@ import { SkeletonComponent } from '@ggetracker-components/skeleton/skeleton.comp
 import { PlayerStatsResolver } from '@ggetracker-resolvers/player-stats.resolver';
 import { titleResolver } from '@ggetracker-resolvers/title.resolver';
 import { ViewCastleComponent } from '@ggetracker-pages/view-castle/view-castle.component';
+import { GrandTournamentComponent } from '@ggetracker-pages/grand-tournament/grand-tournament.component';
 
 export const routes: Routes = [
   {
@@ -145,6 +146,15 @@ export const routes: Routes = [
         data: {
           description: 'Discover the available offers and promotions for Goodgame Empire.',
           titleKey: 'Offres',
+        },
+      },
+      {
+        path: 'grand-tournament',
+        component: GrandTournamentComponent,
+        resolve: { titleResolver },
+        data: {
+          description: 'Analyze the grand tournament event of Goodgame Empire.',
+          titleKey: 'Événements',
         },
       },
       {

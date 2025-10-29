@@ -1,5 +1,5 @@
 import { NgClass, NgFor, NgIf } from '@angular/common';
-import { Component, inject, input } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, inject, input, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 
@@ -15,7 +15,7 @@ import { GenericComponent } from '@ggetracker-components/generic/generic.compone
   templateUrl: './server-badge.component.html',
   styleUrl: './server-badge.component.css',
 })
-export class ServerBadgeComponent extends GenericComponent {
+export class ServerBadgeComponent extends GenericComponent implements AfterViewInit {
   public allowedServers = input<string[]>();
   public infoDisplayed = input<boolean>(true);
   public version = '';
@@ -25,9 +25,20 @@ export class ServerBadgeComponent extends GenericComponent {
   public serverService = inject(ServerService);
   public filteredServerInput: string = '';
 
+  @ViewChild('searchServerInput') private searchServerInput!: ElementRef<HTMLInputElement>;
+  @ViewChild('dropdownSearchButton', { static: true }) private dropdownSearchButton!: ElementRef<HTMLButtonElement>;
+
   constructor() {
     super();
     this.constructVersion(package_.version);
+  }
+
+  public ngAfterViewInit(): void {
+    this.dropdownSearchButton.nativeElement.addEventListener('shown.bs.dropdown', () => {
+      setTimeout(() => {
+        this.searchServerInput?.nativeElement.focus();
+      }, 100);
+    });
   }
 
   public get currentServer(): string {

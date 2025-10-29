@@ -17,3 +17,9 @@ export interface IApiToken {
   code: string;
   zone: string;
 }
+
+export interface ILimitedApiToken {
+  outer_name: string;
+  zone: string;
+  disabled: boolean;
+}

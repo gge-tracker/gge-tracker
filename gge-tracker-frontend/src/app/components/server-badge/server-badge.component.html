@@ -23,16 +23,23 @@
         <div class="row">
           <div class="col-12 col-md-6">
             <div class="dropdown">
-              <button class="btn btn-server dropdown-toggle" type="button" data-bs-toggle="dropdown">
+              <button class="btn btn-server dropdown-toggle" type="button" data-bs-toggle="dropdown" #dropdownSearchButton>
                 <img [src]="serverService.flagsUrl[currentServer]" width="20" class="me-2" alt="{{ currentServer }}" title="{{ currentServer }}">
                 {{ serverService.mappedServersToGgeServerName[currentServer] }} ({{ currentServer }})
               </button>
               <ul class="dropdown-menu pt-0">
                 <div class="px-3 py-2 sticky-search-box input-group">
-                  <span class="input-group-text" id="basic-addon1">
+                  <span class="input-group-text" id="search-helper-42">
                     <i class="fa-solid fa-magnifying-glass"></i>
                   </span>
-                  <input type="text" class="form-control" placeholder="{{ 'Rechercher' | translate }}" [(ngModel)]="filteredServerInput" />
+                  <input type="text"
+                    #searchServerInput
+                    id="searchServerInput"
+                    name="searchServerInput"
+                    a
+                    class="form-control"
+                    placeholder="{{ 'Rechercher' | translate }}"
+                    [(ngModel)]="filteredServerInput">
                 </div>
                 <li *ngFor="let server of servers | sortByOrder">
                   <a class="dropdown-item d-flex align-items-center" (click)="currentServer = server" [ngClass]="{'fw-bold': server === currentServer}">
