@@ -255,8 +255,12 @@ export abstract class ApiCastle implements ApiHelper {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid zone' });
         return;
       }
-      // In this endpoint, there is no need to use cache
-      // because the data is needed to be always fresh.
+      const cachedKey = `castle:playerName:${code}:${playerName.toLowerCase()}`;
+      const cachedData = await ApiHelper.redisClient.get(cachedKey);
+      if (cachedData) {
+        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        return;
+      }
 
       /* ---------------------------------
        * Query from DB to get player ID
@@ -318,6 +322,7 @@ export abstract class ApiCastle implements ApiHelper {
         return accumulator;
       }, []);
       response.status(ApiHelper.HTTP_OK).send(mappedCastles);
+      void ApiHelper.updateCache(cachedKey, mappedCastles, 3600);
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });

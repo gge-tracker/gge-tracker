@@ -24,7 +24,6 @@ import {
   ErrorType,
   ApiDungeonsResponse,
   ApiAllianceHealthResponse,
-  ApiOffersResponse,
   ApiEventlist,
   ApiOuterRealmEvent,
   ApiOuterRealmPlayers,
@@ -32,6 +31,10 @@ import {
   ApiRankingStatsPlayer,
   ApiPlayerCastleNameResponse,
   ApiPlayerCastleDataResponse,
+  ApiGrandTournamentDatesResponse,
+  ApiGrandTournamentAlliancesResponse,
+  ApiGrandTournamentAlliancesSearchResponse,
+  ApiGrandTournamenAllianceAnalysisResponse,
 } from '@ggetracker-interfaces/empire-ranking';
 
 @Injectable({
@@ -48,11 +51,6 @@ import {
  * - Uses injected `ServerService` for server selection and `ToastService` for error notifications.
  * - API base URL is configurable via environment variables.
  *
- * @example
- * ```typescript
- * const apiService = new ApiRestService();
- * const players = await apiService.getPlayers(1, 'name', 'asc');
- * ```
  */
 export class ApiRestService {
   public static apiUrl = environment.apiUrl;
@@ -491,6 +489,11 @@ export class ApiRestService {
     return { success: true, data: response.data };
   }
 
+  /**
+   * Get the ranking statistics for a player by their ID
+   * @param playerId The ID of the player to retrieve ranking stats for
+   * @returns A promise that resolves to the ranking stats data
+   */
   public async getRankingStatsByPlayerId(playerId: number): Promise<ApiResponse<ApiRankingStatsPlayer>> {
     const response = await this.apiFetch<ApiRankingStatsPlayer>(
       `${ApiRestService.apiUrl}statistics/ranking/player/${playerId}`,
@@ -499,6 +502,11 @@ export class ApiRestService {
     return { success: true, data: response.data };
   }
 
+  /**
+   * Get the castle player data by their name
+   * @param playerName The name of the player to search for
+   * @returns A promise that resolves to the castle player data
+   */
   public async getCastlePlayerDataByName(playerName: string): Promise<ApiResponse<ApiPlayerCastleNameResponse[]>> {
     const response = await this.apiFetch<ApiPlayerCastleNameResponse[]>(
       `${ApiRestService.apiUrl}castle/search/${playerName}`,
@@ -507,12 +515,85 @@ export class ApiRestService {
     return { success: true, data: response.data };
   }
 
+  /**
+   * Get the castle player data by their castle ID
+   * @param castleId The ID of the castle to search for
+   * @param kingdomId The ID of the kingdom to search for
+   * @returns A promise that resolves to the castle player data
+   */
   public async getCastlePlayerDataByCastleID(
     castleId: number,
     kingdomId: number,
   ): Promise<ApiResponse<ApiPlayerCastleDataResponse>> {
     const response = await this.apiFetch<ApiPlayerCastleDataResponse>(
       `${ApiRestService.apiUrl}castle/analysis/${castleId}?kingdomId=${kingdomId}`,
+    );
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  /**
+   * Get the grand tournament dates from the API
+   * @returns A promise that resolves to the grand tournament dates data
+   */
+  public async getGrandTournamentDates(): Promise<ApiResponse<ApiGrandTournamentDatesResponse>> {
+    const response = await this.apiFetch<ApiGrandTournamentDatesResponse>(
+      `${ApiRestService.apiUrl}grand-tournament/dates`,
+    );
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  /**
+   * Get the grand tournament alliances from the API
+   * @param date The date of the grand tournament
+   * @param division The division ID of the grand tournament
+   * @param page The page number to fetch
+   * @returns A promise that resolves to the grand tournament alliances data
+   */
+  public async getGrandTournamentAlliances(
+    date: string,
+    division: number,
+    page: number,
+  ): Promise<ApiResponse<ApiGrandTournamentAlliancesResponse>> {
+    const response = await this.apiFetch<ApiGrandTournamentAlliancesResponse>(
+      `${ApiRestService.apiUrl}grand-tournament/alliances?date=${date}&division_id=${division}&page=${page}`,
+    );
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  /**
+   * Search for grand tournament alliances by name
+   * @param date The date of the grand tournament
+   * @param search The name of the alliance to search for
+   * @param page The page number to fetch
+   * @returns A promise that resolves to the grand tournament alliances search data
+   */
+  public async getGrandTournamentSearchAlliance(
+    date: string,
+    search: string,
+    page: number,
+  ): Promise<ApiResponse<ApiGrandTournamentAlliancesSearchResponse>> {
+    const response = await this.apiFetch<ApiGrandTournamentAlliancesSearchResponse>(
+      `${ApiRestService.apiUrl}grand-tournament/search?date=${date}&alliance_name=${search}&page=${page}`,
+    );
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  /**
+   * Get the grand tournament alliance analysis by alliance ID and event ID
+   * @param allianceId The ID of the alliance to analyze
+   * @param eventId The ID of the event to analyze
+   * @returns A promise that resolves to the grand tournament alliance analysis data
+   */
+  public async getGrandTournamentAllianceAnalysis(
+    allianceId: number,
+    eventId: number,
+  ): Promise<ApiResponse<ApiGrandTournamenAllianceAnalysisResponse>> {
+    const response = await this.apiFetch<ApiGrandTournamenAllianceAnalysisResponse>(
+      `${ApiRestService.apiUrl}grand-tournament/alliance/${allianceId}/${eventId}`,
     );
     if (!response.success) return response;
     return { success: true, data: response.data };
@@ -539,6 +620,11 @@ export class ApiRestService {
     return { success: true, data: response.data };
   }
 
+  /**
+   * Get the alliance by name from the API
+   * @param allianceName The name of the alliance to search for
+   * @returns A promise that resolves to the alliance data
+   */
   public async getAllianceByName(allianceName: string): Promise<ApiResponse<ApiAllianceSearchResponse>> {
     const response = await this.apiFetch<ApiAllianceSearchResponse>(
       `${ApiRestService.apiUrl}alliances/name/${allianceName}`,

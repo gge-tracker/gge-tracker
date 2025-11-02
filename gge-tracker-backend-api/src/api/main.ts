@@ -359,6 +359,9 @@ publicRoutes.get('/languages/:lang', controllerManager.getLanguage.bind(controll
  */
 protectedRoutes.get('/', controllerManager.getStatus.bind(controllerManager));
 
+/**
+ * @todo Swagger documentation
+ */
 publicRoutes.get('/servers', controllerManager.getServers.bind(controllerManager));
 
 /**
@@ -411,6 +414,72 @@ publicRoutes.get('/servers', controllerManager.getServers.bind(controllerManager
  *                   example: "Unable to fetch event data"
  */
 publicRoutes.get('/events/list', controllerManager.getEvents.bind(controllerManager));
+
+/**
+ * @swagger
+ * /grand-tournament/dates:
+ *   get:
+ *     summary: Retrieve the list of Grand Tournament event dates.
+ *     description: This endpoint returns a list of Grand Tournament event dates.
+ *     tags:
+ *       - Events
+ *     responses:
+ *       200:
+ *         description: A list of recorded events.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 events:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       event_id:
+ *                         type: integer
+ *                         description: The unique identifier of the Grand Tournament event
+ *                         example: 1
+ *                       dates:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                           format: date-time
+ *                           description: The date and time of the Grand Tournament event
+ *                           example: "2025-10-27T18:00:00.000Z"
+ *       500:
+ *         description: Internal server error occurred while retrieving events.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Unable to fetch Grand Tournament event dates"
+ */
+publicRoutes.get('/grand-tournament/dates', controllerManager.getGrandTournamentEventDates.bind(controllerManager));
+
+/**
+ * @todo Swagger documentation
+ */
+publicRoutes.get('/grand-tournament/alliances', controllerManager.getGrandTournamentEvents.bind(controllerManager));
+
+/**
+ * @todo Swagger documentation
+ */
+publicRoutes.get(
+  '/grand-tournament/alliance/:allianceId/:eventId',
+  controllerManager.getGrandTournamentAllianceAnalysis.bind(controllerManager),
+);
+
+/**
+ * @todo Swagger documentation
+ */
+publicRoutes.get(
+  '/grand-tournament/search',
+  controllerManager.searchGrandTournamentDataByAllianceName.bind(controllerManager),
+);
 
 /**
  * @swagger
@@ -680,6 +749,9 @@ publicRoutes.get('/events/:eventType/:id/players', controllerManager.getEventPla
  */
 publicRoutes.get('/events/:eventType/:id/data', controllerManager.getDataEventType.bind(controllerManager));
 
+/**
+ * @todo Swagger documentation
+ */
 protectedRoutes.get('/offers', controllerManager.getOffers.bind(controllerManager));
 
 /**
@@ -2833,11 +2905,17 @@ publicRoutes.get(
   controllerManager.getStatisticsByAllianceId.bind(controllerManager),
 );
 
+/**
+ * @todo Swagger documentation
+ */
 publicRoutes.get(
   '/statistics/alliance/:allianceId/pulse',
   controllerManager.getPulsedStatisticsByAllianceId.bind(controllerManager),
 );
 
+/**
+ * @todo Swagger documentation
+ */
 publicRoutes.get(
   '/statistics/ranking/player/:playerId',
   controllerManager.getRankingByPlayerId.bind(controllerManager),

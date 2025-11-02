@@ -1,9 +1,9 @@
-
-body, html {
+body,
+html {
   margin: 0;
   padding: 0;
   font-family: 'Inter', sans-serif;
-  background: url("/assets/bg.png"), #819A41;
+  background: url('/assets/bg.png'), #819a41;
 }
 
 html:has(.fullscreen) {
@@ -27,7 +27,6 @@ a.link-to-alliance {
 a.link-to-alliance:hover {
   text-decoration: underline;
 }
-
 
 .table-custom {
   --bs-table-bg: rgb(218, 210, 188);
@@ -62,68 +61,92 @@ a.link-to-alliance:hover {
 }
 
 .btn.btn-primary:disabled {
-    background-color: #55ada6;
-    border-color: #257770;
+  background-color: #55ada6;
+  border-color: #257770;
+}
+
+.modern-scroll {
+  overflow: auto;
+}
+
+.modern-scroll::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+
+.modern-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.12),
+      rgba(255, 255, 255, 0.08));
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background-clip: padding-box;
+}
+
+.modern-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 @keyframes opacity {
   0% {
-    opacity: .8;
+    opacity: 0.8;
   }
+
   50% {
-    opacity: .7;
+    opacity: 0.7;
   }
+
   100% {
-    opacity: .8;
+    opacity: 0.8;
   }
 }
 
 @font-face {
-font-family: 'Overpass-Black';
-src: url('../src/assets/fonts/Overpass/static/Overpass-Black.ttf');
+  font-family: 'Overpass-Black';
+  src: url('../src/assets/fonts/Overpass/static/Overpass-Black.ttf');
 }
 
 @font-face {
-font-family: 'Overpass-Bold';
-src: url('../src/assets/fonts/Overpass/static/Overpass-Bold.ttf');
+  font-family: 'Overpass-Bold';
+  src: url('../src/assets/fonts/Overpass/static/Overpass-Bold.ttf');
 }
 
 @font-face {
-font-family: 'Overpass-Light';
-src: url('../src/assets/fonts/Overpass/static/Overpass-Light.ttf');
+  font-family: 'Overpass-Light';
+  src: url('../src/assets/fonts/Overpass/static/Overpass-Light.ttf');
 }
 
 @font-face {
-font-family: 'Overpass-Regular';
-src: url('../src/assets/fonts/Overpass/static/Overpass-Regular.ttf');
+  font-family: 'Overpass-Regular';
+  src: url('../src/assets/fonts/Overpass/static/Overpass-Regular.ttf');
 }
 
 @font-face {
-font-family: 'Overpass-Thin';
-src: url('../src/assets/fonts/Overpass/static/Overpass-Thin.ttf');
+  font-family: 'Overpass-Thin';
+  src: url('../src/assets/fonts/Overpass/static/Overpass-Thin.ttf');
 }
 
 @font-face {
-font-family: 'Roboto-Black';
-src: url('../src/assets/fonts/Roboto/Roboto-Black.ttf');
+  font-family: 'Roboto-Black';
+  src: url('../src/assets/fonts/Roboto/Roboto-Black.ttf');
 }
 
 @font-face {
-font-family: 'Roboto-Bold';
-src: url('../src/assets/fonts/Roboto/Roboto-Bold.ttf');
+  font-family: 'Roboto-Bold';
+  src: url('../src/assets/fonts/Roboto/Roboto-Bold.ttf');
 }
 
 @font-face {
-font-family: 'Roboto-Light';
-src: url('../src/assets/fonts/Roboto/Roboto-Light.ttf');
+  font-family: 'Roboto-Light';
+  src: url('../src/assets/fonts/Roboto/Roboto-Light.ttf');
 }
 
 @font-face {
-font-family: 'Roboto-Regular';
-src: url('../src/assets/fonts/Roboto/Roboto-Regular.ttf');
+  font-family: 'Roboto-Regular';
+  src: url('../src/assets/fonts/Roboto/Roboto-Regular.ttf');
 }
 
 @font-face {
-font-family: 'Roboto-Thin';
-src: url('../src/assets/fonts/Roboto/Roboto-Thin.ttf');
+  font-family: 'Roboto-Thin';
+  src: url('../src/assets/fonts/Roboto/Roboto-Thin.ttf');
 }

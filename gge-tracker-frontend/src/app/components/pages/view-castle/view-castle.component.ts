@@ -303,7 +303,6 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
 
   public getSpecialSkin(castleType: string, name: string): string {
     const basePath = ApiRestService.apiUrl + 'assets/common/';
-    //outpostmapobjectspecialspringbell
     const cleanCastleType = castleType.toLowerCase().trim().replaceAll('\-_', '');
     const cleanName = name.toLowerCase().trim().replaceAll('\-_', '');
     return `${basePath}${cleanCastleType}mapobjectspecial${cleanName}.png`;

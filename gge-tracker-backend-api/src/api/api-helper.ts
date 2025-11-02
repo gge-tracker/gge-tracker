@@ -229,7 +229,7 @@ export abstract class ApiHelper {
         : this.redisClient.setEx(key, cacheTTL, JSON.stringify(data)));
     } catch (error) {
       const date = new Date().toISOString();
-      console.error(`[${date}] Redis cache update error for key "${key}":`, error);
+      console.error('[%s] Redis cache update error for key %s: %s', date, key, error);
     }
   }
 

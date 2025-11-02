@@ -92,6 +92,185 @@ export class GenericFetchAndSaveBackend {
     this.createNewPool();
   }
 
+  public async fillGrandTournamentResults(): Promise<void> {
+    const start = new Date();
+    try {
+      Utils.logMessage('=====================================');
+      Utils.logMessage(' Starting global rankings refresh');
+      Utils.logMessage(' Current environment:', this.CURRENT_ENV);
+      Utils.logMessage('=====================================');
+      Utils.logMessage('Refreshing Grand Tournament results...');
+
+      const getLastEventQuery = `
+        SELECT event_id, created_at
+        FROM grand_tournament
+        ORDER BY created_at DESC
+        LIMIT 1;
+      `;
+      const result = await this.pgSqlQuery(getLastEventQuery);
+      const lastEvent = result.rows[0];
+      let currentEventId: number;
+      if (!lastEvent) {
+        currentEventId = 1;
+      } else {
+        const lastDate = new Date(lastEvent.created_at);
+        const now = new Date();
+        const diffHours = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60);
+        currentEventId = diffHours > 24 ? lastEvent.event_id + 1 : lastEvent.event_id;
+      }
+      Utils.logMessage('Current eventId: ', currentEventId);
+      const key = 'llsp';
+      const lt = 84;
+      const maxResult = 1000;
+      const levelCategory = 1;
+      const maxLevelCategory = 5;
+      const alliances = {};
+      const dateStr = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
+      for (let lc = levelCategory; lc <= maxLevelCategory; lc++) {
+        Utils.logMessage(' Processing level category:', lc);
+        let subdivisionId = 1;
+        let hasMore = true;
+        let subDivisionCount = 0;
+        while (hasMore && subdivisionId <= 9999) {
+          try {
+            const url: string = encodeURI(
+              this.BASE_API_URL + key + `/"LT":${lt},"LID":${lc},"M":${maxResult},"R":1,"SDI":${subdivisionId}`,
+            );
+            let response;
+            let tryCount = 0;
+            while (tryCount < 3) {
+              try {
+                response = await axios.get(url);
+                if (response.data.content && response.data.content.L) {
+                  break;
+                } else {
+                  tryCount++;
+                }
+              } catch {
+                tryCount++;
+                Utils.logMessage('   Error fetching URL:', url);
+                Utils.logMessage('   Retry count:', tryCount);
+                if (tryCount === 3) {
+                  Utils.logMessage('   Max retries reached. Giving up.');
+                }
+              }
+            }
+            const data = response.data;
+            if (data.content && data.content.L) {
+              const results = data.content.L || [];
+              for (const result of results) {
+                const SIelements = String(result.SI).trim().split('-');
+                const allianceId = Number.parseInt(String(SIelements[SIelements.length - 1]));
+                const token = String(allianceId) + '_' + String(result.I);
+                if (allianceId && !alliances[token]) {
+                  alliances[token] = {
+                    server_id: Number.parseInt(String(result.I)),
+                    alliance_name: String(result.A),
+                    subdivision_id: subdivisionId,
+                    division_id: lc,
+                    alliance_id: allianceId,
+                    rank: Number.parseInt(String(result.R)),
+                    created_at: dateStr,
+                    score: Number.parseInt(String(result.S)),
+                    event_id: currentEventId,
+                  };
+                }
+              }
+            } else {
+              hasMore = false;
+            }
+            subdivisionId++;
+            subDivisionCount++;
+          } catch (error) {
+            console.error('=====================================');
+            console.error('[Error] ', error.message);
+            console.error('=====================================');
+            hasMore = false;
+          }
+        }
+        Utils.logMessage(' Total subdivisions processed for level category', lc + ':', subDivisionCount);
+      }
+      const insertValues: any[] = Object.values(alliances);
+      Utils.logMessage('Inserting ', insertValues.length, 'records into the database...');
+      if (insertValues.length > 0) {
+        const tableName = 'grand_tournament';
+        const batchSize = 50;
+        const requiredKeys = [
+          'server_id',
+          'alliance_name',
+          'subdivision_id',
+          'division_id',
+          'alliance_id',
+          'created_at',
+          'rank',
+          'score',
+          'event_id',
+        ] as const;
+        for (let i = 0; i < insertValues.length; i += batchSize) {
+          const batch = insertValues.slice(i, i + batchSize);
+          const values: any[] = [];
+          const placeholders = batch
+            .map((row, rowIndex) => {
+              for (const key of requiredKeys) {
+                if (!(key in row) || row[key] === undefined || row[key] === null) {
+                  throw new Error(`Missing or invalid property '${key}' in row: ${JSON.stringify(row)}`);
+                }
+              }
+              const rowValues = requiredKeys.map((k) => row[k]);
+              const baseIndex = rowIndex * requiredKeys.length;
+              values.push(...rowValues);
+              const params = Array.from({ length: requiredKeys.length }, (_, j) => `$${baseIndex + j + 1}`);
+              return `(${params.join(', ')})`;
+            })
+            .join(', ');
+          const queryText = `
+            INSERT INTO ${tableName}
+            (${requiredKeys.join(', ')})
+            VALUES ${placeholders};
+          `;
+          try {
+            await this.pgSqlQuery(queryText, values);
+          } catch (error) {
+            Utils.logMessage('Error executing query:', error);
+            Utils.logMessage('Query text:', queryText);
+            Utils.logMessage('Values:', values);
+            this.DB_UPDATES.criticalErrors++;
+          }
+        }
+      }
+      Utils.logMessage('Grand Tournament results updated successfully');
+      // If there is more that 1 record inserted, we increment the redis-fill version
+      if (insertValues.length > 1) {
+        const redisClient = createClient({
+          url: 'redis://redis-server:6379',
+        });
+        await redisClient.connect();
+        await redisClient.incr(`grand-tournament:event-dates:version:${this.server}`);
+      }
+      const end = new Date();
+      const duration = end.getTime() - start.getTime();
+      const durationInSeconds = Math.floor(duration / 1000);
+      Utils.logMessage(
+        'Duration of Grand Tournament results update:',
+        durationInSeconds + ' seconds, with ' + insertValues.length + ' records inserted',
+      );
+      for (let i = 0; i < 9; i++) {
+        Utils.logMessage('.');
+      }
+      await this.pgSqlConnection.end();
+      Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, this.server);
+    } catch (error) {
+      Utils.logMessage('Error refreshing Grand Tournament results');
+      Utils.logMessage('========= BEGIN STACK TRACE ============');
+      Utils.logMessage('Identifier: 411');
+      Utils.logMessage(error);
+      Utils.logMessage('=========== END STACK TRACE =============');
+      this.DB_UPDATES.criticalErrors++;
+    }
+    await this.pgSqlConnection.end();
+    Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, this.server);
+  }
+
   /**
    * Refreshes the global rankings by executing a PostgreSQL query to refresh the materialized view.
    *

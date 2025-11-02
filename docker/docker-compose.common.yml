@@ -144,6 +144,7 @@ services:
       - INTERNAL_SECRET=${INTERNAL_SECRET}
       - GGE_API_URL=${GGE_API_URL}:${GGE_API_PORT}
       - GGE_API_URL_REALTIME=${GGE_API_URL_REALTIME}:${GGE_API_PORT_REALTIME}
+      - BACKEND_API_URI=${BACKEND_API_URI}
     depends_on:
       mariadb:
         condition: service_healthy

@@ -66,6 +66,8 @@ async function executeFillInOrder(): Promise<void> {
   if (logSuffix === 'DE1') {
     const generic2 = new GenericFetchAndSaveBackend(BASE_API_URL, null, null, genericPostgresConfig, 'GLOBAL_RANKING');
     await generic2.refreshGlobalRankings();
+    const generic3 = new GenericFetchAndSaveBackend(BASE_API_URL, null, null, genericPostgresConfig, 'GT_TOURNAMENT');
+    await generic3.fillGrandTournamentResults();
   }
   setTimeout(() => {
     console.log('Timeout reached, forcing exit.');

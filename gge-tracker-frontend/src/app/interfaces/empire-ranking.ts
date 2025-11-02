@@ -411,6 +411,11 @@ export interface ApiRenames {
 }
 
 export interface ApiLastUpdates {
+  api_url: string;
+  discord_url: string;
+  discord_member_count?: number;
+  release_version: string;
+  website_url: string;
   server: string;
   version: string;
   players: number;
@@ -573,6 +578,77 @@ export interface ApiPlayerCastleDataResponse extends ApiPlayerCastleGenericBase 
     [key: string]: [number, number][];
   };
 }
+
+export interface ApiGrandTournamentDatesResponse {
+  events: {
+    dates: string[];
+    event_id: number;
+  }[];
+}
+
+export interface ApiGrandTournamentAlliance {
+  alliance_id: number;
+  alliance_name: string;
+  server: string;
+  rank: number;
+  score: number;
+  subdivision: number;
+}
+
+export interface ApiGrandTournamentSearchAlliances extends ApiGrandTournamentAlliance {
+  division: number;
+  subdivision: number;
+}
+
+export interface ApiGrandTournamentAlliancesResponse {
+  event: {
+    alliances: ApiGrandTournamentAlliance[];
+    division: {
+      current_division: number;
+      max_division: number;
+      min_division: number;
+    };
+    subdivision: {
+      current_subdivision: number;
+      max_subdivision: number;
+      min_subdivision: number;
+    };
+  };
+  pagination: {
+    current_items_count: number;
+    current_page: number;
+    total_items_count: number;
+    total_pages: number;
+  };
+}
+
+export interface ApiAllianceAnalysis {
+  division: number;
+  subdivision: number;
+  rank: number;
+  score: number;
+  date: string;
+}
+
+export interface ApiGrandTournamenAllianceAnalysisResponse {
+  meta: {
+    alliance_id: number;
+    alliance_name: string;
+    server: string;
+  };
+  analysis: ApiAllianceAnalysis[];
+}
+
+export interface ApiGrandTournamentAlliancesSearchResponse {
+  alliances: ApiGrandTournamentSearchAlliances[];
+  pagination: {
+    current_items_count: number;
+    current_page: number;
+    total_items_count: number;
+    total_pages: number;
+  };
+}
+
 export interface ApiPlayerCastleNameResponse {
   kingdomId: number;
   id: number;

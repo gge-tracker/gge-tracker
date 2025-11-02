@@ -2,6 +2,7 @@ import * as express from 'express';
 import { ApiHelper } from '../api-helper';
 import * as pg from 'pg';
 import { formatInTimeZone } from 'date-fns-tz';
+import { GgeTrackerServers } from '../services/empire-api-service';
 
 /**
  * Abstract class providing API endpoints for event-related data.
@@ -51,23 +52,23 @@ export abstract class ApiEvents implements ApiHelper {
        * --------------------------------- */
       const query = `
         SELECT
-            e.event_num,
-            e.collect_date,
-            COUNT(*) AS player_count,
-            'outer_realms' AS type
+          e.event_num,
+          e.collect_date,
+          COUNT(*) AS player_count,
+          'outer_realms' AS type
         FROM outer_realms_event e
         INNER JOIN outer_realms_ranking r
-            ON e.event_num = r.event_num
+          ON e.event_num = r.event_num
         GROUP BY e.event_num, e.collect_date
         UNION ALL
         SELECT
-            e.event_num,
-            e.collect_date,
-            COUNT(*) AS player_count,
-            'beyond_the_horizon' AS type
+          e.event_num,
+          e.collect_date,
+          COUNT(*) AS player_count,
+          'beyond_the_horizon' AS type
         FROM beyond_the_horizon_event e
         INNER JOIN beyond_the_horizon_ranking r
-            ON e.event_num = r.event_num
+          ON e.event_num = r.event_num
         GROUP BY e.event_num, e.collect_date
         ORDER BY collect_date DESC;
       `;
@@ -109,6 +110,511 @@ export abstract class ApiEvents implements ApiHelper {
   }
 
   /**
+   * Retrieves and returns grouped Grand Tournament event dates
+   *
+   * HTTP responses:
+   * - 200 OK: returns a JSON object containing an array of events with their IDs and associated dates
+   * - 500 Internal Server Error: on unexpected failures; the error is logged and a generic 500 message is returned
+   *
+   * Response structure:
+   * - {
+   *    events: Array<{ event_id: number, dates: string[] }>
+   *   }
+   *
+   * @param request - Express request object
+   * @param response - Express response object used to send the JSON result
+   * @returns A Promise that resolves once an HTTP response has been sent
+   */
+  public static async getGrandTournamentEventDates(
+    request: express.Request,
+    response: express.Response,
+  ): Promise<void> {
+    try {
+      /* ---------------------------------
+       * Cache check
+       * --------------------------------- */
+      const cacheVersion = (await ApiHelper.redisClient.get(`grand-tournament:event-dates:version`)) || '-1';
+      const cachedKey = `grand-tournament:event-dates:v${cacheVersion}`;
+      const cachedData = await ApiHelper.redisClient.get(cachedKey);
+      if (cachedData) {
+        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        return;
+      }
+
+      /* ---------------------------------
+       * Query from DB
+       * --------------------------------- */
+      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServers.GLOBAL);
+      const query = `
+        SELECT
+          event_id,
+          ARRAY_AGG(DISTINCT date_trunc('hour', created_at) ORDER BY date_trunc('hour', created_at)) AS dates
+        FROM grand_tournament
+        GROUP BY event_id
+        ORDER BY event_id ASC;
+      `;
+      const { rows } = await pgPool.query(query);
+      if (rows.length === 0) {
+        response.status(ApiHelper.HTTP_OK).json({ events: [] });
+        return;
+      }
+
+      /* ---------------------------------
+       * Process results
+       * --------------------------------- */
+      const result: { event_id: number; dates: string[] }[] = rows.map((row) => ({
+        event_id: row.event_id,
+        dates: row.dates.map((d: Date) => new Date(d).toISOString()),
+      }));
+
+      /* ---------------------------------
+       * Update cache and send response
+       * --------------------------------- */
+      const cacheTtl = 60 * 60 * 6; // 6 hours
+      void ApiHelper.updateCache(cachedKey, { events: result }, cacheTtl);
+      response.status(ApiHelper.HTTP_OK).json({ events: result });
+    } catch (error) {
+      const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
+      response.status(code).send({ error: message });
+      ApiHelper.logError(error, 'getGrandTournamentEventDates', request);
+      return;
+    }
+  }
+
+  /**
+   * Retrieves and returns the grand tournament alliance analysis
+   *
+   * HTTP responses:
+   * - 200 OK: returns a JSON object containing the alliance analysis data
+   * - 400 Bad Request: if the alliance ID or event ID is invalid
+   * - 500 Internal Server Error: on unexpected failures; the error is logged and a generic 500 message is returned
+   *
+   * Response structure:
+   * - {
+   *    analysis: Array<{ division: number, subdivision: number, rank: number, score: number, date: string }>
+   *   }
+   *
+   * @param request - Express request object
+   * @param response - Express response object used to send the JSON result
+   * @returns A Promise that resolves once an HTTP response has been sent
+   */
+  public static async getGrandTournamentAllianceAnalysis(
+    request: express.Request,
+    response: express.Response,
+  ): Promise<void> {
+    try {
+      /* ---------------------------------
+       * Validate request
+       * --------------------------------- */
+      const allianceId = ApiHelper.getVerifiedId(String(request.params.allianceId));
+      const eventId = Number.parseInt(String(request.params.eventId));
+      if (allianceId === false || allianceId === undefined) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid alliance id' });
+        return;
+      } else if (!eventId || Number.isNaN(eventId) || eventId < 0 || eventId > 999_999_999) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid event id' });
+        return;
+      }
+      const realAllianceId = ApiHelper.removeCountryCode(allianceId);
+      const countryCode = ApiHelper.getCountryCode(String(allianceId));
+      const zone = ApiHelper.ggeTrackerManager.getZoneFromCode(countryCode);
+      if (!zone) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid alliance id' });
+        return;
+      }
+      let replacedZone = zone.replaceAll(new RegExp('EmpireEx_?', 'g'), '');
+      if (replacedZone === '') {
+        replacedZone = '1';
+      }
+
+      /* ---------------------------------
+       * Cache check
+       * --------------------------------- */
+      const cacheVersion = (await ApiHelper.redisClient.get(`grand-tournament:event-dates:version`)) || '-1';
+      const cachedKey = `grand-tournament:alliance-analysis:${allianceId}:v${cacheVersion}`;
+      const cachedData = await ApiHelper.redisClient.get(cachedKey);
+      if (cachedData) {
+        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        return;
+      }
+
+      /* ---------------------------------
+       * Query from DB
+       * --------------------------------- */
+      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServers.GLOBAL);
+      const query = `
+        SELECT
+          server_id,
+          division_id,
+          subdivision_id,
+          alliance_id,
+          alliance_name,
+          rank,
+          score,
+          created_at
+        FROM grand_tournament
+        WHERE alliance_id = $1
+        AND server_id = $2
+        AND event_id = $3
+        ORDER BY created_at DESC;
+      `;
+      const { rows } = await pgPool.query(query, [realAllianceId, replacedZone, eventId]);
+      if (rows.length === 0) {
+        response.status(ApiHelper.HTTP_OK).send({ analysis: [], meta: { alliance_id: allianceId, server: zone } });
+        return;
+      }
+
+      /* ---------------------------------
+       * Map analysis data
+       * --------------------------------- */
+      const analysis = rows.map((row) => {
+        const dateWithoutMinutes = new Date(row.created_at);
+        return {
+          division: row.division_id,
+          subdivision: row.subdivision_id,
+          rank: row.rank,
+          score: Number(row.score),
+          date: formatInTimeZone(dateWithoutMinutes, 'UTC', 'yyyy-MM-dd HH:00:00'),
+        };
+      });
+      const serverObject = ApiHelper.ggeTrackerManager.getServerByZone(
+        'EmpireEx' + (rows.at(0)?.server_id === 1 ? '' : '_' + rows.at(0)?.server_id),
+      );
+      const server = serverObject && 'outer_name' in serverObject ? serverObject.outer_name : 'Unknown';
+
+      /* ---------------------------------
+       * Update cache and send response
+       * --------------------------------- */
+      const cacheTtl = 60 * 60 * 6; // 6 hours
+      const responseData = {
+        analysis,
+        meta: { alliance_id: allianceId, alliance_name: rows.at(0)?.alliance_name || null, server },
+      };
+      response.status(ApiHelper.HTTP_OK).send(responseData);
+      void ApiHelper.updateCache(cachedKey, responseData, cacheTtl);
+    } catch (error) {
+      const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
+      response.status(code).send({ error: message });
+      ApiHelper.logError(error, 'getGrandTournamentAllianceAnalysis', request);
+      return;
+    }
+  }
+
+  /**
+   * Search and return paginated "Grand Tournament" alliance data filtered by alliance name and hour
+   *
+   * HTTP responses:
+   * - 200 OK: returns cached or freshly fetched response object described above. If no matches, returns { total_items: 0, alliances: [] } (or the standardized response with empty alliances and pagination).
+   * - 400 Bad Request: when `date` is invalid or `alliance_name` is empty or exceeds 50 characters. (Client error messages indicate required format for date.)
+   * - 500 Internal Server Error: on unexpected failures; the error is logged and a generic 500 message is returned.
+   *
+   * @param request - express.Request containing query parameters: alliance_name, date, page
+   * @param response - express.Response used to send the HTTP response
+   * @returns Promise<void> — sends the HTTP response directly; does not throw for expected validation errors
+   */
+  public static async searchGrandTournamentDataByAllianceName(
+    request: express.Request,
+    response: express.Response,
+  ): Promise<void> {
+    try {
+      /* ---------------------------------
+       * Validate request parameters
+       * --------------------------------- */
+      const allianceName = String(request.query.alliance_name || '').trim();
+      const date = this.validateDate(request.query.date) ? new Date(String(request.query.date)) : null;
+      if (!date) {
+        response
+          .status(ApiHelper.HTTP_BAD_REQUEST)
+          .send({ error: 'Invalid date format. Please use YYYY-MM-DDTHH:00:00.000Z.' });
+        return;
+      }
+      const pagination_page = request.query.page ? Number.parseInt(String(request.query.page)) : 1;
+      const maxAlliancesPerPage = 10;
+      const offset = (pagination_page - 1) * maxAlliancesPerPage;
+      if (allianceName.length === 0 || allianceName.length > 50) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid alliance name' });
+        return;
+      }
+
+      /* ---------------------------------
+       * Cache check
+       * --------------------------------- */
+      const cacheVersion = (await ApiHelper.redisClient.get(`grand-tournament:event-dates:version`)) || '-1';
+      const cachedKey = `grand-tournament:search-alliance-name:${allianceName}:date:${date.toISOString()}:page:${pagination_page}:v${cacheVersion}`;
+      const cachedData = await ApiHelper.redisClient.get(cachedKey);
+      if (cachedData) {
+        response.status(ApiHelper.HTTP_OK).send(cachedData);
+        return;
+      }
+
+      /* ---------------------------------
+       * Database query for total count
+       * --------------------------------- */
+      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServers.GLOBAL);
+      const baseParameters: (string | number | Date)[] = [date];
+      const queryCount = `
+        SELECT
+          COUNT(*) AS total_items
+        FROM grand_tournament
+        WHERE ($1::timestamp IS NULL
+          OR (created_at >= $1::timestamp AND created_at < $1::timestamp + interval '1 hour'))
+          AND alliance_name ILIKE $2
+      `;
+      const { rows: countRows } = await pgPool.query(queryCount, [...baseParameters, `%${allianceName}%`]);
+      const total_items = Number(countRows[0]?.total_items || 0);
+      const total_pages = Math.ceil(total_items / maxAlliancesPerPage);
+      if (total_items === 0) {
+        response.status(ApiHelper.HTTP_OK).send({ total_items, alliances: [] });
+        return;
+      }
+
+      /* ---------------------------------
+       * Database query for alliances
+       * --------------------------------- */
+      const queryAlliances = `
+        SELECT
+          server_id,
+          division_id,
+          subdivision_id,
+          alliance_id,
+          alliance_name,
+          rank,
+          score,
+          created_at
+        FROM grand_tournament
+        WHERE ($1::timestamp IS NULL
+          OR (created_at >= $1::timestamp AND created_at < $1::timestamp + interval '1 hour'))
+          AND alliance_name ILIKE $2
+        ORDER BY created_at DESC, division_id DESC, score DESC, rank
+        LIMIT $3 OFFSET $4;
+      `;
+      const { rows } = await pgPool.query(queryAlliances, [
+        ...baseParameters,
+        `%${allianceName}%`,
+        maxAlliancesPerPage,
+        offset,
+      ]);
+
+      /* ---------------------------------
+       * Format results
+       * --------------------------------- */
+      const alliances = rows.map((row) => {
+        const serverObject = ApiHelper.ggeTrackerManager.getServerByZone(
+          'EmpireEx' + (row.server_id === 1 ? '' : '_' + row.server_id),
+        );
+        const serverCode = serverObject && 'code' in serverObject ? serverObject.code : '999';
+        return {
+          alliance_id: Number.parseInt(row.alliance_id + serverCode) || null,
+          alliance_name: row.alliance_name,
+          server: serverObject?.outer_name || null,
+          rank: row.rank,
+          score: Number(row.score),
+          division: row.division_id,
+          subdivision: row.subdivision_id,
+        };
+      });
+
+      /* ---------------------------------
+       * Update cache and send response
+       * --------------------------------- */
+      const cacheTtl = 60 * 60 * 6; // 6 hours
+      const responseData = {
+        alliances,
+        pagination: {
+          current_page: pagination_page,
+          total_pages,
+          current_items_count: alliances.length,
+          total_items_count: total_items,
+        },
+      };
+      void ApiHelper.updateCache(cachedKey, responseData, cacheTtl);
+      response.status(ApiHelper.HTTP_OK).send(responseData);
+    } catch (error) {
+      const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
+      response.status(code).send({ error: message });
+      ApiHelper.logError(error, 'searchGrandTournamentDataByAllianceName', request);
+      return;
+    }
+  }
+
+  /**
+   * Retrieves a paginated snapshot of "Grand Tournament" (Grand Tournament) alliances for a specific hour
+   *
+   * Query parameters
+   * - date: required; ISO 8601 hour precision string (example: "2023-01-23T14:00:00.000Z"). If invalid, returns 400
+   * - division_id: optional; integer 1..5. Defaults to 5. If out of range or not a number, returns 400
+   * - subdivision_id: optional; integer 1..999_999. If out of range or not a number, returns 400
+   * - page: optional; integer >= 1. Defaults to 1
+   *
+   * Response structure :
+   * - {
+   *     event: {
+   *       division: { current_division: number, min_division: 1, max_division: 5 },
+   *       subdivision: { current_subdivision: number | null, min_subdivision: 1, max_subdivision: number },
+   *       alliances: Array<{
+   *         alliance_id: number | null,    // computed by concatenating DB alliance_id with server code then parseInt
+   *         alliance_name: string,
+   *         server: string | null,         // server outer_name resolved by zone lookup
+   *         rank: number,
+   *         score: number,
+   *         subdivision: number | null
+   *       }>
+   *     },
+   *     pagination: {
+   *       current_page: number,
+   *       total_pages: number,
+   *       current_items_count: number,
+   *       total_items_count: number
+   *     }
+   *   }
+   *
+   * @param request - express.Request containing query parameters (date, division_id, subdivision_id, page)
+   * @param response - express.Response used to send JSON responses and HTTP status codes
+   * @returns Promise<void> - resolves after sending the HTTP response
+   */
+  public static async getGrandTournament(request: express.Request, response: express.Response): Promise<void> {
+    try {
+      /* ---------------------------------
+       * Validate request parameters
+       * --------------------------------- */
+      const maxAlliancesPerPage = 10;
+      const date = this.validateDate(request.query.date) ? new Date(String(request.query.date)) : null;
+      if (!date) {
+        response
+          .status(ApiHelper.HTTP_BAD_REQUEST)
+          .send({ error: 'Invalid date format. Please use YYYY-MM-DDTHH:00:00.000Z.' });
+        return;
+      }
+      const division_id = request.query.division_id ? Number.parseInt(String(request.query.division_id)) : 5;
+      const subdivision_id = request.query.subdivision_id
+        ? Number.parseInt(String(request.query.subdivision_id))
+        : undefined;
+      if (!division_id || Number.isNaN(division_id) || division_id < 1 || division_id > 5) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid division id' });
+        return;
+      }
+      if (subdivision_id && (Number.isNaN(subdivision_id) || subdivision_id < 1 || subdivision_id > 999_999)) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid subdivision id' });
+        return;
+      }
+      const pagination_page = request.query.page ? Number.parseInt(String(request.query.page)) : 1;
+
+      /* ---------------------------------
+       * Cache check
+       * --------------------------------- */
+      const cacheVersion = (await ApiHelper.redisClient.get(`grand-tournament:event-dates:version`)) || '-1';
+      const cachedKey = `grand-tournament:division:${division_id}:subdivision:${subdivision_id || 'all'}:date:${date.toISOString()}:page:${pagination_page}:v${cacheVersion}`;
+      const cachedData = await ApiHelper.redisClient.get(cachedKey);
+      if (cachedData) {
+        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        return;
+      }
+
+      /* ---------------------------------
+       * Query database
+       * --------------------------------- */
+      const offset = (pagination_page - 1) * maxAlliancesPerPage;
+      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServers.GLOBAL);
+      const baseParameters: (string | number | Date)[] = [date, division_id];
+      if (subdivision_id) baseParameters.push(subdivision_id);
+      let index = 2;
+      const queryAlliances = `
+        SELECT
+          server_id,
+          division_id,
+          subdivision_id,
+          alliance_id,
+          alliance_name,
+          rank,
+          score,
+          created_at
+        FROM grand_tournament
+        WHERE ($1::timestamp IS NULL
+          OR (created_at >= $1::timestamp AND created_at < $1::timestamp + interval '1 hour'))
+          AND division_id = $${index++}
+          ${subdivision_id ? `AND subdivision_id = $${index++}` : ''}
+        ORDER BY created_at DESC, division_id DESC, ${subdivision_id ? 'subdivision_id, rank' : 'score DESC, rank'}
+        LIMIT $${index++} OFFSET $${index++};
+      `;
+
+      index = 2;
+      const queryStats = `
+        SELECT
+          COUNT(*) AS total_items,
+          MAX(subdivision_id) AS max_subdivision_id
+        FROM grand_tournament
+        WHERE ($1::timestamp IS NULL
+              OR (created_at >= $1::timestamp AND created_at < $1::timestamp + interval '1 hour'))
+          AND division_id = $${index++}
+          ${subdivision_id ? `AND subdivision_id = $${index++}` : ''};
+      `;
+
+      const [alliancesResult, statsResult] = await Promise.all([
+        pgPool.query(queryAlliances, [...baseParameters, maxAlliancesPerPage, offset]),
+        pgPool.query(queryStats, baseParameters),
+      ]);
+
+      if (alliancesResult.rows.length === 0 && statsResult.rows.length === 0) {
+        response.status(ApiHelper.HTTP_OK).send({ event: { alliances: [] }, pagination: {} });
+        return;
+      }
+
+      /* ---------------------------------
+       * Format results
+       * --------------------------------- */
+      const total_items = Number(statsResult.rows[0]?.total_items || 0);
+      const max_subdivision_id = Number(statsResult.rows[0]?.max_subdivision_id || 1);
+      const total_pages = Math.ceil(total_items / maxAlliancesPerPage);
+      const alliances = alliancesResult.rows.map((row) => {
+        const serverObject = ApiHelper.ggeTrackerManager.getServerByZone(
+          'EmpireEx' + (row.server_id === 1 ? '' : '_' + row.server_id),
+        );
+        const serverCode = serverObject && 'code' in serverObject ? serverObject.code : '999';
+        return {
+          alliance_id: Number.parseInt(row.alliance_id + serverCode) || null,
+          alliance_name: row.alliance_name,
+          server: serverObject?.outer_name || null,
+          rank: row.rank,
+          score: Number(row.score),
+          subdivision: row.subdivision_id,
+        };
+      });
+
+      /* ---------------------------------
+       * Update cache and send response
+       * --------------------------------- */
+      const cacheTtl = 60 * 60 * 6; // 6 hours
+      const responseData = {
+        event: {
+          division: {
+            current_division: division_id,
+            min_division: 1,
+            max_division: 5,
+          },
+          subdivision: {
+            current_subdivision: subdivision_id || null,
+            min_subdivision: 1,
+            max_subdivision: max_subdivision_id,
+          },
+          alliances,
+        },
+        pagination: {
+          current_page: pagination_page,
+          total_pages,
+          current_items_count: alliances.length,
+          total_items_count: total_items,
+        },
+      };
+      void ApiHelper.updateCache(cachedKey, responseData, cacheTtl);
+      response.status(ApiHelper.HTTP_OK).json(responseData);
+    } catch (error: any) {
+      const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
+      response.status(code).json({ error: message });
+      ApiHelper.logError(error, 'getGrandTournament', request);
+    }
+  }
+
+  /**
    * Retrieves a paginated list of players for a specific event, with optional filtering by player name and server.
    *
    * @param request - The Express request object, containing route parameters and query parameters:
@@ -136,7 +642,7 @@ export abstract class ApiEvents implements ApiHelper {
       const PAGINATION_LIMIT = 15;
       const id = request.params.id;
       let page = Number.parseInt(String(request.query.page)) || 1;
-      let playerNameFilter = (request.query.player_name as string) || '';
+      let playerNameFilter = request.query.player_name ? String(request.query.player_name) : null;
       let serverFilter = request.query.server ? String(request.query.server) : null;
       let eventType = request.params.eventType;
       if (eventType !== 'outer-realms' && eventType !== 'beyond-the-horizon') {
@@ -521,5 +1027,17 @@ export abstract class ApiEvents implements ApiHelper {
       ApiHelper.logError(error, 'getDataEventType', request);
       return;
     }
+  }
+
+  private static validateDate(dateString: any): boolean {
+    if (typeof dateString !== 'string') {
+      return false;
+    }
+    // If date is not specific in YYYY-MM-DDTHH:00:00.000Z (with hours precision), reject it
+    const dateRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:00:00\.000Z$/;
+    if (!dateRegex.test(dateString)) {
+      return false;
+    }
+    return true;
   }
 }

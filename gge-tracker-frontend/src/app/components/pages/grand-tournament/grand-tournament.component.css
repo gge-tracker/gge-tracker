@@ -1,0 +1,48 @@
+.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.btn-icon {
+  width: 37px;
+  height: auto;
+}
+
+.btn-icon:hover {
+  transform: scale(1.1);
+}
+
+::ng-deep .alliances th, td {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.division-element {
+  transition: transform 0.2s;
+  position: relative;
+}
+
+.division-element:hover {
+  cursor: pointer;
+  transform: scale(1.1);
+}
+
+.division-element.active::after {
+  content: "";
+  position: absolute;
+  height: 2px;
+  width: 0%;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  transition: width 0.3s ease-in-out;
+  display: inline-block;
+  margin-left: 0;
+  vertical-align: .255em;
+  border-top: .3em solid;
+  border-right: .3em solid transparent;
+  border-bottom: 0;
+  border-left: .3em solid transparent;
+  background: transparent;
+  color: rgb(228, 189, 17);
+}

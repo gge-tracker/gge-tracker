@@ -17,6 +17,10 @@ h2, h3 {
   margin-bottom: 20px;
 }
 
+a {
+  color: inherit;
+}
+
 .contrib-avatar {
   position: relative;
   width: 80px;
