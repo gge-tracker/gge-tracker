@@ -662,7 +662,7 @@ export abstract class ApiEvents implements ApiHelper {
       if (playerNameFilter) {
         playerNameFilter = playerNameFilter.trim().toLowerCase();
       }
-      if (playerNameFilter.length > 50) {
+      if (playerNameFilter && playerNameFilter.length > 50) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Player name filter is too long' });
         return;
       }
