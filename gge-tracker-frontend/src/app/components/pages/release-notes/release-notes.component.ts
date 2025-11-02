@@ -17,6 +17,22 @@ export enum EnumTypeReleaseNote {
 export class ReleaseNotesComponent {
   public readonly releaseNotes = [
     {
+      version: 'v25-11-02',
+      type: EnumTypeReleaseNote.MAJOR,
+      date: '2025-11-02',
+      items: [
+        '⚙️ [Server] Added Empire Four Kingdoms (E4K) system implementation',
+        '📦 [Server] Added new servers: EP-GR1, E4K-BR1, E4K-DE1, E4K-DE2, E4K-FR1, E4K-HANT1, E4K-INT2, E4K-US1',
+        '📦 [Server] Added EP-NL1 server to realtime fortress tracker tool',
+        '🛠️ [Tools] Added new tool (EP): Grand Tournament alliances analysis with hour by hour points tracking and global leaderboard',
+        '✨ [Miscellaneous] Added search functionality for servers list',
+        '✨ [Miscellaneous] Added GitHub repository link in the navigation bar',
+        '✨ [Miscellaneous] Added Discord member count display in the navigation bar',
+        '🐞 [Bugfix] Fixed custom alliance colors in the cartography tab not being reset after adding a server',
+        '🐞 [Bugfix] Fixed issue with translations were incorrectly applied in the cartography filtering mechanism',
+      ],
+    },
+    {
       version: 'v25-10-12',
       type: EnumTypeReleaseNote.MINOR,
       date: '2025-10-12',

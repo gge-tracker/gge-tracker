@@ -56,7 +56,7 @@ export abstract class ApiHelper {
    * @deprecated @todo Remove this constant and migrate to using UTC everywhere.
    */
   public static readonly APPLICATION_TIMEZONE = 'Europe/Paris';
-  public static readonly API_VERSION = '25.10.12-beta';
+  public static readonly API_VERSION = '25.11.02-beta';
   public static readonly API_VERSION_RELEASE_DATE = this.formatReleaseDate(this.API_VERSION);
 
   /**
