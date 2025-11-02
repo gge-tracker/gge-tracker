@@ -232,7 +232,7 @@ export abstract class ApiAssets implements ApiHelper {
       }
       const extension = path.extname(asset);
       // Build current domain URI. This is used for production and localhost with port.
-      const currentDomainUri = this.getCurrentDomainUri(request);
+      const currentDomainUri = this.getCurrentDomainUri();
       if (extension !== '.js' && extension !== '.json' && extension !== '.webp' && extension !== '.png') {
         response
           .status(ApiHelper.HTTP_BAD_REQUEST)
@@ -358,7 +358,7 @@ export abstract class ApiAssets implements ApiHelper {
        * Validate parameters
        * --------------------------------- */
       const { level, type } = request.query;
-      const currentDomainUri = this.getCurrentDomainUri(request);
+      const currentDomainUri = this.getCurrentDomainUri();
       let asset = String(request.params.asset)
         .trim()
         .toLowerCase()
@@ -590,17 +590,8 @@ export abstract class ApiAssets implements ApiHelper {
     );
   }
 
-  private static getCurrentDomainUri(request: express.Request): string {
-    return (
-      request.protocol +
-      '://' +
-      request.hostname +
-      (request.hostname === 'localhost'
-        ? request.get('host')?.includes(':')
-          ? ':' + request.get('host')?.split(':')[1]
-          : ''
-        : '')
-    );
+  private static getCurrentDomainUri(): string {
+    return process.env.BACKEND_API_URI || 'https://api.gge-tracker.com';
   }
 
   private static async handleFetchExtensionAsset(

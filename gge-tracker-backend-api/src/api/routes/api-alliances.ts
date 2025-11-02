@@ -340,24 +340,24 @@ export abstract class ApiAlliances implements ApiHelper {
       let parameterIndex = 1;
       const query = `
         SELECT
-            A.id AS alliance_id,
-            A.name AS alliance_name,
-            SUM(P.might_current) AS might_current,
-            SUM(P.might_all_time) AS might_all_time,
-            SUM(P.loot_current) AS loot_current,
-            SUM(P.loot_all_time) AS loot_all_time,
-            SUM(P.current_fame) AS current_fame,
-            SUM(P.highest_fame) AS highest_fame,
-            COUNT(P.id) AS player_count
+          A.id AS alliance_id,
+          A.name AS alliance_name,
+          SUM(P.might_current) AS might_current,
+          SUM(P.might_all_time) AS might_all_time,
+          SUM(P.loot_current) AS loot_current,
+          SUM(P.loot_all_time) AS loot_all_time,
+          SUM(P.current_fame) AS current_fame,
+          SUM(P.highest_fame) AS highest_fame,
+          COUNT(P.id) AS player_count
         FROM
-            alliances A
+          alliances A
         LEFT JOIN
-            players P ON A.id = P.alliance_id
+          players P ON A.id = P.alliance_id
         WHERE P.castles IS NOT NULL AND jsonb_array_length(P.castles) > 0
         GROUP BY
-            A.id
+          A.id
         HAVING
-            COUNT(P.id) > 0
+          COUNT(P.id) > 0
         ORDER BY ${orderBy} ${orderType}
         LIMIT $${parameterIndex++} OFFSET $${parameterIndex++};
     `;
