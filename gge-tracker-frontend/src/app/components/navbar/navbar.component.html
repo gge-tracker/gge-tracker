@@ -56,7 +56,7 @@
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false"
             [ngClass]="{ 'active': isActive(['map', 'dungeons']) }">
-            <span translate class="position-relative">{{ 'Outils' | translate }} <small>(5)</small></span>
+            <span translate class="position-relative">{{ 'Outils' | translate }} <small>(6)</small></span>
           </a>
           <ul class="dropdown-menu">
             <li class="mx-0"><a class="dropdown-item d-flex" [routerLink]="['/', 'map']" routerLinkActive="active">
@@ -74,6 +74,10 @@
             <li class="mx-0"><a class="dropdown-item d-flex" [routerLink]="['/', 'castles']" routerLinkActive="active">
                 <img class="tool-icon" src="/assets/tools/castles.png" alt="{{ 'Châteaux' | translate }}">
                 {{ 'Châteaux' | translate }}</a>
+            </li>
+            <li class="mx-0"><a class="dropdown-item d-flex" [routerLink]="['/', 'grand-tournament']" routerLinkActive="active">
+                <img class="tool-icon" src="/assets/tools/gt.png" alt="{{ 'Le Grand Tournoi' | translate }}">
+                {{ 'Le Grand Tournoi' | translate }}</a>
             </li>
             <hr class="special--hr">
             <li class="mx-0 position-relative">
@@ -93,12 +97,15 @@
         <i class="fa-brands fa-github fa-lg"></i>
       </a>
     </div>
-    <div class="ext-link-button me-2 discord-badge d-inline-block ms-1 text-center align-middle" style="color: #7289da;">
+    <div class="ext-link-button me-2 discord-badge d-inline-block ms-1 text-center align-middle position-relative" style="color: #7289da;">
       <a href="https://discord.gg/eb6WSHQqYh" target="_blank" rel="noopener" style="color: inherit"
         class="text-decoration-none align-items-center h-100 text-center">
         <i class="fa-brands fa-discord fa-lg"></i>
         <span class="d-none d-xxl-inline ms-1">{{ 'Discord' }}</span>
       </a>
+      <span class="discord-badge-count" *ngIf="discordMemberCount > 0">
+        {{ discordMemberCount }}
+      </span>
     </div>
     <div class="about-button align-items-center d-flex" [routerLink]="['/', 'about']" [title]="'A propos' | translate">
       <lucide-icon class="lucide lucide-info" [img]="Info"></lucide-icon>

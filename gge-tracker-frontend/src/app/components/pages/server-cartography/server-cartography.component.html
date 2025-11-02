@@ -372,21 +372,18 @@
             <i class="fas fa-search"></i>
           </button>
         </div>
-        <!-- Bouton charger toutes les alliances -->
         <div class="text-center d-grid gap-2 mx-2" *ngIf="watchModeAlliance !== 'one'">
           <button class="btn btn-danger btn-block" (click)="changeMapSize(true)">
             <i class="fa-solid fa-circle-exclamation"></i>
             {{ 'Charger toutes les alliances' | translate }}
           </button>
         </div>
-        <!-- Bouton afficher les sans alliances -->
         <div class="text-center d-grid gap-2 mx-2 mt-3" *ngIf="watchModeAlliance !== 'one'">
           <button class="btn btn-secondary btn-block" (click)="loadNewAlliance('1')">
             <i class="fa-solid fa-ghost"></i>
             {{ showUnallied ? ('Masquer les joueurs sans alliance' | translate) : ('Afficher les joueurs sans alliance' | translate) }}
           </button>
         </div>
-        <!-- Bouton sauvegarder le lien -->
         <div class="text-center d-grid gap-2 mx-2 mt-3" *ngIf="watchModeAlliance !== 'one'">
           <button class="btn btn-success btn-block" (click)="saveLink()">
             <i class="fa-solid fa-link"></i>

@@ -153,8 +153,8 @@ export const routes: Routes = [
         component: GrandTournamentComponent,
         resolve: { titleResolver },
         data: {
-          description: 'Analyze the grand tournament event of Goodgame Empire.',
-          titleKey: 'Événements',
+          description: 'Analyze the events of Goodgame Empire: Grand Tournament',
+          titleKey: 'Le Grand Tournoi',
         },
       },
       {

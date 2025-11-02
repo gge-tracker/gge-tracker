@@ -33,6 +33,11 @@ import { GenericComponent } from '@ggetracker-components/generic/generic.compone
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { ServerBadgeComponent } from '@ggetracker-components/server-badge/server-badge.component';
 
+interface ILegend {
+  name: string;
+  color: string;
+}
+
 @Component({
   selector: 'app-server-cartography',
   standalone: true,
@@ -76,7 +81,7 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
   public selectedTab = 'strategic';
   public alliancesQuantity = 5;
   public loadedAlliancesQuantity = 5;
-  public legends: { name: string; color: string }[] = [];
+  public legends: ILegend[] = [];
   public castles: Castle[] = [];
   public nbPlayers = 0;
   public searchedAlliance = '';
@@ -542,6 +547,7 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     this.castles.push(...castles);
     this.castles = this.castles.filter((entry) => entry.castles && entry.castles.length > 0);
     const deepCopyCastles = structuredClone(this.castles);
+    const oldLegends = structuredClone(this.legends);
     this.initMap();
     this.castles = deepCopyCastles;
     this.filteredCastles = this.getFilteredCastles(this.castles);
@@ -550,9 +556,21 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     this.generateHeatmap();
     setTimeout(() => {
       this.genericInit();
+      this.setOldLegendColors(oldLegends);
       this.isInLoading = false;
       this.cdr.detectChanges();
     }, 10);
+  }
+
+  public setOldLegendColors(oldLegends: ILegend[]): void {
+    oldLegends.forEach((oldLegend) => {
+      const currentLegend = this.legends.find((legend) => legend.name === oldLegend.name);
+      const hasColorChanged = currentLegend && currentLegend.color !== oldLegend.color;
+      if (currentLegend && hasColorChanged) {
+        const hexColor = this.rgbToHex(oldLegend.color);
+        this.changeItemColor(currentLegend.name, hexColor);
+      }
+    });
   }
 
   public toggleAllianceCastles(allianceName: string): void {

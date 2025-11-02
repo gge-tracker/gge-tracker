@@ -92,14 +92,33 @@ export class GenericFetchAndSaveBackend {
     this.createNewPool();
   }
 
-  public async fillGreatTournamentResults(): Promise<void> {
+  public async fillGrandTournamentResults(): Promise<void> {
     const start = new Date();
     try {
       Utils.logMessage('=====================================');
       Utils.logMessage(' Starting global rankings refresh');
       Utils.logMessage(' Current environment:', this.CURRENT_ENV);
       Utils.logMessage('=====================================');
-      Utils.logMessage('Refreshing Great Tournament results...');
+      Utils.logMessage('Refreshing Grand Tournament results...');
+
+      const getLastEventQuery = `
+        SELECT event_id, created_at
+        FROM grand_tournament
+        ORDER BY created_at DESC
+        LIMIT 1;
+      `;
+      const result = await this.pgSqlQuery(getLastEventQuery);
+      const lastEvent = result.rows[0];
+      let currentEventId: number;
+      if (!lastEvent) {
+        currentEventId = 1;
+      } else {
+        const lastDate = new Date(lastEvent.created_at);
+        const now = new Date();
+        const diffHours = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60);
+        currentEventId = diffHours > 24 ? lastEvent.event_id + 1 : lastEvent.event_id;
+      }
+      Utils.logMessage('Current eventId: ', currentEventId);
       const key = 'llsp';
       const lt = 84;
       const maxResult = 1000;
@@ -153,6 +172,7 @@ export class GenericFetchAndSaveBackend {
                     rank: Number.parseInt(String(result.R)),
                     created_at: dateStr,
                     score: Number.parseInt(String(result.S)),
+                    event_id: currentEventId,
                   };
                 }
               }
@@ -173,7 +193,7 @@ export class GenericFetchAndSaveBackend {
       const insertValues: any[] = Object.values(alliances);
       Utils.logMessage('Inserting ', insertValues.length, 'records into the database...');
       if (insertValues.length > 0) {
-        const tableName = 'great_tournament';
+        const tableName = 'grand_tournament';
         const batchSize = 50;
         const requiredKeys = [
           'server_id',
@@ -184,6 +204,7 @@ export class GenericFetchAndSaveBackend {
           'created_at',
           'rank',
           'score',
+          'event_id',
         ] as const;
         for (let i = 0; i < insertValues.length; i += batchSize) {
           const batch = insertValues.slice(i, i + batchSize);
@@ -217,12 +238,20 @@ export class GenericFetchAndSaveBackend {
           }
         }
       }
-      Utils.logMessage('Great Tournament results updated successfully');
+      Utils.logMessage('Grand Tournament results updated successfully');
+      // If there is more that 1 record inserted, we increment the redis-fill version
+      if (insertValues.length > 1) {
+        const redisClient = createClient({
+          url: 'redis://redis-server:6379',
+        });
+        await redisClient.connect();
+        await redisClient.incr(`grand-tournament:event-dates:version:${this.server}`);
+      }
       const end = new Date();
       const duration = end.getTime() - start.getTime();
       const durationInSeconds = Math.floor(duration / 1000);
       Utils.logMessage(
-        'Duration of Great Tournament results update:',
+        'Duration of Grand Tournament results update:',
         durationInSeconds + ' seconds, with ' + insertValues.length + ' records inserted',
       );
       for (let i = 0; i < 9; i++) {
@@ -231,7 +260,7 @@ export class GenericFetchAndSaveBackend {
       await this.pgSqlConnection.end();
       Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, this.server);
     } catch (error) {
-      Utils.logMessage('Error refreshing Great Tournament results');
+      Utils.logMessage('Error refreshing Grand Tournament results');
       Utils.logMessage('========= BEGIN STACK TRACE ============');
       Utils.logMessage('Identifier: 411');
       Utils.logMessage(error);

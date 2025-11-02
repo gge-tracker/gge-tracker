@@ -24,6 +24,16 @@ export abstract class ApiStatus implements ApiHelper {
   public static async getStatus(request: express.Request, response: express.Response): Promise<void> {
     try {
       /* ---------------------------------
+       * Cache check
+       * --------------------------------- */
+      const cachedKey = `api_status_${request['code']}`;
+      const cachedData = await ApiHelper.redisClient.get(cachedKey);
+      if (cachedData) {
+        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        return;
+      }
+
+      /* ---------------------------------
        * Fetch last update timestamps from the database
        * --------------------------------- */
       const lastUpdate: { [key: string]: string } = {};
@@ -56,21 +66,37 @@ export abstract class ApiStatus implements ApiHelper {
       const update_in_progress = lastUpdateMight < lastUpdateLoot;
 
       /* ---------------------------------
-       * Return status data
+       * Fetch Discord invite data
+       * --------------------------------- */
+      let approximate_member_count = undefined;
+      const code = 'eb6WSHQqYh';
+      const discordUrl = 'https://discord.gg/' + code;
+      try {
+        const requestUrl = `https://discord.com/api/v9/invites/${code}?with_counts=true&with_expiration=true`;
+        const discordResponse: Response = await ApiHelper.fetchWithFallback(requestUrl);
+        if (discordResponse.status === ApiHelper.HTTP_OK) {
+          const discordData = await discordResponse.json();
+          approximate_member_count = discordData.approximate_member_count || 0;
+        }
+      } catch {}
+
+      /* ---------------------------------
+       * Return status data and cache the result
        * --------------------------------- */
       const data = {
         server: request['language'],
         server_code: request['code'],
         website_url: 'https://gge-tracker.com',
         api_url: 'https://api.gge-tracker.com',
-        discord_url: 'https://discord.gg/eb6WSHQqYh',
+        discord_url: discordUrl,
+        discord_member_count: approximate_member_count,
         version: ApiHelper.API_VERSION,
         release_version: ApiHelper.API_VERSION_RELEASE_DATE,
         last_update: lastUpdateSorted,
         update_in_progress,
       };
       response.status(ApiHelper.HTTP_OK).send(data);
-      // There is no cache for this endpoint as it is expected to be called frequently to monitor update progress
+      await ApiHelper.updateCache(cachedKey, data, 300);
       return;
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);

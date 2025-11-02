@@ -1,20 +1,28 @@
 <div class="container my-3 tournaments">
-  <div class="row g-4">
+  <div class="row g-4" *ngIf="!selectedAllianceInAnalyzer">
     <div class="col-12" [ngClass]="{'loading': isInLoading}">
-      <h2 class="mb-4">Grand Tournament Alliances</h2>
       <app-search-form
         #searchForm
         [formFilters]="null"
         [isInLoading]="isInLoading"
-        [inputTip]="'Rechercher un joueur ou une alliance' | translate"
+        [inputTip]="'Rechercher une alliance' | translate"
         [defaultSearch]="search"
         [searchTypes]="{
           player: false,
           alliance: true
         }" (searchAlliance)="searchAlliance($event)">
       </app-search-form>
-      <div class="text-center my-3">
-        <div *ngFor="let i of [1,2,3,4,5]" class="d-inline-block px-2 division-element" (click)="changeDivision(i)"><img [src]="'/assets/gt/division' + i + '.png'"></div>
+      <div class="text-center">
+        <div *ngFor="let i of [1,2,3,4,5]"
+          class="d-inline-block px-2 division-element"
+          [ngClass]="{'active': i === division.current_division}"
+          (click)="changeDivision(i); division.current_division = i"
+        >
+          <img [src]="'/assets/gt/division' + i + '.png'">
+        </div>
+      </div>
+      <div class="date text-center my-3" *ngIf="currentDate">
+        <span class="fw-light fst-italic font-monospace">{{ currentDate | date: ('Date_5' | translate) }}</span>
       </div>
         <app-table [sort]="''" [reverse]="false" [isInLoading]="isDataLoading" [maxPage]="pagination.total_pages" [page]="pagination.current_page"
           [search]="search" [headers]="[
@@ -22,8 +30,8 @@
           ['server', 'Server' | translate, '', true],
           ['points', 'Points' | translate, '', true],
           ['currentDivision', 'Division' | translate, '', true],
-          ['currentSubdivision', 'Subdivision' | translate, '', true],
-          ['rankInSubDivision', 'Rank in Subdivision' | translate, '', true],
+          ['currentSubdivision', 'Sous-division' | translate, '', true],
+          ['rankInSubDivision', 'Classement dans la sous-division' | translate, '', true],
           ['actions', 'Actions' | translate, '', true],
         ]" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
           <tr *ngIf="alliances.length === 0 && !isDataLoading">
@@ -31,8 +39,8 @@
               <span class="text-muted">{{ 'Aucune alliance' | translate }}</span>
             </td>
           </tr>
-          <tr *ngFor="let alliance of alliances">
-            <td>{{ alliance.calculatedRank }}</td>
+          <tr *ngFor="let alliance of alliances; let i = index">
+            <td>{{ (pagination.current_page-1) * 10 + i + 1 }}</td>
             <td>
               {{ alliance.alliance_name }}
             </td>
@@ -43,18 +51,39 @@
               {{ alliance.score | number }}
             </td>
             <td>
-              <img src="/assets/gt/division{{ division.current_division }}.png" [width]="42" [title]="'Division ' + divisionNames[division.current_division-1]" [alt]="'Division ' + divisionNames[division.current_division-1]" /></td>
-            <td>subdivision {{ alliance.subdivision }}</td>
+              <img [src]="'/assets/gt/division' + (isWithDivision(alliance) ? alliance.division : division.current_division) + '.png'"
+                [width]="38" [title]="('Division' | translate) + ' ' + (divisionNames[(isWithDivision(alliance) ? alliance.division : division.current_division)-1]  | translate)"
+                [alt]="('Division' | translate) + ' ' + (divisionNames[(isWithDivision(alliance) ? alliance.division : division.current_division)-1] | translate)" />
+            </td>
+            <td>{{ 'Sous-division' | translate }} <em>{{ alliance.subdivision }}</em></td>
             <td>{{ alliance.rank }}</td>
             <td class="text-end">
-              <a [ngClass]="{'disabled': alliance.disabled}" [routerLink]="['/', 'alliance', alliance.alliance_id]">
-                <img src="/assets/icon_analyze.png" [alt]="'Analyser l\'alliance' | translate"
-                  [title]="'Analyser l\'alliance' | translate" height="24"
-                  class="ms-1 btn-icon">
+              <a [ngClass]="{'disabled': alliance.disabled}"
+                (click)="analyzeAlliance(alliance.alliance_id)"
+                href="javascript:void(0);"
+              >
+                <img src="/assets/icon_points.png" [alt]="'Score' | translate" [title]="'Score' | translate" height="24"  class="ms-1 btn-icon">
+              </a>
+              <a [ngClass]="{'disabled': alliance.disabled}"
+                [routerLink]="['/', 'alliance', alliance.alliance_id]"
+              >
+                <img src="/assets/icon_analyze.png" [alt]="'Analyser l\'alliance' | translate" [title]="'Analyser l\'alliance' | translate" height="24" class="ms-1 btn-icon">
               </a>
             </td>
           </tr>
         </app-table>
       </div>
   </div>
+
+  <app-grand-tournament-analyze
+    *ngIf="selectedAllianceInAnalyzer"
+    [entries]="selectedAllianceInAnalyzer.analysis"
+    [tournamentAllianceData]="selectedAllianceInAnalyzer.meta"
+    [divisionNames]="divisionNames"
+    (exitEmitter)="selectedAllianceInAnalyzer = null"
+  ></app-grand-tournament-analyze>
+
 </div>
+
+
+

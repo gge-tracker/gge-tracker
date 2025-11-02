@@ -1,0 +1,61 @@
+<div class="actions exit">
+  <button class="btn-modern" (click)="closeAnalyze()">
+    <lucide-icon class="lucide lucide-x-circle" [img]="XCircle"></lucide-icon> {{ 'Fermer' | translate }}
+  </button>
+</div>
+<div class="row mb-3">
+  <div class="col-12 text-center">
+    <h3 class="d-inline-block">{{ tournamentAllianceData().alliance_name }}</h3>
+    <span class="text-muted text-sm ms-2">({{ tournamentAllianceData().server }})</span>
+  </div>
+</div>
+<div class="row graphic table-wrapper modern-panel rounded-4 mt-3 mb-5 pb-2 dense">
+  <div class="apx-chart">
+    <app-charts-wrapper *ngIf="charts['scoreOverTime'] && isBrowser"
+      [series]="charts['scoreOverTime'].series"
+      [annotations]="charts['scoreOverTime'].annotations || {}"
+      [chart]="charts['scoreOverTime'].chart"
+      [xaxis]="charts['scoreOverTime'].xaxis"
+      [yaxis]="charts['scoreOverTime'].yaxis"
+      [dataLabels]="charts['scoreOverTime'].dataLabels"
+      [plotOptions]="charts['scoreOverTime'].plotOptions"
+      [labels]="charts['scoreOverTime'].labels || []"
+      [grid]="charts['scoreOverTime'].grid"
+      [colors]="charts['scoreOverTime'].colors"
+      [markers]="charts['scoreOverTime'].markers || {}"
+      [fill]="charts['scoreOverTime'].fill"
+      [stroke]="charts['scoreOverTime'].stroke"
+      [title]="charts['scoreOverTime'].title"
+      [tooltip]="charts['scoreOverTime'].tooltip"
+      [legend]="charts['scoreOverTime'].legend"
+      ></app-charts-wrapper>
+  </div>
+</div>
+<div class="row table-wrapper modern-panel rounded-4 mt-3 mb-5 pb-2 dense">
+  <div class="table-responsive modern-scroll">
+    <table class="modern-table w-100">
+      <thead class="sticky-top">
+        <tr>
+          <th>{{ 'Date' | translate }}</th>
+          <th>{{ 'Division' | translate }}</th>
+          <th>{{ 'Sous-division' | translate }}</th>
+          <th>{{ 'Classement dans la sous-division' | translate }}</th>
+          <th>{{ 'Points' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let entry of entriesWithDifference">
+          <td>{{ entry.date }}</td>
+          <td>
+            <img src="/assets/gt/division{{ entry.division }}.png" [width]="32"
+              [title]="('Division' | translate) + ' ' + (divisionNames()[entry.division-1] | translate)"
+              [alt]="('Division' | translate) + ' ' + (divisionNames()[entry.division-1] | translate)" />
+          </td>
+          <td>{{ 'Sous-division' | translate }} <em>{{ entry.subdivision }}</em></td>
+          <td>{{ entry.rank }}</td>
+          <td>{{ entry.score | number }} <span [innerHTML]="entry.scoreDifference"></span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

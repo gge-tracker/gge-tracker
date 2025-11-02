@@ -9,6 +9,19 @@
   opacity: 0;
 }
 
+.discord-badge-count {
+  position: absolute;
+  top: -8px;
+  right: -9px;
+  background: #3e54a2ba;
+  color: #fff;
+  font-size: 0.5rem;
+  padding: 2px 6px;
+  border-radius: 50%;
+  font-weight: 700;
+}
+
+
 .navbar-toggler:focus {
   box-shadow: none;
 }
@@ -218,183 +231,6 @@
     font-size: 1rem;
   }
 }
-
-/* .navbar {
-  background: #CCCCA7;
-  border-bottom: 1px #88836D solid;
-  margin: 0 61px;
-  animation: navbarFadeIn 0.2s ease-out both;
-  --bs-navbar-active-color: gold;
-  --bs-navbar-padding-y: 0;
-  animation-delay: 0.1s;
-}
-
-.container-fluid, #navbarNav, .navbar-nav, li {
-  max-height: inherit;
-}
-
-li a {
-  max-height: inherit;
-  overflow: hidden;
-}
-
-.partner i {
-  transition: all 0.3s ease-in-out;
-}
-
-.partner:hover i {
-  color: #6b5200;
-  transform: translate3d(0, -2px, 0);
-}
-
-.version {
-  bottom: 0;
-  right: 3px;
-  font-size: .65rem;
-}
-
-
-@media (min-width: 992px) {
-  .navbar {
-    max-height: 65px;
-  }
-}
-
-@media (max-width: 1060px) {
-  .partner {
-    display: none;
-  }
-  .navbar::before, .navbar::after {
-    display: none;
-  }
-  .navbar {
-    margin: 0;;
-  }
-  .nav-item {
-    width: 120%;
-  }
-  .navbar-nav {
-    overflow: hidden;
-  }
-}
-
-.navbar {
-  font-size: .85rem;
-}
-
-@media (min-width: 1300px) {
-  .navbar {
-    font-size: 1rem;
-  }
-}
-
-a {
-  text-align: center;
-}
-
-.dropdown-toggle::after {
-  position: relative;
-}
-
-.navbar::before {
-  content: "";
-  background: url(/assets/corner-bar-left.png) no-repeat;
-  height: 100%;
-  width: 41px;
-  position: absolute;
-  left: -41px;
-}
-
-.translate {
-  margin-left: auto;
-  font-size: 1.2rem;
-}
-
-.partner {
-  margin-right: -3px;
-  cursor: pointer;
-}
-
-.dropdown-item.active {
-  background: url('/assets/light-background-hover.png'), #91955c;
-  background-size: 30px;
-  border-top: 1px #656565 solid;
-  border-bottom: 1px #656565 solid;
-}
-
-.dropdown-item.active, .dropdown-item:active {
-  --bs-dropdown-link-active-bg: #91955c3b;
-}
-
-.dropdown-menu {
-  background: #cccca7e6;
-  --bs-dropdown-link-hover-bg: #b3b385c4;
-}
-
-.nav-link.active span {
-  transition: background-color 0.3s ease, color 0.3s ease;
-  background-color: #91955c;
-  border-radius: 5px;
-  padding: 0 5px;
-}
-
-
-.navbar-nav .nav-link:not(.active):hover::before {
-  content: "";
-  background: #91955c27;
-  height: 100%;
-  position: absolute;
-  bottom: 0;
-  left: -10px;
-  right: -10px;
-  transform: skewX(342deg);
-  background-size: contain;
-  box-shadow: 0px 2px 0px 0px #ffd33331;
-  transition: transform 0.3s ease, opacity 0.3s ease;
-}
-
-.nav-link.active::before {
-  content: "";
-  background: url('/assets/light-background-hover.png'), #91955c;
-  height: 100%;
-  position: absolute;
-  bottom: 0;
-  left: -10px;
-  right: -10px;
-  transform: skewX(342deg);
-  background-size: contain;
-  box-shadow: 0px 2px 0px 0px #ffd233;
-}
-
-
-.nav-link {
-  transition: none;
-}
-.nav-item {
-  position: relative;
-}
-
-.navbar-toggler {
-  --bs-navbar-toggler-focus-width: 0rem;
-}
-
-li {
-  margin: 0 25px;
-  align-self: center;
-}
-
-li img {
-  pointer-events: none;
-}
-
-.navbar::after {
-  content: "";
-  background: url(/assets/corner-bar-right.png) no-repeat;
-  height: 100%;
-  width: 41px;
-  position: absolute;
-  right: -41px;
-} */
 
 @keyframes navbarFadeIn {
   to {

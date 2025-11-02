@@ -21,6 +21,7 @@ import package_ from '../../../../package.json';
 import { LanguageService } from '@ggetracker-services/language.service';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
 import { ServerService } from '@ggetracker-services/server.service';
+import { UtilitiesService } from '@ggetracker-services/utilities.service';
 
 @Component({
   selector: 'app-navbar',
@@ -34,6 +35,7 @@ export class NavbarComponent {
   public languageService = inject(LanguageService);
   public currentLangText = this.languageService.getCurrentLang();
   public version = '';
+  public discordMemberCount = 0;
   public readonly Globe = Globe;
   public readonly Info = Info;
   public readonly Map = Map;
@@ -45,11 +47,15 @@ export class NavbarComponent {
   public readonly User = User;
   public readonly Users = Users;
   private localStorage = inject(LocalStorageService);
+  private utilitiesService = inject(UtilitiesService);
   private router = inject(Router);
   private _isDevLanguage: boolean = this.localStorage.getItem('lang_dev') !== null || false;
 
   constructor() {
     this.version = 'v' + package_.version.split('-')[0];
+    this.utilitiesService.data$.subscribe((data) => {
+      this.discordMemberCount = data?.discord_member_count || 0;
+    });
   }
 
   public resetTranslationMode(): void {

@@ -121,6 +121,14 @@ export class ControllerManager {
     void ApiEvents.getGrandTournamentEventDates(request, response);
   }
 
+  public getGrandTournamentAllianceAnalysis(request: express.Request, response: express.Response): void {
+    void ApiEvents.getGrandTournamentAllianceAnalysis(request, response);
+  }
+
+  public searchGrandTournamentDataByAllianceName(request: express.Request, response: express.Response): void {
+    void ApiEvents.searchGrandTournamentDataByAllianceName(request, response);
+  }
+
   public getEvents(request: express.Request, response: express.Response): void {
     // Events are stored only on FR1 database (centralized database)
     void ApiEvents.getEvents(request, response, this.apiGgeTrackerManager.getPgSqlPool(GgeTrackerServers.FR1));
