@@ -72,11 +72,19 @@ export abstract class ApiStatus implements ApiHelper {
       const code = 'eb6WSHQqYh';
       const discordUrl = 'https://discord.gg/' + code;
       try {
-        const requestUrl = `https://discord.com/api/v9/invites/${code}?with_counts=true&with_expiration=true`;
-        const discordResponse: Response = await ApiHelper.fetchWithFallback(requestUrl);
-        if (discordResponse.status === ApiHelper.HTTP_OK) {
-          const discordData = await discordResponse.json();
+        const cachedDiscordKey = `discord_invite_${code}`;
+        const cachedDiscordData = await ApiHelper.redisClient.get(cachedDiscordKey);
+        if (cachedDiscordData) {
+          const discordData = JSON.parse(cachedDiscordData);
           approximate_member_count = discordData.approximate_member_count || 0;
+        } else {
+          const requestUrl = `https://discord.com/api/v9/invites/${code}?with_counts=true&with_expiration=true`;
+          const discordResponse: Response = await ApiHelper.fetchWithFallback(requestUrl);
+          if (discordResponse.status === ApiHelper.HTTP_OK) {
+            const discordData = await discordResponse.json();
+            approximate_member_count = discordData.approximate_member_count || 0;
+            await ApiHelper.updateCache(cachedDiscordKey, discordData, 3600);
+          }
         }
       } catch {}
 

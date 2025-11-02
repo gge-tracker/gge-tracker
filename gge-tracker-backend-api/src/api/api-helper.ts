@@ -334,7 +334,7 @@ export abstract class ApiHelper {
 
   /**
    * Attempts to fetch a resource from the specified URL, with up to three retries on failure.
-   * If the URL starts with "https://empire-html5.goodgamestudios.com/default/", it rewrites the URL
+   * If the URL starts with "https://empire-html5.goodgamestudios.com/default/", or "https://discord.com", it rewrites the URL
    * to use a CDN proxy. If the URL ends with ".json", the response is parsed as JSON and returned
    * with the appropriate "Content-Type" header.
    *
@@ -345,7 +345,10 @@ export abstract class ApiHelper {
   public static async fetchWithFallback(url: string): Promise<Response> {
     const retries = 3;
     // Rewrite URL to use CDN proxy if it matches the specified pattern
-    if (url?.startsWith('https://empire-html5.goodgamestudios.com/default/')) {
+    if (
+      url?.startsWith('https://empire-html5.goodgamestudios.com/default/') ||
+      url?.startsWith('https://discord.com')
+    ) {
       url = 'https://cdn.gge-tracker.com?url=' + url;
       console.log(`[CDN] Rewritten URL to use CDN proxy: ${url}`);
     }
