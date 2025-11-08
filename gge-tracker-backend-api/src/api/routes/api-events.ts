@@ -480,11 +480,11 @@ export abstract class ApiEvents implements ApiHelper {
         return;
       }
       const division_id = ApiHelper.validatePageNumber(request.query.division_id, maxDivisionId + 1);
-      const subdivision_id = ApiHelper.validatePageNumber(request.query.subdivision_id, -1);
+      const subdivision_id = ApiHelper.validatePageNumber(request.query.subdivision_id, null);
       if (division_id > maxDivisionId) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidDivisionId });
         return;
-      } else if (subdivision_id < 1) {
+      } else if (request.query.subdivision_id && !subdivision_id) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidSubdivisionId });
         return;
       }
