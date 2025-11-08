@@ -1,6 +1,7 @@
-import * as express from 'express';
-import { ApiHelper } from '../api-helper';
 import { formatInTimeZone, toDate } from 'date-fns-tz';
+import * as express from 'express';
+import { RouteErrorMessagesEnum } from '../enums/errors.enums';
+import { ApiHelper } from '../helper/api-helper';
 
 /**
  * Abstract class providing API endpoints for retrieving update histories related to players and alliances.
@@ -36,15 +37,15 @@ export abstract class ApiUpdates implements ApiHelper {
       /* ---------------------------------
        * Parameter validation
        * --------------------------------- */
-      const allianceId = ApiHelper.getVerifiedId(request.params.allianceId);
+      const allianceId = ApiHelper.verifyIdWithCountryCode(request.params.allianceId);
       if (allianceId === false || allianceId === undefined) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid alliance id' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceId });
         return;
       }
       const pool = ApiHelper.ggeTrackerManager.getPgSqlPoolFromRequestId(allianceId);
       const code = ApiHelper.getCountryCode(String(allianceId));
       if (!pool || !code) {
-        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: 'Alliance not found' });
+        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.AllianceNotFound });
         return;
       }
 
@@ -154,9 +155,9 @@ export abstract class ApiUpdates implements ApiHelper {
       /* ---------------------------------
        * Validate request parameters
        * --------------------------------- */
-      const playerId = ApiHelper.getVerifiedId(request.params.playerId);
+      const playerId = ApiHelper.verifyIdWithCountryCode(request.params.playerId);
       if (playerId === false || playerId === undefined) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid user id' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
         return;
       }
 
@@ -192,7 +193,7 @@ export abstract class ApiUpdates implements ApiHelper {
        * --------------------------------- */
       const pool = ApiHelper.ggeTrackerManager.getPgSqlPoolFromRequestId(playerId);
       if (!pool) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid server or player ID' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
         return;
       }
       pool.query(query, [ApiHelper.removeCountryCode(playerId)], (error, results) => {
@@ -252,9 +253,9 @@ export abstract class ApiUpdates implements ApiHelper {
       /* ---------------------------------
        * Validate Player ID
        * --------------------------------- */
-      const playerId = ApiHelper.getVerifiedId(request.params.playerId);
+      const playerId = ApiHelper.verifyIdWithCountryCode(request.params.playerId);
       if (playerId === false || playerId === undefined) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid user id' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
         return;
       }
 
@@ -296,7 +297,7 @@ export abstract class ApiUpdates implements ApiHelper {
        * --------------------------------- */
       const pool = ApiHelper.ggeTrackerManager.getPgSqlPoolFromRequestId(playerId);
       if (!pool) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid server or player ID' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
         return;
       }
       pool.query(query, [ApiHelper.removeCountryCode(playerId)], (error, results) => {

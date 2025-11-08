@@ -1,7 +1,8 @@
-import * as express from 'express';
-import { ApiHelper } from '../api-helper';
-import * as pg from 'pg';
 import { formatInTimeZone, toDate } from 'date-fns-tz';
+import * as express from 'express';
+import * as pg from 'pg';
+import { RouteErrorMessagesEnum } from '../enums/errors.enums';
+import { ApiHelper } from '../helper/api-helper';
 
 /**
  * Abstract class providing API endpoints for player-related operations.
@@ -48,7 +49,7 @@ export abstract class ApiPlayers implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      let page = Number.parseInt(String(request.query.page)) || 1;
+      let page = ApiHelper.validatePageNumber(request.query.page);
       let minHonor = Number.parseInt(String(request.query.minHonor));
       let maxHonor = Number.parseInt(String(request.query.maxHonor));
       let minMight = Number.parseInt(String(request.query.minMight));
@@ -69,7 +70,6 @@ export abstract class ApiPlayers implements ApiHelper {
       let orderBy = String(request.query.orderBy || 'player_name');
       let filterByAlliance = String(request.query.alliance || '');
       let orderType = String(request.query.orderType || 'ASC');
-      page = Number.isNaN(page) || page < 1 || page > ApiHelper.MAX_RESULT_PAGE ? 1 : page;
       const orderByValues = [
         'player_name',
         'loot_current',
@@ -109,7 +109,7 @@ export abstract class ApiPlayers implements ApiHelper {
       inactiveFilter =
         Number.isNaN(inactiveFilter) || (inactiveFilter !== 0 && inactiveFilter !== 1) ? -1 : inactiveFilter;
       if (playerNameForDistance && playerNameForDistance.length > 40) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid player name' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
         return;
       }
       playerNameForDistance = playerNameForDistance.trim().toLowerCase();
@@ -296,7 +296,7 @@ export abstract class ApiPlayers implements ApiHelper {
         (request['pg_pool'] as pg.Pool).query(countQuery, otherParameters, (error, results) => {
           if (error) {
             ApiHelper.logError(error, 'getPlayers_countQuery', request);
-            reject(new Error('An error occurred. Please try again later.'));
+            reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
           } else {
             playerCount = results.rows[0]['player_count'];
             totalPages = Math.ceil(playerCount / ApiHelper.PAGINATION_LIMIT);
@@ -336,14 +336,14 @@ export abstract class ApiPlayers implements ApiHelper {
           (request['pg_pool'] as pg.Pool).query(playerQuery, [playerNameForDistance], (error, results) => {
             if (error) {
               ApiHelper.logError(error, 'getPlayer_castles_query', request);
-              reject(new Error('An error occurred. Please try again later.'));
+              reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
             } else {
               resolve(results.rows);
             }
           });
         });
         if (playerResults.length === 0) {
-          response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid player name' });
+          response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
           return;
         }
         const playerKid = playerResults[0].castles ?? [];
@@ -444,9 +444,9 @@ export abstract class ApiPlayers implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const playerName = ApiHelper.verifySearch(request.params.playerName);
-      if (playerName === false || playerName === undefined) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid username' });
+      const playerName = ApiHelper.validateSearchAndSanitize(request.params.playerName);
+      if (ApiHelper.isInvalidInput(playerName)) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
         return;
       }
 
@@ -498,12 +498,14 @@ export abstract class ApiPlayers implements ApiHelper {
        * --------------------------------- */
       (request['pg_pool'] as pg.Pool).query(query, [playerName], async (error, results) => {
         if (error) {
-          response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: 'An exception occurred' });
+          response
+            .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
           return;
         } else {
           if (!results.rows || results.rows.length === 0) {
             // Trick: we return 200 for frontend compatibility, but with an error message
-            response.status(ApiHelper.HTTP_OK).send({ error: 'Player not found' });
+            response.status(ApiHelper.HTTP_OK).send({ error: RouteErrorMessagesEnum.PlayerNotFound });
             return;
           }
 
@@ -569,9 +571,9 @@ export abstract class ApiPlayers implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const playerId = ApiHelper.getVerifiedId(request.params.playerId);
-      if (playerId === false || playerId === undefined) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid user id' });
+      const playerId = ApiHelper.verifyIdWithCountryCode(request.params.playerId);
+      if (!playerId) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
         return;
       }
 
@@ -591,7 +593,7 @@ export abstract class ApiPlayers implements ApiHelper {
       const pool = ApiHelper.ggeTrackerManager.getPgSqlPoolFromRequestId(playerId);
       const code = ApiHelper.getCountryCode(String(playerId));
       if (!pool || !code) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid server or player ID' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
         return;
       }
       const query = `

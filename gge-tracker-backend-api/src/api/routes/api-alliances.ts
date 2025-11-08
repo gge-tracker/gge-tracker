@@ -1,7 +1,9 @@
+import { formatInTimeZone } from 'date-fns-tz';
 import * as express from 'express';
 import * as pg from 'pg';
-import { ApiHelper } from './../api-helper';
-import { formatInTimeZone } from 'date-fns-tz';
+import { RouteErrorMessagesEnum } from '../enums/errors.enums';
+import { ApiHelper } from '../helper/api-helper';
+import { ApiInvalidInputType } from '../types/parameter.types';
 
 /**
  * Abstract class providing API endpoints for alliance-related operations.
@@ -23,12 +25,6 @@ export abstract class ApiAlliances implements ApiHelper {
    * @param response - The Express response object used to send the result or error.
    * @returns A Promise that resolves when the response is sent.
    *
-   * @remarks
-   * - Validates the provided alliance ID and optional player name.
-   * - If `playerNameForDistance` is provided, calculates the distance from the specified player to each player in the alliance.
-   * - Retrieves alliance and player data from the database, formats the results, and caches the response.
-   * - Responds with appropriate HTTP status codes for errors such as invalid input or not found resources.
-   *
    * @throws Sends a 500 response if an unexpected error occurs during processing.
    */
   public static async getAllianceByAllianceId(request: express.Request, response: express.Response): Promise<void> {
@@ -36,16 +32,16 @@ export abstract class ApiAlliances implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const allianceId = ApiHelper.getVerifiedId(request.params.allianceId);
-      if (allianceId === false || allianceId === undefined) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid alliance id' });
+      const allianceId = ApiHelper.verifyIdWithCountryCode(request.params.allianceId);
+      if (!allianceId) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceId });
         return;
       }
-      let playerNameForDistance = request.query.playerNameForDistance
-        ? String(request.query.playerNameForDistance)
-        : '';
-      if (playerNameForDistance && playerNameForDistance.length > 40) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid player name' });
+      let playerNameForDistance = ApiHelper.validateSearchAndSanitize(request.query.playerNameForDistance, {
+        maxLength: 40,
+      });
+      if (playerNameForDistance === ApiInvalidInputType) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
         return;
       }
       /* ---------------------------------
@@ -54,15 +50,16 @@ export abstract class ApiAlliances implements ApiHelper {
       const pool = ApiHelper.ggeTrackerManager.getPgSqlPoolFromRequestId(allianceId);
       const code = ApiHelper.getCountryCode(String(allianceId));
       if (!pool || !code) {
-        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: 'Alliance not found' });
+        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.AllianceNotFound });
         return;
       }
       /* ---------------------------------
        * Normalize and prepare cache key
        * --------------------------------- */
-      playerNameForDistance = playerNameForDistance.trim().toLowerCase();
       const encodedAllianceId = encodeURIComponent(allianceId);
-      const encodedPlayerNameForDistance = encodeURIComponent(playerNameForDistance);
+      const encodedPlayerNameForDistance = ApiHelper.isValidInput(playerNameForDistance)
+        ? encodeURIComponent(playerNameForDistance)
+        : '';
       const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${request['language']}`)) || '1';
       const cachedKey =
         request['language'] + `:${cacheVersion}:` + `alliances:${encodedAllianceId}:${encodedPlayerNameForDistance}`;
@@ -79,7 +76,7 @@ export abstract class ApiAlliances implements ApiHelper {
        * --------------------------------- */
       let playerX = null;
       let playerY = null;
-      if (playerNameForDistance) {
+      if (ApiHelper.isValidInput(playerNameForDistance)) {
         // If player name is provided, get player's main castle coordinates
         let parameterIndex = 1;
         const playerQuery = `SELECT castles FROM players WHERE LOWER(name) = $${parameterIndex++} LIMIT 1`;
@@ -87,14 +84,14 @@ export abstract class ApiAlliances implements ApiHelper {
           pool.query(playerQuery, [playerNameForDistance], (error, results) => {
             if (error) {
               ApiHelper.logError(error, 'getAllianceByAllianceId', request);
-              reject(new Error('An error occurred. Please try again later.'));
+              reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
             } else {
               resolve(results.rows);
             }
           });
         });
         if (playerResults.length === 0) {
-          response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid player name' });
+          response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
           return;
         }
         const playerKid = playerResults[0].castles ?? '[]';
@@ -114,11 +111,13 @@ export abstract class ApiAlliances implements ApiHelper {
       pool.query(query, parameters, async (error, results) => {
         if (error) {
           ApiHelper.logError(error, 'getAllianceByAllianceId', request);
-          response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: 'An exception occurred' });
+          response
+            .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
         } else {
           if (!results || results.rowCount === 0) {
             // HTTP 200 to avoid leaking valid IDs. This needs to be handled in the frontend.
-            response.status(ApiHelper.HTTP_OK).send({ error: 'Alliance not found' });
+            response.status(ApiHelper.HTTP_OK).send({ error: RouteErrorMessagesEnum.AllianceNotFound });
             return;
           }
           /* ---------------------------------
@@ -189,12 +188,11 @@ export abstract class ApiAlliances implements ApiHelper {
       /* ---------------------------------
        * Validate and normalize alliance name
        * --------------------------------- */
-      let allianceName = ApiHelper.verifySearch(request.params.allianceName);
-      if (!allianceName || allianceName.length > 50) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid alliance name' });
+      const allianceName = ApiHelper.validateSearchAndSanitize(request.params.allianceName);
+      if (ApiHelper.isInvalidInput(allianceName)) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceName });
         return;
       }
-      allianceName = allianceName.trim().toLowerCase();
       /* ---------------------------------
        * Check cache
        * --------------------------------- */
@@ -237,10 +235,12 @@ export abstract class ApiAlliances implements ApiHelper {
        * --------------------------------- */
       (request['pg_pool'] as pg.Pool).query(query, [allianceName], async (error, results) => {
         if (error) {
-          response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: 'An exception occurred' });
+          response
+            .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
         } else {
           if (!results.rowCount || results.rowCount === 0) {
-            response.status(ApiHelper.HTTP_OK).send({ error: 'Alliance not found' });
+            response.status(ApiHelper.HTTP_OK).send({ error: RouteErrorMessagesEnum.AllianceNotFound });
             return;
           }
           /* ---------------------------------
@@ -275,10 +275,9 @@ export abstract class ApiAlliances implements ApiHelper {
       /* ---------------------------------
        * Validate and normalize query parameters
        * --------------------------------- */
-      let page = Number.parseInt(String(request.query.page)) || 1;
-      let orderBy = String(request.query.orderBy || 'alliance_name');
-      let orderType = String(request.query.orderType || 'ASC');
-      page = page < 1 || page > ApiHelper.MAX_RESULT_PAGE ? 1 : page;
+      let page = ApiHelper.validatePageNumber(request.query.page);
+      let orderBy = ApiHelper.getParsedString(request.query.orderBy) || 'alliance_name';
+      let orderType = ApiHelper.getParsedString(request.query.orderType) || 'ASC';
       const orderByValues: string[] = [
         'alliance_name',
         'loot_current',
@@ -313,16 +312,16 @@ export abstract class ApiAlliances implements ApiHelper {
       let allianceCount = 0;
       const countQuery = `
         SELECT
-            COUNT(id) AS alliance_count
+          COUNT(id) AS alliance_count
         FROM
-            alliances
+          alliances
         WHERE
-            (SELECT COUNT(id) FROM players WHERE alliance_id = alliances.id AND castles IS NOT NULL) > 0`;
+          (SELECT COUNT(id) FROM players WHERE alliance_id = alliances.id AND castles IS NOT NULL) > 0`;
       const promiseCountQuery = new Promise((resolve, reject) => {
         (request['pg_pool'] as pg.Pool).query(countQuery, (error, results) => {
           if (error) {
             ApiHelper.logError(error, 'getAlliances', request);
-            reject(new Error('An error occurred. Please try again later.'));
+            reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
           } else {
             allianceCount = results.rows[0]['alliance_count'];
             totalPages = Math.ceil(allianceCount / ApiHelper.PAGINATION_LIMIT);
@@ -417,12 +416,6 @@ export abstract class ApiAlliances implements ApiHelper {
    * based on the player's main castle coordinates and provided parameters, considering map wrapping.
    *
    * @returns {string} The SQL query string for fetching alliance and player data by alliance ID.
-   *
-   * @remarks
-   * - The query expects four parameters in order: target_x, map_width, target_y, and alliance_id.
-   * - The calculated distance uses the LEAST function to account for map wrapping on the x-axis.
-   * - Only players with at least one castle are included in the results.
-   * - Results are ordered by the player's current might in descending order.
    */
   private static getAllianceByAllianceIdSQLQuery(): string {
     let parameterIndex = 1;
@@ -448,8 +441,8 @@ export abstract class ApiAlliances implements ApiHelper {
         (
           POWER(
           LEAST(
-              ABS(CAST(MC.castle_x AS INTEGER) - $${parameterIndex++}),
-              1287 - ABS(CAST(MC.castle_x AS INTEGER) - $${parameterIndex++})
+            ABS(CAST(MC.castle_x AS INTEGER) - $${parameterIndex++}),
+            1287 - ABS(CAST(MC.castle_x AS INTEGER) - $${parameterIndex++})
           ),
           2
           ) +

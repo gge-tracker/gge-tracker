@@ -44,8 +44,8 @@ ingester:
 
 querier:
   engine:
-    timeout: 1m
-  query_timeout: 1m
+    timeout: 2m
+  query_timeout: 2m
 
 query_range:
   align_queries_with_step: true
@@ -57,5 +57,5 @@ frontend:
   compress_responses: true
 
 limits_config:
-  retention_period: 168h
+  retention_period: 336h
   split_queries_by_interval: 15m

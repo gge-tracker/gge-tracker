@@ -1,7 +1,8 @@
-import * as express from 'express';
-import { ApiHelper } from '../api-helper';
-import * as pg from 'pg';
 import { formatInTimeZone, toDate } from 'date-fns-tz';
+import * as express from 'express';
+import * as pg from 'pg';
+import { RouteErrorMessagesEnum } from '../enums/errors.enums';
+import { ApiHelper } from '../helper/api-helper';
 
 /**
  * Abstract class providing API endpoints and helper methods for retrieving and processing
@@ -42,9 +43,9 @@ export abstract class ApiStatistics implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const allianceId = ApiHelper.getVerifiedId(request.params.allianceId);
+      const allianceId = ApiHelper.verifyIdWithCountryCode(request.params.allianceId);
       if (allianceId === false || allianceId === undefined) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid alliance id' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceId });
         return;
       }
 
@@ -54,8 +55,8 @@ export abstract class ApiStatistics implements ApiHelper {
       const cachedKey = `statistics:alliances:${allianceId}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
-        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
-        return;
+        // response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        // return;
       }
 
       /* ---------------------------------
@@ -99,9 +100,9 @@ export abstract class ApiStatistics implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const playerId = ApiHelper.getVerifiedId(request.params.playerId);
+      const playerId = ApiHelper.verifyIdWithCountryCode(request.params.playerId);
       if (playerId === false || playerId === undefined) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid user id' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
         return;
       }
 
@@ -130,7 +131,7 @@ export abstract class ApiStatistics implements ApiHelper {
       const pool = ApiHelper.ggeTrackerManager.getPgSqlPoolFromRequestId(playerId);
       const code = ApiHelper.getCountryCode(String(playerId));
       if (!pool || !code) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid server or player ID' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
         return;
       }
 
@@ -141,7 +142,7 @@ export abstract class ApiStatistics implements ApiHelper {
         pool.query(query, [ApiHelper.removeCountryCode(playerId)], (error, results) => {
           if (error) {
             ApiHelper.logError(error, 'getStatisticsByPlayerId_query', request);
-            reject(new Error('An error occurred. Please try again later.'));
+            reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
           } else {
             resolve(results.rows[0]);
           }
@@ -151,7 +152,7 @@ export abstract class ApiStatistics implements ApiHelper {
       const allianceName = data?.alliance_name;
       const allianceId = ApiHelper.addCountryCode(data?.alliance_id, code);
       if (!playerName) {
-        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: 'Player not found' });
+        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.PlayerNotFound });
         return;
       }
 
@@ -206,19 +207,19 @@ export abstract class ApiStatistics implements ApiHelper {
       /* ---------------------------------
        * Player ID validation
        * --------------------------------- */
-      const playerId = ApiHelper.getVerifiedId(request.params.playerId);
+      const playerId = ApiHelper.verifyIdWithCountryCode(request.params.playerId);
       if (playerId === false || playerId === undefined) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid user id' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
         return;
       }
       const eventName = request.params.eventName;
       if (!ApiHelper.ggeTrackerManager.getOlapEventTables().includes(eventName)) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid event name' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventName });
         return;
       }
       const duration = Number.parseInt(request.params.duration);
       if (Number.isNaN(duration) || duration < 0 || duration > 365) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid duration' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidDuration });
         return;
       }
 
@@ -247,7 +248,7 @@ export abstract class ApiStatistics implements ApiHelper {
       const pool = ApiHelper.ggeTrackerManager.getPgSqlPoolFromRequestId(playerId);
       const code = ApiHelper.getCountryCode(String(playerId));
       if (!pool || !code) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid server or player ID' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
         return;
       }
 
@@ -258,7 +259,7 @@ export abstract class ApiStatistics implements ApiHelper {
         pool.query(query, [ApiHelper.removeCountryCode(playerId)], (error, results) => {
           if (error) {
             ApiHelper.logError(error, 'getStatisticsByPlayerIdAndEventNameAndDuration_query', request);
-            reject(new Error('An error occurred. Please try again later.'));
+            reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
           } else {
             resolve(results.rows[0]);
           }
@@ -268,7 +269,7 @@ export abstract class ApiStatistics implements ApiHelper {
       const allianceName = data?.alliance_name;
       const allianceId = ApiHelper.addCountryCode(data?.alliance_id, code);
       if (playerName === undefined || playerName === null) {
-        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: 'Player not found' });
+        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.PlayerNotFound });
         return;
       }
       try {
@@ -316,9 +317,9 @@ export abstract class ApiStatistics implements ApiHelper {
       /* ---------------------------------
        * Parameter validation
        * --------------------------------- */
-      const allianceId = ApiHelper.getVerifiedId(request.params.allianceId);
+      const allianceId = ApiHelper.verifyIdWithCountryCode(request.params.allianceId);
       if (allianceId === false || allianceId === undefined) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid alliance id' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceId });
         return;
       }
 
@@ -338,7 +339,7 @@ export abstract class ApiStatistics implements ApiHelper {
       const pool = ApiHelper.ggeTrackerManager.getPgSqlPoolFromRequestId(allianceId);
       const code = ApiHelper.getCountryCode(String(allianceId));
       if (!pool || !code) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid server or alliance ID' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceId });
         return;
       }
 
@@ -390,9 +391,9 @@ export abstract class ApiStatistics implements ApiHelper {
       /* ---------------------------------
        * Parameter validation
        * --------------------------------- */
-      const playerId = ApiHelper.getVerifiedId(request.params.playerId);
+      const playerId = ApiHelper.verifyIdWithCountryCode(request.params.playerId);
       if (playerId === false || playerId === undefined) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid user id' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
         return;
       }
 
@@ -413,7 +414,7 @@ export abstract class ApiStatistics implements ApiHelper {
       const server = ApiHelper.ggeTrackerManager.getServerNameFromRequestId(playerId);
       const code = ApiHelper.getCountryCode(String(playerId));
       if (!server || !code) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid server or player ID' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
         return;
       }
 
@@ -462,14 +463,14 @@ export abstract class ApiStatistics implements ApiHelper {
       const pool = ApiHelper.ggeTrackerManager.getPgSqlPoolFromRequestId(playerId);
       const globalPool = ApiHelper.ggeTrackerManager.getGlobalPgSqlPool();
       if (!pool || !globalPool) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid server or player ID' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
         return;
       }
       const p1 = new Promise((resolve, reject) => {
         pool.query(query_internal_rank, [ApiHelper.removeCountryCode(playerId)], (error, results) => {
           if (error) {
             ApiHelper.logError(error, 'getRankingByPlayerId_query', request);
-            reject(new Error('An error occurred. Please try again later.'));
+            reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
           } else {
             resolve(results.rows[0]);
           }
@@ -482,7 +483,7 @@ export abstract class ApiStatistics implements ApiHelper {
           (error, results) => {
             if (error) {
               ApiHelper.logError(error, 'getRankingByPlayerId_query', request);
-              reject(new Error('An error occurred. Please try again later.'));
+              reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
             } else {
               resolve(results.rows[0]);
             }
@@ -491,7 +492,7 @@ export abstract class ApiStatistics implements ApiHelper {
       });
       const [serverData, globalData] = await Promise.all([p1, p2]);
       if (!serverData || !globalData) {
-        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: 'Player not found' });
+        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.PlayerNotFound });
         return;
       }
 
@@ -558,20 +559,20 @@ export abstract class ApiStatistics implements ApiHelper {
       const code = ApiHelper.getCountryCode(String(allianceId));
       const pool = ApiHelper.ggeTrackerManager.getPgSqlPoolFromRequestId(allianceId);
       if (!pool || !realAllianceId) {
-        return { error: 'Invalid alliance ID' };
+        return { error: RouteErrorMessagesEnum.InvalidAllianceId };
       }
       const sqlQueryIdsParameters = [realAllianceId];
       const sqlQueryIdsResult: any[] | undefined = await new Promise((resolve, reject) => {
         pool.query(sqlQueryIds, sqlQueryIdsParameters, (error, results) => {
           if (error) {
-            reject(new Error('An error occurred. Please try again later.'));
+            reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
           } else {
             resolve(results.rows);
           }
         });
       });
       if (!sqlQueryIdsResult) {
-        return { error: 'Alliance not found' };
+        return { error: RouteErrorMessagesEnum.AllianceNotFound };
       }
       let dates_start: any = {};
       let dates_stop: any = {};
@@ -587,7 +588,7 @@ export abstract class ApiStatistics implements ApiHelper {
           try {
             const database = ApiHelper.ggeTrackerManager.getOlapDatabaseFromRequestId(allianceId);
             if (!database) {
-              reject(new Error('An error occurred. Please try again later.'));
+              reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
               return;
             }
             dates_start[table] = new Date();
@@ -595,6 +596,20 @@ export abstract class ApiStatistics implements ApiHelper {
             /* ---------------------------------
              * Build and execute query
              * --------------------------------- */
+            let limit = 0;
+            switch (table) {
+              case 'player_might_history': {
+                limit = 10;
+                break;
+              }
+              case 'player_loot_history': {
+                limit = 21;
+                break;
+              }
+              default: {
+                limit = 30;
+              }
+            }
             const query = `
               SELECT
               player_id,
@@ -602,6 +617,7 @@ export abstract class ApiStatistics implements ApiHelper {
               point
               FROM ${database}.${table}
               WHERE player_id IN (${ids.map((id) => `'${id}'`).join(',')})
+              AND created_at >= now() - INTERVAL ${limit} DAY
               ORDER BY created_at DESC
             `;
             const result: any = await clickhouse.query(query, { params: ids }).toPromise();
@@ -715,11 +731,11 @@ export abstract class ApiStatistics implements ApiHelper {
       const mightDailyAvgChangeQuery = `
         SELECT day, avg(diff) AS avg_diff
         FROM (
-            SELECT toDate(created_at) AS day, player_id, argMax(point, created_at) - argMin(point, created_at) AS diff
-            FROM ${database}.player_might_history
-            WHERE player_id IN (${idList})
-            AND toDate(created_at) BETWEEN '${fromDateString}' AND '${toDateString}'
-            GROUP BY day, player_id
+          SELECT toDate(created_at) AS day, player_id, argMax(point, created_at) - argMin(point, created_at) AS diff
+          FROM ${database}.player_might_history
+          WHERE player_id IN (${idList})
+          AND toDate(created_at) BETWEEN '${fromDateString}' AND '${toDateString}'
+          GROUP BY day, player_id
         )
         GROUP BY day
         ORDER BY day
@@ -773,17 +789,17 @@ export abstract class ApiStatistics implements ApiHelper {
 
       // [#6] Top 5 might loss 24h
       const topMightLossQuery24h = `
-          SELECT
-            player_id,
-            argMax(point, created_at) - argMin(point, created_at) AS diff,
-            argMax(point, created_at) AS current
-          FROM ${database}.player_might_history
-          WHERE player_id IN (${idList}) AND created_at >= '${fromDateString24h}'
-          GROUP BY player_id
-          HAVING diff < 0
-          ORDER BY diff ASC
-          LIMIT 5
-        `;
+        SELECT
+          player_id,
+          argMax(point, created_at) - argMin(point, created_at) AS diff,
+          argMax(point, created_at) AS current
+        FROM ${database}.player_might_history
+        WHERE player_id IN (${idList}) AND created_at >= '${fromDateString24h}'
+        GROUP BY player_id
+        HAVING diff < 0
+        ORDER BY diff ASC
+        LIMIT 5
+      `;
 
       // [#7] Top 5 might loss 7d
       const topMightLossQuery7d = `
@@ -919,7 +935,7 @@ export abstract class ApiStatistics implements ApiHelper {
           try {
             const database = olapDatabase;
             if (!database) {
-              reject(new Error('An error occurred. Please try again later.'));
+              reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
               return;
             }
             dates_start[table] = new Date();
@@ -947,17 +963,17 @@ export abstract class ApiStatistics implements ApiHelper {
               // Standard handling for tables with event_dates
               const query = `
                 SELECT
-                    ed.created_at,
-                    COALESCE(pe.point, 0) AS point
+                  ed.created_at,
+                  COALESCE(pe.point, 0) AS point
                 FROM
-                    ${database}.event_dates AS ed
+                  ${database}.event_dates AS ed
                 LEFT JOIN ${database}.${table} AS pe
-                    ON ed.created_at = pe.created_at AND pe.player_id = ${ApiHelper.removeCountryCode(playerId)}
+                  ON ed.created_at = pe.created_at AND pe.player_id = ${ApiHelper.removeCountryCode(playerId)}
                 WHERE
-                    ed.table_name = '${table}'
+                  ed.table_name = '${table}'
                 ${createdAtDiffLimitQueryOlap}
                 ORDER BY
-                    ed.created_at
+                  ed.created_at
               `;
               const result: any = await clickhouse.query(query).toPromise();
               points[table] = result.map((row: any) => {

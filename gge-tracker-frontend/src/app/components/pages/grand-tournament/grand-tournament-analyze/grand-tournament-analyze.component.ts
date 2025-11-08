@@ -71,7 +71,6 @@ export class GrandTournamentAnalyzeComponent extends GenericComponent implements
     if (!entries || entries.length === 0) {
       return;
     }
-    console.log(entries.map((entry) => entry.score));
     const scoreSeries = [
       {
         name: this.translateService.instant('Score'),

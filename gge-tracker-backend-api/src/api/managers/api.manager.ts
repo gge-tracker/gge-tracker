@@ -1,84 +1,11 @@
 import * as mysql from 'mysql';
 import * as pg from 'pg';
 import { ClickHouse } from 'clickhouse';
-import { DatabaseManager } from './../databases';
-import { ApiHelper } from './../api-helper';
-import { IApiToken, ILimitedApiToken } from './../interfaces/interfaces';
-
-/**
- * Enum representing the available GGE Tracker server identifiers.
- *
- * Each value corresponds to a specific game server region or type.
- * These identifiers are used to specify which server to interact with
- * when making API requests or handling server-specific logic.
- *
- * @enum {string}
- */
-export enum GgeTrackerServers {
-  ARAB1 = 'ARAB1',
-  AU1 = 'AU1',
-  BR1 = 'BR1',
-  CZ1 = 'CZ1',
-  DE1 = 'DE1',
-  ES1 = 'ES1',
-  FR1 = 'FR1',
-  GLOBAL = 'GLOBAL',
-  HANT1 = 'HANT1',
-  CN1 = 'CN1',
-  HU1 = 'HU1',
-  HU2 = 'HU2',
-  IN1 = 'IN1',
-  INT1 = 'INT1',
-  INT2 = 'INT2',
-  INT3 = 'INT3',
-  IT1 = 'IT1',
-  NL1 = 'NL1',
-  PL1 = 'PL1',
-  PT1 = 'PT1',
-  RO1 = 'RO1',
-  RU1 = 'RU1',
-  SA1 = 'SA1',
-  TR1 = 'TR1',
-  US1 = 'US1',
-  GR1 = 'GR1',
-  ASIA1 = 'ASIA1',
-  ES2 = 'ES2',
-  LT1 = 'LT1',
-  SKN1 = 'SKN1',
-  BG1 = 'BG1',
-  SK1 = 'SK1',
-  GB1 = 'GB1',
-  KR1 = 'KR1',
-  JP1 = 'JP1',
-  HIS1 = 'HIS1',
-  AE1 = 'AE1',
-  EG1 = 'EG1',
-  WORLD1 = 'WORLD1',
-  E4K_HANT1 = 'E4K_HANT1',
-  E4K_BR1 = 'E4K_BR1',
-  E4K_FR1 = 'E4K_FR1',
-  E4K_DE1 = 'E4K_DE1',
-  E4K_DE2 = 'E4K_DE2',
-  E4K_US1 = 'E4K_US1',
-  E4K_INT2 = 'E4K_INT2',
-}
-
-/**
- * The base name for all SQL databases used by the GGE Tracker servers.
- * This constant is used as a prefix when constructing full database names for each server.
- * The project first name is "empire-ranking", changed to "gge-tracker" for rebranding.
- * But SQL database name is not changed for legacy reason.
- */
-export const BASE_SQL_DB_NAME = 'empire-ranking';
-/** The base name for all OLAP databases used by the GGE Tracker servers.
- * This constant is used as a prefix when constructing full OLAP database names for each server.
- * The project first name is "empire-ranking", changed to "gge-tracker" for rebranding.
- * But OLAP database name is not changed for legacy reason.
- */
-export const BASE_OLAP_DB_NAME = 'empire_ranking';
-
-export const BASE_SQL_E4K_DB_NAME = 'ggetracker-e4k';
-export const BASE_OLAP_E4K_DB_NAME = 'ggetracker_e4k';
+import { DatabaseManager } from './database.manager';
+import { ApiHelper } from '../helper/api-helper';
+import { IApiToken, ILimitedApiToken } from '../interfaces/interfaces';
+import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
+import { GgeTrackerSqlBaseNameEnum } from '../enums/gge-tracker-sql-base-name.enums';
 
 /**
  * Manages server configurations, database pools, and utility methods for the GGE Tracker API.
@@ -112,7 +39,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
   /**
    * A mapping of all supported GGE Tracker servers to their respective API token configurations.
    *
-   * Each key corresponds to a server identifier from `GgeTrackerServers`, and the value is an `IApiToken`
+   * Each key corresponds to a server identifier from `GgeTrackerServersEnum`, and the value is an `IApiToken`
    * object containing database names, display names, server codes, and zone identifiers.
    *
    * This configuration is used to route API requests and database operations to the correct server context.
@@ -124,211 +51,277 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    * - The `zone` specifies the GGE EmpireEx zone associated with the server, used to identify the GGE server websocket.
    * - The `GLOBAL` entry is a special case with empty values, used for global operations.
    *
-   * @see GgeTrackerServers
+   * @see GgeTrackerServersEnum
    * @see IApiToken
    */
-  private readonly servers: { [K in keyof typeof GgeTrackerServers]: IApiToken | ILimitedApiToken } = {
-    [GgeTrackerServers.INT1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-int1', olap: BASE_OLAP_DB_NAME + '_int1' },
+  private readonly servers: { [K in keyof typeof GgeTrackerServersEnum]: IApiToken | ILimitedApiToken } = {
+    [GgeTrackerServersEnum.INT1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-int1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_int1',
+      },
       outer_name: 'INT1',
       code: '071',
       zone: 'EmpireEx',
     },
-    [GgeTrackerServers.DE1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-de1', olap: BASE_OLAP_DB_NAME + '_de1' },
+    [GgeTrackerServersEnum.DE1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-de1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_de1',
+      },
       outer_name: 'DE1',
       code: '010',
       zone: 'EmpireEx_2',
     },
-    [GgeTrackerServers.FR1]: {
-      databases: { sql: BASE_SQL_DB_NAME, olap: BASE_OLAP_DB_NAME },
+    [GgeTrackerServersEnum.FR1]: {
+      databases: { sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME, olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME },
       outer_name: 'FR1',
       code: '020',
       zone: 'EmpireEx_3',
     },
-    [GgeTrackerServers.CZ1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-cz1', olap: BASE_OLAP_DB_NAME + '_cz1' },
+    [GgeTrackerServersEnum.CZ1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-cz1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_cz1',
+      },
       outer_name: 'CZ1',
       code: '030',
       zone: 'EmpireEx_4',
     },
-    [GgeTrackerServers.PL1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-pl1', olap: BASE_OLAP_DB_NAME + '_PL1' },
+    [GgeTrackerServersEnum.PL1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-pl1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_PL1',
+      },
       outer_name: 'PL1',
       code: '065',
       zone: 'EmpireEx_5',
     },
-    [GgeTrackerServers.PT1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-pt1', olap: BASE_OLAP_DB_NAME + '_PT1' },
+    [GgeTrackerServersEnum.PT1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-pt1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_PT1',
+      },
       outer_name: 'PT1',
       code: '055',
       zone: 'EmpireEx_6',
     },
-    [GgeTrackerServers.INT2]: {
+    [GgeTrackerServersEnum.INT2]: {
       outer_name: 'INT2',
       zone: 'EmpireEx_7',
       disabled: true,
     },
-    [GgeTrackerServers.ES1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-es1', olap: BASE_OLAP_DB_NAME + '_es1' },
+    [GgeTrackerServersEnum.ES1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-es1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_es1',
+      },
       outer_name: 'ES1',
       code: '074',
       zone: 'EmpireEx_8',
     },
-    [GgeTrackerServers.IT1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-it1', olap: BASE_OLAP_DB_NAME + '_IT1' },
+    [GgeTrackerServersEnum.IT1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-it1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_IT1',
+      },
       outer_name: 'IT1',
       code: '075',
       zone: 'EmpireEx_9',
     },
-    [GgeTrackerServers.TR1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-tr1', olap: BASE_OLAP_DB_NAME + '_tr1' },
+    [GgeTrackerServersEnum.TR1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-tr1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_tr1',
+      },
       outer_name: 'TR1',
       code: '090',
       zone: 'EmpireEx_10',
     },
-    [GgeTrackerServers.NL1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-nl1', olap: BASE_OLAP_DB_NAME + '_nl1' },
+    [GgeTrackerServersEnum.NL1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-nl1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_nl1',
+      },
       outer_name: 'NL1',
       code: '050',
       zone: 'EmpireEx_11',
     },
-    [GgeTrackerServers.HU1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-hu1', olap: BASE_OLAP_DB_NAME + '_hu1' },
+    [GgeTrackerServersEnum.HU1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-hu1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_hu1',
+      },
       outer_name: 'HU1',
       code: '015',
       zone: 'EmpireEx_12',
     },
-    [GgeTrackerServers.SKN1]: {
+    [GgeTrackerServersEnum.SKN1]: {
       outer_name: 'SKN1',
       zone: 'EmpireEx_13',
       disabled: true,
     },
-    [GgeTrackerServers.RU1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-ru1', olap: BASE_OLAP_DB_NAME + '_ru1' },
+    [GgeTrackerServersEnum.RU1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-ru1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_ru1',
+      },
       outer_name: 'RU1',
       code: '031',
       zone: 'EmpireEx_14',
     },
-    [GgeTrackerServers.RO1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-ro1', olap: BASE_OLAP_DB_NAME + '_ro1' },
+    [GgeTrackerServersEnum.RO1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-ro1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_ro1',
+      },
       outer_name: 'RO1',
       code: '040',
       zone: 'EmpireEx_15',
     },
-    [GgeTrackerServers.BG1]: {
+    [GgeTrackerServersEnum.BG1]: {
       outer_name: 'BG1',
       zone: 'EmpireEx_16',
       disabled: true,
     },
-    [GgeTrackerServers.HU2]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-hu2', olap: BASE_OLAP_DB_NAME + '_hu2' },
+    [GgeTrackerServersEnum.HU2]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-hu2',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_hu2',
+      },
       outer_name: 'HU2',
       code: '014',
       zone: 'EmpireEx_17',
     },
-    [GgeTrackerServers.SK1]: {
+    [GgeTrackerServersEnum.SK1]: {
       outer_name: 'SK1',
       zone: 'EmpireEx_18',
       disabled: true,
     },
-    [GgeTrackerServers.GB1]: {
+    [GgeTrackerServersEnum.GB1]: {
       outer_name: 'GB1',
       zone: 'EmpireEx_19',
       disabled: true,
     },
-    [GgeTrackerServers.BR1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-br1', olap: BASE_OLAP_DB_NAME + '_BR1' },
+    [GgeTrackerServersEnum.BR1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-br1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_BR1',
+      },
       outer_name: 'BR1',
       code: '095',
       zone: 'EmpireEx_20',
     },
-    [GgeTrackerServers.US1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-us1', olap: BASE_OLAP_DB_NAME + '_us1' },
+    [GgeTrackerServersEnum.US1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-us1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_us1',
+      },
       outer_name: 'US1',
       code: '080',
       zone: 'EmpireEx_21',
     },
-    [GgeTrackerServers.AU1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-au1', olap: BASE_OLAP_DB_NAME + '_au1' },
+    [GgeTrackerServersEnum.AU1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-au1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_au1',
+      },
       outer_name: 'AU1',
       code: '045',
       zone: 'EmpireEx_22',
     },
-    [GgeTrackerServers.KR1]: {
+    [GgeTrackerServersEnum.KR1]: {
       outer_name: 'KR1',
       zone: 'EmpireEx_23',
       disabled: true,
     },
-    [GgeTrackerServers.JP1]: {
+    [GgeTrackerServersEnum.JP1]: {
       outer_name: 'JP1',
       zone: 'EmpireEx_24',
       disabled: true,
     },
-    [GgeTrackerServers.HIS1]: {
+    [GgeTrackerServersEnum.HIS1]: {
       outer_name: 'HIS1',
       zone: 'EmpireEx_25',
       disabled: true,
     },
-    [GgeTrackerServers.IN1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-in1', olap: BASE_OLAP_DB_NAME + '_IN1' },
+    [GgeTrackerServersEnum.IN1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-in1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_IN1',
+      },
       outer_name: 'IN1',
       code: '085',
       zone: 'EmpireEx_26',
     },
-    [GgeTrackerServers.CN1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-cn1', olap: BASE_OLAP_DB_NAME + '_cn1' },
+    [GgeTrackerServersEnum.CN1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-cn1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_cn1',
+      },
       outer_name: 'CN1',
       code: '026',
       zone: 'EmpireEx_27',
     },
-    [GgeTrackerServers.GR1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-gr1', olap: BASE_OLAP_DB_NAME + '_gr1' },
+    [GgeTrackerServersEnum.GR1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-gr1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_gr1',
+      },
       outer_name: 'GR1',
       code: '011',
       zone: 'EmpireEx_28',
     },
-    [GgeTrackerServers.LT1]: {
+    [GgeTrackerServersEnum.LT1]: {
       outer_name: 'LT1',
       zone: 'EmpireEx_29',
       disabled: true,
     },
     // EmpireEx_30 does not exist
     // EmpireEx_31 does not exist
-    [GgeTrackerServers.SA1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-sa1', olap: BASE_OLAP_DB_NAME + '_sa1' },
+    [GgeTrackerServersEnum.SA1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-sa1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_sa1',
+      },
       outer_name: 'SA1',
       code: '073',
       zone: 'EmpireEx_32',
     },
-    [GgeTrackerServers.AE1]: {
+    [GgeTrackerServersEnum.AE1]: {
       outer_name: 'AE1',
       zone: 'EmpireEx_33',
       disabled: true,
     },
-    [GgeTrackerServers.EG1]: {
+    [GgeTrackerServersEnum.EG1]: {
       outer_name: 'EG1',
       zone: 'EmpireEx_34',
       disabled: true,
     },
-    [GgeTrackerServers.ARAB1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-ar1', olap: BASE_OLAP_DB_NAME + '_ar1' },
+    [GgeTrackerServersEnum.ARAB1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-ar1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_ar1',
+      },
       outer_name: 'ARAB1',
       code: '035',
       zone: 'EmpireEx_35',
     },
-    [GgeTrackerServers.ASIA1]: {
+    [GgeTrackerServersEnum.ASIA1]: {
       outer_name: 'ASIA1',
       zone: 'EmpireEx_36',
       disabled: true,
     },
-    [GgeTrackerServers.HANT1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-hant1', olap: BASE_OLAP_DB_NAME + '_hant1' },
+    [GgeTrackerServersEnum.HANT1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-hant1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_hant1',
+      },
       outer_name: 'HANT',
       code: '025',
       zone: 'EmpireEx_37',
     },
-    [GgeTrackerServers.ES2]: {
+    [GgeTrackerServersEnum.ES2]: {
       outer_name: 'ES2',
       zone: 'EmpireEx_38',
       disabled: true,
@@ -337,62 +330,89 @@ export class ApiGgeTrackerManager extends DatabaseManager {
     // EmpireEx_40 does not exist
     // EmpireEx_41 does not exist
     // EmpireEx_42 does not exist
-    [GgeTrackerServers.INT3]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-int3', olap: BASE_OLAP_DB_NAME + '_int3' },
+    [GgeTrackerServersEnum.INT3]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-int3',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_int3',
+      },
       outer_name: 'INT3',
       code: '070',
       zone: 'EmpireEx_43',
     },
-    [GgeTrackerServers.WORLD1]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-world1', olap: BASE_OLAP_DB_NAME + '_world1' },
+    [GgeTrackerServersEnum.WORLD1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-world1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_world1',
+      },
       outer_name: 'LIVE',
       code: '060',
       zone: 'EmpireEx_46',
     },
-    [GgeTrackerServers.GLOBAL]: {
-      databases: { sql: BASE_SQL_DB_NAME + '-global', olap: '' },
+    [GgeTrackerServersEnum.GLOBAL]: {
+      databases: { sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-global', olap: '' },
       outer_name: '',
       code: '',
       zone: '',
     },
-    [GgeTrackerServers.E4K_HANT1]: {
-      databases: { sql: BASE_SQL_E4K_DB_NAME + '-hant1', olap: BASE_OLAP_E4K_DB_NAME + '_hant1' },
+    [GgeTrackerServersEnum.E4K_HANT1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_E4K_DB_NAME + '-hant1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_E4K_DB_NAME + '_hant1',
+      },
       outer_name: 'E4K_HANT1',
       code: '462',
       zone: 'EmpirefourkingdomsExGG_30',
     },
-    [GgeTrackerServers.E4K_BR1]: {
-      databases: { sql: BASE_SQL_E4K_DB_NAME + '-br1', olap: BASE_OLAP_E4K_DB_NAME + '_br1' },
+    [GgeTrackerServersEnum.E4K_BR1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_E4K_DB_NAME + '-br1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_E4K_DB_NAME + '_br1',
+      },
       outer_name: 'E4K_BR1',
       code: '202',
       zone: 'EmpirefourkingdomsExGG_13',
     },
-    [GgeTrackerServers.E4K_FR1]: {
-      databases: { sql: BASE_SQL_E4K_DB_NAME + '-fr1', olap: BASE_OLAP_E4K_DB_NAME + '_fr1' },
+    [GgeTrackerServersEnum.E4K_FR1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_E4K_DB_NAME + '-fr1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_E4K_DB_NAME + '_fr1',
+      },
       outer_name: 'E4K_FR1',
       code: '164',
       zone: 'EmpirefourkingdomsExGG_2',
     },
-    [GgeTrackerServers.E4K_DE1]: {
-      databases: { sql: BASE_SQL_E4K_DB_NAME + '-de1', olap: BASE_OLAP_E4K_DB_NAME + '_de1' },
+    [GgeTrackerServersEnum.E4K_DE1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_E4K_DB_NAME + '-de1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_E4K_DB_NAME + '_de1',
+      },
       outer_name: 'E4K_DE1',
       code: '121',
       zone: 'EmpirefourkingdomsExGG',
     },
-    [GgeTrackerServers.E4K_DE2]: {
-      databases: { sql: BASE_SQL_E4K_DB_NAME + '-de2', olap: BASE_OLAP_E4K_DB_NAME + '_de2' },
+    [GgeTrackerServersEnum.E4K_DE2]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_E4K_DB_NAME + '-de2',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_E4K_DB_NAME + '_de2',
+      },
       outer_name: 'E4K_DE2',
       code: '192',
       zone: 'EmpirefourkingdomsExGG_28',
     },
-    [GgeTrackerServers.E4K_US1]: {
-      databases: { sql: BASE_SQL_E4K_DB_NAME + '-us1', olap: BASE_OLAP_E4K_DB_NAME + '_us1' },
+    [GgeTrackerServersEnum.E4K_US1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_E4K_DB_NAME + '-us1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_E4K_DB_NAME + '_us1',
+      },
       outer_name: 'E4K_US1',
       code: '203',
       zone: 'EmpirefourkingdomsExGG_4',
     },
-    [GgeTrackerServers.E4K_INT2]: {
-      databases: { sql: BASE_SQL_E4K_DB_NAME + '-int2', olap: BASE_OLAP_E4K_DB_NAME + '_int2' },
+    [GgeTrackerServersEnum.E4K_INT2]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_E4K_DB_NAME + '-int2',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_E4K_DB_NAME + '_int2',
+      },
       outer_name: 'E4K_INT2',
       code: '186',
       zone: 'EmpirefourkingdomsExGG_21',
@@ -468,7 +488,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    * @param serverName - The name of the outer server to search for.
    * @returns The corresponding `IApiToken` object if found; otherwise, `null`.
    */
-  public getOuterServer(serverName: GgeTrackerServers): IApiToken | null {
+  public getOuterServer(serverName: GgeTrackerServersEnum): IApiToken | null {
     return this.getActivatedServerValues().find((server) => server.outer_name === serverName) || null;
   }
 
@@ -581,7 +601,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    * @returns The `pg.Pool` instance for the global server if available; otherwise, `null`.
    */
   public getGlobalPgSqlPool(): pg.Pool | null {
-    return this.postgresPools[GgeTrackerServers.GLOBAL] || null;
+    return this.postgresPools[GgeTrackerServersEnum.GLOBAL] || null;
   }
 
   /**
@@ -627,26 +647,26 @@ export class ApiGgeTrackerManager extends DatabaseManager {
   }
 
   /**
-   * Retrieves a mapping of all SQL database connection strings for each server defined in `GgeTrackerServers`.
+   * Retrieves a mapping of all SQL database connection strings for each server defined in `GgeTrackerServersEnum`.
    *
-   * @returns An object where each key corresponds to a server name from `GgeTrackerServers` and the value is the associated SQL database connection string.
+   * @returns An object where each key corresponds to a server name from `GgeTrackerServersEnum` and the value is the associated SQL database connection string.
    */
-  public getAllSqlDatabases(): { [K in keyof typeof GgeTrackerServers]: string } {
+  public getAllSqlDatabases(): { [K in keyof typeof GgeTrackerServersEnum]: string } {
     return Object.fromEntries(this.getActivatedServerEntries().map(([key, server]) => [key, server.databases.sql])) as {
-      [K in keyof typeof GgeTrackerServers]: string;
+      [K in keyof typeof GgeTrackerServersEnum]: string;
     };
   }
 
   /**
-   * Retrieves a mapping of all OLAP database connection strings for each server defined in `GgeTrackerServers`.
+   * Retrieves a mapping of all OLAP database connection strings for each server defined in `GgeTrackerServersEnum`.
    *
-   * @returns An object where each key corresponds to a server name from `GgeTrackerServers` and each value is the associated OLAP database connection string.
+   * @returns An object where each key corresponds to a server name from `GgeTrackerServersEnum` and each value is the associated OLAP database connection string.
    */
-  public getAllOlapDatabases(): { [K in keyof typeof GgeTrackerServers]: string } {
+  public getAllOlapDatabases(): { [K in keyof typeof GgeTrackerServersEnum]: string } {
     return Object.fromEntries(
       this.getActivatedServerEntries().map(([key, server]) => [key, server.databases.olap]),
     ) as {
-      [K in keyof typeof GgeTrackerServers]: string;
+      [K in keyof typeof GgeTrackerServersEnum]: string;
     };
   }
 
@@ -698,7 +718,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    *
    * Performs the following checks for each configured server:
    * 1. Ensures the server code is exactly 3 characters long, except for the special
-   *    case identified by GgeTrackerServers.GLOBAL.
+   *    case identified by GgeTrackerServersEnum.GLOBAL.
    * 2. Verifies that none of the configured database identifiers (SQL or OLAP)
    *    contain the literal string 'null', which indicates a misconfiguration.
    * 3. Detects duplicate server codes across different server entries and reports
@@ -714,7 +734,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    */
   private checkServerConfig(): void {
     this.getActivatedServerEntries().forEach(([key, server]) => {
-      if (server.code.length !== 3 && key !== GgeTrackerServers.GLOBAL) {
+      if (server.code.length !== 3 && key !== GgeTrackerServersEnum.GLOBAL) {
         throw new Error(`Server code for ${key} must be exactly 3 characters long.`);
       } else if (server.databases.sql.includes('null') || server.databases.olap.includes('null')) {
         throw new Error(`Server ${key} has 'null' in its database name, please check the configuration.`);

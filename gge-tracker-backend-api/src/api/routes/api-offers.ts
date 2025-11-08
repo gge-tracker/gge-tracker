@@ -1,5 +1,5 @@
 import * as express from 'express';
-import { ApiHelper } from '../api-helper';
+import { ApiHelper } from '../helper/api-helper';
 
 /**
  * Abstract class providing API endpoints related to offers.

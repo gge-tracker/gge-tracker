@@ -1,6 +1,6 @@
 import * as express from 'express';
 import * as fs from 'node:fs';
-import { ApiHelper } from '../api-helper';
+import { ApiHelper } from '../helper/api-helper';
 
 /**
  * Abstract class providing API documentation utilities.

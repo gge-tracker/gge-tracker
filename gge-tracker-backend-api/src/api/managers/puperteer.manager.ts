@@ -5,13 +5,8 @@ import * as puppeteer from 'puppeteer';
  *
  * Ensures that only one browser instance is launched and reused throughout the application.
  * Handles concurrent launch attempts and automatically relaunches the browser if it crashes.
- *
- * @remarks
- * - Uses a set of recommended arguments for headless operation and security.
- * - Automatically relaunches the browser if it disconnects.
- * - Prevents concurrent launches by using a `launching` flag.
  */
-class PuppeteerSingleton {
+class PuppeteerManager {
   /**
    * Holds the instance of the Puppeteer browser.
    *
@@ -103,4 +98,4 @@ class PuppeteerSingleton {
     return this.browser;
   }
 }
-export const puppeteerSingleton = new PuppeteerSingleton();
+export const puppeteerManagerInstance = new PuppeteerManager();

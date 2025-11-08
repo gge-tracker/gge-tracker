@@ -1,8 +1,11 @@
-import * as express from 'express';
-import { ApiHelper } from '../api-helper';
-import * as pg from 'pg';
 import { formatInTimeZone } from 'date-fns-tz';
-import { GgeTrackerServers } from '../services/empire-api-service';
+import * as express from 'express';
+import * as pg from 'pg';
+import { RouteErrorMessagesEnum } from '../enums/errors.enums';
+import { EventTypes } from '../enums/event-types.enums';
+import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
+import { ApiHelper } from '../helper/api-helper';
+import { ApiInvalidInputType } from '../types/parameter.types';
 
 /**
  * Abstract class providing API endpoints for event-related data.
@@ -25,11 +28,6 @@ export abstract class ApiEvents implements ApiHelper {
    * @param response - The Express response object.
    * @param eventPgDbpool - The PostgreSQL connection pool used for querying event data.
    * @returns A Promise that resolves when the response has been sent.
-   *
-   * @remarks
-   * - The returned event objects include `event_num`, `player_count`, `type`, and a formatted `collect_date`.
-   * - On error, responds with HTTP 500 and an error message.
-   * - Uses `ApiHelper.redisClient` for caching and `ApiHelper.updateCache` to update the cache.
    */
   public static async getEvents(
     request: express.Request,
@@ -144,7 +142,7 @@ export abstract class ApiEvents implements ApiHelper {
       /* ---------------------------------
        * Query from DB
        * --------------------------------- */
-      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServers.GLOBAL);
+      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServersEnum.GLOBAL);
       const query = `
         SELECT
           event_id,
@@ -206,20 +204,17 @@ export abstract class ApiEvents implements ApiHelper {
       /* ---------------------------------
        * Validate request
        * --------------------------------- */
-      const allianceId = ApiHelper.getVerifiedId(String(request.params.allianceId));
-      const eventId = Number.parseInt(String(request.params.eventId));
+      const allianceId = ApiHelper.verifyIdWithCountryCode(String(request.params.allianceId));
+      const eventId = ApiHelper.validatePageNumber(request.params.eventId);
       if (allianceId === false || allianceId === undefined) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid alliance id' });
-        return;
-      } else if (!eventId || Number.isNaN(eventId) || eventId < 0 || eventId > 999_999_999) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid event id' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceId });
         return;
       }
       const realAllianceId = ApiHelper.removeCountryCode(allianceId);
       const countryCode = ApiHelper.getCountryCode(String(allianceId));
       const zone = ApiHelper.ggeTrackerManager.getZoneFromCode(countryCode);
       if (!zone) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid alliance id' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceId });
         return;
       }
       let replacedZone = zone.replaceAll(new RegExp('EmpireEx_?', 'g'), '');
@@ -241,7 +236,7 @@ export abstract class ApiEvents implements ApiHelper {
       /* ---------------------------------
        * Query from DB
        * --------------------------------- */
-      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServers.GLOBAL);
+      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServersEnum.GLOBAL);
       const query = `
         SELECT
           server_id,
@@ -320,7 +315,7 @@ export abstract class ApiEvents implements ApiHelper {
       /* ---------------------------------
        * Validate request parameters
        * --------------------------------- */
-      const allianceName = String(request.query.alliance_name || '').trim();
+      const allianceName = ApiHelper.validateSearchAndSanitize(request.query.alliance_name);
       const date = this.validateDate(request.query.date) ? new Date(String(request.query.date)) : null;
       if (!date) {
         response
@@ -331,8 +326,8 @@ export abstract class ApiEvents implements ApiHelper {
       const pagination_page = request.query.page ? Number.parseInt(String(request.query.page)) : 1;
       const maxAlliancesPerPage = 10;
       const offset = (pagination_page - 1) * maxAlliancesPerPage;
-      if (allianceName.length === 0 || allianceName.length > 50) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid alliance name' });
+      if (ApiHelper.isInvalidInput(allianceName)) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceName });
         return;
       }
 
@@ -350,7 +345,7 @@ export abstract class ApiEvents implements ApiHelper {
       /* ---------------------------------
        * Database query for total count
        * --------------------------------- */
-      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServers.GLOBAL);
+      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServersEnum.GLOBAL);
       const baseParameters: (string | number | Date)[] = [date];
       const queryCount = `
         SELECT
@@ -478,23 +473,19 @@ export abstract class ApiEvents implements ApiHelper {
        * Validate request parameters
        * --------------------------------- */
       const maxAlliancesPerPage = 10;
+      const maxDivisionId = 5;
       const date = this.validateDate(request.query.date) ? new Date(String(request.query.date)) : null;
       if (!date) {
-        response
-          .status(ApiHelper.HTTP_BAD_REQUEST)
-          .send({ error: 'Invalid date format. Please use YYYY-MM-DDTHH:00:00.000Z.' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidFlatDateFormat });
         return;
       }
-      const division_id = request.query.division_id ? Number.parseInt(String(request.query.division_id)) : 5;
-      const subdivision_id = request.query.subdivision_id
-        ? Number.parseInt(String(request.query.subdivision_id))
-        : undefined;
-      if (!division_id || Number.isNaN(division_id) || division_id < 1 || division_id > 5) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid division id' });
+      const division_id = ApiHelper.validatePageNumber(request.query.division_id, maxDivisionId + 1);
+      const subdivision_id = ApiHelper.validatePageNumber(request.query.subdivision_id, -1);
+      if (division_id > maxDivisionId) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidDivisionId });
         return;
-      }
-      if (subdivision_id && (Number.isNaN(subdivision_id) || subdivision_id < 1 || subdivision_id > 999_999)) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid subdivision id' });
+      } else if (subdivision_id < 1) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidSubdivisionId });
         return;
       }
       const pagination_page = request.query.page ? Number.parseInt(String(request.query.page)) : 1;
@@ -514,7 +505,7 @@ export abstract class ApiEvents implements ApiHelper {
        * Query database
        * --------------------------------- */
       const offset = (pagination_page - 1) * maxAlliancesPerPage;
-      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServers.GLOBAL);
+      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServersEnum.GLOBAL);
       const baseParameters: (string | number | Date)[] = [date, division_id];
       if (subdivision_id) baseParameters.push(subdivision_id);
       let index = 2;
@@ -640,43 +631,39 @@ export abstract class ApiEvents implements ApiHelper {
        * Validate and parse parameters
        * --------------------------------- */
       const PAGINATION_LIMIT = 15;
-      const id = request.params.id;
-      let page = Number.parseInt(String(request.query.page)) || 1;
-      let playerNameFilter = request.query.player_name ? String(request.query.player_name) : null;
-      let serverFilter = request.query.server ? String(request.query.server) : null;
-      let eventType = request.params.eventType;
-      if (eventType !== 'outer-realms' && eventType !== 'beyond-the-horizon') {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid event type' });
+      const id = ApiHelper.validatePageNumber(request.params.id, null);
+      let page = ApiHelper.validatePageNumber(request.query.page);
+      let playerNameFilter = ApiHelper.validateSearchAndSanitize(request.query.player_name);
+      let serverFilter = ApiHelper.validateSearchAndSanitize(request.query.server, { maxLength: 10 });
+      let eventType = ApiHelper.validateSearchAndSanitize(request.params.eventType);
+      if (eventType !== EventTypes.OUTER_REALMS && eventType !== EventTypes.BEYOND_THE_HORIZON) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventType });
         return;
       }
       // Trick: we convert event type to match table name, e.g. "outer-realms" -> "outer_realms_ranking"
       // This needs to be upgraded if we add more event types in the future.
       const sqlTable = eventType.trim().replaceAll('-', '_') + '_ranking';
-      if (!id || Number.isNaN(Number(id))) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid event ID' });
+      if (!id) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventId });
         return;
       }
-      if (Number.isNaN(page) || page < 1 || page > ApiHelper.MAX_RESULT_PAGE) {
-        page = 1;
-      }
-      if (playerNameFilter) {
-        playerNameFilter = playerNameFilter.trim().toLowerCase();
-      }
-      if (playerNameFilter && playerNameFilter.length > 50) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Player name filter is too long' });
+      if (playerNameFilter === ApiInvalidInputType) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
         return;
       }
-      if (serverFilter && serverFilter.length > 10) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid server filter' });
+      if (serverFilter === ApiInvalidInputType) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidServer });
         return;
       }
-      const cachedKey = `events:${eventType}:${id}:players:${page}:${playerNameFilter}:${serverFilter || 'all'}`;
+      const cachedKey = `events:${eventType}:${id}:players:${page}:${String(playerNameFilter)}:${String(serverFilter)}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
         return;
       }
 
+      const isValidPlayerNameFilter = ApiHelper.isValidInput(playerNameFilter);
+      const isValidServerFilter = ApiHelper.isValidInput(serverFilter);
       /* ---------------------------------
        * Count total items for pagination
        * --------------------------------- */
@@ -685,14 +672,14 @@ export abstract class ApiEvents implements ApiHelper {
         SELECT COUNT(*) AS total
         FROM ${sqlTable} O
         WHERE O.event_num = $${index++}
-        ${playerNameFilter ? `AND LOWER(player_name) LIKE $${index++}` : ''}
-        ${serverFilter ? `AND O.server = $${index++}` : ''}
+        ${isValidPlayerNameFilter ? `AND LOWER(player_name) LIKE $${index++}` : ''}
+        ${isValidServerFilter ? `AND O.server = $${index++}` : ''}
         `;
       const countParameters: (string | number)[] = [id];
-      if (playerNameFilter) {
+      if (isValidPlayerNameFilter) {
         countParameters.push(`%${playerNameFilter}%`);
       }
-      if (serverFilter) {
+      if (isValidServerFilter) {
         countParameters.push(serverFilter);
       }
 
@@ -703,7 +690,7 @@ export abstract class ApiEvents implements ApiHelper {
         eventPgDbpool.query(countQuery, countParameters, (error, results) => {
           if (error) {
             ApiHelper.logError(error, 'getEventPlayers_countQuery', request);
-            reject(new Error('An error occurred. Please try again later.'));
+            reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
           } else {
             resolve(results.rows[0]);
           }
@@ -732,16 +719,16 @@ export abstract class ApiEvents implements ApiHelper {
         SELECT player_id, player_name, rank, point, server
         FROM ${sqlTable}
         WHERE event_num = $${parameterIndex++}
-        ${playerNameFilter ? `AND LOWER(player_name) LIKE $${parameterIndex++}` : ''}
-        ${serverFilter ? `AND server = $${parameterIndex++}` : ''}
+        ${isValidPlayerNameFilter ? `AND LOWER(player_name) LIKE $${parameterIndex++}` : ''}
+        ${isValidServerFilter ? `AND server = $${parameterIndex++}` : ''}
         ORDER BY rank
         LIMIT $${parameterIndex++} OFFSET $${parameterIndex++}
         `;
       const parameters: (string | number)[] = [id];
-      if (playerNameFilter) {
+      if (isValidPlayerNameFilter) {
         parameters.push(`%${playerNameFilter}%`);
       }
-      if (serverFilter) {
+      if (isValidServerFilter) {
         parameters.push(serverFilter);
       }
       parameters.push(PAGINATION_LIMIT, offset);
@@ -753,7 +740,7 @@ export abstract class ApiEvents implements ApiHelper {
         eventPgDbpool.query(query, parameters, (error, results) => {
           if (error) {
             ApiHelper.logError(error, 'getEventPlayers_query', request);
-            reject(new Error('An error occurred. Please try again later.'));
+            reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
           } else {
             resolve(results.rows);
           }
@@ -827,7 +814,7 @@ export abstract class ApiEvents implements ApiHelper {
        * --------------------------------- */
       let eventType = request.params.eventType;
       if (eventType !== 'outer-realms' && eventType !== 'beyond-the-horizon') {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid event type' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventType });
         return;
       }
       // Trick: we convert event type to match table name, e.g. "outer-realms" -> "outer_realms_ranking"
@@ -835,7 +822,7 @@ export abstract class ApiEvents implements ApiHelper {
       const sqlTable = eventType.trim().replaceAll('-', '_') + '_ranking';
       const id = request.params.id;
       if (!id || Number.isNaN(Number(id))) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid event ID' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventId });
         return;
       }
 
@@ -962,7 +949,7 @@ export abstract class ApiEvents implements ApiHelper {
             eventPgDbpool.query(request_.query, request_.params, (error, result) => {
               if (error) {
                 ApiHelper.logError(error, 'getDataEventType', request);
-                reject(new Error('An error occurred. Please try again later.'));
+                reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
               } else {
                 resolve(result.rows);
               }

@@ -1,5 +1,6 @@
 import * as express from 'express';
-import { ApiHelper } from '../api-helper';
+import { ApiHelper } from '../helper/api-helper';
+import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 
 /**
  * Abstract class providing API status and server information endpoints.
@@ -29,20 +30,21 @@ export abstract class ApiStatus implements ApiHelper {
       const cachedKey = `api_status_${request['code']}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
-        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
-        return;
+        // response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        // return;
       }
 
       /* ---------------------------------
        * Fetch last update timestamps from the database
        * --------------------------------- */
+      const targetedDatabase = request['pg_pool'];
       const lastUpdate: { [key: string]: string } = {};
       const queryParameter = `SELECT identifier, updated_at FROM parameters WHERE id > 1 AND id  < 10`;
       await new Promise((resolve, reject) => {
-        request['pg_pool'].query(queryParameter, (error, results) => {
+        targetedDatabase.query(queryParameter, (error, results) => {
           if (error) {
             ApiHelper.logError(error, 'getStatus_query', request);
-            reject(new Error('An error occurred. Please try again later.'));
+            reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
           } else {
             results.rows.forEach((result: any) => {
               lastUpdate[result.identifier] = result.updated_at;

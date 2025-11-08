@@ -1,6 +1,7 @@
 import * as express from 'express';
-import { ApiHelper } from '../api-helper';
 import * as pg from 'pg';
+import { RouteErrorMessagesEnum } from '../enums/errors.enums';
+import { ApiHelper } from '../helper/api-helper';
 
 /**
  * Provides API endpoints for retrieving cartography-related data about alliances and players.
@@ -25,11 +26,6 @@ export abstract class ApiCartography implements ApiHelper {
    * This endpoint returns a list of players and their alliance information, ordered by the total might of their alliances.
    * The number of alliances returned can be limited by the `size` parameter in the request.
    *
-   * - If `size` is not a valid number, less than -1, or greater than 9999999999, responds with HTTP 400.
-   * - If `size` is negative, returns all alliances.
-   * - If `size` is a valid positive integer, limits the result to that number of alliances.
-   * - Results are cached using Redis for performance.
-   *
    * @param request - Express request object, expects `params.size` as the size limit and `language` for cache key.
    * @param response - Express response object used to send the result or error.
    * @returns A Promise that resolves when the response is sent.
@@ -43,17 +39,13 @@ export abstract class ApiCartography implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const nb = Number(request.params.size);
-      if (Number.isNaN(nb) || nb < -1 || nb > ApiHelper.MAX_RESULT_PAGE) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid size' });
-        return;
-      }
+      const pageNumber = ApiHelper.validatePageNumber(request.params.size, 10);
 
       /* ---------------------------------
        * Check cache
        * --------------------------------- */
       const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${request['language']}`)) || '1';
-      const cachedKey = request['language'] + `:${cacheVersion}:` + '/carto/size/' + nb;
+      const cachedKey = request['language'] + `:${cacheVersion}:` + '/carto/size/' + pageNumber;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
@@ -63,18 +55,11 @@ export abstract class ApiCartography implements ApiHelper {
       /* ---------------------------------
        * Query database and format result
        * --------------------------------- */
-      const regex = /^\d+$/;
-      let limit = '';
+      let limit = `LIMIT ${pageNumber}`;
       // Get the limit clause based on the size parameter. However, the query does not use it
       // with parameterized queries to avoid SQL injection,  so we validate it strictly here.
       // A more complex query with OFFSET would require a different approach.
-      if (Number.isNaN(nb)) {
-        limit = 'LIMIT 10';
-      } else if (regex.test(nb.toString())) {
-        limit = `LIMIT ${nb}`;
-      } else {
-        limit = 'LIMIT 10';
-      }
+
       const query = `
         WITH ranked_alliances AS (
           SELECT
@@ -152,9 +137,9 @@ export abstract class ApiCartography implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const allianceName = request.params.allianceName;
-      if (allianceName.length > 40) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid alliance name' });
+      const allianceName = ApiHelper.validateSearchAndSanitize(request.params.allianceName);
+      if (ApiHelper.isInvalidInput(allianceName)) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceName });
         return;
       }
       const encodedAllianceName = encodeURIComponent(allianceName);
@@ -178,39 +163,39 @@ export abstract class ApiCartography implements ApiHelper {
         // Special case for frontend: get players without alliance but with castles
         query = `
           SELECT
-              P.name,
-              P.alliance_id AS alliance_id,
-              castles,
-              castles_realm,
-              might_current
+            P.name,
+            P.alliance_id AS alliance_id,
+            castles,
+            castles_realm,
+            might_current
           FROM
-              players P
+            players P
           WHERE
-              P.alliance_id IS NULL
+            P.alliance_id IS NULL
           AND P.castles IS NOT NULL
           AND P.castles != '[]'
           ORDER BY
-              castles DESC;
-                `;
+            castles DESC;
+        `;
       } else {
         // Regular case: get players by alliance name (case insensitive)
         query = `
           SELECT
-              P.name,
-              A.id AS alliance_id,
-              castles,
-              castles_realm,
-              might_current
+            P.name,
+            A.id AS alliance_id,
+            castles,
+            castles_realm,
+            might_current
           FROM
-              players P
+            players P
           INNER JOIN
-              alliances A ON P.alliance_id = A.id
+            alliances A ON P.alliance_id = A.id
           WHERE
-              LOWER(A.name) = LOWER($${parameterIndex++})
+            LOWER(A.name) = $${parameterIndex++}
           AND P.castles IS NOT NULL
           AND P.castles != '[]'
           ORDER BY
-              castles DESC;
+            castles DESC;
       `;
       }
       const parameters = allianceName === '1' ? [] : [allianceName];
@@ -262,9 +247,9 @@ export abstract class ApiCartography implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const allianceId = ApiHelper.getVerifiedId(request.params.allianceId);
+      const allianceId = ApiHelper.verifyIdWithCountryCode(request.params.allianceId);
       if (allianceId === false || allianceId === undefined) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid alliance id' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceId });
         return;
       }
 
@@ -284,7 +269,7 @@ export abstract class ApiCartography implements ApiHelper {
       const code = ApiHelper.getCountryCode(String(allianceId));
       const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPoolFromRequestId(allianceId);
       if (!code || !pgPool) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid alliance id for this server' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceId });
         return;
       }
 
@@ -294,20 +279,20 @@ export abstract class ApiCartography implements ApiHelper {
       let parameterIndex = 1;
       const query = `
         SELECT
-            P.name,
-            P.castles,
-            P.castles_realm,
-            P.might_current,
-            A.id AS alliance_id,
-            A.name AS alliance_name
+          P.name,
+          P.castles,
+          P.castles_realm,
+          P.might_current,
+          A.id AS alliance_id,
+          A.name AS alliance_name
         FROM
-            players P
+          players P
         INNER JOIN
-            alliances A ON P.alliance_id = A.id
+          alliances A ON P.alliance_id = A.id
         WHERE
-            alliance_id = $${parameterIndex++}
+          alliance_id = $${parameterIndex++}
         ORDER BY
-            castles DESC;
+          castles DESC;
         `;
       pgPool.query(query, [ApiHelper.removeCountryCode(allianceId)], (error, results) => {
         if (error) {

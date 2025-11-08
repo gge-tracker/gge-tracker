@@ -1,4 +1,4 @@
-export enum AuthorizedServersEnum {
+export enum AuthorizedSpecialServersEnum {
   FR1 = 'FR1',
   RO1 = 'RO1',
   CZ1 = 'CZ1',

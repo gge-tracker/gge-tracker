@@ -12,7 +12,7 @@
  * @packageDocumentation
  * @module Main
  * @preferred
- * @see {@link ControllerManager} for route handling logic.
+ * @see {@link ApiControllerManager} for route handling logic.
  * @see {@link ApiGgeTrackerManager} for GGE Tracker API interactions.
  * @see {@link RateLimiterRedis} for rate limiting configuration.
  * @see {@link redis} for Redis client library.
@@ -25,17 +25,17 @@
  * @see {@link dotenv} for environment variable management.
  */
 
-import { config } from 'dotenv';
-import { createClient } from 'redis';
-import { RateLimiterRedis } from 'rate-limiter-flexible';
-import express, { Request, Response, NextFunction } from 'express';
-import { ControllerManager } from './controller';
-import { ApiGgeTrackerManager } from './services/empire-api-service';
-import cors from 'cors';
-import axios from 'axios';
-import morgan from 'morgan';
 import compression from 'compression';
-import { ApiHelper } from './api-helper';
+import cors from 'cors';
+import { config } from 'dotenv';
+import express, { NextFunction, Request, Response } from 'express';
+import morgan from 'morgan';
+import { RateLimiterRedis } from 'rate-limiter-flexible';
+import { createClient } from 'redis';
+import { ApiRoutingController } from './controllers/api-routing.controller';
+import { GgeTrackerApiGuardActivity } from './guard/ggetracker-guard-activity';
+import { ApiGgeTrackerManager } from './managers/api.manager';
+import { RoutesManager } from './managers/routes.manager';
 
 /* ------------------------------------------------
  *           Redis Client Configuration
@@ -67,113 +67,43 @@ app.use(
     methods: ['GET'],
   }),
 );
+app.set('trust proxy', true);
 
 /* ------------------------------------------------
- *              Logging Configuration
- * ------------------------------------------------ */
-morgan.token('origin', (request) => request.headers['origin'] || '-');
-morgan.token('user-agent', (request) => request.headers['user-agent'] || '-');
-
-/* ------------------------------------------------
- *          Rate Limiter Configuration
+ *      Logging & Rate Limiter Configuration
  * ------------------------------------------------ */
 const rateLimiter = new RateLimiterRedis({
   storeClient: redisClient,
-  points: 30,
-  duration: 5,
-});
-
-/* ------------------------------------------------
- *          Rate Limiter Middleware
- * ------------------------------------------------ */
-app.use((request, response, next) => {
-  const ip = request.ip || 'unknown';
-  const bypassRatesRoutesStartWith = ['/api/v1/assets', '/api/v1/languages'];
-  const bypassRatesRoutes = ['/api/v1'];
-  if (
-    bypassRatesRoutesStartWith.some((route) => request.originalUrl.startsWith(route)) ||
-    bypassRatesRoutes.includes(request.originalUrl)
-  ) {
-    return next();
-  }
-  rateLimiter
-    .consume(ip)
-    .then(() => {
-      next();
-    })
-    .catch(() => {
-      response.status(429).send({ error: 'Too many requests, please try again later.' });
-    });
-});
-
-/* ------------------------------------------------
- *           Loki Logging Configuration
- * ------------------------------------------------ */
-let logBuffer = [];
-const LOKI_URL = `http://${process.env.LOKI_HOST}:${process.env.LOKI_PORT}/loki/api/v1/push`;
-
-/**
- * Flushes the current log buffer by sending its contents to the Loki logging service.
- *
- * - If the log buffer is empty, the function returns immediately.
- * - Constructs a payload compatible with Loki's expected format, mapping each log entry to a stream.
- * - Sends the payload to the Loki service using an HTTP POST request.
- * - If the request fails, logs an error message to the console.
- * - Clears the log buffer after attempting to send the logs.
- *
- * @returns {Promise<void>} A promise that resolves when the logs have been flushed.
- */
-async function flushLogs(): Promise<void> {
-  if (logBuffer.length === 0) return;
-  const lokiPayload = {
-    streams: logBuffer.map((log) => ({
-      stream: log.labels,
-      values: [[`${log.timestamp}000000`, JSON.stringify(log.line)]],
-    })),
-  };
-  try {
-    await axios.post(LOKI_URL, lokiPayload);
-  } catch (error) {
-    ApiHelper.logError(error, flushLogs.name, null);
-  }
-  logBuffer = [];
-}
-
-setInterval(flushLogs, 10_000);
-
-app.use(
-  morgan((tokens, request, response) => {
-    const server = request.headers['gge-server'] || 'none';
-    const ip = request.headers['x-forwarded-for'] || request.ip;
-    const labels = {
-      job: 'empire-backend',
-      level: 'info',
-      method: tokens.method(request, response),
-      status: tokens.status(request, response),
-      gge_server: server,
-    };
-    const line = {
-      url: tokens.url(request, response),
-      response_time: tokens['response-time'](request, response),
-      content_length: tokens.res(request, response, 'content-length'),
-      user_agent: tokens['user-agent'](request, response),
-      referrer: tokens.referrer(request, response),
-      ip: ip,
-    };
-    logBuffer.push({
-      labels,
-      line,
-      timestamp: Date.now(),
-    });
-    if (logBuffer.length > 100) {
-      void flushLogs();
-    }
-    return null;
+  points: Number(process.env.RATE_LIMIT_POINTS) || 30,
+  duration: Number(process.env.RATE_LIMIT_DURATION) || 5,
+  insuranceLimiter: new RateLimiterRedis({
+    storeClient: redisClient,
+    points: 100,
+    duration: 60,
   }),
+});
+const bypassRules = [
+  RoutesManager.fromExact('/api/v1', true),
+  RoutesManager.fromPrefix('/api/v1/assets', true),
+  RoutesManager.fromPrefix('/api/v1/languages', true),
+  RoutesManager.fromRegExp(String.raw`^/api/v2/view/\d+`, true),
+];
+
+morgan.token('origin', (request) => request.headers['origin'] || '-');
+morgan.token('user-agent', (request) => request.headers['user-agent'] || '-');
+const ggeTrackerApiGuardActivity = GgeTrackerApiGuardActivity.getInstance().setUpRateLimiter(rateLimiter);
+app.use(async (request, response, next) =>
+  ggeTrackerApiGuardActivity.guardActivityMiddleware(request, response, next, bypassRules),
 );
 
-const apiGgeTrackerManager = new ApiGgeTrackerManager();
-const controllerManager = new ControllerManager(apiGgeTrackerManager, redisClient as any);
+setInterval(() => void ggeTrackerApiGuardActivity.flushLogs(), ggeTrackerApiGuardActivity.getLogFlushInterval());
+
+app.use(
+  morgan((tokens, request, response) => ggeTrackerApiGuardActivity.recordMorganRequest(tokens, request, response)),
+);
+
+const managerInstance = new ApiGgeTrackerManager();
+const routingInstance = new ApiRoutingController(managerInstance, redisClient as any);
 
 // Protected routes require the gge-server header
 // These routes are specific to a gge server and may require additional validation
@@ -182,9 +112,9 @@ const protectedRoutes = express.Router();
 // These routes are accessible to everyone, and are not specific to a gge server
 const publicRoutes = express.Router();
 
-publicRoutes.get('/docs', controllerManager.getDocumentation.bind(controllerManager));
+publicRoutes.get('/docs', routingInstance.getDocumentation.bind(routingInstance));
 
-publicRoutes.put('/assets/update/:token', controllerManager.updateAssets.bind(controllerManager));
+publicRoutes.put('/assets/update/:token', routingInstance.updateAssets.bind(routingInstance));
 
 /**
  * @swagger
@@ -208,7 +138,7 @@ publicRoutes.put('/assets/update/:token', controllerManager.updateAssets.bind(co
  *       500:
  *         description: Internal server error.
  */
-publicRoutes.get('/assets/images/:asset', controllerManager.getGeneratedImage.bind(controllerManager));
+publicRoutes.get('/assets/images/:asset', routingInstance.getGeneratedImage.bind(routingInstance));
 
 /**
  * @swagger
@@ -232,7 +162,7 @@ publicRoutes.get('/assets/images/:asset', controllerManager.getGeneratedImage.bi
  *       500:
  *         description: Internal server error.
  */
-publicRoutes.get('/assets/common/:asset', controllerManager.getAsset.bind(controllerManager));
+publicRoutes.get('/assets/common/:asset', routingInstance.getAsset.bind(routingInstance));
 
 /**
  * @swagger
@@ -284,7 +214,7 @@ publicRoutes.get('/assets/common/:asset', controllerManager.getAsset.bind(contro
  *       500:
  *         description: Internal server error.
  */
-publicRoutes.get('/assets/items', controllerManager.getItems.bind(controllerManager));
+publicRoutes.get('/assets/items', routingInstance.getItems.bind(routingInstance));
 
 /**
  * @swagger
@@ -308,7 +238,7 @@ publicRoutes.get('/assets/items', controllerManager.getItems.bind(controllerMana
  *       500:
  *         description: Internal server error.
  */
-publicRoutes.get('/languages/:lang', controllerManager.getLanguage.bind(controllerManager));
+publicRoutes.get('/languages/:lang', routingInstance.getLanguage.bind(routingInstance));
 
 /**
  * @swagger
@@ -357,12 +287,12 @@ publicRoutes.get('/languages/:lang', controllerManager.getLanguage.bind(controll
  *       500:
  *         description: Server error when querying the database.
  */
-protectedRoutes.get('/', controllerManager.getStatus.bind(controllerManager));
+protectedRoutes.get('/', routingInstance.getStatus.bind(routingInstance));
 
 /**
  * @todo Swagger documentation
  */
-publicRoutes.get('/servers', controllerManager.getServers.bind(controllerManager));
+publicRoutes.get('/servers', routingInstance.getServers.bind(routingInstance));
 
 /**
  * @swagger
@@ -413,7 +343,7 @@ publicRoutes.get('/servers', controllerManager.getServers.bind(controllerManager
  *                   type: string
  *                   example: "Unable to fetch event data"
  */
-publicRoutes.get('/events/list', controllerManager.getEvents.bind(controllerManager));
+publicRoutes.get('/events/list', routingInstance.getEvents.bind(routingInstance));
 
 /**
  * @swagger
@@ -458,19 +388,19 @@ publicRoutes.get('/events/list', controllerManager.getEvents.bind(controllerMana
  *                   type: string
  *                   example: "Unable to fetch Grand Tournament event dates"
  */
-publicRoutes.get('/grand-tournament/dates', controllerManager.getGrandTournamentEventDates.bind(controllerManager));
+publicRoutes.get('/grand-tournament/dates', routingInstance.getGrandTournamentEventDates.bind(routingInstance));
 
 /**
  * @todo Swagger documentation
  */
-publicRoutes.get('/grand-tournament/alliances', controllerManager.getGrandTournamentEvents.bind(controllerManager));
+publicRoutes.get('/grand-tournament/alliances', routingInstance.getGrandTournamentEvents.bind(routingInstance));
 
 /**
  * @todo Swagger documentation
  */
 publicRoutes.get(
   '/grand-tournament/alliance/:allianceId/:eventId',
-  controllerManager.getGrandTournamentAllianceAnalysis.bind(controllerManager),
+  routingInstance.getGrandTournamentAllianceAnalysis.bind(ApiRoutingController),
 );
 
 /**
@@ -478,7 +408,7 @@ publicRoutes.get(
  */
 publicRoutes.get(
   '/grand-tournament/search',
-  controllerManager.searchGrandTournamentDataByAllianceName.bind(controllerManager),
+  routingInstance.searchGrandTournamentDataByAllianceName.bind(ApiRoutingController),
 );
 
 /**
@@ -589,7 +519,7 @@ publicRoutes.get(
  *                   type: string
  *                   example: "Unable to fetch player rankings"
  */
-publicRoutes.get('/events/:eventType/:id/players', controllerManager.getEventPlayers.bind(controllerManager));
+publicRoutes.get('/events/:eventType/:id/players', routingInstance.getEventPlayers.bind(routingInstance));
 
 /**
  * @swagger
@@ -747,12 +677,12 @@ publicRoutes.get('/events/:eventType/:id/players', controllerManager.getEventPla
  *                   type: string
  *                   example: "Unable to fetch event statistics"
  */
-publicRoutes.get('/events/:eventType/:id/data', controllerManager.getDataEventType.bind(controllerManager));
+publicRoutes.get('/events/:eventType/:id/data', routingInstance.getDataEventType.bind(routingInstance));
 
 /**
  * @todo Swagger documentation
  */
-protectedRoutes.get('/offers', controllerManager.getOffers.bind(controllerManager));
+protectedRoutes.get('/offers', routingInstance.getOffers.bind(routingInstance));
 
 /**
  * @swagger
@@ -829,7 +759,7 @@ protectedRoutes.get('/offers', controllerManager.getOffers.bind(controllerManage
  */
 publicRoutes.get(
   '/updates/alliances/:allianceId/players',
-  controllerManager.getPlayersUpdatesByAlliance.bind(controllerManager),
+  routingInstance.getPlayersUpdatesByAlliance.bind(ApiRoutingController),
 );
 
 /**
@@ -894,7 +824,7 @@ publicRoutes.get(
  *                   type: string
  *                   example: "Database query error"
  */
-publicRoutes.get('/updates/players/:playerId/names', controllerManager.getNamesUpdates.bind(controllerManager));
+publicRoutes.get('/updates/players/:playerId/names', routingInstance.getNamesUpdates.bind(routingInstance));
 
 /**
  * @swagger
@@ -966,7 +896,10 @@ publicRoutes.get('/updates/players/:playerId/names', controllerManager.getNamesU
  *                   type: string
  *                   example: "Database query error"
  */
-publicRoutes.get('/updates/players/:playerId/alliances', controllerManager.getAlliancesUpdates.bind(controllerManager));
+publicRoutes.get(
+  '/updates/players/:playerId/alliances',
+  routingInstance.getAlliancesUpdates.bind(ApiRoutingController),
+);
 
 /**
  * @openapi
@@ -1145,7 +1078,7 @@ publicRoutes.get('/updates/players/:playerId/alliances', controllerManager.getAl
  *                 error:
  *                   type: string
  */
-protectedRoutes.get('/dungeons', controllerManager.getDungeons.bind(controllerManager));
+protectedRoutes.get('/dungeons', routingInstance.getDungeons.bind(routingInstance));
 
 /**
  * @openapi
@@ -1322,7 +1255,7 @@ protectedRoutes.get('/dungeons', controllerManager.getDungeons.bind(controllerMa
  *                 error:
  *                   type: string
  */
-protectedRoutes.get('/server/movements', controllerManager.getServerMovements.bind(controllerManager));
+protectedRoutes.get('/server/movements', routingInstance.getServerMovements.bind(routingInstance));
 
 /**
  * @openapi
@@ -1440,7 +1373,7 @@ protectedRoutes.get('/server/movements', controllerManager.getServerMovements.bi
  *                 error:
  *                   type: string
  */
-protectedRoutes.get('/server/renames', controllerManager.getServerRenames.bind(controllerManager));
+protectedRoutes.get('/server/renames', routingInstance.getServerRenames.bind(routingInstance));
 
 /**
  * @openapi
@@ -1627,7 +1560,7 @@ protectedRoutes.get('/server/renames', controllerManager.getServerRenames.bind(c
  *                   type: string
  *                   description: Error message in case of failure.
  */
-protectedRoutes.get('/server/statistics', controllerManager.getServerStatistics.bind(controllerManager));
+protectedRoutes.get('/server/statistics', routingInstance.getServerStatistics.bind(routingInstance));
 
 /**
  * @swagger
@@ -1694,7 +1627,7 @@ protectedRoutes.get('/server/statistics', controllerManager.getServerStatistics.
  *                   type: string
  *                   description: Error message in case of failure.
  */
-protectedRoutes.get('/cartography/size/:size', controllerManager.getCartographyBySize.bind(controllerManager));
+protectedRoutes.get('/cartography/size/:size', routingInstance.getCartographyBySize.bind(routingInstance));
 
 /**
  * @swagger
@@ -1756,7 +1689,7 @@ protectedRoutes.get('/cartography/size/:size', controllerManager.getCartographyB
  */
 protectedRoutes.get(
   '/cartography/name/:allianceName',
-  controllerManager.getCartographyByAllianceName.bind(controllerManager),
+  routingInstance.getCartographyByAllianceName.bind(ApiRoutingController),
 );
 
 /**
@@ -1858,7 +1791,7 @@ protectedRoutes.get(
  *                   type: string
  *                   description: Error message indicating an internal server error.
  */
-publicRoutes.get('/castle/analysis/:castleId', controllerManager.getCastleById.bind(controllerManager));
+publicRoutes.get('/castle/analysis/:castleId', routingInstance.getCastleById.bind(routingInstance));
 
 /**
  * @swagger
@@ -1937,7 +1870,7 @@ publicRoutes.get('/castle/analysis/:castleId', controllerManager.getCastleById.b
  *                   type: string
  *                   description: Error message indicating an internal server error.
  */
-protectedRoutes.get('/castle/search/:playerName', controllerManager.getCastleByPlayerName.bind(controllerManager));
+protectedRoutes.get('/castle/search/:playerName', routingInstance.getCastleByPlayerName.bind(routingInstance));
 
 /**
  * @swagger
@@ -1998,7 +1931,7 @@ protectedRoutes.get('/castle/search/:playerName', controllerManager.getCastleByP
  *                   type: string
  *                   description: Error message in case of failure.
  */
-publicRoutes.get('/cartography/id/:allianceId', controllerManager.getCartographyByAllianceId.bind(controllerManager));
+publicRoutes.get('/cartography/id/:allianceId', routingInstance.getCartographyByAllianceId.bind(routingInstance));
 
 /**
  * @swagger
@@ -2120,7 +2053,7 @@ publicRoutes.get('/cartography/id/:allianceId', controllerManager.getCartography
  *                   type: string
  *                   description: Error message in case of failure.
  */
-publicRoutes.get('/alliances/id/:allianceId', controllerManager.getAllianceByAllianceId.bind(controllerManager));
+publicRoutes.get('/alliances/id/:allianceId', routingInstance.getAllianceByAllianceId.bind(routingInstance));
 
 /**
  * @swagger
@@ -2209,7 +2142,7 @@ publicRoutes.get('/alliances/id/:allianceId', controllerManager.getAllianceByAll
  */
 protectedRoutes.get(
   '/alliances/name/:allianceName',
-  controllerManager.getAllianceByAllianceName.bind(controllerManager),
+  routingInstance.getAllianceByAllianceName.bind(ApiRoutingController),
 );
 
 /**
@@ -2324,7 +2257,7 @@ protectedRoutes.get(
  *                   type: string
  *                   description: Error message in case of failure.
  */
-protectedRoutes.get('/alliances', controllerManager.getAlliances.bind(controllerManager));
+protectedRoutes.get('/alliances', routingInstance.getAlliances.bind(routingInstance));
 
 /**
  * @swagger
@@ -2387,7 +2320,7 @@ protectedRoutes.get('/alliances', controllerManager.getAlliances.bind(controller
  *                   type: string
  *                   description: Error message indicating a server-side failure.
  */
-publicRoutes.get('/top-players/:playerId', controllerManager.getTopPlayersByPlayerId.bind(controllerManager));
+publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayerId.bind(routingInstance));
 
 /**
  * @openapi
@@ -2677,7 +2610,7 @@ publicRoutes.get('/top-players/:playerId', controllerManager.getTopPlayersByPlay
  *                   type: string
  *                   description: Error message describing what went wrong.
  */
-protectedRoutes.get('/players', controllerManager.getPlayers.bind(controllerManager));
+protectedRoutes.get('/players', routingInstance.getPlayers.bind(routingInstance));
 
 /**
  * @openapi
@@ -2780,7 +2713,7 @@ protectedRoutes.get('/players', controllerManager.getPlayers.bind(controllerMana
  *                   type: string
  *                   description: "An exception occurred"
  */
-protectedRoutes.get('/players/:playerName', controllerManager.getPlayersByPlayerName.bind(controllerManager));
+protectedRoutes.get('/players/:playerName', routingInstance.getPlayersByPlayerName.bind(routingInstance));
 
 /**
  * @openapi
@@ -2902,7 +2835,7 @@ protectedRoutes.get('/players/:playerName', controllerManager.getPlayersByPlayer
  */
 publicRoutes.get(
   '/statistics/alliance/:allianceId',
-  controllerManager.getStatisticsByAllianceId.bind(controllerManager),
+  routingInstance.getStatisticsByAllianceId.bind(ApiRoutingController),
 );
 
 /**
@@ -2910,7 +2843,7 @@ publicRoutes.get(
  */
 publicRoutes.get(
   '/statistics/alliance/:allianceId/pulse',
-  controllerManager.getPulsedStatisticsByAllianceId.bind(controllerManager),
+  routingInstance.getPulsedStatisticsByAllianceId.bind(ApiRoutingController),
 );
 
 /**
@@ -2918,7 +2851,7 @@ publicRoutes.get(
  */
 publicRoutes.get(
   '/statistics/ranking/player/:playerId',
-  controllerManager.getRankingByPlayerId.bind(controllerManager),
+  routingInstance.getRankingByPlayerId.bind(ApiRoutingController),
 );
 
 /**
@@ -3021,7 +2954,7 @@ publicRoutes.get(
  *                   type: string
  *                   example: "An error occurred during the request"
  */
-publicRoutes.get('/statistics/player/:playerId', controllerManager.getStatisticsByPlayerId.bind(controllerManager));
+publicRoutes.get('/statistics/player/:playerId', routingInstance.getStatisticsByPlayerId.bind(routingInstance));
 
 /**
  * @swagger
@@ -3140,7 +3073,7 @@ publicRoutes.get('/statistics/player/:playerId', controllerManager.getStatistics
  */
 publicRoutes.get(
   '/statistics/player/:playerId/:eventName/:duration',
-  controllerManager.getStatisticsByPlayerIdAndEventNameAndDuration.bind(controllerManager),
+  routingInstance.getStatisticsByPlayerIdAndEventNameAndDuration.bind(ApiRoutingController),
 );
 
 /**
@@ -3163,14 +3096,14 @@ const ggeServerMiddleware = (request: Request, response: Response, next: NextFun
       code: 'MISSING_SERVER',
     });
     return;
-  } else if (!apiGgeTrackerManager.isValidServer(language)) {
+  } else if (!managerInstance.isValidServer(language)) {
     response.status(400).json({
       error: "Invalid server. Please provide a valid server name with the 'gge-server' header.",
       code: 'INVALID_SERVER',
     });
     return;
   }
-  const server = apiGgeTrackerManager.get(language);
+  const server = managerInstance.get(language);
   if (!server) {
     response.status(500).json({
       error: 'Server configuration not found.',
@@ -3181,8 +3114,8 @@ const ggeServerMiddleware = (request: Request, response: Response, next: NextFun
   // Attach some useful info to the request object
   // This will be used in the controllers
   // to get the right database connection
-  request['pg_pool'] = apiGgeTrackerManager.getPgSqlPool(language);
-  request['mysql_pool'] = apiGgeTrackerManager.getSqlPool(language);
+  request['pg_pool'] = managerInstance.getPgSqlPool(language);
+  request['mysql_pool'] = managerInstance.getSqlPool(language);
   request['language'] = language;
   request['code'] = server.code;
   next();
@@ -3201,7 +3134,7 @@ publicRoutes.use(ggeServerMiddleware);
 async function main(): Promise<void> {
   app
     .listen(APPLICATION_PORT, async () => {
-      await controllerManager.initBrowser().catch((error) => {
+      await routingInstance.initBrowser().catch((error) => {
         console.error('Error initializing browser:', error);
         throw new Error('Error initializing browser');
       });
@@ -3226,7 +3159,21 @@ function printHeader(): void {
   \u001B[34m            /_____//_____/      \\/                            \\/     \\/     \\/    \\/
   \u001B[34m
   \u001B[32m                            🟢 GGE Tracker API running at PORT: ${APPLICATION_PORT}
-          `);
+  \u001B[32m Parameters:
+  \u001B[32m
+  \u001B[32m Database managed:
+  \u001B[32m LOG_MAX_ENTRIES: ${process.env.LOG_MAX_ENTRIES}
+  \u001B[32m LOG_MAX_BYTES: ${process.env.LOG_MAX_BYTES}
+  \u001B[32m LOG_FLUSH_INTERVAL_MS: ${process.env.LOG_FLUSH_INTERVAL_MS}
+  \u001B[32m LOKI_MAX_RETRIES: ${process.env.LOKI_MAX_RETRIES}
+  \u001B[32m LOKI_RETRY_BASE_MS: ${process.env.LOKI_RETRY_BASE_MS}
+  \u001B[32m IP_WINDOW_MS: ${process.env.IP_WINDOW_MS}
+  \u001B[32m IP_THRESHOLD: ${process.env.IP_THRESHOLD}
+  \u001B[32m DECAY_INTERVAL_MS: ${process.env.DECAY_INTERVAL_MS}
+  \u001B[32m DECAY_FACTOR: ${process.env.DECAY_FACTOR}
+  \u001B[32m RATE_LIMIT_POINTS: ${process.env.RATE_LIMIT_POINTS}
+  \u001B[32m RATE_LIMIT_DURATION: ${process.env.RATE_LIMIT_DURATION}
+`);
   console.log('\u001B[0m');
 }
 

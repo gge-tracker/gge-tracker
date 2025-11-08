@@ -1,29 +1,10 @@
 import { RedisClientType } from 'redis';
-import { ApiGgeTrackerManager } from './services/empire-api-service';
+import { ApiGgeTrackerManager } from '../managers/api.manager';
 import * as crypto from 'node:crypto';
 import * as express from 'express';
-
-/**
- * Represents standard HTTP status codes used in API responses.
- *
- * @enum {number}
- * @property {number} OK - The request has succeeded (200).
- * @property {number} CREATED - The request has been fulfilled and resulted in a new resource being created (201).
- * @property {number} BAD_REQUEST - The server could not understand the request due to invalid syntax (400).
- * @property {number} UNAUTHORIZED - The client must authenticate itself to get the requested response (401).
- * @property {number} FORBIDDEN - The client does not have access rights to the content (403).
- * @property {number} NOT_FOUND - The server can not find the requested resource (404).
- * @property {number} INTERNAL_SERVER_ERROR - The server has encountered a situation it doesn't know how to handle (500).
- */
-enum Status {
-  OK = 200,
-  CREATED = 201,
-  BAD_REQUEST = 400,
-  UNAUTHORIZED = 401,
-  FORBIDDEN = 403,
-  NOT_FOUND = 404,
-  INTERNAL_SERVER_ERROR = 500,
-}
+import { Status } from '../enums/http-status.enums';
+import { ApiInputErrorType, ApiInvalidInputType, ApiUndefinedInputType } from '../types/parameter.types';
+import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 
 /**
  * Abstract utility class providing helper methods and constants for API operations.
@@ -102,13 +83,13 @@ export abstract class ApiHelper {
     'et',
   ];
   public static readonly HTTP_MESSAGE = {
-    [Status.OK]: 'OK',
-    [Status.CREATED]: 'Created',
-    [Status.BAD_REQUEST]: 'Bad Request',
-    [Status.UNAUTHORIZED]: 'Unauthorized',
-    [Status.FORBIDDEN]: 'Forbidden',
-    [Status.NOT_FOUND]: 'Not Found',
-    [Status.INTERNAL_SERVER_ERROR]: 'An internal server error occurred. Please try again later.',
+    [Status.OK]: RouteErrorMessagesEnum.GenericOk,
+    [Status.CREATED]: RouteErrorMessagesEnum.GenericCreated,
+    [Status.BAD_REQUEST]: RouteErrorMessagesEnum.GenericBadRequest,
+    [Status.UNAUTHORIZED]: RouteErrorMessagesEnum.GenericUnauthorized,
+    [Status.FORBIDDEN]: RouteErrorMessagesEnum.GenericForbidden,
+    [Status.NOT_FOUND]: RouteErrorMessagesEnum.GenericNotFound,
+    [Status.INTERNAL_SERVER_ERROR]: RouteErrorMessagesEnum.GenericInternalServerError,
   };
 
   private static _file: Buffer | null = null;
@@ -149,7 +130,7 @@ export abstract class ApiHelper {
   public static getHttpMessageResponse(status: number): { code: number; message: string } {
     return {
       code: status,
-      message: this.HTTP_MESSAGE[status as Status] || 'Unknown Status',
+      message: this.HTTP_MESSAGE[status as Status] || RouteErrorMessagesEnum.GenericUnknownStatus,
     };
   }
 
@@ -207,7 +188,7 @@ export abstract class ApiHelper {
     if (this.file) return this.file;
     const fs = await import('node:fs');
     const path = await import('node:path');
-    this.file = await fs.promises.readFile(path.join(__dirname, './assets/assets.json'));
+    this.file = await fs.promises.readFile(path.join(__dirname, './../assets/assets.json'));
     return this.file;
   }
 
@@ -222,7 +203,7 @@ export abstract class ApiHelper {
    * @remarks
    * If an error occurs during the cache update, it will be logged to the console with a timestamp.
    */
-  public static async updateCache(key: string, data: any, cacheTTL = 1200, noJsonMode = false): Promise<void> {
+  public static async updateCache(key: string, data: any, cacheTTL = 3600, noJsonMode = false): Promise<void> {
     try {
       await (noJsonMode
         ? this.redisClient.setEx(key, cacheTTL, data)
@@ -231,21 +212,6 @@ export abstract class ApiHelper {
       const date = new Date().toISOString();
       console.error('[%s] Redis cache update error for key %s: %s', date, key, error);
     }
-  }
-
-  /**
-   * Verifies and sanitizes a username for search purposes.
-   *
-   * - If the username is `null` or an empty string, returns an empty string.
-   * - If the username exceeds 40 characters, returns `false`.
-   * - Otherwise, returns the username as a trimmed, lowercase string.
-   *
-   * @param username - The username to verify and sanitize.
-   * @returns `false` if the username is too long, an empty string if `null` or empty, or the sanitized username string.
-   */
-  public static verifySearch(username: string | null): false | string {
-    if (!username) return '';
-    return username && username.length > 40 ? false : String(username).trim().toLowerCase();
   }
 
   /**
@@ -263,27 +229,81 @@ export abstract class ApiHelper {
   }
 
   /**
-   * Verifies and converts a user ID to a number if it meets specific criteria.
+   * Verifies that the provided ID is a valid number within the acceptable range
    *
-   * The user ID is considered valid if:
-   * - It is a numeric value.
-   * - It is greater than or equal to 0.
-   * - It is less than or equal to 99,999,999,999.
-   * - Its string representation has more than 3 characters.
-   *
-   * @param userId - The user ID to verify, as a string or number.
-   * @returns The numeric user ID if valid; otherwise, `false`.
+   * @param id - The ID to verify (allianceId, playerId, ...), as a string or number.
+   * @returns The numeric ID if valid; otherwise, `false`.
    */
-  public static getVerifiedId(userId: string | number): false | number {
-    if (
-      Number.isNaN(Number(userId)) ||
-      Number(userId) < 0 ||
-      Number(userId) > 99_999_999_999 ||
-      String(userId).length <= 3
-    ) {
+  public static verifyIdWithCountryCode(id: unknown): false | number {
+    if (typeof id !== 'string' && typeof id !== 'number') return false;
+    if (Number.isNaN(Number(id)) || Number(id) < 0 || Number(id) > 99_999_999_999 || String(id).length <= 3) {
       return false;
     }
-    return Number(userId);
+    return Number(id);
+  }
+
+  /**
+   * Verifies and sanitizes a username or alliance name for search operations.
+   *
+   * @param name - The name to verify and sanitize.
+   * @param parameters - Optional parameters for sanitization. Possible options:
+   *                     - toLowerCase: If true, converts the name to lowercase. (default is true).
+   *                     - maxLength: Maximum allowed length for the name (default is 40).
+   * @returns The sanitized name as a string, or an ApiInputErrorType if invalid.
+   */
+  public static validateSearchAndSanitize(
+    name: unknown,
+    parameters?: { toLowerCase?: boolean; maxLength?: number },
+  ): ApiInputErrorType | string {
+    const maxLength = parameters?.maxLength ?? 40;
+    const toLowerCase = parameters?.toLowerCase ?? true;
+    if (!name) return ApiUndefinedInputType;
+    if (typeof name !== 'string' || name.length > maxLength) return ApiInvalidInputType;
+    const sanitized = String(name).trim();
+    return toLowerCase ? sanitized.toLowerCase() : sanitized;
+  }
+
+  /**
+   * Checks if the provided value is an invalid input type.
+   * @param value - The value to check.
+   * @returns True if the value is an invalid input type; otherwise, false.
+   */
+  public static isInvalidInput(value: unknown): value is ApiInputErrorType {
+    return value === ApiUndefinedInputType || value === ApiInvalidInputType;
+  }
+
+  /**
+   * Checks if the provided value is a valid string input.
+   * @param value - The value to check.
+   * @returns True if the value is a valid string; otherwise, false.
+   */
+  public static isValidInput(value: unknown): value is string {
+    return !this.isInvalidInput(value);
+  }
+
+  /**
+   * Parses the provided value into a string.
+   * @param value - The value to parse.
+   * @param defaultValue - The default value to return if the input value is falsy (default is null).
+   * @returns The parsed string or the default value.
+   */
+  public static getParsedString(value: unknown, defaultValue: string | null = null): string | null {
+    if (!value) return defaultValue;
+    return String(value);
+  }
+
+  /**
+   * Validates and sanitizes a page number for pagination.
+   * @param page - The page number to validate.
+   * @param defaultValue - The default page number to return if validation fails (default is 1).
+   * @returns The validated page number or the default value.
+   */
+  public static validatePageNumber(page: unknown, defaultValue: number = 1): number {
+    const pageNumber = Number.parseInt(String(page)) || defaultValue;
+    if (Number.isNaN(pageNumber) || pageNumber < 1 || pageNumber > ApiHelper.MAX_RESULT_PAGE) {
+      return defaultValue;
+    }
+    return pageNumber;
   }
 
   /**
@@ -350,7 +370,6 @@ export abstract class ApiHelper {
       url?.startsWith('https://discord.com')
     ) {
       url = 'https://cdn.gge-tracker.com?url=' + url;
-      console.log(`[CDN] Rewritten URL to use CDN proxy: ${url}`);
     }
     for (let index = 0; index < retries; index++) {
       try {
@@ -364,7 +383,7 @@ export abstract class ApiHelper {
         }
         return response;
       } catch (error) {
-        console.error('Fetch error:', error);
+        console.error('Fetch error on %s: %s', url, error);
         if (index === retries - 1) throw error;
       }
     }

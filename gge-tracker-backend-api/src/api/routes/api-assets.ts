@@ -1,10 +1,11 @@
+import axios from 'axios';
 import * as express from 'express';
 import * as fs from 'node:fs';
-import { ApiHelper } from '../api-helper';
 import path from 'node:path';
-import axios from 'axios';
-import { puppeteerSingleton } from '../singleton/puppeteer-singleton';
 import { Page } from 'puppeteer';
+import { RouteErrorMessagesEnum } from '../enums/errors.enums';
+import { ApiHelper } from '../helper/api-helper';
+import { puppeteerManagerInstance } from '../managers/puperteer.manager';
 
 declare global {
   /**
@@ -164,18 +165,18 @@ export abstract class ApiAssets implements ApiHelper {
        * Validate parameters
        * --------------------------------- */
       const availableLangs = ApiHelper.GGE_SUPPORTED_LANGUAGES;
-      const lang = String(request.params.lang).toLowerCase().trim();
-      if (!lang) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Language parameter is required' });
+      const lang = ApiHelper.validateSearchAndSanitize(request.params.lang);
+      if (ApiHelper.isInvalidInput(lang)) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.MissingLanguage });
         return;
       } else if (!availableLangs.includes(lang)) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid language parameter' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidLanguage });
         return;
       }
-      const languageCacheBuildVersion = (await ApiHelper.redisClient.get(ApiHelper.REDIS_KEY_GGE_VERSION)) || '0';
       /* ---------------------------------
        * Check Redis cache for language data
        * --------------------------------- */
+      const languageCacheBuildVersion = (await ApiHelper.redisClient.get(ApiHelper.REDIS_KEY_GGE_VERSION)) || '0';
       const cachedKey = `assets_lang_${languageCacheBuildVersion}_${lang}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
@@ -227,16 +228,14 @@ export abstract class ApiAssets implements ApiHelper {
        * --------------------------------- */
       const asset = String(request.params.asset).trim().toLowerCase();
       if (!asset || String(asset).trim() === '' || String(asset).length > 100 || !/^[\d._a-z-]+$/.test(asset)) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Asset parameter is required' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAssetName });
         return;
       }
       const extension = path.extname(asset);
       // Build current domain URI. This is used for production and localhost with port.
       const currentDomainUri = this.getCurrentDomainUri();
       if (extension !== '.js' && extension !== '.json' && extension !== '.webp' && extension !== '.png') {
-        response
-          .status(ApiHelper.HTTP_BAD_REQUEST)
-          .send({ error: 'Invalid asset type. Supported types are: .js, .json, .webp, .png' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAssetExtension });
         return;
       }
       /* ---------------------------------
@@ -259,7 +258,7 @@ export abstract class ApiAssets implements ApiHelper {
         } catch {
           response
             .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
-            .send({ error: 'Failed to update assets. Please try again later.' });
+            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
           return;
         }
       }
@@ -301,7 +300,7 @@ export abstract class ApiAssets implements ApiHelper {
         }
       }
       if (!url) {
-        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: 'Asset not found' });
+        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.AssetNotFound });
         return;
       }
       /* ---------------------------------
@@ -364,9 +363,7 @@ export abstract class ApiAssets implements ApiHelper {
         .toLowerCase()
         .replace(/\.[^./]+$/, '');
       if (!asset || asset.length > 100 || !/^[\d_a-z-]+$/.test(asset)) {
-        response
-          .status(ApiHelper.HTTP_BAD_REQUEST)
-          .send({ error: 'Invalid asset parameter. Please check the asset format.' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAssetName });
         return;
       }
       /* ---------------------------------
@@ -386,7 +383,7 @@ export abstract class ApiAssets implements ApiHelper {
        * --------------------------------- */
       const jsonResp = await ApiHelper.fetchWithFallback(currentDomainUri + `/api/v1/assets/common/${asset}.json`);
       if (!jsonResp.ok) {
-        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: 'Asset not found' });
+        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.AssetNotFound });
         return;
       }
       // Now, generate the image using Puppeteer and CreateJS
@@ -394,7 +391,7 @@ export abstract class ApiAssets implements ApiHelper {
       const frames: number[][] = jsonData.frames;
       const w = Math.max(...frames.map((frame) => frame[2] - frame[0]));
       const h = Math.max(...frames.map((frame) => frame[3] - frame[1]));
-      page = await puppeteerSingleton.createPage();
+      page = await puppeteerManagerInstance.createPage();
       await page.addScriptTag({ url: 'https://code.createjs.com/1.0.0/createjs.min.js' });
       await page.addScriptTag({ url: 'https://code.createjs.com/1.0.0/easeljs.min.js' });
       await page.addScriptTag({ url: 'https://code.createjs.com/1.0.0/tweenjs.min.js' });
@@ -532,7 +529,6 @@ export abstract class ApiAssets implements ApiHelper {
       ApiHelper.logError(error, 'getGeneratedImage', request);
     } finally {
       if (page) {
-        // Ensure the Puppeteer page is closed to free resources
         await page.close();
       }
     }
@@ -607,7 +603,7 @@ export abstract class ApiAssets implements ApiHelper {
       case '.webp': {
         const imageResp = await ApiHelper.fetchWithFallback(url);
         if (!imageResp.ok) {
-          response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: 'Sprite sheet not found' });
+          response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.AssetNotFound });
           return;
         }
         const spriteBuf = Buffer.from(await imageResp.arrayBuffer());
@@ -641,7 +637,7 @@ export abstract class ApiAssets implements ApiHelper {
         return;
       }
       default: {
-        throw new Error('Unsupported asset type');
+        throw new Error('Unsupported asset extension');
       }
     }
   }

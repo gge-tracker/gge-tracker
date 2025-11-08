@@ -1,8 +1,9 @@
 import * as express from 'express';
-import { ApiHelper } from '../api-helper';
-import * as pg from 'pg';
 import * as mysql from 'mysql';
-import { AuthorizedServersEnum } from '../interfaces/authorized-servers-special-features-enum';
+import * as pg from 'pg';
+import { RouteErrorMessagesEnum } from '../enums/errors.enums';
+import { AuthorizedSpecialServersEnum } from '../enums/gge-tracker-special-servers.enums';
+import { ApiHelper } from '../helper/api-helper';
 
 /**
  * Provides API endpoints for retrieving dungeon data with various filters and sorting options.
@@ -23,13 +24,6 @@ export abstract class ApiDungeons implements ApiHelper {
    *   - `nearPlayerName`: (string) Player name to sort dungeons by proximity to their castle.
    *   - `size`: (string) Number of results per page (default: 15, max: 4000).
    * @param response - Express response object used to send the result or error.
-   *
-   * @remarks
-   * - Only specific authorized servers are supported, because dungeon data is not available for all servers.
-   * - Handles validation of all input parameters and returns appropriate error messages.
-   * - Returns a paginated list of dungeons with player information and calculated distances if requested.
-   * - Integrates with both MySQL and PostgreSQL databases for dungeon and player data.
-   * - Returns a 400 error for invalid input and a 500 error for server/database issues.
    *
    * @returns {void} Sends a JSON response with the following structure:
    *   {
@@ -65,15 +59,15 @@ export abstract class ApiDungeons implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const page = Number.parseInt(String(request.query.page));
-      const filterByKid = request.query.filterByKid ? String(request.query.filterByKid) : '[2]';
-      if (!this.validateRequest(request, response, filterByKid, page)) return;
+      const page = ApiHelper.validatePageNumber(request.query.page);
+      const filterByKid = ApiHelper.getParsedString(request.query.filterByKid, '[2]');
+      if (!this.validateRequest(request, response, filterByKid)) return;
       const dungeonParameters = this.constructDungeonsInitialParameters(filterByKid, request);
       let { filtersKids, sortByPositionX, sortByPositionY } = dungeonParameters;
       const { filterByAttackCooldown, filterByPlayerName, nearPlayerName, size } = dungeonParameters;
       filtersKids.forEach((kid: any) => {
         if (Number(kid) < 0 || Number(kid) > 9) {
-          response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid kid' });
+          response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidKingdomId });
           return;
         }
       });
@@ -85,15 +79,15 @@ export abstract class ApiDungeons implements ApiHelper {
         (filterByAttackCooldown && Number(filterByAttackCooldown) < 0) ||
         Number(filterByAttackCooldown) > 99_999_999
       ) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid attack cooldown' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAttackCooldown });
         return;
       }
-      if (filterByPlayerName && filterByPlayerName.length > 60) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid player name' });
+      if (filterByPlayerName && ApiHelper.isInvalidInput(ApiHelper.validateSearchAndSanitize(filterByPlayerName))) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
         return;
       }
       if ((size && size.length > 30) || size.length < 0) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid size' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidInput });
         return;
       }
       /* ---------------------------------
@@ -109,7 +103,7 @@ export abstract class ApiDungeons implements ApiHelper {
        * --------------------------------- */
       if (nearPlayerName) {
         if (nearPlayerName.length > 60) {
-          response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid player name' });
+          response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
           return;
         }
         const playerQuery = `SELECT castles_realm FROM players WHERE LOWER(name) = $1 LIMIT 1`;
@@ -120,7 +114,7 @@ export abstract class ApiDungeons implements ApiHelper {
             (error, results) => {
               if (error) {
                 ApiHelper.logError(error, 'getDungeons_nearPlayerName', request);
-                reject(new Error('An error occurred. Please try again later.'));
+                reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
               } else {
                 resolve(results.rows);
               }
@@ -128,12 +122,12 @@ export abstract class ApiDungeons implements ApiHelper {
           );
         });
         if (playerResults.length === 0) {
-          response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid player name' });
+          response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
           return;
         }
         const target: { castles_realm: number[][] } = playerResults[0];
         if (!target.castles_realm || target.castles_realm.length === 0) {
-          response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid player castles realm' });
+          response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.PlayerNotFound });
           return;
         }
         const sortJsonPositionKid1 = target.castles_realm.find((kid: number[]) => kid[3] === 12 && kid[0] === 1);
@@ -178,7 +172,7 @@ export abstract class ApiDungeons implements ApiHelper {
           Number.parseInt(sortByPositionX) > 1286 ||
           Number.parseInt(sortByPositionY) > 1286
         ) {
-          response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid position' });
+          response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPosition });
           return;
         } else {
           isSorted = true;
@@ -202,7 +196,7 @@ export abstract class ApiDungeons implements ApiHelper {
             (error, results) => {
               if (error) {
                 ApiHelper.logError(error, 'getDungeons_countQuery', request);
-                reject(new Error('An error occurred. Please try again later.'));
+                reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
               } else {
                 resolve(results.rows);
               }
@@ -217,7 +211,7 @@ export abstract class ApiDungeons implements ApiHelper {
             playerId &&
             bannedPlayersId.includes(Number(ApiHelper.addCountryCode(String(playerId), request['code'])))
           ) {
-            response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid player name' });
+            response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
             return;
           }
           realCooldownExpr = `
@@ -331,7 +325,7 @@ export abstract class ApiDungeons implements ApiHelper {
         (request['mysql_pool'] as mysql.Pool).query(countQuery, countValues, (error, results) => {
           if (error) {
             ApiHelper.logError(error, 'getDungeons_countQuery', request);
-            reject(new Error('An error occurred. Please try again later.'));
+            reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
           } else {
             dungeonsCount = results[0]['dungeons_count'];
             resolve(null);
@@ -450,31 +444,27 @@ export abstract class ApiDungeons implements ApiHelper {
     }
   }
 
-  private static validateRequest(
-    request: express.Request,
-    response: express.Response,
-    filterByKid?: string,
-    page?: number,
-  ): boolean {
+  private static validateRequest(request: express.Request, response: express.Response, filterByKid?: string): boolean {
     // Authorized servers only, because dungeon data is not available for all servers.
     // However, in the future, we need to take out this configuration and expose it
     // in a separated file or from database.
-    const authorizedServers = Object.values(AuthorizedServersEnum);
-    if (!authorizedServers.includes(request['language'])) {
-      response
-        .status(ApiHelper.HTTP_BAD_REQUEST)
-        .send({ error: 'Invalid server. Currently, only ' + authorizedServers.join(', ') + ' are supported.' });
+    try {
+      const authorizedServers = Object.values(AuthorizedSpecialServersEnum);
+      if (!authorizedServers.includes(request['language'])) {
+        response
+          .status(ApiHelper.HTTP_BAD_REQUEST)
+          .send({ error: 'Invalid server. Currently, only ' + authorizedServers.join(', ') + ' are supported.' });
+        return false;
+      }
+      if (filterByKid && !Array.isArray(JSON.parse(filterByKid))) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid kid' });
+        return false;
+      }
+      return true;
+    } catch {
+      response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid parameters' });
       return false;
     }
-    if (Number.isNaN(page) || page < 1 || page > ApiHelper.MAX_RESULT_PAGE) {
-      response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid page number' });
-      return false;
-    }
-    if (filterByKid && !Array.isArray(JSON.parse(filterByKid))) {
-      response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid kid' });
-      return false;
-    }
-    return true;
   }
 
   private static defaultResponseContent(
@@ -549,10 +539,10 @@ export abstract class ApiDungeons implements ApiHelper {
     const filterByAttackCooldown = request.query.filterByAttackCooldown
       ? String(request.query.filterByAttackCooldown)
       : null;
-    const filterByPlayerName = request.query.filterByPlayerName ? String(request.query.filterByPlayerName) : null;
-    const sortByPositionX = request.query.positionX ? String(request.query.positionX) : null;
-    const sortByPositionY = request.query.positionY ? String(request.query.positionY) : null;
-    const nearPlayerName = request.query.nearPlayerName ? String(request.query.nearPlayerName) : null;
+    const filterByPlayerName = ApiHelper.getParsedString(request.query.filterByPlayerName, null);
+    const sortByPositionX = ApiHelper.getParsedString(request.query.positionX, null);
+    const sortByPositionY = ApiHelper.getParsedString(request.query.positionY, null);
+    const nearPlayerName = ApiHelper.getParsedString(request.query.nearPlayerName, null);
     const sizeValue = Number(request.query.size);
     const size = !Number.isNaN(sizeValue) && sizeValue > 0 ? String(sizeValue) : null;
     return {

@@ -1,27 +1,28 @@
 import * as express from 'express';
 import { RedisClientType } from 'redis';
-import { ApiDocumentation } from './routes/api-documentation';
-import { ApiHelper } from './api-helper';
-import { ApiGgeTrackerManager, GgeTrackerServers } from './services/empire-api-service';
-import { ApiEvents } from './routes/api-events';
-import { ApiOffers } from './routes/api-offers';
-import { ApiStatus } from './routes/api-status';
-import { ApiAssets } from './routes/api-assets';
-import { ApiUpdates } from './routes/api-updates';
-import { ApiDungeons } from './routes/api-dungeons';
-import { ApiServer } from './routes/api-server';
-import { ApiCartography } from './routes/api-cartography';
-import { ApiCastle } from './routes/api-castle';
-import { ApiAlliances } from './routes/api-alliances';
-import { ApiPlayers } from './routes/api-players';
-import { ApiStatistics } from './routes/api-statistics';
-import { QueueService } from './services/queue-service';
-import { puppeteerSingleton } from './singleton/puppeteer-singleton';
+import { ApiDocumentation } from '../routes/api-documentation';
+import { ApiHelper } from '../helper/api-helper';
+import { ApiGgeTrackerManager } from '../managers/api.manager';
+import { ApiEvents } from '../routes/api-events';
+import { ApiOffers } from '../routes/api-offers';
+import { ApiStatus } from '../routes/api-status';
+import { ApiAssets } from '../routes/api-assets';
+import { ApiUpdates } from '../routes/api-updates';
+import { ApiDungeons } from '../routes/api-dungeons';
+import { ApiServer } from '../routes/api-server';
+import { ApiCartography } from '../routes/api-cartography';
+import { ApiCastle } from '../routes/api-castle';
+import { ApiAlliances } from '../routes/api-alliances';
+import { ApiPlayers } from '../routes/api-players';
+import { ApiStatistics } from '../routes/api-statistics';
+import { QueueService } from '../services/queue-service';
+import { puppeteerManagerInstance } from '../managers/puperteer.manager';
+import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
 
 /**
  * Manages API controller endpoints for the Gge Tracker backend.
  *
- * The `ControllerManager` class acts as a central router for handling incoming Express requests,
+ * The `ApiRoutingController` class acts as a central router for handling incoming Express requests,
  * delegating them to the appropriate API modules or services. It is responsible for initializing
  * shared dependencies such as the Redis client, Puppeteer browser instance, and the API tracker manager.
  *
@@ -36,7 +37,7 @@ import { puppeteerSingleton } from './singleton/puppeteer-singleton';
  * @see RedisClientType
  * @see QueueService
  */
-export class ControllerManager {
+export class ApiRoutingController {
   /**
    * Manages interactions with the GGE Tracker API, providing methods to communicate
    * with external services and handle data related to the tracker functionality.
@@ -78,7 +79,7 @@ export class ControllerManager {
   }
 
   public async initBrowser(): Promise<void> {
-    await puppeteerSingleton.getBrowser();
+    await puppeteerManagerInstance.getBrowser();
   }
 
   public getDocumentation(request: express.Request, response: express.Response): void {
@@ -131,17 +132,25 @@ export class ControllerManager {
 
   public getEvents(request: express.Request, response: express.Response): void {
     // Events are stored only on FR1 database (centralized database)
-    void ApiEvents.getEvents(request, response, this.apiGgeTrackerManager.getPgSqlPool(GgeTrackerServers.FR1));
+    void ApiEvents.getEvents(request, response, this.apiGgeTrackerManager.getPgSqlPool(GgeTrackerServersEnum.FR1));
   }
 
   public getEventPlayers(request: express.Request, response: express.Response): void {
     // Events are stored only on FR1 database (centralized database)
-    void ApiEvents.getEventPlayers(request, response, this.apiGgeTrackerManager.getPgSqlPool(GgeTrackerServers.FR1));
+    void ApiEvents.getEventPlayers(
+      request,
+      response,
+      this.apiGgeTrackerManager.getPgSqlPool(GgeTrackerServersEnum.FR1),
+    );
   }
 
   public getDataEventType(request: express.Request, response: express.Response): void {
     // Events are stored only on FR1 database (centralized database)
-    void ApiEvents.getDataEventType(request, response, this.apiGgeTrackerManager.getPgSqlPool(GgeTrackerServers.FR1));
+    void ApiEvents.getDataEventType(
+      request,
+      response,
+      this.apiGgeTrackerManager.getPgSqlPool(GgeTrackerServersEnum.FR1),
+    );
   }
 
   public getOffers(request: express.Request, response: express.Response): void {
