@@ -126,6 +126,8 @@ services:
     networks:
       - backend
     restart: always
+    volumes:
+      - backend-assets:/app/dist/assets
     environment:
       - MYSQL_HOST=${MARIADB_HOST}
       - MYSQL_DATABASE=${SQL_DATABASE}
