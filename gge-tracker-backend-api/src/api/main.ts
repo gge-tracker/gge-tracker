@@ -89,9 +89,13 @@ const bypassRules = [
   RoutesManager.fromRegExp(String.raw`^/api/v2/view/\d+`, true),
 ];
 
+const managerInstance = new ApiGgeTrackerManager();
+
 morgan.token('origin', (request) => request.headers['origin'] || '-');
 morgan.token('user-agent', (request) => request.headers['user-agent'] || '-');
-const ggeTrackerApiGuardActivity = GgeTrackerApiGuardActivity.getInstance().setUpRateLimiter(rateLimiter);
+const ggeTrackerApiGuardActivity = GgeTrackerApiGuardActivity.getInstance()
+  .setUpRateLimiter(rateLimiter)
+  .setUpManagerInstance(managerInstance);
 app.use(async (request, response, next) =>
   ggeTrackerApiGuardActivity.guardActivityMiddleware(request, response, next, bypassRules),
 );
@@ -102,7 +106,6 @@ app.use(
   morgan((tokens, request, response) => ggeTrackerApiGuardActivity.recordMorganRequest(tokens, request, response)),
 );
 
-const managerInstance = new ApiGgeTrackerManager();
 const routingInstance = new ApiRoutingController(managerInstance, redisClient as any);
 
 // Protected routes require the gge-server header

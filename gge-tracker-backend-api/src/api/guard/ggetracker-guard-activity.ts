@@ -6,6 +6,7 @@ import zlib from 'node:zlib';
 import morgan from 'morgan';
 import { GgeTrackerApiGuardActivityDefaultParameters } from './ggetracker-guard-activity.parameters';
 import { RoutesManager, sortBySpecificity } from '../managers/routes.manager';
+import { ApiGgeTrackerManager } from '../managers/api.manager';
 
 interface LogEntry {
   labels: Record<string, string>;
@@ -31,12 +32,10 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
   public static NODE_ENV = process.env.NODE_ENV || 'development';
 
   private static instance: GgeTrackerApiGuardActivity;
-  private totalRequests: number = 0;
-  private ipHits: { [key: string]: number } = {};
-  private ipMap: Map<string, { count: number; lastTick: number }> = new Map();
   private logBuffer: LogEntry[] = [];
   private approxBufferBytes: number = 0;
   private rateLimiter: RateLimiterRedis;
+  private managerInstance: ApiGgeTrackerManager;
 
   /**
    * Returns the singleton instance of GgeTrackerApiGuardActivity.
@@ -69,6 +68,11 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
     return this;
   }
 
+  public setUpManagerInstance(managerInstance: ApiGgeTrackerManager): this {
+    this.managerInstance = managerInstance;
+    return this;
+  }
+
   public getLogFlushInterval(): number {
     return this.LOG_FLUSH_INTERVAL_MS;
   }
@@ -78,39 +82,19 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
   }
 
   /**
-   * Flushes any buffered log entries to the configured Loki endpoint.
-   *
-   * @returns A promise that resolves when the flush completes (either successfully sent or after exhausting retries).
+   * Flushes any buffered log entries to the configured Loki and ClickHouse endpoints.
+   * @returns A promise that resolves when the flush operation is initiated.
    */
   public async flushLogs(): Promise<void> {
     if (this.logBuffer.length === 0) return;
     const toSend = this.logBuffer;
     this.logBuffer = [];
-    this.approxBufferBytes = 0;
-    const streams = new Map<string, { stream: any; values: [string, string][] }>();
-    for (const logEntry of toSend) {
-      const key = JSON.stringify(logEntry.labels);
-      const ts = `${logEntry.timestamp}000000`;
-      const value = JSON.stringify(logEntry.line);
-      if (streams.has(key)) {
-        streams.get(key)!.values.push([ts, value]);
-      } else {
-        streams.set(key, { stream: logEntry.labels, values: [[ts, value]] });
-      }
-    }
-    const payload = { streams: [...streams.values()] };
-    const data = await GgeTrackerApiGuardActivity.gzip(JSON.stringify(payload));
-    for (let index = 0; index < this.LOKI_MAX_RETRIES; index++) {
-      try {
-        await axios.post(this.LOKI_URL, data, {
-          headers: { 'Content-Type': 'application/json', 'Content-Encoding': 'gzip' },
-          timeout: 8000,
-        });
-        return;
-      } catch {
-        await new Promise((r) => setTimeout(r, this.LOKI_RETRY_BASE_MS * 2 ** index));
-      }
-    }
+    this.flushLogsToLokiLogs(toSend).catch(() => {
+      console.error('Error: Unable to flush Loki Logs');
+    });
+    this.flushToClickhouse(toSend).catch(() => {
+      console.error('Error: Unable to flush ClickHouse Logs');
+    });
   }
 
   /**
@@ -132,9 +116,6 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
       typeof xff === 'string' ? xff.split(',')[0].trim() : Array.isArray(xff) ? xff[0] : request.ip || 'unknown';
     const normalizedIp = ip.replace(/^::ffff:/, '');
 
-    this.totalRequests++;
-    this.ipHits[normalizedIp] = (this.ipHits[normalizedIp] || 0) + 1;
-
     try {
       const sortedBySpec = sortBySpecificity(bypassRules);
       const url = request.originalUrl || request.url || '/';
@@ -153,50 +134,16 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
   }
 
   /**
-   * Record an access event for the given IP address and apply time-based decay to its stored counter.
-   *
-   * If an entry for the IP already exists in this.ipMap:
-   * - Compute the time elapsed since the last recorded tick.
-   * - If the elapsed time exceeds this.DECAY_INTERVAL_MS, compute how many whole
-   *   decay intervals have passed and apply the decay factor that many times (each application uses
-   *   Math.floor(count * DECAY_FACTOR)). After decaying, increment the count by 1 and update lastTick
-   *   to the current time.
-   * - If the elapsed time does not exceed the decay interval, simply increment the stored count by 1.
-   *
-   * If no entry exists for the IP, create one with count === 1 and lastTick set to the current time.
-   *
-   * @param ip - The IP address to record activity for.
-   * @returns void
-   */
-  public recordIp(ip: string): void {
-    const now = Date.now();
-    const s = this.ipMap.get(ip);
-    if (s) {
-      const elapsed = now - s.lastTick;
-      if (elapsed > this.DECAY_INTERVAL_MS) {
-        const ticks = Math.floor(elapsed / this.DECAY_INTERVAL_MS);
-        let count = s.count;
-        for (let index = 0; index < ticks; index++) count = Math.floor(count * this.DECAY_FACTOR);
-        count += 1;
-        s.count = count;
-        s.lastTick = now;
-      } else s.count += 1;
-    } else {
-      this.ipMap.set(ip, { count: 1, lastTick: now });
-    }
-  }
-
-  /**
    * Record details about an incoming HTTP request using morgan tokens and internal tracking.
    *
    * This method extracts metadata from the provided Express request/response pair (using the
-   * supplied morgan TokenIndexer), normalizes the route, records the request IP, performs
-   * abuse checks, and pushes a structured log/metrics entry into an internal buffer.
+   * supplied morgan TokenIndexer), normalizes the route, records the request IP, and
+   * appends a structured log entry to the internal buffer for later flushing.
    *
    * @param tokens - A morgan TokenIndexer providing token functions (e.g. method, status, url, response-time, user-agent).
    * @param request - The Express request object for the incoming HTTP request.
    * @param response - The Express response object for the corresponding response.
-   * @returns An empty string (to satisfy morgan's expected return type).
+   * @returns A string (always null) to satisfy morgan's expected return type.
    */
   public recordMorganRequest(
     tokens: morgan.TokenIndexer,
@@ -207,8 +154,6 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
     const server = (request.headers['gge-server'] as string) || 'none';
     const ip = (request.headers['x-forwarded-for'] as string) || request.ip;
     const route = this.normalizeRouteSafe(request);
-    this.recordIp(ip);
-    this.checkAbuse(ip, server, now);
 
     const labels = {
       job: 'ggetracker-api',
@@ -227,34 +172,6 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
     };
     this.pushToBuffer({ labels, line, timestamp: now });
     return null;
-  }
-
-  /**
-   * Checks whether a tracked IP has exceeded the configured abuse threshold and, if so,
-   * records a "suspicious_rate" event and resets the tracked count for that IP.
-   *
-   * @param ip - The client IP address to evaluate.
-   * @param server - Identifier of the server instance; included in the emitted event labels.
-   * @param now - Current timestamp (milliseconds since epoch) used for the emitted event.
-   * @returns void
-   */
-  public checkAbuse(ip: string, server: string, now: number): void {
-    const s = this.ipMap.get(ip);
-    if (!s) return;
-    if (s.count >= this.IP_THRESHOLD) {
-      s.count = 0;
-      this.ipMap.set(ip, s);
-      const labels = {
-        job: 'ggetracker-api',
-        env: this.NODE_ENV,
-        server,
-        level: 'warn',
-        method: 'ABUSE',
-        route: '/__abuse__',
-      };
-      const line = { event: 'suspicious_rate', ip, window_ms: this.IP_WINDOW_MS, ts: now };
-      this.pushToBuffer({ labels, line, timestamp: now });
-    }
   }
 
   /**
@@ -297,5 +214,104 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
     }
     this.logBuffer.push(entry);
     this.approxBufferBytes += size;
+  }
+
+  /**
+   * Flushes buffered log entries to ClickHouse.
+   * @param toSend - Array of log entries to send.
+   * @returns A promise that resolves when the flush completes.
+   */
+  private async flushToClickhouse(toSend: LogEntry[]): Promise<void> {
+    const logDatabaseName = 'logs';
+    const logTableName = 'logs';
+    const rows = toSend.map((logEntry) => {
+      return {
+        timestamp: new Date(logEntry.timestamp).toISOString().slice(0, 19).replace('T', ' ') || null,
+        job: logEntry.labels.job ?? null,
+        server: logEntry.labels.server ?? null,
+        method: logEntry.labels.method ?? null,
+        status: logEntry.labels.status ?? null,
+        route: logEntry.labels.route ?? null,
+        url: logEntry.line.url ?? null,
+        response_time: logEntry.line.response_time ?? null,
+        user_agent: logEntry.line.user_agent ?? null,
+        ip: logEntry.line.ip ?? null,
+      };
+    });
+    const batchSize = 3000;
+    const maxRetries = 3;
+    const baseDelayMs = 200;
+    const sql = `INSERT INTO ${logDatabaseName}.${logTableName} FORMAT JSONEachRow`;
+    const baseUrl = this.managerInstance.getClickHouseUrl() + `/?query=${encodeURIComponent(sql)}`;
+
+    for (let index = 0; index < rows.length; index += batchSize) {
+      const batch = rows.slice(index, index + batchSize);
+
+      const payload = batch.map((r) => JSON.stringify(r)).join('\n');
+      let attempt = 0;
+      let lastError: any = null;
+      while (attempt < maxRetries) {
+        attempt++;
+        try {
+          const response = await axios.post(baseUrl, payload, {
+            headers: {
+              'Content-Type': 'text/plain',
+              Accept: 'text/plain, */*',
+              'Accept-Encoding': 'gzip,deflate',
+            },
+            auth: this.managerInstance.getClickHouseCredentials(),
+            timeout: 30_000,
+          });
+          if (response.status >= 200 && response.status < 300) {
+            lastError = null;
+            break;
+          } else {
+            const txt = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+            throw new Error(`ClickHouse returned ${response.status}: ${txt}`);
+          }
+        } catch (error: any) {
+          lastError = error;
+          const message = error?.response?.data ?? error?.message ?? String(error);
+          console.warn(`Attempt ${attempt} failed for batch ${Math.floor(index / batchSize) + 1}:`, message);
+          await new Promise((r) => setTimeout(r, baseDelayMs * Math.pow(2, attempt - 1)));
+        }
+      }
+      if (lastError) {
+        console.error('Failed to insert batch into ClickHouse after retries:', lastError?.message ?? lastError);
+      }
+    }
+  }
+
+  /**
+   * Flushes any buffered log entries to the configured Loki endpoint.
+   * @param toSend - Array of log entries to send.
+   * @returns A promise that resolves when the flush completes (either successfully sent or after exhausting retries).
+   */
+  private async flushLogsToLokiLogs(toSend: LogEntry[]): Promise<void> {
+    this.approxBufferBytes = 0;
+    const streams = new Map<string, { stream: any; values: [string, string][] }>();
+    for (const logEntry of toSend) {
+      const key = JSON.stringify(logEntry.labels);
+      const ts = `${logEntry.timestamp}000000`;
+      const value = JSON.stringify(logEntry.line);
+      if (streams.has(key)) {
+        streams.get(key)!.values.push([ts, value]);
+      } else {
+        streams.set(key, { stream: logEntry.labels, values: [[ts, value]] });
+      }
+    }
+    const payload = { streams: [...streams.values()] };
+    const data = await GgeTrackerApiGuardActivity.gzip(JSON.stringify(payload));
+    for (let index = 0; index < this.LOKI_MAX_RETRIES; index++) {
+      try {
+        await axios.post(this.LOKI_URL, data, {
+          headers: { 'Content-Type': 'application/json', 'Content-Encoding': 'gzip' },
+          timeout: 8000,
+        });
+        return;
+      } catch {
+        await new Promise((r) => setTimeout(r, this.LOKI_RETRY_BASE_MS * 2 ** index));
+      }
+    }
   }
 }

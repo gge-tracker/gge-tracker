@@ -36,6 +36,16 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    */
   private postgresPools: { [key: string]: pg.Pool } = {};
 
+  private configuration = {
+    clickhouse: {
+      scheme: 'http',
+      port: 8123,
+      host: process.env.CLICKHOUSE_HOST,
+      username: process.env.CLICKHOUSE_USER,
+      password: process.env.CLICKHOUSE_PASSWORD,
+    },
+  };
+
   /**
    * A mapping of all supported GGE Tracker servers to their respective API token configurations.
    *
@@ -680,6 +690,18 @@ export class ApiGgeTrackerManager extends DatabaseManager {
     return Object.keys(this.servers).filter((key) => 'code' in this.servers[key]);
   }
 
+  public getClickHouseUrl(): string {
+    // Note : in the future, the port need to be extracted from env variable if needed
+    return `${this.configuration.clickhouse.scheme}://${this.configuration.clickhouse.host}:${this.configuration.clickhouse.port}`;
+  }
+
+  public getClickHouseCredentials(): { username: string; password: string } {
+    return {
+      username: this.configuration.clickhouse.username || '',
+      password: this.configuration.clickhouse.password || '',
+    };
+  }
+
   /**
    * Creates and returns a new instance of the ClickHouse client configured with environment variables.
    *
@@ -689,11 +711,10 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    * Additional configuration options such as session timeout and output formatting are also set.
    */
   public async getClickHouseInstance(): Promise<ClickHouse> {
-    // Note : in the future, the port need to be extracted from env variable if needed
     return new ClickHouse({
-      url: 'http://' + process.env.CLICKHOUSE_HOST + ':8123',
-      port: 8123,
-      basicAuth: { username: process.env.CLICKHOUSE_USER, password: process.env.CLICKHOUSE_PASSWORD },
+      url: this.getClickHouseUrl(),
+      port: this.configuration.clickhouse.port,
+      basicAuth: { username: this.configuration.clickhouse.username, password: this.configuration.clickhouse.password },
       isUseGzip: false,
       format: 'json',
       config: {
