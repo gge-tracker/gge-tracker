@@ -19,6 +19,7 @@ class GgeEmpire4KingdomsSocket extends BaseSocket implements GgeEmpireSocketImpl
 
   public async connect(): Promise<void> {
     try {
+      console.log('🔌 [connect] Connecting to Empire4Kingdoms socket server:', this.url);
       this.init();
       this.onError = (error): void => this.handleErrorState(error);
       this.onClose = (code, reason): void => this.handleCloseState(code, reason);

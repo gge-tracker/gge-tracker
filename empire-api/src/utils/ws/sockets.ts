@@ -34,6 +34,7 @@ export abstract class SocketService {
   public static async getGenericSockets(
     url: string,
     protocol: string,
+    socketClass: typeof GgeEmpireSocket | typeof GgeEmpire4KingdomsSocket,
   ): Promise<{ [key: string]: GgeEmpireSocket | GgeEmpire4KingdomsSocket }> {
     const sockets: { [key: string]: GgeEmpireSocket | GgeEmpire4KingdomsSocket } = {};
     const response = await fetch(url, { signal: AbortSignal.timeout(60 * 1000) });
@@ -47,7 +48,7 @@ export abstract class SocketService {
         );
         continue;
       }
-      const socket = new GgeEmpireSocket(`${protocol}://${server.server}`, server.zone, USERNAME, PASSWORD);
+      const socket = new socketClass(`${protocol}://${server.server}`, server.zone, USERNAME, PASSWORD);
       console.log(
         `[${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}] [${server.zone}] Matching server found: creating socket...`,
       );
@@ -58,10 +59,10 @@ export abstract class SocketService {
 
   public static async getSockets(): Promise<{ [key: string]: GgeEmpireSocket | GgeEmpire4KingdomsSocket }> {
     return {
-      ...((await SocketService.getGenericSockets(GgeXmlServerDescriptionUrls.EP, 'wss')) as {
+      ...((await SocketService.getGenericSockets(GgeXmlServerDescriptionUrls.EP, 'wss', GgeEmpireSocket)) as {
         [key: string]: GgeEmpireSocket;
       }),
-      ...((await SocketService.getGenericSockets(GgeXmlServerDescriptionUrls.E4K, 'ws')) as {
+      ...((await SocketService.getGenericSockets(GgeXmlServerDescriptionUrls.E4K, 'ws', GgeEmpire4KingdomsSocket)) as {
         [key: string]: GgeEmpire4KingdomsSocket;
       }),
     };
