@@ -15,7 +15,7 @@ import { createClient } from 'redis';
 import { Castle, CastleMovement, DungeonMap, PlayerDatabase } from './interfaces';
 import pLimit from 'p-limit';
 import Utils from './utils';
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import * as mysql from 'mysql2/promise';
 import * as pg from 'pg';
 
@@ -74,6 +74,7 @@ export class GenericFetchAndSaveBackend {
     bloodcrow: 58,
     outerRealms: 76,
     beyondTheHorizon: 78,
+    allianceBeyondTheHorizon: 79,
   };
 
   constructor(
@@ -90,6 +91,54 @@ export class GenericFetchAndSaveBackend {
     this.server = server;
     this.isE4KServer = String(server).toLowerCase().startsWith('e4k');
     this.createNewPool();
+  }
+
+  public async sleep(numberMs: number = 1500): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, numberMs));
+  }
+
+  public async getOuterRealmsCode(): Promise<{
+    TLT: string;
+    ZID: string;
+    IID: string;
+    TSIP: string;
+    TSP: string;
+    TSZ: string;
+    ICS: number;
+  } | null> {
+    Utils.logMessage('Try getting TLT token for Outer Realms...');
+    let response = await this.genericFetchData('glt', { GST: 2 });
+    if (!response.data.content) {
+      await this.genericFetchData('qsc', { QID: 3490 });
+      await this.genericFetchData('dcl', { CD: 1 });
+      const responseTsh = await this.genericFetchData('tsh', null);
+      if (!responseTsh.data.content) {
+        Utils.logMessage(' No content received from tsh endpoint. Aborting Outer Realms entry.');
+        Utils.logMessage('Content received:', JSON.stringify(responseTsh.data));
+        return null;
+      }
+      await this.sleep(500);
+      Utils.logMessage('Selecting free castle in Outer Realms...');
+      await this.genericFetchData('tsc', { ID: 31, OC2: 1, PWR: 0, GST: 2 });
+      await this.sleep(500);
+      response = await this.genericFetchData('glt', { GST: 2 });
+      if (!response.data.content) {
+        Utils.logMessage(' No content received from glt endpoint. Aborting Outer Realms entry.');
+        return null;
+      }
+    }
+    const content = response.data.content;
+    const { TLT, ZID, IID, TSIP, TSP, TSZ, ICS } = content;
+    if (!TLT || !ZID || !IID || !TSIP || !TSP || !TSZ || !ICS) {
+      Utils.logMessage(' Missing one or more required tokens for Outer Realms entry. Aborting.');
+      return null;
+    }
+    Utils.logMessage('Successfully retrieved Outer Realms tokens.');
+    return { TLT, ZID, IID, TSIP, TSP, TSZ, ICS };
+  }
+
+  public async fetchUrl(url: string, body: any): Promise<AxiosResponse<any>> {
+    return await axios.post(url, body, { headers: { 'Content-Type': 'application/json' } });
   }
 
   public async fillGrandTournamentResults(): Promise<void> {
@@ -752,6 +801,26 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
+  private async genericFetchData(
+    type: string,
+    parameters: { [key: string]: string | number } | null,
+  ): Promise<AxiosResponse<any>> {
+    let paramString = '';
+    if (parameters) {
+      const paramEntries = Object.entries(parameters);
+      paramEntries.forEach(([key, value], index) => {
+        paramString += `"${key}":${typeof value === 'string' ? `"${value}"` : value}`;
+        if (index < paramEntries.length - 1) {
+          paramString += ',';
+        }
+      });
+    } else {
+      paramString = 'null';
+    }
+    const url: string = encodeURI(this.BASE_API_URL + type + '/' + paramString);
+    return await axios.get(url);
+  }
+
   private async fetchDataAndReturn(
     lt: string | number,
     lid: string | number,
@@ -759,8 +828,7 @@ export class GenericFetchAndSaveBackend {
     type: string = 'hgh',
   ): Promise<any> {
     try {
-      const url: string = encodeURI(this.BASE_API_URL + type + `/"LT":${lt},"LID":${lid},"SV":"${sv}"`);
-      const response = await axios.get(url);
+      const response = await this.genericFetchData(type, { LT: Number(lt), LID: Number(lid), SV: String(sv) });
       const data = response.data;
       return data;
     } catch (error) {
@@ -2701,7 +2769,7 @@ export class GenericFetchAndSaveBackend {
   }
 
   private async executeCustomEventHistory(
-    eventName: string,
+    eventName: 'Beyond the Horizon' | 'Outer Realms',
     tableEventName: string,
     tableEventHistoryName: string,
     lt: number,

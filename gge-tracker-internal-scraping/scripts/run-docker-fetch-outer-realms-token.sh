@@ -25,17 +25,19 @@ get_conf_value() {
 
 ID_SERVER=$(get_conf_value "$SERVER" "zone")
 PG_DB=$(get_conf_value "$SERVER" "sql")
+MYSQL_DB=$(get_conf_value "$SERVER" "sql")
 CLICKHOUSE_DB=$(get_conf_value "$SERVER" "olap")
 LOG_SUFFIX=$SERVER
 CONNECTION_LIMIT=$(get_conf_value "$SERVER" "limit")
 
 docker run --rm --network backend --env-file=$BASE_SCRIPT_DIR/.env \
-    --name ic-fetch-outer-realms \
+    --name ic-fetch-token-$SERVER \
     -e ID_SERVER=$ID_SERVER \
     -e PG_DB=$PG_DB \
+    -e MYSQL_DB=$MYSQL_DB \
     -e CLICKHOUSE_DB=$CLICKHOUSE_DB \
     -e LOG_SUFFIX=$LOG_SUFFIX \
     -e CONNECTION_LIMIT=$CONNECTION_LIMIT \
-    -v $BASE_SCRIPT_DIR/logs:/app/logs \
     --cpus="0.5" \
-    gge-tracker-internal-scraping dist/fetch-and-save-outer-realms.js
+    -v $BASE_SCRIPT_DIR/logs:/app/logs \
+    gge-tracker-internal-scraping dist/outer-realms-token-scrapper.js

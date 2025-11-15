@@ -4,6 +4,7 @@ import path from 'node:path';
 import { HeadersUtilities } from './utils/nested-headers.js';
 import { GgeEmpireSocket } from './utils/ws/empire-socket.js';
 import { GgeEmpire4KingdomsSocket } from './utils/ws/empire4kingdoms-socket.js';
+import { GgeLiveTemporaryServerSocket } from './utils/ws/live-temporary-server-socket.js';
 
 interface CommandInterface {
   [key: string]: {
@@ -17,15 +18,69 @@ const commands: CommandInterface = JSON.parse(
 );
 
 export default function createApp(sockets: {
-  [x: string]: GgeEmpire4KingdomsSocket | GgeEmpireSocket;
+  [x: string]: GgeEmpire4KingdomsSocket | GgeEmpireSocket | GgeLiveTemporaryServerSocket;
 }): express.Express {
   const app = express();
+  app.use(express.json());
 
   app.use((request, response, next) => {
     response.header('Access-Control-Allow-Origin', '*');
-    response.header('Access-Control-Allow-Methods', 'GET');
+    response.header('Access-Control-Allow-Methods', 'GET, POST, DELETE');
     response.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
     next();
+  });
+
+  app.delete('/server', async (request, response) => {
+    try {
+      const { server } = request.body as { server: string };
+      if (!server) {
+        response.status(400).json({ error: 'Missing parameters' });
+        return;
+      }
+      if (server in sockets) {
+        try {
+          sockets[server].close();
+        } catch {}
+        delete sockets[server];
+        response.status(200).json({ message: 'Server deleted' });
+      } else {
+        response.status(404).json({ error: 'Server not found' });
+      }
+    } catch (error) {
+      response.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/server', async (request, response) => {
+    try {
+      const { server, socket_url, password, username } = request.body as {
+        server: string;
+        socket_url: string;
+        password: string;
+        username: string;
+      };
+      if (!(server && socket_url && password && username)) {
+        response.status(400).json({ error: 'Missing parameters' });
+        return;
+      }
+      if (server in sockets) {
+        try {
+          sockets[server].close();
+        } catch {}
+        delete sockets[server];
+      }
+      const regex = /^[\dA-Za-z-]+\.goodgamestudios\.com$/;
+      if (!regex.test(socket_url)) {
+        response.status(400).json({ error: 'Invalid socket URL' });
+        return;
+      }
+      const socketServer = new GgeLiveTemporaryServerSocket('wss://' + socket_url, server, username, password);
+      sockets[server] = socketServer;
+      void socketServer.connectMethod();
+      response.status(200).json({ message: 'Server added' });
+    } catch (error) {
+      response.status(500).json({ error: error.message });
+    }
   });
 
   app.get('/:server/:command/:headers', async (request, response) => {

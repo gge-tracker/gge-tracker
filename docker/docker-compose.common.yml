@@ -194,11 +194,11 @@ services:
       context: ./../empire-api
       dockerfile: Dockerfile
       args:
-        HAS_GBL: "true"
+        API_TYPE: realtime
     container_name: empire-api-container-realtime
     environment:
       NODE_ENV: production
-      HAS_GBL: "true"
+      API_TYPE: realtime
     networks:
       - backend
     restart: always

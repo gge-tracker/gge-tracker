@@ -6,6 +6,7 @@ import { Log } from './log.js';
 export enum GgeServerType {
   E4K = 'E4K',
   EP = 'EP',
+  LIVE = 'LIVE',
 }
 
 class BaseSocket extends Log {
@@ -42,7 +43,7 @@ class BaseSocket extends Log {
     this.closed = new AsyncEvent();
     this.messages = [];
     this.nbReconnects = 0;
-    this.hasGbl = process.env.HAS_GBL?.toLowerCase() === 'true';
+    this.hasGbl = process.env.API_TYPE?.toLowerCase() === 'realtime';
   }
 
   public async pingAndCheck(): Promise<void> {
