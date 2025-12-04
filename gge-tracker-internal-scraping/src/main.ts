@@ -7,17 +7,19 @@
 //
 //  Copyrights (c) 2025 - gge-tracker.com & gge-tracker contributors
 //
-import { ClickHouse } from 'clickhouse';
-import { RowDataPacket } from 'mysql2/promise';
-import { exit } from 'process';
-import { format } from 'date-fns';
-import { createClient } from 'redis';
-import { Castle, CastleMovement, DungeonMap, PlayerDatabase } from './interfaces';
-import pLimit from 'p-limit';
-import Utils from './utils';
 import axios, { AxiosResponse } from 'axios';
+import { ClickHouse } from 'clickhouse';
+import { format } from 'date-fns';
 import * as mysql from 'mysql2/promise';
+import { RowDataPacket } from 'mysql2/promise';
+import pLimit from 'p-limit';
 import * as pg from 'pg';
+import { exit } from 'process';
+import { createClient } from 'redis';
+import { HIGHSCORES_CONFIG } from './definitions/highest_scores.config';
+import { SWAP_RANK_POINTS_TABLE } from './definitions/swap-rank-points.config';
+import { Castle, CastleMovement, DungeonMap, HighScoreKey, PlayerDatabase } from './interfaces';
+import Utils from './utils';
 
 /**
  * This class provides a comprehensive backend service for fetching, processing,
@@ -128,8 +130,17 @@ export class GenericFetchAndSaveBackend {
       }
     }
     const content = response.data.content;
+    Utils.logMessage('[debug] Outer Realms tokens received:', JSON.stringify(content));
     const { TLT, ZID, IID, TSIP, TSP, TSZ, ICS } = content;
-    if (!TLT || !ZID || !IID || !TSIP || !TSP || !TSZ || !ICS) {
+    if (
+      TLT === undefined ||
+      ZID === undefined ||
+      IID === undefined ||
+      TSIP === undefined ||
+      TSP === undefined ||
+      TSZ === undefined ||
+      ICS === undefined
+    ) {
       Utils.logMessage(' Missing one or more required tokens for Outer Realms entry. Aborting.');
       return null;
     }
@@ -137,8 +148,14 @@ export class GenericFetchAndSaveBackend {
     return { TLT, ZID, IID, TSIP, TSP, TSZ, ICS };
   }
 
-  public async fetchUrl(url: string, body: any): Promise<AxiosResponse<any>> {
-    return await axios.post(url, body, { headers: { 'Content-Type': 'application/json' } });
+  public async fetchUrl(url: string, method: 'POST' | 'GET' | 'DELETE', body: any): Promise<AxiosResponse<any>> {
+    if (method.toUpperCase() === 'POST') {
+      return await axios.post(url, body, { headers: { 'Content-Type': 'application/json' } });
+    } else if (method.toUpperCase() === 'DELETE') {
+      return await axios.delete(url);
+    } else {
+      return await axios.get(url);
+    }
   }
 
   public async fillGrandTournamentResults(): Promise<void> {
@@ -294,7 +311,7 @@ export class GenericFetchAndSaveBackend {
           url: 'redis://redis-server:6379',
         });
         await redisClient.connect();
-        await redisClient.incr(`grand-tournament:event-dates:version:${this.server}`);
+        await redisClient.incr(`grand-tournament:event-dates:version`);
       }
       const end = new Date();
       const duration = end.getTime() - start.getTime();
@@ -764,6 +781,225 @@ export class GenericFetchAndSaveBackend {
     console.log('Dungeons list updated successfully');
     console.log('Squares count:', Object.keys(squares).length);
     await this.connection.end();
+  }
+
+  public async startOuterRealmsDataFetch(): Promise<void> {
+    const start = new Date();
+    const type = 'hgh';
+    const LID = 1;
+    try {
+      Utils.logMessage('=====================================');
+      Utils.logMessage(' Starting Outer Realms data fetch');
+      Utils.logMessage(' Current environment:', this.CURRENT_ENV);
+      Utils.logMessage('=====================================');
+      let LT: number | null = null;
+      let initialResponse: AxiosResponse<any>;
+      const ltValues = [
+        HIGHSCORES_CONFIG.TEMP_SERVER_DAILY_COLLECTOR_POINTS,
+        HIGHSCORES_CONFIG.TEMP_SERVER_DAILY_RANK_SWAP,
+        HIGHSCORES_CONFIG.TEMP_SERVER_DAILY_MIGHT_POINTS_BUILDINGS,
+      ] as number[];
+      const redisClient = createClient({
+        url: 'redis://redis-server:6379',
+      });
+      await redisClient.connect();
+      const lastLtValue = await redisClient.get(`outer-realms:last-active-lt:${this.CURRENT_ENV}`);
+      if (lastLtValue) {
+        initialResponse = await this.genericFetchData(type, { LT: Number(lastLtValue), LID, SV: '1' });
+        if (initialResponse.data.return_code == '0' && initialResponse.data.content?.L?.length > 0) {
+          LT = Number(lastLtValue);
+          Utils.logMessage(` Active Outer Realms event found with last known LT=${LT}. Proceeding with data fetch.`);
+        } else {
+          Utils.logMessage(` No active Outer Realms event found with last known LT=${lastLtValue}.`);
+        }
+      }
+      if (!LT) {
+        for (const ltValue of ltValues) {
+          initialResponse = await this.genericFetchData(type, { LT: ltValue, LID, SV: '1' });
+          if (initialResponse.data.return_code == '0' && initialResponse.data.content?.L?.length > 0) {
+            LT = ltValue;
+            Utils.logMessage(` Active Outer Realms event found with LT=${LT}. Proceeding with data fetch.`);
+            break;
+          } else {
+            Utils.logMessage(` No active Outer Realms event found with LT=${ltValue}.`);
+          }
+        }
+      }
+      if (LT) {
+        if (LT !== Number(lastLtValue)) {
+          Utils.logMessage(` Updating last active LT in Redis to ${LT}.`);
+          void redisClient
+            .set(`outer-realms:last-active-lt:${this.CURRENT_ENV}`, String(LT))
+            .then(() => redisClient.quit());
+        }
+      } else {
+        Utils.logMessage(' No active Outer Realms event found with any known LT code. Aborting data fetch.');
+        await redisClient.quit();
+        return;
+      }
+      const entriesByPage = initialResponse.data.content?.L?.length || 0;
+      const increment = Math.ceil(Number(entriesByPage) / 2);
+      let hasMore = true;
+      let maxItemLimit = 50000;
+      let item = increment;
+      let playerEntries = new Map<
+        number,
+        {
+          OID: number;
+          N: string;
+          server: string;
+          score: number;
+          rank: number;
+          level: number;
+          legendaryLevel: number;
+          might: number;
+          castlePositionX: number;
+          castlePositionY: number;
+        }
+      >();
+      while (hasMore && item < maxItemLimit) {
+        let response: AxiosResponse<any>;
+        let tryCount = 0;
+        do {
+          response = await this.genericFetchData(type, { LT, LID, SV: String(item) });
+          if (response.data.return_code == '0' && response.data.content) {
+            break;
+          } else {
+            tryCount++;
+            Utils.logMessage(`   Error fetching Outer Realms data for SV=${item}. Retry count: ${tryCount}`);
+            if (tryCount === 3) {
+              Utils.logMessage('   Max retries reached. Ending Outer Realms data fetch.');
+              hasMore = false;
+            } else {
+              await new Promise((resolve) => setTimeout(resolve, 2000));
+            }
+          }
+        } while (tryCount < 3);
+        if (response.data.return_code == '0' && response.data.content) {
+          const content = response.data.content.L || [];
+          if (content.length === 0) {
+            hasMore = false;
+            Utils.logMessage(' No more data to fetch. Ending Outer Realms data fetch.');
+            break;
+          }
+          let duplicatesInThisBatch = 0;
+          for (const entry of content) {
+            const playerData = entry[2];
+            const OID = Number(playerData.OID);
+            if (!playerEntries.has(OID)) {
+              const parts = String(playerData.N).split('_');
+              const server = parts[parts.length - 1];
+              const playerName = parts.slice(0, -1).join('_');
+              const castleEntry = playerData.AP.find((ap: number[]) => ap[0] === 0 && ap[4] === 1);
+              let rank: number, score: number | undefined;
+
+              const outerRealmType = Object.keys(HIGHSCORES_CONFIG).find(
+                (key) => HIGHSCORES_CONFIG[key as keyof typeof HIGHSCORES_CONFIG] === LT,
+              ) as HighScoreKey;
+              if (outerRealmType === 'TEMP_SERVER_DAILY_MIGHT_POINTS_BUILDINGS') {
+                rank = Number(entry[4]);
+              } else if (outerRealmType === 'TEMP_SERVER_DAILY_RANK_SWAP') {
+                rank = Number(entry[0]);
+                const rankPointsEntry = SWAP_RANK_POINTS_TABLE.find((rp) => rank >= rp.maxRank && rank <= rp.minRank);
+                score = rankPointsEntry ? rankPointsEntry.rankPoints : 0;
+              }
+              playerEntries.set(OID, {
+                OID,
+                N: playerName,
+                server: server,
+                score: score ?? Number(entry[1]),
+                rank: rank,
+                level: Number(playerData.L),
+                legendaryLevel: Number(playerData.LL),
+                might: Number(playerData.MP),
+                castlePositionX: Number(castleEntry ? castleEntry[2] : null),
+                castlePositionY: Number(castleEntry ? castleEntry[3] : null),
+              });
+            } else {
+              duplicatesInThisBatch++;
+            }
+          }
+          // If we have a full batch with all duplicates, we can stop fetching more data
+          if (duplicatesInThisBatch === content.length) {
+            Utils.logMessage(` All entries in this batch are duplicates (SV=${item}). Ending Outer Realms data fetch.`);
+            hasMore = false;
+            break;
+          }
+        }
+        item += increment;
+      }
+      Utils.logMessage(' Total unique player entries fetched:', playerEntries.size);
+      const clickhouseBaseUrl = (this.CLICKHOUSE_CONFIG.url as string) + ':' + this.CLICKHOUSE_CONFIG.port;
+      try {
+        const batchSize = 5000;
+        const insertSQL = 'INSERT INTO outer_realms_ranking FORMAT JSONEachRow';
+        const clickhouseUrl =
+          clickhouseBaseUrl +
+          '/?query=' +
+          encodeURIComponent(insertSQL) +
+          '&database=' +
+          encodeURIComponent(this.CLICKHOUSE_CONFIG.database as string);
+        const fetchDate = new Date();
+        const playerArray = Array.from(playerEntries.values());
+        const clickhouseAuth = {
+          username: this.CLICKHOUSE_CONFIG.user as string,
+          password: this.CLICKHOUSE_CONFIG.password as string,
+        };
+
+        for (let i = 0; i < playerArray.length; i += batchSize) {
+          const batch = playerArray.slice(i, i + batchSize);
+          const fetchDateStr = new Date(fetchDate).toISOString().slice(0, 19).replace('T', ' ');
+          const payload = batch
+            .map((p) =>
+              JSON.stringify({
+                player_id: p.OID,
+                player_name: p.N,
+                server: p.server,
+                score: p.score,
+                rank: p.rank,
+                level: p.level,
+                legendary_level: p.legendaryLevel,
+                might: p.might,
+                castle_position_x: p.castlePositionX,
+                castle_position_y: p.castlePositionY,
+                fetch_date: fetchDateStr,
+              }),
+            )
+            .join('\n');
+
+          try {
+            await axios.post(clickhouseUrl, payload, {
+              headers: {
+                'Content-Type': 'text/plain',
+              },
+              auth: clickhouseAuth,
+              timeout: 30000,
+            });
+            Utils.logMessage(`Inserted ${batch.length} players`);
+            Utils.logMessage('Outer Realms data fetch and database update completed successfully');
+          } catch (error) {
+            Utils.logMessage('Error inserting batch into ClickHouse:', error);
+            Utils.logMessage('Payload:', payload);
+            this.DB_UPDATES.criticalErrors++;
+          }
+        }
+      } catch (error) {
+        Utils.logMessage('Error executing query:', error);
+        this.DB_UPDATES.criticalErrors++;
+      }
+    } catch (error) {
+      Utils.logMessage('Error during Outer Realms data fetch:', error);
+      this.DB_UPDATES.criticalErrors++;
+    } finally {
+      const end = new Date();
+      const duration = end.getTime() - start.getTime();
+      const durationInSeconds = Math.floor(duration / 1000);
+      Utils.logMessage('Duration of Outer Realms data fetch:', durationInSeconds + ' seconds');
+      for (let i = 0; i < 9; i++) {
+        Utils.logMessage('.');
+      }
+      Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, this.server);
+    }
   }
 
   private createNewPool(): void {

@@ -4,35 +4,35 @@ import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
 
 /**
- * Provides API endpoints for retrieving cartography-related data about alliances and players.
+ * Provides API endpoints for retrieving cartography-related data about alliances and players
  *
  * The `ApiCartography` abstract class implements the `ApiHelper` interface and exposes static methods
  * to handle HTTP requests for various cartography queries, including:
  *
- * - Retrieving cartography data by a specified size limit.
- * - Retrieving cartography data by alliance name.
- * - Retrieving cartography data by alliance ID.
+ * - Retrieving cartography data by a specified size limit
+ * - Retrieving cartography data by alliance name
+ * - Retrieving cartography data by alliance ID
  *
  * Each method handles request validation, caching via Redis, and querying a PostgreSQL database for the
- * relevant data. Results are formatted and returned as JSON responses.
+ * relevant data. Results are formatted and returned as JSON responses
  *
  * @see ApiHelper
  * @abstract
  */
 export abstract class ApiCartography implements ApiHelper {
   /**
-   * Handles the HTTP request to retrieve cartography data filtered by a specified size.
+   * Handles the HTTP request to retrieve cartography data filtered by a specified size
    *
-   * This endpoint returns a list of players and their alliance information, ordered by the total might of their alliances.
-   * The number of alliances returned can be limited by the `size` parameter in the request.
+   * This endpoint returns a list of players and their alliance information, ordered by the total might of their alliances
+   * The number of alliances returned can be limited by the `size` parameter in the request
    *
-   * @param request - Express request object, expects `params.size` as the size limit and `language` for cache key.
-   * @param response - Express response object used to send the result or error.
-   * @returns A Promise that resolves when the response is sent.
+   * @param request - Express request object, expects `params.size` as the size limit and `language` for cache key
+   * @param response - Express response object used to send the result or error
+   * @returns A Promise that resolves when the response is sent
    *
    * @route GET /cartography/size/:size
-   * @throws 400 - If the size parameter is invalid.
-   * @throws 500 - If a database or internal error occurs.
+   * @throws 400 - If the size parameter is invalid
+   * @throws 500 - If a database or internal error occurs
    */
   public static async getCartographyBySize(request: express.Request, response: express.Response): Promise<void> {
     try {
@@ -57,8 +57,8 @@ export abstract class ApiCartography implements ApiHelper {
        * --------------------------------- */
       let limit = `LIMIT ${pageNumber}`;
       // Get the limit clause based on the size parameter. However, the query does not use it
-      // with parameterized queries to avoid SQL injection,  so we validate it strictly here.
-      // A more complex query with OFFSET would require a different approach.
+      // with parameterized queries to avoid SQL injection,  so we validate it strictly here
+      // A more complex query with OFFSET would require a different approach
 
       const query = `
         WITH ranked_alliances AS (
@@ -113,21 +113,21 @@ export abstract class ApiCartography implements ApiHelper {
   }
 
   /**
-   * Handles the retrieval of cartography data for players based on the provided alliance name.
+   * Handles the retrieval of cartography data for players based on the provided alliance name
    *
    * This endpoint supports two modes:
-   * - Special frontend specific case: If the `allianceName` parameter is `"1"`, it returns players without an alliance who have castles.
-   * - Otherwise, it returns players belonging to the specified alliance (case-insensitive) who have castles.
+   * - Special frontend specific case: If the `allianceName` parameter is `"1"`, it returns players without an alliance who have castles
+   * - Otherwise, it returns players belonging to the specified alliance (case-insensitive) who have castles
    *
    * The method performs the following steps:
-   * 1. Validates the `allianceName` parameter length.
-   * 2. Checks for cached results in Redis and returns them if available.
-   * 3. Constructs and executes a SQL query to fetch player data based on the alliance name.
-   * 4. Formats the results, updates the cache, and sends the response.
+   * 1. Validates the `allianceName` parameter length
+   * 2. Checks for cached results in Redis and returns them if available
+   * 3. Constructs and executes a SQL query to fetch player data based on the alliance name
+   * 4. Formats the results, updates the cache, and sends the response
    *
-   * @param request - Express request object, expects `params.allianceName`, `language`, `pg_pool`, and `code` properties.
-   * @param response - Express response object used to send the result or error.
-   * @returns A promise that resolves to void. Sends a JSON response with player cartography data or an error message.
+   * @param request - Express request object, expects `params.allianceName`, `language`, `pg_pool`, and `code` properties
+   * @param response - Express response object used to send the result or error
+   * @returns A promise that resolves to void. Sends a JSON response with player cartography data or an error message
    */
   public static async getCartographyByAllianceName(
     request: express.Request,
@@ -229,18 +229,18 @@ export abstract class ApiCartography implements ApiHelper {
   }
 
   /**
-   * Handles the HTTP request to retrieve cartography data for all players in a specific alliance by alliance ID.
+   * Handles the HTTP request to retrieve cartography data for all players in a specific alliance by alliance ID
    *
-   * - Validates the provided alliance ID from the request parameters.
-   * - Checks for cached results in Redis and returns them if available.
-   * - Determines the appropriate country code and PostgreSQL pool for the alliance.
-   * - Queries the database for player and alliance information, ordered by the number of castles.
-   * - Formats and returns the results, updating the cache if necessary.
-   * - Handles and responds to errors appropriately.
+   * - Validates the provided alliance ID from the request parameters
+   * - Checks for cached results in Redis and returns them if available
+   * - Determines the appropriate country code and PostgreSQL pool for the alliance
+   * - Queries the database for player and alliance information, ordered by the number of castles
+   * - Formats and returns the results, updating the cache if necessary
+   * - Handles and responds to errors appropriately
    *
-   * @param request - The Express request object containing the alliance ID parameter.
-   * @param response - The Express response object used to send the result or error.
-   * @returns A Promise that resolves when the response has been sent.
+   * @param request - The Express request object containing the alliance ID parameter
+   * @param response - The Express response object used to send the result or error
+   * @returns A Promise that resolves when the response has been sent
    */
   public static async getCartographyByAllianceId(request: express.Request, response: express.Response): Promise<void> {
     try {

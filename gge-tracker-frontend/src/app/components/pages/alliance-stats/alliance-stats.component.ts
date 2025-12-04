@@ -11,22 +11,8 @@ import {
 import { FormsModule } from '@angular/forms';
 import { Title } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
-import { TranslateModule } from '@ngx-translate/core';
-import { format } from 'date-fns';
-import katex from 'katex';
-import {
-  Activity,
-  BriefcaseConveyorBelt,
-  ChartSpline,
-  Earth,
-  Flag,
-  LucideAngularModule,
-  Trophy,
-  Users,
-} from 'lucide-angular';
-import { ApexAxisChartSeries, XAxisAnnotations } from 'ng-apexcharts';
-
-import { StatsCardContentComponent } from './stats-card-content/stats-card-content.component';
+import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { TableComponent } from '@ggetracker-components/table/table.component';
 import {
   ApiAlliancePlayersSearchResponse,
   ApiGenericData,
@@ -53,9 +39,23 @@ import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { LanguageService } from '@ggetracker-services/language.service';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
 import { WindowService } from '@ggetracker-services/window.service';
-import { GenericComponent } from '@ggetracker-components/generic/generic.component';
-import { TableComponent } from '@ggetracker-components/table/table.component';
+import { TranslateModule } from '@ngx-translate/core';
+import { format } from 'date-fns';
+import katex from 'katex';
+import {
+  Activity,
+  BriefcaseConveyorBelt,
+  ChartSpline,
+  Earth,
+  Flag,
+  LucideAngularModule,
+  Trophy,
+  Users,
+} from 'lucide-angular';
+import { ApexAxisChartSeries, XAxisAnnotations } from 'ng-apexcharts';
 import { PlayerStatsCardComponent } from '../player-stats/player-stats-card/player-stats-card.component';
+import { StatsCardContentComponent } from './stats-card-content/stats-card-content.component';
+import { PlayerTableContentComponent } from '@ggetracker-pages/players/player-table-content/player-table-content.component';
 
 enum ChartTypeHeights {
   DEFAULT = 450,
@@ -77,6 +77,7 @@ enum ChartTypeHeights {
     FormsModule,
     LucideAngularModule,
     TableComponent,
+    PlayerTableContentComponent,
     FormatNumberPipe,
     RouterLink,
     StatsCardContentComponent,
@@ -354,11 +355,8 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     ['player_name', 'Pseudonyme'],
     ['level', 'Niveau', '/assets/lvl.png'],
     ['might_current', 'Points de puissance', '/assets/pp1.png'],
-    ['might_all_time', 'Puissance maximale atteinte', '/assets/pp2.png'],
     ['loot_current', 'Points de pillage hebdomadaire', '/assets/loot.png'],
-    ['loot_all_time', 'Pillage maximal atteint', '/assets/loot3.png'],
     ['current_fame', 'Points de gloire', '/assets/glory.png'],
-    ['highest_fame', 'Gloire maximale atteinte', '/assets/glory.png'],
     ['honor', 'Honneur', '/assets/honor.png'],
     ['', '', undefined, true],
   ];
@@ -1469,7 +1467,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
           player.segments.data.push([new Date(date).getTime(), point]);
         }
       }
-      this.eventTitles[chartKey] = '2025';
+      this.eventTitles[chartKey] = '-';
       const segmentsWithColors: {
         segment: { name: string; data: [number, number][]; lastValue: number };
         color: string;

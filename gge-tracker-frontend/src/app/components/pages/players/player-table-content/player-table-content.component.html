@@ -1,0 +1,143 @@
+<tr *ngIf="players().length === 0  && !isInLoading">
+  <td colspan="12" class="no-data">{{ 'Aucun joueur trouvé' | translate }}</td>
+</tr>
+<tr *ngFor="let player of players()" [ngClass]="{ 'row-favorite': player.isFavorite }" class="player-row">
+
+  <!-- Rank -->
+  <td class="col-rank">
+    <span class="mobile-only">#</span>
+    {{ player.rank }}
+  </td>
+
+  <!-- Name + Peace/Ban -->
+  <td class="col-name">
+    <ng-container *ngIf="player.peaceDisabledAt">
+      <span *ngIf="!isPeaceDisabledBefore63days(player.peaceDisabledAt)" class="badge-ban"
+        [title]="'Banni jusqu\'au ' + (player.peaceDisabledAt | date: ('Date_3' | translate))">
+        <i class="fa-solid fa-ban"></i>
+        <span>&nbsp;{{ 'Banni' | translate }}</span>
+      </span>
+      <span *ngIf="isPeaceDisabledBefore63days(player.peaceDisabledAt)" class="badge-peace"
+        [title]="('Actuellement en protection Fin le' | translate) + ' ' + (player.peaceDisabledAt | date: ('Date_3' | translate))">
+        <i class="fa-solid fa-dove" [style.opacity]="getOpacityForPeaceTime(player.peaceDisabledAt)"></i>
+        <span>&nbsp;{{ 'En protection' | translate }}</span>
+      </span>
+    </ng-container>
+    <span class="name">{{ player.playerName }}</span>
+  </td>
+
+  <!-- Level block -->
+  <td class="col-level">
+    <span class="mobile-only">{{ 'Niveau' | translate }}:&nbsp;</span>
+    <div class="level-box" [ngClass]="{ 'level-legendary': player.legendaryLevel }">
+      <span class="level-main">{{player.level}}</span>
+      <ng-container *ngIf="player.legendaryLevel">
+        <div class="level-separator"></div>
+        <span class="level-legendary">
+          {{ player.legendaryLevel }}
+        </span>
+      </ng-container>
+    </div>
+  </td>
+
+  <ng-container *ngIf="player.mightAllTime; else inactiveTemplate">
+
+    <!-- Might -->
+    <td class="col-metric px-2" [title]="player.mightAllTime | formatNumber:'visual'">
+      <span class="mobile-only">{{ 'Puissance' | translate }}:&nbsp;</span>
+      <div class="metric">
+        <div class="metric-header">
+          <span class="metric-current">{{ player.mightCurrent | formatNumber }}</span>
+          <span class="metric-max">{{ player.mightAllTime | formatNumber }}</span>
+        </div>
+        <div class="metric-bar-bg">
+          <div class="metric-bar bar-yellow" [style.width.%]="(player.mightCurrent / player.mightAllTime) * 100"></div>
+        </div>
+      </div>
+    </td>
+
+    <!-- Loot -->
+    <td class="col-metric px-2" [title]="player.lootAllTime | formatNumber:'visual'">
+      <span class="mobile-only">{{ 'Pillage hebdomadaire' | translate }}:&nbsp;</span>
+      <div class="metric">
+        <div class="metric-header">
+          <span class="metric-current">{{ player.lootCurrent | formatNumber }}</span>
+          <span class="metric-max">{{ player.lootAllTime | formatNumber }}</span>
+        </div>
+        <div class="metric-bar-bg">
+          <div class="metric-bar bar-gray" [style.width.%]="(player.lootCurrent / player.lootAllTime) * 100">
+          </div>
+        </div>
+      </div>
+    </td>
+
+    <!-- Fame -->
+    <td class="col-metric px-2" [title]="player.highestFame | formatNumber:'visual'">
+      <span class="mobile-only">{{ 'Points de gloire' | translate }}:&nbsp;</span>
+      <div class="metric">
+        <div class="metric-header">
+          <span class="metric-current">{{ player.currentFame | formatNumber }}</span>
+          <span class="metric-max">{{ player.highestFame | formatNumber }}</span>
+        </div>
+        <div class="metric-bar-bg">
+          <div class="metric-bar bar-blue" [style.width.%]="(player.currentFame / player.highestFame) * 100"></div>
+        </div>
+      </div>
+    </td>
+
+    <!-- Distance -->
+    <td *ngIf="playersTableHeader().length > 8" class="col-distance">
+      <span class="mobile-only">{{ 'Distance' | translate }}:&nbsp;</span>
+      {{ player.distance || '0' }}
+    </td>
+
+    <!-- Honor -->
+    <td class="col-honor">
+      <span class="mobile-only">{{ 'Honneur' | translate }}:&nbsp;</span>
+      {{ player.honor }}
+    </td>
+
+    <!-- Alliance -->
+    <td class="col-alliance" *ngIf="hasAllianceColumn">
+      <a *ngIf="player.allianceName; else defaultAllianceName" class="alliance-link"
+        (click)="clickOnAlliance.emit(player.allianceName)" (keydown.enter)="clickOnAlliance.emit(player.allianceName)">
+        <span class="mobile-only">{{ 'Alliance' | translate }}:&nbsp;</span>
+        {{ player.allianceName }}
+      </a>
+      <ng-template #defaultAllianceName>-</ng-template>
+    </td>
+
+    <!-- Actions -->
+    <td class="col-actions">
+      <div class="action-buttons">
+        <a [routerLink]="['/', 'player', player.playerId]">
+          <img src="/assets/icon_analyze.png" class="btn-icon">
+        </a>
+        <a [routerLink]="['/', 'castles']" [queryParams]="{ search: player.playerName }">
+          <img src="/assets/icon_castles.png" class="btn-icon">
+        </a>
+        <img [src]="'/assets/icon_friends' + (player.isFavorite ? '2' : '') + '.png'" (click)="toggleFavorite.emit(player)"
+          class="btn-icon btn-favorite" [ngClass]="player.isFavorite ? 'is-favorite' : ''">
+      </div>
+    </td>
+
+  </ng-container>
+
+  <!-- Inactive -->
+  <ng-template #inactiveTemplate>
+    <td *ngFor="let i of [1,2,3,4]" class="col-inactive">
+      <img src="/assets/error.png" class="error-icon">
+    </td>
+
+    <td class="col-alliance">
+      {{ player.allianceName ?? '-' }}
+    </td>
+
+    <td colspan="4" class="col-inactive-info">
+      <span class="badge-inactive">
+        <i class="fa-solid fa-ban"></i> {{ 'Joueur inactif' | translate }}
+      </span>
+    </td>
+  </ng-template>
+
+</tr>

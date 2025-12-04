@@ -2,8 +2,8 @@ import { BaseSocket, GgeServerType } from './base-socket.js';
 import { GgeEmpireSocketImpl } from './gge-socket-impl.js';
 
 class GgeEmpireSocket extends BaseSocket implements GgeEmpireSocketImpl {
-  constructor(url: string, serverHeader: string, username: string, password: string) {
-    super(url, serverHeader, GgeServerType.EP);
+  constructor(url: string, serverHeader: string, username: string, password: string, autoReconnect = true) {
+    super(url, serverHeader, GgeServerType.EP, autoReconnect);
     this.url = url;
     this.serverHeader = serverHeader;
     this.username = username;

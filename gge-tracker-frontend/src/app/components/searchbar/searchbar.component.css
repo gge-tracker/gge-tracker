@@ -1,26 +1,5 @@
-.search-input {
-    width: 100%;
-    padding: 0.55rem 2.5rem 0.55rem 1rem;
-    border-radius: 12px;
-    border: none;
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(12px);
-    color: #fff;
-    font-size: 1rem;
-    transition: 0.3s;
-}
-
-.input-group-text {
-    background: rgba(255, 255, 255, 0.15);
-    border: none;
-    border-radius: 0 12px 12px 0;
-    color: #fff;
-    font-size: 1rem;
-    border-radius: 12px 0 0 12px;
-}
-
-.search-input::placeholder {
-    color: #ccc;
+:host {
+  flex: auto;
 }
 
 :host ::ng-deep img {
@@ -30,19 +9,40 @@
 .changed {
   box-shadow: inset 0px 0px 5px #0affe5a8;
 }
-.search-input[type="number"]::-webkit-inner-spin-button,
-.search-input[type="number"]::-webkit-outer-spin-button {
-  background-color: transparent;
-  -webkit-appearance: none;
-  margin: 0;
+
+.input-group-text {
+  background: rgba(255,255,255,0.15);
+  border-radius: 0 12px 12px 0;
+  border-radius: 12px 0 0 12px;
+  border: none;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.search-input {
+  backdrop-filter: blur(12px);
+  background: rgba(255,255,255,0.15);
+  border-radius: 12px;
+  border: none;
+  color: #fff;
+  font-size: 1rem;
+  padding: 0.55rem 2.5rem 0.55rem 1rem;
+  transition: 0.3s;
+  width: 100%;
+}
+
+.search-input::placeholder {
+  color: #ccc;
 }
 
 .search-input:focus {
-    outline: 0;
-    background: rgba(255, 255, 255, 0.25);
-    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
+  background: rgba(255,255,255,0.25);
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.2);
+  outline: 0;
 }
 
-:host {
-  flex: auto;
+.search-input[type="number"]::-webkit-inner-spin-button, .search-input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  background-color: transparent;
+  margin: 0;
 }

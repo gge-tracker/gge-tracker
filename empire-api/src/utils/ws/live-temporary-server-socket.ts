@@ -2,22 +2,20 @@ import { BaseSocket, GgeServerType } from './base-socket.js';
 import { GgeEmpireSocketImpl } from './gge-socket-impl.js';
 
 class GgeLiveTemporaryServerSocket extends BaseSocket implements GgeEmpireSocketImpl {
-  constructor(url: string, serverHeader: string, username: string, password: string) {
-    super(url, serverHeader, GgeServerType.LIVE);
+  constructor(url: string, serverHeader: string, username: string, password: string, autoReconnect: boolean) {
+    super(url, serverHeader, GgeServerType.LIVE, autoReconnect);
     this.url = url;
     this.serverHeader = serverHeader;
     this.username = username;
     this.password = password;
-    this.reconnect = true;
+    this.reconnect = autoReconnect;
     this.connectMethod = this.connect.bind(this);
   }
 
   public async connect(): Promise<void> {
     try {
       this.init();
-      this.onError = (error): void => this.handleErrorState(error);
       this.onClose = (code, reason): void => this.handleCloseState(code, reason);
-
       if (!(await this.opened.wait(60_000))) throw new Error('Socket not connected');
       this.log('⌛ [connect] Socket connected, sending login commands...');
       this.sendXmlMessage('sys', 'verChk', '0', "<ver v='166' />");
@@ -46,10 +44,10 @@ class GgeLiveTemporaryServerSocket extends BaseSocket implements GgeEmpireSocket
           this.log('❌ [connect] Login failed: Invalid credentials. Please check your USERNAME and PASSWORD.');
           return;
         }
-        this.handleErrorResponse(`Login failed with status: ${lliResponse.payload.status} 🔄 Retrying in 5 minutes...`);
+        this.log('❌ [connect] Login failed with status:', lliResponse.payload.status);
       }
     } catch (error) {
-      this.handleErrorResponse(error.message + ' 🔄 Retrying connection in 5 minutes...');
+      this.log('❌ [connect]', error.message);
     }
   }
 

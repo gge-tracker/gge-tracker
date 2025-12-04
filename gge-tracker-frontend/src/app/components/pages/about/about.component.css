@@ -1,62 +1,74 @@
-.container {
-  max-width: 800px;
-  background: #fff;
-  padding: 30px;
-  border-radius: 10px;
-  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-  margin-top: 40px;
+a {
+  color: inherit;
 }
+
 h1, h2 {
   color: #343a40;
 }
-.section {
-  margin-bottom: 30px;
-}
+
 h2, h3 {
   border-bottom: 1px #8080803b solid;
   margin-bottom: 20px;
 }
 
-a {
-  color: inherit;
+.container {
+  border-radius: 10px;
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+  margin-top: 40px;
+  max-width: 800px;
+  padding: 30px;
+  background-image: radial-gradient(#ffffffa3, #ffffff);
+  border: 2px #00000017 solid;
+  transition: all 0.3s ease-in-out;
+}
+
+.container:not(.contrib-container):hover  {
+  transform: translateY(-5px);
+  box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.2);
 }
 
 .contrib-avatar {
-  position: relative;
-  width: 80px;
-  height: 80px;
-  background: radial-gradient(circle at 30% 30%, #dbeafe, #29b447);
-  border-radius: 50%;
-  display: flex;
   align-items: center;
-  justify-content: center;
+  background: radial-gradient(circle at 30% 30%,#dbeafe,#29b447);
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(0,0,0,0.15);
+  color: white;
+  display: flex;
   font-size: 28px;
   font-weight: bold;
-  color: white;
-  box-shadow: 0 0 8px rgba(0,0,0,0.15);
+  height: 80px;
+  justify-content: center;
+  position: relative;
   transition: transform 0.3s ease;
+  width: 80px;
 }
 
 .contrib-avatar:hover {
   transform: scale(1.05);
 }
 
-.server-badge {
-  position: absolute;
-  bottom: -6px;
-  right: -6px;
-  background-color: #0a8a1f;
-  color: white;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 12px;
-  box-shadow: 0 0 3px rgba(0,0,0,0.2);
+.contrib-container {
+  box-shadow: none;
+  background-image: url('/assets/light-background-hover.png');
+  background-size: 20px;
 }
 
 .initials {
   user-select: none;
 }
 
-.contrib-container {
-  box-shadow: none;
+.section {
+  margin-bottom: 30px;
+}
+
+.server-badge {
+  background-color: #0a8a1f;
+  border-radius: 12px;
+  bottom: -6px;
+  box-shadow: 0 0 3px rgba(0,0,0,0.2);
+  color: white;
+  font-size: 10px;
+  padding: 2px 6px;
+  position: absolute;
+  right: -6px;
 }

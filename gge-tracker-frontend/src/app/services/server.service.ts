@@ -5,26 +5,10 @@ import { LocalStorageService } from './local-storage.service';
 
 /**
  * Service for managing server selection and mapping in the gge-tracker frontend.
- *
- * @remarks
  * This service provides functionality to select, store, and retrieve the current server,
  * as well as mapping between server codes, language codes, display names, and flag URLs.
  * It interacts with `LanguageService` to determine the user's language and with
  * `LocalStorageService` to persist the selected server.
- *
- * @example
- * ```typescript
- * serverService.changeServer('DE1');
- * ```
- *
- * @property currentServer - The currently selected server code.
- * @property choosedServer - The server code chosen by the user.
- * @property servers - List of all available server codes.
- * @property mappedLangsToServers - Mapping from language codes to server codes.
- * @property mappedServersToGgeServerName - Mapping from server codes to display names.
- * @property flagsUrl - Mapping from server codes to flag image URLs.
- *
- * @method changeServer - Changes the current server and reloads the page.
  */
 @Injectable({
   providedIn: 'root',
@@ -124,39 +108,93 @@ export class ServerService {
   };
 
   public flagsUrl: Record<string, string> = {
-    FR1: 'https://flagsapi.com/FR/flat/64.png',
-    DE1: 'https://flagsapi.com/DE/flat/64.png',
-    RO1: 'https://flagsapi.com/RO/flat/64.png',
-    CZ1: 'https://flagsapi.com/CZ/flat/64.png',
-    NL1: 'https://flagsapi.com/NL/flat/64.png',
-    WORLD1: '/assets/int_flag.png',
-    INT3: '/assets/int_flag.png',
-    US1: 'https://flagsapi.com/US/flat/64.png',
-    TR1: 'https://flagsapi.com/TR/flat/64.png',
-    PT1: 'https://flagsapi.com/PT/flat/64.png',
-    BR1: 'https://flagsapi.com/BR/flat/64.png',
-    IN1: 'https://flagsapi.com/IN/flat/64.png',
-    IT1: 'https://flagsapi.com/IT/flat/64.png',
-    PL1: 'https://flagsapi.com/PL/flat/64.png',
-    AU1: 'https://flagsapi.com/AU/flat/64.png',
+    AE1: 'https://flagsapi.com/AE/flat/64.png',
     ARAB1: '/assets/arab_flag.png',
-    HANT1: 'https://flagsapi.com/CN/flat/64.png',
-    HU1: 'https://flagsapi.com/HU/flat/64.png',
-    HU2: 'https://flagsapi.com/HU/flat/64.png',
-    ES1: 'https://flagsapi.com/ES/flat/64.png',
-    SA1: 'https://flagsapi.com/SA/flat/64.png',
-    INT1: '/assets/int_flag.png',
-    RU1: 'https://flagsapi.com/RU/flat/64.png',
+    ARAB: '/assets/arab_flag.png',
+    ASIA: 'https://flagsapi.com/AS/flat/64.png',
+    AU1: 'https://flagsapi.com/AU/flat/64.png',
+    BG1: 'https://flagsapi.com/BG/flat/64.png',
+    BR1: 'https://flagsapi.com/BR/flat/64.png',
     CN1: 'https://flagsapi.com/CN/flat/64.png',
-    GR1: 'https://flagsapi.com/GR/flat/64.png',
+    CZ1: 'https://flagsapi.com/CZ/flat/64.png',
+    DE1: 'https://flagsapi.com/DE/flat/64.png',
     E4K_BR1: 'https://flagsapi.com/BR/flat/64.png',
-    E4K_HANT1: 'https://flagsapi.com/CN/flat/64.png',
-    E4K_FR1: 'https://flagsapi.com/FR/flat/64.png',
     E4K_DE1: 'https://flagsapi.com/DE/flat/64.png',
     E4K_DE2: 'https://flagsapi.com/DE/flat/64.png',
-    E4K_US1: 'https://flagsapi.com/US/flat/64.png',
+    E4K_FR1: 'https://flagsapi.com/FR/flat/64.png',
+    E4K_HANT1: 'https://flagsapi.com/CN/flat/64.png',
     E4K_INT2: '/assets/int_flag.png',
+    E4K_US1: 'https://flagsapi.com/US/flat/64.png',
+    EG1: 'https://flagsapi.com/EG/flat/64.png',
+    ES1: 'https://flagsapi.com/ES/flat/64.png',
+    ES2: 'https://flagsapi.com/ES/flat/64.png',
+    FR1: 'https://flagsapi.com/FR/flat/64.png',
+    GB1: 'https://flagsapi.com/GB/flat/64.png',
+    GR1: 'https://flagsapi.com/GR/flat/64.png',
+    HANT1: 'https://flagsapi.com/CN/flat/64.png',
+    HANT: 'https://flagsapi.com/CN/flat/64.png',
+    HIS1: 'https://flagsapi.com/MX/flat/64.png',
+    HU1: 'https://flagsapi.com/HU/flat/64.png',
+    HU2: 'https://flagsapi.com/HU/flat/64.png',
+    IN1: 'https://flagsapi.com/IN/flat/64.png',
+    INT1: '/assets/int_flag.png',
+    INT2: '/assets/int_flag.png',
+    INT3: '/assets/int_flag.png',
+    IT1: 'https://flagsapi.com/IT/flat/64.png',
+    JP1: 'https://flagsapi.com/JP/flat/64.png',
+    LIVE: '/assets/int_flag.png',
+    LT1: 'https://flagsapi.com/LT/flat/64.png',
+    NL1: 'https://flagsapi.com/NL/flat/64.png',
+    PL1: 'https://flagsapi.com/PL/flat/64.png',
+    PT1: 'https://flagsapi.com/PT/flat/64.png',
+    RO1: 'https://flagsapi.com/RO/flat/64.png',
+    RU1: 'https://flagsapi.com/RU/flat/64.png',
+    SA1: 'https://flagsapi.com/SA/flat/64.png',
+    SK1: 'https://flagsapi.com/SK/flat/64.png',
+    SKN1: 'https://flagsapi.com/SK/flat/64.png',
+    TR1: 'https://flagsapi.com/TR/flat/64.png',
+    US1: 'https://flagsapi.com/US/flat/64.png',
+    WORLD1: '/assets/int_flag.png',
   };
+  public ggeEmpireActiveServerPrefixes = [
+    'AE1',
+    'ARAB',
+    'ASIA',
+    'AU1',
+    'BG1',
+    'BR1',
+    'CN1',
+    'CZ1',
+    'DE1',
+    'EG1',
+    'ES1',
+    'ES2',
+    'FR1',
+    'GB1',
+    'GR1',
+    'HANT',
+    'HIS1',
+    'HU1',
+    'HU2',
+    'IN1',
+    'INT1',
+    'INT2',
+    'INT3',
+    'IT1',
+    'JP1',
+    'LIVE',
+    'LT1',
+    'NL1',
+    'PL1',
+    'PT1',
+    'RO1',
+    'RU1',
+    'SA1',
+    'SK1',
+    'SKN1',
+    'TR1',
+    'US1',
+  ];
   private languageService = inject(LanguageService);
   private localStorage = inject(LocalStorageService);
 
@@ -174,5 +212,9 @@ export class ServerService {
   public changeServer(server: string): void {
     this.localStorage.setItem('server', server);
     globalThis.location.reload();
+  }
+
+  public getFlagUrl(server: string): string {
+    return this.flagsUrl[server] || '/assets/default_flag.png';
   }
 }

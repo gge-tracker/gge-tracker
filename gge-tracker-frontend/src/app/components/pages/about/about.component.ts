@@ -1,10 +1,15 @@
 import { NgFor, NgTemplateOutlet } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
-
-import package_ from '../../../../../package.json';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { TranslatePipe } from '@ngx-translate/core';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import package_ from '../../../../../package.json';
+import { XmlParser } from '@angular/compiler';
+
+export interface Contributor {
+  name: string;
+  server: string;
+}
 
 @Component({
   selector: 'app-about',
@@ -19,28 +24,25 @@ export class AboutComponent extends GenericComponent implements OnInit {
   public dateVersion = '';
   public safeTranslatedIntro1!: SafeHtml;
   public sanitizer = inject(DomSanitizer);
-  private contribs = [
-    { name: '0din0', server: 'IT1' },
-    { name: 'Ausone', server: 'FR1' },
-    { name: 'Aznoknis', server: 'LIVE' },
-    { name: 'Danadum', server: 'FR1' },
-    { name: 'Fear', server: 'DE1' },
-    { name: 'Kevin', server: 'NL1' },
-    { name: 'Rubriq', server: 'FR1' },
-    { name: 'Satana', server: 'RO1' },
-    { name: 'Sekyra', server: 'CZ1' },
-    { name: 'Thomas', server: 'NL1' },
-    { name: 'WillTheBoss', server: 'RO1' },
-    { name: 'Wojts8', server: 'PL1' },
-    { name: 'Xenon', server: 'INT3' },
-    { name: 'nitro0ogen', server: 'SA1' },
-  ];
+  private contribs: { name: string; server: string }[] = [];
 
   constructor() {
     super();
     this.isInLoading = false;
     this.constructDateVersion(package_.version);
     this.constructVersion(package_.version);
+    const url = 'https://ggetracker.github.io/i18n/contributors.xml';
+    fetch(url)
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.text();
+      })
+      .then((xml) => {
+        this.contribs = this.parseContributors(xml);
+      })
+      .catch((error) => {
+        console.error('Failed to load contributors.xml', error);
+      });
   }
 
   public ngOnInit(): void {
@@ -51,6 +53,21 @@ export class AboutComponent extends GenericComponent implements OnInit {
       .subscribe((result: string) => {
         this.safeTranslatedIntro1 = this.sanitizer.bypassSecurityTrustHtml(result);
       });
+  }
+
+  private parseContributors(xml: string): Contributor[] {
+    const document = new DOMParser().parseFromString(xml, 'application/xml');
+    const parserError = document.querySelector('parsererror');
+    if (parserError) {
+      console.error('XML parse error:', parserError.textContent);
+      return [];
+    }
+    const nodes = [...(document.querySelectorAll('contributors > contributor') as unknown as Iterable<Element>)];
+    return nodes.map((node) => {
+      const name = node.querySelector('name')?.textContent?.trim() ?? 'Unknown';
+      const server = node.querySelector('server')?.textContent?.trim() ?? 'Unknown';
+      return { name, server };
+    });
   }
 
   private constructDateVersion(version: string): void {

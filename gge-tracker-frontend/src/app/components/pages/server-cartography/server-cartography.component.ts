@@ -10,28 +10,27 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { TranslateModule } from '@ngx-translate/core';
-import type * as Leaflet from 'leaflet';
-import { combineLatest } from 'rxjs';
-
+import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
+import { ServerBadgeComponent } from '@ggetracker-components/server-badge/server-badge.component';
 import {
-  WorldSizeDimensions,
-  CastleType,
-  Castle,
-  CastleQuantity,
-  Monument,
-  WatchModeStats,
   ApiCartoAlliance,
   ApiCartoMap,
   ApiResponse,
+  Castle,
+  CastleQuantity,
+  CastleType,
   ErrorType,
+  Monument,
+  WatchModeStats,
+  WorldSizeDimensions,
 } from '@ggetracker-interfaces/empire-ranking';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { ServerService } from '@ggetracker-services/server.service';
 import { WindowService } from '@ggetracker-services/window.service';
-import { GenericComponent } from '@ggetracker-components/generic/generic.component';
-import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
-import { ServerBadgeComponent } from '@ggetracker-components/server-badge/server-badge.component';
+import { TranslateModule } from '@ngx-translate/core';
+import type * as Leaflet from 'leaflet';
+import { combineLatest } from 'rxjs';
 
 interface ILegend {
   name: string;
@@ -177,9 +176,7 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
             let parsedColors = [];
             try {
               parsedColors = JSON.parse(decodeURIComponent(colors || '[]') || '[]');
-            } catch {
-              /* empty */
-            }
+            } catch {}
             void this.initWithSpecificAlliance(parsedParameter, WatchModeStats.ALL_ALLIANCES, parsedColors);
           } catch {
             this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
@@ -353,6 +350,8 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
   }
 
   public generateHeatmap(): void {
+    if (!this.resolution || Number.isNaN(this.resolution) || this.resolution <= 0) return;
+    if (this.resolution > 50) this.resolution = 50;
     const numberCells: number = Math.ceil(this.containerSize / this.resolution);
     this.heatmap = Array.from({ length: numberCells }, () =>
       Array.from({ length: numberCells }, () => ({ pp: 0, players: [] })),
@@ -382,9 +381,9 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     this.drawHeatmap();
   }
 
-  public searchAlliance(): void {
+  public searchAlliance(alliance: string): void {
     if (!this.isBrowser) return;
-    globalThis.location.href = '/map/' + this.searchedAlliance;
+    globalThis.location.href = '/map/' + alliance;
   }
 
   public async removeItem(allianceOrPlayerName: string): Promise<void> {
@@ -487,13 +486,12 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     const colors = JSON.stringify(this.legends.map((legend) => this.rgbToHex(legend.color)));
     const world = this.selectedWorld || 0;
     const srv = this.serverService.currentServer;
-    const link = `gge-tracker.com/map/custom?s=${srv}&world=${world}&in=${encodeURIComponent(inParameter)}&c=${encodeURIComponent(colors)}`;
+    const link = `https://gge-tracker.com/map/custom?s=${srv}&world=${world}&in=${encodeURIComponent(inParameter)}&c=${encodeURIComponent(colors)}`;
     if (link.length > 2000) {
       // If the link is too long, we show an error message (this is a limitation of the URL length)
       this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
       return;
     }
-    // Copy the link to the clipboard
     globalThis.navigator.clipboard
       .writeText(link)
       .then(() => {
@@ -510,7 +508,7 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
       return;
     }
     if (alliance === '1') {
-      // Alliance "1" is the unallied players, not the name of the alliance.
+      // Alliance "1" is a special case for unallied players
       // Before loading the unallied players, we ask for confirmation
       // This is to avoid loading the unallied players by mistake
       const confirmMessage = this.translateService.instant('loading-confirmation');
@@ -1327,8 +1325,9 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
   }
 
   /**
-   * This function is used to fill the monuments list.
-   * It is used to show the monument list.
+   * This function is used to fill the monuments list
+   * It is used to show the monument list
+   * @returns {void}
    */
   private setMonuments(): void {
     // We filter the castles to get only the monuments

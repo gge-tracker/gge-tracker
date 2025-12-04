@@ -7,7 +7,6 @@
         {{ 'Paramètres' | translate }}
       </button>
     </div>
-
     <div class="legend-items">
       <div class="legend-item" *ngFor="let legend of legends"
         (click)="watchModeAlliance === 'one' ? togglePlayerCastle(legend.name) : toggleAllianceCastles(legend.name)"
@@ -20,7 +19,6 @@
         </div>
       </div>
     </div>
-
     <div class="legend-summary">
       <div class="summary-item">
         <div class="square-indicator"></div>
@@ -38,15 +36,8 @@
     </div>
   </div>
 </ng-template>
-
-
 <div class="container-fluid mt-3">
-  <ul class="nav nav-tabs pt-3 ps-3">
-    <li class="nav-item">
-      <button class="nav-link back" [routerLink]="['/' + currentLang + 'alliances']"
-        [ngClass]="selectedTab === 'back' ? 'active' : ''">
-        <i class="fas fa-arrow-left"></i> <span class="ms-1">{{ 'Retour' | translate }}</span>
-      </button>
+  <ul class="nav nav-tabs pt-3 ps-3 border-0">
     <li class="nav-item">
       <button class="nav-link" (click)="selectedTab = 'strategic'"
         [ngClass]="selectedTab === 'strategic' ? 'active' : ''">
@@ -62,56 +53,51 @@
         <i class="fas fa-fire"></i> <span class="ms-1">{{ 'Carte de densité' | translate }}</span>
       </button>
     </li>
-    <li class="nav-item">
-      <button class="nav-link" (click)="selectedTab = 'settings'"
-        [ngClass]="selectedTab === 'settings' ? 'active' : ''">
-        <i class="fas fa-search"></i> <span class="ms-1">{{ 'Rechercher' | translate }}</span>
-      </button>
   </ul>
   <div id="selectedTab-container" class="bg-custom pt-3 pb-3">
-    <div class="row" [ngClass]="{ 'd-none': selectedTab === 'settings' }">
-      <div class="map-page d-flex flex-column flex-md-row">
-        <!-- Sidebar -->
-        <aside class="legend-sidebar p-2">
-          <ng-container *ngTemplateOutlet="legend"></ng-container>
-        </aside>
-
-        <!-- Main content -->
-        <main class="flex-grow-1 d-flex flex-column">
-          <div class="choice container mt-3" *ngIf="selectedWorld !== undefined">
-            <div class="row row-cols-2 row-cols-md-5 g-2 justify-content-center">
-              <div class="col" *ngFor="let world of worlds">
-                <button type="button"
-                  class="btn btn-outline-light w-100 d-flex align-items-center p-2 border border-secondary rounded shadow-sm"
-                  [ngClass]="selectedWorld === world.id ? 'bg-primary text-white selected' : 'bg-white text-dark unselected'"
-                  (click)="selectWorld(world.id)">
-                  <img *ngIf="world.icon" [src]="world.icon" alt="{{ world.name }}" class="me-2" width="24" height="24">
-                  <span class="flex-grow-1 text-start">{{ world.name | translate }}</span>
-                </button>
-              </div>
+    <div class="row">
+      <div class="col mx-5">
+        <div class="choice container mt-3" *ngIf="selectedWorld !== undefined">
+          <div class="row row-cols-2 row-cols-md-5 g-2 justify-content-center">
+            <div class="col" *ngFor="let world of worlds">
+              <button type="button"
+                class="btn btn-outline-light w-100 h-100 d-flex align-items-center p-2 border border-secondary rounded shadow-sm"
+                [ngClass]="selectedWorld === world.id ? 'bg-primary text-white selected' : 'bg-white text-dark unselected'"
+                (click)="selectWorld(world.id)">
+                <img *ngIf="world.icon" [src]="world.icon" alt="{{ world.name }}" class="me-2" width="24" height="24">
+                <span class="flex-grow-1 text-start text-ellipsis">{{ world.name | translate }}</span>
+              </button>
             </div>
-
-            <div class="row g-3 mt-3 mb-2">
-              <app-search-form #searchForm [formFilters]="formFilters" [isInLoading]="isInLoading"
-                *ngIf="watchModeAlliance !== 'one'" [alliancePlaceholder]="'Ajouter une alliance' | translate"
-                [inputTip]="'Ajouter une alliance' | translate" [defaultSearch]="search"
-                [searchTypes]="{ player: false, alliance: true }" (searchAlliance)="loadNewAlliance($event)">
+          </div>
+          <div class="row g-3 mt-3 mb-2">
+            <div class="map-main-search">
+              <app-search-form [formFilters]="null" [isInLoading]="isInLoading"
+                [alliancePlaceholder]="'Rechercher une alliance' | translate"
+                [inputTip]="'Rechercher une alliance' | translate" [defaultSearch]="searchedAlliance"
+                [searchTypes]="{ player: false, alliance: true }" (searchAlliance)="searchAlliance($event)">
               </app-search-form>
             </div>
           </div>
-
+        </div>
+      </div>
+      <div class="map-page d-flex flex-column flex-lg-row">
+<aside class="legend-sidebar p-2">
+          <ng-container *ngTemplateOutlet="legend"></ng-container>
+        </aside>
+        <main class="flex-grow-1 d-flex flex-column">
           <div id="map-container" class="flex-grow-1 d-flex flex-column"
             [ngClass]="{ 'd-none': selectedTab !== 'strategic' }">
             <div id="mapTitle" class="text-center mb-2"></div>
             <div id="map" class="leaflet-map"></div>
           </div>
           <div [ngClass]="{ 'd-none': selectedTab !== 'density' }">
-            <div class="container resolution-input mb-3">
+            <div class="resolution-input mb-3 mx-4">
               <label for="resolution" class="form-label">
+                <i class="fa-solid fa-ruler-combined"></i>
                 {{ 'Résolution de la carte' | translate }}:
               </label>
-              <input type="number" id="resolution" class="form-control" [(ngModel)]="resolution" (ngModelChange)="generateHeatmap()"
-                [min]="5" [max]="50" step="1">
+              <input type="number" id="resolution" class="form-control" [(ngModel)]="resolution"
+                (ngModelChange)="generateHeatmap()" [min]="5" [max]="50" step="1">
             </div>
             <div class="heatmap-wrapper mx-auto my-4 position-relative text-center pt-2"
               (mousemove)="onMouseMove($event)">
@@ -132,8 +118,6 @@
           </div>
         </main>
       </div>
-
-
       <div id="tooltip" *ngIf="tooltipVisible" [style.top.px]="tooltipY" [style.left.px]="tooltipX">
         <strong>{{ 'Coordonnées' | translate }} :</strong> [{{ tooltipData.coords }} ± {{ resolution }}] <br>
         <strong>{{ 'Points de puissance' | translate }} :</strong> {{ tooltipData.pp | formatNumber }} <br>
@@ -146,51 +130,6 @@
             <span><em>{{ 'de plus' | translate: { count: tooltipData.players.length - 5 } }}</em></span>
           </li>
         </ul>
-      </div>
-    </div>
-    <div class="container" [ngClass]="{ 'd-none': selectedTab !== 'settings' }">
-      <div class="row">
-        <app-server-badge></app-server-badge>
-        <div class="col-12">
-          <h5 class="text-center">{{ 'Nombre d\'alliances à afficher' | translate}}</h5>
-          <div class="mx-auto">
-            <div class="input-group">
-              <span class="input-group-text">
-                <img src="/assets/alliance.png" [alt]="'Alliance' | translate" [title]="'Alliance' | translate"
-                  width="32">
-              </span>
-              <input type="number" class="form-control" id="alliancesQuantity" [(ngModel)]="alliancesQuantity" min="1">
-              <div class="btn-group">
-                <button class="btn btn-primary" (click)="changeMapSize(false)">
-                  {{ 'Charger' | translate }}
-                </button>
-                <button class="btn btn-danger" (click)="changeMapSize(true)">
-                  <i class="fa-solid fa-circle-exclamation"></i>
-                  {{ 'Charger toutes les alliances' | translate }}
-                </button>
-              </div>
-            </div>
-          </div>
-          <div class="mx-auto text-center">
-          </div>
-        </div>
-        <div class="col-12 mt-3">
-          <h5 class="text-center">{{ 'Rechercher une alliance' | translate }}</h5>
-          <div class="input-group mb-3">
-            <div class="input-group-text">
-              <img src="/assets/alliance.png" [alt]="'Rechercher' | translate" [title]="'Rechercher' | translate"
-                width="32">
-            </div>
-            <input type="text" class="form-control" [placeholder]="'Rechercher une alliance' | translate"
-              [(ngModel)]="searchedAlliance">
-            <button class="btn btn-secondary" type="button" (click)="searchedAlliance = ''">
-              <i class="fas fa-times"></i>
-            </button>
-            <button class="btn btn-primary" type="button" (click)="searchAlliance()">
-              <i class="fas fa-search"></i>
-            </button>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -285,7 +224,6 @@
                 </button>
               </div>
             </div>
-
           </div>
         </div>
       </div>
@@ -323,7 +261,7 @@
           </div>
           <div class="row g-4 mt-3">
             <div class="col text-center">
-              <button class="btn btn-primary" (click)="applyFilters()" data-bs-dismiss="modal">
+              <button class="gge-btn search" (click)="applyFilters()" data-bs-dismiss="modal">
                 <i class="fa-solid fa-check"></i>
                 &nbsp;
                 <span>{{ 'Appliquer les filtres' | translate }}</span>
@@ -336,8 +274,6 @@
   </div>
 </div>
 
-
-<!-- Modal modernisée -->
 <div class="modal fade" id="parametersModal" tabindex="-1" aria-labelledby="parametersModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content shadow rounded-4 border-0">
@@ -348,27 +284,40 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"
           [attr.aria-label]="'Fermer' | translate"></button>
       </div>
-
       <div class="modal-body">
         <div class="list-group list-group-flush">
-          <div class="list-group-item d-flex justify-content-between align-items-center py-3 rounded-3 shadow-sm mb-2"
-            [style]="'background-color:'+ addTransparentToRgb(legend.color)"
-            *ngFor="let legend of legends">
+          <div class="list-group-item d-flex justify-content-between align-items-center py-1 rounded-3 shadow-sm mb-2"
+            [style]="'background-color:'+ addTransparentToRgb(legend.color)" *ngFor="let legend of legends">
             <span class="fw-medium">{{ legend.name === '1' ? ('Sans alliance' | translate) : legend.name }}</span>
             <div class="d-flex align-items-center gap-2">
               <input type="color" class="form-control form-control-color p-0 shadow-none"
                 [value]="rgbToHex(legend.color)" (change)="changeItemColor(legend.name, $event.target)">
               <button *ngIf="watchModeAlliance !== 'one'" class="btn btn-outline-danger btn-sm"
-                [title]="('Supprimer' | translate) + ' ' + (legend.name === '1' ? ('Sans alliance' | translate) : legend.name)" (click)="removeItem(legend.name)">
+                [title]="('Supprimer' | translate) + ' ' + (legend.name === '1' ? ('Sans alliance' | translate) : legend.name)"
+                (click)="removeItem(legend.name)">
                 <i class="fa-solid fa-trash"></i>
               </button>
             </div>
           </div>
         </div>
         <hr>
+        <h5>
+          <div class="badge-icon"><i class="fa-solid fa-plus"></i></div>
+          {{ 'Ajouter une alliance' | translate }}
+        </h5>
         <div class="input-group px-2 mb-3">
           <input type="text" #allianceAddName class="form-control" [placeholder]="'Ajouter une alliance' | translate">
-          <button class="btn btn-primary" type="button" (click)="loadNewAlliance(allianceAddName.value)">
+          <button class="gge-btn search" type="button" (click)="loadNewAlliance(allianceAddName.value)">
+            <i class="fas fa-search"></i>
+          </button>
+        </div>
+        <h5>
+          <div class="badge-icon"><i class="fa-solid fa-list-ol"></i></div>
+          {{ 'Nombre d\'alliances à afficher' | translate}}
+        </h5>
+        <div class="input-group px-2 mb-3">
+          <input type="number" class="form-control" min="1" [(ngModel)]="alliancesQuantity">
+          <button class="gge-btn search" type="button" (click)="changeMapSize(false)">
             <i class="fas fa-search"></i>
           </button>
         </div>
@@ -381,7 +330,8 @@
         <div class="text-center d-grid gap-2 mx-2 mt-3" *ngIf="watchModeAlliance !== 'one'">
           <button class="btn btn-secondary btn-block" (click)="loadNewAlliance('1')">
             <i class="fa-solid fa-ghost"></i>
-            {{ showUnallied ? ('Masquer les joueurs sans alliance' | translate) : ('Afficher les joueurs sans alliance' | translate) }}
+            {{ showUnallied ? ('Masquer les joueurs sans alliance' | translate) : ('Afficher les joueurs sans alliance'
+            | translate) }}
           </button>
         </div>
         <div class="text-center d-grid gap-2 mx-2 mt-3" *ngIf="watchModeAlliance !== 'one'">

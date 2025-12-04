@@ -1,21 +1,21 @@
 import { DatePipe, NgClass, NgForOf, NgIf } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { TranslateModule } from '@ngx-translate/core';
-import { XAxisAnnotations } from 'ng-apexcharts';
-
+import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { ServerBadgeComponent } from '@ggetracker-components/server-badge/server-badge.component';
 import {
-  ChartOptions,
   AllianceStatsData,
-  Card,
-  ApiServerStats,
   ApiResponse,
+  ApiServerStats,
+  Card,
+  ChartOptions,
 } from '@ggetracker-interfaces/empire-ranking';
 import { ChartsWrapperComponent } from '@ggetracker-modules/charts-client/charts-wrapper.component';
 import { LanguageService } from '@ggetracker-services/language.service';
+import { ServerService } from '@ggetracker-services/server.service';
 import { WindowService } from '@ggetracker-services/window.service';
-import { GenericComponent } from '@ggetracker-components/generic/generic.component';
-import { ServerBadgeComponent } from '@ggetracker-components/server-badge/server-badge.component';
+import { TranslateModule } from '@ngx-translate/core';
+import { XAxisAnnotations } from 'ng-apexcharts';
 
 @Component({
   selector: 'app-server-statistics',
@@ -45,6 +45,7 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
   public serverStatsData: ApiServerStats[] = [];
   public selectedCard: Card | null = null;
   public selectedTab: 'graph' | 'table' = 'graph';
+  public serverService = inject(ServerService);
 
   private cdr = inject(ChangeDetectorRef);
   private windowService = inject(WindowService);

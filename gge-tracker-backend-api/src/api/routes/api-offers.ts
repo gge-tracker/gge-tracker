@@ -2,11 +2,11 @@ import * as express from 'express';
 import { ApiHelper } from '../helper/api-helper';
 
 /**
- * Abstract class providing API endpoints related to offers.
+ * Abstract class providing API endpoints related to offers
  *
  * @remarks
- * This class defines static methods for handling offer-related API requests.
- * Implementations should provide logic for retrieving and managing offers.
+ * This class defines static methods for handling offer-related API requests
+ * Implementations should provide logic for retrieving and managing offers
  *
  * @implements {ApiHelper}
  */

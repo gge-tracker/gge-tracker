@@ -3,7 +3,6 @@
 </div>
 <div class="container-fluid">
   <div class="container mt-4">
-    <app-server-badge *ngIf="!canvasReady && !cid"></app-server-badge>
     <div *ngIf="!isInLoading && !canvasReady && !cid" class="mt-1 castle-selection">
       <app-search-form #searchForm [formFilters]="null" [isInLoading]="isInLoading"
         [inputTip]="'Rechercher un joueur' | translate" [defaultSearch]="search"
@@ -77,7 +76,7 @@
     </div>
   </div>
   <ng-container *ngIf="!isInLoading">
-    <div class="castle-view d-flex container" *ngIf="canvasReady && cid">
+    <div class="castle-view d-flex container-fluid" *ngIf="canvasReady && cid">
       <aside class="castle-legend glass-card d-flex flex-column">
         <div class="legend-header d-flex align-items-start justify-content-between">
           <div class="legend-main d-flex align-items-center">
@@ -315,7 +314,7 @@
                   </div>
                 </td>
               </tr>
-              <tr *ngIf="paginatedBuildings?.length === 0">
+              <tr *ngIf="paginatedBuildings.length === 0">
                 <td colspan="10" class="text-center py-5">
                   -
                 </td>
@@ -551,7 +550,6 @@
               </div>
             </div>
           </div>
-          <!-- Niveau -->
           <div class="col-12 col-md-6">
             <label class="filter-label">{{ 'Niveau min.' | translate }}</label>
             <app-search-bar [attrListInput]="[]" [searchInput]="filters.minLevel"

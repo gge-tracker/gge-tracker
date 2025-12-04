@@ -1,37 +1,37 @@
 .btn-filter {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-    position: relative;
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  position: relative;
 }
 
 .btn-filter:hover {
-    background: rgba(255, 255, 255, 0.2);
+  background: rgba(255,255,255,0.2);
 }
 
 .btn-modern {
-    border: none;
-    border-radius: 12px;
-    padding: 0.5rem 1.2rem;
-    font-weight: 500;
-    font-size: 0.95rem;
-    transition: 0.3s;
-    cursor: pointer;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  padding: 0.5rem 1.2rem;
+  transition: 0.3s;
 }
 
 .btn-modern:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.2);
+  transform: translateY(-2px);
 }
 
 .filter-badge {
-    position: absolute;
-    top: -6px;
-    right: -6px;
-    background: #ff6b6b;
-    color: #fff;
-    font-size: 0.7rem;
-    padding: 2px 6px;
-    border-radius: 50%;
-    font-weight: 700;
+  background: #ff6b6b;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  position: absolute;
+  right: -6px;
+  top: -6px;
 }

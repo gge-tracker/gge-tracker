@@ -6,26 +6,26 @@ import { ApiHelper } from '../helper/api-helper';
 import { ApiInvalidInputType } from '../types/parameter.types';
 
 /**
- * Abstract class providing API endpoints for alliance-related operations.
+ * Abstract class providing API endpoints for alliance-related operations
  *
  * This class implements the `ApiHelper` interface and exposes static methods
  * to handle HTTP requests for alliance data, including:
  *
- * - Fetching detailed information about an alliance by its ID, with optional player distance calculation.
- * - Retrieving summarized alliance statistics by alliance name.
- * - Listing alliances with pagination, sorting, and caching support.
+ * - Fetching detailed information about an alliance by its ID, with optional player distance calculation
+ * - Retrieving summarized alliance statistics by alliance name
+ * - Listing alliances with pagination, sorting, and caching support
  *
  * @abstract
  */
 export abstract class ApiAlliances implements ApiHelper {
   /**
-   * Handles the request to retrieve alliance information by alliance ID, including player statistics and optional distance calculation.
+   * Handles the request to retrieve alliance information by alliance ID, including player statistics and optional distance calculation
    *
-   * @param request - The Express request object. Expects `allianceId` as a route parameter and optionally `playerNameForDistance` as a query parameter.
-   * @param response - The Express response object used to send the result or error.
-   * @returns A Promise that resolves when the response is sent.
+   * @param request - The Express request object. Expects `allianceId` as a route parameter and optionally `playerNameForDistance` as a query parameter
+   * @param response - The Express response object used to send the result or error
+   * @returns A Promise that resolves when the response is sent
    *
-   * @throws Sends a 500 response if an unexpected error occurs during processing.
+   * @throws Sends a 500 response if an unexpected error occurs during processing
    */
   public static async getAllianceByAllianceId(request: express.Request, response: express.Response): Promise<void> {
     try {
@@ -116,7 +116,7 @@ export abstract class ApiAlliances implements ApiHelper {
             .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
         } else {
           if (!results || results.rowCount === 0) {
-            // HTTP 200 to avoid leaking valid IDs. This needs to be handled in the frontend.
+            // HTTP 200 to avoid leaking valid IDs. This needs to be handled in the frontend
             response.status(ApiHelper.HTTP_OK).send({ error: RouteErrorMessagesEnum.AllianceNotFound });
             return;
           }
@@ -166,22 +166,22 @@ export abstract class ApiAlliances implements ApiHelper {
   }
 
   /**
-   * Handles the retrieval of alliance information by alliance name.
+   * Handles the retrieval of alliance information by alliance name
    *
    * This static method processes an HTTP request to fetch aggregated alliance data,
-   * including might, loot, fame, and player count, based on the provided alliance name.
-   * The alliance name is validated, normalized, and used to query the database.
-   * Results are cached using Redis for improved performance.
+   * including might, loot, fame, and player count, based on the provided alliance name
+   * The alliance name is validated, normalized, and used to query the database
+   * Results are cached using Redis for improved performance
    *
    * @param request - The Express request object, expected to contain the alliance name in `params.allianceName`,
-   *                  and additional properties such as `language`, `pg_pool`, and `code`.
-   * @param response - The Express response object used to send the result or error.
-   * @returns A Promise that resolves when the response is sent.
+   *                  and additional properties such as `language`, `pg_pool`, and `code`
+   * @param response - The Express response object used to send the result or error
+   * @returns A Promise that resolves when the response is sent
    *
    * @remarks
-   * - Returns a 400 status code if the alliance name is invalid.
-   * - Returns a 200 status code with the alliance data if found, or an error message if not found.
-   * - Returns a 500 status code if an exception occurs during processing.
+   * - Returns a 400 status code if the alliance name is invalid
+   * - Returns a 200 status code with the alliance data if found, or an error message if not found
+   * - Returns a 500 status code if an exception occurs during processing
    */
   public static async getAllianceByAllianceName(request: express.Request, response: express.Response): Promise<void> {
     try {
@@ -413,9 +413,9 @@ export abstract class ApiAlliances implements ApiHelper {
    * Generates a SQL query string to retrieve detailed information about an alliance and its players
    * by the specified alliance ID. The query returns alliance and player details, including player
    * statistics, fame, honor, and calculated distance from a given coordinate. The distance is computed
-   * based on the player's main castle coordinates and provided parameters, considering map wrapping.
+   * based on the player's main castle coordinates and provided parameters, considering map wrapping
    *
-   * @returns {string} The SQL query string for fetching alliance and player data by alliance ID.
+   * @returns {string} The SQL query string for fetching alliance and player data by alliance ID
    */
   private static getAllianceByAllianceIdSQLQuery(): string {
     let parameterIndex = 1;

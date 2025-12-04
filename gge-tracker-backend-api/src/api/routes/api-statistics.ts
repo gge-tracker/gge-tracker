@@ -3,40 +3,41 @@ import * as express from 'express';
 import * as pg from 'pg';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
+import { NodeClickHouseClient } from '@clickhouse/client/dist/client';
 
 /**
  * Abstract class providing API endpoints and helper methods for retrieving and processing
- * player and alliance statistics in the Empire Rankings backend.
+ * player and alliance statistics in the Empire Rankings backend
  *
  * This class exposes static methods to handle Express.js requests for various statistics,
  * including:
- * - Retrieving statistics by alliance ID or player ID.
- * - Fetching statistics for a player filtered by event name and duration.
- * - Getting pulsed (aggregated) statistics for an alliance.
- * - Fetching ranking information for a player.
+ * - Retrieving statistics by alliance ID or player ID
+ * - Fetching statistics for a player filtered by event name and duration
+ * - Getting pulsed (aggregated) statistics for an alliance
+ * - Fetching ranking information for a player
  *
  * All methods are designed to be used as Express route handlers and include error handling,
- * input validation, and caching logic.
+ * input validation, and caching logic
  *
  * @implements {ApiHelper}
  * @abstract
  */
 export abstract class ApiStatistics implements ApiHelper {
   /**
-   * Handles the HTTP request to retrieve statistics for a specific alliance by its ID.
+   * Handles the HTTP request to retrieve statistics for a specific alliance by its ID
    *
    * This method performs the following steps:
-   * 1. Validates the provided alliance ID from the request parameters.
-   * 2. Checks if the statistics data for the alliance is available in the Redis cache.
-   *    - If cached data is found, it is returned immediately.
-   * 3. If not cached, fetches the statistics from the database using `getPlayersEventsStatisticsFromAllianceId`.
-   *    - The result includes `diffs` and `points` objects.
-   *    - The fetched data is then cached for future requests.
-   * 4. Handles and logs any errors that occur during the process, returning appropriate HTTP error responses.
+   * 1. Validates the provided alliance ID from the request parameters
+   * 2. Checks if the statistics data for the alliance is available in the Redis cache
+   *    - If cached data is found, it is returned immediately
+   * 3. If not cached, fetches the statistics from the database using `getPlayersEventsStatisticsFromAllianceId`
+   *    - The result includes `diffs` and `points` objects
+   *    - The fetched data is then cached for future requests
+   * 4. Handles and logs any errors that occur during the process, returning appropriate HTTP error responses
    *
-   * @param request - The Express request object, expected to contain `allianceId` in the route parameters.
-   * @param response - The Express response object used to send the result or error.
-   * @returns A promise that resolves when the response is sent.
+   * @param request - The Express request object, expected to contain `allianceId` in the route parameters
+   * @param response - The Express response object used to send the result or error
+   * @returns A promise that resolves when the response is sent
    */
   public static async getStatisticsByAllianceId(request: express.Request, response: express.Response): Promise<void> {
     try {
@@ -78,22 +79,22 @@ export abstract class ApiStatistics implements ApiHelper {
   }
 
   /**
-   * Handles the HTTP request to retrieve statistics for a specific player by their ID.
+   * Handles the HTTP request to retrieve statistics for a specific player by their ID
    *
    * This method performs the following steps:
-   * 1. Validates the provided player ID from the request parameters.
-   * 2. Checks for cached statistics data in Redis and returns it if available.
-   * 3. Queries the database to fetch the player's name and alliance information.
-   * 4. If the player is found, retrieves event statistics and points for the player.
-   * 5. Updates the cache with the latest statistics data.
-   * 6. Sends the statistics data as a JSON response to the client.
+   * 1. Validates the provided player ID from the request parameters
+   * 2. Checks for cached statistics data in Redis and returns it if available
+   * 3. Queries the database to fetch the player's name and alliance information
+   * 4. If the player is found, retrieves event statistics and points for the player
+   * 5. Updates the cache with the latest statistics data
+   * 6. Sends the statistics data as a JSON response to the client
    *
    * Returns appropriate HTTP status codes and error messages for invalid input,
-   * missing players, or internal errors.
+   * missing players, or internal errors
    *
-   * @param request - The Express request object containing the player ID parameter.
-   * @param response - The Express response object used to send the result or error.
-   * @returns A Promise that resolves when the response is sent.
+   * @param request - The Express request object containing the player ID parameter
+   * @param response - The Express response object used to send the result or error
+   * @returns A Promise that resolves when the response is sent
    */
   public static async getStatisticsByPlayerId(request: express.Request, response: express.Response): Promise<void> {
     try {
@@ -182,22 +183,22 @@ export abstract class ApiStatistics implements ApiHelper {
   }
 
   /**
-   * Handles an HTTP request to retrieve player statistics for a specific event and duration.
+   * Handles an HTTP request to retrieve player statistics for a specific event and duration
    *
    * This endpoint validates the player ID, event name, and duration parameters from the request,
-   * checks for cached results, and queries the database for player and alliance information.
+   * checks for cached results, and queries the database for player and alliance information
    * If the player exists, it fetches event statistics and returns them to the client,
-   * updating the cache as necessary.
+   * updating the cache as necessary
    *
-   * @param request - The Express request object, expected to contain `playerId`, `eventName`, and `duration` as route parameters.
-   * @param response - The Express response object used to send the result or error.
-   * @returns A Promise that resolves when the response has been sent.
+   * @param request - The Express request object, expected to contain `playerId`, `eventName`, and `duration` as route parameters
+   * @param response - The Express response object used to send the result or error
+   * @returns A Promise that resolves when the response has been sent
    *
    * @remarks
-   * - Returns HTTP 400 for invalid parameters.
-   * - Returns HTTP 404 if the player is not found.
-   * - Returns HTTP 200 with the statistics data on success.
-   * - Returns HTTP 500 for internal server errors.
+   * - Returns HTTP 400 for invalid parameters
+   * - Returns HTTP 404 if the player is not found
+   * - Returns HTTP 200 with the statistics data on success
+   * - Returns HTTP 500 for internal server errors
    */
   public static async getStatisticsByPlayerIdAndEventNameAndDuration(
     request: express.Request,
@@ -293,21 +294,21 @@ export abstract class ApiStatistics implements ApiHelper {
   }
 
   /**
-   * Handles the HTTP request to retrieve pulsed statistics for a specific alliance by its ID.
+   * Handles the HTTP request to retrieve pulsed statistics for a specific alliance by its ID
    *
    * This method performs the following steps:
-   * 1. Validates the provided alliance ID from the request parameters.
-   * 2. Checks for cached statistics data in Redis using a generated cache key.
-   * 3. If cached data exists, returns it immediately.
-   * 4. If not cached, retrieves the appropriate PostgreSQL pool and country code for the alliance.
-   * 5. Fetches the alliance's pulse data from the database.
-   * 6. Updates the cache with the newly fetched data.
-   * 7. Sends the statistics data as the HTTP response.
-   * 8. Handles and logs any errors, returning an appropriate HTTP error response.
+   * 1. Validates the provided alliance ID from the request parameters
+   * 2. Checks for cached statistics data in Redis using a generated cache key
+   * 3. If cached data exists, returns it immediately
+   * 4. If not cached, retrieves the appropriate PostgreSQL pool and country code for the alliance
+   * 5. Fetches the alliance's pulse data from the database
+   * 6. Updates the cache with the newly fetched data
+   * 7. Sends the statistics data as the HTTP response
+   * 8. Handles and logs any errors, returning an appropriate HTTP error response
    *
-   * @param request - The Express request object containing the alliance ID parameter.
-   * @param response - The Express response object used to send the result or error.
-   * @returns A Promise that resolves when the response is sent.
+   * @param request - The Express request object containing the alliance ID parameter
+   * @param response - The Express response object used to send the result or error
+   * @returns A Promise that resolves when the response is sent
    */
   public static async getPulsedStatisticsByAllianceId(
     request: express.Request,
@@ -367,24 +368,24 @@ export abstract class ApiStatistics implements ApiHelper {
   }
 
   /**
-   * Handles the HTTP request to retrieve ranking statistics for a player by their ID.
+   * Handles the HTTP request to retrieve ranking statistics for a player by their ID
    *
    * This endpoint performs the following steps:
-   * 1. Validates the provided player ID.
-   * 2. Checks for cached ranking data in Redis and returns it if available.
-   * 3. Determines the server and country code associated with the player ID.
-   * 4. Executes SQL queries to fetch the player's server-specific and global ranking data.
-   * 5. Combines and formats the retrieved data, updates the cache, and sends the response.
+   * 1. Validates the provided player ID
+   * 2. Checks for cached ranking data in Redis and returns it if available
+   * 3. Determines the server and country code associated with the player ID
+   * 4. Executes SQL queries to fetch the player's server-specific and global ranking data
+   * 5. Combines and formats the retrieved data, updates the cache, and sends the response
    *
-   * @param request - Express request object containing the player ID in `request.params.playerId`.
-   * @param response - Express response object used to send the result or error.
-   * @returns Sends a JSON response with the player's ranking data or an error message.
+   * @param request - Express request object containing the player ID in `request.params.playerId`
+   * @param response - Express response object used to send the result or error
+   * @returns Sends a JSON response with the player's ranking data or an error message
    *
    * @remarks
-   * - Returns HTTP 200 with player ranking data on success.
-   * - Returns HTTP 400 if the player ID or server is invalid.
-   * - Returns HTTP 404 if the player is not found.
-   * - Returns HTTP 500 if an internal server error occurs.
+   * - Returns HTTP 200 with player ranking data on success
+   * - Returns HTTP 400 if the player ID or server is invalid
+   * - Returns HTTP 404 if the player is not found
+   * - Returns HTTP 500 if an internal server error occurs
    */
   public static async getRankingByPlayerId(request: express.Request, response: express.Response): Promise<void> {
     try {
@@ -533,20 +534,20 @@ export abstract class ApiStatistics implements ApiHelper {
   }
 
   /**
-   * Retrieves event statistics for all players belonging to a specific alliance.
+   * Retrieves event statistics for all players belonging to a specific alliance
    *
    * This method performs the following steps:
-   * 1. Extracts the real alliance ID and country code from the provided alliance ID.
-   * 2. Queries the PostgreSQL database to obtain all player IDs associated with the alliance.
-   * 3. For each OLAP event table, queries the ClickHouse database to fetch event points for the retrieved player IDs.
-   * 4. Formats the event data, including player IDs (with country code), event dates (in application timezone), and points.
-   * 5. Measures and returns the execution time (in seconds) for each OLAP event table query.
+   * 1. Extracts the real alliance ID and country code from the provided alliance ID
+   * 2. Queries the PostgreSQL database to obtain all player IDs associated with the alliance
+   * 3. For each OLAP event table, queries the ClickHouse database to fetch event points for the retrieved player IDs
+   * 4. Formats the event data, including player IDs (with country code), event dates (in application timezone), and points
+   * 5. Measures and returns the execution time (in seconds) for each OLAP event table query
    *
-   * @param allianceId - The alliance ID (may include a country code prefix).
+   * @param allianceId - The alliance ID (may include a country code prefix)
    * @returns A promise that resolves to an object containing:
-   *   - `diffs`: An object mapping each OLAP event table to the query execution time in seconds.
-   *   - `points`: An object mapping each OLAP event table to an array of player event statistics.
-   *   - `error`: An error message if the operation fails or the alliance is invalid.
+   *   - `diffs`: An object mapping each OLAP event table to the query execution time in seconds
+   *   - `points`: An object mapping each OLAP event table to an array of player event statistics
+   *   - `error`: An error message if the operation fails or the alliance is invalid
    */
   private static async getPlayersEventsStatisticsFromAllianceId(allianceId: number): Promise<any> {
     try {
@@ -578,11 +579,11 @@ export abstract class ApiStatistics implements ApiHelper {
       let dates_stop: any = {};
       const points: any = {};
       const ids = sqlQueryIdsResult.map((result: any) => result.id);
-      const clickhouse = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
 
       /* ---------------------------------
        * Event statistics retrieval
        * --------------------------------- */
+      const clickhouseClient: NodeClickHouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
       const queries = ApiHelper.ggeTrackerManager.getOlapEventTables().map((table) => {
         return new Promise(async (resolve, reject) => {
           try {
@@ -620,8 +621,9 @@ export abstract class ApiStatistics implements ApiHelper {
               AND created_at >= now() - INTERVAL ${limit} DAY
               ORDER BY created_at DESC
             `;
-            const result: any = await clickhouse.query(query, { params: ids }).toPromise();
-            points[table] = result.map((row: any) => {
+            const clickhouseResult = await clickhouseClient.query({ query });
+            const result = await clickhouseResult.json();
+            points[table] = result.data.map((row: any) => {
               const utcDate = toDate(row.first_entry);
               const localDate = formatInTimeZone(utcDate, ApiHelper.APPLICATION_TIMEZONE, 'yyyy-MM-dd HH:mm' + ':00');
               return {
@@ -655,23 +657,23 @@ export abstract class ApiStatistics implements ApiHelper {
 
   /**
    * Retrieves various statistical pulse data for a given alliance, including might per hour, daily average might change,
-   * intra-day might variation, and top might gains/losses over 24 hours and 7 days.
+   * intra-day might variation, and top might gains/losses over 24 hours and 7 days
    *
    * This method performs the following steps:
-   * 1. Fetches all player IDs belonging to the specified alliance.
-   * 2. Calculates time ranges for the last 7 days and last 24 hours.
+   * 1. Fetches all player IDs belonging to the specified alliance
+   * 2. Calculates time ranges for the last 7 days and last 24 hours
    * 3. Executes multiple ClickHouse queries in parallel to gather:
-   *    - Hourly might sums over the last 7 days.
-   *    - Average daily might change per player.
-   *    - Average intra-day might volatility.
-   *    - Top 5 players by might gain and loss over 24 hours and 7 days.
-   * 4. Formats and returns the aggregated results.
+   *    - Hourly might sums over the last 7 days
+   *    - Average daily might change per player
+   *    - Average intra-day might volatility
+   *    - Top 5 players by might gain and loss over 24 hours and 7 days
+   * 4. Formats and returns the aggregated results
    *
-   * @param allianceId - The ID of the alliance to retrieve data for.
-   * @param pgPool - The PostgreSQL connection pool for fetching player IDs.
-   * @param olapDatabase - The name of the OLAP database (ClickHouse) to query.
-   * @param serverCode - The server code used for formatting player IDs.
-   * @returns An object containing alliance pulse statistics, or an error object if the operation fails.
+   * @param allianceId - The ID of the alliance to retrieve data for
+   * @param pgPool - The PostgreSQL connection pool for fetching player IDs
+   * @param olapDatabase - The name of the OLAP database (ClickHouse) to query
+   * @param serverCode - The server code used for formatting player IDs
+   * @returns An object containing alliance pulse statistics, or an error object if the operation fails
    */
   private static async getAlliancePulseData(
     allianceId: number,
@@ -818,21 +820,40 @@ export abstract class ApiStatistics implements ApiHelper {
       /* ---------------------------------
        * Execute queries in parallel
        * --------------------------------- */
-      const [mightHourly, mightAvg, topMight24h, topMight7d, topMightLoss24h, topMightLoss7d, volatileMight]: any[] =
+      const clickhouseClient: NodeClickHouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
+      const [
+        mightHourlyResult,
+        mightAvgResult,
+        topMight24hResult,
+        topMight7dResult,
+        topMightLoss24hResult,
+        topMightLoss7dResult,
+        volatileMightResult,
+      ] = await Promise.all([
+        clickhouseClient.query({ query: mightHourlyQuery }),
+        clickhouseClient.query({ query: mightDailyAvgChangeQuery }),
+        clickhouseClient.query({ query: topMightQuery24h }),
+        clickhouseClient.query({ query: topMightQuery7d }),
+        clickhouseClient.query({ query: topMightLossQuery24h }),
+        clickhouseClient.query({ query: topMightLossQuery7d }),
+        clickhouseClient.query({ query: volatileQuery }),
+      ]);
+
+      const [mightHourly, mightAvg, topMight24h, topMight7d, topMightLoss24h, topMightLoss7d, volatileMight] =
         await Promise.all([
-          clickhouse.query(mightHourlyQuery).toPromise(),
-          clickhouse.query(mightDailyAvgChangeQuery).toPromise(),
-          clickhouse.query(topMightQuery24h).toPromise(),
-          clickhouse.query(topMightQuery7d).toPromise(),
-          clickhouse.query(topMightLossQuery24h).toPromise(),
-          clickhouse.query(topMightLossQuery7d).toPromise(),
-          clickhouse.query(volatileQuery).toPromise(),
+          mightHourlyResult.json(),
+          mightAvgResult.json(),
+          topMight24hResult.json(),
+          topMight7dResult.json(),
+          topMightLoss24hResult.json(),
+          topMightLoss7dResult.json(),
+          volatileMightResult.json(),
         ]);
 
       /* ---------------------------------
        * Format query results
        * --------------------------------- */
-      const formatHourly = mightHourly.map((row) => ({
+      const formatHourly = mightHourly.data.map((row) => ({
         date: formatInTimeZone(
           toDate((row as { hour: string }).hour),
           ApiHelper.APPLICATION_TIMEZONE,
@@ -840,34 +861,38 @@ export abstract class ApiStatistics implements ApiHelper {
         ),
         point: (row as { total: number }).total,
       }));
-      const formatAvgChange = mightAvg.map((row) => ({
+      const formatAvgChange = mightAvg.data.map((row: { day: string; avg_diff: number }) => ({
         date: row.day,
         avg_diff: row.avg_diff,
       }));
-      const formatVolatile = volatileMight.map((row) => ({
+      const formatVolatile = volatileMight.data.map((row: { day: string; avg_daily_internal_variation: number }) => ({
         date: row.day,
         avg_diff: row.avg_daily_internal_variation,
       }));
-      const topMightResult24h = topMight24h.map((row) => ({
-        player_id: ApiHelper.addCountryCode(row.player_id, serverCode),
+      const topMightResult24h = topMight24h.data.map((row: { player_id: number; diff: number; current: number }) => ({
+        player_id: ApiHelper.addCountryCode(String(row.player_id), serverCode),
         diff: row.diff,
         current: row.current,
       }));
-      const topMightResult7d = topMight7d.map((row) => ({
-        player_id: ApiHelper.addCountryCode(row.player_id, serverCode),
+      const topMightResult7d = topMight7d.data.map((row: { player_id: number; diff: number; current: number }) => ({
+        player_id: ApiHelper.addCountryCode(String(row.player_id), serverCode),
         diff: row.diff,
         current: row.current,
       }));
-      const topMightLossResul24h = topMightLoss24h.map((row) => ({
-        player_id: ApiHelper.addCountryCode(row.player_id, serverCode),
-        diff: row.diff,
-        current: row.current,
-      }));
-      const topMightLossResult7d = topMightLoss7d.map((row) => ({
-        player_id: ApiHelper.addCountryCode(row.player_id, serverCode),
-        diff: row.diff,
-        current: row.current,
-      }));
+      const topMightLossResul24h = topMightLoss24h.data.map(
+        (row: { player_id: number; diff: number; current: number }) => ({
+          player_id: ApiHelper.addCountryCode(String(row.player_id), serverCode),
+          diff: row.diff,
+          current: row.current,
+        }),
+      );
+      const topMightLossResult7d = topMightLoss7d.data.map(
+        (row: { player_id: number; diff: number; current: number }) => ({
+          player_id: ApiHelper.addCountryCode(String(row.player_id), serverCode),
+          diff: row.diff,
+          current: row.current,
+        }),
+      );
 
       /* ---------------------------------
        * Return formatted results
@@ -887,23 +912,23 @@ export abstract class ApiStatistics implements ApiHelper {
   }
 
   /**
-   * Retrieves event statistics for a specific player from one or more OLAP event tables.
+   * Retrieves event statistics for a specific player from one or more OLAP event tables
    *
    * This method queries the specified OLAP database for event data related to the given player,
    * optionally filtering by a time interval. It supports multiple event tables and aggregates
-   * the results, returning both the queried points and timing information for each table.
+   * the results, returning both the queried points and timing information for each table
    *
-   * @param playerId - The unique identifier of the player whose statistics are to be retrieved.
-   * @param olapDb - The name of the OLAP database to query.
-   * @param createdAtDiffLimit - (Optional) The number of days to look back from the current date for event data.
-   * @param eventTables - (Optional) The event table(s) to query. Can be a string or an array of strings.
-   *                      Defaults to the result of `ApiHelper.ggeTrackerManager.getOlapEventTables()`.
+   * @param playerId - The unique identifier of the player whose statistics are to be retrieved
+   * @param olapDb - The name of the OLAP database to query
+   * @param createdAtDiffLimit - (Optional) The number of days to look back from the current date for event data
+   * @param eventTables - (Optional) The event table(s) to query. Can be a string or an array of strings
+   *                      Defaults to the result of `ApiHelper.ggeTrackerManager.getOlapEventTables()`
    * @returns A promise that resolves to an object containing:
-   *   - `diffs`: An object mapping each table to the time taken (in seconds) to execute its query.
-   *   - `points`: An object mapping each table to an array of point data, each with a date and point value.
-   *   - `error`: (If an error occurs) An object containing the error message.
+   *   - `diffs`: An object mapping each table to the time taken (in seconds) to execute its query
+   *   - `points`: An object mapping each table to an array of point data, each with a date and point value
+   *   - `error`: (If an error occurs) An object containing the error message
    *
-   * @throws Will log and return an error object if any query fails.
+   * @throws Will log and return an error object if any query fails
    */
   private static async getPlayerEventStatistics(
     playerId: number,
@@ -924,11 +949,11 @@ export abstract class ApiStatistics implements ApiHelper {
       const createdAtDiffLimitQueryOlap = createdAtDiffLimit
         ? `AND created_at >= now() - INTERVAL ${createdAtDiffLimit} DAY`
         : '';
-      const clickhouse = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
 
       /* ---------------------------------
        * Execute queries for each event table
        * --------------------------------- */
+      const clickhouseClient: NodeClickHouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
       const queries = eventTables.map((table) => {
         return new Promise(async (resolve, reject) => {
           dates_start[table] = new Date();
@@ -940,7 +965,7 @@ export abstract class ApiStatistics implements ApiHelper {
             }
             dates_start[table] = new Date();
             if (table === 'player_might_history' || table === 'player_loot_history') {
-              // Special handling for tables without event_dates. They will return only actual entries.
+              // Special handling for tables without event_dates. They will return only actual entries
               const query = `
                 SELECT
                   created_at,
@@ -950,8 +975,9 @@ export abstract class ApiStatistics implements ApiHelper {
                 ${createdAtDiffLimitQueryOlap}
                 ORDER BY created_at ASC
               `;
-              const result: any = await clickhouse.query(query).toPromise();
-              points[table] = result.map((row: any) => {
+              const clickhouseQuery = await clickhouseClient.query({ query });
+              const result = await clickhouseQuery.json();
+              points[table] = result.data.map((row: any) => {
                 const utcDate = toDate(row.created_at);
                 const localDate = formatInTimeZone(utcDate, ApiHelper.APPLICATION_TIMEZONE, 'yyyy-MM-dd HH:mm' + ':00');
                 return {
@@ -975,8 +1001,9 @@ export abstract class ApiStatistics implements ApiHelper {
                 ORDER BY
                   ed.created_at
               `;
-              const result: any = await clickhouse.query(query).toPromise();
-              points[table] = result.map((row: any) => {
+              const clickhouseQuery = await clickhouseClient.query({ query });
+              const result = await clickhouseQuery.json();
+              points[table] = result.data.map((row: any) => {
                 const utcDate = toDate(row.created_at);
                 const localDate = formatInTimeZone(utcDate, ApiHelper.APPLICATION_TIMEZONE, 'yyyy-MM-dd HH:mm' + ':00');
                 return {

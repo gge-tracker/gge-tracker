@@ -1,28 +1,28 @@
 /**
- * Main API server entry point for the gge-tracker backend API project.
- * This file sets up the Express application, middleware, and routes.
- * It also configures logging, rate limiting, and connects to Redis.
+ * Main API server entry point for the gge-tracker backend API project
+ * This file sets up the Express application, middleware, and routes
+ * It also configures logging, rate limiting, and connects to Redis
  *
  * @remarks
- * Each section of the code is clearly marked with comments to indicate its purpose.
- * Documentation comments are used with @swagger tags to generate API documentation.
+ * Each section of the code is clearly marked with comments to indicate its purpose
+ * Documentation comments are used with @swagger tags to generate API documentation
  * The server listens on port 3000 and handles various API endpoints
- * related to Goodgame Empire assets, languages, status, events, and more.
+ * related to Goodgame Empire assets, languages, status, events, and more
  *
  * @packageDocumentation
  * @module Main
  * @preferred
- * @see {@link ApiControllerManager} for route handling logic.
- * @see {@link ApiGgeTrackerManager} for GGE Tracker API interactions.
- * @see {@link RateLimiterRedis} for rate limiting configuration.
- * @see {@link redis} for Redis client library.
- * @see {@link createClient} for Redis client setup.
- * @see {@link express} for Express application framework.
- * @see {@link cors} for Cross-Origin Resource Sharing configuration.
- * @see {@link morgan} for HTTP request logging.
- * @see {@link compression} for response compression.
- * @see {@link axios} for HTTP requests.
- * @see {@link dotenv} for environment variable management.
+ * @see {@link ApiControllerManager} for route handling logic
+ * @see {@link ApiGgeTrackerManager} for GGE Tracker API interactions
+ * @see {@link RateLimiterRedis} for rate limiting configuration
+ * @see {@link redis} for Redis client library
+ * @see {@link createClient} for Redis client setup
+ * @see {@link express} for Express application framework
+ * @see {@link cors} for Cross-Origin Resource Sharing configuration
+ * @see {@link morgan} for HTTP request logging
+ * @see {@link compression} for response compression
+ * @see {@link axios} for HTTP requests
+ * @see {@link dotenv} for environment variable management
  */
 
 import compression from 'compression';
@@ -36,6 +36,7 @@ import { ApiRoutingController } from './controllers/api-routing.controller';
 import { GgeTrackerApiGuardActivity } from './guard/ggetracker-guard-activity';
 import { ApiGgeTrackerManager } from './managers/api.manager';
 import { RoutesManager } from './managers/routes.manager';
+import { ApiHelper } from './helper/api-helper';
 
 /* ------------------------------------------------
  *           Redis Client Configuration
@@ -124,22 +125,22 @@ publicRoutes.put('/assets/update/:token', routingInstance.updateAssets.bind(rout
  * /assets/images/{image}:
  *   get:
  *     summary: Get a specific rendered image for a Goodgame Empire asset
- *     description: Returns the rendered image for the specified Goodgame Empire asset.
+ *     description: Returns the rendered image for the specified Goodgame Empire asset
  *     tags:
  *       - Assets
  *     parameters:
  *       - in: path
  *         name: image
  *         required: true
- *         description: The name of the Goodgame Empire image to retrieve.
+ *         description: The name of the Goodgame Empire image to retrieve
  *         example: "keepbuildinglevel8.png"
  *         schema:
  *           type: string
  *     responses:
  *       200:
- *         description: Successful response with the requested image. The image will be returned in PNG or WebP format.
+ *         description: Successful response with the requested image. The image will be returned in PNG or WebP format
  *       500:
- *         description: Internal server error.
+ *         description: Internal server error
  */
 publicRoutes.get('/assets/images/:asset', routingInstance.getGeneratedImage.bind(routingInstance));
 
@@ -148,22 +149,22 @@ publicRoutes.get('/assets/images/:asset', routingInstance.getGeneratedImage.bind
  * /assets/common/{asset}:
  *   get:
  *     summary: Get specific Goodgame Empire asset
- *     description: Returns the specified Goodgame Empire asset in .js, .json, .png, .webp formats.
+ *     description: Returns the specified Goodgame Empire asset in .js, .json, .png, .webp formats
  *     tags:
  *       - Assets
  *     parameters:
  *       - in: path
  *         name: asset
  *         required: true
- *         description: The name of the Goodgame Empire asset to retrieve.
+ *         description: The name of the Goodgame Empire asset to retrieve
  *         example: "keepbuildinglevel8.json"
  *         schema:
  *           type: string
  *     responses:
  *       200:
- *         description: Successful response with the requested asset. The asset will be returned in the requested format.
+ *         description: Successful response with the requested asset. The asset will be returned in the requested format
  *       500:
- *         description: Internal server error.
+ *         description: Internal server error
  */
 publicRoutes.get('/assets/common/:asset', routingInstance.getAsset.bind(routingInstance));
 
@@ -171,13 +172,13 @@ publicRoutes.get('/assets/common/:asset', routingInstance.getAsset.bind(routingI
  * @swagger
  * /assets/items:
  *   get:
- *     summary: Get current Goodgame Empire items.
- *     description: Returns  all building items, effect type items, effect items and construction items.
+ *     summary: Get current Goodgame Empire items
+ *     description: Returns  all building items, effect type items, effect items and construction items
  *     tags:
  *       - Assets
  *     responses:
  *       200:
- *         description: Successful response with items.
+ *         description: Successful response with items
  *         content:
  *           application/json:
  *             schema:
@@ -215,7 +216,7 @@ publicRoutes.get('/assets/common/:asset', routingInstance.getAsset.bind(routingI
  *                   items:
  *                     type: object
  *       500:
- *         description: Internal server error.
+ *         description: Internal server error
  */
 publicRoutes.get('/assets/items', routingInstance.getItems.bind(routingInstance));
 
@@ -224,22 +225,22 @@ publicRoutes.get('/assets/items', routingInstance.getItems.bind(routingInstance)
  * /languages/{lang}:
  *   get:
  *     summary: Get specific Goodgame Empire translations
- *     description: Returns all translations for a specific language in Goodgame Empire.
+ *     description: Returns all translations for a specific language in Goodgame Empire
  *     tags:
  *       - Languages
  *     parameters:
  *       - name: lang
  *         in: path
  *         required: true
- *         description: The language code to retrieve translations for.
+ *         description: The language code to retrieve translations for
  *         schema:
  *           type: string
  *           enum: [en,ar,pt,es,de,nl,sv,bg,fr,zh_CN,el,cs,da,fi,hu,id,it,ja,ko,ru,lt,no,pl,ro,sk,tr,zh_TW,pt_PT,uk,lv,hr,ms,sr,th,vn,sl,et]
  *     responses:
  *       200:
- *         description: Successful response with translations.
+ *         description: Successful response with translations
  *       500:
- *         description: Internal server error.
+ *         description: Internal server error
  */
 publicRoutes.get('/languages/:lang', routingInstance.getLanguage.bind(routingInstance));
 
@@ -247,15 +248,15 @@ publicRoutes.get('/languages/:lang', routingInstance.getLanguage.bind(routingIns
  * @swagger
  * /:
  *   get:
- *     summary: Get gge-tracker API status and latest updates.
- *     description: Returns the server status, API version, player count, and last updates timestamps.
+ *     summary: Get gge-tracker API status and latest updates
+ *     description: Returns the server status, API version, player count, and last updates timestamps
  *     tags:
  *       - Status
  *     parameters:
  *       - $ref: '#/components/parameters/GgeServerHeader'
  *     responses:
  *       200:
- *         description: Successful response with server info and updates.
+ *         description: Successful response with server info and updates
  *         content:
  *           application/json:
  *             schema:
@@ -263,18 +264,18 @@ publicRoutes.get('/languages/:lang', routingInstance.getLanguage.bind(routingIns
  *               properties:
  *                 server:
  *                   type: string
- *                   description: Server information.
+ *                   description: Server information
  *                 version:
  *                   type: string
- *                   description: API version.
+ *                   description: API version
  *                   example: v1
  *                 release_version:
  *                   type: string
- *                   description: API release version.
+ *                   description: API release version
  *                   example: v12.34
  *                 last_update:
  *                   type: object
- *                   description: Last update timestamps by category.
+ *                   description: Last update timestamps by category
  *                   additionalProperties:
  *                     type: string
  *                     format: date-time
@@ -288,7 +289,7 @@ publicRoutes.get('/languages/:lang', routingInstance.getLanguage.bind(routingIns
  *                     loot: string
  *                     berimond_invasion: string
  *       500:
- *         description: Server error when querying the database.
+ *         description: Server error when querying the database
  */
 protectedRoutes.get('/', routingInstance.getStatus.bind(routingInstance));
 
@@ -301,13 +302,13 @@ publicRoutes.get('/servers', routingInstance.getServers.bind(routingInstance));
  * @swagger
  * /events/list:
  *   get:
- *     summary: Retrieve the list of events (Beyond the Horizon and Outer Realms).
- *     description: This endpoint returns a list of terminated events, including their event number, player count, type, and collection date.
+ *     summary: Retrieve the list of events (Beyond the Horizon and Outer Realms)
+ *     description: This endpoint returns a list of terminated events, including their event number, player count, type, and collection date
  *     tags:
  *       - Events
  *     responses:
  *       200:
- *         description: A list of recorded events.
+ *         description: A list of recorded events
  *         content:
  *           application/json:
  *             schema:
@@ -320,23 +321,23 @@ publicRoutes.get('/servers', routingInstance.getServers.bind(routingInstance));
  *                     properties:
  *                       event_num:
  *                         type: integer
- *                         description: The iteration number of the event.
+ *                         description: The iteration number of the event
  *                         example: 3
  *                       player_count:
  *                         type: string
- *                         description: The number of players recorded for this event snapshot.
+ *                         description: The number of players recorded for this event snapshot
  *                         example: "16400"
  *                       type:
  *                         type: string
- *                         description: The type of the event (e.g., outer_realms, beyond_the_horizon).
+ *                         description: The type of the event (e.g., outer_realms, beyond_the_horizon)
  *                         example: "outer_realms"
  *                       collect_date:
  *                         type: string
  *                         format: date-time
- *                         description: The timestamp when the data was collected.
+ *                         description: The timestamp when the data was collected
  *                         example: "2025-07-17 15:00:00"
  *       500:
- *         description: Internal server error occurred while retrieving events.
+ *         description: Internal server error occurred while retrieving events
  *         content:
  *           application/json:
  *             schema:
@@ -352,13 +353,13 @@ publicRoutes.get('/events/list', routingInstance.getEvents.bind(routingInstance)
  * @swagger
  * /grand-tournament/dates:
  *   get:
- *     summary: Retrieve the list of Grand Tournament event dates.
- *     description: This endpoint returns a list of Grand Tournament event dates.
+ *     summary: Retrieve the list of Grand Tournament event dates
+ *     description: This endpoint returns a list of Grand Tournament event dates
  *     tags:
  *       - Events
  *     responses:
  *       200:
- *         description: A list of recorded events.
+ *         description: A list of recorded events
  *         content:
  *           application/json:
  *             schema:
@@ -381,7 +382,7 @@ publicRoutes.get('/events/list', routingInstance.getEvents.bind(routingInstance)
  *                           description: The date and time of the Grand Tournament event
  *                           example: "2025-10-27T18:00:00.000Z"
  *       500:
- *         description: Internal server error occurred while retrieving events.
+ *         description: Internal server error occurred while retrieving events
  *         content:
  *           application/json:
  *             schema:
@@ -418,10 +419,10 @@ publicRoutes.get(
  * @swagger
  * /events/{eventType}/{id}/players:
  *   get:
- *     summary: Retrieve paginated player ranking for a specific event (Outer realms or Beyond the Horizon).
+ *     summary: Retrieve paginated player ranking for a specific event (Outer realms or Beyond the Horizon)
  *     description: |
- *       Returns the ranking of players for a given event.
- *       Supports pagination and filtering by player name and server.
+ *       Returns the ranking of players for a given event
+ *       Supports pagination and filtering by player name and server
  *     tags:
  *       - Events
  *     parameters:
@@ -512,7 +513,7 @@ publicRoutes.get(
  *                   type: string
  *                   example: "Invalid event type"
  *       500:
- *         description: Internal server error occurred while retrieving players.
+ *         description: Internal server error occurred while retrieving players
  *         content:
  *           application/json:
  *             schema:
@@ -528,10 +529,10 @@ publicRoutes.get('/events/:eventType/:id/players', routingInstance.getEventPlaye
  * @swagger
  * /events/{eventType}/{id}/data:
  *   get:
- *     summary: Retrieve detailed statistics for a specific event (Outer realms or Beyond the Horizon).
+ *     summary: Retrieve detailed statistics for a specific event (Outer realms or Beyond the Horizon)
  *     description: |
  *       Returns detailed statistics for a specific event, including player counts, top scores,
- *       rank distributions, score statistics, and more.
+ *       rank distributions, score statistics, and more
  *     tags:
  *       - Events
  *     parameters:
@@ -670,7 +671,7 @@ publicRoutes.get('/events/:eventType/:id/players', routingInstance.getEventPlaye
  *                   type: string
  *                   example: "Invalid event type"
  *       500:
- *         description: Internal server error occurred while retrieving event statistics.
+ *         description: Internal server error occurred while retrieving event statistics
  *         content:
  *           application/json:
  *             schema:
@@ -692,7 +693,7 @@ protectedRoutes.get('/offers', routingInstance.getOffers.bind(routingInstance));
  * /updates/alliances/{allianceId}/players:
  *   get:
  *     summary: Retrieve players who joined or left an alliance
- *     description: Returns a list of players who have joined or left a given alliance, ordered by the latest updates.
+ *     description: Returns a list of players who have joined or left a given alliance, ordered by the latest updates
  *     tags:
  *       - Updates
  *     parameters:
@@ -700,12 +701,12 @@ protectedRoutes.get('/offers', routingInstance.getOffers.bind(routingInstance));
  *       - name: allianceId
  *         in: path
  *         required: true
- *         description: ID of the alliance to fetch updates for.
+ *         description: ID of the alliance to fetch updates for
  *         schema:
  *           type: number
  *     responses:
  *       200:
- *         description: Successful response with players' updates.
+ *         description: Successful response with players' updates
  *         content:
  *           application/json:
  *             schema:
@@ -718,47 +719,47 @@ protectedRoutes.get('/offers', routingInstance.getOffers.bind(routingInstance));
  *                     properties:
  *                       player_id:
  *                         type: string
- *                         description: ID of the player.
+ *                         description: ID of the player
  *                         example: string
  *                       player_name:
  *                         type: string
- *                         description: Name of the player.
+ *                         description: Name of the player
  *                         example: string
  *                       might_current:
  *                         type: integer
- *                         description: Current might of the player.
+ *                         description: Current might of the player
  *                         example: 0
  *                       loot_current:
  *                         type: integer
- *                         description: Current loot of the player.
+ *                         description: Current loot of the player
  *                         example: 0
  *                       level:
  *                         type: integer
- *                         description: Level of the player.
+ *                         description: Level of the player
  *                         example: 0
  *                       legendary_level:
  *                         type: integer
- *                         description: Legendary level of the player.
+ *                         description: Legendary level of the player
  *                         example: 0
  *                       old_alliance_id:
  *                         type: integer
  *                         nullable: true
- *                         description: ID of the player's old alliance, or null if none.
+ *                         description: ID of the player's old alliance, or null if none
  *                         example: 123456789
  *                       new_alliance_id:
  *                         type: string
  *                         nullable: true
- *                         description: ID of the player's new alliance, or null if none.
+ *                         description: ID of the player's new alliance, or null if none
  *                         example: "null"
  *                       created_at:
  *                         type: string
  *                         format: date-time
- *                         description: Timestamp of the update.
+ *                         description: Timestamp of the update
  *                         example: string
  *       400:
- *         description: Invalid server or alliance ID provided.
+ *         description: Invalid server or alliance ID provided
  *       500:
- *         description: Server error when querying the database.
+ *         description: Server error when querying the database
  */
 publicRoutes.get(
   '/updates/alliances/:allianceId/players',
@@ -770,20 +771,20 @@ publicRoutes.get(
  * /updates/players/{playerId}/names:
  *   get:
  *     summary: Retrieve the name change history of a player
- *     description: This endpoint returns the history of name changes for a specific player identified by their player ID.
+ *     description: This endpoint returns the history of name changes for a specific player identified by their player ID
  *     tags:
  *       - Updates
  *     parameters:
  *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - name: playerId
  *         in: path
- *         description: The unique ID of the player whose name history is to be retrieved.
+ *         description: The unique ID of the player whose name history is to be retrieved
  *         required: true
  *         schema:
  *           type: string
  *     responses:
  *       200:
- *         description: A list of name changes for the player.
+ *         description: A list of name changes for the player
  *         content:
  *           application/json:
  *             schema:
@@ -796,18 +797,18 @@ publicRoutes.get(
  *                     properties:
  *                       date:
  *                         type: string
- *                         description: The date and time when the name change occurred.
+ *                         description: The date and time when the name change occurred
  *                         example: "2025-04-10 13:08:00"
  *                       old_player_name:
  *                         type: string
- *                         description: The old player name.
+ *                         description: The old player name
  *                         example: "OldPlayerName"
  *                       new_player_name:
  *                         type: string
- *                         description: The new player name.
+ *                         description: The new player name
  *                         example: "updatedPlayerName"
  *       400:
- *         description: Invalid player ID or server configuration.
+ *         description: Invalid player ID or server configuration
  *         content:
  *           application/json:
  *             schema:
@@ -817,7 +818,7 @@ publicRoutes.get(
  *                   type: string
  *                   example: "Invalid user id"
  *       500:
- *         description: Internal server error occurred while retrieving name history.
+ *         description: Internal server error occurred while retrieving name history
  *         content:
  *           application/json:
  *             schema:
@@ -834,20 +835,20 @@ publicRoutes.get('/updates/players/:playerId/names', routingInstance.getNamesUpd
  * /updates/players/{playerId}/alliances:
  *   get:
  *     summary: Retrieve the alliance change history of a player
- *     description: This endpoint returns the history of alliance changes for a specific player identified by their player ID.
+ *     description: This endpoint returns the history of alliance changes for a specific player identified by their player ID
  *     tags:
  *       - Updates
  *     parameters:
  *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - name: playerId
  *         in: path
- *         description: The unique ID of the player whose alliance history is to be retrieved.
+ *         description: The unique ID of the player whose alliance history is to be retrieved
  *         required: true
  *         schema:
  *          type: string
  *     responses:
  *       200:
- *         description: A list of alliance changes for the player.
+ *         description: A list of alliance changes for the player
  *         content:
  *           application/json:
  *             schema:
@@ -860,26 +861,26 @@ publicRoutes.get('/updates/players/:playerId/names', routingInstance.getNamesUpd
  *                     properties:
  *                       date:
  *                         type: string
- *                         description: The date and time when the alliance change occurred.
+ *                         description: The date and time when the alliance change occurred
  *                         example: "2025-04-10 13:08:00"
  *                       old_alliance_name:
  *                         type: string
- *                         description: The old alliance name.
+ *                         description: The old alliance name
  *                         example: "OldAllianceName"
  *                       old_alliance_id:
  *                         type: string
- *                         description: The ID of the old alliance.
+ *                         description: The ID of the old alliance
  *                         example: "12345"
  *                       new_alliance_name:
  *                         type: string
- *                         description: The new alliance name.
+ *                         description: The new alliance name
  *                         example: "NewAllianceName"
  *                       new_alliance_id:
  *                         type: string
- *                         description: The ID of the new alliance.
+ *                         description: The ID of the new alliance
  *                         example: "67890"
  *       400:
- *         description: Invalid player ID.
+ *         description: Invalid player ID
  *         content:
  *           application/json:
  *             schema:
@@ -889,7 +890,7 @@ publicRoutes.get('/updates/players/:playerId/names', routingInstance.getNamesUpd
  *                   type: string
  *                   example: "Invalid user id"
  *       500:
- *         description: Internal server error occurred while retrieving alliance history.
+ *         description: Internal server error occurred while retrieving alliance history
  *         content:
  *           application/json:
  *             schema:
@@ -909,21 +910,21 @@ publicRoutes.get(
  * /dungeons:
  *   get:
  *     summary: Retrieve the state of dungeons
- *     description: This endpoint returns the current state of dungeons, including if the dungeon is attackable, the time until the next attack, and the last attack time.
+ *     description: This endpoint returns the current state of dungeons, including if the dungeon is attackable, the time until the next attack, and the last attack time
  *     tags:
  *       - Dungeons
  *     parameters:
  *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - name: page
  *         in: query
- *         description: The page number for pagination (1-based).
+ *         description: The page number for pagination (1-based)
  *         required: true
  *         schema:
  *           type: integer
  *           minimum: 1
  *       - name: size
  *         in: query
- *         description: The number of items per page for pagination.
+ *         description: The number of items per page for pagination
  *         required: true
  *         schema:
  *           type: integer
@@ -944,7 +945,7 @@ publicRoutes.get(
  *       - name: filterByAttackCooldown
  *         in: query
  *         description: >
- *           Filter by attack cooldown (optional). If true, only dungeons that can be attacked will be returned.
+ *           Filter by attack cooldown (optional). If true, only dungeons that can be attacked will be returned
  *           Possible values:
  *           - 0: All (dungeons regardless of attackability)
  *           - 1: Attackable (currently can be attacked)
@@ -960,31 +961,31 @@ publicRoutes.get(
  *             - 3
  *       - name: filterByPlayerName
  *         in: query
- *         description: Filter by player name (optional). If provided, real cooldowns for the player will be returned.
+ *         description: Filter by player name (optional). If provided, real cooldowns for the player will be returned
  *         required: false
  *         schema:
  *           type: string
  *       - name: positionX
  *         in: query
- *         description: Filter by dungeon X position (optional). If provided, only dungeons at this X position will be returned.
+ *         description: Filter by dungeon X position (optional). If provided, only dungeons at this X position will be returned
  *         required: false
  *         schema:
  *           type: integer
  *       - name: positionY
  *         in: query
- *         description: Filter by dungeon Y position (optional). If provided, only dungeons at this Y position will be returned.
+ *         description: Filter by dungeon Y position (optional). If provided, only dungeons at this Y position will be returned
  *         required: false
  *         schema:
  *           type: integer
  *       - name: nearPlayerName
  *         in: query
- *         description: Filter by player name (optional). If provided, dungeons sorted by distance to this player will be returned.
+ *         description: Filter by player name (optional). If provided, dungeons sorted by distance to this player will be returned
  *         required: false
  *         schema:
  *           type: string
  *     responses:
  *       200:
- *         description: Successful response with the state of dungeons.
+ *         description: Successful response with the state of dungeons
  *         content:
  *           application/json:
  *             schema:
@@ -1008,62 +1009,62 @@ publicRoutes.get(
  *                           - 3
  *                       position_x:
  *                         type: integer
- *                         description: The X position of the dungeon on the map.
+ *                         description: The X position of the dungeon on the map
  *                       position_y:
  *                         type: integer
- *                         description: The Y position of the dungeon on the map.
+ *                         description: The Y position of the dungeon on the map
  *                       attack_cooldown:
  *                         type: integer
- *                         description: The cooldown time in seconds until the dungeon can be attacked again.
+ *                         description: The cooldown time in seconds until the dungeon can be attacked again
  *                       player_name:
  *                         type: string
- *                         description: The name of the player who last attacked the dungeon.
+ *                         description: The name of the player who last attacked the dungeon
  *                       player_might:
  *                         type: integer
- *                         description: The might of the player who last attacked the dungeon.
+ *                         description: The might of the player who last attacked the dungeon
  *                       player_level:
  *                         type: integer
- *                         description: The level of the player who last attacked the dungeon.
+ *                         description: The level of the player who last attacked the dungeon
  *                       player_legendary_level:
  *                         type: integer
- *                         description: The legendary level of the player who last attacked the dungeon.
+ *                         description: The legendary level of the player who last attacked the dungeon
  *                       total_attack_count:
  *                         type: integer
- *                         description: The total number of attacks made on the dungeon. This feature is not yet implemented, but will be in the future.
+ *                         description: The total number of attacks made on the dungeon. This feature is not yet implemented, but will be in the future
  *                       updated_at:
  *                         type: string
  *                         format: date-time
- *                         description: The timestamp when the dungeon state was last updated. This is used for internal purposes and is not displayed to players.
+ *                         description: The timestamp when the dungeon state was last updated. This is used for internal purposes and is not displayed to players
  *                       effective_cooldown_until:
  *                         type: string
  *                         format: date-time
- *                         description: The real date and time when the dungeon will be attackable again, taking into account the player's cooldown.
+ *                         description: The real date and time when the dungeon will be attackable again, taking into account the player's cooldown
  *                       last_attack:
  *                         type: string
  *                         format: date-time
- *                         description: The date and time of the last attack on the dungeon.
+ *                         description: The date and time of the last attack on the dungeon
  *                       distance:
  *                         type: number
  *                         description: >
- *                           (Optional) The distance to the player specified by the `nearPlayerName` parameter.
- *                           This is calculated based on the dungeon's position and the player's position.
+ *                           (Optional) The distance to the player specified by the `nearPlayerName` parameter
+ *                           This is calculated based on the dungeon's position and the player's position
  *                 pagination:
  *                   type: object
  *                   properties:
  *                     current_page:
  *                       type: integer
- *                       description: The current page number.
+ *                       description: The current page number
  *                     total_pages:
  *                       type: integer
- *                       description: The total number of pages available.
+ *                       description: The total number of pages available
  *                     current_items_count:
  *                       type: integer
- *                       description: The number of items on the current page.
+ *                       description: The number of items on the current page
  *                     total_items_count:
  *                       type: integer
- *                       description: The total number of items across all pages.
+ *                       description: The total number of items across all pages
  *       400:
- *         description: Invalid query parameters.
+ *         description: Invalid query parameters
  *         content:
  *           application/json:
  *             schema:
@@ -1072,7 +1073,7 @@ publicRoutes.get(
  *                 error:
  *                   type: string
  *       500:
- *         description: Internal server error occurred while processing the request.
+ *         description: Internal server error occurred while processing the request
  *         content:
  *           application/json:
  *             schema:
@@ -1088,7 +1089,7 @@ protectedRoutes.get('/dungeons', routingInstance.getDungeons.bind(routingInstanc
  * /server/movements:
  *   get:
  *     summary: Retrieve player castle movement history
- *     description: This endpoint retrieves the movement history of players' castles with pagination and optional filters such as castle type, movement type, player or alliance search.
+ *     description: This endpoint retrieves the movement history of players' castles with pagination and optional filters such as castle type, movement type, player or alliance search
  *     tags:
  *       - Server
  *       - Movements
@@ -1096,7 +1097,7 @@ protectedRoutes.get('/dungeons', routingInstance.getDungeons.bind(routingInstanc
  *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - name: page
  *         in: query
- *         description: The page number for pagination (1-based).
+ *         description: The page number for pagination (1-based)
  *         required: true
  *         schema:
  *           type: integer
@@ -1127,7 +1128,7 @@ protectedRoutes.get('/dungeons', routingInstance.getDungeons.bind(routingInstanc
  *             - 28
  *       - name: movementType
  *         in: query
- *         description: Filter by movement type (optional). 1 for 'add', 2 for 'remove', 3 for 'move'.
+ *         description: Filter by movement type (optional). 1 for 'add', 2 for 'remove', 3 for 'move'
  *         required: false
  *         schema:
  *           type: integer
@@ -1137,14 +1138,14 @@ protectedRoutes.get('/dungeons', routingInstance.getDungeons.bind(routingInstanc
  *             - 3
  *       - name: search
  *         in: query
- *         description: Search term for player or alliance name (optional).
+ *         description: Search term for player or alliance name (optional)
  *         required: false
  *         schema:
  *           type: string
  *           maxLength: 30
  *       - name: searchType
  *         in: query
- *         description: Filter by a strict search type (optional). Either 'player' or 'alliance'.
+ *         description: Filter by a strict search type (optional). Either 'player' or 'alliance'
  *         required: false
  *         schema:
  *           type: string
@@ -1153,13 +1154,13 @@ protectedRoutes.get('/dungeons', routingInstance.getDungeons.bind(routingInstanc
  *             - alliance
  *       - name: allianceId
  *         in: query
- *         description: Add an alliance ID to filter the results (optional).
+ *         description: Add an alliance ID to filter the results (optional)
  *         required: false
  *         schema:
  *           type: number
  *     responses:
  *       200:
- *         description: A list of player castle movements with pagination information.
+ *         description: A list of player castle movements with pagination information
  *         content:
  *           application/json:
  *             schema:
@@ -1172,22 +1173,22 @@ protectedRoutes.get('/dungeons', routingInstance.getDungeons.bind(routingInstanc
  *                     properties:
  *                       player_name:
  *                         type: string
- *                         description: The name of the player who made the movement.
+ *                         description: The name of the player who made the movement
  *                       player_might:
  *                         type: integer
- *                         description: The might of the player.
+ *                         description: The might of the player
  *                       level:
  *                         type: integer
- *                         description: The level of the player.
+ *                         description: The level of the player
  *                       legendary_level:
  *                         type: integer
- *                         description: The legendary level of the player.
+ *                         description: The legendary level of the player
  *                       alliance_name:
  *                         type: string
- *                         description: The name of the alliance of the player.
+ *                         description: The name of the alliance of the player
  *                       movement_type:
  *                         type: string
- *                         description: The type of movement ('add', 'remove', 'move').
+ *                         description: The type of movement ('add', 'remove', 'move')
  *                       castle_type:
  *                         type: integer
  *                         description: >
@@ -1211,36 +1212,36 @@ protectedRoutes.get('/dungeons', routingInstance.getDungeons.bind(routingInstanc
  *                           - 28
  *                       position_x_old:
  *                         type: integer
- *                         description: The old X position of the castle.
+ *                         description: The old X position of the castle
  *                       position_y_old:
  *                         type: integer
- *                         description: The old Y position of the castle.
+ *                         description: The old Y position of the castle
  *                       position_x_new:
  *                         type: integer
- *                         description: The new X position of the castle.
+ *                         description: The new X position of the castle
  *                       position_y_new:
  *                         type: integer
- *                         description: The new Y position of the castle.
+ *                         description: The new Y position of the castle
  *                       created_at:
  *                         type: string
- *                         description: The timestamp when the movement occurred.
+ *                         description: The timestamp when the movement occurred
  *                 pagination:
  *                   type: object
  *                   properties:
  *                     current_page:
  *                       type: integer
- *                       description: The current page number.
+ *                       description: The current page number
  *                     total_pages:
  *                       type: integer
- *                       description: The total number of pages available.
+ *                       description: The total number of pages available
  *                     current_items_count:
  *                       type: integer
- *                       description: The number of items on the current page.
+ *                       description: The number of items on the current page
  *                     total_items_count:
  *                       type: integer
- *                       description: The total number of items across all pages.
+ *                       description: The total number of items across all pages
  *       400:
- *         description: Invalid query parameters.
+ *         description: Invalid query parameters
  *         content:
  *           application/json:
  *             schema:
@@ -1249,7 +1250,7 @@ protectedRoutes.get('/dungeons', routingInstance.getDungeons.bind(routingInstanc
  *                 error:
  *                   type: string
  *       500:
- *         description: Internal server error occurred while processing the request.
+ *         description: Internal server error occurred while processing the request
  *         content:
  *           application/json:
  *             schema:
@@ -1265,7 +1266,7 @@ protectedRoutes.get('/server/movements', routingInstance.getServerMovements.bind
  * /server/renames:
  *   get:
  *     summary: Retrieve player and alliance renames history
- *     description: This endpoint retrieves the rename history for players or alliances with pagination and optional filters, such as search input, search type, and show type.
+ *     description: This endpoint retrieves the rename history for players or alliances with pagination and optional filters, such as search input, search type, and show type
  *     tags:
  *       - Server
  *       - Renames
@@ -1273,7 +1274,7 @@ protectedRoutes.get('/server/movements', routingInstance.getServerMovements.bind
  *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - name: page
  *         in: query
- *         description: The page number for pagination (1-based).
+ *         description: The page number for pagination (1-based)
  *         required: true
  *         schema:
  *           type: integer
@@ -1281,14 +1282,14 @@ protectedRoutes.get('/server/movements', routingInstance.getServerMovements.bind
  *           maximum: 9999999999
  *       - name: search
  *         in: query
- *         description: Search term for player or alliance name (optional).
+ *         description: Search term for player or alliance name (optional)
  *         required: false
  *         schema:
  *           type: string
  *           maxLength: 30
  *       - name: searchType
  *         in: query
- *         description: Type of search, either 'player' or 'alliance' (optional).
+ *         description: Type of search, either 'player' or 'alliance' (optional)
  *         required: false
  *         schema:
  *           type: string
@@ -1297,13 +1298,13 @@ protectedRoutes.get('/server/movements', routingInstance.getServerMovements.bind
  *             - alliance
  *       - name: allianceId
  *         in: query
- *         description: Add an alliance ID to filter the results (optional).
+ *         description: Add an alliance ID to filter the results (optional)
  *         required: false
  *         schema:
  *           type: number
  *       - name: showType
  *         in: query
- *         description: Specify whether to show players or alliances (optional, default is 'players').
+ *         description: Specify whether to show players or alliances (optional, default is 'players')
  *         required: false
  *         schema:
  *           type: string
@@ -1312,7 +1313,7 @@ protectedRoutes.get('/server/movements', routingInstance.getServerMovements.bind
  *             - alliances
  *     responses:
  *       200:
- *         description: A list of renames with pagination information.
+ *         description: A list of renames with pagination information
  *         content:
  *           application/json:
  *             schema:
@@ -1326,39 +1327,39 @@ protectedRoutes.get('/server/movements', routingInstance.getServerMovements.bind
  *                       date:
  *                         type: string
  *                         format: date-time
- *                         description: The timestamp when the rename occurred.
+ *                         description: The timestamp when the rename occurred
  *                       player_name:
  *                         type: string
- *                         description: The name of the player who made the rename.
+ *                         description: The name of the player who made the rename
  *                       player_might:
  *                         type: integer
- *                         description: The might of the player.
+ *                         description: The might of the player
  *                       alliance_name:
  *                         type: string
- *                         description: The name of the alliance of the player.
+ *                         description: The name of the alliance of the player
  *                       old_player_name:
  *                         type: string
- *                         description: The old name of the player.
+ *                         description: The old name of the player
  *                       new_player_name:
  *                         type: string
- *                         description: The new name of the player.
+ *                         description: The new name of the player
  *                 pagination:
  *                   type: object
  *                   properties:
  *                     current_page:
  *                       type: integer
- *                       description: The current page number.
+ *                       description: The current page number
  *                     total_pages:
  *                       type: integer
- *                       description: The total number of pages available.
+ *                       description: The total number of pages available
  *                     current_items_count:
  *                       type: integer
- *                       description: The number of items on the current page.
+ *                       description: The number of items on the current page
  *                     total_items_count:
  *                       type: integer
- *                       description: The total number of items across all pages.
+ *                       description: The total number of items across all pages
  *       400:
- *         description: Invalid query parameters, such as page number, search type, or search input.
+ *         description: Invalid query parameters, such as page number, search type, or search input
  *         content:
  *           application/json:
  *             schema:
@@ -1367,7 +1368,7 @@ protectedRoutes.get('/server/movements', routingInstance.getServerMovements.bind
  *                 error:
  *                   type: string
  *       500:
- *         description: Internal server error occurred while processing the request.
+ *         description: Internal server error occurred while processing the request
  *         content:
  *           application/json:
  *             schema:
@@ -1384,8 +1385,8 @@ protectedRoutes.get('/server/renames', routingInstance.getServerRenames.bind(rou
  *   get:
  *     summary: Retrieve global server statistics
  *     description: |
- *       This endpoint fetches global server statistics, including data on alliances, events, and player interactions.
- *       It checks Redis for cached data before querying the database for the most up-to-date information.
+ *       This endpoint fetches global server statistics, including data on alliances, events, and player interactions
+ *       It checks Redis for cached data before querying the database for the most up-to-date information
  *     tags:
  *       - Server
  *       - Statistics
@@ -1403,97 +1404,97 @@ protectedRoutes.get('/server/renames', routingInstance.getServerRenames.bind(rou
  *                 properties:
  *                   id:
  *                     type: integer
- *                     description: Unique identifier for the statistics record.
+ *                     description: Unique identifier for the statistics record
  *                   avg_might:
  *                     type: number
  *                     format: float
  *                     nullable: true
- *                     description: Average might of players in the server.
+ *                     description: Average might of players in the server
  *                   avg_loot:
  *                     type: number
  *                     format: float
  *                     nullable: true
- *                     description: Average loot of players in the server.
+ *                     description: Average loot of players in the server
  *                   avg_honor:
  *                     type: number
  *                     format: float
  *                     nullable: true
- *                     description: Average honor of players in the server.
+ *                     description: Average honor of players in the server
  *                   avg_level:
  *                     type: number
  *                     format: float
  *                     nullable: true
- *                     description: Average level of players in the server.
+ *                     description: Average level of players in the server
  *                   max_might:
  *                     type: number
  *                     format: float
  *                     nullable: true
- *                     description: Maximum might in the server.
+ *                     description: Maximum might in the server
  *                   max_might_player_id:
  *                     type: integer
  *                     nullable: true
- *                     description: ID of the player with the maximum might.
+ *                     description: ID of the player with the maximum might
  *                   max_loot_player_id:
  *                     type: integer
  *                     nullable: true
- *                     description: ID of the player with the maximum loot.
+ *                     description: ID of the player with the maximum loot
  *                   max_loot:
  *                     type: number
  *                     format: float
  *                     nullable: true
- *                     description: Maximum loot in the server.
+ *                     description: Maximum loot in the server
  *                   players_count:
  *                     type: integer
  *                     nullable: true
- *                     description: Total number of players in the server.
+ *                     description: Total number of players in the server
  *                   alliance_count:
  *                     type: integer
- *                     description: Total number of alliances in the server.
+ *                     description: Total number of alliances in the server
  *                   players_in_peace:
  *                     type: integer
  *                     nullable: true
- *                     description: Number of players in peace.
+ *                     description: Number of players in peace
  *                   players_who_changed_alliance:
  *                     type: integer
- *                     description: Number of players who changed alliances.
+ *                     description: Number of players who changed alliances
  *                   players_who_changed_name:
  *                     type: integer
- *                     description: Number of players who changed names.
+ *                     description: Number of players who changed names
  *                   total_might:
  *                     type: number
  *                     format: float
  *                     nullable: true
- *                     description: Total might of all players.
+ *                     description: Total might of all players
  *                   total_loot:
  *                     type: number
  *                     format: float
- *                     description: Total loot accumulated by all players.
+ *                     description: Total loot accumulated by all players
  *                   total_honor:
  *                     type: number
  *                     format: float
  *                     nullable: true
- *                     description: Total honor accumulated by all players.
+ *                     description: Total honor accumulated by all players
  *                   variation_might:
  *                     type: number
  *                     format: float
- *                     description: Variation in might compared to the previous period.
+ *                     description: Variation in might compared to the previous period
  *                   variation_loot:
  *                     type: number
  *                     format: float
- *                     description: Variation in loot compared to the previous period.
+ *                     description: Variation in loot compared to the previous period
  *                   variation_honor:
  *                     type: number
  *                     format: float
- *                     description: Variation in honor compared to the previous period.
+ *                     description: Variation in honor compared to the previous period
  *                   alliances_changed_name:
  *                     type: integer
- *                     description: Number of alliances that changed names.
+ *                     description: Number of alliances that changed names
  *                   events_count:
  *                     type: integer
- *                     description: Total number of events.
+ *                     description: Total number of events
  *                   events_top_3_names:
  *                     type: object
- *                     description: JSON object where keys are event IDs and values are arrays of top 3 players by points.
+ *                     description: JSON object where keys are event IDs and values are arrays of top 3 players by points
  *                     additionalProperties:
  *                       type: array
  *                       items:
@@ -1505,53 +1506,53 @@ protectedRoutes.get('/server/renames', routingInstance.getServerRenames.bind(rou
  *                             type: number
  *                   events_participation_rate:
  *                     type: object
- *                     description: JSON object where keys are event IDs and values are participation rates.
+ *                     description: JSON object where keys are event IDs and values are participation rates
  *                     additionalProperties:
  *                       type: array
  *                       items:
  *                         type: number
  *                   event_nomad_points:
  *                     type: integer
- *                     description: Points accumulated by players in the Nomad event.
+ *                     description: Points accumulated by players in the Nomad event
  *                   event_war_realms_points:
  *                     type: integer
- *                     description: Points accumulated by players in the War Realms event.
+ *                     description: Points accumulated by players in the War Realms event
  *                   event_bloodcrow_points:
  *                     type: integer
- *                     description: Points accumulated by players in the Bloodcrow event.
+ *                     description: Points accumulated by players in the Bloodcrow event
  *                   event_samurai_points:
  *                     type: integer
- *                     description: Points accumulated by players in the Samurai event.
+ *                     description: Points accumulated by players in the Samurai event
  *                   event_berimond_invasion_points:
  *                     type: integer
  *                     nullable: true
- *                     description: Points accumulated by players in the Berimond Invasion event.
+ *                     description: Points accumulated by players in the Berimond Invasion event
  *                   event_berimond_kingdom_points:
  *                     type: integer
- *                     description: Points accumulated by players in the Berimond Kingdom event.
+ *                     description: Points accumulated by players in the Berimond Kingdom event
  *                   event_nomad_players:
  *                     type: integer
- *                     description: Number of players who participated in the Nomad event.
+ *                     description: Number of players who participated in the Nomad event
  *                   event_berimond_invasion_players:
  *                     type: integer
  *                     nullable: true
- *                     description: Number of players who participated in the Berimond Invasion event.
+ *                     description: Number of players who participated in the Berimond Invasion event
  *                   event_berimond_kingdom_players:
  *                     type: integer
- *                     description: Number of players who participated in the Berimond Kingdom event.
+ *                     description: Number of players who participated in the Berimond Kingdom event
  *                   event_bloodcrow_players:
  *                     type: integer
- *                     description: Number of players who participated in the Bloodcrow event.
+ *                     description: Number of players who participated in the Bloodcrow event
  *                   event_samurai_players:
  *                     type: integer
- *                     description: Number of players who participated in the Samurai event.
+ *                     description: Number of players who participated in the Samurai event
  *                   event_war_realms_players:
  *                     type: integer
- *                     description: Number of players who participated in the War Realms event.
+ *                     description: Number of players who participated in the War Realms event
  *                   created_at:
  *                     type: string
  *                     format: date-time
- *                     description: Timestamp when the statistics were created.
+ *                     description: Timestamp when the statistics were created
  *       '500':
  *         description: Internal server error
  *         content:
@@ -1561,7 +1562,7 @@ protectedRoutes.get('/server/renames', routingInstance.getServerRenames.bind(rou
  *               properties:
  *                 error:
  *                   type: string
- *                   description: Error message in case of failure.
+ *                   description: Error message in case of failure
  */
 protectedRoutes.get('/server/statistics', routingInstance.getServerStatistics.bind(routingInstance));
 
@@ -1571,8 +1572,8 @@ protectedRoutes.get('/server/statistics', routingInstance.getServerStatistics.bi
  *   get:
  *     summary: Retrieve cartography information based on the size
  *     description: |
- *       This endpoint retrieves a list of players, their alliance, and their might, based on the specified size.
- *       The size parameter determines how many records are retrieved, with validation for acceptable range values.
+ *       This endpoint retrieves a list of players, their alliance, and their might, based on the specified size
+ *       The size parameter determines how many records are retrieved, with validation for acceptable range values
  *     tags:
  *       - Cartography
  *     parameters:
@@ -1580,7 +1581,7 @@ protectedRoutes.get('/server/statistics', routingInstance.getServerStatistics.bi
  *       - in: path
  *         name: size
  *         required: true
- *         description: The number of records to return.
+ *         description: The number of records to return
  *         schema:
  *           type: integer
  *           example: 10
@@ -1596,19 +1597,19 @@ protectedRoutes.get('/server/statistics', routingInstance.getServerStatistics.bi
  *                 properties:
  *                   name:
  *                     type: string
- *                     description: Name of the player.
+ *                     description: Name of the player
  *                   castles:
  *                     type: string
- *                     description: A JSON string representing the player's castles' coordinates.
+ *                     description: A JSON string representing the player's castles' coordinates
  *                   might_current:
  *                     type: integer
- *                     description: The current might of the player.
+ *                     description: The current might of the player
  *                   alliance_id:
  *                     type: integer
- *                     description: The ID of the player's alliance.
+ *                     description: The ID of the player's alliance
  *                   alliance_name:
  *                     type: string
- *                     description: The name of the player's alliance.
+ *                     description: The name of the player's alliance
  *       '400':
  *         description: Bad request due to invalid size parameter
  *         content:
@@ -1618,7 +1619,7 @@ protectedRoutes.get('/server/statistics', routingInstance.getServerStatistics.bi
  *               properties:
  *                 error:
  *                   type: string
- *                   description: Error message indicating an invalid size parameter.
+ *                   description: Error message indicating an invalid size parameter
  *       '500':
  *         description: Internal server error
  *         content:
@@ -1628,7 +1629,7 @@ protectedRoutes.get('/server/statistics', routingInstance.getServerStatistics.bi
  *               properties:
  *                 error:
  *                   type: string
- *                   description: Error message in case of failure.
+ *                   description: Error message in case of failure
  */
 protectedRoutes.get('/cartography/size/:size', routingInstance.getCartographyBySize.bind(routingInstance));
 
@@ -1638,8 +1639,8 @@ protectedRoutes.get('/cartography/size/:size', routingInstance.getCartographyByS
  *   get:
  *     summary: Retrieve cartography information for a specific alliance based on its name
  *     description: |
- *       This endpoint retrieves a list of players within a specified alliance, including their castles and current might.
- *       The alliance name is provided as a parameter, and the response is ordered by the castles in descending order.
+ *       This endpoint retrieves a list of players within a specified alliance, including their castles and current might
+ *       The alliance name is provided as a parameter, and the response is ordered by the castles in descending order
  *     tags:
  *       - Cartography
  *     parameters:
@@ -1647,7 +1648,7 @@ protectedRoutes.get('/cartography/size/:size', routingInstance.getCartographyByS
  *       - in: path
  *         name: allianceName
  *         required: true
- *         description: The name of the alliance to retrieve data for.
+ *         description: The name of the alliance to retrieve data for
  *         schema:
  *           type: string
  *     responses:
@@ -1662,13 +1663,13 @@ protectedRoutes.get('/cartography/size/:size', routingInstance.getCartographyByS
  *                 properties:
  *                   name:
  *                     type: string
- *                     description: Name of the player.
+ *                     description: Name of the player
  *                   castles:
  *                     type: string
- *                     description: A JSON string representing the player's castles' coordinates.
+ *                     description: A JSON string representing the player's castles' coordinates
  *                   might_current:
  *                     type: integer
- *                     description: The current might of the player.
+ *                     description: The current might of the player
  *       '400':
  *         description: Bad request due to invalid alliance name (e.g., name exceeds 40 characters)
  *         content:
@@ -1678,7 +1679,7 @@ protectedRoutes.get('/cartography/size/:size', routingInstance.getCartographyByS
  *               properties:
  *                 error:
  *                   type: string
- *                   description: Error message indicating an invalid alliance name.
+ *                   description: Error message indicating an invalid alliance name
  *       '500':
  *         description: Internal server error
  *         content:
@@ -1688,7 +1689,7 @@ protectedRoutes.get('/cartography/size/:size', routingInstance.getCartographyByS
  *               properties:
  *                 error:
  *                   type: string
- *                   description: Error message in case of failure.
+ *                   description: Error message in case of failure
  */
 protectedRoutes.get(
   '/cartography/name/:allianceName',
@@ -1707,7 +1708,7 @@ protectedRoutes.get(
  *       - in: path
  *         name: castleId
  *         required: true
- *         description: The ID of the castle to retrieve data for.
+ *         description: The ID of the castle to retrieve data for
  *         schema:
  *           type: integer
  *     responses:
@@ -1722,59 +1723,59 @@ protectedRoutes.get(
  *                 properties:
  *                   playerName:
  *                     type: string
- *                     description: The name of the player who owns the castle.
+ *                     description: The name of the player who owns the castle
  *                   castleName:
  *                     type: string
- *                     description: The name of the castle.
+ *                     description: The name of the castle
  *                   castleType:
  *                     type: integer
- *                     description: The type of the castle.
+ *                     description: The type of the castle
  *                   level:
  *                     type: integer
- *                     description: The level of the player who owns the castle.
+ *                     description: The level of the player who owns the castle
  *                   legendaryLevel:
  *                     type: integer
- *                     description: The legendary level of the player who owns the castle.
+ *                     description: The legendary level of the player who owns the castle
  *                   positionX:
  *                     type: integer
- *                     description: The X position of the castle.
+ *                     description: The X position of the castle
  *                   positionY:
  *                     type: integer
- *                     description: The Y position of the castle.
+ *                     description: The Y position of the castle
  *                   data:
  *                     type: object
- *                     description: The data related to the castle.
+ *                     description: The data related to the castle
  *                     properties:
  *                       buildings:
  *                         type: array
- *                         description: The buildings within the castle.
+ *                         description: The buildings within the castle
  *                         items:
  *                           type: object
  *                       towers:
  *                         type: array
- *                         description: The towers within the castle.
+ *                         description: The towers within the castle
  *                         items:
  *                           type: object
  *                       defenses:
  *                         type: array
- *                         description: The defenses within the castle (e.g. moat, walls).
+ *                         description: The defenses within the castle (e.g. moat, walls)
  *                         items:
  *                           type: object
  *                       gates:
  *                         type: array
- *                         description: The gate within the castle.
+ *                         description: The gate within the castle
  *                         items:
  *                           type: object
  *                       grounds:
  *                         type: array
- *                         description: The castle expansions of the castle.
+ *                         description: The castle expansions of the castle
  *                         items:
  *                           type: object
  *                   constructionItems:
  *                     type: object
- *                     description: The construction items for the castle.
+ *                     description: The construction items for the castle
  *       '400':
- *         description: Bad request due to invalid castle ID.
+ *         description: Bad request due to invalid castle ID
  *         content:
  *           application/json:
  *             schema:
@@ -1782,7 +1783,7 @@ protectedRoutes.get(
  *               properties:
  *                 error:
  *                   type: string
- *                   description: Error message indicating an invalid castle ID.
+ *                   description: Error message indicating an invalid castle ID
  *       '500':
  *         description: Internal server error
  *         content:
@@ -1792,7 +1793,7 @@ protectedRoutes.get(
  *               properties:
  *                 error:
  *                   type: string
- *                   description: Error message indicating an internal server error.
+ *                   description: Error message indicating an internal server error
  */
 publicRoutes.get('/castle/analysis/:castleId', routingInstance.getCastleById.bind(routingInstance));
 
@@ -1801,7 +1802,7 @@ publicRoutes.get('/castle/analysis/:castleId', routingInstance.getCastleById.bin
  * /castle/search/{playerName}:
  *   get:
  *     summary: Retrieve realtime castle information for a specific player based on their name
- *     description: This endpoint retrieves a list of castles owned by a specified player.
+ *     description: This endpoint retrieves a list of castles owned by a specified player
  *     tags:
  *       - Castle
  *     parameters:
@@ -1809,7 +1810,7 @@ publicRoutes.get('/castle/analysis/:castleId', routingInstance.getCastleById.bin
  *       - in: path
  *         name: playerName
  *         required: true
- *         description: The name of the player to retrieve data for.
+ *         description: The name of the player to retrieve data for
  *         schema:
  *           type: string
  *     responses:
@@ -1824,36 +1825,36 @@ publicRoutes.get('/castle/analysis/:castleId', routingInstance.getCastleById.bin
  *                 properties:
  *                   kingdomId:
  *                     type: integer
- *                     description: The ID of the kingdom the castle belongs to.
+ *                     description: The ID of the kingdom the castle belongs to
  *                   id:
  *                     type: integer
- *                     description: The ID of the castle.
+ *                     description: The ID of the castle
  *                   positionX:
  *                     type: integer
- *                     description: The X position of the castle.
+ *                     description: The X position of the castle
  *                   positionY:
  *                     type: integer
- *                     description: The Y position of the castle.
+ *                     description: The Y position of the castle
  *                   keepLevel:
  *                     type: integer
- *                     description: The level of the castle keep.
+ *                     description: The level of the castle keep
  *                   wallLevel:
  *                     type: integer
- *                     description: The level of the castle walls.
+ *                     description: The level of the castle walls
  *                   gateLevel:
  *                     type: integer
- *                     description: The level of the castle gate.
+ *                     description: The level of the castle gate
  *                   towerLevel:
  *                     type: integer
- *                     description: The level of the castle towers.
+ *                     description: The level of the castle towers
  *                   moatLevel:
  *                     type: integer
- *                     description: The level of the castle moat.
+ *                     description: The level of the castle moat
  *                   equipmentUniqueIdSkin:
  *                     type: integer
- *                     description: The unique ID of the castle's skin equipment. If not present, defaults to 0.
+ *                     description: The unique ID of the castle's skin equipment. If not present, defaults to 0
  *       '400':
- *         description: Bad request due to invalid player name.
+ *         description: Bad request due to invalid player name
  *         content:
  *           application/json:
  *             schema:
@@ -1861,7 +1862,7 @@ publicRoutes.get('/castle/analysis/:castleId', routingInstance.getCastleById.bin
  *               properties:
  *                 error:
  *                   type: string
- *                   description: Error message indicating an invalid player name.
+ *                   description: Error message indicating an invalid player name
  *       '500':
  *         description: Internal server error
  *         content:
@@ -1871,7 +1872,7 @@ publicRoutes.get('/castle/analysis/:castleId', routingInstance.getCastleById.bin
  *               properties:
  *                 error:
  *                   type: string
- *                   description: Error message indicating an internal server error.
+ *                   description: Error message indicating an internal server error
  */
 protectedRoutes.get('/castle/search/:playerName', routingInstance.getCastleByPlayerName.bind(routingInstance));
 
@@ -1881,8 +1882,8 @@ protectedRoutes.get('/castle/search/:playerName', routingInstance.getCastleByPla
  *   get:
  *     summary: Retrieve cartography information for a specific alliance based on its ID
  *     description: |
- *       This endpoint retrieves a list of players within a specified alliance (by ID), including their castles and current might.
- *       The alliance ID is provided as a parameter. The data is ordered by the castles in descending order.
+ *       This endpoint retrieves a list of players within a specified alliance (by ID), including their castles and current might
+ *       The alliance ID is provided as a parameter. The data is ordered by the castles in descending order
  *     tags:
  *       - Cartography
  *     parameters:
@@ -1890,7 +1891,7 @@ protectedRoutes.get('/castle/search/:playerName', routingInstance.getCastleByPla
  *       - in: path
  *         name: allianceId
  *         required: true
- *         description: The ID of the alliance to retrieve data for.
+ *         description: The ID of the alliance to retrieve data for
  *         schema:
  *           type: string
  *           example: "12345"
@@ -1906,13 +1907,13 @@ protectedRoutes.get('/castle/search/:playerName', routingInstance.getCastleByPla
  *                 properties:
  *                   name:
  *                     type: string
- *                     description: Name of the player.
+ *                     description: Name of the player
  *                   castles:
  *                     type: string
- *                     description: A JSON string representing the player's castles' coordinates.
+ *                     description: A JSON string representing the player's castles' coordinates
  *                   might_current:
  *                     type: integer
- *                     description: The current might of the player.
+ *                     description: The current might of the player
  *       '400':
  *         description: Bad request due to invalid alliance ID
  *         content:
@@ -1922,7 +1923,7 @@ protectedRoutes.get('/castle/search/:playerName', routingInstance.getCastleByPla
  *               properties:
  *                 error:
  *                   type: string
- *                   description: Error message indicating an invalid alliance ID.
+ *                   description: Error message indicating an invalid alliance ID
  *       '500':
  *         description: Internal server error
  *         content:
@@ -1932,7 +1933,7 @@ protectedRoutes.get('/castle/search/:playerName', routingInstance.getCastleByPla
  *               properties:
  *                 error:
  *                   type: string
- *                   description: Error message in case of failure.
+ *                   description: Error message in case of failure
  */
 publicRoutes.get('/cartography/id/:allianceId', routingInstance.getCartographyByAllianceId.bind(routingInstance));
 
@@ -1942,8 +1943,8 @@ publicRoutes.get('/cartography/id/:allianceId', routingInstance.getCartographyBy
  *   get:
  *     summary: Retrieve detailed information about an alliance based on its ID
  *     description: |
- *       This endpoint provides detailed information about an alliance, including the players within the alliance.
- *       The data includes various statistics such as current might, loot, honor, and player level. The alliance ID is provided as a parameter.
+ *       This endpoint provides detailed information about an alliance, including the players within the alliance
+ *       The data includes various statistics such as current might, loot, honor, and player level. The alliance ID is provided as a parameter
  *     tags:
  *       - Alliances
  *     parameters:
@@ -1951,14 +1952,14 @@ publicRoutes.get('/cartography/id/:allianceId', routingInstance.getCartographyBy
  *       - in: path
  *         name: allianceId
  *         required: true
- *         description: The ID of the alliance to retrieve detailed data for.
+ *         description: The ID of the alliance to retrieve detailed data for
  *         schema:
  *           type: string
  *           example: "12345"
  *       - in: query
  *         name: playerNameForDistance
  *         required: false
- *         description: The name of the player to calculate distance (main castle coordinates) from the alliance.
+ *         description: The name of the player to calculate distance (main castle coordinates) from the alliance
  *         schema:
  *           type: string
  *           example: "PlayerName"
@@ -1972,7 +1973,7 @@ publicRoutes.get('/cartography/id/:allianceId', routingInstance.getCartographyBy
  *               properties:
  *                 alliance_name:
  *                   type: string
- *                   description: The name of the alliance.
+ *                   description: The name of the alliance
  *                 players:
  *                   type: array
  *                   items:
@@ -1980,51 +1981,51 @@ publicRoutes.get('/cartography/id/:allianceId', routingInstance.getCartographyBy
  *                     properties:
  *                       player_id:
  *                         type: string
- *                         description: The ID of the player.
+ *                         description: The ID of the player
  *                       player_name:
  *                         type: string
- *                         description: The name of the player.
+ *                         description: The name of the player
  *                       might_current:
  *                         type: integer
- *                         description: The player's current might.
+ *                         description: The player's current might
  *                       might_all_time:
  *                         type: integer
- *                         description: The player's total might across all time.
+ *                         description: The player's total might across all time
  *                       loot_current:
  *                         type: integer
- *                         description: The player's current loot.
+ *                         description: The player's current loot
  *                       loot_all_time:
  *                         type: integer
- *                         description: The player's total loot across all time.
+ *                         description: The player's total loot across all time
  *                       current_fame:
  *                         type: integer
- *                         description: The player's current fame.
+ *                         description: The player's current fame
  *                       highest_fame:
  *                         type: integer
- *                         description: The player's highest fame achieved.
+ *                         description: The player's highest fame achieved
  *                       honor:
  *                         type: integer
- *                         description: The player's current honor.
+ *                         description: The player's current honor
  *                       max_honor:
  *                         type: integer
- *                         description: The player's maximum honor.
+ *                         description: The player's maximum honor
  *                       peace_disabled_at:
  *                         type: string
  *                         format: date-time
- *                         description: The timestamp (or null) when the player's peace will be disabled (formatted as `yyyy-MM-dd HH:mm:ss`).
+ *                         description: The timestamp (or null) when the player's peace will be disabled (formatted as `yyyy-MM-dd HH:mm:ss`)
  *                       updated_at:
  *                         type: string
- *                         description: The last update time of the player's information (formatted as `yyyy-MM-dd HH:mm:ss`).
+ *                         description: The last update time of the player's information (formatted as `yyyy-MM-dd HH:mm:ss`)
  *                       level:
  *                         type: integer
- *                         description: The level of the player.
+ *                         description: The level of the player
  *                       legendary_level:
  *                         type: integer
- *                         description: The legendary level of the player.
+ *                         description: The legendary level of the player
  *                       calculated_distance:
  *                         type: number
  *                         format: float
- *                         description: The calculated distance from the player's main castle to the provided player name's main castle (if applicable).
+ *                         description: The calculated distance from the player's main castle to the provided player name's main castle (if applicable)
  *       '400':
  *         description: Bad request due to invalid alliance ID
  *         content:
@@ -2034,7 +2035,7 @@ publicRoutes.get('/cartography/id/:allianceId', routingInstance.getCartographyBy
  *               properties:
  *                 error:
  *                   type: string
- *                   description: Error message indicating an invalid alliance ID.
+ *                   description: Error message indicating an invalid alliance ID
  *       '404':
  *         description: Alliance not found
  *         content:
@@ -2044,7 +2045,7 @@ publicRoutes.get('/cartography/id/:allianceId', routingInstance.getCartographyBy
  *               properties:
  *                 error:
  *                   type: string
- *                   description: Error message indicating the alliance was not found.
+ *                   description: Error message indicating the alliance was not found
  *       '500':
  *         description: Internal server error
  *         content:
@@ -2054,7 +2055,7 @@ publicRoutes.get('/cartography/id/:allianceId', routingInstance.getCartographyBy
  *               properties:
  *                 error:
  *                   type: string
- *                   description: Error message in case of failure.
+ *                   description: Error message in case of failure
  */
 publicRoutes.get('/alliances/id/:allianceId', routingInstance.getAllianceByAllianceId.bind(routingInstance));
 
@@ -2064,8 +2065,8 @@ publicRoutes.get('/alliances/id/:allianceId', routingInstance.getAllianceByAllia
  *   get:
  *     summary: Retrieve statistics for a specific alliance by name
  *     description: |
- *       This endpoint retrieves detailed statistics for a specific alliance, identified by its name.
- *       The statistics include the current and total might, loot, and player count.
+ *       This endpoint retrieves detailed statistics for a specific alliance, identified by its name
+ *       The statistics include the current and total might, loot, and player count
  *     tags:
  *       - Alliances
  *     parameters:
@@ -2073,7 +2074,7 @@ publicRoutes.get('/alliances/id/:allianceId', routingInstance.getAllianceByAllia
  *       - in: path
  *         name: allianceName
  *         required: true
- *         description: The name of the alliance.
+ *         description: The name of the alliance
  *         schema:
  *           type: string
  *           example: "MyAlliance"
@@ -2087,31 +2088,31 @@ publicRoutes.get('/alliances/id/:allianceId', routingInstance.getAllianceByAllia
  *               properties:
  *                 alliance_id:
  *                   type: string
- *                   description: The ID of the alliance.
+ *                   description: The ID of the alliance
  *                 alliance_name:
  *                   type: string
- *                   description: The name of the alliance.
+ *                   description: The name of the alliance
  *                 might_current:
  *                   type: integer
- *                   description: The total current might of the alliance.
+ *                   description: The total current might of the alliance
  *                 might_all_time:
  *                   type: integer
- *                   description: The total might of the alliance over time.
+ *                   description: The total might of the alliance over time
  *                 loot_current:
  *                   type: integer
- *                   description: The total current loot of the alliance.
+ *                   description: The total current loot of the alliance
  *                 loot_all_time:
  *                   type: integer
- *                   description: The total loot of the alliance over time.
+ *                   description: The total loot of the alliance over time
  *                 current_fame:
  *                   type: integer
- *                   description: The current fame (glory) of the alliance.
+ *                   description: The current fame (glory) of the alliance
  *                 highest_fame:
  *                   type: integer
- *                   description: The highest fame (glory) achieved by the alliance.
+ *                   description: The highest fame (glory) achieved by the alliance
  *                 player_count:
  *                   type: integer
- *                   description: The number of players in the alliance.
+ *                   description: The number of players in the alliance
  *       '400':
  *         description: Bad request due to invalid alliance name (exceeds 30 characters)
  *         content:
@@ -2121,7 +2122,7 @@ publicRoutes.get('/alliances/id/:allianceId', routingInstance.getAllianceByAllia
  *               properties:
  *                 error:
  *                   type: string
- *                   description: Error message indicating the alliance name is invalid.
+ *                   description: Error message indicating the alliance name is invalid
  *       '404':
  *         description: Alliance not found
  *         content:
@@ -2131,7 +2132,7 @@ publicRoutes.get('/alliances/id/:allianceId', routingInstance.getAllianceByAllia
  *               properties:
  *                 error:
  *                   type: string
- *                   description: Error message indicating the alliance was not found.
+ *                   description: Error message indicating the alliance was not found
  *       '500':
  *         description: Internal server error due to failure in executing query
  *         content:
@@ -2141,7 +2142,7 @@ publicRoutes.get('/alliances/id/:allianceId', routingInstance.getAllianceByAllia
  *               properties:
  *                 error:
  *                   type: string
- *                   description: Error message indicating a server-side failure.
+ *                   description: Error message indicating a server-side failure
  */
 protectedRoutes.get(
   '/alliances/name/:allianceName',
@@ -2154,8 +2155,8 @@ protectedRoutes.get(
  *   get:
  *     summary: Retrieve a paginated list of alliances with various statistics
  *     description: |
- *       This endpoint retrieves a list of alliances with various statistics, such as the current and total might, loot, and player count.
- *       The results are paginated, and the user can specify sorting options (by alliance name, current might, total loot, etc.).
+ *       This endpoint retrieves a list of alliances with various statistics, such as the current and total might, loot, and player count
+ *       The results are paginated, and the user can specify sorting options (by alliance name, current might, total loot, etc.)
  *     tags:
  *       - Alliances
  *     parameters:
@@ -2163,21 +2164,21 @@ protectedRoutes.get(
  *       - in: query
  *         name: page
  *         required: false
- *         description: The page number for pagination (default is 1).
+ *         description: The page number for pagination (default is 1)
  *         schema:
  *           type: integer
  *           example: 1
  *       - in: query
  *         name: orderBy
  *         required: false
- *         description: The field to order the results by. Can be one of 'alliance_name', 'loot_current', 'loot_all_time', 'might_current', 'might_all_time', 'player_count' (default is 'alliance_name').
+ *         description: The field to order the results by. Can be one of 'alliance_name', 'loot_current', 'loot_all_time', 'might_current', 'might_all_time', 'player_count' (default is 'alliance_name')
  *         schema:
  *           type: string
  *           example: "might_current"
  *       - in: query
  *         name: orderType
  *         required: false
- *         description: The sorting order. Can be either 'ASC' or 'DESC' (default is 'ASC').
+ *         description: The sorting order. Can be either 'ASC' or 'DESC' (default is 'ASC')
  *         schema:
  *           type: string
  *           example: "ASC"
@@ -2191,22 +2192,22 @@ protectedRoutes.get(
  *               properties:
  *                 duration:
  *                   type: string
- *                   description: The duration of the SQL query execution.
+ *                   description: The duration of the SQL query execution
  *                 pagination:
  *                   type: object
  *                   properties:
  *                     current_page:
  *                       type: integer
- *                       description: The current page of results.
+ *                       description: The current page of results
  *                     total_pages:
  *                       type: integer
- *                       description: The total number of pages based on the total number of alliances.
+ *                       description: The total number of pages based on the total number of alliances
  *                     current_items_count:
  *                       type: integer
- *                       description: The number of alliances returned for the current page.
+ *                       description: The number of alliances returned for the current page
  *                     total_items_count:
  *                       type: integer
- *                       description: The total number of alliances in the database.
+ *                       description: The total number of alliances in the database
  *                 alliances:
  *                   type: array
  *                   items:
@@ -2214,31 +2215,31 @@ protectedRoutes.get(
  *                     properties:
  *                       alliance_id:
  *                         type: string
- *                         description: The ID of the alliance.
+ *                         description: The ID of the alliance
  *                       alliance_name:
  *                         type: string
- *                         description: The name of the alliance.
+ *                         description: The name of the alliance
  *                       might_current:
  *                         type: integer
- *                         description: The total current might of the alliance.
+ *                         description: The total current might of the alliance
  *                       might_all_time:
  *                         type: integer
- *                         description: The total might of the alliance over time.
+ *                         description: The total might of the alliance over time
  *                       loot_current:
  *                         type: integer
- *                         description: The total current loot of the alliance.
+ *                         description: The total current loot of the alliance
  *                       loot_all_time:
  *                         type: integer
- *                         description: The total loot of the alliance over time.
+ *                         description: The total loot of the alliance over time
  *                       current_fame:
  *                         type: integer
- *                         description: The current fame (glory) of the alliance.
+ *                         description: The current fame (glory) of the alliance
  *                       highest_fame:
  *                         type: integer
- *                         description: The highest fame (glory) achieved by the alliance.
+ *                         description: The highest fame (glory) achieved by the alliance
  *                       player_count:
  *                         type: integer
- *                         description: The number of players in the alliance.
+ *                         description: The number of players in the alliance
  *       '400':
  *         description: Bad request due to invalid query parameters
  *         content:
@@ -2248,7 +2249,7 @@ protectedRoutes.get(
  *               properties:
  *                 error:
  *                   type: string
- *                   description: Error message indicating an invalid query parameter.
+ *                   description: Error message indicating an invalid query parameter
  *       '500':
  *         description: Internal server error
  *         content:
@@ -2258,7 +2259,7 @@ protectedRoutes.get(
  *               properties:
  *                 error:
  *                   type: string
- *                   description: Error message in case of failure.
+ *                   description: Error message in case of failure
  */
 protectedRoutes.get('/alliances', routingInstance.getAlliances.bind(routingInstance));
 
@@ -2268,8 +2269,8 @@ protectedRoutes.get('/alliances', routingInstance.getAlliances.bind(routingInsta
  *   get:
  *     summary: Retrieve top players' statistics for a specific player
  *     description: |
- *       This endpoint retrieves the top players' statistics for a specific player, identified by their player ID.
- *       The statistics include the top 3 players that the specified player has encountered.
+ *       This endpoint retrieves the top players' statistics for a specific player, identified by their player ID
+ *       The statistics include the top 3 players that the specified player has encountered
  *     tags:
  *       - Players
  *     parameters:
@@ -2277,7 +2278,7 @@ protectedRoutes.get('/alliances', routingInstance.getAlliances.bind(routingInsta
  *       - in: path
  *         name: playerId
  *         required: true
- *         description: The ID of the player.
+ *         description: The ID of the player
  *         schema:
  *           type: string
  *           example: "12345678"
@@ -2296,11 +2297,11 @@ protectedRoutes.get('/alliances', routingInstance.getAlliances.bind(routingInsta
  *                     properties:
  *                       date:
  *                         type: string
- *                         description: The date and time when the statistics were recorded, in local timezone.
+ *                         description: The date and time when the statistics were recorded, in local timezone
  *                         example: "2025-03-04 16:07:00"
  *                       top_players:
  *                         type: string
- *                         description: JSON string representing the top 3 players, with their IDs and points. Specifically, the JSON string contains an object where the keys are event IDs and the values are arrays of player objects, each containing a player ID and points.
+ *                         description: JSON string representing the top 3 players, with their IDs and points. Specifically, the JSON string contains an object where the keys are event IDs and the values are arrays of player objects, each containing a player ID and points
  *                         example: "{\"30\":[{\"id\":\"15151515\",\"point\":2849675},{\"id\":\"14141414\",\"point\":1381981},{\"id\":\"12121212\",\"point\":1267213}],\"58\":[{\"id\":\"16161616\",\"point\":1010741202},{\"id\":\"1717171717\",\"point\":555870454},{\"id\":\"1818181818\",\"point\":484473655}]}"
  *       '400':
  *         description: Invalid player ID
@@ -2311,7 +2312,7 @@ protectedRoutes.get('/alliances', routingInstance.getAlliances.bind(routingInsta
  *               properties:
  *                 error:
  *                   type: string
- *                   description: Error message indicating the player ID is invalid.
+ *                   description: Error message indicating the player ID is invalid
  *       '500':
  *         description: Internal server error due to failure in executing query
  *         content:
@@ -2321,7 +2322,7 @@ protectedRoutes.get('/alliances', routingInstance.getAlliances.bind(routingInsta
  *               properties:
  *                 error:
  *                   type: string
- *                   description: Error message indicating a server-side failure.
+ *                   description: Error message indicating a server-side failure
  */
 publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayerId.bind(routingInstance));
 
@@ -2331,9 +2332,9 @@ publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayer
  *   get:
  *     summary: Retrieve a list of players with pagination and filters
  *     description: |
- *       This endpoint allows you to retrieve a list of players from the database. You can apply multiple filters such as alliance, honor, might, loot, level, and more.
- *       Pagination and sorting are also supported to fetch results in chunks.
- *       The query parameters control the filtering, ordering, and pagination of the results.
+ *       This endpoint allows you to retrieve a list of players from the database. You can apply multiple filters such as alliance, honor, might, loot, level, and more
+ *       Pagination and sorting are also supported to fetch results in chunks
+ *       The query parameters control the filtering, ordering, and pagination of the results
  *     tags:
  *       - Players
  *     parameters:
@@ -2348,9 +2349,9 @@ publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayer
  *       - name: orderBy
  *         in: query
  *         description: |
- *           The field by which to sort the results.
- *           Possible values: 'player_name', 'loot_current', 'loot_all_time', 'might_current', 'might_all_time', 'honor', 'level'.
- *           Default is 'player_name'.
+ *           The field by which to sort the results
+ *           Possible values: 'player_name', 'loot_current', 'loot_all_time', 'might_current', 'might_all_time', 'honor', 'level'
+ *           Default is 'player_name'
  *         required: false
  *         schema:
  *           type: string
@@ -2366,8 +2367,8 @@ publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayer
  *       - name: orderType
  *         in: query
  *         description: |
- *           The direction of sorting. Possible values are 'ASC' (ascending) and 'DESC' (descending).
- *           Default is 'ASC'.
+ *           The direction of sorting. Possible values are 'ASC' (ascending) and 'DESC' (descending)
+ *           Default is 'ASC'
  *         required: false
  *         schema:
  *           type: string
@@ -2377,77 +2378,77 @@ publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayer
  *             - DESC
  *       - name: alliance
  *         in: query
- *         description: The name of the alliance to filter players by.
+ *         description: The name of the alliance to filter players by
  *         required: false
  *         schema:
  *           type: string
  *           default: ""
  *       - name: minHonor
  *         in: query
- *         description: The minimum honor value to filter players.
+ *         description: The minimum honor value to filter players
  *         required: false
  *         schema:
  *           type: integer
  *           default: -1
  *       - name: maxHonor
  *         in: query
- *         description: The maximum honor value to filter players.
+ *         description: The maximum honor value to filter players
  *         required: false
  *         schema:
  *           type: integer
  *           default: -1
  *       - name: minMight
  *         in: query
- *         description: The minimum might value to filter players.
+ *         description: The minimum might value to filter players
  *         required: false
  *         schema:
  *           type: integer
  *           default: -1
  *       - name: maxMight
  *         in: query
- *         description: The maximum might value to filter players.
+ *         description: The maximum might value to filter players
  *         required: false
  *         schema:
  *           type: integer
  *           default: -1
  *       - name: minLoot
  *         in: query
- *         description: The minimum loot value to filter players.
+ *         description: The minimum loot value to filter players
  *         required: false
  *         schema:
  *           type: integer
  *           default: -1
  *       - name: maxLoot
  *         in: query
- *         description: The maximum loot value to filter players.
+ *         description: The maximum loot value to filter players
  *         required: false
  *         schema:
  *           type: integer
  *           default: -1
  *       - name: minLevel
  *         in: query
- *         description: The minimum level value to filter players.
+ *         description: The minimum level value to filter players
  *         required: false
  *         schema:
  *           type: integer
  *           default: -1
  *       - name: minLegendaryLevel
  *         in: query
- *         description: The minimum legendary level value to filter players.
+ *         description: The minimum legendary level value to filter players
  *         required: false
  *         schema:
  *           type: integer
  *           default: -1
  *       - name: maxLevel
  *         in: query
- *         description: The maximum level value to filter players.
+ *         description: The maximum level value to filter players
  *         required: false
  *         schema:
  *           type: integer
  *           default: -1
  *       - name: maxLegendaryLevel
  *         in: query
- *         description: The maximum legendary level value to filter players.
+ *         description: The maximum legendary level value to filter players
  *         required: false
  *         schema:
  *           type: integer
@@ -2455,9 +2456,9 @@ publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayer
  *       - name: playerNameForDistance
  *         in: query
  *         description: |
- *          The name of the player to calculate distance from (if provided).
- *          This is used to calculate the distance from the player's main castle to the specified player name.
- *          If not provided, the distance will not be calculated.
+ *          The name of the player to calculate distance from (if provided)
+ *          This is used to calculate the distance from the player's main castle to the specified player name
+ *          If not provided, the distance will not be calculated
  *         required: false
  *         schema:
  *           type: string
@@ -2465,8 +2466,8 @@ publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayer
  *       - name: allianceFilter
  *         in: query
  *         description: |
- *           Filter by alliance membership status.
- *           0: No alliance, 1: In an alliance.
+ *           Filter by alliance membership status
+ *           0: No alliance, 1: In an alliance
  *         required: false
  *         schema:
  *           type: integer
@@ -2478,8 +2479,8 @@ publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayer
  *       - name: protectionFilter
  *         in: query
  *         description: |
- *           Filter by protection status.
- *           0: No protection, 1: In protection.
+ *           Filter by protection status
+ *           0: No protection, 1: In protection
  *         required: false
  *         schema:
  *           type: integer
@@ -2491,8 +2492,8 @@ publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayer
  *       - name: banFilter
  *         in: query
  *         description: |
- *           Filter by ban status.
- *           0: Not banned, 1: Banned.
+ *           Filter by ban status
+ *           0: Not banned, 1: Banned
  *         required: false
  *         schema:
  *           type: integer
@@ -2504,8 +2505,8 @@ publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayer
  *       - name: inactiveFilter
  *         in: query
  *         description: |
- *           Filter by inactivity status.
- *           0: Active, 1: Inactive.
+ *           Filter by inactivity status
+ *           0: Active, 1: Inactive
  *         required: false
  *         schema:
  *           type: integer
@@ -2516,7 +2517,7 @@ publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayer
  *             - 1
  *     responses:
  *       '200':
- *         description: A list of players with pagination and filter details.
+ *         description: A list of players with pagination and filter details
  *         content:
  *           application/json:
  *             schema:
@@ -2524,22 +2525,22 @@ publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayer
  *               properties:
  *                 duration:
  *                   type: string
- *                   description: Duration of the SQL query execution.
+ *                   description: Duration of the SQL query execution
  *                 pagination:
  *                   type: object
  *                   properties:
  *                     current_page:
  *                       type: integer
- *                       description: Current page number.
+ *                       description: Current page number
  *                     total_pages:
  *                       type: integer
- *                       description: Total number of pages available.
+ *                       description: Total number of pages available
  *                     current_items_count:
  *                       type: integer
- *                       description: Number of players returned in this page.
+ *                       description: Number of players returned in this page
  *                     total_items_count:
  *                       type: integer
- *                       description: Total number of players matching the filters.
+ *                       description: Total number of players matching the filters
  *                 players:
  *                   type: array
  *                   items:
@@ -2547,63 +2548,63 @@ publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayer
  *                     properties:
  *                       player_id:
  *                         type: string
- *                         description: The unique ID of the player, with the country code.
+ *                         description: The unique ID of the player, with the country code
  *                       player_name:
  *                         type: string
- *                         description: The name of the player.
+ *                         description: The name of the player
  *                       alliance_name:
  *                         type: string
- *                         description: The name of the player's alliance (if applicable).
+ *                         description: The name of the player's alliance (if applicable)
  *                       alliance_id:
  *                         type: string
- *                         description: The unique ID of the alliance (if applicable), with the country code.
+ *                         description: The unique ID of the alliance (if applicable), with the country code
  *                       might_current:
  *                         type: integer
- *                         description: The current might of the player.
+ *                         description: The current might of the player
  *                       might_all_time:
  *                         type: integer
- *                         description: The total might accumulated by the player.
+ *                         description: The total might accumulated by the player
  *                       loot_current:
  *                         type: integer
- *                         description: The current loot of the player.
+ *                         description: The current loot of the player
  *                       loot_all_time:
  *                         type: integer
- *                         description: The total loot accumulated by the player.
+ *                         description: The total loot accumulated by the player
  *                       honor:
  *                         type: integer
- *                         description: The current honor of the player.
+ *                         description: The current honor of the player
  *                       max_honor:
  *                         type: integer
- *                         description: The maximum honor of the player.
+ *                         description: The maximum honor of the player
  *                       highest_fame:
  *                         type: integer
- *                         description: The highest fame (glory) achieved by the player.
+ *                         description: The highest fame (glory) achieved by the player
  *                       current_fame:
  *                         type: integer
- *                         description: The current fame (glory) of the player.
+ *                         description: The current fame (glory) of the player
  *                       remaining_relocation_time:
  *                         type: integer
- *                         description: The remaining relocation time in seconds.
+ *                         description: The remaining relocation time in seconds
  *                       peace_disabled_at:
  *                         type: string
  *                         format: date-time
- *                         description: The date and time when the player's peace was disabled, in UTC.
+ *                         description: The date and time when the player's peace was disabled, in UTC
  *                       updated_at:
  *                         type: string
  *                         format: date-time
- *                         description: The last time the player's data was updated.
+ *                         description: The last time the player's data was updated
  *                       level:
  *                         type: integer
- *                         description: The player's current level.
+ *                         description: The player's current level
  *                       legendary_level:
  *                         type: integer
- *                         description: The player's current legendary level.
+ *                         description: The player's current legendary level
  *                       calculated_distance:
  *                         type: number
  *                         format: float
- *                         description: The distance from the player's main castle to the specified player name for distance.
+ *                         description: The distance from the player's main castle to the specified player name for distance
  *       '500':
- *         description: Internal server error.
+ *         description: Internal server error
  *         content:
  *           application/json:
  *             schema:
@@ -2611,7 +2612,7 @@ publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayer
  *               properties:
  *                 error:
  *                   type: string
- *                   description: Error message describing what went wrong.
+ *                   description: Error message describing what went wrong
  */
 protectedRoutes.get('/players', routingInstance.getPlayers.bind(routingInstance));
 
@@ -2621,21 +2622,21 @@ protectedRoutes.get('/players', routingInstance.getPlayers.bind(routingInstance)
  *   get:
  *     summary: Retrieve detailed information about a specific player
  *     description: |
- *       This endpoint allows you to retrieve detailed information about a specific player using their player name.
- *       If the player name is invalid or the player is not found, an appropriate error message is returned.
+ *       This endpoint allows you to retrieve detailed information about a specific player using their player name
+ *       If the player name is invalid or the player is not found, an appropriate error message is returned
  *     tags:
  *       - Players
  *     parameters:
  *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - name: playerName
  *         in: path
- *         description: The name of the player to retrieve information for.
+ *         description: The name of the player to retrieve information for
  *         required: true
  *         schema:
  *           type: string
  *     responses:
  *       '200':
- *         description: Successfully retrieved player information.
+ *         description: Successfully retrieved player information
  *         content:
  *           application/json:
  *             schema:
@@ -2643,50 +2644,50 @@ protectedRoutes.get('/players', routingInstance.getPlayers.bind(routingInstance)
  *               properties:
  *                 player_id:
  *                   type: string
- *                   description: The unique ID of the player, with the country code.
+ *                   description: The unique ID of the player, with the country code
  *                 player_name:
  *                   type: string
- *                   description: The name of the player.
+ *                   description: The name of the player
  *                 alliance_name:
  *                   type: string
- *                   description: The name of the player's alliance (if applicable).
+ *                   description: The name of the player's alliance (if applicable)
  *                 alliance_id:
  *                   type: string
- *                   description: The unique ID of the alliance (if applicable), with the country code.
+ *                   description: The unique ID of the alliance (if applicable), with the country code
  *                 might_current:
  *                   type: integer
- *                   description: The current might of the player.
+ *                   description: The current might of the player
  *                 might_all_time:
  *                   type: integer
- *                   description: The total might accumulated by the player.
+ *                   description: The total might accumulated by the player
  *                 loot_current:
  *                   type: integer
- *                   description: The current loot of the player.
+ *                   description: The current loot of the player
  *                 loot_all_time:
  *                   type: integer
- *                   description: The total loot accumulated by the player.
+ *                   description: The total loot accumulated by the player
  *                 honor:
  *                   type: integer
- *                   description: The current honor of the player.
+ *                   description: The current honor of the player
  *                 max_honor:
  *                   type: integer
- *                   description: The maximum honor of the player.
+ *                   description: The maximum honor of the player
  *                 peace_disabled_at:
  *                   type: string
  *                   format: date-time
- *                   description: The timestamp (or null) when the player's peace will be disabled (formatted as `yyyy-MM-dd HH:mm:ss`).
+ *                   description: The timestamp (or null) when the player's peace will be disabled (formatted as `yyyy-MM-dd HH:mm:ss`)
  *                 updated_at:
  *                   type: string
  *                   format: date-time
- *                   description: The last time the player's data was updated.
+ *                   description: The last time the player's data was updated
  *                 level:
  *                   type: integer
- *                   description: The player's current level.
+ *                   description: The player's current level
  *                 legendary_level:
  *                   type: integer
- *                   description: The player's current legendary level.
+ *                   description: The player's current legendary level
  *       '400':
- *         description: Invalid username format.
+ *         description: Invalid username format
  *         content:
  *           application/json:
  *             schema:
@@ -2696,7 +2697,7 @@ protectedRoutes.get('/players', routingInstance.getPlayers.bind(routingInstance)
  *                   type: string
  *                   description: "Invalid username"
  *       '404':
- *         description: Player not found in the database.
+ *         description: Player not found in the database
  *         content:
  *           application/json:
  *             schema:
@@ -2706,7 +2707,7 @@ protectedRoutes.get('/players', routingInstance.getPlayers.bind(routingInstance)
  *                   type: string
  *                   description: "Player not found"
  *       '500':
- *         description: Internal server error, unable to process request.
+ *         description: Internal server error, unable to process request
  *         content:
  *           application/json:
  *             schema:
@@ -2724,21 +2725,21 @@ protectedRoutes.get('/players/:playerName', routingInstance.getPlayersByPlayerNa
  *   get:
  *     summary: Retrieve statistical data for an alliance
  *     description: |
- *       This endpoint retrieves statistical information for a specific alliance, including event history and points data for players within the alliance.
- *       If the alliance ID is invalid, an error message is returned.
+ *       This endpoint retrieves statistical information for a specific alliance, including event history and points data for players within the alliance
+ *       If the alliance ID is invalid, an error message is returned
  *     tags:
  *       - Statistics
  *     parameters:
  *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - name: allianceId
  *         in: path
- *         description: The ID of the alliance for which statistics are being requested.
+ *         description: The ID of the alliance for which statistics are being requested
  *         required: true
  *         schema:
  *           type: integer
  *     responses:
  *       '200':
- *         description: Successfully retrieved alliance statistics.
+ *         description: Successfully retrieved alliance statistics
  *         content:
  *           application/json:
  *             schema:
@@ -2749,28 +2750,28 @@ protectedRoutes.get('/players/:playerName', routingInstance.getPlayersByPlayerNa
  *                   properties:
  *                     player_event_berimond_invasion_history:
  *                       type: number
- *                       description: The time needed to process player_event_berimond_invasion_history, in seconds.
+ *                       description: The time needed to process player_event_berimond_invasion_history, in seconds
  *                     player_event_berimond_kingdom_history:
  *                       type: number
- *                       description: The time needed to process player_event_berimond_kingdom_history, in seconds.
+ *                       description: The time needed to process player_event_berimond_kingdom_history, in seconds
  *                     player_event_bloodcrow_history:
  *                       type: number
- *                       description: The time needed to process player_event_bloodcrow_history, in seconds.
+ *                       description: The time needed to process player_event_bloodcrow_history, in seconds
  *                     player_event_nomad_history:
  *                       type: number
- *                       description: The time needed to process player_event_nomad_history, in seconds.
+ *                       description: The time needed to process player_event_nomad_history, in seconds
  *                     player_event_samurai_history:
  *                       type: number
- *                       description: The time needed to process player_event_samurai_history, in seconds.
+ *                       description: The time needed to process player_event_samurai_history, in seconds
  *                     player_event_war_realms_history:
  *                       type: number
- *                       description: The time needed to process player_event_war_realms_history, in seconds.
+ *                       description: The time needed to process player_event_war_realms_history, in seconds
  *                     player_loot_history:
  *                       type: number
- *                       description: The time needed to process player_loot_history, in seconds.
+ *                       description: The time needed to process player_loot_history, in seconds
  *                     player_might_history:
  *                       type: number
- *                       description: The time needed to process player_might_history, in seconds.
+ *                       description: The time needed to process player_might_history, in seconds
  *                 points:
  *                   type: object
  *                   properties:
@@ -2781,14 +2782,14 @@ protectedRoutes.get('/players/:playerName', routingInstance.getPlayersByPlayerNa
  *                         properties:
  *                           player_id:
  *                             type: string
- *                             description: The ID of the player.
+ *                             description: The ID of the player
  *                           date:
  *                             type: string
  *                             format: date-time
- *                             description: The date when the points were recorded.
+ *                             description: The date when the points were recorded
  *                           point:
  *                             type: integer
- *                             description: The point value recorded at the given time.
+ *                             description: The point value recorded at the given time
  *                     player_event_bloodcrow_history:
  *                       type: array
  *                       items:
@@ -2796,17 +2797,17 @@ protectedRoutes.get('/players/:playerName', routingInstance.getPlayersByPlayerNa
  *                         properties:
  *                           player_id:
  *                             type: string
- *                             description: The ID of the player.
+ *                             description: The ID of the player
  *                           date:
  *                             type: string
  *                             format: date-time
- *                             description: The date when the points were recorded.
+ *                             description: The date when the points were recorded
  *                           point:
  *                             type: integer
- *                             description: The point value recorded at the given time.
+ *                             description: The point value recorded at the given time
  *                     # (other event types will follow the same structure)
  *       '400':
- *         description: Invalid alliance ID format.
+ *         description: Invalid alliance ID format
  *         content:
  *           application/json:
  *             schema:
@@ -2816,7 +2817,7 @@ protectedRoutes.get('/players/:playerName', routingInstance.getPlayersByPlayerNa
  *                   type: string
  *                   description: "Invalid alliance id"
  *       '404':
- *         description: Alliance not found.
+ *         description: Alliance not found
  *         content:
  *           application/json:
  *             schema:
@@ -2826,7 +2827,7 @@ protectedRoutes.get('/players/:playerName', routingInstance.getPlayersByPlayerNa
  *                   type: string
  *                   description: "Alliance not found"
  *       '500':
- *         description: Internal server error, unable to process the request.
+ *         description: Internal server error, unable to process the request
  *         content:
  *           application/json:
  *             schema:
@@ -2863,8 +2864,8 @@ publicRoutes.get(
  *   get:
  *     summary: Retrieve player event statistics
  *     description: |
- *       This endpoint retrieves event statistics for a specific player, including their name, alliance information, and points history.
- *       The player ID must be a valid identifier, and if the player is not found, an error message is returned.
+ *       This endpoint retrieves event statistics for a specific player, including their name, alliance information, and points history
+ *       The player ID must be a valid identifier, and if the player is not found, an error message is returned
  *       Due to optimization, the generic endpoint applies the following time limits:
  *         berimond invasion: no limit
  *         berimond kingdom: no limit
@@ -2880,7 +2881,7 @@ publicRoutes.get(
  *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - name: playerId
  *         in: path
- *         description: Unique identifier of the player for whom the statistics are being retrieved.
+ *         description: Unique identifier of the player for whom the statistics are being retrieved
  *         required: true
  *         schema:
  *           type: string
@@ -2965,23 +2966,23 @@ publicRoutes.get('/statistics/player/:playerId', routingInstance.getStatisticsBy
  *   get:
  *     summary: Retrieve event statistics for a specific player in a specific event, with a specified duration
  *     description: |
- *       This endpoint retrieves event statistics for a specific player, including their name, alliance information, and points history.
- *       The player ID must be a valid identifier, and if the player is not found, an error message is returned.
- *       The event name must be one of the predefined events, and the duration must be a valid integer within the specified range.
+ *       This endpoint retrieves event statistics for a specific player, including their name, alliance information, and points history
+ *       The player ID must be a valid identifier, and if the player is not found, an error message is returned
+ *       The event name must be one of the predefined events, and the duration must be a valid integer within the specified range
  *     tags:
  *       - Statistics
  *     parameters:
  *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - name: playerId
  *         in: path
- *         description: Unique identifier of the player for whom the statistics are being retrieved.
+ *         description: Unique identifier of the player for whom the statistics are being retrieved
  *         required: true
  *         schema:
  *           type: string
  *           example: "123456789"
  *       - name: eventName
  *         in: path
- *         description: The name of the event for which statistics are being requested.
+ *         description: The name of the event for which statistics are being requested
  *         required: true
  *         schema:
  *           type: string
@@ -2997,7 +2998,7 @@ publicRoutes.get('/statistics/player/:playerId', routingInstance.getStatisticsBy
  *           example: "player_event_berimond_invasion_history"
  *       - name: duration
  *         in: path
- *         description: The duration for which the statistics are being requested, in days, between 0 and 365 days.
+ *         description: The duration for which the statistics are being requested, in days, between 0 and 365 days
  *         required: true
  *         schema:
  *           type: integer
@@ -3079,17 +3080,23 @@ publicRoutes.get(
   routingInstance.getStatisticsByPlayerIdAndEventNameAndDuration.bind(ApiRoutingController),
 );
 
+publicRoutes.get('/live-ranking/outer-realms', routingInstance.getLiveOuterRealmsRanking.bind(routingInstance));
+publicRoutes.get(
+  '/live-ranking/outer-realms/player/:playerId',
+  routingInstance.getLiveOuterRealmsRankingSpecificPlayer.bind(routingInstance),
+);
+
 /**
- * Express middleware that validates the presence and validity of the 'gge-server' header in incoming requests.
+ * Express middleware that validates the presence and validity of the 'gge-server' header in incoming requests
  *
- * - Checks if the 'gge-server' header is provided; responds with 400 if missing.
- * - Validates the server name using `apiGgeTrackerManager.isValidServer`; responds with 400 if invalid.
- * - Retrieves the server configuration; responds with 500 if not found.
- * - Attaches database connection pools (`pg_pool`, `mysql_pool`), the server language, and server code to the request object for downstream handlers.
+ * - Checks if the 'gge-server' header is provided; responds with 400 if missing
+ * - Validates the server name using `apiGgeTrackerManager.isValidServer`; responds with 400 if invalid
+ * - Retrieves the server configuration; responds with 500 if not found
+ * - Attaches database connection pools (`pg_pool`, `mysql_pool`), the server language, and server code to the request object for downstream handlers
  *
- * @param req - The Express request object, extended with additional properties for database pools and server info.
- * @param res - The Express response object.
- * @param next - The next middleware function in the stack.
+ * @param req - The Express request object, extended with additional properties for database pools and server info
+ * @param res - The Express response object
+ * @param next - The next middleware function in the stack
  */
 const ggeServerMiddleware = (request: Request, response: Response, next: NextFunction): void => {
   const language = request.headers['gge-server']?.toString();
@@ -3162,20 +3169,7 @@ function printHeader(): void {
   \u001B[34m            /_____//_____/      \\/                            \\/     \\/     \\/    \\/
   \u001B[34m
   \u001B[32m                            🟢 GGE Tracker API running at PORT: ${APPLICATION_PORT}
-  \u001B[32m Parameters:
-  \u001B[32m
-  \u001B[32m Database managed:
-  \u001B[32m LOG_MAX_ENTRIES: ${process.env.LOG_MAX_ENTRIES}
-  \u001B[32m LOG_MAX_BYTES: ${process.env.LOG_MAX_BYTES}
-  \u001B[32m LOG_FLUSH_INTERVAL_MS: ${process.env.LOG_FLUSH_INTERVAL_MS}
-  \u001B[32m LOKI_MAX_RETRIES: ${process.env.LOKI_MAX_RETRIES}
-  \u001B[32m LOKI_RETRY_BASE_MS: ${process.env.LOKI_RETRY_BASE_MS}
-  \u001B[32m IP_WINDOW_MS: ${process.env.IP_WINDOW_MS}
-  \u001B[32m IP_THRESHOLD: ${process.env.IP_THRESHOLD}
-  \u001B[32m DECAY_INTERVAL_MS: ${process.env.DECAY_INTERVAL_MS}
-  \u001B[32m DECAY_FACTOR: ${process.env.DECAY_FACTOR}
-  \u001B[32m RATE_LIMIT_POINTS: ${process.env.RATE_LIMIT_POINTS}
-  \u001B[32m RATE_LIMIT_DURATION: ${process.env.RATE_LIMIT_DURATION}
+  \u001B[32m Application Version: ${ApiHelper.API_VERSION}
 `);
   console.log('\u001B[0m');
 }

@@ -1,23 +1,23 @@
 import * as express from 'express';
 import { RedisClientType } from 'redis';
-import { ApiDocumentation } from '../routes/api-documentation';
+import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { ApiGgeTrackerManager } from '../managers/api.manager';
-import { ApiEvents } from '../routes/api-events';
-import { ApiOffers } from '../routes/api-offers';
-import { ApiStatus } from '../routes/api-status';
+import { puppeteerManagerInstance } from '../managers/puperteer.manager';
+import { ApiAlliances } from '../routes/api-alliances';
 import { ApiAssets } from '../routes/api-assets';
-import { ApiUpdates } from '../routes/api-updates';
-import { ApiDungeons } from '../routes/api-dungeons';
-import { ApiServer } from '../routes/api-server';
 import { ApiCartography } from '../routes/api-cartography';
 import { ApiCastle } from '../routes/api-castle';
-import { ApiAlliances } from '../routes/api-alliances';
+import { ApiDocumentation } from '../routes/api-documentation';
+import { ApiDungeons } from '../routes/api-dungeons';
+import { ApiEvents } from '../routes/api-events';
+import { ApiOffers } from '../routes/api-offers';
 import { ApiPlayers } from '../routes/api-players';
+import { ApiServer } from '../routes/api-server';
 import { ApiStatistics } from '../routes/api-statistics';
+import { ApiStatus } from '../routes/api-status';
+import { ApiUpdates } from '../routes/api-updates';
 import { QueueService } from '../services/queue-service';
-import { puppeteerManagerInstance } from '../managers/puperteer.manager';
-import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
 
 /**
  * Manages API controller endpoints for the Gge Tracker backend.
@@ -133,6 +133,14 @@ export class ApiRoutingController {
   public getEvents(request: express.Request, response: express.Response): void {
     // Events are stored only on FR1 database (centralized database)
     void ApiEvents.getEvents(request, response, this.apiGgeTrackerManager.getPgSqlPool(GgeTrackerServersEnum.FR1));
+  }
+
+  public getLiveOuterRealmsRanking(request: express.Request, response: express.Response): void {
+    void ApiEvents.getLiveOuterRealmsRanking(request, response);
+  }
+
+  public getLiveOuterRealmsRankingSpecificPlayer(request: express.Request, response: express.Response): void {
+    void ApiEvents.getLiveOuterRealmsRankingSpecificPlayer(request, response);
   }
 
   public getEventPlayers(request: express.Request, response: express.Response): void {

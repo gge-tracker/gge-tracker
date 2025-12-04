@@ -8,22 +8,7 @@ export interface ISelectItem {
 }
 
 /**
- * SelectComponent is a standalone Angular component that provides a customizable select/dropdown UI.
- *
- * @remarks
- * - Uses Angular's standalone component feature.
- * - Accepts a list of selectable items and emits the selected value.
- *
- * @property items - Required input. An array of selectable items implementing `ISelectItem[]`.
- * @property selectedItem - Required input. The currently selected item, which can be an `ISelectItem`, a string, or null.
- * @property name - Required input. The name of the select component.
- * @property currentItem - The currently selected item's value or label as a string, or null.
- * @property listItems - Internal list of items to display in the select.
- * @property selectEmitter - Output event emitter that emits the selected item's value or null.
- *
- * @method ngOnInit - Initializes the component, sets the current item and populates the list of items.
- * @method updateSearchValue - Updates the current item value based on user input.
- * @method onSelectChange - Handles selection changes, emits the selected value.
+ * SelectComponent is a standalone Angular component that provides a customizable select/dropdown UI
  */
 @Component({
   selector: 'app-select',

@@ -1,48 +1,182 @@
-.disabled {
-  opacity: 0.5;
-  pointer-events: none;
-}
-
-.btn-icon {
-  width: 37px;
-  height: auto;
-}
-
-.btn-icon:hover {
-  transform: scale(1.1);
-}
-
 ::ng-deep .alliances th, td {
   text-align: center;
   vertical-align: middle;
 }
 
-.division-element {
-  transition: transform 0.2s;
-  position: relative;
+.action-icon img.btn-icon {
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+  transition: transform 0.12s ease, filter 0.12s ease;
 }
 
-.division-element:hover {
-  cursor: pointer;
-  transform: scale(1.1);
+.action-icon.disabled {
+  opacity: 0.45;
+  pointer-events: none;
 }
 
-.division-element.active::after {
-  content: "";
-  position: absolute;
-  height: 2px;
-  width: 0%;
-  bottom: -6px;
+.action-icon:hover img.btn-icon {
+  filter: drop-shadow(0 6px 14px rgba(0,0,0,0.5));
+  transform: translateY(-3px);
+}
+
+.btn-ghost {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.04);
+  color: var(--tracker-text);
+}
+
+.btn-ghost:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+.btn-icon {
+  height: auto;
+  width: 37px;
+}
+
+.date-pill {
+  background: rgba(255,255,255,0.03);
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.04);
+  color: var(--tracker-text);
+  padding: 6px 10px;
+}
+
+.date-pill .date-text {
+  color: var(--tracker-muted);
+  font-size: 0.95rem;
+}
+
+.division-button:focus {
+  border-radius: 12px;
+  outline-offset: 3px;
+  outline: 3px solid rgba(255,255,255,0.144);
+}
+
+.division-row .division-button {
+  align-items: center;
+  background: rgba(255,255,255,0.02);
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.05);
+  display: inline-flex;
+  height: 56px;
+  justify-content: center;
+  padding: 6px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.15s;
+  width: 56px;
+}
+
+.division-row .division-button img {
+  display: block;
+  height: auto;
+  max-width: 100%;
+}
+
+.division-row .division-button.active {
+  background: linear-gradient(180deg, rgb(255 248 239 / 12%), rgba(38,198,218,0.06));
+  border-color: rgba(211,211,211,0.28);
+  box-shadow: 0 10px 30px rgba(38,198,218,0.06);
+  transform: translateY(-2px);
+}
+
+.division-row .division-button.active::after {
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid #fff;
+  bottom: -12px;
+  content: '';
+  height: 0;
   left: 50%;
+  position: absolute;
   transform: translateX(-50%);
-  transition: width 0.3s ease-in-out;
-  display: inline-block;
-  margin-left: 0;
-  vertical-align: .255em;
-  border-top: .3em solid;
-  border-right: .3em solid transparent;
-  border-bottom: 0;
-  border-left: .3em solid transparent;
+  width: 0;
+}
+
+.division-row .division-button:hover {
+  border-color: rgba(211,211,211,0.2);
+  transform: translateY(-4px);
+}
+
+.fa-filter-circle-xmark {
+  color: #e55252;
+}
+
+.list-group {
+  max-height: 50vh;
+  overflow-y: auto;
+  scrollbar-color: #38b2ac transparent;
+  scrollbar-width: thin;
+}
+
+.list-group::-webkit-scrollbar-thumb {
+  background-clip: content-box;
+  background-color: #38b2ac;
+  border-radius: 4px;
+  border: 2px solid transparent;
+}
+
+.modal-content.modern-modal {
+  background: linear-gradient( 180deg, rgba(22,24,28,0.95), rgba(16,18,22,0.95) );
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.03);
+  color: var(--tracker-text);
+}
+
+.modal-content select {
+  font-size: .9rem;
+  text-align: center;
+}
+
+.modal-content select option {
+  background: rgb(37 39 43);
+  color: #a6a6a6;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+}
+
+.modal-content.modern-modal .list-group-item {
   background: transparent;
-  color: rgb(228, 189, 17);
+  border: none;
+  color: var(--tracker-text);
+  padding: 0.6rem 0.75rem;
+}
+
+.modal-content.modern-modal .list-group-item.active {
+  background: linear-gradient( 90deg, rgba(38,198,218,0.12), rgba(52,211,153,0.06) );
+  border-radius: 8px;
+}
+
+.modal-content.modern-modal .list-group-item:hover {
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+  padding-left: 0.85rem;
+}
+
+.tournaments {
+  --glass-border: rgba(255,255,255,0.04);
+  --panel-bg: linear-gradient( 180deg, rgba(20,23,27,0.55), rgba(14,16,20,0.72) );
+  --t-bg: rgba(14,18,22,0.6);
+  --tracker-accent-2: #34d399;
+  --tracker-accent: #26c6da;
+  --tracker-muted: #9aa3ad;
+  --tracker-text: #e9edf1;
+}
+
+.tournaments .table-wrapper {
+  margin-top: 6px;
+}
+
+@media (max-width: 768px) {
+  .date-pill {
+    display: flex;
+    gap: 0.5rem;
+    padding: 6px;
+  }
+
+  .division-row .division-button {
+    height: 48px;
+    width: 48px;
+  }
+
+  .tournaments-panel {
+    padding: 12px;
+  }
 }

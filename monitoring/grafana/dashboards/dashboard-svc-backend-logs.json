@@ -12,15 +12,21 @@
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
         "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
         "type": "dashboard"
       }
     ]
   },
-  "description": "Log Viewer Dashboard for Loki",
+  "description": "API Backend Logs Viewer",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 9,
+  "id": 0,
   "links": [
     {
       "$$hashKey": "object:59",
@@ -45,17 +51,226 @@
   ],
   "panels": [
     {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "${__field.labels.method}",
+          "fieldMinMax": true,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "req"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 7,
+        "x": 0,
+        "y": 0
+      },
+      "id": 12,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.2.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "direction": "backward",
+          "editorMode": "code",
+          "expr": "sum by (method) (count_over_time({job=\"ggetracker-api\"}[$__auto]))",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Requests by HTTP Method",
+      "type": "stat"
+    },
+    {
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 0
+        "y": 6
       },
       "id": 8,
       "panels": [],
-      "title": "gge-tracker Logs",
+      "title": "Monitoring dashboard",
       "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "displayName": "${__field.labels.server}",
+          "fieldMinMax": false,
+          "mappings": [],
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 16,
+        "x": 0,
+        "y": 7
+      },
+      "id": 9,
+      "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": false,
+        "sizing": "auto",
+        "text": {}
+      },
+      "pluginVersion": "12.2.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "direction": "backward",
+          "editorMode": "code",
+          "expr": "sum by (server) (\r\n  count_over_time({job=\"ggetracker-api\"} != \"GgeTrackerOfficialDiscordBot\" [$__auto])\r\n)",
+          "legendFormat": "",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Requests Per Server",
+      "type": "gauge"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "displayName": "${__field.labels.server}",
+          "fieldMinMax": false,
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 7
+      },
+      "id": 13,
+      "options": {
+        "displayLabels": [],
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "values": [
+            "value",
+            "percent"
+          ]
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "sort": "desc",
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.2.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "direction": "backward",
+          "editorMode": "code",
+          "expr": "sum by (server) (\r\n  count_over_time({job=\"ggetracker-api\"} != \"GgeTrackerOfficialDiscordBot\" [$__auto])\r\n)",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Traffic Share by Server",
+      "type": "piechart"
     },
     {
       "datasource": {
@@ -91,6 +306,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -100,6 +316,7 @@
               "mode": "off"
             }
           },
+          "displayName": "${__field.labels.server}",
           "fieldMinMax": false,
           "links": [],
           "mappings": [],
@@ -107,7 +324,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -115,23 +333,23 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "reqps"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 11,
+        "h": 9,
+        "w": 16,
         "x": 0,
-        "y": 1
+        "y": 15
       },
       "id": 6,
       "options": {
         "legend": {
           "calcs": [],
           "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
+          "placement": "right",
+          "showLegend": true
         },
         "tooltip": {
           "hideZeros": false,
@@ -139,7 +357,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.1",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -148,228 +366,24 @@
           },
           "direction": "backward",
           "editorMode": "code",
-          "expr": "sum(count_over_time({job=\"empire-backend\"} |= \"$search\" [$__interval]))",
+          "expr": "sum by (server) (\r\n  rate({job=\"ggetracker-api\"} |= \"$search\" [1s])\r\n)",
           "legendFormat": "",
           "queryType": "range",
           "refId": "A"
         }
       ],
       "title": "",
+      "transparent": true,
       "type": "timeseries"
     },
     {
       "datasource": {
-        "type": "loki",
         "uid": "loki"
       },
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "continuous-GrYlRd"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "fillOpacity": 92,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineWidth": 1,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "fieldMinMax": false,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "__systemRef": "hideSeriesFrom",
-            "matcher": {
-              "id": "byNames",
-              "options": {
-                "mode": "exclude",
-                "names": [
-                  "sum",
-                  "1757168308997000000_fd836658 none"
-                ],
-                "prefix": "All except:",
-                "readOnly": true
-              }
-            },
-            "properties": []
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 13,
-        "x": 11,
-        "y": 1
-      },
-      "id": 9,
-      "options": {
-        "barRadius": 0,
-        "barWidth": 0.97,
-        "colorByField": "gge_server",
-        "fullHighlight": false,
-        "groupWidth": 0.7,
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "orientation": "auto",
-        "showValue": "auto",
-        "stacking": "none",
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        },
-        "xTickLabelRotation": 0,
-        "xTickLabelSpacing": 0
-      },
-      "pluginVersion": "11.6.1",
-      "targets": [
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "direction": "backward",
-          "editorMode": "code",
-          "expr": "{job=\"empire-backend\"} |= \"$search\" | logfmt",
-          "queryType": "range",
-          "refId": "A"
-        }
-      ],
-      "title": "Requêtes / Server",
-      "transformations": [
-        {
-          "id": "extractFields",
-          "options": {
-            "delimiter": ",",
-            "format": "json",
-            "source": "labels"
-          }
-        },
-        {
-          "id": "extractFields",
-          "options": {
-            "delimiter": ",",
-            "source": "Line"
-          }
-        },
-        {
-          "id": "calculateField",
-          "options": {
-            "alias": "sum",
-            "binary": {
-              "left": {
-                "matcher": {
-                  "id": "byName",
-                  "options": "gge_server"
-                }
-              },
-              "operator": "+",
-              "right": {
-                "matcher": {
-                  "id": "byName",
-                  "options": "gge_server"
-                }
-              }
-            },
-            "mode": "reduceRow",
-            "reduce": {
-              "include": [
-                "gge_server"
-              ],
-              "reducer": "distinctCount"
-            },
-            "replaceFields": false
-          }
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Line": true,
-              "Time": true,
-              "Total": true,
-              "content_length": true,
-              "gge_server": false,
-              "id": true,
-              "ip": true,
-              "job": true,
-              "labels": true,
-              "level": true,
-              "method": true,
-              "referrer": true,
-              "response_time": true,
-              "status": true,
-              "sum": false,
-              "tsNs": true,
-              "url": true,
-              "user_agent": true
-            },
-            "includeByName": {},
-            "indexByName": {},
-            "renameByName": {}
-          }
-        },
-        {
-          "id": "groupBy",
-          "options": {
-            "fields": {
-              "gge_server": {
-                "aggregations": [],
-                "operation": "groupby"
-              },
-              "sum": {
-                "aggregations": [
-                  "count"
-                ],
-                "operation": "aggregate"
-              }
-            }
-          }
-        }
-      ],
-      "transparent": true,
-      "type": "barchart"
-    },
-    {
-      "datasource": {
-        "type": "loki",
-        "uid": "loki"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "fixed"
+            "mode": "thresholds"
           },
           "custom": {
             "align": "auto",
@@ -377,67 +391,27 @@
               "type": "auto"
             },
             "filterable": true,
-            "inspect": false
+            "footer": {
+              "reducers": []
+            },
+            "hideFrom": {
+              "viz": false
+            },
+            "inspect": false,
+            "wrapHeaderText": false,
+            "wrapText": false
           },
-          "mappings": [
-            {
-              "options": {
-                "from": 200,
-                "result": {
-                  "color": "semi-dark-green",
-                  "index": 0
-                },
-                "to": 299
-              },
-              "type": "range"
-            },
-            {
-              "options": {
-                "from": 300,
-                "result": {
-                  "color": "semi-dark-yellow",
-                  "index": 1
-                },
-                "to": 399
-              },
-              "type": "range"
-            },
-            {
-              "options": {
-                "from": 400,
-                "result": {
-                  "color": "dark-red",
-                  "index": 2
-                },
-                "to": 499
-              },
-              "type": "range"
-            },
-            {
-              "options": {
-                "from": 500,
-                "result": {
-                  "color": "dark-purple",
-                  "index": 3
-                },
-                "to": 599
-              },
-              "type": "range"
-            }
-          ],
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
                 "value": 80
-              },
-              {
-                "color": "semi-dark-red",
-                "value": 500
               }
             ]
           }
@@ -446,210 +420,101 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "gge_server"
+              "options": "ip (count)"
             },
             "properties": [
               {
-                "id": "custom.width",
-                "value": 100
+                "id": "displayName",
+                "value": "Req"
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "status"
+              "options": "user_agent (last)"
             },
             "properties": [
               {
-                "id": "custom.width",
-                "value": 61
-              },
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "color-text",
-                  "wrapText": false
-                }
+                "id": "displayName",
+                "value": "User Agent"
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "method"
+              "options": "User Agent"
             },
             "properties": [
               {
                 "id": "custom.width",
-                "value": 73
+                "value": 269
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "level"
+              "options": "Requests"
             },
             "properties": [
               {
                 "id": "custom.width",
-                "value": 57
+                "value": 98
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "job"
+              "options": "ip"
             },
             "properties": [
               {
                 "id": "custom.width",
-                "value": 137
+                "value": 156
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "content_length"
+              "options": "Req"
             },
             "properties": [
               {
                 "id": "custom.width",
-                "value": 120
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "user_agent"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 230
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "referrer"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 186
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "url"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 551
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "response_time"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 130
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "referrer"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "green",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Time"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 184
+                "value": 62
               }
             ]
           }
         ]
       },
       "gridPos": {
-        "h": 14,
-        "w": 24,
-        "x": 0,
-        "y": 9
+        "h": 9,
+        "w": 8,
+        "x": 16,
+        "y": 15
       },
-      "id": 2,
-      "maxDataPoints": "",
+      "id": 10,
       "options": {
         "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "enablePagination": true,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": true,
-        "sortBy": []
+        "enablePagination": true,
+        "showHeader": true
       },
-      "pluginVersion": "11.6.1",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
           "direction": "backward",
           "editorMode": "code",
-          "expr": "{job=\"empire-backend\"} |= \"$search\" | logfmt",
-          "hide": false,
-          "legendFormat": "",
-          "maxLines": 5000,
+          "expr": "{job=\"ggetracker-api\"}",
           "queryType": "range",
           "refId": "A"
         }
       ],
-      "title": "API Logs",
+      "title": "Requests Per Source",
       "transformations": [
-        {
-          "id": "extractFields",
-          "options": {
-            "delimiter": ",",
-            "format": "json",
-            "keepTime": false,
-            "replace": false,
-            "source": "labels"
-          }
-        },
         {
           "id": "extractFields",
           "options": {
@@ -658,19 +523,22 @@
           }
         },
         {
-          "id": "organize",
+          "id": "groupBy",
           "options": {
-            "excludeByName": {
-              "Line": true,
-              "id": true,
-              "job": true,
-              "labels": true,
-              "level": true,
-              "tsNs": true
-            },
-            "includeByName": {},
-            "indexByName": {},
-            "renameByName": {}
+            "fields": {
+              "ip": {
+                "aggregations": [
+                  "count"
+                ],
+                "operation": "groupby"
+              },
+              "user_agent": {
+                "aggregations": [
+                  "last"
+                ],
+                "operation": "aggregate"
+              }
+            }
           }
         },
         {
@@ -680,7 +548,7 @@
             "sort": [
               {
                 "desc": true,
-                "field": "Time"
+                "field": "ip (count)"
               }
             ]
           }
@@ -688,12 +556,423 @@
       ],
       "transparent": true,
       "type": "table"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "id": 11,
+      "panels": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "fixed"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": true,
+                "footer": {
+                  "reducers": []
+                },
+                "inspect": false
+              },
+              "mappings": [
+                {
+                  "options": {
+                    "from": 200,
+                    "result": {
+                      "color": "semi-dark-green",
+                      "index": 0
+                    },
+                    "to": 299
+                  },
+                  "type": "range"
+                },
+                {
+                  "options": {
+                    "from": 300,
+                    "result": {
+                      "color": "semi-dark-yellow",
+                      "index": 1
+                    },
+                    "to": 399
+                  },
+                  "type": "range"
+                },
+                {
+                  "options": {
+                    "from": 400,
+                    "result": {
+                      "color": "dark-red",
+                      "index": 2
+                    },
+                    "to": 499
+                  },
+                  "type": "range"
+                },
+                {
+                  "options": {
+                    "from": 500,
+                    "result": {
+                      "color": "dark-purple",
+                      "index": 3
+                    },
+                    "to": 599
+                  },
+                  "type": "range"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  },
+                  {
+                    "color": "semi-dark-red",
+                    "value": 500
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "gge_server"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 100
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "status"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 102
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "custom.wrapText",
+                    "value": false
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "method"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 99
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "level"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 57
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "job"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 137
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "content_length"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 120
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "user_agent"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 230
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "referrer"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 186
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "url"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 551
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "response_time"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 130
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "referrer"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "green",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Time"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 184
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "env"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 119
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "server"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 112
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "route"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 303
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 24,
+            "x": 0,
+            "y": 25
+          },
+          "id": 2,
+          "maxDataPoints": "",
+          "options": {
+            "cellHeight": "sm",
+            "enablePagination": true,
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "response_time"
+              }
+            ]
+          },
+          "pluginVersion": "12.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "direction": "backward",
+              "editorMode": "code",
+              "expr": "{job=\"ggetracker-api\"} |= \"$search\" | logfmt",
+              "hide": false,
+              "legendFormat": "",
+              "maxLines": 1000,
+              "queryType": "range",
+              "refId": "A"
+            }
+          ],
+          "title": "",
+          "transformations": [
+            {
+              "id": "extractFields",
+              "options": {
+                "delimiter": ",",
+                "format": "json",
+                "keepTime": false,
+                "replace": false,
+                "source": "labels"
+              }
+            },
+            {
+              "id": "extractFields",
+              "options": {
+                "delimiter": ",",
+                "source": "Line"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Line": true,
+                  "id": true,
+                  "job": true,
+                  "labels": true,
+                  "level": true,
+                  "tsNs": true
+                },
+                "includeByName": {},
+                "indexByName": {},
+                "renameByName": {}
+              }
+            },
+            {
+              "id": "filterByValue",
+              "options": {
+                "filters": [
+                  {
+                    "config": {
+                      "id": "equal",
+                      "options": {
+                        "value": "GgeTrackerOfficialDiscordBot"
+                      }
+                    },
+                    "fieldName": "user_agent"
+                  },
+                  {
+                    "config": {
+                      "id": "substring",
+                      "options": {
+                        "value": "Googlebot"
+                      }
+                    },
+                    "fieldName": "user_agent"
+                  }
+                ],
+                "match": "any",
+                "type": "exclude"
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "fields": {},
+                "sort": [
+                  {
+                    "desc": true,
+                    "field": "Time"
+                  }
+                ]
+              }
+            }
+          ],
+          "transparent": true,
+          "type": "table"
+        }
+      ],
+      "title": "Queries Logs",
+      "type": "row"
     }
   ],
   "preload": false,
   "refresh": false,
-  "schemaVersion": 41,
-  "tags": [],
+  "schemaVersion": 42,
+  "tags": [
+    "Backend API"
+  ],
   "templating": {
     "list": [
       {
@@ -716,7 +995,7 @@
     ]
   },
   "time": {
-    "from": "now-1h",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {
@@ -733,7 +1012,7 @@
     ]
   },
   "timezone": "",
-  "title": "Backend Logs",
-  "uid": "dashboard-log-backend",
-  "version": 7
+  "title": "Backend Logs dev",
+  "uid": "dashboard-log-backend-dev",
+  "version": 3
 }

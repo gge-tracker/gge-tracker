@@ -6,11 +6,9 @@
   display: inline-block;
   z-index: 1000;
 }
-
 .loader {
   --s: 50px;
   --g: 20px;
-
   width: calc(3 * (1.353 * var(--s) + var(--g)));
   display: grid;
   justify-items: end;

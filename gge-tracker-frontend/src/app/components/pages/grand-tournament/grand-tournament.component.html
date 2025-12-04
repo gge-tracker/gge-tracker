@@ -1,89 +1,131 @@
 <div class="container my-3 tournaments">
-  <div class="row g-4" *ngIf="!selectedAllianceInAnalyzer">
-    <div class="col-12" [ngClass]="{'loading': isInLoading}">
-      <app-search-form
-        #searchForm
-        [formFilters]="null"
-        [isInLoading]="isInLoading"
-        [inputTip]="'Rechercher une alliance' | translate"
-        [defaultSearch]="search"
-        [searchTypes]="{
-          player: false,
-          alliance: true
-        }" (searchAlliance)="searchAlliance($event)">
-      </app-search-form>
-      <div class="text-center">
-        <div *ngFor="let i of [1,2,3,4,5]"
-          class="d-inline-block px-2 division-element"
-          [ngClass]="{'active': i === division.current_division}"
-          (click)="changeDivision(i); division.current_division = i"
-        >
-          <img [src]="'/assets/gt/division' + i + '.png'">
+  <div class="tournaments-panel p-3 rounded-4">
+    <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-3 mb-3">
+      <div class="flex-grow-1 w-100">
+        <app-search-form #searchForm [formFilters]="null" [isInLoading]="isInLoading"
+          [inputTip]="'Rechercher une alliance' | translate" [defaultSearch]="search"
+          [searchTypes]="{ player: false, alliance: true }" (searchAlliance)="searchAlliance($event)">
+        </app-search-form>
+      </div>
+
+      <div class="d-flex align-items-center gap-2 ms-auto">
+        <div class="date-pill d-flex align-items-center">
+          <span class="date-text fw-light fst-italic font-monospace me-2">{{ currentDate | date: ('Date_5' | translate)
+            }}</span>
+          <button class="btn btn-sm btn-ghost" data-bs-toggle="modal" data-bs-target="#dateModal"
+            aria-label="Changer la date">
+            <lucide-angular class="lucide lucide-calendar" [img]="Calendar"></lucide-angular>
+          </button>
         </div>
       </div>
-      <div class="date text-center my-3" *ngIf="currentDate">
-        <span class="fw-light fst-italic font-monospace">{{ currentDate | date: ('Date_5' | translate) }}</span>
+    </div>
+
+    <div class="division-row text-center mb-3">
+      <div class="d-flex justify-content-center gap-3 flex-wrap">
+        <button *ngFor="let i of [1,2,3,4,5]"
+          class="division-button btn btn-ghost d-flex align-items-center justify-content-center"
+          [class.active]="i === division.current_division" (click)="changeDivision(i); division.current_division = i"
+          title="{{ 'Division' | translate }} {{ i }}">
+          <img [src]="'/assets/gt/division' + i + '.png'" alt="division {{i}}">
+        </button>
       </div>
-        <app-table [sort]="''" [reverse]="false" [isInLoading]="isDataLoading" [maxPage]="pagination.total_pages" [page]="pagination.current_page"
-          [search]="search" [headers]="[
+    </div>
+
+    <div class="mt-2">
+      <app-table [sort]="''" [reverse]="false" [isInLoading]="isDataLoading" [maxPage]="pagination.total_pages"
+        [page]="pagination.current_page" [search]="search" [headers]="[
           ['allianceName', 'Alliance' | translate, '/assets/min-alliance.png', true],
           ['server', 'Server' | translate, '', true],
           ['points', 'Points' | translate, '', true],
           ['currentDivision', 'Division' | translate, '', true],
           ['currentSubdivision', 'Sous-division' | translate, '', true],
           ['rankInSubDivision', 'Classement dans la sous-division' | translate, '', true],
-          ['actions', 'Actions' | translate, '', true],
+          ['actions', 'Actions' | translate, '', true]
         ]" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
-          <tr *ngIf="alliances.length === 0 && !isDataLoading">
-            <td colspan="10">
-              <span class="text-muted">{{ 'Aucune alliance' | translate }}</span>
-            </td>
-          </tr>
-          <tr *ngFor="let alliance of alliances; let i = index">
-            <td>{{ (pagination.current_page-1) * 10 + i + 1 }}</td>
-            <td>
-              {{ alliance.alliance_name }}
-            </td>
-            <td>
-              {{ alliance.server }}
-            </td>
-            <td>
-              {{ alliance.score | number }}
-            </td>
-            <td>
-              <img [src]="'/assets/gt/division' + (isWithDivision(alliance) ? alliance.division : division.current_division) + '.png'"
-                [width]="38" [title]="('Division' | translate) + ' ' + (divisionNames[(isWithDivision(alliance) ? alliance.division : division.current_division)-1]  | translate)"
-                [alt]="('Division' | translate) + ' ' + (divisionNames[(isWithDivision(alliance) ? alliance.division : division.current_division)-1] | translate)" />
-            </td>
-            <td>{{ 'Sous-division' | translate }} <em>{{ alliance.subdivision }}</em></td>
-            <td>{{ alliance.rank }}</td>
-            <td class="text-end">
-              <a [ngClass]="{'disabled': alliance.disabled}"
-                (click)="analyzeAlliance(alliance.alliance_id)"
-                href="javascript:void(0);"
-              >
-                <img src="/assets/icon_points.png" [alt]="'Score' | translate" [title]="'Score' | translate" height="24"  class="ms-1 btn-icon">
-              </a>
-              <a [ngClass]="{'disabled': alliance.disabled}"
-                [routerLink]="['/', 'alliance', alliance.alliance_id]"
-              >
-                <img src="/assets/icon_analyze.png" [alt]="'Analyser l\'alliance' | translate" [title]="'Analyser l\'alliance' | translate" height="24" class="ms-1 btn-icon">
-              </a>
-            </td>
-          </tr>
-        </app-table>
-      </div>
+        <tr *ngIf="alliances.length === 0 && !isDataLoading">
+          <td colspan="10">{{ 'Aucune alliancetrouvée' | translate }}</td>
+        </tr>
+        <tr *ngFor="let alliance of alliances; let i = index">
+          <td class="col-rank full-width">
+            <span class="mobile-only">#</span>
+            {{ (pagination.current_page-1) * 10 + i + 1 }}
+          </td>
+          <td class="fw-semibold col-name">
+            <span class="name">{{ alliance.alliance_name }}</span>
+          </td>
+          <td>
+            <img [src]="serverService.getFlagUrl(alliance.server)" [alt]="alliance.server" [title]="alliance.server" height="20">
+            {{ alliance.server }}
+          </td>
+          <td class="fw-bold">{{ alliance.score | number }}</td>
+          <td>
+            <img
+              [src]="'/assets/gt/division' + (isWithDivision(alliance) ? alliance.division : division.current_division) + '.png'"
+              width="38"
+              [title]="('Division' | translate) + ' ' + (divisionNames[(isWithDivision(alliance) ? alliance.division : division.current_division)-1]  | translate)"
+              [alt]="('Division' | translate) + ' ' + (divisionNames[(isWithDivision(alliance) ? alliance.division : division.current_division)-1] | translate)" />
+          </td>
+          <td>
+            {{ 'Sous-division' | translate }}
+            <em>{{ alliance.subdivision }}</em>
+            <ng-container *ngIf="!isSubDivisionFilterActivated; else subDivisionResetFilter">
+              <i class="fa-solid fa-filter subdivision-indicator ms-2 pointer" (click)="isWithDivision(alliance) ? filterBySubDivision(alliance.division, alliance.subdivision) : filterBySubDivision(division.current_division, alliance.subdivision)"
+              title="{{ 'Filtrer' | translate }} ({{ 'Sous-division' | translate }} {{ alliance.subdivision }})"></i>
+            </ng-container>
+            <ng-template #subDivisionResetFilter>
+              <i class="fa-solid fa-filter-circle-xmark subdivision-indicator ms-2 pointer" (click)="clearSubDivisionFilter()"></i>
+            </ng-template>
+          </td>
+          <td>{{ alliance.rank }}</td>
+          <td class="col-actions">
+            <a class="action-icon" [ngClass]="{'disabled': alliance.disabled}"
+              (click)="analyzeAlliance(alliance.alliance_id)" href="javascript:void(0);"
+              title="{{ 'Score' | translate }}">
+              <img src="/assets/icon_points.png" alt="points" height="24" class="ms-1 btn-icon">
+            </a>
+          </td>
+        </tr>
+      </app-table>
+    </div>
   </div>
 
-  <app-grand-tournament-analyze
-    *ngIf="selectedAllianceInAnalyzer"
-    [entries]="selectedAllianceInAnalyzer.analysis"
-    [tournamentAllianceData]="selectedAllianceInAnalyzer.meta"
-    [divisionNames]="divisionNames"
-    (exitEmitter)="selectedAllianceInAnalyzer = null"
-  ></app-grand-tournament-analyze>
+  <div class="modal fade" id="dateModal" tabindex="-1" aria-labelledby="dateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+      <div class="modal-content modern-modal p-2">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title" id="dateModalLabel">{{ 'Sélectionner une date' | translate }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body pt-1 pb-2">
+          <select #eventSelect class="form-select mb-3 text-white" aria-label="Select Event"
+            (change)="updateDates(eventSelect.value)">
+            <option *ngFor="let event of events" [value]="event.event_id"
+              [selected]="event.event_id === currentEventId">
+                {{ 'Événement du 0 au 0' | translate: {
+                  start: (event.dates[0] | date: ('Date_5' | translate)),
+                  end: (event.dates[event.dates.length -1] | date: ('Date_5' | translate))
+                } }}
+            </option>
+          </select>
+          <hr *ngIf="events.length > 0" />
+          <div class="list-group date-list">
+            <button *ngFor="let date of currentDates"
+              class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+              (click)="loadDate(date)" data-bs-dismiss="modal" [class.active]="date === currentDate">
+              <span [class.fw-bold]="date === currentDate">{{ date | date: ('Date_5' | translate) }}</span>
+              <i class="fa-solid fa-chevron-right"></i>
+            </button>
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-2">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ 'Fermer' | translate }}</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
+  <app-grand-tournament-analyze *ngIf="selectedAllianceInAnalyzer" [entries]="selectedAllianceInAnalyzer.analysis"
+    [tournamentAllianceData]="selectedAllianceInAnalyzer.meta" [divisionNames]="divisionNames"
+    (exitEmitter)="selectedAllianceInAnalyzer = null">
+  </app-grand-tournament-analyze>
 </div>
-
-
-

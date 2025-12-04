@@ -6,55 +6,31 @@ import { AuthorizedSpecialServersEnum } from '../enums/gge-tracker-special-serve
 import { ApiHelper } from '../helper/api-helper';
 
 /**
- * Provides API endpoints for retrieving dungeon data with various filters and sorting options.
+ * Provides API endpoints for retrieving dungeon data with various filters and sorting options
  */
 export abstract class ApiDungeons implements ApiHelper {
   /**
-   * Handles the retrieval of dungeon data with various filters, sorting, and pagination options.
+   * Handles the retrieval of dungeon data with various filters, sorting, and pagination options
    *
-   * This endpoint supports filtering dungeons by server, player, cooldown status, position, and other criteria.
-   * It also supports sorting by distance to a given player's castle and paginating the results.
+   * This endpoint supports filtering dungeons by server, player, cooldown status, position, and other criteria
+   * It also supports sorting by distance to a given player's castle and paginating the results
    *
    * @param request - Express request object, expected to contain query parameters for filtering and sorting:
-   *   - `page`: (string) The page number for pagination (required, must be a positive integer).
-   *   - `filterByKid`: (string) JSON array of dungeon "kid" types to filter by (default: "[2]").
-   *   - `filterByAttackCooldown`: (string) Filter by attack cooldown status ("1", "2", or "3").
-   *   - `filterByPlayerName`: (string) Filter dungeons by player name (max 60 chars).
-   *   - `positionX`, `positionY`: (string) Coordinates to sort dungeons by proximity.
-   *   - `nearPlayerName`: (string) Player name to sort dungeons by proximity to their castle.
-   *   - `size`: (string) Number of results per page (default: 15, max: 4000).
-   * @param response - Express response object used to send the result or error.
-   *
-   * @returns {void} Sends a JSON response with the following structure:
-   *   {
-   *     dungeons: Array<{
-   *       kid: number,
-   *       position_x: number,
-   *       position_y: number,
-   *       attack_cooldown: number,
-   *       player_name: string,
-   *       player_might: number,
-   *       player_level: number,
-   *       player_legendary_level: number,
-   *       total_attack_count: number,
-   *       updated_at: string,
-   *       effective_cooldown_until: string,
-   *       last_attack: string,
-   *       distance: number | null
-   *     }>,
-   *     pagination: {
-   *       current_page: number,
-   *       total_pages: number,
-   *       current_items_count: number,
-   *       total_items_count: number
-   *     }
-   *   }
+   *   - `page`: (string) The page number for pagination (required, must be a positive integer)
+   *   - `filterByKid`: (string) JSON array of filters types by kingdom ID to filter by (default: "[2]")
+   *   - `filterByAttackCooldown`: (string) Filter by attack cooldown status ("1", "2", or "3")
+   *   - `filterByPlayerName`: (string) Filter dungeons by player name (max 60 chars)
+   *   - `positionX`, `positionY`: (string) Coordinates to sort dungeons by proximity
+   *   - `nearPlayerName`: (string) Player name to sort dungeons by proximity to their castle
+   *   - `size`: (string) Number of results per page (default: 15, max: 4000)
+   * @param response - Express response object used to send the result or error
+   * @returns A promise that resolves when the response is sent
    */
   public static async getDungeons(request: express.Request, response: express.Response): Promise<void> {
     try {
-      // List of banned player IDs. Populate as needed.
-      // This is to prevent certain players from being included in the results.
-      // This is not used for now, but kept in case we need it in the future.
+      // List of banned player IDs. Populate as needed
+      // This is to prevent certain players from being included in the results
+      // This is not used for now, but kept in case we need it in the future
       const bannedPlayersId = [];
       /* ---------------------------------
        * Validate parameters
@@ -347,8 +323,8 @@ export abstract class ApiDungeons implements ApiHelper {
           // Otherwise, add the custom parameters for sorting by nearPlayerName
           queryValues.push(...customParameterValues);
         } else {
-          // Parameters for sorting by given position.
-          // Added again here for the main query.
+          // Parameters for sorting by given position
+          // Added again here for the main query
           queryValues.push(
             Number.parseInt(sortByPositionX),
             Number.parseInt(sortByPositionX),
@@ -357,10 +333,10 @@ export abstract class ApiDungeons implements ApiHelper {
         }
       } else {
         // Default sorting: Dungeons that can be attacked now first, then by shortest cooldown
-        // and finally by oldest updated dungeons.
+        // and finally by oldest updated dungeons
         // Dungeons that can be attacked now have last_attack < NOW()
         // If last_attack is NULL, it means the dungeon has never been attacked,
-        // so we treat it as the highest priority (can be attacked now).
+        // so we treat it as the highest priority (can be attacked now)
         query += `
           ORDER BY
           CASE
@@ -431,7 +407,7 @@ export abstract class ApiDungeons implements ApiHelper {
               .status(ApiHelper.HTTP_OK)
               .send(this.defaultResponseContent(dungeons, page, totalPages, dungeonsCount, dungeons.length));
             // There is no need to cache this data because it changes frequently
-            // and users expect always fresh data.
+            // and users expect always fresh data
             return;
           });
         }
@@ -444,10 +420,16 @@ export abstract class ApiDungeons implements ApiHelper {
     }
   }
 
+  /**
+   * Validates the incoming request for dungeon-related operations, ensuring that
+   * the specified server is authorized and that any provided filters are correctly formatted
+   *
+   * @param request - The Express request object containing the language information
+   * @param response - The Express response object used to send error responses
+   * @param filterByKid - Optional string parameter that should contain a JSON array of kingdom IDs
+   * @returns `true` if the request is valid, `false` otherwise. When `false`, an error response is sent automatically
+   */
   private static validateRequest(request: express.Request, response: express.Response, filterByKid?: string): boolean {
-    // Authorized servers only, because dungeon data is not available for all servers.
-    // However, in the future, we need to take out this configuration and expose it
-    // in a separated file or from database.
     try {
       const authorizedServers = Object.values(AuthorizedSpecialServersEnum);
       if (!authorizedServers.includes(request['language'])) {
@@ -467,6 +449,16 @@ export abstract class ApiDungeons implements ApiHelper {
     }
   }
 
+  /**
+   * Creates a standardized response object containing dungeons data and pagination information
+   *
+   * @param dungeons - Array of dungeon objects to include in the response. Defaults to empty array if falsy
+   * @param currentPage - The current page number in the pagination. Defaults to 1 if falsy
+   * @param totalPages - The total number of pages available. Defaults to 1 if falsy
+   * @param totalItemsCount - The total count of items across all pages. Defaults to 0 if falsy
+   * @param currentItemsCount - The count of items in the current page. Defaults to 0 if falsy
+   * @returns An object containing the dungeons array and pagination metadata with current page, total pages, and item counts
+   */
   private static defaultResponseContent(
     dungeons: any[],
     currentPage: number,
@@ -492,16 +484,17 @@ export abstract class ApiDungeons implements ApiHelper {
       },
     };
   }
+
   /**
-   * Get the SQL query for calculating the distance between dungeons.
+   * Get the SQL query for calculating the distance between dungeons
    * This SQL snippet calculates the distance considering the kingdom (kid)
-   * and wrapping around the map edges.
-   * The map width is considered to be 1287 units for wrapping calculations.
+   * and wrapping around the map edges
+   * The map width is considered to be 1287 units for wrapping calculations
    * If a kid does not have a castle, it assigns a large distance (999999)
-   * to effectively exclude it.
+   * to effectively exclude it
    *
-   * /!\ Improvement note: This calculation shall be improved in the future
-   * @returns The SQL query string.
+   * @upgrade Improvement note: This calculation shall be improved in the future
+   * @returns The SQL query string
    */
   private static getCalculatedDistanceSql(): string {
     return `
@@ -522,6 +515,21 @@ export abstract class ApiDungeons implements ApiHelper {
     `;
   }
 
+  /**
+   * Constructs and parses the initial parameters for dungeon filtering and sorting from the request
+   *
+   * @param filterByKid - A JSON string representing an array of filter Kingdom IDs (kids)
+   * @param request - The Express request object containing query parameters for filtering and sorting
+   * @returns An object containing:
+   * - `filtersKids`: Array of filter Kingdom IDs parsed from `filterByKid`
+   * - `filterByAttackCooldown`: The attack cooldown filter value from the query, or `null`
+   * - `filterByPlayerName`: The player name filter value from the query, or `null`
+   * - `sortByPositionX`: The X position sort value from the query, or `null`
+   * - `sortByPositionY`: The Y position sort value from the query, or `null`
+   * - `nearPlayerName`: The nearby player name filter value from the query, or `null`
+   * - `sizeValue`: The numeric value of the `size` query parameter
+   * - `size`: The string representation of `sizeValue` if valid, otherwise `null`
+   */
   private static constructDungeonsInitialParameters(
     filterByKid: string,
     request: express.Request,

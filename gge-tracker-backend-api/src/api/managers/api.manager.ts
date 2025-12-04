@@ -1,41 +1,44 @@
+import { NodeClickHouseClient } from '@clickhouse/client/dist/client';
 import * as mysql from 'mysql';
 import * as pg from 'pg';
-import { ClickHouse } from 'clickhouse';
-import { DatabaseManager } from './database.manager';
-import { ApiHelper } from '../helper/api-helper';
-import { IApiToken, ILimitedApiToken } from '../interfaces/interfaces';
 import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
 import { GgeTrackerSqlBaseNameEnum } from '../enums/gge-tracker-sql-base-name.enums';
+import { ApiHelper } from '../helper/api-helper';
+import { IApiToken, ILimitedApiToken } from '../interfaces/interfaces';
+import { DatabaseManager } from './database.manager';
 
 /**
- * Manages server configurations, database pools, and utility methods for the GGE Tracker API.
+ * Manages server configurations, database pools, and utility methods for the GGE Tracker API
  *
  * The `ApiGgeTrackerManager` class extends `DatabaseManager` and provides:
- * - Centralized access to server metadata and database names for all supported GGE Tracker servers.
- * - Management of MySQL and PostgreSQL connection pools for each server.
- * - Utility methods to retrieve server information by name, code, or player ID.
- * - Methods to validate server names and codes.
- * - Access to OLAP and SQL database names, as well as ClickHouse instances.
- * - Helper methods for mapping between player IDs, server codes, zones, and database pools.
+ * - Centralized access to server metadata and database names for all supported GGE Tracker servers
+ * - Management of MySQL and PostgreSQL connection pools for each server
+ * - Utility methods to retrieve server information by name, code, or player ID
+ * - Methods to validate server names and codes
+ * - Access to OLAP and SQL database names, as well as ClickHouse instances
+ * - Helper methods for mapping between player IDs, server codes, zones, and database pools
  *
  * @remarks
- * This class is intended to be a singleton or long-lived instance in the main script, as it manages connection pools.
+ * This class is intended to be a singleton or long-lived instance in the main script, as it manages connection pools
  *
  */
 export class ApiGgeTrackerManager extends DatabaseManager {
   /**
-   * A mapping of connection pool instances for MySQL databases, keyed by a unique string identifier.
+   * A mapping of connection pool instances for MySQL databases, keyed by a unique string identifier
    * Each key corresponds to a specific database or configuration, allowing for efficient management
-   * and reuse of multiple MySQL connection pools within the application.
+   * and reuse of multiple MySQL connection pools within the application
    */
   private mysqlPools: { [key: string]: mysql.Pool } = {};
   /**
-   * A mapping of unique string keys to PostgreSQL connection pools.
+   * A mapping of unique string keys to PostgreSQL connection pools
    * Each key represents a distinct database configuration or tenant,
-   * allowing the service to manage multiple database connections efficiently.
+   * allowing the service to manage multiple database connections efficiently
    */
   private postgresPools: { [key: string]: pg.Pool } = {};
 
+  /**
+   * Configuration settings for connecting to the ClickHouse OLAP database
+   */
   private configuration = {
     clickhouse: {
       scheme: 'http',
@@ -45,21 +48,25 @@ export class ApiGgeTrackerManager extends DatabaseManager {
       password: process.env.CLICKHOUSE_PASSWORD,
     },
   };
+  /**
+   * Instance of ClickHouse client for OLAP database interactions
+   */
+  private clickhouseClient: NodeClickHouseClient;
 
   /**
-   * A mapping of all supported GGE Tracker servers to their respective API token configurations.
+   * A mapping of all supported GGE Tracker servers to their respective API token configurations
    *
    * Each key corresponds to a server identifier from `GgeTrackerServersEnum`, and the value is an `IApiToken`
-   * object containing database names, display names, server codes, and zone identifiers.
+   * object containing database names, display names, server codes, and zone identifiers
    *
-   * This configuration is used to route API requests and database operations to the correct server context.
+   * This configuration is used to route API requests and database operations to the correct server context
    *
    * @remarks
-   * - The `databases` property includes both SQL and OLAP database names for each server.
-   * - The `outer_name` is the display name or shorthand for the server.
-   * - The `code` is a internal unique string identifier for the server. It must be exactly 3 characters long.
-   * - The `zone` specifies the GGE EmpireEx zone associated with the server, used to identify the GGE server websocket.
-   * - The `GLOBAL` entry is a special case with empty values, used for global operations.
+   * - The `databases` property includes both SQL (MariaDB/PostgreSQL) and OLAP database names for each server
+   * - The `outer_name` is the display name or shorthand for the server
+   * - The `code` is a internal unique string identifier for the server. It must be exactly 3 characters long
+   * - The `zone` specifies the GGE EmpireEx zone associated with the server, used to identify the GGE server websocket
+   * - The `GLOBAL` entry is a special case with empty values, used for global operations
    *
    * @see GgeTrackerServersEnum
    * @see IApiToken
@@ -430,18 +437,19 @@ export class ApiGgeTrackerManager extends DatabaseManager {
   };
 
   /**
-   * Initializes a new instance of the service, creating connection pools for all configured SQL databases.
+   * Initializes a new instance of the service, creating connection pools for all configured SQL databases
    *
    * This constructor calls the parent class constructor, retrieves all SQL database configurations,
-   * and initializes MySQL and PostgreSQL connection pools, assigning them to the respective properties.
+   * and initializes MySQL and PostgreSQL connection pools, assigning them to the respective properties
    */
   constructor() {
     super();
     try {
       this.checkServerConfig();
-      const { mysql, postgres } = this.createConnectionPools(this.getAllSqlDatabases());
+      const { mysql, postgres, clickhouse } = this.createConnectionPools(this.getAllSqlDatabases());
       this.mysqlPools = mysql;
       this.postgresPools = postgres;
+      this.clickhouseClient = clickhouse;
     } catch (error) {
       console.error('Error initializing ApiGgeTrackerManager:', error);
       throw error;
@@ -449,41 +457,48 @@ export class ApiGgeTrackerManager extends DatabaseManager {
   }
 
   /**
-   * Retrieves the API token associated with the specified server name.
+   * Retrieves the API token associated with the specified server name
    *
-   * @param serverName - The name of the server for which to retrieve the API token.
-   * @returns The `IApiToken` object if found; otherwise, `null` if the server name does not exist.
+   * @param serverName - The name of the server for which to retrieve the API token
+   * @returns The `IApiToken` object if found; otherwise, `null` if the server name does not exist
    */
   public get(serverName: string): IApiToken | null {
     return this.servers[serverName] || null;
   }
 
   /**
-   * Checks if the provided server name exists in the list of available servers.
+   * Checks if the provided server name exists in the list of available servers
    *
-   * @param serverName - The name of the server to validate.
-   * @returns `true` if the server name is valid and exists in the servers list; otherwise, `false`.
+   * @param serverName - The name of the server to validate
+   * @returns `true` if the server name is valid and exists in the servers list; otherwise, `false`
    */
   public isValidServer(serverName: string): boolean {
     return serverName in this.servers;
   }
 
+  /**
+   * Retrieves a list of all activated server API tokens
+   *
+   * @returns An array of `IApiToken` objects representing the activated servers
+   */
   public getActivatedServerValues(): IApiToken[] {
-    // If server has disabled property, it is considered activated
     return Object.values(this.servers).filter((server) => 'code' in server) as IApiToken[];
   }
 
+  /**
+   * Retrieves a list of all activated server entries as [serverName, IApiToken] tuples
+   * @returns An array of tuples, each containing the server name and its corresponding `IApiToken` object
+   */
   public getActivatedServerEntries(): [string, IApiToken][] {
     return Object.entries(this.servers).filter(([, server]) => 'code' in server) as [string, IApiToken][];
   }
 
   /**
-   * Checks if the provided code is a valid server code.
+   * Checks if the provided code is a valid server code
+   * A valid code must be a non-empty string of length 3 and must match the code of one of the servers
    *
-   * A valid code must be a non-empty string of length 3 and must match the code of one of the servers.
-   *
-   * @param code - The server code to validate.
-   * @returns `true` if the code is valid; otherwise, `false`.
+   * @param code - The server code to validate
+   * @returns `true` if the code is valid; otherwise, `false`
    */
   public isValidCode(code: string): boolean {
     if (!code || typeof code !== 'string' || code.length !== 3) {
@@ -493,20 +508,20 @@ export class ApiGgeTrackerManager extends DatabaseManager {
   }
 
   /**
-   * Retrieves the API token object for the specified outer server name.
+   * Retrieves the API token object for the specified outer server name
    *
-   * @param serverName - The name of the outer server to search for.
-   * @returns The corresponding `IApiToken` object if found; otherwise, `null`.
+   * @param serverName - The name of the outer server to search for
+   * @returns The corresponding `IApiToken` object if found; otherwise, `null`
    */
   public getOuterServer(serverName: GgeTrackerServersEnum): IApiToken | null {
     return this.getActivatedServerValues().find((server) => server.outer_name === serverName) || null;
   }
 
   /**
-   * Retrieves the server information associated with the specified code.
+   * Retrieves the server information associated with the specified code
    *
-   * @param code - The unique code identifying the server.
-   * @returns The corresponding `IApiToken` object if the code is valid and a matching server is found; otherwise, returns `null`.
+   * @param code - The unique code identifying the server
+   * @returns The corresponding `IApiToken` object if the code is valid and a matching server is found; otherwise, returns `null`
    */
   public getServerByCode(code: string): IApiToken | null {
     if (this.isValidCode(code)) {
@@ -521,10 +536,10 @@ export class ApiGgeTrackerManager extends DatabaseManager {
 
   /**
    * Retrieves the zone associated with a given player ID by matching the player's country code
-   * to the corresponding server entry.
+   * to the corresponding server entry
    *
-   * @param playerId - The unique identifier of the player whose zone is to be determined.
-   * @returns The zone string if a matching server entry is found; otherwise, returns null.
+   * @param playerId - The unique identifier of the player whose zone is to be determined
+   * @returns The zone string if a matching server entry is found; otherwise, returns null
    */
   public getZoneFromRequestId(playerId: number): string | null {
     const entry = this.getActivatedServerEntries().find(
@@ -537,10 +552,10 @@ export class ApiGgeTrackerManager extends DatabaseManager {
   }
 
   /**
-   * Retrieves the zone associated with a given server code.
+   * Retrieves the zone associated with a given server code
    *
-   * @param code - The unique code identifying the server.
-   * @returns The zone string if the server is found; otherwise, `null`.
+   * @param code - The unique code identifying the server
+   * @returns The zone string if the server is found; otherwise, `null`
    */
   public getZoneFromCode(code: string): string | null {
     const server = this.getServerByCode(code);
@@ -548,13 +563,13 @@ export class ApiGgeTrackerManager extends DatabaseManager {
   }
 
   /**
-   * Retrieves the server name associated with a given player ID.
+   * Retrieves the server name associated with a given player ID
    *
    * This method searches through the available servers and returns the server name
-   * whose code matches the country code derived from the provided player ID.
+   * whose code matches the country code derived from the provided player ID
    *
-   * @param playerId - The unique identifier of the player.
-   * @returns The server name as a string if a matching server is found; otherwise, `null`.
+   * @param playerId - The unique identifier of the player
+   * @returns The server name as a string if a matching server is found; otherwise, `null`
    */
   public getServerNameFromRequestId(playerId: number): string | null {
     const entry = this.getActivatedServerEntries().find(
@@ -567,33 +582,33 @@ export class ApiGgeTrackerManager extends DatabaseManager {
   }
 
   /**
-   * Retrieves the MySQL connection pool associated with the specified server name.
+   * Retrieves the MySQL connection pool associated with the specified server name
    *
-   * @param serverName - The name of the server for which to obtain the MySQL pool.
-   * @returns The MySQL pool instance if found; otherwise, `null`.
+   * @param serverName - The name of the server for which to obtain the MySQL pool
+   * @returns The MySQL pool instance if found; otherwise, `null`
    */
   public getSqlPool(serverName: string): mysql.Pool | null {
     return this.mysqlPools[serverName] || null;
   }
 
   /**
-   * Retrieves the PostgreSQL connection pool associated with the specified server name.
+   * Retrieves the PostgreSQL connection pool associated with the specified server name
    *
-   * @param serverName - The name of the server for which to obtain the PostgreSQL pool.
-   * @returns The `pg.Pool` instance for the given server name, or `null` if no pool exists.
+   * @param serverName - The name of the server for which to obtain the PostgreSQL pool
+   * @returns The `pg.Pool` instance for the given server name, or `null` if no pool exists
    */
   public getPgSqlPool(serverName: string): pg.Pool | null {
     return this.postgresPools[serverName] || null;
   }
 
   /**
-   * Retrieves the PostgreSQL connection pool associated with the given player ID.
+   * Retrieves the PostgreSQL connection pool associated with the given player ID
    *
    * This method determines the appropriate server based on the player's country code,
-   * then returns the corresponding PostgreSQL pool if available.
+   * then returns the corresponding PostgreSQL pool if available
    *
-   * @param playerId - The unique identifier of the player.
-   * @returns The PostgreSQL pool associated with the player's server, or `null` if not found.
+   * @param playerId - The unique identifier of the player
+   * @returns The PostgreSQL pool associated with the player's server, or `null` if not found
    */
   public getPgSqlPoolFromRequestId(playerId: number): pg.Pool | null {
     const entry = this.getActivatedServerEntries().find(
@@ -606,23 +621,23 @@ export class ApiGgeTrackerManager extends DatabaseManager {
   }
 
   /**
-   * Retrieves the PostgreSQL connection pool associated with the global server.
+   * Retrieves the PostgreSQL connection pool associated with the global server
    *
-   * @returns The `pg.Pool` instance for the global server if available; otherwise, `null`.
+   * @returns The `pg.Pool` instance for the global server if available; otherwise, `null`
    */
   public getGlobalPgSqlPool(): pg.Pool | null {
     return this.postgresPools[GgeTrackerServersEnum.GLOBAL] || null;
   }
 
   /**
-   * Retrieves the OLAP database name associated with a given player ID.
+   * Retrieves the OLAP database name associated with a given player ID
    *
    * This method searches through the available servers to find the one whose country code
    * matches the country code derived from the provided player ID. If a matching server is found,
-   * it returns the corresponding OLAP database name; otherwise, it returns `null`.
+   * it returns the corresponding OLAP database name; otherwise, it returns `null`
    *
-   * @param playerId - The unique identifier of the player whose OLAP database is to be retrieved.
-   * @returns The name of the OLAP database if found; otherwise, `null`.
+   * @param playerId - The unique identifier of the player whose OLAP database is to be retrieved
+   * @returns The name of the OLAP database if found; otherwise, `null`
    */
   public getOlapDatabaseFromRequestId(playerId: number): string | null {
     const entry = this.getActivatedServerEntries().find(
@@ -635,10 +650,10 @@ export class ApiGgeTrackerManager extends DatabaseManager {
   }
 
   /**
-   * Retrieves the SQL database name associated with the specified server.
+   * Retrieves the SQL database name associated with the specified server
    *
-   * @param serverName - The name of the server to look up.
-   * @returns The name of the SQL database if the server exists; otherwise, `null`.
+   * @param serverName - The name of the server to look up
+   * @returns The name of the SQL database if the server exists; otherwise, `null`
    */
   public getSqlDatabase(serverName: string): string | null {
     const server = this.get(serverName);
@@ -646,10 +661,10 @@ export class ApiGgeTrackerManager extends DatabaseManager {
   }
 
   /**
-   * Retrieves the OLAP database name associated with the specified server.
+   * Retrieves the OLAP database name associated with the specified server
    *
-   * @param serverName - The name of the server to look up.
-   * @returns The OLAP database name if the server exists; otherwise, `null`.
+   * @param serverName - The name of the server to look up
+   * @returns The OLAP database name if the server exists; otherwise, `null`
    */
   public getOlapDatabase(serverName: string): string | null {
     const server = this.get(serverName);
@@ -657,9 +672,9 @@ export class ApiGgeTrackerManager extends DatabaseManager {
   }
 
   /**
-   * Retrieves a mapping of all SQL database connection strings for each server defined in `GgeTrackerServersEnum`.
+   * Retrieves a mapping of all SQL database connection strings for each server defined in `GgeTrackerServersEnum`
    *
-   * @returns An object where each key corresponds to a server name from `GgeTrackerServersEnum` and the value is the associated SQL database connection string.
+   * @returns An object where each key corresponds to a server name from `GgeTrackerServersEnum` and the value is the associated SQL database connection string
    */
   public getAllSqlDatabases(): { [K in keyof typeof GgeTrackerServersEnum]: string } {
     return Object.fromEntries(this.getActivatedServerEntries().map(([key, server]) => [key, server.databases.sql])) as {
@@ -668,9 +683,9 @@ export class ApiGgeTrackerManager extends DatabaseManager {
   }
 
   /**
-   * Retrieves a mapping of all OLAP database connection strings for each server defined in `GgeTrackerServersEnum`.
+   * Retrieves a mapping of all OLAP database connection strings for each server defined in `GgeTrackerServersEnum`
    *
-   * @returns An object where each key corresponds to a server name from `GgeTrackerServersEnum` and each value is the associated OLAP database connection string.
+   * @returns An object where each key corresponds to a server name from `GgeTrackerServersEnum` and each value is the associated OLAP database connection string
    */
   public getAllOlapDatabases(): { [K in keyof typeof GgeTrackerServersEnum]: string } {
     return Object.fromEntries(
@@ -681,20 +696,27 @@ export class ApiGgeTrackerManager extends DatabaseManager {
   }
 
   /**
-   * Retrieves the names of all available servers.
+   * Retrieves the names of all available servers
    *
-   * @returns {string[]} An array containing the names of all servers.
+   * @returns {string[]} An array containing the names of all servers
    */
   public getAllServerNames(): string[] {
     // A available server is any server defined in this.servers as IApiToken and not ILimitedApiToken
     return Object.keys(this.servers).filter((key) => 'code' in this.servers[key]);
   }
 
+  /**
+   * Constructs and returns the ClickHouse database connection URL based on the current configuration
+   * @returns {string} The ClickHouse connection URL in the format: scheme://host:port
+   */
   public getClickHouseUrl(): string {
-    // Note : in the future, the port need to be extracted from env variable if needed
     return `${this.configuration.clickhouse.scheme}://${this.configuration.clickhouse.host}:${this.configuration.clickhouse.port}`;
   }
 
+  /**
+   * Retrieves the ClickHouse database credentials from the configuration
+   * @returns {{ username: string; password: string }} The ClickHouse credentials including username and password
+   */
   public getClickHouseCredentials(): { username: string; password: string } {
     return {
       username: this.configuration.clickhouse.username || '',
@@ -703,55 +725,44 @@ export class ApiGgeTrackerManager extends DatabaseManager {
   }
 
   /**
-   * Creates and returns a new instance of the ClickHouse client configured with environment variables.
+   * Creates and returns a new instance of the ClickHouse client configured with environment variables
    *
-   * @returns {Promise<ClickHouse>} A promise that resolves to a configured ClickHouse client instance.
+   * @returns {Promise<NodeClickHouseClient>} A promise that resolves to a configured ClickHouse client instance
    *
-   * The client is set to connect over HTTP on port 8123, with JSON format responses and no gzip compression.
-   * Additional configuration options such as session timeout and output formatting are also set.
+   * The client is set to connect over HTTP on port 8123, with JSON format responses and no gzip compression
+   * Additional configuration options such as session timeout and output formatting are also set
    */
-  public async getClickHouseInstance(): Promise<ClickHouse> {
-    return new ClickHouse({
-      url: this.getClickHouseUrl(),
-      port: this.configuration.clickhouse.port,
-      basicAuth: { username: this.configuration.clickhouse.username, password: this.configuration.clickhouse.password },
-      isUseGzip: false,
-      format: 'json',
-      config: {
-        session_timeout: 60,
-        output_format_json_quote_64bit_integers: 0,
-        enable_http_compression: 0,
-      },
-    });
+  public async getClickHouseInstance(): Promise<NodeClickHouseClient> {
+    return this.clickhouseClient;
   }
 
   /**
-   * Retrieves the list of SQL event table names used for OLAP (Online Analytical Processing) operations.
+   * Retrieves the list of SQL event table names used for OLAP (Online Analytical Processing) operations
    *
-   * @returns {string[]} An array of table names as strings.
+   * @returns {string[]} An array of table names as strings
    */
   public getOlapEventTables(): string[] {
     return this.SQL_EVENT_TABLES;
   }
 
   /**
-   * Validates the server configuration stored on this.servers.
+   * Validates the server configuration stored on this.servers
    *
    * Performs the following checks for each configured server:
    * 1. Ensures the server code is exactly 3 characters long, except for the special
-   *    case identified by GgeTrackerServersEnum.GLOBAL.
+   *    case identified by GgeTrackerServersEnum.GLOBAL
    * 2. Verifies that none of the configured database identifiers (SQL or OLAP)
-   *    contain the literal string 'null', which indicates a misconfiguration.
+   *    contain the literal string 'null', which indicates a misconfiguration
    * 3. Detects duplicate server codes across different server entries and reports
-   *    all other server keys that share the same code.
+   *    all other server keys that share the same code
    *
    * If any of the above validations fail, an Error is thrown describing the
-   * specific problem and the affected server(s).
+   * specific problem and the affected server(s)
    *
-   * @throws {Error} If a non-global server has a code length different from 3.
-   * @throws {Error} If any database name (SQL or OLAP) contains the string 'null'.
-   * @throws {Error} If one or more other servers share the same server code (duplicates).
-   * @returns {void} No return value; function will throw on invalid configuration.
+   * @throws {Error} If a non-global server has a code length different from 3
+   * @throws {Error} If any database name (SQL or OLAP) contains the string 'null'
+   * @throws {Error} If one or more other servers share the same server code (duplicates)
+   * @returns {void} No return value; function will throw on invalid configuration
    */
   private checkServerConfig(): void {
     this.getActivatedServerEntries().forEach(([key, server]) => {

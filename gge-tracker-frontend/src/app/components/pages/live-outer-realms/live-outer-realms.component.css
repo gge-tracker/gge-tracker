@@ -1,0 +1,17 @@
+::ng-deep .alliances th, td {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.score-diff {
+  font-size: .8rem;
+  font-style: italic;
+}
+
+.score-diff.negative {
+  color: red;
+}
+
+.score-diff.positive {
+  color: green;
+}

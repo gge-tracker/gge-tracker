@@ -2,22 +2,21 @@ import { DatePipe, NgClass, NgFor, NgIf } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { TranslateModule } from '@ngx-translate/core';
-
+import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
+import { TableComponent } from '@ggetracker-components/table/table.component';
 import {
+  ApiPlayerSearchResponse,
+  ApiPlayersResponse,
+  ErrorType,
+  FavoritePlayer,
   Player,
   SearchType,
-  FavoritePlayer,
-  ErrorType,
-  ApiPlayersResponse,
-  ApiPlayerSearchResponse,
 } from '@ggetracker-interfaces/empire-ranking';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
-import { GenericComponent } from '@ggetracker-components/generic/generic.component';
-import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
-import { ServerBadgeComponent } from '@ggetracker-components/server-badge/server-badge.component';
-import { TableComponent } from '@ggetracker-components/table/table.component';
+import { TranslateModule } from '@ngx-translate/core';
+import { PlayerTableContentComponent } from './player-table-content/player-table-content.component';
 
 @Component({
   selector: 'app-players',
@@ -34,7 +33,7 @@ import { TableComponent } from '@ggetracker-components/table/table.component';
     DatePipe,
     SearchFormComponent,
     TranslateModule,
-    ServerBadgeComponent,
+    PlayerTableContentComponent,
   ],
   templateUrl: './players.component.html',
   styleUrl: './players.component.css',
@@ -56,11 +55,8 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     ['player_name', 'Pseudonyme'],
     ['level', 'Niveau', '/assets/lvl.png'],
     ['might_current', 'Points de puissance', '/assets/pp1.png'],
-    ['might_all_time', 'Puissance maximale atteinte', '/assets/pp2.png'],
     ['loot_current', 'Points de pillage hebdomadaire', '/assets/loot.png'],
-    ['loot_all_time', 'Pillage maximal atteint', '/assets/loot3.png'],
     ['current_fame', 'Points de gloire', '/assets/glory.png'],
-    ['highest_fame', 'Gloire maximale atteinte', '/assets/glory.png'],
     ['honor', 'Honneur', '/assets/honor.png'],
     ['alliance_name', 'Alliance', '/assets/min-alliance.png', true],
     ['', '', undefined, true],
@@ -83,6 +79,11 @@ export class PlayersComponent extends GenericComponent implements OnInit {
   };
   private cdr = inject(ChangeDetectorRef);
   private localStorage = inject(LocalStorageService);
+
+  constructor() {
+    super();
+    this.isInLoading = true;
+  }
 
   public ngOnInit(): void {
     if (globalThis.window === undefined) return;
@@ -250,7 +251,9 @@ export class PlayersComponent extends GenericComponent implements OnInit {
   }
 
   public async onAddDistanceColumn(): Promise<void> {
+    console.log('onAddDistanceColumn called');
     if (!this.formFilters.playerCastleDistance?.trim()) return;
+    console.log('Player castle distance filter is set:', this.formFilters.playerCastleDistance);
     this.isInLoading = true;
     this.cdr.detectChanges();
     this.localStorage.setItem(
@@ -277,7 +280,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     }
     this.localStorage.removeItem('allianceDistancePlayerName_' + this.apiRestService.serverService.choosedServer);
     this.cdr.detectChanges();
-    if (this.playersTableHeader.length === 12) {
+    if (this.playersTableHeader.length === 9) {
       this.playersTableHeader.splice(-3, 1);
       this.cdr.detectChanges();
     }
@@ -331,7 +334,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
   }
 
   private addHeaderTableBlock(): void {
-    if (this.playersTableHeader.length === 11) {
+    if (this.playersTableHeader.length === 8) {
       const block: [string, string, (string | undefined)?, (boolean | undefined)?] = [
         'distance',
         'Distance (m)',

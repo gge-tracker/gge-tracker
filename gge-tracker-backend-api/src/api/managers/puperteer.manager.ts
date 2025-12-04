@@ -1,30 +1,30 @@
 import * as puppeteer from 'puppeteer';
 
 /**
- * Singleton class to manage a single Puppeteer browser instance.
+ * Singleton class to manage a single Puppeteer browser instance
  *
- * Ensures that only one browser instance is launched and reused throughout the application.
- * Handles concurrent launch attempts and automatically relaunches the browser if it crashes.
+ * Ensures that only one browser instance is launched and reused throughout the application
+ * Handles concurrent launch attempts and automatically relaunches the browser if it crashes
  */
 class PuppeteerManager {
   /**
-   * Holds the instance of the Puppeteer browser.
+   * Holds the instance of the Puppeteer browser
    *
    * This property is either a `puppeteer.Browser` object when the browser is initialized,
-   * or `null` if the browser has not been launched or has been closed.
+   * or `null` if the browser has not been launched or has been closed
    */
   private browser: puppeteer.Browser | null = null;
   /**
-   * Indicates whether the Puppeteer browser instance is currently in the process of launching.
-   * Used to prevent multiple simultaneous launch attempts.
+   * Indicates whether the Puppeteer browser instance is currently in the process of launching
+   * Used to prevent multiple simultaneous launch attempts
    */
   private launching: boolean = false;
 
   /**
-   * Retrieves the current Puppeteer browser instance.
-   * If the browser is not already launched, it will launch a new instance before returning it.
+   * Retrieves the current Puppeteer browser instance
+   * If the browser is not already launched, it will launch a new instance before returning it
    *
-   * @returns A promise that resolves to the Puppeteer `Browser` instance.
+   * @returns A promise that resolves to the Puppeteer `Browser` instance
    */
   public async getBrowser(): Promise<puppeteer.Browser> {
     if (!this.browser) {
@@ -34,12 +34,12 @@ class PuppeteerManager {
   }
 
   /**
-   * Creates and returns a new Puppeteer page instance.
+   * Creates and returns a new Puppeteer page instance
    *
    * This method retrieves the current browser instance (launching it if necessary)
-   * and opens a new page (tab) within that browser context.
+   * and opens a new page (tab) within that browser context
    *
-   * @returns {Promise<puppeteer.Page>} A promise that resolves to the newly created Puppeteer page.
+   * @returns {Promise<puppeteer.Page>} A promise that resolves to the newly created Puppeteer page
    */
   public async createPage(): Promise<puppeteer.Page> {
     const browser = await this.getBrowser();
@@ -48,13 +48,13 @@ class PuppeteerManager {
   }
 
   /**
-   * Launches a new Puppeteer browser instance if one is not already being launched.
-   * Ensures that only one browser launch is in progress at a time by waiting if another launch is ongoing.
-   * Configures the browser with a set of arguments optimized for headless operation and security.
-   * Automatically attempts to relaunch the browser if it crashes or disconnects.
+   * Launches a new Puppeteer browser instance if one is not already being launched
+   * Ensures that only one browser launch is in progress at a time by waiting if another launch is ongoing
+   * Configures the browser with a set of arguments optimized for headless operation and security
+   * Automatically attempts to relaunch the browser if it crashes or disconnects
    *
-   * @returns {Promise<puppeteer.Browser>} A promise that resolves to the launched Puppeteer browser instance.
-   * @throws Will throw an error if the browser fails to launch.
+   * @returns {Promise<puppeteer.Browser>} A promise that resolves to the launched Puppeteer browser instance
+   * @throws Will throw an error if the browser fails to launch
    */
   private async launchBrowser(): Promise<puppeteer.Browser> {
     if (this.launching) {

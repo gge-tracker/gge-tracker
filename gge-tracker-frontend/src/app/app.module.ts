@@ -7,7 +7,7 @@ import { RouterModule } from '@angular/router';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
 import { TranslateHttpLoader } from '@ngx-translate/http-loader';
-import { LucideAngularModule, Spline } from 'lucide-angular';
+import { LUCIDE_ICONS, LucideAngularModule, LucideIconProvider, Spline } from 'lucide-angular';
 
 import { AppComponent } from './app.component';
 import { routes } from './app.routes';
@@ -16,6 +16,9 @@ import { LoadingComponent } from '@ggetracker-components/loading/loading.compone
 import { NavbarComponent } from '@ggetracker-components/navbar/navbar.component';
 import { SkeletonComponent } from '@ggetracker-components/skeleton/skeleton.component';
 import { LocalStorageTranslateLoader } from './local-storage-loader';
+import { SidebarComponent } from '@ggetracker-components/sidebar/sidebar.component';
+import { TopBarComponent } from '@ggetracker-components/top-bar/top-bar.component';
+import { myIcons } from '@ggetracker-components/icon/icon.component';
 
 export function DynamicTranslateLoaderFactory(http: HttpClient): TranslateLoader {
   const isBrowser = globalThis.window !== undefined;
@@ -47,8 +50,13 @@ export function DynamicTranslateLoaderFactory(http: HttpClient): TranslateLoader
       },
       defaultLanguage: 'en',
     }),
+    SidebarComponent,
+    TopBarComponent,
   ],
   bootstrap: [AppComponent],
-  providers: [provideClientHydration()],
+  providers: [
+    provideClientHydration(),
+    { provide: LUCIDE_ICONS, multi: true, useValue: new LucideIconProvider(myIcons) },
+  ],
 })
 export class AppRoutingModule {}

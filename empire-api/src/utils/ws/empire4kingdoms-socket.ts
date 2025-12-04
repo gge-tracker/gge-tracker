@@ -7,13 +7,13 @@ const E4kEnumLoginStatus = {
 };
 
 class GgeEmpire4KingdomsSocket extends BaseSocket implements GgeEmpireSocketImpl {
-  constructor(url: string, serverHeader: string, username: string, password: string) {
-    super(url, serverHeader, GgeServerType.E4K);
+  constructor(url: string, serverHeader: string, username: string, password: string, autoReconnect = true) {
+    super(url, serverHeader, GgeServerType.E4K, autoReconnect);
     this.url = url;
     this.serverHeader = serverHeader;
     this.username = username;
     this.password = password;
-    this.reconnect = true;
+    this.reconnect = autoReconnect;
     this.connectMethod = this.connect.bind(this);
   }
 

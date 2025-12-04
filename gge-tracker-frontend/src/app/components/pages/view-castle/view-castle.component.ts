@@ -1,3 +1,4 @@
+import { DecimalPipe, NgClass, NgFor, NgIf, NgStyle } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -9,10 +10,14 @@ import {
   ViewChild,
   ViewChildren,
 } from '@angular/core';
-import { ApiRestService } from '@ggetracker-services/api-rest.service';
-import { DecimalPipe, NgClass, NgFor, NgIf, NgStyle } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { FilterComponent } from '@ggetracker-components/filter/filter.component';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { LoadingComponent } from '@ggetracker-components/loading/loading.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
+import { SearchbarComponent } from '@ggetracker-components/searchbar/searchbar.component';
+import { ISelectItem, SelectComponent } from '@ggetracker-components/select/select.component';
+import { SwitchComponent } from '@ggetracker-components/switch/switch.component';
 import {
   ApiPlayerCastleDataMapped,
   ApiPlayerCastleDataResponse,
@@ -24,18 +29,12 @@ import {
   IMappedBuildingElement,
   IMappedBuildingUnknownDataElement,
 } from '@ggetracker-interfaces/empire-ranking';
-import { Castle, LucideAngularModule } from 'lucide-angular';
-import { FormsModule } from '@angular/forms';
-import { TranslatePipe } from '@ngx-translate/core';
-import { BuildingImgComponent } from './app-building-img/app-building-img.component';
-import { SearchbarComponent } from '@ggetracker-components/searchbar/searchbar.component';
-import { FilterComponent } from '@ggetracker-components/filter/filter.component';
-import { ServerBadgeComponent } from '@ggetracker-components/server-badge/server-badge.component';
-import { LoadingComponent } from '@ggetracker-components/loading/loading.component';
-import { SwitchComponent } from '@ggetracker-components/switch/switch.component';
-import { ISelectItem, SelectComponent } from '@ggetracker-components/select/select.component';
-import { IMappedBuildingWithGround, Pt, GenericTextIds } from '@ggetracker-interfaces/view-castle';
+import { GenericTextIds, IMappedBuildingWithGround, Pt } from '@ggetracker-interfaces/view-castle';
+import { ApiRestService } from '@ggetracker-services/api-rest.service';
 import { ServerService } from '@ggetracker-services/server.service';
+import { TranslatePipe } from '@ngx-translate/core';
+import { Castle, LucideAngularModule } from 'lucide-angular';
+import { BuildingImgComponent } from './app-building-img/building-img.component';
 
 @Component({
   selector: 'app-view-castle',
@@ -49,7 +48,6 @@ import { ServerService } from '@ggetracker-services/server.service';
     DecimalPipe,
     LucideAngularModule,
     LoadingComponent,
-    ServerBadgeComponent,
     FormsModule,
     BuildingImgComponent,
     SwitchComponent,
@@ -84,6 +82,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
    * @see IMappedBuildingWithGround
    */
   public previousSelectedItem: IMappedBuildingWithGround | null = null;
+  @ViewChild('mapCanvas', { static: false }) public canvasRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChildren('miniMap') public miniMaps!: QueryList<ElementRef<HTMLCanvasElement>>;
   public buildingStyles: Record<string, Record<string, string>> = {};
   public allVisibleBuildings: IMappedBuildingWithGround[] = [];
   public visibleBuildings: IMappedBuildingWithGround[] = [];
@@ -164,9 +164,6 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     maxFloors: 20,
     nbFire: 0,
   };
-  @ViewChild('mapCanvas', { static: false }) public canvasRef!: ElementRef<HTMLCanvasElement>;
-  @ViewChildren('miniMap') public miniMaps!: QueryList<ElementRef<HTMLCanvasElement>>;
-
   private readonly mapSize = 1286;
   private readonly miniSize = 50;
   private readonly itemsJsonUrl = 'assets/items';
@@ -204,6 +201,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
 
   constructor() {
     super();
+    this.isInLoading = true;
   }
 
   public async ngOnInit(): Promise<void> {
@@ -853,6 +851,13 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
         context.fillStyle = colors[0];
         context.fillRect(x, y, w, h);
       } else {
+        /**
+         * Snippet: Parse color string to RGB array
+         *
+         * @note This function might be moved to a utility library in the future
+         * @param color Color string in hex or rgb(a) format
+         * @returns RGB color as an array
+         */
         function parseToRgb(color: string): [number, number, number] {
           if (color.startsWith('#')) {
             const hex = color.slice(1);
@@ -869,7 +874,17 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
           if (m) return [Number(m[1]), Number(m[2]), Number(m[3])];
           return [128, 128, 128];
         }
+        // Helper functions for drawing with gradient and borders
         const rgbString = (r: number, g: number, b: number): string => `rgb(${r},${g},${b})`;
+
+        /**
+         * Snippet: Adjust color brightness by a factor
+         *
+         * @note This function might be moved to a utility library in the future
+         * @param param0 RGB color as an array
+         * @param f Brightness factor
+         * @returns Adjusted RGB color as an array
+         */
         function adjust([r, g, b]: [number, number, number], f: number): [number, number, number] {
           return [
             Math.min(255, Math.max(0, Math.round(r * f))),
@@ -877,6 +892,16 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
             Math.min(255, Math.max(0, Math.round(b * f))),
           ];
         }
+        /**
+         * Snippet: Snap rectangle coordinates to integer values
+         *
+         * @note This function might be moved to a utility library in the future
+         * @param x X coordinate
+         * @param y Y coordinate
+         * @param w Width
+         * @param h Height
+         * @returns Snapped rectangle coordinates and dimensions
+         */
         function snapRect(x: number, y: number, w: number, h: number): { x: number; y: number; w: number; h: number } {
           const sx = Math.round(x);
           const sy = Math.round(y);
@@ -884,6 +909,19 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
           const sh = Math.max(1, Math.round(y + h) - sy);
           return { x: sx, y: sy, w: sw, h: sh };
         }
+        /**
+         * Snippet: Draw a cell with a modern gradient and border effect
+         *
+         * @note This function might be moved to a utility library in the future
+         * @param context_ Canvas rendering context
+         * @param x X coordinate
+         * @param y Y coordinate
+         * @param w Width of the cell
+         * @param h Height of the cell
+         * @param baseColor Base color of the cell
+         *
+         * @returns void
+         */
         function drawCellModern(
           context_: CanvasRenderingContext2D,
           x: number,
@@ -1096,6 +1134,15 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     }
   }
 
+  /**
+   * Generates the raw building name key used for localization lookup
+   * This code is based on the observed patterns in the game's source
+   * code and may need adjustments if the game's localization system changes.
+   * @param bt Building type
+   * @param ky Key
+   * @param gp Group
+   * @returns Raw building name key
+   */
   private getRawBuildingName(bt: string, ky: string, gp: string): string {
     const r = [ky, bt, gp].map((s) => s.trim().toUpperCase());
     const k = ['LEVEL', 'NAME', '_', '-', '', 'MOAT', 'GATE', 'WALL', 'TOWER'];
@@ -1634,6 +1681,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
             name: (name as String).replace('{0}', String(data['decoPoints'])),
           };
         } else {
+          // Legacy effect fields handling
+          // This part is based on observed legacy fields in the game's data
           const legacyEffectFields: [string, boolean][] = [
             ['unitWallCount', false],
             ['recruitSpeedBoost', true],
@@ -1814,6 +1863,14 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     }
   }
 
+  /**
+   * Retrieves the corresponding value type identifier for a given effect name.
+   *
+   * @deprecated This method is deprecated and may be removed in future versions. This method was excavated from
+   *             gge' source code, but it is unclear if it is still in use
+   * @param name - The name of the effect to look up (case-insensitive, will be trimmed and converted to uppercase)
+   * @returns A string constant from GenericTextIds indicating how the effect value should be displayed
+   */
   private getEffectValue(name: string): string {
     name = name.trim().toUpperCase();
     switch (name) {

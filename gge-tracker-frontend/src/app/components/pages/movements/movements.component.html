@@ -6,16 +6,10 @@
           player: true,
           alliance: true
         }" (searchAlliance)="searchAlliance($event)" (searchPlayer)="searchPlayer($event)"></app-search-form>
-      <div class="mb-1">
-        <app-server-badge></app-server-badge>
-        <span class="ms-1 badge bg-info pointer" *ngIf="responseTime > 0"
-          [title]="('Affichage des données en' | translate) + ' ' + responseTime + 'ms'">
-          <i class="fa-solid fa-clock"></i>
-          {{ responseTime / 1000 }}s
-        </span>
-      </div>
-      <app-table [sort]="''" [reverse]="false" [isInLoading]="isInLoading" [maxPage]="maxPage!" [page]="page"
-        [search]="search" [headers]="[
+
+      <div class="flex flex-col justify-between gap-6 mt-2">
+        <app-table [sort]="''" [reverse]="false" [isInLoading]="isInLoading" [maxPage]="maxPage!" [page]="page"
+          [search]="search" [headers]="[
           ['playerName', 'Pseudonyme' | translate, '', true],
           ['allianceName', 'Alliance' | translate, '/assets/min-alliance.png', true],
           ['level', 'Niveau' | translate, '/assets/lvl.png', true],
@@ -26,41 +20,57 @@
           ['date', 'Date' | translate, '', true],
           ['actions', '', '', true]
         ]" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
-        <tr *ngIf="movements.length === 0 && !isInLoading">
-          <td colspan="10">
-            <span class="text-muted" translate>Aucun mouvement trouvé</span>
-          </td>
-        </tr>
-        <tr *ngFor="let movement of movements">
-          <td>{{ movement.rank }}</td>
-          <td>{{ movement.player }}</td>
-          <td>{{ movement.alliance ?? '-' }}</td>
-          <td>
-            {{ movement.level ? movement.level + (movement.legendaryLevel ? ('/' + movement.legendaryLevel) : '') : '0'
-            }}
-          </td>
-          <td>{{ (movement.might ? movement.might : 0) | formatNumber }}</td>
-          <td><img [src]="'/assets/castle' + movement.type + '.png'" [title]="getCastleType(movement.type) | translate"
-              [alt]="getCastleType(movement.type)"></td>
-          <td [innerHTML]="getDescription(movement.type, movement.positionOld, movement.positionNew).image"></td>
-          <td>{{ ((getDescription(movement.type, movement.positionOld, movement.positionNew).keyword) | translate) + ' '
-            + getDescription(movement.type, movement.positionOld, movement.positionNew).description }}</td>
-          <td>{{ movement.date | date: ('Date_1' | translate)}}</td>
-          <td class="text-end">
-            <div class="d-flex justify-content-end">
-              <a [routerLink]="['/', 'players']" [queryParams]="{ player: movement.player}">
-                <img src="/assets/icon_search.png" [alt]="'Voir le joueur' | translate"
-                  [title]="'Voir le joueur' | translate" height="24" class="btn-icon">
-              </a>
-              <a [routerLink]="['/', 'castles']" [queryParams]="{ search: movement.player }">
-                <img src="/assets/icon_castles.png" [alt]="'Voir les châteaux' | translate"
-                  [title]="'Voir les châteaux' | translate" height="24"
-                  class="ms-1 btn-icon">
-              </a>
-            </div>
-          </td>
-        </tr>
-      </app-table>
+          <tr *ngIf="movements.length === 0 && !isInLoading">
+            <td colspan="10" class="no-data">{{ 'Aucun mouvement trouvé' | translate }}</td>
+          </tr>
+          <tr *ngFor="let movement of movements">
+            <td class="col-rank">
+              <span class="mobile-only">#</span>
+              {{ movement.rank }}
+            </td>
+            <td>{{ movement.player }}</td>
+            <td>
+              <span class="mobile-only">{{ 'Alliance' | translate }}:&nbsp;</span>
+              {{ movement.alliance ?? '-' }}
+            </td>
+            <td class="col-level">
+              <span class="mobile-only">{{ 'Niveau' | translate }}:&nbsp;</span>
+              <div class="level-box" [ngClass]="{ 'level-legendary': movement.legendaryLevel }">
+                <span class="level-main">{{movement.level}}</span>
+                <ng-container *ngIf="movement.legendaryLevel">
+                  <div class="level-separator"></div>
+                  <span class="level-legendary">
+                    {{ movement.legendaryLevel }}
+                  </span>
+                </ng-container>
+              </div>
+            </td>
+            <td>
+              <span class="mobile-only">{{ 'Puissance' | translate }}:&nbsp;</span>
+              {{ (movement.might ? movement.might : 0) | formatNumber }}
+            </td>
+            <td><img [src]="'/assets/castle' + movement.type + '.png'"
+                [title]="getCastleType(movement.type) | translate" [alt]="getCastleType(movement.type)"></td>
+            <td [innerHTML]="getDescription(movement.type, movement.positionOld, movement.positionNew).image"></td>
+            <td>{{ ((getDescription(movement.type, movement.positionOld, movement.positionNew).keyword) | translate) + '
+              '
+              + getDescription(movement.type, movement.positionOld, movement.positionNew).description }}</td>
+            <td>{{ movement.date | date: ('Date_1' | translate)}}</td>
+            <td class="text-end">
+              <div class="d-flex justify-content-center">
+                <a [routerLink]="['/', 'players']" [queryParams]="{ player: movement.player}">
+                  <img src="/assets/icon_search.png" [alt]="'Voir le joueur' | translate"
+                    [title]="'Voir le joueur' | translate" height="24" class="btn-icon">
+                </a>
+                <a [routerLink]="['/', 'castles']" [queryParams]="{ search: movement.player }">
+                  <img src="/assets/icon_castles.png" [alt]="'Voir les châteaux' | translate"
+                    [title]="'Voir les châteaux' | translate" height="24" class="ms-1 btn-icon">
+                </a>
+              </div>
+            </td>
+          </tr>
+        </app-table>
+      </div>
     </div>
   </div>
 
@@ -84,18 +94,17 @@
                     [alt]="'Chateau principal' | translate" [title]="'Type de position' | translate" height="40">
                 </span>
                 <select class="form-select" [(ngModel)]="formFilters.castleType">
-                  <option value="null" selected translate>Tous</option>
-                  <option value="1" translate>Chateau principal</option>
-                  <option value="3" translate>Capitale</option>
-                  <option value="4" translate>Avant-poste</option>
-                  <option value="22" translate>Cité marchande</option>
-                  <option value="23" translate>Tour royale</option>
-                  <option value="26" translate>Monument</option>
-                  <option value="28" translate>Laboratoire</option>
+                  <option value="null" selected>{{ 'Tous'| translate }}</option>
+                  <option value="1">{{ 'Chateau principal' | translate}}</option>
+                  <option value="3">{{ 'Capitale' | translate}}</option>
+                  <option value="4">{{ 'Avant-poste' | translate}}</option>
+                  <option value="22">{{ 'Cité marchande' | translate}}</option>
+                  <option value="23">{{ 'Tour royale' | translate}}</option>
+                  <option value="26">{{ 'Monument' | translate}}</option>
+                  <option value="28">{{ 'Laboratoire' | translate}}</option>
                 </select>
               </div>
             </div>
-            <!-- Filtre par type de mouvement : 1: 'Apparition', 2: 'Suppression', 3: 'Déménagement'-->
             <div class="col">
               <label for="movementType" class="form-label">{{ 'Type de mouvement' | translate }} :</label>
               <div class="input-group">
@@ -108,16 +117,16 @@
                     [title]="'Type de mouvement' | translate" height="40">
                 </span>
                 <select class="form-select" [(ngModel)]="formFilters.movementType">
-                  <option value="null" selected translate>Tous</option>
-                  <option value="1" translate>Apparition</option>
-                  <option value="2" translate>Disparition</option>
-                  <option value="3" translate>Déménagement</option>
+                  <option value="null" selected>Tous</option>
+                  <option value="1">{{ 'Apparition' | translate }}</option>
+                  <option value="2">{{ 'Disparition' | translate }}</option>
+                  <option value="3">{{ 'Déménagement' | translate }}</option>
                 </select>
               </div>
             </div>
             <div class="row mt-3">
               <div class="col text-center">
-                <button class="btn btn-primary" (click)="applyFilters()" data-bs-dismiss="modal">
+                <button class="gge-btn search" (click)="applyFilters()" data-bs-dismiss="modal">
                   <span>{{ 'Appliquer les filtres' | translate }}</span>
                 </button>
               </div>

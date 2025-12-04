@@ -1,98 +1,457 @@
+::ng-deep #table-component .badge-ban {
+  align-items: center;
+  background: #ff4d4d22;
+  border-radius: 6px;
+  border: 1px solid #ff4d4d55;
+  color: #d60000;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 600;
+  margin-right: 6px;
+  padding: 2px 6px;
+}
+
+::ng-deep #table-component .badge-inactive {
+  align-items: center;
+  background: rgba(80,80,80,0.28);
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.03);
+  color: #fff;
+  display: inline-flex;
+  font-weight: 700;
+  gap: 8px;
+  letter-spacing: 0.02em;
+  padding: 6px 10px;
+}
+
+::ng-deep #table-component .badge-peace {
+  align-items: center;
+  background: #00000066;
+  border-radius: 6px;
+  color: #0056d6;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 600;
+  margin-right: 6px;
+  padding: 2px 6px;
+}
+
+::ng-deep #table-component .bar-black {
+  background: linear-gradient(90deg,#1f2937,#6b7280);
+  box-shadow: 0 6px 18px rgba(80,80,80,0.12);
+}
+
+::ng-deep #table-component .bar-blue {
+  background: linear-gradient(90deg,#1e40af,#60a5fa);
+  box-shadow: 0 6px 18px rgba(70,130,220,0.12);
+}
+
+::ng-deep #table-component .bar-cyan {
+  background: linear-gradient(90deg,#0e7490,#22d3ee);
+  box-shadow: 0 6px 18px rgba(40,180,220,0.12);
+}
+
+::ng-deep #table-component .bar-gray {
+  background: linear-gradient(90deg,#374151,#9ca3af);
+  box-shadow: 0 6px 18px rgba(100,100,100,0.12);
+}
+
+::ng-deep #table-component .bar-green {
+  background: linear-gradient(90deg,#047857,#34d399);
+  box-shadow: 0 6px 18px rgba(20,160,120,0.12);
+}
+
+::ng-deep #table-component .bar-green-dark {
+  background: linear-gradient(90deg,#166534,#4ade80);
+  box-shadow: 0 6px 18px rgba(20,160,100,0.12);
+}
+
+::ng-deep #table-component .bar-purple {
+  background: linear-gradient(90deg,#6d28d9,#a78bfa);
+  box-shadow: 0 6px 18px rgba(120,80,200,0.12);
+}
+
+::ng-deep #table-component .bar-red {
+  background: linear-gradient(90deg,#b91c1c,#f87171);
+  box-shadow: 0 6px 18px rgba(220,70,70,0.12);
+}
+
+::ng-deep #table-component .bar-rose {
+  background: linear-gradient(90deg,#a21b3a,#fb7185);
+  box-shadow: 0 6px 18px rgba(250,100,120,0.12);
+}
+
+::ng-deep #table-component .bar-teal {
+  background: linear-gradient(90deg,#115e59,#2dd4bf);
+  box-shadow: 0 6px 18px rgba(30,160,140,0.12);
+}
+
+::ng-deep #table-component .bar-yellow {
+  background: linear-gradient(90deg,#b45309,#fbbf24);
+  box-shadow: 0 6px 18px rgba(220,170,60,0.12);
+}
+
+::ng-deep #table-component .btn-favorite.is-favorite {
+  filter: drop-shadow(0 0 8px gold) saturate(120%);
+  transform: scale(1.02);
+}
+
+::ng-deep #table-component .btn-icon {
+  filter: drop-shadow(0 3px 8px rgba(0,0,0,0.45));
+  height: 32px;
+  opacity: 0.92;
+  transition: transform var(--transition), filter 160ms;
+  width: 32px;
+}
+
+::ng-deep #table-component .btn-icon:hover {
+  filter: drop-shadow(0 6px 20px rgba(0,0,0,0.6));
+  transform: translateY(-3px) scale(1.06);
+}
+
+::ng-deep #table-component .col-rank {
+  color: #cccccc80;
+  font-weight: bold;
+  text-align: center;
+  width: 60px;
+}
+
+::ng-deep #table-component .col-rank.full-width {
+  width: auto;
+}
+
+::ng-deep #table-component .error-icon {
+  filter: grayscale(40%);
+  opacity: 0.7;
+  width: 22px;
+}
+
+::ng-deep #table-component .level-box {
+  align-items: center;
+  background: linear-gradient(180deg,#2a120f,#170a08);
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.04);
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.45);
+  display: flex;
+  justify-content: center;
+  margin: auto;
+  padding: 6px 4px;
+  text-align: center;
+  width: 30px;
+}
+
+::ng-deep #table-component .level-legendary {
+  background: linear-gradient(180deg,#09110a,#051009);
+  color: #4ade80;
+  font-size: 10px;
+  font-weight: bold;
+  margin: auto;
+  width: 56px;
+}
+
+::ng-deep #table-component .level-main {
+  color: white;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+::ng-deep #table-component .level-separator {
+  background: rgba(255,255,255,0.2);
+  height: 1px;
+  margin: 2px auto;
+  transform: rotate(90deg);
+  width: 60%;
+}
+
+::ng-deep #table-component .metric {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+::ng-deep #table-component .metric-bar {
+  border-radius: inherit;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  height: 100%;
+  transition: width 520ms cubic-bezier(0.2,0.9,0.2,1), box-shadow 260ms;
+}
+
+::ng-deep #table-component .metric-bar-bg {
+  background: linear-gradient(180deg,#050505,#09110a);
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.03);
+  box-shadow: inset 0 -1px 6px rgba(0,0,0,0.5);
+  height: 8px;
+  overflow: hidden;
+  width: 100%;
+}
+
+::ng-deep #table-component .metric-current {
+  font-weight: 700;
+}
+
+::ng-deep #table-component .metric-header {
+  display: flex;
+  font-size: 12px;
+  justify-content: space-between;
+}
+
+::ng-deep #table-component .metric-max {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+::ng-deep #table-component .name {
+  color: var(--text);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+::ng-deep #table-component a {
+  color: #9ab4ff;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+::ng-deep #table-component tbody tr {
+  animation: fadeInUp 0.2s ease forwards;
+  background: #0a0a0aa1;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transform: translateY(0);
+  transition: background 0.2s ease;
+}
+
+::ng-deep #table-component tbody tr:hover {
+  background: #0e1212cc;
+}
+
+::ng-deep #table-component tbody tr:nth-child(even) {
+  background: #0a0a0a88;
+}
+
+::ng-deep #table-component td {
+  padding: 4px 0;
+}
+
+::ng-deep #table-component td.no-data {
+  color: var(--muted);
+  font-style: italic;
+  padding: 10px 0;
+  text-align: center;
+}
+
+::ng-deep .table-custom .mobile-only {
+  display: none;
+}
+
+::ng-deep .table-custom tbody tr {
+  border-bottom: 1px solid rgba(255,255,255,0.02);
+  transform-origin: left center;
+  transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+
+::ng-deep .table-custom tbody tr.row-favorite {
+  background-color: #0733ff4d !important;
+  box-shadow: 0 0 12px rgba(10,40,255,0.3);
+  position: relative;
+}
+
+::ng-deep .table-custom tbody tr.row-favorite::after {
+  animation: favoritePulse 2.5s ease-in-out infinite;
+  background-size: 100% 200%;
+  background-image: linear-gradient(180deg,#4d76ff,#1a47ff,#4d76ff);
+  border-radius: 0 4px 4px 0;
+  content: "";
+  height: 100%;
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 4px;
+}
+
+::ng-deep .table-custom tbody tr:focus, ::ng-deep .table-custom tbody tr:focus-within {
+  outline-offset: 4px;
+  outline: 3px solid rgba(38,198,218,0.12);
+}
+
+::ng-deep .table-custom tbody tr:hover {
+  background: linear-gradient( 90deg, rgba(255,255,255,0.02), rgba(38,198,218,0.015) );
+  box-shadow: 0 8px 28px rgba(4,8,6,0.25);
+  transform: translateY(-4px);
+}
+
+#table-component {
+  --accent-2: #7ee787;
+  --accent: #26c6da;
+  --bg-0: #08110b;
+  --danger: #ff6b6b;
+  --glass-border: rgba(255,255,255,0.04);
+  --muted: #98a39a;
+  --panel: rgba(12,14,12,0.6);
+  --radius: 12px;
+  --row-highlight: rgba(38,198,218,0.06);
+  --shadow-1: 0 6px 22px rgba(0,0,0,0.45);
+  --text: #e6efe9;
+  --transition: 220ms cubic-bezier(0.2,0.9,0.2,1);
+}
 
 .table-custom {
-  width: 100%;
+  background: linear-gradient( 180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02) );
   border-collapse: collapse;
-  border-radius: 1rem;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-1);
+  color: var(--text);
+  font-family: "Inter", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  overflow: clip;
+  width: 100%;
+}
+
+.table-custom th[aria-sort="ascending"] .lucide-icon, .table-custom th[aria-sort="descending"] .lucide-icon {
+  opacity: 1;
+  transform: rotate(0deg);
+}
+
+.table-custom thead {
   backdrop-filter: blur(6px);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  background: linear-gradient( 180deg, rgba(10,12,10,0.85), rgba(8,10,8,0.78) );
+  box-shadow: 0 6px 18px rgba(0,0,0,0.28);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
 
-  th {
-    padding: 1rem 1.1rem;
-    text-align: left;
-    font-size: 0.875rem;
-    vertical-align: middle;
+.table-custom thead th {
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 14px 16px;
+  position: relative;
+  text-align: center;
+  user-select: none;
+}
+
+.table-custom thead th .lucide-icon {
+  opacity: 0.5;
+  transition: opacity 140ms;
+}
+
+.table-custom thead th .sort {
+  align-items: center;
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.table-custom thead th img {
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.45));
+  height: 36px;
+  margin-right: 8px;
+  object-fit: contain;
+  vertical-align: middle;
+  width: auto;
+}
+
+.table-custom thead th.pointer {
+  cursor: pointer;
+}
+
+.table-custom thead th.pointer:hover {
+  background: linear-gradient( 90deg, rgba(38,198,218,0.02), rgba(126,231,135,0.01) );
+  color: var(--text);
+}
+
+.table-custom thead th.pointer:hover .lucide-icon {
+  opacity: 0.95;
+}
+
+.table-custom thead::before {
+  background-image: var(--wood);
+  background-position: center -18px;
+  background-size: 320px;
+  content: "";
+  inset: 0 -120px -100% -120px;
+  opacity: 0.04;
+  pointer-events: none;
+  position: absolute;
+  z-index: 1;
+}
+
+.table-custom::after {
+  background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.12));
+  border-radius: 0 0 var(--radius) var(--radius);
+  bottom: 0;
+  content: "";
+  height: 28px;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+}
+
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
   }
 
-  thead {
-    background: rgba(255, 255, 255, 0.07);
-    position: sticky;
-    top: 0;
-    z-index: 5;
-
-    th {
-      font-weight: 600;
-      text-align: center;
-      color: #eee;
-      background: url(/assets/light-background-hover.png), #0c080081;
-      background-size: 25px;
-      cursor: pointer;
-      position: relative;
-
-      &.pointer:hover {
-        color: #d4d4d4;
-        background-color: #0c080086
-      }
-
-      img {
-        height: 28px;
-        vertical-align: middle;
-        margin-right: 0.3rem;
-      }
-
-      .sort {
-        position: absolute;
-        right: 0.6rem;
-        top: 50%;
-        transform: translateY(-50%);
-        display: flex;
-        align-items: center;
-
-        i {
-          width: 18px;
-          height: 18px;
-          color: #c7aaff;
-          opacity: 0.8;
-          transition: transform 0.2s ease;
-
-          &:hover {
-            transform: scale(1.15);
-          }
-        }
-      }
-    }
+  100% {
+    opacity: 1;
   }
 }
 
-::ng-deep .lucide-icon > svg {
-  width: 16px;
-  height: 16px;
-  stroke: #ffffff;
-  stroke-width: 1.75;
+@keyframes favoritePulse {
+  0% {
+    background-position: 0% 0%;
+  }
+
+  100% {
+    background-position: 0% 0%;
+  }
+
+  50% {
+    background-position: 0% 100%;
+  }
 }
 
-::ng-deep tbody tr {
-  transition: background-color 0.2s ease;
-}
+@media (max-width: 900px) {
+  ::ng-deep #table-component .mobile-only {
+    display: inline;
+  }
 
-::ng-deep tbody tr &:hover {
-  background-color: rgba(255, 255, 255, 0.03);
-}
+  ::ng-deep #table-component .table-custom td {
+    border-bottom: none;
+    text-align: center;
+  }
 
-::ng-deep tbody tr &.favorite {
-  background-color: rgba(255, 215, 0, 0.05);
-  border-left: 3px solid gold;
-}
+  ::ng-deep #table-component .table-custom thead {
+    display: none;
+  }
 
-::ng-deep tbody tr  td {
-  color: #ddd;
-  font-size: 0.875rem;
-}
+  ::ng-deep #table-component .table-custom tr {
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+    margin: 10px 0;
+    padding: 12px;
+  }
 
-::ng-deep tr.favorite > td {
-  background-color: #facb75;
-  --bs-table-striped-bg: #facb75;
+  ::ng-deep #table-component .table-custom, ::ng-deep #table-component .table-custom tbody, ::ng-deep #table-component .table-custom td, ::ng-deep #table-component .table-custom tr {
+    display: block;
+    width: 100%;
+  }
+
+  ::ng-deep #table-component td::before {
+    color: var(--muted);
+    content: attr(data-label);
+    display: block;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
 }
 
 ul {
@@ -115,7 +474,9 @@ ul {
       font-size: 0.85rem;
       font-weight: 500;
       cursor: pointer;
-      transition: background 0.25s ease, transform 0.15s ease;
+      transition:
+        background 0.25s ease,
+        transform 0.15s ease;
       user-select: none;
       backdrop-filter: blur(2px);
       border: 1px solid rgba(255, 255, 255, 0.08);

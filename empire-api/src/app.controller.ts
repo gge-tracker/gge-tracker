@@ -30,9 +30,9 @@ export default function createApp(sockets: {
     next();
   });
 
-  app.delete('/server', async (request, response) => {
+  app.delete('/server/:server', async (request, response) => {
     try {
-      const { server } = request.body as { server: string };
+      const { server } = request.params as { server: string };
       if (!server) {
         response.status(400).json({ error: 'Missing parameters' });
         return;
@@ -74,7 +74,7 @@ export default function createApp(sockets: {
         response.status(400).json({ error: 'Invalid socket URL' });
         return;
       }
-      const socketServer = new GgeLiveTemporaryServerSocket('wss://' + socket_url, server, username, password);
+      const socketServer = new GgeLiveTemporaryServerSocket('wss://' + socket_url, server, username, password, false);
       sockets[server] = socketServer;
       void socketServer.connectMethod();
       response.status(200).json({ message: 'Server added' });

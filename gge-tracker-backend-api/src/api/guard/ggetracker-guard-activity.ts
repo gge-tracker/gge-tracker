@@ -1,12 +1,12 @@
-import express from 'express';
-import { promisify } from 'node:util';
-import { RateLimiterRedis } from 'rate-limiter-flexible';
 import axios from 'axios';
-import zlib from 'node:zlib';
+import express from 'express';
 import morgan from 'morgan';
-import { GgeTrackerApiGuardActivityDefaultParameters } from './ggetracker-guard-activity.parameters';
-import { RoutesManager, sortBySpecificity } from '../managers/routes.manager';
+import { promisify } from 'node:util';
+import zlib from 'node:zlib';
+import { RateLimiterRedis } from 'rate-limiter-flexible';
 import { ApiGgeTrackerManager } from '../managers/api.manager';
+import { RoutesManager, sortBySpecificity } from '../managers/routes.manager';
+import { GgeTrackerApiGuardActivityDefaultParameters } from './ggetracker-guard-activity.parameters';
 
 interface LogEntry {
   labels: Record<string, string>;

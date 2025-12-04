@@ -1,0 +1,86 @@
+<div class="container my-3 live-outer-realms">
+  <div class="row">
+    <div *ngIf="viewType === 'all'; else viewTypeSpecificPlayerTemplate">
+      <div class="col-12" [ngClass]="{'loading': isInLoading}">
+        <app-search-form #searchForm [formFilters]="null" [isInLoading]="isInLoading"
+          [inputTip]="'Rechercher un joueur' | translate" [defaultSearch]="search" [searchTypes]="{
+          player: true,
+          alliance: false
+        }" (searchPlayer)="searchPlayer($event)">
+        </app-search-form>
+        <div class="mt-2">
+          <app-table [sort]="''" [reverse]="false" [isInLoading]="isDataLoading" [maxPage]="pagination.total_pages"
+            [page]="pagination.current_page" [search]="search" [headers]="[
+          ['playerName', 'Pseudonyme', '', true],
+          ['server', 'Serveur', '', true],
+          ['level', 'Niveau', '/assets/lvl.png', true],
+          ['might_current', 'Puissance', '/assets/pp1.png', true],
+          ['score', 'Score', '/assets/heritage_hunter.png', true],
+          ['actions', 'Actions', '', true]
+        ]" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
+            <tr *ngIf="players.length === 0 && !isDataLoading">
+              <td colspan="10">{{ 'Aucun joueur trouvé' | translate }}</td>
+            </tr>
+
+            <tr *ngFor="let player of players; let i = index">
+              <td class="col-rank full-width">
+                <span class="mobile-only">#</span>
+                {{ player.rank }}
+                <span class="score-diff" [ngClass]="{
+                    'positive': player.rank_diff > 0,
+                    'negative': player.rank_diff < 0
+                  }">({{ player.rank_diff > 0 ? '+' + player.rank_diff : player.rank_diff }})
+                </span>
+              </td>
+              <td class="col-name">
+                <span class="name">{{ player.player_name }}</span>
+              </td>
+              <td>
+                <img [src]="serverService.getFlagUrl(player.server)" [alt]="player.server" [title]="player.server" height="20">
+                {{ player.server }}
+              </td>
+              <td class="col-level">
+                <span class="mobile-only">{{ 'Niveau' | translate }}:&nbsp;</span>
+                <div class="level-box" [ngClass]="{ 'level-legendary': player.legendary_level }">
+                  <span class="level-main">{{player.level}}</span>
+                  <ng-container *ngIf="player.legendary_level">
+                    <div class="level-separator"></div>
+                    <span class="level-legendary">
+                      {{ player.legendary_level }}
+                    </span>
+                  </ng-container>
+                </div>
+              </td>
+              <td>{{ player.might | formatNumber }}</td>
+              <td>{{ player.score | formatNumber:'visual' }}
+                <span class="score-diff" [ngClass]="{
+                    'positive': player.score_diff > 0,
+                    'negative': player.score_diff < 0
+                  }">({{player.score_diff > 0 ? '+' + (player.score_diff | formatNumber:'visual') : player.score_diff |
+                  formatNumber:'visual' }})
+                </span>
+              </td>
+              <td class="col-actions">
+                <a class="action-icon" [routerLink]="['/live/outer-realms', player.player_id]"
+                  title="{{ 'Score' | translate }}">
+                  <img src="/assets/icon_points.png" alt="points" height="24" class="ms-1 btn-icon">
+                </a>
+              </td>
+            </tr>
+          </app-table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<ng-template #viewTypeSpecificPlayerTemplate>
+  <div *ngIf="player && charts">
+    <app-live-outer-realms-statistics-modal
+      [player]="player"
+      [charts]="charts"
+      (goBack)="goBack()">
+    </app-live-outer-realms-statistics-modal>
+  </div>
+</ng-template>

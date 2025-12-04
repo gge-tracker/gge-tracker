@@ -5,44 +5,44 @@ import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
 
 /**
- * Abstract class providing API endpoints for player-related operations.
+ * Abstract class providing API endpoints for player-related operations
  *
  * This class implements methods to handle HTTP requests for retrieving player data,
  * including paginated player lists with filtering and sorting, fetching player details
  * by name, and retrieving top players by player ID. It utilizes caching for performance
- * and supports various query parameters for flexible data retrieval.
+ * and supports various query parameters for flexible data retrieval
  *
  * @implements {ApiHelper}
  * @abstract
  */
 export abstract class ApiPlayers implements ApiHelper {
   /**
-   * Handles the retrieval of players with advanced filtering, sorting, and pagination.
+   * Handles the retrieval of players with advanced filtering, sorting, and pagination
    *
    * This endpoint supports multiple query parameters for filtering players by alliance, honor, might, loot, level,
-   * legendary level, alliance membership, protection status, ban status, inactivity, and distance from a specific player.
-   * It also supports sorting by various fields and paginates the results.
+   * legendary level, alliance membership, protection status, ban status, inactivity, and distance from a specific player
+   * It also supports sorting by various fields and paginates the results
    *
    * Query Parameters:
-   * - `page`: The page number for pagination (default: 1).
-   * - `orderBy`: The field to order by (default: "player_name"). Allowed values: "player_name", "loot_current", "loot_all_time", "might_current", "might_all_time", "honor", "level", "highest_fame", "current_fame", "remaining_relocation_time", "distance".
-   * - `orderType`: The order direction, either "ASC" or "DESC" (default: "ASC").
-   * - `alliance`: Filter by alliance name.
-   * - `minHonor`, `maxHonor`: Minimum and maximum honor values.
-   * - `minMight`, `maxMight`: Minimum and maximum might values.
-   * - `minLoot`, `maxLoot`: Minimum and maximum loot values.
-   * - `minLevel`, `maxLevel`: Minimum and maximum player level, in the format "level/legendaryLevel".
-   * - `allianceFilter`: Filter by alliance membership (0: no alliance, 1: has alliance).
-   * - `protectionFilter`: Filter by protection status (0: not protected, 1: protected).
-   * - `banFilter`: Filter by ban status (0: not banned, 1: banned).
-   * - `inactiveFilter`: Filter by activity (0: inactive, 1: active).
-   * - `playerNameForDistance`: Player name to calculate distance from (required if ordering by distance).
+   * - `page`: The page number for pagination (default: 1)
+   * - `orderBy`: The field to order by (default: "player_name"). Allowed values: "player_name", "loot_current", "loot_all_time", "might_current", "might_all_time", "honor", "level", "highest_fame", "current_fame", "remaining_relocation_time", "distance"
+   * - `orderType`: The order direction, either "ASC" or "DESC" (default: "ASC")
+   * - `alliance`: Filter by alliance name
+   * - `minHonor`, `maxHonor`: Minimum and maximum honor values
+   * - `minMight`, `maxMight`: Minimum and maximum might values
+   * - `minLoot`, `maxLoot`: Minimum and maximum loot values
+   * - `minLevel`, `maxLevel`: Minimum and maximum player level, in the format "level/legendaryLevel"
+   * - `allianceFilter`: Filter by alliance membership (0: no alliance, 1: has alliance)
+   * - `protectionFilter`: Filter by protection status (0: not protected, 1: protected)
+   * - `banFilter`: Filter by ban status (0: not banned, 1: banned)
+   * - `inactiveFilter`: Filter by activity (0: inactive, 1: active)
+   * - `playerNameForDistance`: Player name to calculate distance from (required if ordering by distance)
    *
-   * Caches results based on query parameters for performance.
+   * Caches results based on query parameters for performance
    *
-   * @param request - Express request object, expects query parameters for filtering, sorting, and pagination.
-   * @param response - Express response object, sends paginated and filtered player data or error messages.
-   * @returns A Promise that resolves when the response is sent.
+   * @param request - Express request object, expects query parameters for filtering, sorting, and pagination
+   * @param response - Express response object, sends paginated and filtered player data or error messages
+   * @returns A Promise that resolves when the response is sent
    */
   public static async getPlayers(request: express.Request, response: express.Response): Promise<void> {
     try {
@@ -420,24 +420,24 @@ export abstract class ApiPlayers implements ApiHelper {
   }
 
   /**
-   * Handles the retrieval of player information by player name.
+   * Handles the retrieval of player information by player name
    *
    * This method validates the provided player name, checks for cached results,
    * and queries the database for player details if not cached. The result is
    * cached for future requests and returned to the client. If the player is not
-   * found, an appropriate error message is returned.
+   * found, an appropriate error message is returned
    *
    * @param request - The Express request object, expected to contain the player name in `params.playerName`,
    *                  a Redis client in `ApiHelper.redisClient`, a PostgreSQL pool in `request["pg_pool"]`,
-   *                  and a language code in `request["language"]`.
-   * @param response - The Express response object used to send the result or error message.
-   * @returns A Promise that resolves when the response has been sent.
+   *                  and a language code in `request["language"]`
+   * @param response - The Express response object used to send the result or error message
+   * @returns A Promise that resolves when the response has been sent
    *
    * @remarks
-   * - Responds with HTTP 400 if the username is invalid.
-   * - Responds with HTTP 200 and an error message if the player is not found.
-   * - Responds with HTTP 500 if a database or internal error occurs.
-   * - Caches successful responses for improved performance.
+   * - Responds with HTTP 400 if the username is invalid
+   * - Responds with HTTP 200 and an error message if the player is not found
+   * - Responds with HTTP 500 if a database or internal error occurs
+   * - Caches successful responses for improved performance
    */
   public static async getPlayersByPlayerName(request: express.Request, response: express.Response): Promise<void> {
     try {
@@ -548,23 +548,23 @@ export abstract class ApiPlayers implements ApiHelper {
   }
 
   /**
-   * Handles the API request to retrieve the top players associated with a given player ID.
+   * Handles the API request to retrieve the top players associated with a given player ID
    *
    * This method performs the following steps:
-   * 1. Validates the provided player ID from the request parameters.
-   * 2. Attempts to retrieve cached results for the top players; if found, returns the cached data.
-   * 3. Determines the appropriate PostgreSQL pool and country code based on the player ID.
+   * 1. Validates the provided player ID from the request parameters
+   * 2. Attempts to retrieve cached results for the top players; if found, returns the cached data
+   * 3. Determines the appropriate PostgreSQL pool and country code based on the player ID
    * 4. Executes a SQL query to fetch records from the `server_statistics` table where the `events_top_3_names`
-   *    JSONB column contains the country code.
-   * 5. Formats the results, converting the `created_at` timestamp to the application's timezone.
-   * 6. Caches the response and sends the formatted data to the client.
+   *    JSONB column contains the country code
+   * 5. Formats the results, converting the `created_at` timestamp to the application's timezone
+   * 6. Caches the response and sends the formatted data to the client
    *
-   * @param request - The Express request object, containing the player ID in the route parameters.
-   * @param response - The Express response object used to send the result or error.
-   * @returns A Promise that resolves when the response is sent.
+   * @param request - The Express request object, containing the player ID in the route parameters
+   * @param response - The Express response object used to send the result or error
+   * @returns A Promise that resolves when the response is sent
    *
-   * @throws 400 Bad Request if the player ID or server is invalid.
-   * @throws 500 Internal Server Error if a database or unexpected error occurs.
+   * @throws 400 Bad Request if the player ID or server is invalid
+   * @throws 500 Internal Server Error if a database or unexpected error occurs
    */
   public static async getTopPlayersByPlayerId(request: express.Request, response: express.Response): Promise<void> {
     try {

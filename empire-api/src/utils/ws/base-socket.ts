@@ -29,7 +29,7 @@ class BaseSocket extends Log {
   protected onError: (error: unknown) => void;
   protected onClose: (code: number, reason: Buffer) => void;
 
-  constructor(url: string, serverHeader: string, serverType: GgeServerType) {
+  constructor(url: string, serverHeader: string, serverType: GgeServerType, autoReconnect = true) {
     super(serverHeader, serverType);
     this.url = url;
     this.serverHeader = serverHeader;
@@ -44,6 +44,7 @@ class BaseSocket extends Log {
     this.messages = [];
     this.nbReconnects = 0;
     this.hasGbl = process.env.API_TYPE?.toLowerCase() === 'realtime';
+    this.reconnect = autoReconnect;
   }
 
   public async pingAndCheck(): Promise<void> {
@@ -77,7 +78,6 @@ class BaseSocket extends Log {
     const finalDelay = defaultDelay + randomDelay;
     this.log(`🔄 [restart] Restarting socket connection in ${finalDelay} seconds... (Total retries: ${nbReconnects})`);
     this.disconnect(false);
-    this.reconnect = true;
     setTimeout(async () => {
       await this.connectMethod();
     }, finalDelay * 1000);
@@ -86,7 +86,7 @@ class BaseSocket extends Log {
   public disconnect(reconnect = true): void {
     this.log('🧹 [disconnect] Disconnecting from socket. Cleaning up resources...');
     this.connected.clear();
-    this.reconnect = reconnect;
+    if (!reconnect) this.reconnect = reconnect;
     this.close();
   }
 

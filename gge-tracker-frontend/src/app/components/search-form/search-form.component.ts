@@ -1,11 +1,10 @@
 import { NgFor, NgIf } from '@angular/common';
 import { ChangeDetectorRef, Component, inject, input, OnChanges, OnInit, output, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { TranslateModule } from '@ngx-translate/core';
-
 import { SearchType } from '@ggetracker-interfaces/empire-ranking';
 import { UtilitiesService } from '@ggetracker-services/utilities.service';
-import { HardDrive, LucideAngularModule, Search, Filter, Eraser } from 'lucide-angular';
+import { TranslateModule } from '@ngx-translate/core';
+import { Eraser, Filter, HardDrive, LucideAngularModule, Search } from 'lucide-angular';
 import { FilterComponent } from '../filter/filter.component';
 
 @Component({

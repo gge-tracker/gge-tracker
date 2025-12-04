@@ -6,7 +6,7 @@ import { ChartsWrapperComponent } from '@ggetracker-modules/charts-client/charts
 import { LanguageService } from '@ggetracker-services/language.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { LucideAngularModule, XCircle } from 'lucide-angular';
-import { ApexChart, ApexAxisChartSeries, ApexNonAxisChartSeries, ApexPlotOptions, ApexOptions } from 'ng-apexcharts';
+import { ApexAxisChartSeries, ApexChart, ApexNonAxisChartSeries, ApexOptions, ApexPlotOptions } from 'ng-apexcharts';
 
 interface GenericChartConfig {
   type: ApexChart['type'];

@@ -1,0 +1,83 @@
+<header class="topbar">
+  <div class="flex items-center gap-4">
+    <button (click)="toggleSidebar()" class="sidebar-btn lg:hidden">
+      <app-icon name="Menu" [size]="20"></app-icon>
+    </button>
+    <div class="hidden md:flex flex-col">
+      <span class="breadcrumb-label">Serveur Actuel</span>
+
+      <div class="position-relative" id="server-menu">
+        <button class="server-selector" [class.rotate]="isServerMenuOpen()" (click)="toggleServerMenu()"
+          [title]="serverService.mappedServersToGgeServerName[serverService.currentServer]">
+          <span>{{serverService.currentServer}}</span>
+          <img [src]="serverService.flagsUrl[serverService.currentServer]" width="20" class="me-2"
+            alt="{{ serverService.currentServer }}">
+
+          <app-icon name="ChevronDown" class="chevron" [size]="16"></app-icon>
+        </button>
+
+        <div *ngIf="isServerMenuOpen()" class="server-dropdown">
+          <input type="text" #searchServerInput id="searchServerInput" name="searchServerInput" class="form-control"
+            placeholder="{{ 'Rechercher' | translate }}" [(ngModel)]="filteredServerInput">
+          <div class="separator"></div>
+          <button *ngFor="let srv of servers" (click)="selectServer(srv)">
+            <div>
+
+              <img [src]="serverService.flagsUrl[srv]" width="20" class="me-2" alt="{{ srv }}" title="{{ srv }}">
+              <span class="server-badge">{{srv}}</span>
+            </div>
+            <div>
+              <div class="font-bold text-sm">{{ serverService.mappedServersToGgeServerName[srv] }}</div>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="flex items-center gap-4">
+    <div #topbarHost></div>
+    <div class="divider"></div>
+    <div class="topbar-actions flex items-center gap-4">
+
+      <!-- GitHub -->
+      <a href="https://github.com/gge-tracker/gge-tracker" target="_blank" rel="noopener" class="action-icon">
+        <i class="fa-brands fa-github"></i>
+      </a>
+
+      <!-- Discord -->
+      <div class="position-relative">
+        <a href="https://discord.gg/eb6WSHQqYh" target="_blank" rel="noopener" class="action-icon">
+          <i class="fa-brands fa-discord"></i>
+          <span class="label d-none d-xxl-inline">Discord</span>
+        </a>
+
+        <span class="discord-badge" *ngIf="discordMemberCount > 0">
+          {{ discordMemberCount }}
+        </span>
+      </div>
+
+      <!-- About -->
+      <button class="action-icon about-btn" [routerLink]="['/', 'about']" [title]="'A propos' | translate">
+        <app-icon name="Info" [size]="19"></app-icon>
+        <span class="label d-none d-xxl-inline">A propos</span>
+      </button>
+
+      <!-- Lang selector -->
+      <div class="position-relative" id="language-menu">
+        <div class="lang-pill" (click)="toggleLanguageMenu()" [class.rotate]="isLanguageMenuOpen()">
+          <img [src]="languageService.getFlagUrlForLang(languageService.currentLang)" width="20" class="me-2"
+            alt="{{ languageService.currentLang }}" title="{{ languageService.currentLang }}">
+          <app-icon name="ChevronDown" class="chevron" [size]="14"></app-icon>
+        </div>
+
+        <div *ngIf="isLanguageMenuOpen()" class="lang-dropdown">
+          <button *ngFor="let lang of languageService.langs" (click)="selectLanguage(lang.code)">
+            {{ lang.label }}
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</header>

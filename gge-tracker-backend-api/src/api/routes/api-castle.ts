@@ -5,21 +5,21 @@ import { AuthorizedSpecialServersEnum } from '../enums/gge-tracker-special-serve
 import { ApiHelper } from '../helper/api-helper';
 
 /**
- * Abstract class providing API endpoints related to castle data retrieval and analysis.
+ * Abstract class providing API endpoints related to castle data retrieval and analysis
  *
  * @remarks
  * This class implements methods for fetching castle information by castle ID or player name,
- * interacting with external GGE APIs, handling caching with Redis, and formatting the response data.
+ * interacting with external GGE APIs, handling caching with Redis, and formatting the response data
  *
  * @abstract
  */
 export abstract class ApiCastle implements ApiHelper {
   /**
-   * Handles the HTTP request to retrieve detailed information about a castle by its ID.
+   * Handles the HTTP request to retrieve detailed information about a castle by its ID
    *
-   * @param request - The Express request object, expected to contain `castleId` in `params`.
-   * @param response - The Express response object used to send the result or error.
-   * @returns A promise that resolves when the response is sent.
+   * @param request - The Express request object, expected to contain `castleId` in `params`
+   * @param response - The Express response object used to send the result or error
+   * @returns A promise that resolves when the response is sent
    */
   public static async getCastleById(request: express.Request, response: express.Response): Promise<void> {
     try {
@@ -77,7 +77,7 @@ export abstract class ApiCastle implements ApiHelper {
           Accept: 'application/json',
         },
       });
-      // Step 3 : Send 'gbl' request to clear context again. This parts needs to be optimized in the future.
+      // Step 3 : Send 'gbl' request to clear context again. This parts needs to be optimized in the future
       await fetch(`${basePath}/${ApiHelper.ggeTrackerManager.getZoneFromRequestId(castleId)}/gbl/null`, {
         method: 'GET',
         headers: {
@@ -100,7 +100,7 @@ export abstract class ApiCastle implements ApiHelper {
       const gca = data['content']['gca'];
       // Transform the raw API response into a structured format
       // Note: Some fields are based on assumptions due to lack of official documentation
-      // and may need adjustments as more information becomes available.
+      // and may need adjustments as more information becomes available
       const responseContent = {
         playerName: gca.O.N,
         castleName: gca.A[10],
@@ -191,8 +191,8 @@ export abstract class ApiCastle implements ApiHelper {
             damageFactor: (100 - Number(ground[7])) / 100,
           })),
         },
-        // Note: The constructionItems structure is based on observed patterns and may require adjustments.
-        // Each item contains an OID and a list of CIL entries with CID and S values.
+        // Note: The constructionItems structure is based on observed patterns and may require adjustments
+        // Each item contains an OID and a list of CIL entries with CID and S values
         constructionItems: Object.fromEntries(
           gca.CI.map((item) => {
             const { OID, CIL } = item;
@@ -215,21 +215,21 @@ export abstract class ApiCastle implements ApiHelper {
   }
 
   /**
-   * Handles the retrieval of castle information for a player by their name.
+   * Handles the retrieval of castle information for a player by their name
    *
    * This endpoint validates the player name and request code, checks for cached results,
-   * queries the database for the player's ID, and fetches detailed castle data from the GGE API.
-   * If successful, it maps and returns the player's castles; otherwise, it returns appropriate error responses.
+   * queries the database for the player's ID, and fetches detailed castle data from the GGE API
+   * If successful, it maps and returns the player's castles; otherwise, it returns appropriate error responses
    *
-   * @param request - The Express request object, expected to contain `params.playerName`, `code`, `language`, and `pg_pool`.
-   * @param response - The Express response object used to send the result or error.
-   * @returns A Promise that resolves when the response is sent.
+   * @param request - The Express request object, expected to contain `params.playerName`, `code`, `language`, and `pg_pool`
+   * @param response - The Express response object used to send the result or error
+   * @returns A Promise that resolves when the response is sent
    *
    * @remarks
-   * - Returns HTTP 400 for invalid player name, code, or zone.
-   * - Returns HTTP 404 if the player or their castles are not found.
-   * - Returns HTTP 200 with an array of mapped castles on success.
-   * - Returns HTTP 500 for unexpected errors.
+   * - Returns HTTP 400 for invalid player name, code, or zone
+   * - Returns HTTP 404 if the player or their castles are not found
+   * - Returns HTTP 200 with an array of mapped castles on success
+   * - Returns HTTP 500 for unexpected errors
    */
   public static async getCastleByPlayerName(request: express.Request, response: express.Response): Promise<void> {
     try {
@@ -261,7 +261,7 @@ export abstract class ApiCastle implements ApiHelper {
       }
       const playerId = result.rows[0].id;
       const basePath = process.env.GGE_API_URL;
-      // We send directly request to internal GGE API proxy, because this data is not stored in our DB.
+      // We send directly request to internal GGE API proxy, because this data is not stored in our DB
       const apiUrl = `${basePath}/${targetEmpireEx}/gdi/"PID":${playerId}`;
       const responseData = await fetch(apiUrl, {
         method: 'GET',

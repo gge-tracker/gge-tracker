@@ -1,20 +1,17 @@
-import { NgClass, NgIf, NgFor } from '@angular/common';
+import { NgClass, NgFor, NgIf } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { NgSelectModule } from '@ng-select/ng-select';
-import { TranslateModule } from '@ngx-translate/core';
-
+import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { SearchbarComponent } from '@ggetracker-components/searchbar/searchbar.component';
+import { SelectComponent } from '@ggetracker-components/select/select.component';
+import { TableComponent } from '@ggetracker-components/table/table.component';
 import { ApiDungeonsResponse, Dungeon, ErrorType } from '@ggetracker-interfaces/empire-ranking';
 import { CooldownPipe } from '@ggetracker-pipes/cooldown.pipe';
-import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
 import { ServerService } from '@ggetracker-services/server.service';
-import { GenericComponent } from '@ggetracker-components/generic/generic.component';
-import { ServerBadgeComponent } from '@ggetracker-components/server-badge/server-badge.component';
-import { TableComponent } from '@ggetracker-components/table/table.component';
-import { SearchbarComponent } from '@ggetracker-components/searchbar/searchbar.component';
+import { NgSelectModule } from '@ng-select/ng-select';
+import { TranslateModule } from '@ngx-translate/core';
 import { LucideAngularModule, MessageCircleQuestion, Search, X } from 'lucide-angular';
-import { SelectComponent } from '@ggetracker-components/select/select.component';
 
 interface Realm {
   key: number;
@@ -33,10 +30,8 @@ interface Realm {
     NgIf,
     NgFor,
     TranslateModule,
-    ServerBadgeComponent,
     CooldownPipe,
     FormsModule,
-    FormatNumberPipe,
     NgSelectModule,
   ],
   templateUrl: './tracker.component.html',
@@ -81,6 +76,7 @@ export class TrackerComponent extends GenericComponent {
 
   constructor() {
     super();
+    this.isInLoading = true;
     this.resetHeaders();
     this.init();
   }

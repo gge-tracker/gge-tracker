@@ -1,46 +1,4 @@
-::ng-deep .movements th, td {
-  text-align: center;
-  vertical-align: middle;
-}
-
-
 ::ng-deep .movements td img {
-  width: 65px;
-  height: 65px;
-}
-
-::ng-deep .movements .table>:not(caption)>*>* {
-  padding: 0.1rem !important;
-}
-
-::ng-deep .movements .table th {
-  padding: .5rem 0 !important;
-}
-
-.player-icon {
-  width: 24px;
-  height: 24px;
-}
-
-.btn-icon {
-  width: 37px;
+  width: 55px;
   height: auto;
-}
-
-.btn-icon:hover {
-  transform: scale(1.1);
-}
-
-.btn-icon.not-favorite {
-  opacity: 0.7;
-}
-
-::ng-deep .movements td.text-end {
-  padding-top: 0  !important;
-  padding-bottom: 0  !important;
-}
-
-::ng-deep .movements th, td {
-  text-align: center;
-  vertical-align: middle;
 }

@@ -6,40 +6,40 @@ import { ApiHelper } from '../helper/api-helper';
 import { ApiInvalidInputType } from '../types/parameter.types';
 
 /**
- * Abstract class providing API endpoints for server-side data retrieval and operations.
+ * Abstract class providing API endpoints for server-side data retrieval and operations
  *
  * @remarks
  * This class implements static methods to handle Express.js requests for various server-side resources,
- * including player movements, renames, and global statistics.
+ * including player movements, renames, and global statistics
 
  * @abstract
  */
 export abstract class ApiServer implements ApiHelper {
   /**
-   * Handles the retrieval of paginated player castle movement history with optional filtering and search capabilities.
+   * Handles the retrieval of paginated player castle movement history with optional filtering and search capabilities
    *
-   * This endpoint supports filtering by castle type, movement type, player name, alliance name, and alliance ID.
-   * It also supports pagination and caches responses for improved performance.
+   * This endpoint supports filtering by castle type, movement type, player name, alliance name, and alliance ID
+   * It also supports pagination and caches responses for improved performance
    *
    * Query Parameters:
-   * - `page` (string | number): The page number to retrieve (1-based). Must be a valid integer between 1 and 99,999,999.
-   * - `castleType` (string | number, optional): Filter by castle type. If not provided or invalid, no filter is applied.
-   * - `movementType` (string | number, optional): Filter by movement type (1 = "add", 2 = "remove", 3 = "move"). If not provided or invalid, no filter is applied.
-   * - `search` (string, optional): Search input for player or alliance name, depending on `searchType`.
-   * - `searchType` (string, optional): Type of search to perform. Must be either "player" or "alliance" if provided.
-   * - `allianceId` (string, optional): Filter by alliance ID.
+   * - `page` (string | number): The page number to retrieve (1-based). Must be a valid integer between 1 and 99,999,999
+   * - `castleType` (string | number, optional): Filter by castle type. If not provided or invalid, no filter is applied
+   * - `movementType` (string | number, optional): Filter by movement type (1 = "add", 2 = "remove", 3 = "move"). If not provided or invalid, no filter is applied
+   * - `search` (string, optional): Search input for player or alliance name, depending on `searchType`
+   * - `searchType` (string, optional): Type of search to perform. Must be either "player" or "alliance" if provided
+   * - `allianceId` (string, optional): Filter by alliance ID
    *
    * Responses:
-   * - `200 OK`: Returns a paginated list of movements and pagination metadata.
-   * - `400 Bad Request`: Returned if any query parameter is invalid.
-   * - `500 Internal Server Error`: Returned if a server or database error occurs.
+   * - `200 OK`: Returns a paginated list of movements and pagination metadata
+   * - `400 Bad Request`: Returned if any query parameter is invalid
+   * - `500 Internal Server Error`: Returned if a server or database error occurs
    *
    * Caching:
-   * - Responses are cached based on query parameters and language for improved performance.
+   * - Responses are cached based on query parameters and language for improved performance
    *
-   * @param request - Express request object containing query parameters and context.
-   * @param response - Express response object used to send the result.
-   * @returns A Promise that resolves when the response is sent.
+   * @param request - Express request object containing query parameters and context
+   * @param response - Express response object used to send the result
+   * @returns A Promise that resolves when the response is sent
    */
   public static async getMovements(request: express.Request, response: express.Response): Promise<void> {
     try {
@@ -247,26 +247,26 @@ export abstract class ApiServer implements ApiHelper {
   }
 
   /**
-   * Handles the retrieval of player or alliance rename history with pagination, filtering, and caching.
+   * Handles the retrieval of player or alliance rename history with pagination, filtering, and caching
    *
-   * This endpoint supports searching by player or alliance name, filtering by alliance ID, and toggling between player and alliance rename history.
-   * It validates query parameters, constructs dynamic SQL queries based on filters, and utilizes Redis caching for performance.
-   * The response includes paginated rename records and pagination metadata.
+   * This endpoint supports searching by player or alliance name, filtering by alliance ID, and toggling between player and alliance rename history
+   * It validates query parameters, constructs dynamic SQL queries based on filters, and utilizes Redis caching for performance
+   * The response includes paginated rename records and pagination metadata
    *
    * @param request - Express request object, expects the following query parameters:
-   *   - `page` (string | number): The page number for pagination (required, must be >= 1).
-   *   - `search` (string, optional): Search input for player or alliance name.
-   *   - `searchType` (string, optional): Type of search, either "player" or "alliance".
-   *   - `allianceId` (string, optional): Filter by alliance ID.
-   *   - `showType` (string, optional): "players" or "alliances" to toggle between player or alliance rename history (default: "players").
-   * @param response - Express response object used to send the result or error.
+   *   - `page` (string | number): The page number for pagination (required, must be >= 1)
+   *   - `search` (string, optional): Search input for player or alliance name
+   *   - `searchType` (string, optional): Type of search, either "player" or "alliance"
+   *   - `allianceId` (string, optional): Filter by alliance ID
+   *   - `showType` (string, optional): "players" or "alliances" to toggle between player or alliance rename history (default: "players")
+   * @param response - Express response object used to send the result or error
    *
    * @returns {Promise<void>} Sends a JSON response with the following structure:
-   *   - `renames`: Array of rename records (fields depend on showType).
-   *   - `pagination`: Object containing `current_page`, `total_pages`, `current_items_count`, and `total_items_count`.
+   *   - `renames`: Array of rename records (fields depend on showType)
+   *   - `pagination`: Object containing `current_page`, `total_pages`, `current_items_count`, and `total_items_count`
    *
-   * @throws 400 Bad Request if query parameters are invalid.
-   * @throws 500 Internal Server Error if a database or server error occurs.
+   * @throws 400 Bad Request if query parameters are invalid
+   * @throws 500 Internal Server Error if a database or server error occurs
    */
   public static async getRenames(request: express.Request, response: express.Response): Promise<void> {
     try {
@@ -475,21 +475,21 @@ export abstract class ApiServer implements ApiHelper {
   }
 
   /**
-   * Handles the retrieval of global server statistics.
+   * Handles the retrieval of global server statistics
    *
-   * This method attempts to fetch cached statistics data based on the request's language.
+   * This method attempts to fetch cached statistics data based on the request's language
    * If the data is not cached, it queries the `server_statistics` table from the database,
-   * processes and formats the results, updates the cache, and sends the response.
+   * processes and formats the results, updates the cache, and sends the response
    *
    * The statistics include various aggregated metrics such as average might, loot, honor,
-   * player and alliance counts, event participation rates, and top event performers.
-   * Some fields are parsed from stringified JSON objects stored in the database.
+   * player and alliance counts, event participation rates, and top event performers
+   * Some fields are parsed from stringified JSON objects stored in the database
    *
-   * @param request - The Express request object, expected to have `language` and `pg_pool` properties.
-   * @param response - The Express response object used to send the result or error.
-   * @returns A promise that resolves when the response is sent.
+   * @param request - The Express request object, expected to have `language` and `pg_pool` properties
+   * @param response - The Express response object used to send the result or error
+   * @returns A promise that resolves when the response is sent
    *
-   * @throws Sends HTTP 500 with an error message if the database query fails or an unexpected error occurs.
+   * @throws Sends HTTP 500 with an error message if the database query fails or an unexpected error occurs
    */
   public static async getStatistics(request: express.Request, response: express.Response): Promise<void> {
     try {

@@ -70,6 +70,13 @@ services:
       - "8123:8123"
       - "9000:9000"
 
+  clickhouse-webui:
+    extends:
+      service: clickhouse-webui
+      file: docker/docker-compose.common.yml
+    ports:
+      - "127.0.0.1:8082:80"
+
   # Main backend REST API server using Express.js
   backend-express-rest-api:
     extends:
@@ -91,8 +98,8 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-      database-migrate:
-        condition: service_completed_successfully
+      # database-migrate:
+      #   condition: service_completed_successfully
 
   # Redis server for caching and session management, used by backend services
   redis-server:
@@ -126,15 +133,16 @@ services:
     ports:
       - "3001:3000"
 
-  database-migrate:
-    extends:
-      service: database-migrate
-      file: docker/docker-compose.common.yml
+  # database-migrate:
+  #   extends:
+  #     service: database-migrate
+  #     file: docker/docker-compose.common.yml
 
 volumes:
   db_data:
   clickhouse_data:
   pg_data:
+  backend-assets:
 
 networks:
   backend:
