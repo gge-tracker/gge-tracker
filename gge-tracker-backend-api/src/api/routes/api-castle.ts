@@ -236,7 +236,7 @@ export abstract class ApiCastle implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const playerName = ApiHelper.validateSearchAndSanitize(request.params.playerName);
+      const playerName = ApiHelper.validateSearchAndSanitize(request.params.playerName, { toLowerCase: true });
       const code = request['code'];
       const targetEmpireEx = ApiHelper.ggeTrackerManager.getZoneFromCode(code);
       if (ApiHelper.isInvalidInput(playerName) || !ApiHelper.ggeTrackerManager.isValidCode(code) || !targetEmpireEx) {

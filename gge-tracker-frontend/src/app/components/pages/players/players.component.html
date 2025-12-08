@@ -11,7 +11,10 @@
         <app-table #table [sort]="sort" [reverse]="reverse" [isInLoading]="isInLoading" [maxPage]="maxPage!"
           [page]="page" [search]="search" [headers]="playersTableHeader" (sortOutput)="sortPlayers($event)"
           (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
-          <app-player-table-content [players]="players" [playersTableHeader]="playersTableHeader"
+          <app-player-table-content
+            [players]="players"
+            [playersTableHeader]="playersTableHeader"
+            [distanceEnabled]="playersTableHeader.length > defaultPlayersTableHeaderSize"
             (clickOnAlliance)="searchAlliance($event)"
             (toggleFavorite)="toggleFavorite($event)"></app-player-table-content>
 

@@ -441,6 +441,7 @@
   ::ng-deep #table-component .table-custom, ::ng-deep #table-component .table-custom tbody, ::ng-deep #table-component .table-custom td, ::ng-deep #table-component .table-custom tr {
     display: block;
     width: 100%;
+    padding: 1px 6px;
   }
 
   ::ng-deep #table-component td::before {

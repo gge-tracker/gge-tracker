@@ -71,7 +71,7 @@ export class TrackerComponent extends GenericComponent {
   ];
   public selectedRealm: number[] = [2];
   public filterByKid: number[] = [2];
-  public allowedServers = ['FR1', 'RO1', 'IT1', 'CZ1', 'SA1', 'DE1', 'NL1'];
+  public allowedServers = ['FR1', 'RO1', 'IT1', 'CZ1', 'SA1', 'DE1', 'NL1', 'E4K_BR1', 'TR1'];
   private localStorage = inject(LocalStorageService);
 
   constructor() {
@@ -324,8 +324,9 @@ export class TrackerComponent extends GenericComponent {
     data: ApiDungeonsResponse;
     response: number;
   }> {
-    const choosedServer = this.serverService.choosedServer;
-    if (choosedServer === null || !this.serverService.servers.includes(choosedServer)) {
+    const currentServer = this.serverService.currentServer?.name;
+    console.log('Current server in TrackerComponent:', currentServer);
+    if (!currentServer || !this.serverService.servers.includes(currentServer)) {
       this.isInLoading = false;
       this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
       throw new Error('Server not found');

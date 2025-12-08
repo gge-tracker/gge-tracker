@@ -174,9 +174,13 @@ export class ApiGgeTrackerManager extends DatabaseManager {
       zone: 'EmpireEx_12',
     },
     [GgeTrackerServersEnum.SKN1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-skn1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_skn1',
+      },
       outer_name: 'SKN1',
       zone: 'EmpireEx_13',
-      disabled: true,
+      code: '193',
     },
     [GgeTrackerServersEnum.RU1]: {
       databases: {
@@ -216,9 +220,13 @@ export class ApiGgeTrackerManager extends DatabaseManager {
       disabled: true,
     },
     [GgeTrackerServersEnum.GB1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-gb1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_gb1',
+      },
       outer_name: 'GB1',
       zone: 'EmpireEx_19',
-      disabled: true,
+      code: '201',
     },
     [GgeTrackerServersEnum.BR1]: {
       databases: {
@@ -311,9 +319,13 @@ export class ApiGgeTrackerManager extends DatabaseManager {
       disabled: true,
     },
     [GgeTrackerServersEnum.EG1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-eg1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_eg1',
+      },
       outer_name: 'EG1',
       zone: 'EmpireEx_34',
-      disabled: true,
+      code: '267',
     },
     [GgeTrackerServersEnum.ARAB1]: {
       databases: {
@@ -324,10 +336,14 @@ export class ApiGgeTrackerManager extends DatabaseManager {
       code: '035',
       zone: 'EmpireEx_35',
     },
-    [GgeTrackerServersEnum.ASIA1]: {
-      outer_name: 'ASIA1',
+    [GgeTrackerServersEnum.ASIA]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-asia',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_asia',
+      },
+      outer_name: 'ASIA',
       zone: 'EmpireEx_36',
-      disabled: true,
+      code: '459',
     },
     [GgeTrackerServersEnum.HANT1]: {
       databases: {

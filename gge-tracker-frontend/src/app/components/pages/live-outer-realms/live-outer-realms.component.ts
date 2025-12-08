@@ -43,6 +43,7 @@ interface GenericChartConfig {
 })
 export class LiveOuterRealmsComponent extends GenericComponent {
   public players: ApiLiveRanking[] = [];
+  public eventNotActive = false;
   public charts: Record<string, ChartAdvancedOptions | any> = {};
   public player: PlayerLiveRankingExtended | null = null;
   public isDataLoading = false;
@@ -79,6 +80,7 @@ export class LiveOuterRealmsComponent extends GenericComponent {
     const response = await this.apiRestService.getLiveRankingOuterRealmsSpecificPlayer(Number(this.search));
     if (!response.success) {
       this.toastService.add('Unable to display outer realms ranking for the specified player');
+      this.isInLoading = false;
       return;
     }
     this.player = Object.assign({}, response.data.player, {
@@ -97,13 +99,13 @@ export class LiveOuterRealmsComponent extends GenericComponent {
         type: 'line',
         series: scoreSeries,
         colors: ['#008FFB'],
-        title: this.translateService.instant('Score_Over_Time'),
+        title: this.translateService.instant('score_over_time'),
       },
       { logarithmic: true },
     );
     const rankSeries = [
       {
-        name: this.translateService.instant('Rank'),
+        name: this.translateService.instant('Classement'),
         data: response.data.player.data.map((entry) => [new Date(entry.timestamp).getTime(), entry.rank]),
       },
     ];
@@ -113,13 +115,13 @@ export class LiveOuterRealmsComponent extends GenericComponent {
         type: 'line',
         series: rankSeries,
         colors: ['#00E396'],
-        title: this.translateService.instant('Rank_Over_Time'),
+        title: this.translateService.instant('rank_over_time'),
       },
       { logarithmic: true, reversed: true, minValue: 1 },
     );
     const levelSeries = [
       {
-        name: this.translateService.instant('Level'),
+        name: this.translateService.instant('Niveau'),
         data: response.data.player.data.map((entry) => [
           new Date(entry.timestamp).getTime(),
           entry.level + entry.legendary_level,
@@ -132,7 +134,7 @@ export class LiveOuterRealmsComponent extends GenericComponent {
         type: 'line',
         series: levelSeries,
         colors: ['#FEB019'],
-        title: this.translateService.instant('Level_Over_Time'),
+        title: this.translateService.instant('level_over_time'),
       },
       {
         logarithmic: false,
@@ -152,7 +154,8 @@ export class LiveOuterRealmsComponent extends GenericComponent {
     this.viewType = 'all';
     const response = await this.apiRestService.getLiveRankingOuterRealms(1);
     if (!response.success) {
-      this.toastService.add('Unable to display outer realms ranking');
+      this.isInLoading = false;
+      this.eventNotActive = true;
       return;
     }
     this.isInLoading = false;

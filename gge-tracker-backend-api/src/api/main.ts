@@ -44,6 +44,7 @@ import { ApiHelper } from './helper/api-helper';
 const redisClient = createClient({
   url: process.env.REDIS_URL,
 });
+// eslint-disable-next-line unicorn/prefer-top-level-await
 redisClient.connect().catch((error) => {
   console.error('Redis connection failed:', error);
 });
@@ -3174,6 +3175,7 @@ function printHeader(): void {
   console.log('\u001B[0m');
 }
 
+// eslint-disable-next-line unicorn/prefer-top-level-await
 main().catch((error) => {
   console.error('BackendAPI initialization error', error);
 });

@@ -1,6 +1,6 @@
 {
   "name": "gge-tracker-backend-api",
-  "version": "25.12.04-beta",
+  "version": "25.12.08-beta",
   "private": true,
   "description": "",
   "scripts": {

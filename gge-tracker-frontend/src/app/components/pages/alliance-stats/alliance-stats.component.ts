@@ -10,7 +10,6 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Title } from '@angular/platform-browser';
-import { RouterLink } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
 import {
@@ -79,7 +78,6 @@ enum ChartTypeHeights {
     TableComponent,
     PlayerTableContentComponent,
     FormatNumberPipe,
-    RouterLink,
     StatsCardContentComponent,
     TranslateModule,
   ],
@@ -360,6 +358,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     ['honor', 'Honneur', '/assets/honor.png'],
     ['', '', undefined, true],
   ];
+  public defaultMembersTableHeaderSize = this.membersTableHeader.length;
   private windowService = inject(WindowService);
   private languageService = inject(LanguageService);
   private cdr = inject(ChangeDetectorRef);
@@ -674,9 +673,9 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
 
   public async resetDistanceColumn(): Promise<void> {
     this.playerNameForDistance = '';
-    this.localStorage.removeItem('allianceDistancePlayerName_' + this.apiRestService.serverService.choosedServer);
+    this.localStorage.removeItem('allianceDistancePlayerName_' + this.apiRestService.serverService.currentServer?.name);
     this.cdr.detectChanges();
-    if (this.membersTableHeader.length === 11) {
+    if (this.membersTableHeader.length === this.defaultMembersTableHeaderSize + 1) {
       this.membersTableHeader.splice(-2, 1);
       this.cdr.detectChanges();
     }
@@ -690,17 +689,15 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     if (!this.playerNameForDistance?.trim()) return;
     this.isDistanceIsInLoading = true;
     this.localStorage.setItem(
-      'allianceDistancePlayerName_' + this.apiRestService.serverService.choosedServer,
+      'allianceDistancePlayerName_' + this.apiRestService.serverService.currentServer?.name,
       this.playerNameForDistance,
     );
     const data = await this.getAllianceMembers();
     this.isDistanceIsInLoading = false;
     if (!data) return;
     this.players = this.mapPlayersFromApi(data.players);
-    if (this.membersTableHeader.length === 10) {
-      const block: [string, string, (string | undefined)?, (boolean | undefined)?] =
-        this.getDefaultTableDistanceEntry();
-      this.membersTableHeader.splice(-1, 0, block);
+    if (this.membersTableHeader.length === this.defaultMembersTableHeaderSize) {
+      this.membersTableHeader.splice(-1, 0, this.getDefaultTableDistanceEntry());
     }
   }
 
@@ -838,7 +835,10 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       if (response.error === 'Invalid player name') {
         this.toastService.add(ErrorType.NO_PLAYER_FOUND, 20_000);
         void this.resetDistanceColumn();
-        this.localStorage.setItem('allianceDistancePlayerName_' + this.apiRestService.serverService.choosedServer, '');
+        this.localStorage.setItem(
+          'allianceDistancePlayerName_' + this.apiRestService.serverService.currentServer?.name,
+          '',
+        );
         this.playerNameForDistance = '';
         response = await this.apiRestService.getAllianceStats(this.allianceId, '');
         if (response.success === false) {
@@ -857,7 +857,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     const data = await this.getAllianceMembers();
     if (!data) return;
     this.players = this.mapPlayersFromApi(data.players);
-    if (this.membersTableHeader.length === 10 && this.playerNameForDistance !== '') {
+    if (this.membersTableHeader.length === this.defaultMembersTableHeaderSize && this.playerNameForDistance !== '') {
       const block: [string, string, (string | undefined)?, (boolean | undefined)?] =
         this.getDefaultTableDistanceEntry();
       this.membersTableHeader.splice(-1, 0, block);
@@ -894,7 +894,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       }
     });
     const allianceDistancePlayerName = this.localStorage.getItem(
-      'allianceDistancePlayerName_' + this.apiRestService.serverService.choosedServer,
+      'allianceDistancePlayerName_' + this.apiRestService.serverService.currentServer?.name,
     );
     if (allianceDistancePlayerName) {
       this.playerNameForDistance = allianceDistancePlayerName;

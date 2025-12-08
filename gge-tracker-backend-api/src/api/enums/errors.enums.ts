@@ -36,4 +36,5 @@ export enum RouteErrorMessagesEnum {
   PlayerNotFound = 'Player not found',
   RouteMustBeNonEmpty = 'Route must be a non-empty string',
   UnavailableForSpecialServers = 'This feature is unavailable for this server',
+  EventNotActive = 'The event is not active',
 }

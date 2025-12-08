@@ -43,7 +43,7 @@
           ['actions', 'Actions' | translate, '', true]
         ]" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
         <tr *ngIf="alliances.length === 0 && !isDataLoading">
-          <td colspan="10">{{ 'Aucune alliancetrouvée' | translate }}</td>
+          <td colspan="10">{{ 'Aucune alliance trouvée' | translate }}</td>
         </tr>
         <tr *ngFor="let alliance of alliances; let i = index">
           <td class="col-rank full-width">

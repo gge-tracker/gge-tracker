@@ -69,7 +69,7 @@ export class ApiRestService {
     try {
       const now = Date.now();
       const response = await fetch(url, {
-        headers: { 'gge-server': this.serverService.choosedServer },
+        headers: { 'gge-server': this.serverService.currentServer!.name },
       });
       if (!response.ok) {
         if (response.status === 429) {
@@ -640,11 +640,12 @@ export class ApiRestService {
 
   public async getLiveRankingOuterRealms(
     page: number,
-    playerName?: string,
+    playerName?: string | undefined,
   ): Promise<ApiResponse<ApiLiveRankingResponse>> {
-    const response = await this.apiFetch<ApiLiveRankingResponse>(
-      `${ApiRestService.apiUrl}live-ranking/outer-realms?page=${page}&player_name=${playerName}`,
-    );
+    const constructUrl = playerName
+      ? `${ApiRestService.apiUrl}live-ranking/outer-realms?page=${page}&player_name=${playerName}`
+      : `${ApiRestService.apiUrl}live-ranking/outer-realms?page=${page}`;
+    const response = await this.apiFetch<ApiLiveRankingResponse>(constructUrl);
     if (!response.success) return response;
     return { success: true, data: response.data };
   }

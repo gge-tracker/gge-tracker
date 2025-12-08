@@ -56,8 +56,8 @@ export abstract class ApiStatistics implements ApiHelper {
       const cachedKey = `statistics:alliances:${allianceId}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
-        // response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
-        // return;
+        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        return;
       }
 
       /* ---------------------------------
@@ -684,11 +684,6 @@ export abstract class ApiStatistics implements ApiHelper {
     const database_ = pgPool;
     const database = olapDatabase;
     try {
-      /* ---------------------------------
-       * Initialize ClickHouse instance
-       * --------------------------------- */
-      const clickhouse = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
-
       /* ---------------------------------
        * Retrieve player IDs for the alliance
        * --------------------------------- */

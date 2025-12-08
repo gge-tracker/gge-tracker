@@ -32,7 +32,7 @@ export enum GgeTrackerServersEnum {
   TR1 = 'TR1',
   US1 = 'US1',
   GR1 = 'GR1',
-  ASIA1 = 'ASIA1',
+  ASIA = 'ASIA',
   ES2 = 'ES2',
   LT1 = 'LT1',
   SKN1 = 'SKN1',

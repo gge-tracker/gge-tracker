@@ -15,6 +15,7 @@ import { TranslateModule } from '@ngx-translate/core';
 })
 export class PlayerTableContentComponent extends GenericComponent {
   public readonly players = input.required<Player[]>();
+  public readonly distanceEnabled = input.required<boolean>();
   public readonly playersTableHeader =
     input.required<[string, string, (string | undefined)?, (boolean | undefined)?][]>();
 

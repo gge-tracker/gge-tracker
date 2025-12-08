@@ -37,7 +37,7 @@
   </div>
 </ng-template>
 <div class="container-fluid mt-3">
-  <ul class="nav nav-tabs pt-3 ps-3 border-0">
+  <ul class="nav nav-tabs pt-3 ps-3 border-0 no-wrap">
     <li class="nav-item">
       <button class="nav-link" (click)="selectedTab = 'strategic'"
         [ngClass]="selectedTab === 'strategic' ? 'active' : ''">
@@ -81,7 +81,7 @@
         </div>
       </div>
       <div class="map-page d-flex flex-column flex-lg-row">
-<aside class="legend-sidebar p-2">
+        <aside class="legend-sidebar p-2 mx-auto">
           <ng-container *ngTemplateOutlet="legend"></ng-container>
         </aside>
         <main class="flex-grow-1 d-flex flex-column">
@@ -307,7 +307,7 @@
         </h5>
         <div class="input-group px-2 mb-3">
           <input type="text" #allianceAddName class="form-control" [placeholder]="'Ajouter une alliance' | translate">
-          <button class="gge-btn search" type="button" (click)="loadNewAlliance(allianceAddName.value)">
+          <button class="gge-btn search" type="button" (click)="loadNewAlliance(allianceAddName.value); allianceAddName.value=''">
             <i class="fas fa-search"></i>
           </button>
         </div>

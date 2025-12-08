@@ -67,11 +67,11 @@
             </button>
           </div>
         </div>
-        <div class="row my-2 special-bg" *ngIf="!allowedServers.includes(serverService.choosedServer)">
+        <div class="row my-2 special-bg" *ngIf="serverService.currentServer && !allowedServers.includes(serverService.currentServer.name)">
           <div class="col-12">
             <i class="fa-solid fa-info-circle text-muted me-1"></i>
             <span class="text-black">
-              <em>{{ 'server-not-available' | translate: { server: (serverService.choosedServer) } }}</em>
+              <em>{{ 'server-not-available' | translate: { server: (serverService.currentServer.name) } }}</em>
             </span>
           </div>
         </div>

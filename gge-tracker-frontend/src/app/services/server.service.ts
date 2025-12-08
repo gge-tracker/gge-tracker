@@ -3,6 +3,14 @@ import { inject, Injectable } from '@angular/core';
 import { LanguageService } from './language.service';
 import { LocalStorageService } from './local-storage.service';
 
+export interface ServerEntry {
+  enabled: boolean;
+  featured: boolean;
+  ggeServerName: string;
+  name: string;
+  flagUrl?: string;
+}
+
 /**
  * Service for managing server selection and mapping in the gge-tracker frontend.
  * This service provides functionality to select, store, and retrieve the current server,
@@ -14,42 +22,8 @@ import { LocalStorageService } from './local-storage.service';
   providedIn: 'root',
 })
 export class ServerService {
-  public currentServer = 'FR1';
-  public choosedServer = 'FR1';
-  public servers = [
-    'FR1',
-    'DE1',
-    'RO1',
-    'CZ1',
-    'NL1',
-    'WORLD1',
-    'INT3',
-    'US1',
-    'TR1',
-    'PT1',
-    'BR1',
-    'IN1',
-    'IT1',
-    'PL1',
-    'AU1',
-    'ARAB1',
-    'HANT1',
-    'HU1',
-    'HU2',
-    'ES1',
-    'SA1',
-    'INT1',
-    'RU1',
-    'CN1',
-    'GR1',
-    'E4K_BR1',
-    'E4K_HANT1',
-    'E4K_FR1',
-    'E4K_DE1',
-    'E4K_DE2',
-    'E4K_US1',
-    'E4K_INT2',
-  ];
+  public currentServer?: ServerEntry;
+  public xmlServers: ServerEntry[] = [];
   public mappedLangsToServers: Record<string, string[]> = {
     fr: ['FR1'],
     de: ['DE1'],
@@ -71,40 +45,6 @@ export class ServerService {
     sa: ['SA1'],
     ru: ['RU1'],
     cn: ['CN1'],
-  };
-  public mappedServersToGgeServerName: Record<string, string> = {
-    FR1: 'France',
-    DE1: 'Germany',
-    RO1: 'Romania',
-    CZ1: 'Czech Republic',
-    NL1: 'Netherlands',
-    WORLD1: 'World',
-    INT3: 'International: 3',
-    US1: 'United States',
-    TR1: 'Turkey',
-    BR1: 'Brazil',
-    IN1: 'India',
-    IT1: 'Italy',
-    PL1: 'Poland',
-    ARAB1: 'Arab League',
-    PT1: 'Portugal',
-    AU1: 'Australia',
-    HANT1: 'Chinese (Traditional)',
-    HU1: 'Hungary: 1',
-    HU2: 'Hungary: 2',
-    ES1: 'Spain',
-    SA1: 'Saudi Arabia',
-    INT1: 'International: 1',
-    RU1: 'Russia',
-    CN1: 'China',
-    GR1: 'Greece',
-    E4K_BR1: 'Empire Four Kingdoms - Brazil 1',
-    E4K_HANT1: 'Empire Four Kingdoms - Chinese (Traditional)',
-    E4K_FR1: 'Empire Four Kingdoms - France 1',
-    E4K_DE1: 'Empire Four Kingdoms - Germany 1',
-    E4K_DE2: 'Empire Four Kingdoms - Germany 2',
-    E4K_US1: 'Empire Four Kingdoms - United States 1',
-    E4K_INT2: 'Empire Four Kingdoms - International 2',
   };
 
   public flagsUrl: Record<string, string> = {
@@ -198,17 +138,6 @@ export class ServerService {
   private languageService = inject(LanguageService);
   private localStorage = inject(LocalStorageService);
 
-  constructor() {
-    let lang = this.mappedLangsToServers[this.languageService.currentLang.trim().toLowerCase()][0];
-    if (lang == null) {
-      lang = 'FR1';
-    }
-    this.currentServer = this.localStorage.getItem('server') || lang;
-    if (this.servers.includes(this.currentServer)) {
-      this.choosedServer = this.currentServer;
-    }
-  }
-
   public changeServer(server: string): void {
     this.localStorage.setItem('server', server);
     globalThis.location.reload();
@@ -216,5 +145,63 @@ export class ServerService {
 
   public getFlagUrl(server: string): string {
     return this.flagsUrl[server] || '/assets/default_flag.png';
+  }
+
+  public get servers(): string[] {
+    return this.xmlServers.filter((s) => s.enabled).map((s) => s.name);
+  }
+
+  public get mappedServersToGgeServerName(): Record<string, string> {
+    const mapping: Record<string, string> = {};
+    this.xmlServers.forEach((server) => {
+      mapping[server.name] = server.ggeServerName;
+    });
+    return mapping;
+  }
+
+  public async init(): Promise<void> {
+    console.log('Initializing ServerService...');
+    const url = 'https://ggetracker.github.io/i18n/servers.xml';
+    await fetch(url)
+      .then((response) => response.text())
+      .then((xml) => {
+        this.xmlServers = this.parseServers(xml);
+        console.log(this.xmlServers);
+      })
+      .catch((error) => console.error('Error loading servers:', error));
+    const lang = this.mappedLangsToServers[this.languageService.currentLang.trim().toLowerCase()][0];
+    const defaultServer = this.xmlServers.find((s) => s.name === 'WORLD1' && s.enabled) || this.xmlServers[0];
+    const storedServer = this.localStorage.getItem('server');
+    const target = this.xmlServers.find((s) => s.name === storedServer && s.enabled);
+    if (storedServer && target) {
+      this.currentServer = target;
+    } else {
+      this.currentServer = this.xmlServers.find((s) => s.name === lang && s.enabled) || defaultServer;
+    }
+    console.log('Current server set to:', this.currentServer);
+  }
+
+  private parseServers(xml: string): ServerEntry[] {
+    const document = new DOMParser().parseFromString(xml, 'application/xml');
+    const parserError = document.querySelector('parsererror');
+    if (parserError) {
+      console.error('XML parse error:', parserError.textContent);
+      return [];
+    }
+    const nodes = [...(document.querySelectorAll('root > servers > server') as unknown as Iterable<Element>)];
+    return nodes.map((node) => {
+      const enabled = node.querySelector('enabled')?.textContent?.trim() === 'true';
+      const featured = node.querySelector('featured')?.textContent?.trim() === 'false' ? false : true;
+      const ggeServerName = node.querySelector('gge-server-name')?.textContent?.trim() ?? '';
+      const name = node.querySelector('name')?.textContent?.trim() ?? '';
+      const flagUrl = this.getFlagUrl(name);
+      return {
+        enabled,
+        featured,
+        ggeServerName,
+        name,
+        flagUrl,
+      };
+    });
   }
 }

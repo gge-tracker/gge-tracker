@@ -1,7 +1,7 @@
 <div class="container my-3 live-outer-realms">
-  <div class="row">
+  <div class="row" *ngIf="!eventNotActive; else eventNotActiveTemplate">
     <div *ngIf="viewType === 'all'; else viewTypeSpecificPlayerTemplate">
-      <div class="col-12" [ngClass]="{'loading': isInLoading}">
+      <div class="col-12" *ngIf="!isInLoading">
         <app-search-form #searchForm [formFilters]="null" [isInLoading]="isInLoading"
           [inputTip]="'Rechercher un joueur' | translate" [defaultSearch]="search" [searchTypes]="{
           player: true,
@@ -15,7 +15,7 @@
           ['server', 'Serveur', '', true],
           ['level', 'Niveau', '/assets/lvl.png', true],
           ['might_current', 'Puissance', '/assets/pp1.png', true],
-          ['score', 'Score', '/assets/heritage_hunter.png', true],
+          ['score', 'Score', '', true],
           ['actions', 'Actions', '', true]
         ]" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
             <tr *ngIf="players.length === 0 && !isDataLoading">
@@ -84,3 +84,30 @@
     </app-live-outer-realms-statistics-modal>
   </div>
 </ng-template>
+
+<ng-template #eventNotActiveTemplate>
+  <div class="col-12">
+    <div class="ei-root" role="region" aria-labelledby="ei-title" tabindex="-1">
+      <div class="ei-backdrop" aria-hidden="true"></div>
+      <article class="ei-card" aria-describedby="ei-desc">
+        <figure class="ei-media d-none d-sm-block" aria-hidden="true">
+          <img src="/assets/outer-realms-bg.png" alt="" class="ei-img" width="328" height="197" draggable="false">
+          <div class="ei-img-overlay"></div>
+          <div class="ei-image-halo" aria-hidden="true"></div>
+        </figure>
+        <div class="ei-content text-light">
+          <h2 id="ei-title" class="ei-title">{{ 'Événement indisponible' | translate }}</h2>
+          <p id="ei-desc" class="ei-sub">
+            {{ "Cet événement n'est pas actif actuellement. Revenez plus tard lorsque l'évènement sera actif sur le jeu" | translate }}
+          </p>
+        </div>
+        <div class="ei-footer" aria-hidden="true">
+          <svg class="ei-sigil" width="80" height="20" viewBox="0 0 80 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0 10 H80" stroke="rgba(255,255,255,0.06)" stroke-width="1.2"/></svg>
+        </div>
+      </article>
+    </div>
+  </div>
+</ng-template>
+
+
+

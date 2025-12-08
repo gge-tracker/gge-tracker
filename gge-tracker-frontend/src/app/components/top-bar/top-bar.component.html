@@ -4,14 +4,14 @@
       <app-icon name="Menu" [size]="20"></app-icon>
     </button>
     <div class="hidden md:flex flex-col">
-      <span class="breadcrumb-label">Serveur Actuel</span>
+      <span class="breadcrumb-label text-nowrap">{{ 'Serveur actuel' | translate }}</span>
 
       <div class="position-relative" id="server-menu">
         <button class="server-selector" [class.rotate]="isServerMenuOpen()" (click)="toggleServerMenu()"
-          [title]="serverService.mappedServersToGgeServerName[serverService.currentServer]">
-          <span>{{serverService.currentServer}}</span>
-          <img [src]="serverService.flagsUrl[serverService.currentServer]" width="20" class="me-2"
-            alt="{{ serverService.currentServer }}">
+          [title]="serverService.currentServer?.name">
+          <span>{{serverService.currentServer?.name}}</span>
+          <img [src]="serverService.currentServer?.flagUrl" width="20" class="me-2"
+            alt="{{ serverService.currentServer?.name }}" title="{{ serverService.currentServer?.name }}">
 
           <app-icon name="ChevronDown" class="chevron" [size]="16"></app-icon>
         </button>
@@ -20,14 +20,20 @@
           <input type="text" #searchServerInput id="searchServerInput" name="searchServerInput" class="form-control"
             placeholder="{{ 'Rechercher' | translate }}" [(ngModel)]="filteredServerInput">
           <div class="separator"></div>
-          <button *ngFor="let srv of servers" (click)="selectServer(srv)">
+          <button *ngFor="let srv of serverService.xmlServers"
+            (click)="selectServer(srv.name)"
+            [hidden]="!srv.enabled ||
+              (filteredServerInput
+                && !srv.name.toLowerCase().includes(filteredServerInput.toLowerCase())
+                && !srv.ggeServerName.toLowerCase().includes(filteredServerInput.toLowerCase())
+              )">
             <div>
 
-              <img [src]="serverService.flagsUrl[srv]" width="20" class="me-2" alt="{{ srv }}" title="{{ srv }}">
-              <span class="server-badge">{{srv}}</span>
+              <img [src]="srv.flagUrl" width="20" class="me-2" alt="{{ srv.name }}" title="{{ srv.name }}">
+              <span class="server-badge">{{srv.name}}</span>
             </div>
             <div>
-              <div class="font-bold text-sm">{{ serverService.mappedServersToGgeServerName[srv] }}</div>
+              <div class="font-bold text-sm">{{ srv.ggeServerName }}</div>
             </div>
           </button>
         </div>

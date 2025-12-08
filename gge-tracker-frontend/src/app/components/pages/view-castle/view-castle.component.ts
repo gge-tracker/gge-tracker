@@ -273,7 +273,9 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   }
 
   public displayUnavailableCastleMessage(): void {
-    const message = this.translateService.instant('server-not-available', { server: this.serverService.choosedServer });
+    const message = this.translateService.instant('server-not-available', {
+      server: this.serverService.currentServer?.name,
+    });
     this.toastService.add(message, 15_000, 'error');
   }
 
@@ -547,7 +549,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     if (!object) return 0;
     const list = [...object.data.buildings, ...object.data.defenses, ...object.data.gates, ...object.data.towers];
     const sum = list.reduce((accumulator, entry) => {
-      return accumulator + (Number(entry.data?.[item]) || 0);
+      return accumulator + (Number(entry?.data?.[item]) || 0);
     }, 0);
     return sum;
   }
@@ -593,7 +595,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     const cellX = Math.floor((mouseCanvasX - this.offsetX) / this.cellSize) + this.minX;
     const cellY = Math.floor((mouseCanvasY - this.offsetY) / this.cellSize) + this.minY;
     const hoveredBuilding = this.buildings.find((b) => {
-      if (b.isGround) return false;
+      if (!b || b.isGround) return false;
       const x = b.building.positionX;
       const y = b.building.positionY;
       const originalW = Number.parseInt(String(b.data?.['width']));
@@ -800,6 +802,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
 
   private getPlaceOccupiedByAllBuildings(): number {
     return this.buildings.reduce((total, entry) => {
+      if (!entry) return total;
       if (entry.isGround || entry.building.inDistrictID !== -1) return total;
       const widthElement = entry.data?.['width'] ?? '1';
       const heightElement = entry.data?.['height'] ?? '1';
@@ -1372,8 +1375,11 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
         isGround: false,
       })),
     ];
-    const keepElement = this.visibleBuildings.filter((b) => String(b.data['name']) === 'Keep');
-    this.visibleBuildings = [...keepElement, ...this.visibleBuildings.filter((b) => String(b.data['name']) !== 'Keep')];
+    const keepElement = this.visibleBuildings.filter((b) => b && String(b.data['name']) === 'Keep');
+    this.visibleBuildings = [
+      ...keepElement,
+      ...this.visibleBuildings.filter((b) => b && String(b.data['name']) !== 'Keep'),
+    ];
     this.mapDataFromJson();
     this.isInLoading = false;
     this.cdr.detectChanges();

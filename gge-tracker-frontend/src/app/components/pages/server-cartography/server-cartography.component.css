@@ -247,6 +247,10 @@ input:checked + .slider:before {
   margin-left: 0.5rem;
 }
 
+.heatmap-canvas {
+  max-width: 100%;
+}
+
 .heatmap-canvas:hover {
   box-shadow: 0 12px 24px rgba(0,0,0,0.15);
 }
@@ -417,6 +421,7 @@ input:checked + .slider:before {
   max-height: 200px;
   overflow-y: auto;
   width: 100%;
+  min-height: fit-content;
 }
 
 .legend-summary {
@@ -579,6 +584,10 @@ input:checked + .slider:before {
 
 .nav.nav-tabs {
   gap: 0.5rem;
+}
+
+.no-wrap {
+  flex-wrap: nowrap;
 }
 
 .page-indicator {

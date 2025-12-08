@@ -9,10 +9,8 @@ import {
   ViewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
-import { ServerBadgeComponent } from '@ggetracker-components/server-badge/server-badge.component';
 import {
   ApiCartoAlliance,
   ApiCartoMap,
@@ -43,13 +41,11 @@ interface ILegend {
   imports: [
     NgFor,
     NgClass,
-    RouterLink,
     NgIf,
     FormatNumberPipe,
     NgTemplateOutlet,
     FormsModule,
     TranslateModule,
-    ServerBadgeComponent,
     SearchFormComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -57,7 +53,6 @@ interface ILegend {
   styleUrl: './server-cartography.component.css',
 })
 export class ServerCartographyComponent extends GenericComponent implements AfterViewInit {
-  @ViewChild('searchForm') public searchForm!: SearchFormComponent;
   @ViewChild('heatmapCanvas', { static: true })
   public canvasRef!: ElementRef<HTMLCanvasElement>;
   public map!: L.Map;
@@ -161,8 +156,9 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
       const parameterIn = queryParameters.get('in');
       const colors = queryParameters.get('c');
       const alliance = routeParameters.get('alliance');
-      const server = queryParameters.get('srv') || this.serverService.currentServer;
-      if (server !== this.serverService.currentServer) {
+      const server = queryParameters.get('srv') || this.serverService.currentServer?.name;
+      if (!server) return;
+      if (server !== this.serverService.currentServer?.name) {
         this.serverService.changeServer(server);
       }
       this.selectedWorld = world;
@@ -531,8 +527,6 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
       return;
     } else {
       this.toastService.add(ErrorType.ALLIANCE_ADDED, 5000, 'info');
-      this.searchForm.search = '';
-      this.searchForm.searchFixed = '';
     }
     if (alliance === '1') {
       // Alliance "1" is the unallied players, not the name of the alliance.

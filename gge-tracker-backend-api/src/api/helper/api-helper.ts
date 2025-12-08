@@ -187,6 +187,7 @@ export abstract class ApiHelper {
   public static async getAssets(): Promise<Buffer> {
     if (this.file) return this.file;
     const fs = await import('node:fs');
+    // eslint-disable-next-line unicorn/import-style
     const path = await import('node:path');
     this.file = await fs.promises.readFile(path.join(__dirname, './../assets/assets.json'));
     return this.file;

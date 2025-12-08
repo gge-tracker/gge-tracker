@@ -85,16 +85,16 @@
       </div>
     </td>
 
-    <!-- Distance -->
-    <td *ngIf="playersTableHeader().length > 8" class="col-distance">
-      <span class="mobile-only">{{ 'Distance' | translate }}:&nbsp;</span>
-      {{ player.distance || '0' }}
-    </td>
-
     <!-- Honor -->
     <td class="col-honor">
       <span class="mobile-only">{{ 'Honneur' | translate }}:&nbsp;</span>
       {{ player.honor }}
+    </td>
+
+    <!-- Distance -->
+    <td *ngIf="distanceEnabled()" class="col-distance">
+      <span class="mobile-only">{{ 'Distance' | translate }}:&nbsp;</span>
+      {{ player.distance || '0' }}
     </td>
 
     <!-- Alliance -->

@@ -35,7 +35,7 @@ export class SidebarService {
 
   public toggleSidebar(): void {
     this._isSidebarOpen.next(!this._isSidebarOpen.value);
-    document.body.classList.toggle('no-scroll', this.isMobileView && this._isSidebarOpen.value);
+    document.body.classList.toggle('no-scroll', this._isSidebarOpen.value && this.isMobileView);
   }
 
   public closeLanguageMenu(): void {
@@ -44,6 +44,7 @@ export class SidebarService {
 
   public closeSidebar(): void {
     this._isSidebarOpen.next(false);
+    document.body.classList.remove('no-scroll');
   }
 
   public closeServerMenu(): void {

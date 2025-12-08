@@ -1,8 +1,3 @@
-::ng-deep .alliances-stats-content td {
-  align-content: center;
-  text-align: center;
-}
-
 .players-container {
   border-bottom: 2px #000000d4 solid;
 }
@@ -90,7 +85,7 @@ div[after] {
   background-position-x: center;
   background-repeat: no-repeat;
   background-size: 100% 100%;
-  background: linear-gradient(rgb(255 137 43 / 0%), rgb(0 0 0)), url(/assets/8wwypaix4da0lxjeozb0dkzr135u5zy4khoqm2lmhh25grfe96mzr07jatchq7gpicb7.png);
+  background-image: linear-gradient(rgb(255 137 43 / 0%), rgb(0 0 0)), url(/assets/8wwypaix4da0lxjeozb0dkzr135u5zy4khoqm2lmhh25grfe96mzr07jatchq7gpicb7.png);
   border-bottom: 2px black solid;
   bottom: 0;
   box-shadow: 0 2px 1px #ff9100;
@@ -198,8 +193,17 @@ div[after] {
   background-color: #ffeb3b52;
 }
 
+.nav-item {
+  display: flex;
+}
+
 .nav-link {
   --bs-nav-link-color: #000;
+}
+
+.nav-tabs {
+  flex-wrap: nowrap;
+  overflow-x: auto;
 }
 
 .nav-tabs .nav-link:not(.active):focus, .nav-tabs .nav-link:not(.active):hover {
@@ -299,7 +303,7 @@ div[after] {
 
 .stat-card::before {
   background-size: 100% 100%;
-  background: url(/assets/bg-default.png);
+  background-image: url(/assets/bg-default.png);
   border-radius: 15px;
   bottom: -10px;
   content: "";
@@ -522,8 +526,8 @@ div[after] {
   }
 }
 
-@media (min-width: 952px) {
+@media (min-width: 1270px) {
   .alliance-stats-container {
-    min-height: 100vh;
+    min-height: calc(100vh - 85px);
   }
 }

@@ -637,8 +637,8 @@ export abstract class ApiEvents implements ApiHelper {
       const cachedKey = `events:${eventType}:${id}:players:${page}:${String(playerNameFilter)}:${String(serverFilter)}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
-        // response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
-        // return;
+        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        return;
       }
 
       const isValidPlayerNameFilter = ApiHelper.isValidInput(playerNameFilter);
@@ -1049,7 +1049,7 @@ export abstract class ApiEvents implements ApiHelper {
       const json = await rawResult.json();
 
       if (json.data.length === 0) {
-        response.status(ApiHelper.HTTP_OK).send({ player: null });
+        response.status(ApiHelper.HTTP_NOT_FOUND).send({ player: null });
         return;
       }
       const firstEntry: any = json.data[0];
@@ -1088,101 +1088,76 @@ export abstract class ApiEvents implements ApiHelper {
        * Validate and parse parameters
        * --------------------------------- */
       const page = ApiHelper.validatePageNumber(request.query.page) || 1;
-
-      // No cache check here, as data is highly dynamic
-      const clickhouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
+      const searchPlayerName = ApiHelper.validateSearchAndSanitize(request.query.player_name, {
+        maxLength: 50,
+        toLowerCase: true,
+      });
       const sizePerPage = 10;
-      const tableName = 'ggetracker_global.outer_realms_ranking';
       const offset = (page - 1) * sizePerPage;
+      const mainTableName = 'ggetracker_global.outer_realms_ranking';
+      const fetchDateTableName = 'ggetracker_global.latest_fetch_date';
+      const clickhouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
 
       /* ---------------------------------
-       * Database query for total count
+       * Query database for last fetch date
        * --------------------------------- */
-      const totalCountQuery = `
-        SELECT COUNT(*) AS total
-        FROM ${tableName}
-        WHERE fetch_date = (
-          SELECT MAX(fetch_date)
-          FROM ${tableName}
-        )
-      `;
-
-      const rawResult = await clickhouseClient.query({
-        query: totalCountQuery,
+      const lastFetchResult = await clickhouseClient.query({
+        query: `SELECT fetch_date FROM ${fetchDateTableName} ORDER BY fetch_date DESC LIMIT 1`,
       });
-      const json = await rawResult.json();
-      const totalCountResult: any = json.data;
+      const jsonLastFetch = (await lastFetchResult.json()) as { data: Array<{ fetch_date: string }> };
+      const lastFetchDate = jsonLastFetch.data[0]?.fetch_date;
 
-      const total_items = Number(totalCountResult[0]?.total || 0);
-      const total_pages = Math.ceil(total_items / sizePerPage);
-      if (total_items === 0) {
-        response.status(ApiHelper.HTTP_OK).send({ total_items, players: [] });
+      if (!lastFetchDate) {
+        response.status(ApiHelper.HTTP_OK).send({ total_items: 0, players: [] });
         return;
       }
 
       /* ---------------------------------
-       * Database query for players
+       * Query database for players
        * --------------------------------- */
       const playersQuery = `
-        WITH
-          (SELECT max(fetch_date) FROM ${tableName}) AS last_fetch,
-          players_page AS (
-            SELECT player_id
-            FROM ${tableName}
-            WHERE fetch_date = last_fetch
-            ORDER BY rank
-            LIMIT ${sizePerPage} OFFSET ${offset}
-          ),
-          ranked AS (
-            SELECT
-              t.player_id,
-              t.player_name,
-              t.server,
-              t.score,
-              t.rank,
-              t.fetch_date,
-              t.level,
-              t.legendary_level,
-              t.might,
-              t.castle_position_x,
-              t.castle_position_y,
-              row_number() OVER (PARTITION BY t.player_id ORDER BY t.fetch_date DESC) AS rn
-            FROM ${tableName} t
-            WHERE t.player_id IN (SELECT player_id FROM players_page)
+        SELECT
+          now.player_id,
+          now.player_name,
+          now.server,
+          now.score,
+          now.rank,
+          now.level,
+          now.legendary_level,
+          now.might,
+          now.castle_position_x,
+          now.castle_position_y,
+          now.fetch_date,
+          (now.score - coalesce(before.score, now.score)) AS score_diff,
+          (coalesce(before.rank, now.rank) - now.rank) AS rank_diff
+        FROM ${mainTableName} AS now
+        LEFT JOIN ${mainTableName} AS before
+          ON before.player_id = now.player_id
+          AND before.fetch_date = (
+            SELECT MAX(fetch_date)
+            FROM ${mainTableName}
+            WHERE fetch_date < '${lastFetchDate}'
           )
-          --
-          SELECT
-            now.player_id AS player_id,
-            now.player_name AS player_name,
-            now.server AS server,
-            now.castle_position_x AS castle_position_x,
-            now.castle_position_y AS castle_position_y,
-            now.score AS score,
-            now.rank AS rank,
-            now.level AS level,
-            now.legendary_level AS legendary_level,
-            now.might AS might,
-            now.fetch_date AS fetch_date,
-            (now.score - coalesce(before.score, now.score)) AS score_diff,
-            (coalesce(before.rank, now.rank) - now.rank) AS rank_diff
-          FROM ranked AS now
-          LEFT JOIN ranked AS before
-            ON before.player_id = now.player_id
-            AND before.rn = 16   -- ligne N-15
-          WHERE now.rn = 1         -- la ligne récente
-          ORDER BY now.rank ASC;
+        WHERE now.fetch_date = '${lastFetchDate}'
+          ${ApiHelper.isValidInput(searchPlayerName) ? `AND player_name_lower LIKE {searchPlayerName:String}` : ''}
+        ORDER BY now.rank ASC
+        LIMIT ${sizePerPage} OFFSET ${offset};
       `;
       const rawPlayersResult = await clickhouseClient.query({
         query: playersQuery,
+        query_params: ApiHelper.isValidInput(searchPlayerName) ? { searchPlayerName: `%${searchPlayerName}%` } : {},
       });
       const jsonPlayers = await rawPlayersResult.json();
       const playersResult: any = jsonPlayers.data;
+      if (playersResult.length === 0) {
+        response.status(ApiHelper.HTTP_OK).send({ total_items: 0, players: [] });
+        return;
+      }
 
       /* ---------------------------------
        * Format results
        * --------------------------------- */
       const players = playersResult.map((row: any) => ({
-        // PlayerID is a global playerID, so we do not need to append country code
         player_id: row.player_id,
         player_name: row.player_name,
         server: row.server,
@@ -1197,8 +1172,22 @@ export abstract class ApiEvents implements ApiHelper {
       }));
 
       /* ---------------------------------
-       * Update cache and send response
+       * Query database for total count
        * --------------------------------- */
+      const totalCountQuery = `
+        SELECT COUNT(*) AS total
+        FROM ${mainTableName}
+        WHERE fetch_date = '${lastFetchDate}'
+        ${ApiHelper.isValidInput(searchPlayerName) ? `AND player_name_lower LIKE {searchPlayerName:String}` : ''}
+      `;
+      const rawTotalResult = await clickhouseClient.query({
+        query: totalCountQuery,
+        query_params: ApiHelper.isValidInput(searchPlayerName) ? { searchPlayerName: `%${searchPlayerName}%` } : {},
+      });
+      const jsonTotal = (await rawTotalResult.json()) as { data: Array<{ total: number }> };
+      const total_items = Number(jsonTotal.data[0]?.total || 0);
+      const total_pages = Math.ceil(total_items / sizePerPage);
+
       const responseData = {
         players,
         pagination: {
@@ -1208,9 +1197,7 @@ export abstract class ApiEvents implements ApiHelper {
           total_items_count: total_items,
         },
       };
-      // Uncomment to enable caching if needed
-      // const cacheTtl = 60 * 5; // 5 minutes
-      // void ApiHelper.updateCache(cachedKey, responseData, cacheTtl);
+
       response.status(ApiHelper.HTTP_OK).send(responseData);
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);

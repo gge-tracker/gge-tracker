@@ -946,9 +946,9 @@ export class GenericFetchAndSaveBackend {
           password: this.CLICKHOUSE_CONFIG.password as string,
         };
 
+        const fetchDateStr = new Date(fetchDate).toISOString().slice(0, 19).replace('T', ' ');
         for (let i = 0; i < playerArray.length; i += batchSize) {
           const batch = playerArray.slice(i, i + batchSize);
-          const fetchDateStr = new Date(fetchDate).toISOString().slice(0, 19).replace('T', ' ');
           const payload = batch
             .map((p) =>
               JSON.stringify({
@@ -973,7 +973,6 @@ export class GenericFetchAndSaveBackend {
                 'Content-Type': 'text/plain',
               },
               auth: clickhouseAuth,
-              timeout: 30000,
             });
             Utils.logMessage(`Inserted ${batch.length} players`);
             Utils.logMessage('Outer Realms data fetch and database update completed successfully');
@@ -983,6 +982,14 @@ export class GenericFetchAndSaveBackend {
             this.DB_UPDATES.criticalErrors++;
           }
         }
+        const updateLatestFetchSQL = `
+          INSERT INTO latest_fetch_date (fetch_date)
+          VALUES ('${fetchDateStr}')
+        `;
+        await axios.post(clickhouseBaseUrl + '/?query=' + encodeURIComponent(updateLatestFetchSQL), '', {
+          auth: clickhouseAuth,
+          headers: { 'Content-Type': 'text/plain' },
+        });
       } catch (error) {
         Utils.logMessage('Error executing query:', error);
         this.DB_UPDATES.criticalErrors++;

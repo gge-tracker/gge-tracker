@@ -1,8 +1,7 @@
-import { DatePipe, NgClass, NgForOf, NgIf } from '@angular/common';
+import { NgClass, NgForOf, NgIf } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
-import { ServerBadgeComponent } from '@ggetracker-components/server-badge/server-badge.component';
 import {
   AllianceStatsData,
   ApiResponse,
@@ -21,16 +20,7 @@ import { XAxisAnnotations } from 'ng-apexcharts';
   selector: 'app-server-statistics',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    ChartsWrapperComponent,
-    NgIf,
-    FormsModule,
-    NgForOf,
-    NgClass,
-    DatePipe,
-    TranslateModule,
-    ServerBadgeComponent,
-  ],
+  imports: [ChartsWrapperComponent, NgIf, FormsModule, NgForOf, NgClass, TranslateModule],
   templateUrl: './server-statistics.component.html',
   styleUrl: './server-statistics.component.css',
 })

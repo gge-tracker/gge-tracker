@@ -1,4 +1,13 @@
-import { AfterViewInit, ApplicationRef, Component, ComponentFactoryResolver, ElementRef, inject, Injector, ViewChild } from '@angular/core';
+import {
+  AfterViewInit,
+  ApplicationRef,
+  Component,
+  ComponentFactoryResolver,
+  ElementRef,
+  inject,
+  Injector,
+  ViewChild,
+} from '@angular/core';
 import { ServerService } from '@ggetracker-services/server.service';
 import { SidebarService } from '@ggetracker-services/sidebar.service';
 import { IconComponent } from '@ggetracker-components/icon/icon.component';

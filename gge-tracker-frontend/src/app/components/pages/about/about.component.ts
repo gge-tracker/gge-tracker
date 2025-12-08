@@ -4,7 +4,6 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { TranslatePipe } from '@ngx-translate/core';
 import package_ from '../../../../../package.json';
-import { XmlParser } from '@angular/compiler';
 
 export interface Contributor {
   name: string;

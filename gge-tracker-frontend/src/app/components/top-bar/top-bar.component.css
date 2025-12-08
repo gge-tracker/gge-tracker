@@ -243,7 +243,7 @@ a:visited {
   left: 50px;
   max-height: 50vh;
   overflow-y: auto;
-  overflow: hidden;
+  overflow-x: hidden;
   position: absolute;
   top: calc(100% + 0.5rem);
   width: max-content;

@@ -32,7 +32,7 @@
         </li>
         <li class="nav-item">
           <a class="nav-link" [routerLink]="['/', 'statistics']" routerLinkActive="active">
-            <span class="position-relative">{{ 'Statistiques' | translate }} ({{ serverService.choosedServer }})</span>
+            <span class="position-relative">{{ 'Statistiques' | translate }} ({{ serverService.currentServer?.name }})</span>
           </a>
         </li>
         <li class="nav-item dropdown">

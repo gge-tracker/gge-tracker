@@ -1,7 +1,6 @@
-import { DatePipe, NgClass, NgFor, NgIf } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
@@ -13,7 +12,6 @@ import {
   Player,
   SearchType,
 } from '@ggetracker-interfaces/empire-ranking';
-import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { PlayerTableContentComponent } from './player-table-content/player-table-content.component';
@@ -22,19 +20,7 @@ import { PlayerTableContentComponent } from './player-table-content/player-table
   selector: 'app-players',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    NgFor,
-    NgIf,
-    NgClass,
-    RouterLink,
-    FormsModule,
-    FormatNumberPipe,
-    TableComponent,
-    DatePipe,
-    SearchFormComponent,
-    TranslateModule,
-    PlayerTableContentComponent,
-  ],
+  imports: [NgClass, FormsModule, TableComponent, SearchFormComponent, TranslateModule, PlayerTableContentComponent],
   templateUrl: './players.component.html',
   styleUrl: './players.component.css',
 })
@@ -61,6 +47,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     ['alliance_name', 'Alliance', '/assets/min-alliance.png', true],
     ['', '', undefined, true],
   ];
+  public defaultPlayersTableHeaderSize = this.playersTableHeader.length;
   public formFilters = {
     minHonor: '',
     maxHonor: '',
@@ -94,7 +81,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
       this.reverse = true;
     }
     const playerNameForDistance = this.localStorage.getItem(
-      'allianceDistancePlayerName_' + this.apiRestService.serverService.choosedServer,
+      'allianceDistancePlayerName_' + this.apiRestService.serverService.currentServer?.name,
     );
     if (playerNameForDistance) {
       this.formFilters.playerCastleDistance = playerNameForDistance;
@@ -257,7 +244,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     this.isInLoading = true;
     this.cdr.detectChanges();
     this.localStorage.setItem(
-      'allianceDistancePlayerName_' + this.apiRestService.serverService.choosedServer,
+      'allianceDistancePlayerName_' + this.apiRestService.serverService.currentServer?.name,
       this.formFilters.playerCastleDistance,
     );
     const data = await this.getGenericData();
@@ -278,7 +265,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
       this.localStorage.setItem('sort', this.sort);
       this.localStorage.setItem('reverse', this.reverse ? 'true' : 'false');
     }
-    this.localStorage.removeItem('allianceDistancePlayerName_' + this.apiRestService.serverService.choosedServer);
+    this.localStorage.removeItem('allianceDistancePlayerName_' + this.apiRestService.serverService.currentServer?.name);
     this.cdr.detectChanges();
     if (this.playersTableHeader.length === 9) {
       this.playersTableHeader.splice(-3, 1);
@@ -454,7 +441,9 @@ export class PlayersComponent extends GenericComponent implements OnInit {
       } else {
         this.toastService.add(ErrorType.NO_PLAYER_FOUND, 5000);
         this.formFilters.playerCastleDistance = '';
-        this.localStorage.removeItem('allianceDistancePlayerName_' + this.apiRestService.serverService.choosedServer);
+        this.localStorage.removeItem(
+          'allianceDistancePlayerName_' + this.apiRestService.serverService.currentServer?.name,
+        );
         void this.resetDistanceColumn();
       }
       this.cdr.detectChanges();

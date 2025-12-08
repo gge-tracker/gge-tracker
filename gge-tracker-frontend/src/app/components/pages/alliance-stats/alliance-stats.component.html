@@ -21,35 +21,35 @@
 </div>
 
 
-<ul class="nav nav-tabs pt-3 ps-3" *ngIf="!isInLoading">
+<ul class="nav nav-tabs pt-3 ps-3 mt-5" *ngIf="!isInLoading">
   <li class="nav-item">
-    <button class="nav-link" (click)="changeTab('members')" [ngClass]="selectedTab === 'members' ? 'active' : ''">
-      <lucide-icon class="users" [img]="Users"></lucide-icon>&nbsp;<span>{{ 'Membres' | translate }}</span>
+    <button class="nav-link" (click)="changeTab('members')" [ngClass]="selectedTab === 'members' ? 'active' : ''" title="{{ 'Membres' | translate }}">
+      <lucide-icon class="users" [img]="Users"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Membres' | translate }}</span>
     </button>
   </li>
   <li class="nav-item">
-    <button class="nav-link" (click)="changeTab('movement')" [ngClass]="selectedTab === 'movement' ? 'active' : ''">
-      <lucide-icon class="briefcaseConveyorBelt" [img]="BriefcaseConveyorBelt"></lucide-icon>&nbsp;<span>{{ 'Arrivées et départs' | translate }}</span>
+    <button class="nav-link" (click)="changeTab('movement')" [ngClass]="selectedTab === 'movement' ? 'active' : ''" title="{{ 'Arrivées et départs' | translate }}">
+      <lucide-icon class="briefcaseConveyorBelt" [img]="BriefcaseConveyorBelt"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Arrivées et départs' | translate }}</span>
     </button>
   </li>
   <li class="nav-item">
-    <button class="nav-link" (click)="changeTab('stats')" [ngClass]="selectedTab === 'stats' ? 'active' : ''">
-      <lucide-icon class="chartSpline" [img]="ChartSpline"></lucide-icon>&nbsp;<span>{{ 'Statistiques des joueurs' | translate }}</span>
+    <button class="nav-link" (click)="changeTab('stats')" [ngClass]="selectedTab === 'stats' ? 'active' : ''" title="{{ 'Statistiques des joueurs' | translate }}">
+      <lucide-icon class="chartSpline" [img]="ChartSpline"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Statistiques des joueurs' | translate }}</span>
     </button>
   </li>
   <li class="nav-item">
-    <button class="nav-link" (click)="changeTab('health')" [ngClass]="selectedTab === 'health' ? 'active' : ''">
-      <lucide-icon class="activity" [img]="Activity"></lucide-icon>&nbsp;<span>{{ 'Rythme de l\'alliance' | translate }}</span>
+    <button class="nav-link" (click)="changeTab('health')" [ngClass]="selectedTab === 'health' ? 'active' : ''" title="{{ 'Rythme de l\'alliance' | translate }}">
+      <lucide-icon class="activity" [img]="Activity"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Rythme de l\'alliance' | translate }}</span>
     </button>
   </li>
   <li class="nav-item">
-    <button class="nav-link" (click)="changeTab('movements')" [ngClass]="selectedTab === 'movements' ? 'active' : ''">
-      <lucide-icon class="flag" [img]="Flag"></lucide-icon>&nbsp;<span>{{ 'Mouvements' | translate }}</span>
+    <button class="nav-link" (click)="changeTab('movements')" [ngClass]="selectedTab === 'movements' ? 'active' : ''" title="{{ 'Mouvements' | translate }}">
+      <lucide-icon class="flag" [img]="Flag"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Mouvements' | translate }}</span>
     </button>
   </li>
   <li class="nav-item">
-    <a class="nav-link" [href]="'/map/' + allianceId" target="_blank">
-      <lucide-icon class="earth" [img]="Earth"></lucide-icon>&nbsp;<span>{{ 'Carte' | translate}} <small><sup><i  class="fa-solid fa-external-link"></i></sup></small></span>
+    <a class="nav-link" [href]="'/map/' + allianceId" target="_blank" title="{{ 'Carte' | translate }}">
+      <lucide-icon class="earth" [img]="Earth"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Carte' | translate}} <small><sup><i  class="fa-solid fa-external-link"></i></sup></small></span>
     </a>
   </li>
 </ul>
@@ -128,6 +128,7 @@
         [search]="search" (sortOutput)="sortPlayers($event)" [headers]="membersTableHeader">
         <app-player-table-content
           [players]="players"
+          [distanceEnabled]="membersTableHeader.length > defaultMembersTableHeaderSize"
           [playersTableHeader]="membersTableHeader"
           ></app-player-table-content>
       </app-table>

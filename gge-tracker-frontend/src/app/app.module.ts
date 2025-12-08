@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
-import { NgModule } from '@angular/core';
+import { APP_INITIALIZER, NgModule } from '@angular/core';
 import { BrowserModule, provideClientHydration } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { RouterModule } from '@angular/router';
@@ -19,6 +19,7 @@ import { LocalStorageTranslateLoader } from './local-storage-loader';
 import { SidebarComponent } from '@ggetracker-components/sidebar/sidebar.component';
 import { TopBarComponent } from '@ggetracker-components/top-bar/top-bar.component';
 import { myIcons } from '@ggetracker-components/icon/icon.component';
+import { ServerService } from '@ggetracker-services/server.service';
 
 export function DynamicTranslateLoaderFactory(http: HttpClient): TranslateLoader {
   const isBrowser = globalThis.window !== undefined;
@@ -57,6 +58,12 @@ export function DynamicTranslateLoaderFactory(http: HttpClient): TranslateLoader
   providers: [
     provideClientHydration(),
     { provide: LUCIDE_ICONS, multi: true, useValue: new LucideIconProvider(myIcons) },
+    {
+      provide: APP_INITIALIZER,
+      useFactory: (serverService: ServerService) => (): Promise<void> => serverService.init(),
+      deps: [ServerService],
+      multi: true,
+    },
   ],
 })
 export class AppRoutingModule {}
