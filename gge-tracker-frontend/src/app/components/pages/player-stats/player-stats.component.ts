@@ -938,7 +938,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
       if (!lastPoint) {
         lastPoint = 0;
       }
-      lastPoint = lastPoint > 0 ? this.getUnitByValue(lastPoint) : '0';
+      lastPoint = Number(lastPoint) > 0 ? this.getUnitByValue(Number(lastPoint)) : '0';
       lastDate.setHours(lastDate.getHours() + 3);
       if (lastDate.getTime() < currentDate.getTime()) {
         const locale = this.languageService.getCurrentLang();
