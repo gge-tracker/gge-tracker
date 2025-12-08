@@ -325,7 +325,6 @@ export class TrackerComponent extends GenericComponent {
     response: number;
   }> {
     const currentServer = this.serverService.currentServer?.name;
-    console.log('Current server in TrackerComponent:', currentServer);
     if (!currentServer || !this.serverService.servers.includes(currentServer)) {
       this.isInLoading = false;
       this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);

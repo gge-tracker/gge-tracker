@@ -1155,6 +1155,17 @@ export abstract class ApiEvents implements ApiHelper {
       }
 
       /* ---------------------------------
+       * Event active verification
+       * --------------------------------- */
+      const nowTs = new Date();
+      const tenMinutesAgo = new Date(nowTs.getTime() - 10 * 60 * 1000);
+
+      if (!playersResult[0]?.fetch_date || new Date(playersResult[0]?.fetch_date) < tenMinutesAgo) {
+        response.status(ApiHelper.HTTP_FORBIDDEN).send({ error: RouteErrorMessagesEnum.EventNotActive });
+        return;
+      }
+
+      /* ---------------------------------
        * Format results
        * --------------------------------- */
       const players = playersResult.map((row: any) => ({

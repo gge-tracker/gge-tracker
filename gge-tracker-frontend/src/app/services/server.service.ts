@@ -160,13 +160,11 @@ export class ServerService {
   }
 
   public async init(): Promise<void> {
-    console.log('Initializing ServerService...');
     const url = 'https://ggetracker.github.io/i18n/servers.xml';
     await fetch(url)
       .then((response) => response.text())
       .then((xml) => {
         this.xmlServers = this.parseServers(xml);
-        console.log(this.xmlServers);
       })
       .catch((error) => console.error('Error loading servers:', error));
     const lang = this.mappedLangsToServers[this.languageService.currentLang.trim().toLowerCase()][0];
@@ -178,7 +176,6 @@ export class ServerService {
     } else {
       this.currentServer = this.xmlServers.find((s) => s.name === lang && s.enabled) || defaultServer;
     }
-    console.log('Current server set to:', this.currentServer);
   }
 
   private parseServers(xml: string): ServerEntry[] {

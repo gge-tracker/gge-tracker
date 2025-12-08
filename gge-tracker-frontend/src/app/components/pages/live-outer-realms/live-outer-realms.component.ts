@@ -47,6 +47,7 @@ export class LiveOuterRealmsComponent extends GenericComponent {
   public charts: Record<string, ChartAdvancedOptions | any> = {};
   public player: PlayerLiveRankingExtended | null = null;
   public isDataLoading = false;
+  public requestCounter = 0;
   public viewType: 'all' | 'player' = 'all';
   public pagination = {
     current_page: 1,
@@ -56,6 +57,7 @@ export class LiveOuterRealmsComponent extends GenericComponent {
   };
   public search: string = '';
   public serverService = inject(ServerService);
+  private refreshTimer: any = null;
 
   constructor() {
     super();
@@ -150,34 +152,33 @@ export class LiveOuterRealmsComponent extends GenericComponent {
   }
 
   public async initDefaultView(): Promise<void> {
-    this.search = '';
-    this.viewType = 'all';
-    const response = await this.apiRestService.getLiveRankingOuterRealms(1);
-    if (!response.success) {
-      this.isInLoading = false;
-      this.eventNotActive = true;
-      return;
-    }
+    await this.loadData(1);
     this.isInLoading = false;
-    this.players = response.data.players;
-    this.pagination = response.data.pagination;
   }
 
-  public loadData(page: number, playerName?: string): Promise<void> {
-    return new Promise<void>(async (resolve) => {
-      this.isDataLoading = true;
-      const response = await this.apiRestService.getLiveRankingOuterRealms(page, playerName);
-      if (!response.success) {
+  public async loadData(page: number, playerName?: string): Promise<void> {
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
+    this.requestCounter++;
+    this.isDataLoading = true;
+    const response = await this.apiRestService.getLiveRankingOuterRealms(page, playerName);
+    if (!response.success) {
+      this.isInLoading = false;
+      if (this.requestCounter === 1) {
+        this.eventNotActive = true;
+      } else {
         this.toastService.add('Unable to display outer realms ranking');
-        this.isDataLoading = false;
-        resolve();
-        return;
       }
-      this.players = response.data.players;
-      this.pagination = response.data.pagination;
-      this.isDataLoading = false;
-      resolve();
-    });
+      return;
+    }
+    this.players = response.data.players;
+    this.pagination = response.data.pagination;
+    this.isDataLoading = false;
+    this.refreshTimer = setTimeout(() => {
+      void this.loadData(page, playerName);
+    }, 60_000);
   }
 
   public searchPlayer(playerName: string, page: number = 1): Promise<void> {
