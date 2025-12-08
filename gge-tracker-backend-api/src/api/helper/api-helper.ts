@@ -36,8 +36,7 @@ export abstract class ApiHelper {
    * @deprecated This is deprecated. Remove this constant and migrate to using UTC everywhere
    */
   public static readonly APPLICATION_TIMEZONE = 'Europe/Paris';
-  // Read ./../../package.json version
-  public static readonly API_VERSION = require('./../../../package.json').version as string;
+  public static readonly API_VERSION = '25.12.08-beta';
   public static readonly API_VERSION_RELEASE_DATE = this.formatReleaseDate(this.API_VERSION);
 
   /**
