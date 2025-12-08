@@ -75,6 +75,6 @@ export class CooldownPipe implements PipeTransform, OnDestroy {
       .toString()
       .padStart(2, '0');
     const seconds = (totalSeconds % 60).toString().padStart(2, '0');
-    return `${days ? days + this.translations['jours'] + ' ' : ''}${hours}${this.translations['heures']} ${minutes}${this.translations['minutes']} ${seconds}${this.translations['secondes']}`;
+    return `${days ? days + this.translations['jours'] + ' ' : ''}${hours ? hours + this.translations['heures'] + ' ' : ''}${minutes}${this.translations['minutes']} ${seconds}${this.translations['secondes']}`;
   }
 }

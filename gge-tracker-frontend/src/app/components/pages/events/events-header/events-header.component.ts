@@ -1,9 +1,8 @@
 import { DatePipe, LowerCasePipe, TitleCasePipe } from '@angular/common';
 import { Component, input } from '@angular/core';
+import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { TranslatePipe } from '@ngx-translate/core';
 import { CalendarDays, LucideAngularModule, Users } from 'lucide-angular';
-
-import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 
 @Component({
   selector: 'app-events-header',

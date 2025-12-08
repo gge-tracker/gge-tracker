@@ -1,50 +1,51 @@
-import * as express from 'express';
-import { ApiHelper } from '../api-helper';
 import { formatInTimeZone, toDate } from 'date-fns-tz';
+import * as express from 'express';
+import { RouteErrorMessagesEnum } from '../enums/errors.enums';
+import { ApiHelper } from '../helper/api-helper';
 
 /**
- * Abstract class providing API endpoints for retrieving update histories related to players and alliances.
+ * Abstract class providing API endpoints for retrieving update histories related to players and alliances
  *
  * This class implements the `ApiHelper` interface and exposes static methods to handle Express.js requests
- * for fetching updates about player alliance changes, player name changes, and alliance membership changes.
+ * for fetching updates about player alliance changes, player name changes, and alliance membership changes
  *
  * @implements {ApiHelper}
  * @abstract
  */
 export abstract class ApiUpdates implements ApiHelper {
   /**
-   * Handles the HTTP request to retrieve player alliance update records for a specific alliance.
+   * Handles the HTTP request to retrieve player alliance update records for a specific alliance
    *
    * This endpoint fetches updates where players have either joined or left the specified alliance,
    * returning details such as player information, alliance IDs, and timestamps. Results are cached
-   * for performance optimization.
+   * for performance optimization
    *
-   * @param request - The Express request object, expects `allianceId` as a route parameter.
-   * @param response - The Express response object used to send the result or error.
+   * @param request - The Express request object, expects `allianceId` as a route parameter
+   * @param response - The Express response object used to send the result or error
    * @returns A Promise that resolves to void. Responds with a JSON object containing an array of player updates,
-   *          or an error message with the appropriate HTTP status code.
+   *          or an error message with the appropriate HTTP status code
    *
    * @remarks
-   * - Validates the provided alliance ID.
-   * - Utilizes Redis for caching responses.
-   * - Queries the database for player alliance updates.
-   * - Formats the `created_at` timestamp according to the application timezone.
-   * - Handles and reports errors appropriately.
+   * - Validates the provided alliance ID
+   * - Utilizes Redis for caching responses
+   * - Queries the database for player alliance updates
+   * - Formats the `created_at` timestamp according to the application timezone
+   * - Handles and reports errors appropriately
    */
   public static async getPlayersUpdatesByAlliance(request: express.Request, response: express.Response): Promise<void> {
     try {
       /* ---------------------------------
        * Parameter validation
        * --------------------------------- */
-      const allianceId = ApiHelper.getVerifiedId(request.params.allianceId);
+      const allianceId = ApiHelper.verifyIdWithCountryCode(request.params.allianceId);
       if (allianceId === false || allianceId === undefined) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid alliance id' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceId });
         return;
       }
       const pool = ApiHelper.ggeTrackerManager.getPgSqlPoolFromRequestId(allianceId);
       const code = ApiHelper.getCountryCode(String(allianceId));
       if (!pool || !code) {
-        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: 'Alliance not found' });
+        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.AllianceNotFound });
         return;
       }
 
@@ -133,30 +134,30 @@ export abstract class ApiUpdates implements ApiHelper {
   }
 
   /**
-   * Handles the retrieval of player name update history for a given player ID.
+   * Handles the retrieval of player name update history for a given player ID
    *
    * This endpoint validates the request parameters, checks for cached data,
    * queries the database for name update history if necessary, formats the results,
-   * updates the cache, and sends the response.
+   * updates the cache, and sends the response
    *
-   * @param request - The Express request object, expected to contain a `playerId` parameter and a `language` property.
-   * @param response - The Express response object used to send the result or error.
+   * @param request - The Express request object, expected to contain a `playerId` parameter and a `language` property
+   * @param response - The Express response object used to send the result or error
    *
    * @remarks
-   * - Returns cached data if available.
-   * - Queries the `player_name_update_history` table for name changes, ordered by creation date.
-   * - Formats the date to the application's timezone.
-   * - Updates the cache with the latest results.
-   * - Returns HTTP 500 on internal errors.
+   * - Returns cached data if available
+   * - Queries the `player_name_update_history` table for name changes, ordered by creation date
+   * - Formats the date to the application's timezone
+   * - Updates the cache with the latest results
+   * - Returns HTTP 500 on internal errors
    */
   public static async getNamesUpdates(request: express.Request, response: express.Response): Promise<void> {
     try {
       /* ---------------------------------
        * Validate request parameters
        * --------------------------------- */
-      const playerId = ApiHelper.getVerifiedId(request.params.playerId);
+      const playerId = ApiHelper.verifyIdWithCountryCode(request.params.playerId);
       if (playerId === false || playerId === undefined) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid user id' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
         return;
       }
 
@@ -192,7 +193,7 @@ export abstract class ApiUpdates implements ApiHelper {
        * --------------------------------- */
       const pool = ApiHelper.ggeTrackerManager.getPgSqlPoolFromRequestId(playerId);
       if (!pool) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid server or player ID' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
         return;
       }
       pool.query(query, [ApiHelper.removeCountryCode(playerId)], (error, results) => {
@@ -228,33 +229,33 @@ export abstract class ApiUpdates implements ApiHelper {
   }
 
   /**
-   * Handles the HTTP request to retrieve a player's alliance update history.
+   * Handles the HTTP request to retrieve a player's alliance update history
    *
    * This endpoint fetches all alliance changes for a given player, including the previous and new alliance names and IDs,
-   * along with the timestamp of each change. Results are cached for performance. If cached data is available, it is returned immediately.
-   * Otherwise, the data is fetched from the database, formatted, cached, and then returned.
+   * along with the timestamp of each change. Results are cached for performance. If cached data is available, it is returned immediately
+   * Otherwise, the data is fetched from the database, formatted, cached, and then returned
    *
-   * @param request - Express request object, expects `playerId` as a route parameter and `language` and `code` properties.
-   * @param response - Express response object used to send the result or error.
+   * @param request - Express request object, expects `playerId` as a route parameter and `language` and `code` properties
+   * @param response - Express response object used to send the result or error
    *
    * @returns Sends a JSON response with an array of alliance update objects, each containing:
-   *   - `date`: The date and time of the update in application timezone.
-   *   - `old_alliance_name`: Name of the previous alliance.
-   *   - `old_alliance_id`: ID of the previous alliance (with country code).
-   *   - `new_alliance_name`: Name of the new alliance.
-   *   - `new_alliance_id`: ID of the new alliance (with country code).
+   *   - `date`: The date and time of the update in application timezone
+   *   - `old_alliance_name`: Name of the previous alliance
+   *   - `old_alliance_id`: ID of the previous alliance (with country code)
+   *   - `new_alliance_name`: Name of the new alliance
+   *   - `new_alliance_id`: ID of the new alliance (with country code)
    *
-   * @throws 400 Bad Request if the player ID is invalid or the server/player ID is not found.
-   * @throws 500 Internal Server Error if a database or internal error occurs.
+   * @throws 400 Bad Request if the player ID is invalid or the server/player ID is not found
+   * @throws 500 Internal Server Error if a database or internal error occurs
    */
   public static async getAlliancesUpdates(request: express.Request, response: express.Response): Promise<void> {
     try {
       /* ---------------------------------
        * Validate Player ID
        * --------------------------------- */
-      const playerId = ApiHelper.getVerifiedId(request.params.playerId);
+      const playerId = ApiHelper.verifyIdWithCountryCode(request.params.playerId);
       if (playerId === false || playerId === undefined) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid user id' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
         return;
       }
 
@@ -296,7 +297,7 @@ export abstract class ApiUpdates implements ApiHelper {
        * --------------------------------- */
       const pool = ApiHelper.ggeTrackerManager.getPgSqlPoolFromRequestId(playerId);
       if (!pool) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid server or player ID' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
         return;
       }
       pool.query(query, [ApiHelper.removeCountryCode(playerId)], (error, results) => {

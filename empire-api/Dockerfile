@@ -11,58 +11,37 @@
 #                                                                                    #
 ######################################################################################
 
-FROM node:20-slim AS build
-
-LABEL fly_launch_runtime="NodeJS"
+FROM node:24-slim AS builder
 
 WORKDIR /app
-ENV NODE_ENV=production
 
-RUN apt-get update -qq && apt-get install -y \
-    build-essential \
-    pkg-config \
-    python-is-python3
-
-COPY src .
 COPY package*.json ./
 
-RUN if [ ! -f config/credentials.json ] || [ ! -f config/instances.json ]; then \
-    echo "Error: config/credentials.json and/or config/instances.json not found!"; exit 1; \
-fi
+RUN npm ci
+COPY src ./src
+COPY tsconfig.json ./
 
-ARG HAS_GBL
-RUN if [ "${HAS_GBL}" = "true" ]; then \
-    cp config/credentials_gbl.json config/credentials.json && \
-    cp config/instances_gbl.json config/instances.json; \
-fi
+RUN npx tsc
 
-RUN npm install --omit=dev
+COPY src/config ./dist/config
+COPY src/data ./dist/data
 
-FROM node:20-alpine
-
-RUN apk add --no-cache \
-    bash \
-    ca-certificates \
-    chromium \
-    curl \
-    dbus \
-    freetype \
-    harfbuzz \
-    nss \
-    ttf-freefont \
-    udev \
-    xvfb \
-    && rm -rf /var/cache/apk/*
-
-ENV CHROME_PATH=/usr/bin/chromium-browser
-ENV NODE_ENV=production
+FROM node:24-slim
 
 WORKDIR /app
-COPY --from=build /app /app
-RUN npm install --omit=dev
+ENV NODE_ENV=production
 
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+COPY --from=builder /app/dist ./dist
+COPY package*.json ./
 
-ENTRYPOINT [ "docker-entrypoint.sh" ]
-CMD [ "npm", "run", "start" ]
+RUN npm ci --omit=dev
+
+ARG API_TYPE
+RUN if [ $API_TYPE = "realtime" ]; then \
+    cp dist/config/credentials_gbl.json dist/config/credentials.json && \
+    cp dist/config/instances_gbl.json dist/config/instances.json; \
+fi
+
+RUN mv dist/* . && rm -rf dist
+
+CMD ["node", "server.js"]

@@ -1,113 +1,114 @@
+::ng-deep .graphic text {
+  fill: #ffffffa1;
+}
+
 table {
   display: flex;
   flex-flow: column;
   height: 100%;
   width: 100%;
 }
-.table-responsive {
-  height: 70vh;
-}
-table thead {
-  flex: 0 0 auto;
-  width: calc(100% - 0.9em);
-}
+
 table tbody {
-  flex: 1 1 auto;
   display: block;
+  flex: 1 1 auto;
   overflow-y: scroll;
 }
+
 table tbody tr {
   width: 100%;
 }
-table thead,
-table tbody tr {
+
+table tbody tr, table thead {
   display: table;
   table-layout: fixed;
 }
 
-::ng-deep .graphic text {
-  fill: #ffffffa1;
+table thead {
+  flex: 0 0 auto;
+  width: calc(100% - 0.9em);
 }
 
 .btn-modern {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255,255,255,0.15);
   color: white;
 }
 
 .modern-panel {
   background: linear-gradient(180deg, var(--bg-panel), var(--bg-panel-strong));
   border: 1px solid var(--border-soft);
-  box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
-}
-
-.table-wrapper {
-  --bg-panel: rgba(16, 18, 22, 0.6);
-  --bg-panel-strong: rgba(16, 18, 22, 0.82);
-  --bg-row: rgba(255, 255, 255, 0.03);
-  --bg-row-hover: rgba(56, 189, 248, 0.08);
-  --border-soft: rgba(255, 255, 255, 0.1);
-  --border-strong: rgba(255, 255, 255, 0.16);
-  --text: #e9edf1;
-  --text-dim: #9aa3ad;
-  --accent: #26c6da;
-  --accent-2: #34d399;
-  --chip-bg: rgba(255, 255, 255, 0.06);
-  --chip-txt: #dfe6ee;
-  --chip-success: #22c55e;
-  --chip-danger: #ef4444;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.04);
 }
 
 .modern-table {
   border-collapse: separate;
   border-spacing: 0 8px;
   color: var(--text);
-  width: 100%;
   table-layout: fixed;
-}
-
-.modern-table thead th {
-  position: relative;
-  font-weight: 600;
-  font-size: 0.85rem;
-  text-align: center;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  padding: 0.75rem 0.9rem;
-  border-bottom: 1px solid var(--border-strong);
-  user-select: none;
-  white-space: nowrap;
-  background: transparent;
-  cursor: pointer;
-}
-.modern-table thead th:hover {
-  color: var(--text);
+  width: 100%;
 }
 
 .modern-table tbody tr {
   background: var(--bg-row);
-  transition:
-    transform 0.12s ease,
-    background 0.15s ease,
-    box-shadow 0.15s ease;
+  transition: transform 0.12s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
+
 .modern-table tbody tr:hover {
   background: var(--bg-row-hover);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.18);
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+
+.modern-table td {
+  border-bottom: 1px solid var(--border-soft);
+  border-top: 1px solid var(--border-soft);
+  color: var(--text);
+  padding: 0.75rem 0.9rem;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.modern-table thead th {
+  background: transparent;
+  border-bottom: 1px solid var(--border-strong);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 0.75rem 0.9rem;
+  position: relative;
+  text-align: center;
+  text-transform: uppercase;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.modern-table thead th:hover {
+  color: var(--text);
+}
+
+.table-responsive {
+  height: 70vh;
+}
+
+.table-wrapper {
+  --accent-2: #34d399;
+  --accent: #26c6da;
+  --bg-panel-strong: rgba(16,18,22,0.82);
+  --bg-panel: rgba(16,18,22,0.6);
+  --bg-row-hover: rgba(56,189,248,0.08);
+  --bg-row: rgba(255,255,255,0.03);
+  --border-soft: rgba(255,255,255,0.1);
+  --border-strong: rgba(255,255,255,0.16);
+  --chip-bg: rgba(255,255,255,0.06);
+  --chip-danger: #ef4444;
+  --chip-success: #22c55e;
+  --chip-txt: #dfe6ee;
+  --text-dim: #9aa3ad;
+  --text: #e9edf1;
 }
 
 .w-100px {
   width: 100px;
-}
-
-.modern-table td {
-  padding: 0.75rem 0.9rem;
-  vertical-align: middle;
-  border-top: 1px solid var(--border-soft);
-  border-bottom: 1px solid var(--border-soft);
-  color: var(--text);
-  text-align: center;
 }

@@ -1,73 +1,35 @@
-
 :host {
-  flex: auto;
   --text: #e7e7e7;
+  flex: auto;
 }
 
-.modern-select-wrapper {
-  position: relative;
-  display: inline-block;
-  width: 100%;
+select.decorated option:hover {
+  box-shadow: 0 0 10px 100px #1882a8 inset;
 }
 
 .modern-select {
-  appearance: none;
-  -webkit-appearance: none;
   -moz-appearance: none;
-
-  width: 100%;
-  padding: 0.65rem 2.5rem 0.65rem 1rem;
+  -webkit-appearance: none;
+  appearance: none;
+  backdrop-filter: blur(10px);
+  background: rgba(255,255,255,0.15);
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.055);
-  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255,255,255,0.055);
   color: var(--text);
+  cursor: pointer;
   font-size: 0.95rem;
   font-weight: 500;
-  cursor: pointer;
+  padding: 0.65rem 2.5rem 0.65rem 1rem;
   transition: all 0.25s ease;
-  backdrop-filter: blur(10px);
-}
-
-.modern-select-wrapper .select-icon {
-  position: absolute;
-  right: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none;
-  font-size: 0.85rem;
-  color: #9aa3af;
-  transition: color .25s ease;
-}
-
-.modern-select:hover,
-.modern-select:focus {
-  background: rgba(255, 255, 255, 0.25);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
-  outline: none;
-}
-
-@media (max-width: 576px) {
-  .modern-select-wrapper {
-    max-width: 100%;
-  }
-  .modern-select {
-    font-size: 0.9rem;
-    padding: 0.55rem 2rem 0.55rem 0.9rem;
-  }
+  width: 100%;
 }
 
 .modern-select option {
   background: #1e1e2f;
-  color: #f5f5f5;
-  padding: 0.6rem 1rem;
-  font-size: 0.9rem;
   border-bottom: 1px solid rgba(255,255,255,0.08);
-}
-
-.modern-select option:hover,
-.modern-select option:focus {
-  background: rgba(38,198,218,0.15);
-  color: var(--accent, #26c6da);
+  color: #f5f5f5;
+  font-size: 0.9rem;
+  padding: 0.6rem 1rem;
 }
 
 .modern-select option:checked {
@@ -75,6 +37,41 @@
   font-weight: 600;
 }
 
-select.decorated option:hover {
-    box-shadow: 0 0 10px 100px #1882A8 inset;
+.modern-select option:focus, .modern-select option:hover {
+  background: rgba(38,198,218,0.15);
+  color: var(--accent,#26c6da);
+}
+
+.modern-select-wrapper {
+  display: inline-block;
+  position: relative;
+  width: 100%;
+}
+
+.modern-select-wrapper .select-icon {
+  color: #9aa3af;
+  font-size: 0.85rem;
+  pointer-events: none;
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  transition: color .25s ease;
+}
+
+.modern-select:focus, .modern-select:hover {
+  background: rgba(255,255,255,0.25);
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.2);
+  outline: none;
+}
+
+@media (max-width: 576px) {
+  .modern-select {
+    font-size: 0.9rem;
+    padding: 0.55rem 2rem 0.55rem 0.9rem;
+  }
+
+  .modern-select-wrapper {
+    max-width: 100%;
+  }
 }

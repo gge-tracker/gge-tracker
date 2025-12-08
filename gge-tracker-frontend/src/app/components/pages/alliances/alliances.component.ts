@@ -2,15 +2,13 @@ import { NgClass, NgFor, NgIf } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { TranslateModule } from '@ngx-translate/core';
-
+import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
+import { TableComponent } from '@ggetracker-components/table/table.component';
 import { Alliance, ApiAllianceResponse, ErrorType } from '@ggetracker-interfaces/empire-ranking';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
-import { GenericComponent } from '@ggetracker-components/generic/generic.component';
-import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
-import { ServerBadgeComponent } from '@ggetracker-components/server-badge/server-badge.component';
-import { TableComponent } from '@ggetracker-components/table/table.component';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-alliances',
@@ -25,7 +23,6 @@ import { TableComponent } from '@ggetracker-components/table/table.component';
     TableComponent,
     SearchFormComponent,
     TranslateModule,
-    ServerBadgeComponent,
   ],
   templateUrl: './alliances.component.html',
   styleUrl: './alliances.component.css',
@@ -46,6 +43,7 @@ export class AlliancesComponent extends GenericComponent {
 
   constructor() {
     super();
+    this.isInLoading = true;
     void this.init();
   }
 

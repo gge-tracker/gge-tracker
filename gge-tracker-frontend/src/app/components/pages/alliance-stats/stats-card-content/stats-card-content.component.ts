@@ -1,9 +1,8 @@
 import { NgIf } from '@angular/common';
 import { Component, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { TranslateModule } from '@ngx-translate/core';
-
 import { ApiPlayerStatsType } from '@ggetracker-interfaces/empire-ranking';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-stats-card-content',

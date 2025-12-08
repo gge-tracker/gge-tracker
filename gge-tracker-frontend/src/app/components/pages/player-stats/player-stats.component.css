@@ -1,68 +1,23 @@
-.banner {
-  background: url('/assets/banner.png');
-}
-
-.btn-exit {
-  position: fixed;
-  bottom: 0;
-  margin: 20px;
-  z-index: 1000;
-}
-.btn-exit.left {
-  left: 0;
-}
-.btn-exit.right {
-  right: 0;
-}
-
-.alliance-more-info::before {
-  content: attr(data-updates);
-  position: absolute;
-  background-image: url(/assets/ci/level.png);
-  bottom: 0;
-  left: 0;
-  z-index: 1;
-  width: 17px;
-  height: 17px;
-  background-size: cover;
-  margin-bottom: 0;
-  margin-left: 0;
-  color: white;
-  font-size: .55rem;
-  text-align: center;
-  line-height: 17px;
-}
-
-.btn-exit .btn.btn-danger {
-  border: 2px solid black;
-  color: black;
-  background: rgba(252, 0, 0, 0.726);
-}
-.btn-exit .btn.btn-primary {
-  border: 2px solid black;
-  color: black;
-  background: rgba(80, 252, 0, 0.158);
+i.fas.fa-spinner.fa-spin {
+  color: #ffffff;
+  font-size: 2rem;
+  margin: 20px 0;
 }
 
 img {
-  -webkit-user-drag: none;
   -khtml-user-drag: none;
   -moz-user-drag: none;
   -o-user-drag: none;
-}
-
-.table img {
-  max-width: 30px;
-  max-height: 30px;
+  -webkit-user-drag: none;
 }
 
 #allianceList {
+  bottom: 0;
+  left: 0;
+  margin-bottom: -19px;
   position: absolute;
-    bottom: 0;
-    margin-bottom: -19px;
-    left: 0;
-    right: 0;
-    text-align: center;
+  right: 0;
+  text-align: center;
 }
 
 #allianceList img {
@@ -73,85 +28,117 @@ img {
 #allianceList img:hover {
   opacity: 0.5;
 }
-.leaderboard {
-  padding: 20px;
-  border-radius: 15px;
-}
 
-.event-card::before {
-  content: '';
-  background: rgba(0, 0, 0, 0.1);
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -18px;
-  height: 20px;
-  border-radius: 125px;
-}
-
-.event-card {
-  background: rgb(18 25 0 / 50%) url(/assets/light-background-hover.png);
-  border: 2px solid #00000069;
-  border-radius: 15px;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  width: 250px;
-  background-size: 45px;
-  color: #fff;
-}
-
-.highlight-hours {
-  font-size: 1.8rem;
-  font-weight: bold;
-  color: #FFD700;
-  border-radius: 5px;
-  padding: 0 5px;
-}
-
-
-.event-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-}
-
-.img-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100px;
-  height: 100px;
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.player-stats-container::before {
-  animation: bg-castle .6s 1 forwards;
-  background: url('/assets/background-castle.png') no-repeat;
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+.alliance-more-info::before {
+  background-image: url(/assets/ci/level.png);
+  background-size: cover;
   bottom: 0;
-  z-index: 0;
-  background-position-x: center;
-  background-position-y: -173px;
+  color: white;
+  content: attr(data-updates);
+  font-size: .55rem;
+  height: 17px;
+  left: 0;
+  line-height: 17px;
+  margin-bottom: 0;
+  margin-left: 0;
+  position: absolute;
+  text-align: center;
+  width: 17px;
+  z-index: 1;
 }
 
-.player-stats-view {
-  min-height: 100vh;
-}
-
-@keyframes bg-castle {
-  0% {
-    background-position-y: -200px;
-  }
-  100% {
-    background-position-y: -173px;
-  }
+.banner {
+  background: url('/assets/banner.png');
 }
 
 .bg-castle {
   min-height: 321px;
+}
+
+.btn-exit {
+  bottom: 0;
+  margin: 20px;
+  position: fixed;
+  z-index: 1000;
+}
+
+.btn-exit .btn.btn-danger {
+  background: rgba(252,0,0,0.726);
+  border: 2px solid black;
+  color: black;
+}
+
+.btn-exit .btn.btn-primary {
+  background: rgba(80,252,0,0.158);
+  border: 2px solid black;
+  color: black;
+}
+
+.btn-exit.left {
+  left: 0;
+}
+
+.btn-exit.right {
+  right: 0;
+}
+
+.card-text {
+  color: #fff;
+  font-size: 1rem;
+}
+
+.card-title {
+  color: #ffd700;
+  font-size: 2rem;
+  text-align: center;
+}
+
+.event-card {
+  background-size: 45px;
+  background: rgb(18 25 0 / 50%) url(/assets/light-background-hover.png);
+  border-radius: 15px;
+  border: 2px solid #00000069;
+  color: #fff;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  width: 250px;
+}
+
+.event-card::before {
+  background: rgba(0,0,0,0.1);
+  border-radius: 125px;
+  bottom: -18px;
+  content: '';
+  height: 20px;
+  left: 0;
+  position: absolute;
+  right: 0;
+}
+
+.event-card:hover {
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  transform: translateY(-5px);
+}
+
+.event-details {
+  flex-grow: 1;
+}
+
+.highlight-hours {
+  border-radius: 5px;
+  color: #ffd700;
+  font-size: 1.8rem;
+  font-weight: bold;
+  padding: 0 5px;
+}
+
+.img-container {
+  align-items: center;
+  border-radius: 10px;
+  display: flex;
+  height: 100px;
+  justify-content: center;
+  overflow: hidden;
+  width: 100px;
 }
 
 .img-container img {
@@ -163,18 +150,104 @@ img {
   transform: scale(1.1);
 }
 
-.event-details {
-  flex-grow: 1;
+.leaderboard {
+  border-radius: 15px;
+  padding: 20px;
 }
 
-.card-title {
-  font-size: 2rem;
-  color: #FFD700;
-  text-align: center;
+.modal-content .btn-group a {
+  text-decoration: none;
 }
-.card-text {
-  font-size: 1rem;
+
+.modal-content table tr {
+  vertical-align: middle;
+}
+
+.modern-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.modern-table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.modern-table tbody tr:hover {
+  background: rgba(13,110,253,0.05);
+}
+
+.modern-table td {
+  border-top: 1px solid #dee2e6;
+  padding: 0.75rem;
+  vertical-align: middle;
+}
+
+.modern-table th {
+  cursor: pointer;
+  padding: 0.75rem;
+  text-align: left;
+  user-select: none;
+}
+
+.modern-table th:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.modern-table thead {
+  background: linear-gradient(90deg,#0d6efd,#1a418a);
   color: #fff;
+}
+
+.monuments-quantity img {
+  max-height: 92px;
+  max-width: 92px;
+}
+
+.page-indicator {
+  font-weight: 500;
+}
+
+img::selection {
+  background: transparent;
+}
+
+.pagination-modern button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.player-stats-overlay::before {
+  background-position-x: center;
+  background-position-y: -173px;
+  background-image: url(/assets/background-castle.png);
+  background-repeat: no-repeat;
+  background-position-x: center;
+  bottom: 0;
+  content: '';
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 0;
+}
+
+.player-stats-container {
+  z-index: 2;
+}
+
+.player-stats-view {
+  min-height: 100vh;
+}
+
+.search-input {
+  border-radius: 1rem;
+  border: 1px solid #dee2e6;
+  transition: border-color 0.2s ease;
+}
+
+.search-input:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13,110,253,.25);
 }
 
 .stat-card {
@@ -194,17 +267,30 @@ img {
   }
 }
 
-.monuments-quantity img {
-  max-width: 92px;
-  max-height: 92px;
+.stat-icon img {
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+  height: 40px;
+  margin-bottom: 0.5rem;
+  width: 40px;
 }
 
-i.fas.fa-spinner.fa-spin {
-  font-size: 2rem;
-  margin: 20px 0;
-  color: #ffffff;
+.stat-title {
+  color: #bcbcbc;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 0.2rem;
 }
 
+.stat-value {
+  color: #fff;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.table img {
+  max-height: 30px;
+  max-width: 30px;
+}
 
 .table-wrapper {
   background: #fff;
@@ -212,77 +298,15 @@ i.fas.fa-spinner.fa-spin {
   overflow: hidden;
 }
 
-.search-input {
-  border-radius: 1rem;
-  border: 1px solid #dee2e6;
-  transition: border-color 0.2s ease;
+@keyframes bg-castle {
+  0% {
+    background-position-y: -200px;
+  }
+
+  100% {
+    background-position-y: -173px;
+  }
 }
 
-.search-input:focus {
-  border-color: #0d6efd;
-  box-shadow: 0 0 0 0.2rem rgba(13,110,253,.25);
-}
 
-.modern-table {
-  border-collapse: collapse;
-  width: 100%;
-}
 
-.modern-table thead {
-  background: linear-gradient(90deg, #0d6efd, #1a418a);
-  color: #fff;
-}
-
-.modern-table th {
-  padding: 0.75rem;
-  text-align: left;
-  cursor: pointer;
-  user-select: none;
-}
-
-.modern-table th:hover {
-  background: rgba(255,255,255,0.1);
-}
-
-.modern-table td {
-  padding: 0.75rem;
-  vertical-align: middle;
-  border-top: 1px solid #dee2e6;
-}
-
-.modern-table tbody tr {
-  transition: background-color 0.2s ease;
-}
-
-.modern-table tbody tr:hover {
-  background: rgba(13,110,253,0.05);
-}
-
-.pagination-modern button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.page-indicator {
-  font-weight: 500;
-}
-
-.stat-icon img {
-  width: 40px;
-  height: 40px;
-  margin-bottom: 0.5rem;
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
-}
-
-.stat-title {
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: #bcbcbc;
-  margin-bottom: 0.2rem;
-}
-
-.stat-value {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: #fff;
-}

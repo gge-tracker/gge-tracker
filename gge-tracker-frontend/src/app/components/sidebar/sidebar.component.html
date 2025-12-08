@@ -1,0 +1,27 @@
+<aside class="sidebar" [class.closed]="!isSidebarOpen()" [ngClass]="{'mobile-view': sidebarService.isMobileView }">
+  <div class="sidebar-header" (click)="sidebarService.closeSidebar()">
+    <div class="sidebar-header-img"></div>
+  </div>
+
+  <div class="sidebar-scroll">
+    <div *ngFor="let section of menuStructure">
+      <h3 class="sidebar-section-title">{{ section.title | translate }}</h3>
+
+      <button *ngFor="let item of section.items" class="nav-item" [class.active-nav]="isActive(item.id)"
+        [routerLink]="item.id" [title]="item.label | translate">
+        <img *ngIf="item.iconUrl" [src]="item.iconUrl" alt="{{ item.label | translate }}" class="img-icon" />
+        <span>{{ item.label | translate }}</span>
+        <span *ngIf="item.frequency" class="badge-frequency">{{ item.frequency | translate }}</span>
+      </button>
+
+    </div>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="sidebar-status">
+      <div class="sidebar-status-dot"></div>
+      <span class="sidebar-status-text">gge-tracker.com {{ version }} <ng-container *ngIf="apiRestService.responseMs > 0">({{
+          apiRestService.responseMs }} {{'ms' | translate}})</ng-container></span>
+    </div>
+  </div>
+</aside>

@@ -21,35 +21,35 @@
 </div>
 
 
-<ul class="nav nav-tabs pt-3 ps-3" *ngIf="!isInLoading">
+<ul class="nav nav-tabs pt-3 ps-3 mt-5" *ngIf="!isInLoading">
   <li class="nav-item">
-    <button class="nav-link" (click)="changeTab('members')" [ngClass]="selectedTab === 'members' ? 'active' : ''">
-      <lucide-icon class="users" [img]="Users"></lucide-icon>&nbsp;<span>{{ 'Membres' | translate }}</span>
+    <button class="nav-link" (click)="changeTab('members')" [ngClass]="selectedTab === 'members' ? 'active' : ''" title="{{ 'Membres' | translate }}">
+      <lucide-icon class="users" [img]="Users"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Membres' | translate }}</span>
     </button>
   </li>
   <li class="nav-item">
-    <button class="nav-link" (click)="changeTab('movement')" [ngClass]="selectedTab === 'movement' ? 'active' : ''">
-      <lucide-icon class="briefcaseConveyorBelt" [img]="BriefcaseConveyorBelt"></lucide-icon>&nbsp;<span>{{ 'Arrivées et départs' | translate }}</span>
+    <button class="nav-link" (click)="changeTab('movement')" [ngClass]="selectedTab === 'movement' ? 'active' : ''" title="{{ 'Arrivées et départs' | translate }}">
+      <lucide-icon class="briefcaseConveyorBelt" [img]="BriefcaseConveyorBelt"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Arrivées et départs' | translate }}</span>
     </button>
   </li>
   <li class="nav-item">
-    <button class="nav-link" (click)="changeTab('stats')" [ngClass]="selectedTab === 'stats' ? 'active' : ''">
-      <lucide-icon class="chartSpline" [img]="ChartSpline"></lucide-icon>&nbsp;<span>{{ 'Statistiques des joueurs' | translate }}</span>
+    <button class="nav-link" (click)="changeTab('stats')" [ngClass]="selectedTab === 'stats' ? 'active' : ''" title="{{ 'Statistiques des joueurs' | translate }}">
+      <lucide-icon class="chartSpline" [img]="ChartSpline"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Statistiques des joueurs' | translate }}</span>
     </button>
   </li>
   <li class="nav-item">
-    <button class="nav-link" (click)="changeTab('health')" [ngClass]="selectedTab === 'health' ? 'active' : ''">
-      <lucide-icon class="activity" [img]="Activity"></lucide-icon>&nbsp;<span>{{ 'Rythme de l\'alliance' | translate }}</span>
+    <button class="nav-link" (click)="changeTab('health')" [ngClass]="selectedTab === 'health' ? 'active' : ''" title="{{ 'Rythme de l\'alliance' | translate }}">
+      <lucide-icon class="activity" [img]="Activity"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Rythme de l\'alliance' | translate }}</span>
     </button>
   </li>
   <li class="nav-item">
-    <button class="nav-link" (click)="changeTab('movements')" [ngClass]="selectedTab === 'movements' ? 'active' : ''">
-      <lucide-icon class="flag" [img]="Flag"></lucide-icon>&nbsp;<span>{{ 'Mouvements' | translate }}</span>
+    <button class="nav-link" (click)="changeTab('movements')" [ngClass]="selectedTab === 'movements' ? 'active' : ''" title="{{ 'Mouvements' | translate }}">
+      <lucide-icon class="flag" [img]="Flag"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Mouvements' | translate }}</span>
     </button>
   </li>
   <li class="nav-item">
-    <a class="nav-link" [href]="'/map/' + allianceId" target="_blank">
-      <lucide-icon class="earth" [img]="Earth"></lucide-icon>&nbsp;<span>{{ 'Carte' | translate}} <small><sup><i  class="fa-solid fa-external-link"></i></sup></small></span>
+    <a class="nav-link" [href]="'/map/' + allianceId" target="_blank" title="{{ 'Carte' | translate }}">
+      <lucide-icon class="earth" [img]="Earth"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Carte' | translate}} <small><sup><i  class="fa-solid fa-external-link"></i></sup></small></span>
     </a>
   </li>
 </ul>
@@ -126,70 +126,11 @@
     <div class="players-container">
       <app-table [sort]="sort" [reverse]="reverse" [isInLoading]="isInLoading" [maxPage]="maxPage!" [page]="page"
         [search]="search" (sortOutput)="sortPlayers($event)" [headers]="membersTableHeader">
-        <tr *ngIf="players.length === 0">
-          <td [attr.colspan]="membersTableHeader.length">{{ 'Aucun joueur trouvé' | translate }}</td>
-        </tr>
-        <tr *ngIf="players.length === 0">
-            <td [attr.colspan]="membersTableHeader.length+2">{{ 'Aucun joueur trouvé' | translate }}</td>
-          </tr>
-          <tr *ngFor="let player of players" [ngClass]="{ 'favorite': player.isFavorite }">
-            <td>
-              {{ player.rank }}</td>
-            <td>
-              <img [style]="{ 'opacity': getOpacityForPeaceTime(player.peaceDisabledAt) }
-                "
-                *ngIf="player.peaceDisabledAt && isPeaceDisabledBefore63days(player.peaceDisabledAt)"
-                class="me-1" height="30" src="/assets/peace.png" [alt]="('Temps de paix' | translate) + ':'"
-                [title]="('Actuellement en protection Fin le' | translate) +  ' ' + ((player.peaceDisabledAt) | date: ('Date_3' | translate))">
-              {{ player.playerName }}
-            </td>
-            <td>
-              {{ player.level ? player.level + (player.legendaryLevel ? ('/' + player.legendaryLevel) : '') : '0' }}
-            </td>
-            <ng-container *ngIf="player.mightAllTime; else inactiveTemplate">
-              <td [title]="player.mightCurrent ? (player.mightCurrent | formatNumber:'visual') : 0">
-                {{ player.mightCurrent ? (player.mightCurrent | formatNumber) : '0' }}
-                <span *ngIf="!player.mightAllTime" class="badge bg-secondary" translate>Inactif</span>
-              </td>
-              <td [title]="player.mightAllTime ? (player.mightAllTime | formatNumber:'visual') : 0">
-                {{ player.mightAllTime ? (player.mightAllTime | formatNumber) : '' }}</td>
-              <ng-container *ngIf="player.peaceDisabledAt && !isPeaceDisabledBefore63days(player.peaceDisabledAt); else defaultRows" class="badge bg-secondary">
-                <td colspan="5">
-                  <span class="badge bg-secondary">
-                    <i class="fa-solid fa-ban"></i>
-                    {{ 'Banni jusqu\'au' | translate }} {{ ((player.peaceDisabledAt) | date: ('Date_3' | translate)) }}
-                  </span>
-                </td>
-                <td [attr.colspan]="player.allianceName ? '1' : '2'"></td>
-              </ng-container>
-              <ng-template #defaultRows>
-                <td [title]="player.lootCurrent ? (player.lootCurrent | formatNumber:'visual') : 0">{{ player.lootCurrent ? (player.lootCurrent | formatNumber) : 0 }}</td>
-                <td [title]="player.lootAllTime ? (player.lootAllTime | formatNumber:'visual') : 0">{{ player.lootAllTime ? (player.lootAllTime | formatNumber) : 0 }}</td>
-                <td [title]="player.currentFame ? (player.currentFame | formatNumber:'visual') : 0">{{ player.currentFame ? (player.currentFame | formatNumber) : 0 }}</td>
-                <td [title]="player.highestFame ? (player.highestFame | formatNumber:'visual') : 0">{{ player.highestFame ? (player.highestFame | formatNumber) : 0 }}</td>
-                <td [title]="player.honor ? (player.honor | formatNumber:'visual') : 0">{{ player.honor }}</td>
-                <td *ngIf="membersTableHeader.length > 10" [title]="player.distance ? (player.distance | formatNumber:'visual') : 0">
-                  {{ player.distance ? (player.distance | formatNumber) : '0' }}
-                </td>
-                <td class="text-end">
-                  <a [routerLink]="['/', 'player', player.playerId]" class="btn btn-primary btn-sm">
-                    <i class="fa-solid fa-eye"></i>
-                    &nbsp;<span class="d-none d-sm-inline-block" translate>Analyser le joueur</span>
-                  </a>
-                </td>
-              </ng-template>
-            </ng-container>
-            <ng-template #inactiveTemplate>
-              <td *ngFor="let i of [1, 2, 3, 4]">
-                <img src="/assets/error.png" [alt]="'Inactif' | translate" [title]="'Joueur inactif' | translate" class="error-icon">
-              </td>
-              <td class="text-end" colspan="4">
-                <span *ngIf="!player.mightAllTime" class="badge bg-secondary">
-                  <i  class="fa-solid fa-ban"></i>
-                  {{ 'Joueur inactif' | translate }}
-                </span></td>
-            </ng-template>
-          </tr>
+        <app-player-table-content
+          [players]="players"
+          [distanceEnabled]="membersTableHeader.length > defaultMembersTableHeaderSize"
+          [playersTableHeader]="membersTableHeader"
+          ></app-player-table-content>
       </app-table>
     </div>
   </div>
@@ -207,6 +148,7 @@
         </div>
         <div class="col text-center">
           <h3>{{ getMonthNameByDate(actualMonth) }}</h3>
+          <h5>{{ allianceName }}</h5>
         </div>
         <div class="col text-end">
           <button class="btn" (click)="nextMonth()" [title]="'Aller au mois suivant' | translate">
@@ -286,7 +228,6 @@
               <i class="fas fa-chevron-right"></i>
             </span>
           </div>
-          <!-- Contenu principal -->
           <div class="flex-auto">
             <app-stats-card-content [statsType]="ApiPlayerStatsType[config.chartKey]" [keyStatsType]="config.chartKey"
               [cumulSeries]="cumulSeries" [seriesLabels]="seriesLabels" [fullScreenModalKey]="fullScreenModalKey"
@@ -304,9 +245,8 @@
 <div [ngClass]="selectedTab === 'health' ? 'd-block' : 'd-none'" class="alliances-stats-content" *ngIf="!isInLoading">
   <div class="container-fluid pt-3 pb-3" style="margin-bottom: 70px;" *ngIf="isPulseChartReady">
     <div class="row">
-      <!-- Top 5 gains en puissance (24h) -->
       <div class="col-6 mt-4" *ngIf="topMightGain24h && topMightGain24h.length > 0">
-        <h2 class="text-center">{{ 'Progressions de puissance depuis 24 heures' | translate }}</h2>
+        <h2 class="text-center subtitle">{{ 'Progressions de puissance depuis 24 heures' | translate }}</h2>
         <app-table [sort]="''" [headers]="[
             ['playerName', 'Nom du joueur' | translate, '', true],
             ['current', 'Puissance' | translate, '/assets/pp1.png', true],
@@ -323,9 +263,8 @@
           </tr>
         </app-table>
       </div>
-      <!-- Top 5 gains en puissance (7d) -->
       <div class="col-6 mt-4" *ngIf="topMightGain7d && topMightGain7d.length > 0">
-        <h2 class="text-center">{{ 'Progressions de puissance depuis 7 jours' | translate }}</h2>
+        <h2 class="text-center subtitle">{{ 'Progressions de puissance depuis 7 jours' | translate }}</h2>
         <app-table [sort]="''" [headers]="[
             ['playerName', 'Nom du joueur' | translate, '', true],
             ['current', 'Puissance' | translate, '/assets/pp1.png', true],
@@ -342,9 +281,8 @@
           </tr>
         </app-table>
       </div>
-      <!-- Top 5 pertes en puissance (24h) -->
       <div class="col-6 mt-4" *ngIf="topMightLoss24h && topMightLoss24h.length > 0">
-        <h2 class="text-center">{{ 'Baisses de puissance depuis 24 heures' | translate }}</h2>
+        <h2 class="text-center subtitle">{{ 'Baisses de puissance depuis 24 heures' | translate }}</h2>
         <app-table [sort]="''" [headers]="[
             ['playerName', 'Nom du joueur' | translate, '', true],
             ['current', 'Puissance' | translate, '/assets/pp1.png', true],
@@ -361,9 +299,8 @@
           </tr>
         </app-table>
       </div>
-      <!-- Top 5 pertes en puissance (7d) -->
       <div class="col-6 mt-4" *ngIf="topMightLoss7d && topMightLoss7d.length > 0">
-        <h2 class="text-center">{{ 'Baisses de puissance depuis 7 jours' | translate }}</h2>
+        <h2 class="text-center subtitle">{{ 'Baisses de puissance depuis 7 jours' | translate }}</h2>
         <app-table [sort]="''" [headers]="[
             ['playerName', 'Nom du joueur' | translate, '', true],
             ['current', 'Puissance' | translate, '/assets/pp1.png', true],
@@ -381,7 +318,7 @@
         </app-table>
       </div>
     </div>
-    <div class="row">
+    <div class="row mt-3">
       <div class="col-12">
         <app-player-stats-card *ngIf="mightPerHourChart" [charts]="{
                 'Graphique': mightPerHourChart,

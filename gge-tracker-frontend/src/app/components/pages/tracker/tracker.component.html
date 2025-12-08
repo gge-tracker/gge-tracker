@@ -46,11 +46,8 @@
             </div>
           </div>
           <div class="col-auto">
-            <app-select *ngIf="displayedStates && displayedStates.length > 0"
-                [items]="displayedStates"
-                [name]="'dungeon-state'"
-                [selectedItem]="'0'"
-                (selectEmitter)="changeState($event)"></app-select>
+            <app-select *ngIf="displayedStates && displayedStates.length > 0" [items]="displayedStates"
+              [name]="'dungeon-state'" [selectedItem]="'0'" (selectEmitter)="changeState($event)"></app-select>
           </div>
           <div class="col-auto">
             <div class="btn-group">
@@ -70,51 +67,46 @@
             </button>
           </div>
         </div>
-        <div class="row my-2 special-bg" *ngIf="!allowedServers.includes(serverService.choosedServer)">
+        <div class="row my-2 special-bg" *ngIf="serverService.currentServer && !allowedServers.includes(serverService.currentServer.name)">
           <div class="col-12">
             <i class="fa-solid fa-info-circle text-muted me-1"></i>
             <span class="text-black">
-              <em>{{ 'server-not-available' | translate: { server: (serverService.choosedServer) } }}</em>
+              <em>{{ 'server-not-available' | translate: { server: (serverService.currentServer.name) } }}</em>
             </span>
           </div>
         </div>
-        <div class="mb-1">
-          <app-server-badge [allowedServers]="allowedServers" [infoDisplayed]="false"></app-server-badge>
-          <span class="ms-1 badge bg-info pointer" *ngIf="responseTime > 0"
-            [title]="('Affichage des données en'  | translate) + ' ' + responseTime + 'ms'">
-            <i class="fa-solid fa-clock"></i>
-            {{ responseTime / 1000 }}s
-          </span>
-          <span class="ms-1 badge bg-info pointer" [title]="('Nombre de résultats' | translate)">
-            <i class="fa-solid fa-dungeon"></i>
-            {{ resultsCount | formatNumber }}
-          </span>
+        <div class="flex flex-col justify-between gap-6 mt-2">
+          <app-table [sort]="''" [reverse]="false" [isInLoading]="isInLoading" [maxPage]="maxPage!" [page]="page"
+            [search]="''" [headers]="headers" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()"
+            (nextPage)="nextPage()">
+            <tr *ngIf="dungeons.length === 0 && !isInLoading">
+              <td colspan="10" class="no-data">{{ 'Aucun résultat' | translate }}</td>
+            </tr>
+            <tr *ngFor="let dungeon of dungeons" [ngClass]="{'table-custom': isInCooldown(dungeon)}">
+              <td class="col-rank">
+                <span class="mobile-only">#</span>
+                {{ dungeon.rank }}
+              </td>
+              <td>
+                <div class="d-flex">
+                  <div>
+                    <img [src]="dungeon.image" alt="{{ dungeon.kid }}" class="img-fluid" width="30">
+                  </div>
+                  <span class="ms-2 dungeon-{{ dungeon.kid }}">{{ getRealmName(dungeon.kid) | translate }}</span>
+                </div>
+              </td>
+              <td>{{ dungeon.position }}</td>
+              <td *ngIf="headers.length === 5">
+                {{ dungeon.distance ? dungeon.distance + 'm' : '?' }}
+              </td>
+              <td>
+                <i class="fa-solid fa-dungeon special-fa" *ngIf="!isInCooldown(dungeon)"></i>
+                {{ dungeon.effectiveCooldownUntil | cooldown: dungeon.lastAttackAt }}
+              </td>
+              <td><span *ngIf="isInCooldown(dungeon)">{{ dungeon.playerName }}</span></td>
+            </tr>
+          </app-table>
         </div>
-        <app-table [sort]="''" [reverse]="false" [isInLoading]="isInLoading" [maxPage]="maxPage!" [page]="page"
-          [search]="''" [headers]="headers" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()"
-          (nextPage)="nextPage()">
-          <tr *ngIf="dungeons.length === 0 && !isInLoading">
-            <td colspan="10">
-              <span class="text-muted">{{ 'Aucun résultat' | translate }}</span>
-            </td>
-          </tr>
-          <tr *ngFor="let dungeon of dungeons" [ngClass]="{'table-custom': isInCooldown(dungeon)}">
-            <td>{{ dungeon.rank }}</td>
-            <td>
-              <img [src]="dungeon.image" alt="{{ dungeon.kid }}" class="img-fluid" width="20">
-              {{ getRealmName(dungeon.kid) | translate }}
-            </td>
-            <td>{{ dungeon.position }}</td>
-            <td *ngIf="headers.length === 5">
-              {{ dungeon.distance ? dungeon.distance + 'm' : '?' }}
-            </td>
-            <td>
-              <i class="fa-solid fa-dungeon special-fa" *ngIf="!isInCooldown(dungeon)"></i>
-              {{ dungeon.effectiveCooldownUntil | cooldown: dungeon.lastAttackAt }}
-            </td>
-            <td><span *ngIf="isInCooldown(dungeon)">{{ dungeon.playerName }}</span></td>
-          </tr>
-        </app-table>
       </div>
     </div>
 
@@ -137,16 +129,16 @@
                   <span class="input-group-text">
                     <span>X</span>
                   </span>
-                  <input type="number" class="form-control" [(ngModel)]="positionX"
-                    placeholder="{{ 'Position X' | translate }}">
+                  <input type="number" class="form-control" [(ngModel)]="positionX" placeholder="{{ 'Position X' | translate }}">
                   <span class="input-group-text">
                     <span>Y</span>
                   </span>
+
                   <input type="number" class="form-control" [(ngModel)]="positionY"
                     placeholder="{{ 'Position Y' | translate }}">
-                  <button class="btn btn-primary" data-bs-dismiss="modal"
+                  <button class="gge-btn search" data-bs-dismiss="modal"
                     (click)="onPositionChange(positionX, positionY)">{{ 'Rechercher' | translate }}</button>
-                  <button class="btn btn-secondary" data-bs-dismiss="modal" (click)="resetPosition()">{{ 'Réinitialiser'
+                  <button class="gge-btn reset" data-bs-dismiss="modal" (click)="resetPosition()">{{ 'Réinitialiser'
                     | translate }}</button>
                 </div>
               </div>
@@ -159,9 +151,9 @@
                   </span>
                   <input type="text" class="form-control" [(ngModel)]="nearPlayerName"
                     placeholder="{{ 'Nom du joueur' | translate }}">
-                  <button class="btn btn-primary" data-bs-dismiss="modal"
+                  <button class="gge-btn search" data-bs-dismiss="modal"
                     (click)="onPositionChangePlayerName(nearPlayerName)">{{ 'Rechercher' | translate }}</button>
-                  <button class="btn btn-secondary" data-bs-dismiss="modal" (click)="resetPositionPlayerName()">{{
+                  <button class="gge-btn reset" data-bs-dismiss="modal" (click)="resetPositionPlayerName()">{{
                     'Réinitialiser' | translate }}</button>
                 </div>
               </div>

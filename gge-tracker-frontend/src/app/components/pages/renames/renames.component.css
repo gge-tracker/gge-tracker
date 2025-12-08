@@ -1,4 +1,8 @@
-::ng-deep .renames th, td {
+::ng-deep .renames #table-component th, td {
   text-align: center;
   vertical-align: middle;
+}
+
+::ng-deep .renames #table-component td {
+  padding: 8px 0;
 }

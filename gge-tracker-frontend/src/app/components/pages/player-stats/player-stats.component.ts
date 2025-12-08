@@ -1,33 +1,32 @@
-import { NgIf, NgClass, NgForOf, DatePipe } from '@angular/common';
+import { DatePipe, NgClass, NgForOf, NgIf } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import {
+  AlliancesUpdates,
+  ApiGenericData,
+  ApiPlayerStatsByPlayerId,
+  ApiPlayerStatsType,
+  ApiRankingStatsPlayer,
+  ApiResponse,
+  CastleQuantity,
+  CastleType,
+  ChartOptions,
+  ErrorType,
+  EventGenericVariation,
+  Monument,
+  PlayersUpdates,
+  Top3EventPlayers,
+} from '@ggetracker-interfaces/empire-ranking';
+import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
+import { LevelPipe } from '@ggetracker-pipes/level.pipe';
+import { LanguageService } from '@ggetracker-services/language.service';
+import { LocalStorageService } from '@ggetracker-services/local-storage.service';
 import { TranslateModule } from '@ngx-translate/core';
 import Gradient from 'javascript-color-gradient';
 import { ApexAxisChartSeries } from 'ng-apexcharts';
-
 import { PlayerStatsCardComponent } from './player-stats-card/player-stats-card.component';
-import {
-  ChartOptions,
-  EventGenericVariation,
-  AlliancesUpdates,
-  PlayersUpdates,
-  Top3EventPlayers,
-  ErrorType,
-  ApiGenericData,
-  ApiPlayerStatsType,
-  ApiResponse,
-  ApiPlayerStatsByPlayerId,
-  ApiRankingStatsPlayer,
-  CastleQuantity,
-  CastleType,
-  Monument,
-} from '@ggetracker-interfaces/empire-ranking';
-import { LanguageService } from '@ggetracker-services/language.service';
-import { LocalStorageService } from '@ggetracker-services/local-storage.service';
-import { GenericComponent } from '@ggetracker-components/generic/generic.component';
-import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
-import { LevelPipe } from '@ggetracker-pipes/level.pipe';
-import { FormsModule } from '@angular/forms';
 
 export interface IRankingStatsPlayer {
   playerId: number;

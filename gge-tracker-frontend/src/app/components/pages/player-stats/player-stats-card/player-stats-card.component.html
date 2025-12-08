@@ -46,11 +46,11 @@
       (chartComponentOutput)="onChartComponentInitialized($event)"
     ></app-charts-wrapper>
     <div class="text-center" *ngIf="chart.value && chart.value.series && selectedTab === chart.key && isBrowser && isReady">
-      <div class="btn-group" *ngIf="isWeekly()">
-        <button class="btn btn-primary btn-sm" (click)="changePeriod('day')" (keyup.enter)="changePeriod('day')" [ngClass]="period === 'day' ? 'active' : ''">{{ 'Dernières 24h' | translate }}</button>
-        <button class="btn btn-primary btn-sm" (click)="changePeriod('week')" (keyup.enter)="changePeriod('week')" [ngClass]="period === 'week' ? 'active' : ''">{{ 'Derniers 7 jours' | translate  }}</button>
-        <button class="btn btn-primary btn-sm" (click)="changePeriod('month')" (keyup.enter)="changePeriod('month')" [ngClass]="period === 'month' ? 'active' : ''">{{ 'Derniers 30 jours' | translate  }}</button>
-        <button class="btn btn-primary btn-sm" (click)="changePeriod('year')" (keyup.enter)="changePeriod('year')" [ngClass]="period === 'year' ? 'active' : ''">{{ 'Derniers 365 jours' | translate  }}</button>
+        <div class="btn-group" *ngIf="isWeekly()">
+          <button class="gge-btn light-yellow btn-sm" (click)="changePeriod('day')" (keyup.enter)="changePeriod('day')" [ngClass]="period === 'day' ? 'active' : ''">{{ 'Dernières 24h' | translate }}</button>
+        <button class="gge-btn light-yellow btn-sm" (click)="changePeriod('week')" (keyup.enter)="changePeriod('week')" [ngClass]="period === 'week' ? 'active' : ''">{{ 'Derniers 7 jours' | translate  }}</button>
+        <button class="gge-btn light-yellow btn-sm" (click)="changePeriod('month')" (keyup.enter)="changePeriod('month')" [ngClass]="period === 'month' ? 'active' : ''">{{ 'Derniers 30 jours' | translate  }}</button>
+        <button class="gge-btn light-yellow btn-sm" (click)="changePeriod('year')" (keyup.enter)="changePeriod('year')" [ngClass]="period === 'year' ? 'active' : ''">{{ 'Derniers 365 jours' | translate  }}</button>
       </div>
     </div>
   </div>

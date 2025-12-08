@@ -2,12 +2,10 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { TranslatePipe } from '@ngx-translate/core';
-import { CalendarCheck, LucideAngularModule, SquareUser } from 'lucide-angular';
-import { ApexAxisChartSeries, ApexChart, ApexNonAxisChartSeries, ApexOptions, ApexPlotOptions } from 'ng-apexcharts';
-import { firstValueFrom } from 'rxjs';
-
-import { EventsHeaderComponent } from './events-header/events-header.component';
+import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { IconComponent } from '@ggetracker-components/icon/icon.component';
+import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
+import { TableComponent } from '@ggetracker-components/table/table.component';
 import {
   ApiEventlist,
   ApiOuterRealmEvent,
@@ -18,9 +16,12 @@ import {
 import { ChartsWrapperComponent } from '@ggetracker-modules/charts-client/charts-wrapper.component';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { LanguageService } from '@ggetracker-services/language.service';
-import { GenericComponent } from '@ggetracker-components/generic/generic.component';
-import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
-import { TableComponent } from '@ggetracker-components/table/table.component';
+import { ServerService } from '@ggetracker-services/server.service';
+import { TranslatePipe } from '@ngx-translate/core';
+import { CalendarCheck, LucideAngularModule, SquareUser } from 'lucide-angular';
+import { ApexAxisChartSeries, ApexChart, ApexNonAxisChartSeries, ApexOptions, ApexPlotOptions } from 'ng-apexcharts';
+import { firstValueFrom } from 'rxjs';
+import { EventsHeaderComponent } from './events-header/events-header.component';
 
 export enum EventType {
   OUTER_REALM = 'outer-realms',
@@ -61,6 +62,7 @@ export interface EventList {
     LucideAngularModule,
     EventsHeaderComponent,
     ChartsWrapperComponent,
+    IconComponent,
   ],
   templateUrl: './events.component.html',
   styleUrl: './events.component.css',
@@ -72,6 +74,7 @@ export class EventsComponent extends GenericComponent {
   public responseTime = 0;
   public events: EventList[] = [];
   public activatedRoute = inject(ActivatedRoute);
+  public serverService = inject(ServerService);
   public tableLoading = false;
   public page = 1;
   public maxPage = 1;
@@ -88,47 +91,6 @@ export class EventsComponent extends GenericComponent {
     isFiltered: false,
   };
   public translations: Record<string, string> = {};
-
-  public servers = [
-    'FR1',
-    'DE1',
-    'RO1',
-    'CZ1',
-    'NL1',
-    'LIVE',
-    'INT3',
-    'US1',
-    'TR1',
-    'PT1',
-    'BR1',
-    'IN1',
-    'IT1',
-    'PL1',
-    'AU1',
-    'ARAB',
-    'HANT',
-    'GR1',
-    'CN1',
-    'ASIA',
-    'AE1',
-    'EG1',
-    'SKN1',
-    'RU1',
-    'SA1',
-    'BG1',
-    'ES2',
-    'SK1',
-    'ES1',
-    'GB1',
-    'HU1',
-    'INT2',
-    'HU2',
-    'JP1',
-    'LT1',
-    'INT1',
-    'CN1',
-    'HIS1',
-  ].sort(EventsComponent.serverSort);
 
   private eventId: number | null = null;
   private languageService = inject(LanguageService);
@@ -200,49 +162,6 @@ export class EventsComponent extends GenericComponent {
     this.players = players.players;
     this.tableLoading = false;
     this.cdr.detectChanges();
-  }
-
-  public getFlagUrl(server: string): string {
-    const serverFlags: Record<string, string> = {
-      FR1: 'https://flagsapi.com/FR/flat/64.png',
-      DE1: 'https://flagsapi.com/DE/flat/64.png',
-      RO1: 'https://flagsapi.com/RO/flat/64.png',
-      CZ1: 'https://flagsapi.com/CZ/flat/64.png',
-      NL1: 'https://flagsapi.com/NL/flat/64.png',
-      LIVE: '/assets/int_flag.png',
-      INT3: '/assets/int_flag.png',
-      US1: 'https://flagsapi.com/US/flat/64.png',
-      TR1: 'https://flagsapi.com/TR/flat/64.png',
-      PT1: 'https://flagsapi.com/PT/flat/64.png',
-      BR1: 'https://flagsapi.com/BR/flat/64.png',
-      IN1: 'https://flagsapi.com/IN/flat/64.png',
-      IT1: 'https://flagsapi.com/IT/flat/64.png',
-      PL1: 'https://flagsapi.com/PL/flat/64.png',
-      AU1: 'https://flagsapi.com/AU/flat/64.png',
-      ARAB: '/assets/arab_flag.png',
-      HANT: 'https://flagsapi.com/CN/flat/64.png',
-      GR1: 'https://flagsapi.com/GR/flat/64.png',
-      CN1: 'https://flagsapi.com/CN/flat/64.png',
-      ASIA: 'https://flagsapi.com/AS/flat/64.png',
-      AE1: 'https://flagsapi.com/AE/flat/64.png',
-      EG1: 'https://flagsapi.com/EG/flat/64.png',
-      SKN1: 'https://flagsapi.com/SK/flat/64.png',
-      RU1: 'https://flagsapi.com/RU/flat/64.png',
-      SA1: 'https://flagsapi.com/SA/flat/64.png',
-      BG1: 'https://flagsapi.com/BG/flat/64.png',
-      ES2: 'https://flagsapi.com/ES/flat/64.png',
-      SK1: 'https://flagsapi.com/SK/flat/64.png',
-      ES1: 'https://flagsapi.com/ES/flat/64.png',
-      GB1: 'https://flagsapi.com/GB/flat/64.png',
-      HU1: 'https://flagsapi.com/HU/flat/64.png',
-      INT2: '/assets/int_flag.png',
-      HU2: 'https://flagsapi.com/HU/flat/64.png',
-      JP1: 'https://flagsapi.com/JP/flat/64.png',
-      LT1: 'https://flagsapi.com/LT/flat/64.png',
-      INT1: '/assets/int_flag.png',
-      HIS1: 'https://flagsapi.com/MX/flat/64.png',
-    };
-    return serverFlags[server] || '/assets/default_flag.png';
   }
 
   public applyFilters(): void {
@@ -364,7 +283,8 @@ export class EventsComponent extends GenericComponent {
   private async init(): Promise<void> {
     try {
       this.route.params.subscribe(async (parameters) => {
-        if (Object.keys(parameters).length === 0) {
+        if (Object.keys(parameters).length === 0 || Number.isNaN(Number.parseInt(parameters['eventId']))) {
+          const targetedEvent = parameters['eventType'];
           const events = await this.getEventList();
           this.responseTime = events.response;
           this.events = events.data.events.map((event) => ({
@@ -374,6 +294,9 @@ export class EventsComponent extends GenericComponent {
             to: new Date(event.collect_date),
             playerCount: event.player_count,
           }));
+          if (targetedEvent !== undefined) {
+            this.events = this.events.filter((event) => event.type === targetedEvent);
+          }
         } else if (parameters['eventId'] !== undefined && !Number.isNaN(Number.parseInt(parameters['eventId']))) {
           if (
             parameters['eventType'] !== EventType.OUTER_REALM &&

@@ -32,13 +32,13 @@
         </li>
         <li class="nav-item">
           <a class="nav-link" [routerLink]="['/', 'statistics']" routerLinkActive="active">
-            <span class="position-relative">{{ 'Statistiques' | translate }} ({{ serverService.choosedServer }})</span>
+            <span class="position-relative">{{ 'Statistiques' | translate }} ({{ serverService.currentServer?.name }})</span>
           </a>
         </li>
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false"
             [ngClass]="{ 'active': isActive('/renames') }">
-            <span translate class="position-relative">{{ 'Changements de noms' | translate }} <small>(2)</small></span>
+            <span translate class="position-relative">{{ 'Changements de nom' | translate }} <small>(2)</small></span>
           </a>
           <ul class="dropdown-menu">
             <li class="mx-0"><a class="dropdown-item" [routerLink]="['/', 'renames', 'players']"

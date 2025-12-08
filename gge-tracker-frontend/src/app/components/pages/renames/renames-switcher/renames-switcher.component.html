@@ -1,0 +1,9 @@
+<div class="renames-switcher">
+  <button class="switch-btn" [class.active]="currentViewType === 'players'" (click)="go('players')">
+    {{ 'Joueurs' | translate }}
+  </button>
+
+  <button class="switch-btn" [class.active]="currentViewType === 'alliances'" (click)="go('alliances')">
+    {{ 'Alliances' | translate }}
+  </button>
+</div>

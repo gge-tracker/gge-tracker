@@ -21,7 +21,6 @@
   font-weight: 700;
 }
 
-
 .navbar-toggler:focus {
   box-shadow: none;
 }
@@ -60,6 +59,7 @@
     margin: 0 0.5rem;
   }
 }
+
 .navbar .nav-link {
   position: relative;
   color: #eee;
@@ -95,12 +95,11 @@
   }
 }
 
-.navbar .nav-item.active .nav-link,
-.navbar .nav-link.active {
+.navbar .nav-item.active .nav-link, .navbar .nav-link.active {
   color: #ffffff;
   font-weight: 600;
   background: url(/assets/light-background-hover.png), #0c08003d !important;
-      background-size: 25px !important;
+  background-size: 25px !important;
   background-clip: text;
   -webkit-background-clip: text;
 }
@@ -133,6 +132,7 @@
     color: #fff;
   }
 }
+
 .navbar-toggler {
   background: #879274;
 }

@@ -126,6 +126,8 @@ services:
     networks:
       - backend
     restart: always
+    volumes:
+      - backend-assets:/app/dist/assets
     environment:
       - MYSQL_HOST=${MARIADB_HOST}
       - MYSQL_DATABASE=${SQL_DATABASE}
@@ -145,6 +147,17 @@ services:
       - GGE_API_URL=${GGE_API_URL}:${GGE_API_PORT}
       - GGE_API_URL_REALTIME=${GGE_API_URL_REALTIME}:${GGE_API_PORT_REALTIME}
       - BACKEND_API_URI=${BACKEND_API_URI}
+      - LOG_MAX_ENTRIES=${LOG_MAX_ENTRIES}
+      - LOG_MAX_BYTES=${LOG_MAX_BYTES}
+      - LOG_FLUSH_INTERVAL_MS=${LOG_FLUSH_INTERVAL_MS}
+      - LOKI_MAX_RETRIES=${LOKI_MAX_RETRIES}
+      - LOKI_RETRY_BASE_MS=${LOKI_RETRY_BASE_MS}
+      - IP_WINDOW_MS=${IP_WINDOW_MS}
+      - IP_THRESHOLD=${IP_THRESHOLD}
+      - DECAY_INTERVAL_MS=${DECAY_INTERVAL_MS}
+      - DECAY_FACTOR=${DECAY_FACTOR}
+      - RATE_LIMIT_POINTS=${RATE_LIMIT_POINTS}
+      - RATE_LIMIT_DURATION=${RATE_LIMIT_DURATION}
     depends_on:
       mariadb:
         condition: service_healthy
@@ -156,7 +169,7 @@ services:
   redis-server:
     image: redis:8.2
     container_name: redis-container
-    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru --lazyfree-lazy-eviction yes --lazyfree-lazy-expire yes --lazyfree-lazy-server-del yes --maxclients 1000
+    command: redis-server --maxmemory 5120mb --maxmemory-policy allkeys-lru --lazyfree-lazy-eviction yes --lazyfree-lazy-expire yes --lazyfree-lazy-server-del yes --maxclients 1000
     networks:
       - backend
     healthcheck:
@@ -181,11 +194,11 @@ services:
       context: ./../empire-api
       dockerfile: Dockerfile
       args:
-        HAS_GBL: "true"
+        API_TYPE: realtime
     container_name: empire-api-container-realtime
     environment:
       NODE_ENV: production
-      HAS_GBL: "true"
+      API_TYPE: realtime
     networks:
       - backend
     restart: always
@@ -206,9 +219,9 @@ services:
 
   grafana:
     image: grafana/grafana:12.2
-    mem_limit: 400m
-    cpu_quota: 40000
-    cpu_period: 100000
+    mem_limit: 600m
+    cpu_quota: 80000
+    cpu_period: 200000
     container_name: grafana
     volumes:
       - ./../monitoring/grafana/provisioning:/etc/grafana/provisioning
@@ -269,6 +282,9 @@ services:
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.49.1
     container_name: cadvisor
+    mem_limit: 256m
+    cpu_quota: 50000
+    cpu_period: 100000
     command:
       - "--v=0"
     volumes:

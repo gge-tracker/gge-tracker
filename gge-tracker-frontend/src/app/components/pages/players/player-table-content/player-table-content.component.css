@@ -1,0 +1,13 @@
+:host {
+    display: contents;
+}
+
+.col-distance, .col-honor {
+  color: #ddd;
+  font-weight: bold;
+  text-align: center;
+}
+
+.col-level {
+  text-align: center;
+}
