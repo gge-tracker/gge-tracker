@@ -612,7 +612,7 @@ export abstract class ApiEvents implements ApiHelper {
       const PAGINATION_LIMIT = 15;
       const id = ApiHelper.validatePageNumber(request.params.id, null);
       let page = ApiHelper.validatePageNumber(request.query.page);
-      let playerNameFilter = ApiHelper.validateSearchAndSanitize(request.query.player_name);
+      let playerNameFilter = ApiHelper.validateSearchAndSanitize(request.query.player_name, { toLowerCase: true });
       let serverFilter = ApiHelper.validateSearchAndSanitize(request.query.server, { maxLength: 20 });
       let eventType = ApiHelper.validateSearchAndSanitize(request.params.eventType);
       if (eventType !== EventTypes.OUTER_REALMS && eventType !== EventTypes.BEYOND_THE_HORIZON) {
@@ -724,7 +724,7 @@ export abstract class ApiEvents implements ApiHelper {
        * --------------------------------- */
       const players = results.map((result: any) => ({
         player_id: result.player_id
-          ? result.player_id + ApiHelper.ggeTrackerManager.getServerByCode(result.server)
+          ? result.player_id + ApiHelper.ggeTrackerManager.getOuterServer(result.server)?.code
           : null,
         player_name: result.player_name,
         rank: result.rank,

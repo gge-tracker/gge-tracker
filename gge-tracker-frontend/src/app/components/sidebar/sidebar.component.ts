@@ -19,7 +19,7 @@ export class SidebarComponent {
   public version = package_.version.split('-')[0].replaceAll('.', '-');
   public readonly menuStructure: {
     title: string;
-    items: { label: string; id: string; iconUrl?: string; frequency?: 'temps réel' | 'par heure' }[];
+    items: { label: string; id: string; iconUrl?: string; frequency?: 'Temps réel' | 'Par heure' }[];
   }[] = [
     {
       title: 'Rechercher et analyser',
@@ -34,15 +34,15 @@ export class SidebarComponent {
       title: 'Outils tactiques',
       items: [
         { label: 'Cartographie', id: 'map', iconUrl: '/assets/tools/cartography.png' },
-        { label: 'Forteresses', id: 'dungeons', iconUrl: '/assets/tools/fortresses.png', frequency: 'temps réel' },
-        { label: 'Châteaux', id: 'castles', iconUrl: '/assets/tools/castles.png', frequency: 'temps réel' },
+        { label: 'Forteresses', id: 'dungeons', iconUrl: '/assets/tools/fortresses.png', frequency: 'Temps réel' },
+        { label: 'Châteaux', id: 'castles', iconUrl: '/assets/tools/castles.png', frequency: 'Temps réel' },
       ],
     },
     {
       title: 'Scores et classements',
       items: [
-        { label: 'Outer Realms', id: 'live/outer-realms', iconUrl: '/assets/tools/or.png', frequency: 'temps réel' },
-        { label: 'Le Grand Tournoi', id: 'grand-tournament', iconUrl: '/assets/tools/gt.png', frequency: 'par heure' },
+        { label: 'Outer Realms', id: 'live/outer-realms', iconUrl: '/assets/tools/or.png', frequency: 'Temps réel' },
+        { label: 'Le Grand Tournoi', id: 'grand-tournament', iconUrl: '/assets/tools/gt.png', frequency: 'Par heure' },
         { label: 'Scores finaux', id: 'events', iconUrl: '/assets/tools/events.png' },
       ],
     },
