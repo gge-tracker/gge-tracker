@@ -14,7 +14,7 @@
             </div>
             <div class="gge-stat-meta">
               <div class="gge-stat-label" [title]="card.label | translate">{{ card.label | translate }}</div>
-              <div class="gge-stat-mini"> {{ serverService.currentServer }} </div>
+              <div class="gge-stat-mini"> {{ serverService.currentServer?.name }} </div>
             </div>
             <div class="gge-stat-cta">
               <span class="gge-stat-chevron" aria-hidden="true">›</span>
