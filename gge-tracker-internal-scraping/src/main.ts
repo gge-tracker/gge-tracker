@@ -828,15 +828,14 @@ export class GenericFetchAndSaveBackend {
       if (LT) {
         if (LT !== Number(lastLtValue)) {
           Utils.logMessage(` Updating last active LT in Redis to ${LT}.`);
-          void redisClient
-            .set(`outer-realms:last-active-lt:${this.CURRENT_ENV}`, String(LT))
-            .then(() => redisClient.quit());
+          await redisClient.set(`outer-realms:last-active-lt:${this.CURRENT_ENV}`, String(LT));
         }
       } else {
         Utils.logMessage(' No active Outer Realms event found with any known LT code. Aborting data fetch.');
         await redisClient.quit();
         return;
       }
+      await redisClient.quit();
       const entriesByPage = initialResponse.data.content?.L?.length || 0;
       const increment = Math.ceil(Number(entriesByPage) / 2);
       let hasMore = true;
@@ -982,14 +981,23 @@ export class GenericFetchAndSaveBackend {
             this.DB_UPDATES.criticalErrors++;
           }
         }
+
         const updateLatestFetchSQL = `
           INSERT INTO latest_fetch_date (fetch_date)
           VALUES ('${fetchDateStr}')
         `;
-        await axios.post(clickhouseBaseUrl + '/?query=' + encodeURIComponent(updateLatestFetchSQL), '', {
-          auth: clickhouseAuth,
-          headers: { 'Content-Type': 'text/plain' },
-        });
+        await axios.post(
+          clickhouseBaseUrl +
+            '/?query=' +
+            encodeURIComponent(updateLatestFetchSQL) +
+            '&database=' +
+            encodeURIComponent(this.CLICKHOUSE_CONFIG.database as string),
+          '',
+          {
+            auth: clickhouseAuth,
+            headers: { 'Content-Type': 'text/plain' },
+          },
+        );
       } catch (error) {
         Utils.logMessage('Error executing query:', error);
         this.DB_UPDATES.criticalErrors++;
