@@ -17,6 +17,18 @@ export enum EnumTypeReleaseNote {
 export class ReleaseNotesComponent {
   public readonly releaseNotes = [
     {
+      version: 'v25-12-08',
+      type: EnumTypeReleaseNote.MAJOR,
+      date: '2025-12-08',
+      items: [
+        '🛠️ [Tools] Added new tool: real-time EP Outer Realms leaderboard with rankings, scores, and minute-by-minute ranking changes (event-type dependent)',
+        '🎨 [Design] Complete UI overhaul of the entire website',
+        '🐞 [Bugfix] Fixed numerous issues and improved overall stability',
+        '📦 [Server] Added new EP servers: ASIA, EG1, GB1, SKN1',
+        '📦 [Server] Added EP-TR1 and E4K-BR1 to advanced tools (realtime fortress tracker + castle visualizer across kingdoms)',
+      ],
+    },
+    {
       version: 'v25-11-02',
       type: EnumTypeReleaseNote.MAJOR,
       date: '2025-11-02',
