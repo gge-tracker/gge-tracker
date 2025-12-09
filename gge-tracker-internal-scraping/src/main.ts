@@ -1125,20 +1125,7 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('Database connection successful (' + eventName + ')');
       const currentDateFormatted = format(date, 'yyyy-MM-dd HH:mm:ss');
 
-      /*
-       * [PATCH #2512091]
-       * In some cases, levelCategorySize can start at 2 (issue observed with bloodcrows)
-       * Thus, we need to adjust the starting point of the loop accordingly
-       * to avoid missing the entire event data...
-       *
-       * @todo This is a temporary patch until the root cause is identified and fixed
-       */
-      let startingCategory = 1;
-      if (eventName === 'bloodcrows') {
-        startingCategory = 2;
-      }
-
-      for (let levelCategory = startingCategory; levelCategory <= levelCategorySize; levelCategory++) {
+      for (let levelCategory = 1; levelCategory <= levelCategorySize; levelCategory++) {
         Utils.logMessage('Starting to retrieve statistics for category', levelCategory, '(of', levelCategorySize + ')');
         c = true;
         j = 0;
@@ -1158,6 +1145,14 @@ export class GenericFetchAndSaveBackend {
           }
         }
         if (!data || data['return_code'] != '0' || !data?.content?.LR) {
+          /*
+           * [PATCH #2512091]
+           * In some cases, levelCategorySize can start at 2 (issue observed with bloodcrows)
+           * Thus, we need to skip levelCategory 1 to avoid missing the entire event data...
+           */
+          if (eventName === 'bloodcrows' && levelCategory <= 2) {
+            continue;
+          }
           Utils.logMessage(' [info] No event active (1)');
           return;
         }
