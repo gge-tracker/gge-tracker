@@ -637,4 +637,115 @@ export abstract class ApiPlayers implements ApiHelper {
       return;
     }
   }
+
+    /**
+   * Bulk-Abruf von Spieler-Basisdaten.
+   *
+   * Erwartet im JSON-Body ein Integer-Array mit Player-IDs (max. 200).
+   *
+   * Request-Body:
+   *   [123456, 234567, ...]
+   *
+   * Response:
+   *   {
+   *     players: [
+   *       {
+   *         player_id: "de123456",
+   *         player_name: "Foo",
+   *         alliance_name: "Bar",
+   *         might_current: 123456
+   *       },
+   *       ...
+   *     ]
+   *   }
+   */
+  public static async getPlayerBulkData(
+    request: express.Request,
+    response: express.Response
+  ): Promise<void> {
+    try {
+      /* ---------------------------------
+       * Validate body
+       * --------------------------------- */
+      const body = request.body;
+
+      if (!Array.isArray(body)) {
+        response
+          .status(ApiHelper.HTTP_BAD_REQUEST)
+          .send({ error: 'Request body must be an array of player IDs' });
+        return;
+      }
+
+      if (body.length === 0 || body.length > 250) {
+      response
+        .status(ApiHelper.HTTP_BAD_REQUEST)
+        .send({ error: 'Player ID array must contain between 1 and 250 entries' });
+      return;
+}
+
+      // IDs zu Integers parsen, invalid rausfiltern
+      const ids = [...new Set(
+        body
+          .map((v) => Number.parseInt(String(v), 10))
+          .filter((n) => !Number.isNaN(n) && n > 0)
+      )];
+
+      if (ids.length === 0) {
+        response
+          .status(ApiHelper.HTTP_BAD_REQUEST)
+          .send({ error: 'No valid player IDs provided' });
+        return;
+      }
+
+      /* ---------------------------------
+       * Build query
+       * --------------------------------- */
+      // Wir nutzen ANY($1) mit einem Integer-Array als Parameter
+      const query = `
+        SELECT
+          P.id   AS player_id,
+          P.name AS player_name,
+          A.name AS alliance_name,
+          P.might_current
+        FROM
+          players P
+        LEFT JOIN
+          alliances A ON P.alliance_id = A.id
+        WHERE
+          P.id = ANY($1::bigint[]);
+      `;
+
+      const pool = request['pg_pool'] as pg.Pool;
+
+      /* ---------------------------------
+       * Execute query
+       * --------------------------------- */
+      pool.query(query, [ids], (error, results) => {
+        if (error) {
+          response
+            .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+            .send({ error: error.message });
+          return;
+        }
+
+        const players = results.rows.map((row: any) => ({
+          player_id: ApiHelper.addCountryCode(row.player_id, request['code']),
+          player_name: row.player_name,
+          alliance_name: row.alliance_name,
+          might_current: row.might_current,
+        }));
+
+        response.status(ApiHelper.HTTP_OK).send({ players });
+      });
+    } catch (error) {
+      const { code, message } = ApiHelper.getHttpMessageResponse(
+        ApiHelper.HTTP_INTERNAL_SERVER_ERROR
+      );
+      response.status(code).send({ error: message });
+      ApiHelper.logError(error, 'getPlayerBulkData', request);
+      return;
+    }
+  }
+
+
 }

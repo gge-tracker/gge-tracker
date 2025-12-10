@@ -222,6 +222,10 @@ export class ControllerManager {
   public getPlayersByPlayerName(request: express.Request, response: express.Response): void {
     void ApiPlayers.getPlayersByPlayerName(request, response);
   }
+  
+  public getPlayerBulkData(request: express.Request, response: express.Response): void {
+  void ApiPlayers.getPlayerBulkData(request, response);
+  }
 
   public getStatisticsByAllianceId(request: express.Request, response: express.Response): void {
     void ApiStatistics.getStatisticsByAllianceId(request, response);
