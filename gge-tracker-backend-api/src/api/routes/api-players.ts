@@ -639,4 +639,148 @@ export abstract class ApiPlayers implements ApiHelper {
       return;
     }
   }
+
+  /**
+   * Handles bulk retrieval of player data by playerIDs
+   *
+   * @param request - Express request object, expects an array of player IDs in the request body
+   * @param response - Express response object. Sends JSON responses, with the following structure:
+   *   {
+   *     players: [
+   *       {
+   *         player_id: string,
+   *         player_name: string,
+   *         alliance_id: string | null,
+   *         alliance_name: string | null,
+   *         might_current: number,
+   *         might_all_time: number,
+   *         loot_current: number,
+   *         loot_all_time: number,
+   *         honor: number,
+   *         max_honor: number,
+   *         peace_disabled_at: string | null,
+   *         updated_at: string,
+   *         level: number,
+   *         legendary_level: number,
+   *         highest_fame: number,
+   *         current_fame: number
+   *       },
+   *       ...
+   *     ]
+   *   }
+   * @returns A promise that resolves when the response has been sent
+   */
+  public static async getPlayerBulkData(request: express.Request, response: express.Response): Promise<void> {
+    try {
+      /* ---------------------------------
+       * Validate parameters
+       * --------------------------------- */
+      const body = request.body;
+      if (!Array.isArray(body)) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Request body must be an array of player IDs' });
+        return;
+      }
+      // Sanitize and validate IDs
+      let ids = [
+        ...new Set(
+          body
+            .map((v) => Number.parseInt(ApiHelper.removeCountryCode(String(v)), 10))
+            .filter((n) => !Number.isNaN(n) && n > 0),
+        ),
+      ];
+      if (ids.length === 0) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'No valid player IDs provided' });
+        return;
+      } else if (ids.length > ApiHelper.BULK_REQUEST_MAX_IDS) {
+        response
+          .status(ApiHelper.HTTP_BAD_REQUEST)
+          .send({ error: `Maximum of ${ApiHelper.BULK_REQUEST_MAX_IDS} player IDs allowed per request` });
+        return;
+      }
+
+      /* ---------------------------------
+       * Cache validation
+       * --------------------------------- */
+      const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${request['language']}`)) || '1';
+      const encodedIds = ids.map((id) => encodeURIComponent(String(id))).join(',');
+      const cachedKey = request['language'] + `:${cacheVersion}:` + `player-bulk-data:ids-[${encodedIds}]`;
+      const cachedData = await ApiHelper.redisClient.get(cachedKey);
+      if (cachedData) {
+        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        return;
+      }
+
+      /* ---------------------------------
+       * Build query
+       * --------------------------------- */
+      // We use ANY($1) with an integer array as a parameter
+      const query = `
+        SELECT
+          P.id AS player_id,
+          P.name AS player_name,
+          A.id AS alliance_id,
+          A.name AS alliance_name,
+          P.might_current,
+          P.might_all_time,
+          P.loot_current,
+          P.loot_all_time,
+          P.honor,
+          P.max_honor,
+          P.peace_disabled_at,
+          P.updated_at,
+          P.level,
+          P.legendary_level,
+          P.highest_fame,
+          P.current_fame
+        FROM
+          players P
+        LEFT JOIN
+          alliances A ON P.alliance_id = A.id
+        WHERE
+          P.id = ANY($1::bigint[]);
+      `;
+      const pool = request['pg_pool'] as pg.Pool;
+
+      /* ---------------------------------
+       * Execute query
+       * --------------------------------- */
+      pool.query(query, [ids], (error, results) => {
+        if (error) {
+          response
+            .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
+        }
+
+        const players = results.rows.map((row: any) => ({
+          player_id: ApiHelper.addCountryCode(row.player_id, request['code']),
+          player_name: row.player_name,
+          alliance_id: ApiHelper.addCountryCode(row.alliance_id, request['code']),
+          alliance_name: row.alliance_name,
+          might_current: row.might_current,
+          might_all_time: row.might_all_time,
+          loot_current: row.loot_current,
+          loot_all_time: row.loot_all_time,
+          highest_fame: row.highest_fame,
+          current_fame: row.current_fame,
+          honor: row.honor,
+          max_honor: row.max_honor,
+          peace_disabled_at: row.peace_disabled_at,
+          level: row.level,
+          legendary_level: row.legendary_level,
+          updated_at: formatInTimeZone(row.updated_at, ApiHelper.APPLICATION_TIMEZONE, 'yyyy-MM-dd HH:mm'),
+        }));
+
+        /* ---------------------------------
+         * Update cache and respond
+         * --------------------------------- */
+        void ApiHelper.updateCache(cachedKey, { players });
+        response.status(ApiHelper.HTTP_OK).send({ players });
+      });
+    } catch (error) {
+      const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
+      response.status(code).send({ error: message });
+      ApiHelper.logError(error, 'getPlayerBulkData', request);
+      return;
+    }
+  }
 }

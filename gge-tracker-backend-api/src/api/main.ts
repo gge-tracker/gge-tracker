@@ -69,6 +69,16 @@ app.use(
     methods: ['GET'],
   }),
 );
+app.use((error: unknown, request: express.Request, response: express.Response, next: express.NextFunction) => {
+  if (error instanceof SyntaxError && 'body' in error) {
+    response.status(400).json({
+      error: 'Invalid JSON in request body',
+    });
+    return;
+  }
+  next(error);
+});
+
 app.set('trust proxy', true);
 
 /* ------------------------------------------------
@@ -2616,6 +2626,117 @@ publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayer
  *                   description: Error message describing what went wrong
  */
 protectedRoutes.get('/players', routingInstance.getPlayers.bind(routingInstance));
+
+/**
+ * @openapi
+ * /players/bulk:
+ *   post:
+ *     summary: Retrieve multiple players by their IDs
+ *     description: |
+ *       This endpoint allows you to retrieve detailed information for multiple players at once.
+ *       The request body must be an array of player IDs. Invalid or duplicate IDs are ignored after sanitization.
+ *       A maximum number of IDs per request is enforced.
+ *     tags:
+ *       - Players
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: array
+ *             description: An array of player IDs to fetch
+ *             items:
+ *               type: string
+ *               description: Player ID
+ *     responses:
+ *       '200':
+ *         description: A list of players corresponding to the requested IDs
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 players:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       player_id:
+ *                         type: string
+ *                         description: The unique ID of the player
+ *                       player_name:
+ *                         type: string
+ *                         description: The name of the player
+ *                       alliance_id:
+ *                         type: string
+ *                         nullable: true
+ *                         description: The unique ID of the alliance, if any
+ *                       alliance_name:
+ *                         type: string
+ *                         nullable: true
+ *                         description: The name of the player's alliance, if any
+ *                       might_current:
+ *                         type: integer
+ *                         description: The current might of the player
+ *                       might_all_time:
+ *                         type: integer
+ *                         description: The total might accumulated by the player
+ *                       loot_current:
+ *                         type: integer
+ *                         description: The current loot of the player
+ *                       loot_all_time:
+ *                         type: integer
+ *                         description: The total loot accumulated by the player
+ *                       honor:
+ *                         type: integer
+ *                         description: The current honor of the player
+ *                       max_honor:
+ *                         type: integer
+ *                         description: The maximum honor of the player
+ *                       peace_disabled_at:
+ *                         type: string
+ *                         nullable: true
+ *                         description: The date and time when peace was disabled, or null if not applicable
+ *                       updated_at:
+ *                         type: string
+ *                         format: date-time
+ *                         description: The last update timestamp for the player's data
+ *                       level:
+ *                         type: integer
+ *                         description: The player's level
+ *                       legendary_level:
+ *                         type: integer
+ *                         description: The player's legendary level
+ *                       highest_fame:
+ *                         type: integer
+ *                         description: The highest fame achieved by the player
+ *                       current_fame:
+ *                         type: integer
+ *                         description: The current fame (glory) of the player
+ *       '400':
+ *         description: Bad request due to invalid or missing player IDs
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: Error message describing what went wrong
+ *       '500':
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: Error message describing what went wrong
+ */
+protectedRoutes.post('/players', routingInstance.getPlayerBulkData.bind(routingInstance));
 
 /**
  * @openapi
