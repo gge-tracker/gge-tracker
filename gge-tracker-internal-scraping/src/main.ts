@@ -1145,6 +1145,14 @@ export class GenericFetchAndSaveBackend {
           }
         }
         if (!data || data['return_code'] != '0' || !data?.content?.LR) {
+          /*
+           * [PATCH #2512091]
+           * In some cases, levelCategorySize can start at 2 (issue observed with bloodcrows)
+           * Thus, we need to skip levelCategory 1 to avoid missing the entire event data...
+           */
+          if (eventName === 'bloodcrows' && levelCategory <= 2) {
+            continue;
+          }
           Utils.logMessage(' [info] No event active (1)');
           return;
         }
