@@ -239,9 +239,9 @@ export class ApiRoutingController {
   public getPlayersByPlayerName(request: express.Request, response: express.Response): void {
     void ApiPlayers.getPlayersByPlayerName(request, response);
   }
-  
+
   public getPlayerBulkData(request: express.Request, response: express.Response): void {
-  void ApiPlayers.getPlayerBulkData(request, response);
+    void ApiPlayers.getPlayerBulkData(request, response);
   }
 
   public getStatisticsByAllianceId(request: express.Request, response: express.Response): void {

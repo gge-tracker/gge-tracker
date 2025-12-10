@@ -150,28 +150,33 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
     request: express.Request,
     response: express.Response,
   ): string {
-    const now = Date.now();
-    const server = (request.headers['gge-server'] as string) || 'none';
-    const ip = (request.headers['x-forwarded-for'] as string) || request.ip;
-    const route = this.normalizeRouteSafe(request);
+    try {
+      const now = Date.now();
+      const server = (request.headers['gge-server'] as string) || 'none';
+      const ip = (request.headers['x-forwarded-for'] as string) || request.ip;
+      const route = this.normalizeRouteSafe(request);
 
-    const labels = {
-      job: 'ggetracker-api',
-      env: this.NODE_ENV,
-      server,
-      method: tokens.method(request, response) || 'GET',
-      status: tokens.status(request, response) || '0',
-      route,
-      level: 'info',
-    };
-    const line = {
-      url: tokens.url(request, response),
-      response_time: tokens['response-time'](request, response),
-      user_agent: tokens['user-agent'](request, response),
-      ip,
-    };
-    this.pushToBuffer({ labels, line, timestamp: now });
-    return null;
+      const labels = {
+        job: 'ggetracker-api',
+        env: this.NODE_ENV,
+        server,
+        method: tokens.method(request, response) || 'GET',
+        status: tokens.status(request, response) || '0',
+        route,
+        level: 'info',
+      };
+      const line = {
+        url: tokens.url(request, response),
+        response_time: tokens['response-time'](request, response),
+        user_agent: tokens['user-agent'](request, response),
+        ip,
+      };
+      this.pushToBuffer({ labels, line, timestamp: now });
+      return null;
+    } catch (error) {
+      console.error('Error recording morgan request:', error);
+      return null;
+    }
   }
 
   /**
