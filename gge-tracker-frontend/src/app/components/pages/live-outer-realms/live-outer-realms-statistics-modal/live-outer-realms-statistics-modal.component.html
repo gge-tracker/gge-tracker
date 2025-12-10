@@ -1,0 +1,50 @@
+<div class="container my-3 px-panel">
+  <div class="row">
+    <div class="col-12">
+      <div class="mb-3">
+      <a class="gge-btn search" (click)="goBack.emit()">
+        {{ 'Retour' | translate }}
+      </a>
+      </div>
+
+      <div class="px-card">
+        <div class="px-card-header">
+          {{ 'Nom du joueur' | translate }}: {{ player().player_name }} ({{ player().server }})
+        </div>
+
+        <div class="px-card-body">
+          <p>
+            <strong>{{ 'Niveau' | translate }}:</strong> {{ player().level }}
+            <span *ngIf="player().legendary_level">/ {{ player().legendary_level }}</span>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="px-charts-wrapper mt-3 mb-5">
+        <div class="col-12 my-4" *ngFor="let chartKey of chartsArray">
+          <app-charts-wrapper
+            *ngIf="charts()[chartKey] && isBrowser"
+            [series]="charts()[chartKey].series"
+            [annotations]="charts()[chartKey].annotations || {}"
+            [chart]="charts()[chartKey].chart"
+            [xaxis]="charts()[chartKey].xaxis"
+            [yaxis]="charts()[chartKey].yaxis"
+            [dataLabels]="charts()[chartKey].dataLabels"
+            [plotOptions]="charts()[chartKey].plotOptions"
+            [labels]="charts()[chartKey].labels || []"
+            [grid]="charts()[chartKey].grid"
+            [colors]="charts()[chartKey].colors"
+            [markers]="charts()[chartKey].markers || {}"
+            [fill]="charts()[chartKey].fill"
+            [stroke]="charts()[chartKey].stroke"
+            [title]="charts()[chartKey].title"
+            [tooltip]="charts()[chartKey].tooltip"
+            [legend]="charts()[chartKey].legend">
+          </app-charts-wrapper>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

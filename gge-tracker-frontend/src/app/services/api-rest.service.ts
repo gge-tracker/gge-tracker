@@ -35,25 +35,28 @@ import {
   ApiGrandTournamentAlliancesResponse,
   ApiGrandTournamentAlliancesSearchResponse,
   ApiGrandTournamenAllianceAnalysisResponse,
+  ApiLiveRankingResponse,
+  ApiLiveRankingSpecificPlayerResponse,
 } from '@ggetracker-interfaces/empire-ranking';
 
 @Injectable({
   providedIn: 'root',
 })
 /**
- * Service for interacting with the GGE Tracker API.
+ * Service for interacting with the GGE Tracker API
  *
- * Provides methods to fetch and manipulate data related to players, alliances, dungeons, events, cartography, movements, renames, statistics, and other game-related entities.
- * Handles API errors, rate limiting, and maintenance redirects.
+ * Provides methods to fetch and manipulate data related to players, alliances, dungeons, events, cartography, movements, renames, statistics, and other game-related entities
+ * Handles API errors, rate limiting, and maintenance redirects
  *
  * @remarks
- * - All methods return a promise resolving to an `ApiResponse<T>` object.
- * - Uses injected `ServerService` for server selection and `ToastService` for error notifications.
- * - API base URL is configurable via environment variables.
+ * - All methods return a promise resolving to an `ApiResponse<T>` object
+ * - Uses injected `ServerService` for server selection and `ToastService` for error notifications
+ * - API base URL is configurable via environment variables
  *
  */
 export class ApiRestService {
   public static apiUrl = environment.apiUrl;
+  public responseMs = 0;
   public serverService = inject(ServerService);
   public toastService = inject(ToastService);
 
@@ -64,8 +67,9 @@ export class ApiRestService {
    */
   public async apiFetch<T>(url: string, doNotUpdateLocation = true): Promise<ApiResponse<T>> {
     try {
+      const now = Date.now();
       const response = await fetch(url, {
-        headers: { 'gge-server': this.serverService.choosedServer },
+        headers: { 'gge-server': this.serverService.currentServer!.name },
       });
       if (!response.ok) {
         if (response.status === 429) {
@@ -79,6 +83,7 @@ export class ApiRestService {
         };
       }
       const data = await response.json();
+      this.updateResponseMs(now, Date.now());
       if (data.error) return { success: false, error: data.error };
       return { success: true, data };
     } catch (error: unknown) {
@@ -362,7 +367,7 @@ export class ApiRestService {
   }
 
   /**
-   * Get the movements data from the API by alliance ID.
+   * Get the movements data from the API by alliance ID
    * @param page The page number to fetch
    * @param search The alliance ID to filter the results
    * @param searchType The type of search (e.g., player, alliance)
@@ -548,6 +553,7 @@ export class ApiRestService {
    * Get the grand tournament alliances from the API
    * @param date The date of the grand tournament
    * @param division The division ID of the grand tournament
+   * @param subdivision The subdivision ID of the grand tournament
    * @param page The page number to fetch
    * @returns A promise that resolves to the grand tournament alliances data
    */
@@ -555,9 +561,11 @@ export class ApiRestService {
     date: string,
     division: number,
     page: number,
+    subdivision?: number,
   ): Promise<ApiResponse<ApiGrandTournamentAlliancesResponse>> {
+    const subDivisionParameter = subdivision ? `&subdivision_id=${subdivision}` : '';
     const response = await this.apiFetch<ApiGrandTournamentAlliancesResponse>(
-      `${ApiRestService.apiUrl}grand-tournament/alliances?date=${date}&division_id=${division}&page=${page}`,
+      `${ApiRestService.apiUrl}grand-tournament/alliances?date=${date}&division_id=${division}${subDivisionParameter}&page=${page}`,
     );
     if (!response.success) return response;
     return { success: true, data: response.data };
@@ -620,6 +628,28 @@ export class ApiRestService {
     return { success: true, data: response.data };
   }
 
+  public async getLiveRankingOuterRealmsSpecificPlayer(
+    playerId: number,
+  ): Promise<ApiResponse<ApiLiveRankingSpecificPlayerResponse>> {
+    const response = await this.apiFetch<ApiLiveRankingSpecificPlayerResponse>(
+      `${ApiRestService.apiUrl}live-ranking/outer-realms/player/${playerId}`,
+    );
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  public async getLiveRankingOuterRealms(
+    page: number,
+    playerName?: string | undefined,
+  ): Promise<ApiResponse<ApiLiveRankingResponse>> {
+    const constructUrl = playerName
+      ? `${ApiRestService.apiUrl}live-ranking/outer-realms?page=${page}&player_name=${playerName}`
+      : `${ApiRestService.apiUrl}live-ranking/outer-realms?page=${page}`;
+    const response = await this.apiFetch<ApiLiveRankingResponse>(constructUrl);
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
   /**
    * Get the alliance by name from the API
    * @param allianceName The name of the alliance to search for
@@ -631,5 +661,9 @@ export class ApiRestService {
     );
     if (!response.success) return response;
     return { success: true, data: response.data };
+  }
+
+  private updateResponseMs(requestStartMs: number, requestEndMs: number): void {
+    this.responseMs = requestEndMs - requestStartMs;
   }
 }

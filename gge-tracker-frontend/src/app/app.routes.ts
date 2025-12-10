@@ -19,6 +19,7 @@ import { PlayerStatsResolver } from '@ggetracker-resolvers/player-stats.resolver
 import { titleResolver } from '@ggetracker-resolvers/title.resolver';
 import { ViewCastleComponent } from '@ggetracker-pages/view-castle/view-castle.component';
 import { GrandTournamentComponent } from '@ggetracker-pages/grand-tournament/grand-tournament.component';
+import { LiveOuterRealmsComponent } from '@ggetracker-pages/live-outer-realms/live-outer-realms.component';
 
 export const routes: Routes = [
   {
@@ -167,6 +168,15 @@ export const routes: Routes = [
         },
       },
       {
+        path: 'events/:eventType',
+        component: EventsComponent,
+        resolve: { titleResolver },
+        data: {
+          description: 'Analyze the events of Goodgame Empire: outer realms and beyond the horizon.',
+          titleKey: 'Événements',
+        },
+      },
+      {
         path: 'events/:eventType/:eventId',
         component: EventsComponent,
         resolve: { titleResolver },
@@ -182,6 +192,24 @@ export const routes: Routes = [
         data: {
           description: 'View detailed information about a specific castle in Goodgame Empire.',
           titleKey: 'Châteaux',
+        },
+      },
+      {
+        path: 'live/outer-realms',
+        component: LiveOuterRealmsComponent,
+        resolve: { titleResolver },
+        data: {
+          description: 'Real-time tracking of Outer Realms rankings and player activities in Goodgame Empire.',
+          titleKey: 'Événements',
+        },
+      },
+      {
+        path: 'live/outer-realms/:playerId',
+        component: LiveOuterRealmsComponent,
+        resolve: { titleResolver },
+        data: {
+          description: 'Real-time tracking of Outer Realms rankings and player activities in Goodgame Empire.',
+          titleKey: 'Événements',
         },
       },
       {

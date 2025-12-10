@@ -147,3 +147,9 @@ sql=empire-ranking-cn1
 olap=empire_ranking_cn1
 zone=EmpireEx_27
 limit=2
+
+[ORREALTIME]
+sql=empire-ranking-global
+olap=empire_ranking_global
+zone=EmpireEx_42
+limit=5

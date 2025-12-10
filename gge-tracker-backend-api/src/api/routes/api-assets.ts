@@ -1,18 +1,19 @@
+import axios from 'axios';
 import * as express from 'express';
 import * as fs from 'node:fs';
-import { ApiHelper } from '../api-helper';
 import path from 'node:path';
-import axios from 'axios';
-import { puppeteerSingleton } from '../singleton/puppeteer-singleton';
 import { Page } from 'puppeteer';
+import { RouteErrorMessagesEnum } from '../enums/errors.enums';
+import { ApiHelper } from '../helper/api-helper';
+import { puppeteerManagerInstance } from '../managers/puperteer.manager';
 
 declare global {
   /**
-   * Extends the global Window interface to include optional properties used for asset loading and library management.
+   * Extends the global Window interface to include optional properties used for asset loading and library management
    *
-   * @property {any} [AssetLoader] - Optional property for handling asset loading functionality.
-   * @property {any} [createjs] - Optional property for referencing the CreateJS library.
-   * @property {any} [Library] - Optional property for referencing a custom or external library.
+   * @property {any} [AssetLoader] - Optional property for handling asset loading functionality
+   * @property {any} [createjs] - Optional property for referencing the CreateJS library
+   * @property {any} [Library] - Optional property for referencing a custom or external library
    */
   interface Window {
     AssetLoader?: any;
@@ -22,33 +23,33 @@ declare global {
 }
 
 /**
- * Provides static API endpoints for managing and serving game assets, items, and language data.
+ * Provides static API endpoints for managing and serving game assets, items, and language data
  *
  * The `ApiAssets` abstract class implements several Express route handlers for:
- * - Updating asset and item data from remote sources (with internal secret validation).
- * - Serving filtered item data, with Redis caching for performance.
- * - Fetching and caching language translation files for supported languages.
- * - Serving individual asset files (images, JSON, JS) with type validation, caching, and content-type handling.
- * - Dynamically generating and serving PNG images of assets using Puppeteer and CreateJS/EaselJS.
+ * - Updating asset and item data from remote sources (with internal secret validation)
+ * - Serving filtered item data, with Redis caching for performance
+ * - Fetching and caching language translation files for supported languages
+ * - Serving individual asset files (images, JSON, JS) with type validation, caching, and content-type handling
+ * - Dynamically generating and serving PNG images of assets using Puppeteer and CreateJS/EaselJS
  *
  * Private helper methods are included for:
- * - Fetching all asset-related files (image, JSON, JS) for a given asset.
- * - Updating the local asset mapping and item data from remote sources.
+ * - Fetching all asset-related files (image, JSON, JS) for a given asset
+ * - Updating the local asset mapping and item data from remote sources
  *
  * @abstract
  */
 export abstract class ApiAssets implements ApiHelper {
   /**
-   * Handles the update of Goodgame Empire assets and items.
+   * Handles the update of Goodgame Empire assets and items
    *
-   * This endpoint is protected by a token, which must match the INTERNAL_SECRET environment variable.
-   * If the token is invalid or missing, the request is delayed by 3 seconds and a 403 Forbidden response is sent.
+   * This endpoint is protected by a token, which must match the INTERNAL_SECRET environment variable
+   * If the token is invalid or missing, the request is delayed by 3 seconds and a 403 Forbidden response is sent
    * On successful authentication, it updates Goodgame Empire assets and items, refreshes the cache with the current timestamp,
-   * and responds with a success message.
+   * and responds with a success message
    *
-   * @param request - The Express request object, expects a `token` parameter.
-   * @param response - The Express response object used to send the HTTP response.
-   * @returns A Promise that resolves when the operation is complete.
+   * @param request - The Express request object, expects a `token` parameter
+   * @param response - The Express response object used to send the HTTP response
+   * @returns A Promise that resolves when the operation is complete
    */
   public static async updateAssets(request: express.Request, response: express.Response): Promise<void> {
     try {
@@ -83,18 +84,18 @@ export abstract class ApiAssets implements ApiHelper {
   }
 
   /**
-   * Handles the GET request to retrieve filtered items data.
+   * Handles the GET request to retrieve filtered items data
    *
-   * - Attempts to fetch the items data from Redis cache using a versioned key.
-   * - If cached data is found, returns it as a JSON response.
+   * - Attempts to fetch the items data from Redis cache using a versioned key
+   * - If cached data is found, returns it as a JSON response
    * - If not cached, reads the items data from a local JSON file, filters out unwanted keys,
-   *   updates the cache, and returns the filtered data.
-   * - Sets appropriate cache-control headers for the response.
-   * - On error, logs the error and returns a 500 status with an error message.
+   *   updates the cache, and returns the filtered data
+   * - Sets appropriate cache-control headers for the response
+   * - On error, logs the error and returns a 500 status with an error message
    *
-   * @param request - The Express request object.
-   * @param response - The Express response object.
-   * @returns A promise that resolves when the response is sent.
+   * @param request - The Express request object
+   * @param response - The Express response object
+   * @returns A promise that resolves when the response is sent
    */
   public static async getItems(request: express.Request, response: express.Response): Promise<void> {
     try {
@@ -143,20 +144,20 @@ export abstract class ApiAssets implements ApiHelper {
   }
 
   /**
-   * Handles the retrieval of language-specific asset data.
+   * Handles the retrieval of language-specific asset data
    *
    * This method validates the requested language parameter, checks for cached language data,
-   * and fetches the latest language assets if not cached. The data is cached for future requests.
-   * Responds with the language asset JSON or an error message if the request is invalid or fails.
+   * and fetches the latest language assets if not cached. The data is cached for future requests
+   * Responds with the language asset JSON or an error message if the request is invalid or fails
    *
-   * @param request - The Express request object, expecting a `lang` parameter in the route.
-   * @param response - The Express response object used to send the result or error.
-   * @returns A Promise that resolves when the response is sent.
+   * @param request - The Express request object, expecting a `lang` parameter in the route
+   * @param response - The Express response object used to send the result or error
+   * @returns A Promise that resolves when the response is sent
    *
    * @remarks
-   * - Returns HTTP 400 if the language parameter is missing or invalid.
-   * - Returns HTTP 200 with the language asset data if successful.
-   * - Returns HTTP 500 if an internal error occurs.
+   * - Returns HTTP 400 if the language parameter is missing or invalid
+   * - Returns HTTP 200 with the language asset data if successful
+   * - Returns HTTP 500 if an internal error occurs
    */
   public static async getLanguage(request: express.Request, response: express.Response): Promise<void> {
     try {
@@ -164,18 +165,18 @@ export abstract class ApiAssets implements ApiHelper {
        * Validate parameters
        * --------------------------------- */
       const availableLangs = ApiHelper.GGE_SUPPORTED_LANGUAGES;
-      const lang = String(request.params.lang).toLowerCase().trim();
-      if (!lang) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Language parameter is required' });
+      const lang = ApiHelper.validateSearchAndSanitize(request.params.lang);
+      if (ApiHelper.isInvalidInput(lang)) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.MissingLanguage });
         return;
       } else if (!availableLangs.includes(lang)) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid language parameter' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidLanguage });
         return;
       }
-      const languageCacheBuildVersion = (await ApiHelper.redisClient.get(ApiHelper.REDIS_KEY_GGE_VERSION)) || '0';
       /* ---------------------------------
        * Check Redis cache for language data
        * --------------------------------- */
+      const languageCacheBuildVersion = (await ApiHelper.redisClient.get(ApiHelper.REDIS_KEY_GGE_VERSION)) || '0';
       const cachedKey = `assets_lang_${languageCacheBuildVersion}_${lang}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
@@ -205,20 +206,20 @@ export abstract class ApiAssets implements ApiHelper {
   }
 
   /**
-   * Handles HTTP requests to retrieve a specific asset by its name and extension.
+   * Handles HTTP requests to retrieve a specific asset by its name and extension
    *
-   * Supported asset types: `.js`, `.json`, `.webp`, `.png`.
+   * Supported asset types: `.js`, `.json`, `.webp`, `.png`
    *
-   * - Validates the asset parameter for format, length, and allowed characters.
-   * - Checks for a cached version of the asset in Redis and serves it if available.
-   * - If not cached, fetches the asset from a remote source, updates the cache, and serves it.
-   * - Sets appropriate `Content-Type` and `Cache-Control` headers based on asset type.
-   * - For `.json` assets, rewrites the image URL to point to the current domain.
-   * - Responds with appropriate HTTP status codes for errors (400, 404, 500).
+   * - Validates the asset parameter for format, length, and allowed characters
+   * - Checks for a cached version of the asset in Redis and serves it if available
+   * - If not cached, fetches the asset from a remote source, updates the cache, and serves it
+   * - Sets appropriate `Content-Type` and `Cache-Control` headers based on asset type
+   * - For `.json` assets, rewrites the image URL to point to the current domain
+   * - Responds with appropriate HTTP status codes for errors (400, 404, 500)
    *
-   * @param request - Express request object containing the asset parameter.
-   * @param response - Express response object used to send the asset or error.
-   * @returns A promise that resolves when the response is sent.
+   * @param request - Express request object containing the asset parameter
+   * @param response - Express response object used to send the asset or error
+   * @returns A promise that resolves when the response is sent
    */
   public static async getAsset(request: express.Request, response: express.Response): Promise<void> {
     try {
@@ -227,16 +228,14 @@ export abstract class ApiAssets implements ApiHelper {
        * --------------------------------- */
       const asset = String(request.params.asset).trim().toLowerCase();
       if (!asset || String(asset).trim() === '' || String(asset).length > 100 || !/^[\d._a-z-]+$/.test(asset)) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Asset parameter is required' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAssetName });
         return;
       }
       const extension = path.extname(asset);
-      // Build current domain URI. This is used for production and localhost with port.
+      // Build current domain URI. This is used for production and localhost with port
       const currentDomainUri = this.getCurrentDomainUri();
       if (extension !== '.js' && extension !== '.json' && extension !== '.webp' && extension !== '.png') {
-        response
-          .status(ApiHelper.HTTP_BAD_REQUEST)
-          .send({ error: 'Invalid asset type. Supported types are: .js, .json, .webp, .png' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAssetExtension });
         return;
       }
       /* ---------------------------------
@@ -259,7 +258,7 @@ export abstract class ApiAssets implements ApiHelper {
         } catch {
           response
             .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
-            .send({ error: 'Failed to update assets. Please try again later.' });
+            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
           return;
         }
       }
@@ -301,7 +300,7 @@ export abstract class ApiAssets implements ApiHelper {
         }
       }
       if (!url) {
-        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: 'Asset not found' });
+        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.AssetNotFound });
         return;
       }
       /* ---------------------------------
@@ -324,31 +323,31 @@ export abstract class ApiAssets implements ApiHelper {
   }
 
   /**
-   * Handles the generation and retrieval of a PNG image for a specified asset.
+   * Handles the generation and retrieval of a PNG image for a specified asset
    *
    * This method attempts to serve a cached image if available. If not cached, it dynamically generates
-   * the image using Puppeteer and CreateJS libraries by rendering the asset on a headless browser canvas.
-   * The generated image is then cached for future requests.
+   * the image using Puppeteer and CreateJS libraries by rendering the asset on a headless browser canvas
+   * The generated image is then cached for future requests
    *
    * Query Parameters:
-   * - `level` (optional): The level of the asset to render (used for certain asset types).
-   * - `type` (optional): The type of asset variant to render (e.g., "gate", "defence", "tower").
+   * - `level` (optional): The level of the asset to render (used for certain asset types)
+   * - `type` (optional): The type of asset variant to render (e.g., "gate", "defence", "tower")
    *
    * Path Parameters:
-   * - `asset`: The asset identifier (must be alphanumeric, underscores, or hyphens, max 100 chars).
+   * - `asset`: The asset identifier (must be alphanumeric, underscores, or hyphens, max 100 chars)
    *
    * Response:
-   * - 200: Returns the PNG image of the requested asset.
-   * - 400: If the asset parameter is invalid.
-   * - 404: If the asset JSON is not found.
-   * - 500: On server or rendering errors.
+   * - 200: Returns the PNG image of the requested asset
+   * - 400: If the asset parameter is invalid
+   * - 404: If the asset JSON is not found
+   * - 500: On server or rendering errors
    *
    * Caching:
-   * - Uses Redis to cache generated images for improved performance.
-   * - Sets HTTP cache headers for 30 days.
+   * - Uses Redis to cache generated images for improved performance
+   * - Sets HTTP cache headers for 30 days
    *
-   * @param request - Express request object containing asset parameters and query.
-   * @param response - Express response object used to send the PNG image or error.
+   * @param request - Express request object containing asset parameters and query
+   * @param response - Express response object used to send the PNG image or error
    * @returns Promise<void>
    */
   public static async getGeneratedImage(request: express.Request, response: express.Response): Promise<void> {
@@ -364,9 +363,7 @@ export abstract class ApiAssets implements ApiHelper {
         .toLowerCase()
         .replace(/\.[^./]+$/, '');
       if (!asset || asset.length > 100 || !/^[\d_a-z-]+$/.test(asset)) {
-        response
-          .status(ApiHelper.HTTP_BAD_REQUEST)
-          .send({ error: 'Invalid asset parameter. Please check the asset format.' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAssetName });
         return;
       }
       /* ---------------------------------
@@ -386,7 +383,7 @@ export abstract class ApiAssets implements ApiHelper {
        * --------------------------------- */
       const jsonResp = await ApiHelper.fetchWithFallback(currentDomainUri + `/api/v1/assets/common/${asset}.json`);
       if (!jsonResp.ok) {
-        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: 'Asset not found' });
+        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.AssetNotFound });
         return;
       }
       // Now, generate the image using Puppeteer and CreateJS
@@ -394,7 +391,7 @@ export abstract class ApiAssets implements ApiHelper {
       const frames: number[][] = jsonData.frames;
       const w = Math.max(...frames.map((frame) => frame[2] - frame[0]));
       const h = Math.max(...frames.map((frame) => frame[3] - frame[1]));
-      page = await puppeteerSingleton.createPage();
+      page = await puppeteerManagerInstance.createPage();
       await page.addScriptTag({ url: 'https://code.createjs.com/1.0.0/createjs.min.js' });
       await page.addScriptTag({ url: 'https://code.createjs.com/1.0.0/easeljs.min.js' });
       await page.addScriptTag({ url: 'https://code.createjs.com/1.0.0/tweenjs.min.js' });
@@ -429,8 +426,8 @@ export abstract class ApiAssets implements ApiHelper {
               if (globalThis.Library[name][name]) {
                 building = new globalThis.Library[name][name]();
               } else if (type) {
-                // Special handling for certain building types. This is a bit hacky but works for now.
-                // This is retried from the original GGE code.
+                // Special handling for certain building types. This is a bit hacky but works for now
+                // This is retried from the original GGE code
                 const l = 'Level' + level;
                 switch (type) {
                   case 'gate': {
@@ -489,9 +486,9 @@ export abstract class ApiAssets implements ApiHelper {
               console.error('Preload error', error);
               reject(new Error('Loader error: ' + JSON.stringify(error)));
             });
-            // Here, we can use local loading from our server to avoid CORS and bandwidth issues.
-            // We assume the assets are served from /api/v1/assets/common/ endpoint.
-            // This is a bit hacky but works for now.
+            // Here, we can use local loading from our server to avoid CORS and bandwidth issues
+            // We assume the assets are served from /api/v1/assets/common/ endpoint
+            // This is a bit hacky but works for now
             loader.loadFile({
               id: name,
               type: 'spritesheet',
@@ -532,25 +529,24 @@ export abstract class ApiAssets implements ApiHelper {
       ApiHelper.logError(error, 'getGeneratedImage', request);
     } finally {
       if (page) {
-        // Ensure the Puppeteer page is closed to free resources
         await page.close();
       }
     }
   }
 
   /**
-   * Helper method to read the local assets mapping file.
-   * Updates the local GGE assets by fetching the latest asset URLs from the remote server.
+   * Helper method to read the local assets mapping file
+   * Updates the local GGE assets by fetching the latest asset URLs from the remote server
    *
    * This method performs the following steps:
-   * 1. Ensures the local assets directory exists, creating it if necessary.
-   * 2. Fetches the game's main index.html to locate the DLL preload link.
-   * 3. Downloads the referenced DLL JavaScript file and extracts all unique item asset paths using a regex.
-   * 4. Normalizes and maps each asset name to its corresponding remote URL.
-   * 5. Writes the resulting mapping as a JSON file (`assets.json`) in the local assets directory.
+   * 1. Ensures the local assets directory exists, creating it if necessary
+   * 2. Fetches the game's main index.html to locate the DLL preload link
+   * 3. Downloads the referenced DLL JavaScript file and extracts all unique item asset paths using a regex
+   * 4. Normalizes and maps each asset name to its corresponding remote URL
+   * 5. Writes the resulting mapping as a JSON file (`assets.json`) in the local assets directory
    *
-   * @throws {Error} If fetching the index.html or DLL JavaScript file fails, or if the DLL preload link is not found.
-   * @returns {Promise<void>} A promise that resolves when the asset mapping has been updated and written to disk.
+   * @throws {Error} If fetching the index.html or DLL JavaScript file fails, or if the DLL preload link is not found
+   * @returns {Promise<void>} A promise that resolves when the asset mapping has been updated and written to disk
    */
   private static async updateGameAssets(): Promise<void> {
     if (!fs.existsSync(path.join(__dirname, './../assets/'))) {
@@ -607,7 +603,7 @@ export abstract class ApiAssets implements ApiHelper {
       case '.webp': {
         const imageResp = await ApiHelper.fetchWithFallback(url);
         if (!imageResp.ok) {
-          response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: 'Sprite sheet not found' });
+          response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.AssetNotFound });
           return;
         }
         const spriteBuf = Buffer.from(await imageResp.arrayBuffer());
@@ -641,22 +637,22 @@ export abstract class ApiAssets implements ApiHelper {
         return;
       }
       default: {
-        throw new Error('Unsupported asset type');
+        throw new Error('Unsupported asset extension');
       }
     }
   }
 
   /**
-   * Updates the local items JSON file by fetching the latest version from the remote assets server.
+   * Updates the local items JSON file by fetching the latest version from the remote assets server
    *
    * This method performs the following steps:
-   * 1. Fetches the `ItemsVersion.properties` file to determine the current items version.
-   * 2. Extracts the version number from the properties file.
-   * 3. Fetches the corresponding items JSON file using the extracted version number.
-   * 4. Writes the fetched JSON data to the local `items.json` file in the assets directory.
+   * 1. Fetches the `ItemsVersion.properties` file to determine the current items version
+   * 2. Extracts the version number from the properties file
+   * 3. Fetches the corresponding items JSON file using the extracted version number
+   * 4. Writes the fetched JSON data to the local `items.json` file in the assets directory
    *
-   * @throws {Error} If fetching the version or items JSON files fails.
-   * @returns {Promise<void>} A promise that resolves when the update is complete.
+   * @throws {Error} If fetching the version or items JSON files fails
+   * @returns {Promise<void>} A promise that resolves when the update is complete
    */
   private static async updateItems(): Promise<void> {
     const itemsVersionUri = `${ApiHelper.ASSETS_BASE_URL}/items/ItemsVersion.properties`;

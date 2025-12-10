@@ -1,15 +1,13 @@
-import { NgFor, NgIf, NgClass, DatePipe } from '@angular/common';
+import { DatePipe, NgClass, NgFor, NgIf } from '@angular/common';
 import { Component, inject, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { TranslateModule } from '@ngx-translate/core';
-
-import { ApiMovementsResponse, ErrorType, Movement, SearchType } from '@ggetracker-interfaces/empire-ranking';
-import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
-import { ServerBadgeComponent } from '@ggetracker-components/server-badge/server-badge.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
+import { ApiMovementsResponse, ErrorType, Movement, SearchType } from '@ggetracker-interfaces/empire-ranking';
+import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-movements',
@@ -25,7 +23,6 @@ import { TableComponent } from '@ggetracker-components/table/table.component';
     SearchFormComponent,
     RouterLink,
     TranslateModule,
-    ServerBadgeComponent,
   ],
   templateUrl: './movements.component.html',
   styleUrl: './movements.component.css',
@@ -48,6 +45,7 @@ export class MovementsComponent extends GenericComponent {
 
   constructor() {
     super();
+    this.isInLoading = true;
     void this.init();
   }
 

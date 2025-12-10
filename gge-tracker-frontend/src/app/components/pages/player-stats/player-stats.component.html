@@ -1,12 +1,5 @@
-<div class="player-stats-view">
+<div class="player-stats-view position-relative">
   <div class="d-none d-md-block" *ngIf="!isInLoading">
-    <div class="btn-exit left">
-      <div>
-        <a class="btn btn-danger mt-3" [routerLink]="['']">
-          <i class="fas fa-arrow-left"></i>
-          {{ 'Retour' | translate }}</a>
-      </div>
-    </div>
     <div class="btn-exit right">
       <button class="btn btn-primary mt-3" (click)="addPlayerToFavorites()"
         *ngIf="!isInFavorites(); else notInFavorites">
@@ -20,8 +13,8 @@
     </div>
   </div>
   <ng-container *ngIf="!isInLoading">
-    <div class="player-stats-container"></div>
-    <div class="position-relative">
+    <div class="player-stats-overlay"></div>
+    <div class="position-relative player-stats-container">
       <div class="position-relative bg-castle d-flex flex-column justify-content-center"
         [ngClass]="{'d-none': !playerName}">
         <div class="mt-3 mx-auto position-relative" style="width: fit-content;">
@@ -59,8 +52,7 @@
                 </div>
                 <div class="event-details">
                   <p class="card-text">
-                    <span class="highlight-hours">{{ getScoreboardFromEvent(event) }}h</span>&nbsp;{{ 'dans le top 3 du
-                    serveur' | translate }}
+                    <span class="highlight-hours">{{ getScoreboardFromEvent(event) }}h</span>&nbsp;{{ 'dans le top 3 du serveur' | translate }}
                   </p>
                 </div>
               </div>
@@ -272,12 +264,12 @@
                 <td>{{ alliance.duration }}</td>
                 <td *ngIf="alliance.alliance; else noAlliance">
                   <div class="btn-group">
-                    <a class="btn btn-primary btn-sm" data-bs-dismiss="modal" [routerLink]="['/', 'players']"
+                    <a class="gge-btn search btn-sm" data-bs-dismiss="modal" [routerLink]="['/', 'players']"
                       [queryParams]="{'alliance': alliance.alliance}"
                       [title]="'Voir les membres de l\'alliance' | translate">
                       <i class="fas fa-eye"></i>&nbsp;{{ 'Voir les membres' | translate }}
                     </a>
-                    <a class="btn btn-primary btn-sm" data-bs-dismiss="modal" [routerLink]="['/', 'map', alliance.id]"
+                    <a class="gge-btn search btn-sm" data-bs-dismiss="modal" [routerLink]="['/', 'map', alliance.id]"
                       [title]="'Voir l\'alliance sur la carte' | translate">
                       <img src="/assets/map.png" width="16" class="img-fluid"
                         [alt]="'Voir sur la carte' | translate">&nbsp;{{ 'Voir sur la carte' | translate }}
@@ -350,14 +342,12 @@
             <span>{{ quantity.city }}</span>
           </div>
         </div>
-
         <div class="table-wrapper rounded-3">
           <div class="d-flex align-items-center mb-3 px-2 pt-2">
             <i class="fa-solid fa-magnifying-glass me-2 text-muted"></i>
             <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
               placeholder="{{ 'Rechercher' | translate }}..." class="form-control search-input flex-grow-1" />
           </div>
-
           <div class="table-responsive">
             <table class="modern-table w-100">
               <thead>

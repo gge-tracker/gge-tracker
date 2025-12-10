@@ -1,25 +1,26 @@
 import * as express from 'express';
-import { ApiHelper } from '../api-helper';
+import { RouteErrorMessagesEnum } from '../enums/errors.enums';
+import { ApiHelper } from '../helper/api-helper';
 
 /**
- * Abstract class providing API status and server information endpoints.
+ * Abstract class providing API status and server information endpoints
  *
  * @remarks
- * This class implements methods to handle API status checks and server list retrievals.
- * It is intended to be used as a base class for API route handlers.
+ * This class implements methods to handle API status checks and server list retrievals
+ * It is intended to be used as a base class for API route handlers
  */
 export abstract class ApiStatus implements ApiHelper {
   /**
-   * Handles the API status endpoint.
+   * Handles the API status endpoint
    *
    * Retrieves the latest update timestamps for specific parameters from the database,
    * sorts and formats them, and returns a status object containing server information,
-   * API version, release date, and update progress status.
+   * API version, release date, and update progress status
    *
    * @param request - The Express request object, expected to contain a `pg_pool` property for database access,
-   *                  as well as `language` and `code` properties for server identification.
-   * @param response - The Express response object used to send the status data or error information.
-   * @returns A Promise that resolves when the response has been sent.
+   *                  as well as `language` and `code` properties for server identification
+   * @param response - The Express response object used to send the status data or error information
+   * @returns A Promise that resolves when the response has been sent
    */
   public static async getStatus(request: express.Request, response: express.Response): Promise<void> {
     try {
@@ -36,13 +37,14 @@ export abstract class ApiStatus implements ApiHelper {
       /* ---------------------------------
        * Fetch last update timestamps from the database
        * --------------------------------- */
+      const targetedDatabase = request['pg_pool'];
       const lastUpdate: { [key: string]: string } = {};
       const queryParameter = `SELECT identifier, updated_at FROM parameters WHERE id > 1 AND id  < 10`;
       await new Promise((resolve, reject) => {
-        request['pg_pool'].query(queryParameter, (error, results) => {
+        targetedDatabase.query(queryParameter, (error, results) => {
           if (error) {
             ApiHelper.logError(error, 'getStatus_query', request);
-            reject(new Error('An error occurred. Please try again later.'));
+            reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
           } else {
             results.rows.forEach((result: any) => {
               lastUpdate[result.identifier] = result.updated_at;
@@ -72,7 +74,7 @@ export abstract class ApiStatus implements ApiHelper {
       const code = 'eb6WSHQqYh';
       const discordUrl = 'https://discord.gg/' + code;
       try {
-        const cachedDiscordKey = `discord_invite_${code}`;
+        const cachedDiscordKey = `discord_invite`;
         const cachedDiscordData = await ApiHelper.redisClient.get(cachedDiscordKey);
         if (cachedDiscordData) {
           const discordData = JSON.parse(cachedDiscordData);
@@ -115,20 +117,20 @@ export abstract class ApiStatus implements ApiHelper {
   }
 
   /**
-   * Handles the retrieval of all server names.
+   * Handles the retrieval of all server names
    *
-   * This method first attempts to fetch the list of server names from a Redis cache.
-   * If the data is found in the cache, it is returned immediately.
+   * This method first attempts to fetch the list of server names from a Redis cache
+   * If the data is found in the cache, it is returned immediately
    * Otherwise, it retrieves the server names from the GGE Tracker Manager, caches the result for 24 hours,
-   * and then returns the list to the client.
+   * and then returns the list to the client
    *
-   * @param request - The Express request object.
-   * @param response - The Express response object.
-   * @returns A promise that resolves when the response is sent.
+   * @param request - The Express request object
+   * @param response - The Express response object
+   * @returns A promise that resolves when the response is sent
    *
    * @remarks
-   * Responds with HTTP 200 and the list of server names on success.
-   * Responds with HTTP 500 and an error message if an error occurs.
+   * Responds with HTTP 200 and the list of server names on success
+   * Responds with HTTP 500 and an error message if an error occurs
    */
   public static async getServers(request: express.Request, response: express.Response): Promise<void> {
     try {

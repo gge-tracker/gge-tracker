@@ -1,51 +1,47 @@
 import * as express from 'express';
-import { ApiHelper } from '../api-helper';
 import * as pg from 'pg';
-import { AuthorizedServersEnum } from '../interfaces/authorized-servers-special-features-enum';
+import { RouteErrorMessagesEnum } from '../enums/errors.enums';
+import { AuthorizedSpecialServersEnum } from '../enums/gge-tracker-special-servers.enums';
+import { ApiHelper } from '../helper/api-helper';
 
 /**
- * Abstract class providing API endpoints related to castle data retrieval and analysis.
+ * Abstract class providing API endpoints related to castle data retrieval and analysis
  *
  * @remarks
  * This class implements methods for fetching castle information by castle ID or player name,
- * interacting with external GGE APIs, handling caching with Redis, and formatting the response data.
+ * interacting with external GGE APIs, handling caching with Redis, and formatting the response data
  *
  * @abstract
  */
 export abstract class ApiCastle implements ApiHelper {
   /**
-   * Handles the HTTP request to retrieve detailed information about a castle by its ID.
+   * Handles the HTTP request to retrieve detailed information about a castle by its ID
    *
-   * This method performs the following steps:
-   * 1. Validates the provided castle ID from the request parameters.
-   * 2. Checks for cached castle analysis data in Redis and returns it if available.
-   * 3. Fetches castle data from the external GGE API if not cached.
-   * 4. Parses and transforms the API response into a structured object containing player, castle, and construction details.
-   * 5. Caches the response for future requests.
-   * 6. Handles and responds to errors appropriately, including invalid IDs, missing data, and API failures.
-   *
-   * @param request - The Express request object, expected to contain `castleId` in `params`.
-   * @param response - The Express response object used to send the result or error.
-   * @returns A promise that resolves when the response is sent.
+   * @param request - The Express request object, expected to contain `castleId` in `params`
+   * @param response - The Express response object used to send the result or error
+   * @returns A promise that resolves when the response is sent
    */
   public static async getCastleById(request: express.Request, response: express.Response): Promise<void> {
     try {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const castleId = ApiHelper.getVerifiedId(request.params.castleId);
+      const castleId = ApiHelper.verifyIdWithCountryCode(request.params.castleId);
       const kingdomId = Number.parseInt(String(request.query.kingdomId || '0'));
       const serverName = ApiHelper.ggeTrackerManager.getServerNameFromRequestId(castleId || 1);
-      if (castleId === false || castleId === undefined) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid castle id' });
+      if (!castleId) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidCastleId });
         return;
       } else if (Number.isNaN(kingdomId) || kingdomId < 0 || kingdomId > 3) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid kingdom id' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidKingdomId });
         return;
-      } else if (kingdomId > 0 && !Object.values(AuthorizedServersEnum).includes(serverName as AuthorizedServersEnum)) {
+      } else if (
+        kingdomId > 0 &&
+        !Object.values(AuthorizedSpecialServersEnum).includes(serverName as AuthorizedSpecialServersEnum)
+      ) {
         response
           .status(ApiHelper.HTTP_BAD_REQUEST)
-          .send({ error: 'This server is not authorized for the kingdom ' + kingdomId + ' (special feature)' });
+          .send({ error: RouteErrorMessagesEnum.UnavailableForSpecialServers });
         return;
       }
 
@@ -81,7 +77,7 @@ export abstract class ApiCastle implements ApiHelper {
           Accept: 'application/json',
         },
       });
-      // Step 3 : Send 'gbl' request to clear context again. This parts needs to be optimized in the future.
+      // Step 3 : Send 'gbl' request to clear context again. This parts needs to be optimized in the future
       await fetch(`${basePath}/${ApiHelper.ggeTrackerManager.getZoneFromRequestId(castleId)}/gbl/null`, {
         method: 'GET',
         headers: {
@@ -90,12 +86,12 @@ export abstract class ApiCastle implements ApiHelper {
         },
       });
       if (!responseData.ok) {
-        response.status(responseData.status).send({ error: 'Failed to fetch data from GGE API' });
+        response.status(responseData.status).send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
         return;
       }
       const data = await responseData.json();
       if (!data?.content?.gca) {
-        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: 'No castles found for this player' });
+        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.PlayerNotFound });
         return;
       }
       /* ---------------------------------
@@ -104,7 +100,7 @@ export abstract class ApiCastle implements ApiHelper {
       const gca = data['content']['gca'];
       // Transform the raw API response into a structured format
       // Note: Some fields are based on assumptions due to lack of official documentation
-      // and may need adjustments as more information becomes available.
+      // and may need adjustments as more information becomes available
       const responseContent = {
         playerName: gca.O.N,
         castleName: gca.A[10],
@@ -195,8 +191,8 @@ export abstract class ApiCastle implements ApiHelper {
             damageFactor: (100 - Number(ground[7])) / 100,
           })),
         },
-        // Note: The constructionItems structure is based on observed patterns and may require adjustments.
-        // Each item contains an OID and a list of CIL entries with CID and S values.
+        // Note: The constructionItems structure is based on observed patterns and may require adjustments
+        // Each item contains an OID and a list of CIL entries with CID and S values
         constructionItems: Object.fromEntries(
           gca.CI.map((item) => {
             const { OID, CIL } = item;
@@ -219,43 +215,35 @@ export abstract class ApiCastle implements ApiHelper {
   }
 
   /**
-   * Handles the retrieval of castle information for a player by their name.
+   * Handles the retrieval of castle information for a player by their name
    *
    * This endpoint validates the player name and request code, checks for cached results,
-   * queries the database for the player's ID, and fetches detailed castle data from the GGE API.
-   * If successful, it maps and returns the player's castles; otherwise, it returns appropriate error responses.
+   * queries the database for the player's ID, and fetches detailed castle data from the GGE API
+   * If successful, it maps and returns the player's castles; otherwise, it returns appropriate error responses
    *
-   * @param request - The Express request object, expected to contain `params.playerName`, `code`, `language`, and `pg_pool`.
-   * @param response - The Express response object used to send the result or error.
-   * @returns A Promise that resolves when the response is sent.
+   * @param request - The Express request object, expected to contain `params.playerName`, `code`, `language`, and `pg_pool`
+   * @param response - The Express response object used to send the result or error
+   * @returns A Promise that resolves when the response is sent
    *
    * @remarks
-   * - Returns HTTP 400 for invalid player name, code, or zone.
-   * - Returns HTTP 404 if the player or their castles are not found.
-   * - Returns HTTP 200 with an array of mapped castles on success.
-   * - Returns HTTP 500 for unexpected errors.
+   * - Returns HTTP 400 for invalid player name, code, or zone
+   * - Returns HTTP 404 if the player or their castles are not found
+   * - Returns HTTP 200 with an array of mapped castles on success
+   * - Returns HTTP 500 for unexpected errors
    */
   public static async getCastleByPlayerName(request: express.Request, response: express.Response): Promise<void> {
     try {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const playerName = request.params.playerName;
-      if (playerName.length > 40) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid player name' });
-        return;
-      }
+      const playerName = ApiHelper.validateSearchAndSanitize(request.params.playerName, { toLowerCase: true });
       const code = request['code'];
-      if (!ApiHelper.ggeTrackerManager.isValidCode(code)) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid code' });
-        return;
-      }
       const targetEmpireEx = ApiHelper.ggeTrackerManager.getZoneFromCode(code);
-      if (!targetEmpireEx) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid zone' });
+      if (ApiHelper.isInvalidInput(playerName) || !ApiHelper.ggeTrackerManager.isValidCode(code) || !targetEmpireEx) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
         return;
       }
-      const cachedKey = `castle:playerName:${code}:${playerName.toLowerCase()}`;
+      const cachedKey = `castle:playerName:${code}:${playerName}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
@@ -265,15 +253,15 @@ export abstract class ApiCastle implements ApiHelper {
       /* ---------------------------------
        * Query from DB to get player ID
        * --------------------------------- */
-      const query = `SELECT id FROM players WHERE LOWER(name) = LOWER($1) AND castles IS NOT NULL AND castles != '[]' LIMIT 1;`;
+      const query = `SELECT id FROM players WHERE LOWER(name) = $1 AND castles IS NOT NULL AND castles != '[]' LIMIT 1;`;
       const result = await (request['pg_pool'] as pg.Pool).query(query, [playerName]);
       if (!result?.rows || result.rows.length === 0 || !result.rows[0].id) {
-        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: 'Player not found' });
+        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.PlayerNotFound });
         return;
       }
       const playerId = result.rows[0].id;
       const basePath = process.env.GGE_API_URL;
-      // We send directly request to internal GGE API proxy, because this data is not stored in our DB.
+      // We send directly request to internal GGE API proxy, because this data is not stored in our DB
       const apiUrl = `${basePath}/${targetEmpireEx}/gdi/"PID":${playerId}`;
       const responseData = await fetch(apiUrl, {
         method: 'GET',
@@ -283,12 +271,12 @@ export abstract class ApiCastle implements ApiHelper {
         },
       });
       if (!responseData.ok) {
-        response.status(responseData.status).send({ error: 'Failed to fetch data from GGE API' });
+        response.status(responseData.status).send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
         return;
       }
       const data = await responseData.json();
       if (!data?.content?.O?.AP) {
-        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: 'No castles found for this player' });
+        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.PlayerNotFound });
         return;
       }
       /* ---------------------------------
@@ -301,8 +289,8 @@ export abstract class ApiCastle implements ApiHelper {
       const castlesAI = castlesAIBase.flat();
       const serverName = ApiHelper.ggeTrackerManager.getServerNameFromRequestId(
         code as number,
-      ) as AuthorizedServersEnum;
-      const authorizedServers = Object.values(AuthorizedServersEnum);
+      ) as AuthorizedSpecialServersEnum;
+      const authorizedServers = Object.values(AuthorizedSpecialServersEnum);
       const mappedCastles = castlesAI.reduce((accumulator: any[], castle: any) => {
         accumulator.push({
           kingdomId: castle.KID,

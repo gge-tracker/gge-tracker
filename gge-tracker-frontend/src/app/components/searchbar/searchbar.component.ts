@@ -4,42 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 
 /**
- * SearchbarComponent provides a customizable search bar UI element.
- *
- * @remarks
- * This component supports various input types and emits search values to parent components.
- * It is designed to be standalone and reusable, with configurable attributes such as placeholder, min/max values, and input type.
- *
- * @example
- * ```html
- * <app-search-bar
- *   [attrListInput]="attributes"
- *   [inputType]="'text'"
- *   [placeholderInput]="'Search...'"
- *   [searchInput]="searchValue"
- *   [name]="'search'"
- *   [min]="0"
- *   [max]="100"
- *   (searchEmitter)="onSearch($event)">
- * </app-search-bar>
- * ```
- *
- * @property attrListInput - List of attribute names for the input element.
- * @property inputType - Type of the input element (e.g., 'text', 'number').
- * @property placeholderInput - Placeholder text for the input field.
- * @property touched - Indicates if the input has been interacted with.
- * @property searchInput - Initial value for the search input.
- * @property name - Name attribute for the input element.
- * @property min - Minimum value for numeric input types.
- * @property max - Maximum value for numeric input types.
- * @property hasContent - Indicates if the input field has content.
- * @property search - Current value of the search input.
- * @property firstValue - Initial value of the search input.
- * @property searchEmitter - Emits the search value when updated.
- *
- * @method ngOnInit - Initializes the component and sets initial values.
- * @method ngOnChanges - Handles changes to input properties.
- * @method updateSearchValue - Emits the updated search value.
+ * SearchbarComponent provides a customizable search bar UI element
  */
 @Component({
   selector: 'app-search-bar',

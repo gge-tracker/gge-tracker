@@ -12,13 +12,12 @@ import {
   QueryList,
   ViewChildren,
 } from '@angular/core';
-import { TranslateModule } from '@ngx-translate/core';
-import { ChartComponent } from 'ng-apexcharts';
-
 import { ApiGenericData, ChartOptions, ChartTypes, EventGenericVariation } from '@ggetracker-interfaces/empire-ranking';
 import { ChartsWrapperComponent } from '@ggetracker-modules/charts-client/charts-wrapper.component';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { ApiRestService } from '@ggetracker-services/api-rest.service';
+import { TranslateModule } from '@ngx-translate/core';
+import { ChartComponent } from 'ng-apexcharts';
 
 @Component({
   selector: 'app-player-stats-card',

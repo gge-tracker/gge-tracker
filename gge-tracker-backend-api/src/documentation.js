@@ -7,7 +7,7 @@ const options = {
     openapi: "3.0.0",
     info: {
       title: "gge-tracker.com API",
-      version: "25.11.02-beta",
+      version: "25.12.08-beta",
       description: `**API documentation for gge-tracker.com**
                 A service that provides statistics and updates for the game Goodgame Empire.
                 This API is designed to be used by developers and enthusiasts who want to integrate gge-tracker.com data into their applications or services.

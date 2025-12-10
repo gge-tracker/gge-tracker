@@ -1,20 +1,17 @@
-import { NgClass, NgIf, NgFor } from '@angular/common';
+import { NgClass, NgFor, NgIf } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { NgSelectModule } from '@ng-select/ng-select';
-import { TranslateModule } from '@ngx-translate/core';
-
+import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { SearchbarComponent } from '@ggetracker-components/searchbar/searchbar.component';
+import { SelectComponent } from '@ggetracker-components/select/select.component';
+import { TableComponent } from '@ggetracker-components/table/table.component';
 import { ApiDungeonsResponse, Dungeon, ErrorType } from '@ggetracker-interfaces/empire-ranking';
 import { CooldownPipe } from '@ggetracker-pipes/cooldown.pipe';
-import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
 import { ServerService } from '@ggetracker-services/server.service';
-import { GenericComponent } from '@ggetracker-components/generic/generic.component';
-import { ServerBadgeComponent } from '@ggetracker-components/server-badge/server-badge.component';
-import { TableComponent } from '@ggetracker-components/table/table.component';
-import { SearchbarComponent } from '@ggetracker-components/searchbar/searchbar.component';
+import { NgSelectModule } from '@ng-select/ng-select';
+import { TranslateModule } from '@ngx-translate/core';
 import { LucideAngularModule, MessageCircleQuestion, Search, X } from 'lucide-angular';
-import { SelectComponent } from '@ggetracker-components/select/select.component';
 
 interface Realm {
   key: number;
@@ -33,10 +30,8 @@ interface Realm {
     NgIf,
     NgFor,
     TranslateModule,
-    ServerBadgeComponent,
     CooldownPipe,
     FormsModule,
-    FormatNumberPipe,
     NgSelectModule,
   ],
   templateUrl: './tracker.component.html',
@@ -76,11 +71,12 @@ export class TrackerComponent extends GenericComponent {
   ];
   public selectedRealm: number[] = [2];
   public filterByKid: number[] = [2];
-  public allowedServers = ['FR1', 'RO1', 'IT1', 'CZ1', 'SA1', 'DE1', 'NL1'];
+  public allowedServers = ['FR1', 'RO1', 'IT1', 'CZ1', 'SA1', 'DE1', 'NL1', 'E4K_BR1', 'TR1'];
   private localStorage = inject(LocalStorageService);
 
   constructor() {
     super();
+    this.isInLoading = true;
     this.resetHeaders();
     this.init();
   }
@@ -328,8 +324,8 @@ export class TrackerComponent extends GenericComponent {
     data: ApiDungeonsResponse;
     response: number;
   }> {
-    const choosedServer = this.serverService.choosedServer;
-    if (choosedServer === null || !this.serverService.servers.includes(choosedServer)) {
+    const currentServer = this.serverService.currentServer?.name;
+    if (!currentServer || !this.serverService.servers.includes(currentServer)) {
       this.isInLoading = false;
       this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
       throw new Error('Server not found');

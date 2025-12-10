@@ -30,7 +30,9 @@
               "src/sitemaps"
             ],
             "styles": [
-              "src/styles.css",
+              "src/app/stylesheets/font-faces.css",
+              "src/app/stylesheets/styles.css",
+              "src/app/stylesheets/website-beta-preview.css",
               "node_modules/katex/dist/katex.min.css",
               "node_modules/leaflet/dist/leaflet.css",
               "node_modules/@ng-select/ng-select/themes/default.theme.css"

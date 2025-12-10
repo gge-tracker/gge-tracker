@@ -1,12 +1,13 @@
 import { trigger, transition, style, animate } from '@angular/animations';
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { SidebarService } from '@ggetracker-services/sidebar.service';
 
 @Component({
   selector: 'app-skeleton',
   templateUrl: './skeleton.component.html',
-  styleUrl: './skeleton.component.css',
+  styleUrls: ['./skeleton.component.css'],
   animations: [
     trigger('fadeIn', [
       transition(':enter', [
@@ -16,4 +17,6 @@ import { GenericComponent } from '@ggetracker-components/generic/generic.compone
     ]),
   ],
 })
-export class SkeletonComponent extends GenericComponent {}
+export class SkeletonComponent extends GenericComponent {
+  public sidebarService = inject(SidebarService);
+}

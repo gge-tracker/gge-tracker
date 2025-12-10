@@ -1,54 +1,52 @@
-import * as express from 'express';
-import { ApiHelper } from '../api-helper';
-import * as pg from 'pg';
 import { formatInTimeZone } from 'date-fns-tz';
+import * as express from 'express';
+import * as pg from 'pg';
+import { RouteErrorMessagesEnum } from '../enums/errors.enums';
+import { ApiHelper } from '../helper/api-helper';
+import { ApiInvalidInputType } from '../types/parameter.types';
 
 /**
- * Abstract class providing API endpoints for server-side data retrieval and operations.
+ * Abstract class providing API endpoints for server-side data retrieval and operations
  *
  * @remarks
  * This class implements static methods to handle Express.js requests for various server-side resources,
- * including player movements, renames, and global statistics.
+ * including player movements, renames, and global statistics
 
  * @abstract
  */
 export abstract class ApiServer implements ApiHelper {
   /**
-   * Handles the retrieval of paginated player castle movement history with optional filtering and search capabilities.
+   * Handles the retrieval of paginated player castle movement history with optional filtering and search capabilities
    *
-   * This endpoint supports filtering by castle type, movement type, player name, alliance name, and alliance ID.
-   * It also supports pagination and caches responses for improved performance.
+   * This endpoint supports filtering by castle type, movement type, player name, alliance name, and alliance ID
+   * It also supports pagination and caches responses for improved performance
    *
    * Query Parameters:
-   * - `page` (string | number): The page number to retrieve (1-based). Must be a valid integer between 1 and 99,999,999.
-   * - `castleType` (string | number, optional): Filter by castle type. If not provided or invalid, no filter is applied.
-   * - `movementType` (string | number, optional): Filter by movement type (1 = "add", 2 = "remove", 3 = "move"). If not provided or invalid, no filter is applied.
-   * - `search` (string, optional): Search input for player or alliance name, depending on `searchType`.
-   * - `searchType` (string, optional): Type of search to perform. Must be either "player" or "alliance" if provided.
-   * - `allianceId` (string, optional): Filter by alliance ID.
+   * - `page` (string | number): The page number to retrieve (1-based). Must be a valid integer between 1 and 99,999,999
+   * - `castleType` (string | number, optional): Filter by castle type. If not provided or invalid, no filter is applied
+   * - `movementType` (string | number, optional): Filter by movement type (1 = "add", 2 = "remove", 3 = "move"). If not provided or invalid, no filter is applied
+   * - `search` (string, optional): Search input for player or alliance name, depending on `searchType`
+   * - `searchType` (string, optional): Type of search to perform. Must be either "player" or "alliance" if provided
+   * - `allianceId` (string, optional): Filter by alliance ID
    *
    * Responses:
-   * - `200 OK`: Returns a paginated list of movements and pagination metadata.
-   * - `400 Bad Request`: Returned if any query parameter is invalid.
-   * - `500 Internal Server Error`: Returned if a server or database error occurs.
+   * - `200 OK`: Returns a paginated list of movements and pagination metadata
+   * - `400 Bad Request`: Returned if any query parameter is invalid
+   * - `500 Internal Server Error`: Returned if a server or database error occurs
    *
    * Caching:
-   * - Responses are cached based on query parameters and language for improved performance.
+   * - Responses are cached based on query parameters and language for improved performance
    *
-   * @param request - Express request object containing query parameters and context.
-   * @param response - Express response object used to send the result.
-   * @returns A Promise that resolves when the response is sent.
+   * @param request - Express request object containing query parameters and context
+   * @param response - Express response object used to send the result
+   * @returns A Promise that resolves when the response is sent
    */
   public static async getMovements(request: express.Request, response: express.Response): Promise<void> {
     try {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const page = Number.parseInt(String(request.query.page || '')) || 1;
-      if (Number.isNaN(page) || page < 1 || page > ApiHelper.MAX_RESULT_PAGE) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid page number' });
-        return;
-      }
+      const page = ApiHelper.validatePageNumber(request.query.page);
       const filterByCastleType = Number.isNaN(Number.parseInt(String(request.query.castleType)))
         ? -1
         : Number.parseInt(String(request.query.castleType));
@@ -65,13 +63,13 @@ export abstract class ApiServer implements ApiHelper {
       const allianceId = request.query.allianceId ? String(request.query.allianceId) : null;
       const allianceIdHash = allianceId ? ApiHelper.hashValue(allianceId) : 'no_search';
       if (filterByMovementType !== -1 && (filterByMovementType < 1 || filterByMovementType > 3)) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid movement type' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidInput });
         return;
       } else if (searchType !== 'player' && searchType !== 'alliance' && searchType !== null) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid search type' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidInput });
         return;
       } else if (searchInput && searchInput.length > 30) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid search input' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidInput });
         return;
       }
 
@@ -141,7 +139,7 @@ export abstract class ApiServer implements ApiHelper {
         (request['pg_pool'] as pg.Pool).query(countQuery, values, (error, results) => {
           if (error) {
             ApiHelper.logError(error, 'getMovements_countQuery', request);
-            reject(new Error('An error occurred. Please try again later.'));
+            reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
           } else {
             movementsCount = results.rows[0]['movements_count'];
             resolve(null);
@@ -249,61 +247,55 @@ export abstract class ApiServer implements ApiHelper {
   }
 
   /**
-   * Handles the retrieval of player or alliance rename history with pagination, filtering, and caching.
+   * Handles the retrieval of player or alliance rename history with pagination, filtering, and caching
    *
-   * This endpoint supports searching by player or alliance name, filtering by alliance ID, and toggling between player and alliance rename history.
-   * It validates query parameters, constructs dynamic SQL queries based on filters, and utilizes Redis caching for performance.
-   * The response includes paginated rename records and pagination metadata.
+   * This endpoint supports searching by player or alliance name, filtering by alliance ID, and toggling between player and alliance rename history
+   * It validates query parameters, constructs dynamic SQL queries based on filters, and utilizes Redis caching for performance
+   * The response includes paginated rename records and pagination metadata
    *
    * @param request - Express request object, expects the following query parameters:
-   *   - `page` (string | number): The page number for pagination (required, must be >= 1).
-   *   - `search` (string, optional): Search input for player or alliance name.
-   *   - `searchType` (string, optional): Type of search, either "player" or "alliance".
-   *   - `allianceId` (string, optional): Filter by alliance ID.
-   *   - `showType` (string, optional): "players" or "alliances" to toggle between player or alliance rename history (default: "players").
-   * @param response - Express response object used to send the result or error.
+   *   - `page` (string | number): The page number for pagination (required, must be >= 1)
+   *   - `search` (string, optional): Search input for player or alliance name
+   *   - `searchType` (string, optional): Type of search, either "player" or "alliance"
+   *   - `allianceId` (string, optional): Filter by alliance ID
+   *   - `showType` (string, optional): "players" or "alliances" to toggle between player or alliance rename history (default: "players")
+   * @param response - Express response object used to send the result or error
    *
    * @returns {Promise<void>} Sends a JSON response with the following structure:
-   *   - `renames`: Array of rename records (fields depend on showType).
-   *   - `pagination`: Object containing `current_page`, `total_pages`, `current_items_count`, and `total_items_count`.
+   *   - `renames`: Array of rename records (fields depend on showType)
+   *   - `pagination`: Object containing `current_page`, `total_pages`, `current_items_count`, and `total_items_count`
    *
-   * @throws 400 Bad Request if query parameters are invalid.
-   * @throws 500 Internal Server Error if a database or server error occurs.
+   * @throws 400 Bad Request if query parameters are invalid
+   * @throws 500 Internal Server Error if a database or server error occurs
    */
   public static async getRenames(request: express.Request, response: express.Response): Promise<void> {
     try {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const page = Number.parseInt(String(request.query.page));
-      if (Number.isNaN(page) || page < 1 || page > ApiHelper.MAX_RESULT_PAGE) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid page number' });
+      const page = ApiHelper.validatePageNumber(request.query.page);
+      const viewPerPage = 15;
+      const allianceId = ApiHelper.verifyIdWithCountryCode(request.query.allianceId);
+      const searchInput = ApiHelper.validateSearchAndSanitize(request.query.search);
+      const searchType = ApiHelper.getParsedString(request.query.searchType);
+      const showType = ApiHelper.getParsedString(request.query.showType, 'players');
+      if (searchType !== 'player' && searchType !== 'alliance' && searchType !== null) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidInput });
+        return;
+      } else if (showType !== 'players' && showType !== 'alliances') {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidInput });
+        return;
+      } else if (searchInput === ApiInvalidInputType) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidInput });
+        return;
+      } else if (request.query.allianceId && !allianceId) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceId });
         return;
       }
       const searchInputHash = request.query.search ? ApiHelper.hashValue(String(request.query.search)) : 'no_search';
       const searchTypeHash = request.query.searchType
         ? ApiHelper.hashValue(String(request.query.searchType))
         : 'no_search';
-      const allianceId = request.query.allianceId ? String(request.query.allianceId) : null;
-      const viewPerPage = 15;
-      const searchInput = ApiHelper.verifySearch(request.query.search ? String(request.query.search) : null);
-      const searchType = request.query.searchType ? String(request.query.searchType) : null;
-      if (searchType !== 'player' && searchType !== 'alliance' && searchType !== null) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid search type' });
-        return;
-      } else if (searchInput && searchInput.length > 30) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid search input' });
-        return;
-      }
-      if (allianceId && allianceId.length > 20) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid alliance ID' });
-        return;
-      }
-      const showType = request.query.showType ? String(request.query.showType) : 'players';
-      if (showType !== 'players' && showType !== 'alliances') {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid show type' });
-        return;
-      }
       let mainTableName: string;
       mainTableName = showType === 'players' ? 'player_name_update_history' : 'alliance_update_history';
 
@@ -327,17 +319,17 @@ export abstract class ApiServer implements ApiHelper {
       let parameterIndex = 1;
       const conditions: string[] = [];
       const values: any[] = [];
-      if (searchType && searchType === 'player' && searchInput && showType === 'players') {
+      if (searchType && searchType === 'player' && ApiHelper.isValidInput(searchInput) && showType === 'players') {
         conditions.push(`LOWER(R.old_name) = $${parameterIndex++} OR LOWER(R.new_name) = $${parameterIndex++}`);
-        values.push(searchInput.trim().toLowerCase(), searchInput.trim().toLowerCase());
+        values.push(searchInput, searchInput);
       }
-      if (searchType && searchType === 'alliance' && searchInput) {
+      if (searchType && searchType === 'alliance' && ApiHelper.isValidInput(searchInput)) {
         if (showType === 'players') {
           conditions.push(`LOWER(A.name) = $${parameterIndex++}`);
-          values.push(searchInput.trim().toLowerCase());
+          values.push(searchInput);
         } else {
           conditions.push(`LOWER(R.old_name) = $${parameterIndex++} OR LOWER(R.new_name) = $${parameterIndex++}`);
-          values.push(searchInput.trim().toLowerCase(), searchInput.trim().toLowerCase());
+          values.push(searchInput, searchInput);
         }
       }
       if (allianceId) {
@@ -379,7 +371,7 @@ export abstract class ApiServer implements ApiHelper {
         (request['pg_pool'] as pg.Pool).query(countQuery, values, (error, results) => {
           if (error) {
             ApiHelper.logError(error, 'getRenames_countQuery', request);
-            reject(new Error('An error occurred. Please try again later.'));
+            reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
           } else {
             renamesCount = Number.parseInt(results.rows[0]['renames_count']);
             resolve(null);
@@ -483,21 +475,21 @@ export abstract class ApiServer implements ApiHelper {
   }
 
   /**
-   * Handles the retrieval of global server statistics.
+   * Handles the retrieval of global server statistics
    *
-   * This method attempts to fetch cached statistics data based on the request's language.
+   * This method attempts to fetch cached statistics data based on the request's language
    * If the data is not cached, it queries the `server_statistics` table from the database,
-   * processes and formats the results, updates the cache, and sends the response.
+   * processes and formats the results, updates the cache, and sends the response
    *
    * The statistics include various aggregated metrics such as average might, loot, honor,
-   * player and alliance counts, event participation rates, and top event performers.
-   * Some fields are parsed from stringified JSON objects stored in the database.
+   * player and alliance counts, event participation rates, and top event performers
+   * Some fields are parsed from stringified JSON objects stored in the database
    *
-   * @param request - The Express request object, expected to have `language` and `pg_pool` properties.
-   * @param response - The Express response object used to send the result or error.
-   * @returns A promise that resolves when the response is sent.
+   * @param request - The Express request object, expected to have `language` and `pg_pool` properties
+   * @param response - The Express response object used to send the result or error
+   * @returns A promise that resolves when the response is sent
    *
-   * @throws Sends HTTP 500 with an error message if the database query fails or an unexpected error occurs.
+   * @throws Sends HTTP 500 with an error message if the database query fails or an unexpected error occurs
    */
   public static async getStatistics(request: express.Request, response: express.Response): Promise<void> {
     try {
@@ -520,6 +512,8 @@ export abstract class ApiServer implements ApiHelper {
           *
         FROM
           server_statistics
+        WHERE
+          created_at >= NOW() - INTERVAL '7 DAY'
         `;
       (request['pg_pool'] as pg.Pool).query(query, async (error, results) => {
         if (error) {

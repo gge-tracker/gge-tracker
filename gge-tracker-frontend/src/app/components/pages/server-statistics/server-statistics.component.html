@@ -1,26 +1,42 @@
-<div *ngIf="!isInLoading" class="container">
-  <app-server-badge></app-server-badge>
-  <span class="badge bg-custom-font mt-3" [ngClass]="{ 'd-none': !lastUpdate }">
-    <i class="fas fa-sync-alt"></i>
-    <em class="ms-1">{{ 'Données récupérées le' | translate: { date: (lastUpdate | date: ('Date_5' | translate)) } }}</em>
-  </span>
-  <div class="stats-grid">
-    <div class="stat-card pointer" *ngFor="let card of cards">
-      <div class="stat-card-content"
-        [attr.data-bs-toggle]="card.identifier !== 'events_participation_rate' ? 'modal' :  false"
+<div *ngIf="!isInLoading" class="container-fluid">
+  <div class="gge-stats-grid">
+    <div class="gge-stat-card" *ngFor="let card of cards; let i = index">
+      <button class="gge-stat-ctl h-100" role="button" aria-haspopup="dialog"
+        [attr.aria-label]="card.label + (card.value ? ' : ' + card.value : '')"
+        [attr.data-bs-toggle]="card.identifier !== 'events_participation_rate' ? 'modal' : false"
         [attr.data-bs-target]="card.identifier !== 'events_participation_rate' ? '#statsModal' : false"
-        [title]="card.identifier !== 'events_participation_rate' ? ('Cliquez pour plus de détails' | translate) : ''"
-        (click)="openModal(card.identifier, card)" (keyup.enter)="openModal(card.identifier, card)" tabindex="0">
-        <img [src]="card.logo" class="icon" [alt]="card.label">
-        <div class="value">{{ card.value }}</div>
-        <div class="change" [ngClass]="{
-        'text-success': card.valueCompare > 0,
-        'text-danger': card.valueCompare < 0
-        }">{{ card.avg === '0' ? '-' : card.avg + " " + ("(depuis 1h)" | translate) }}</div>
-        <div class="label">{{ card.label | translate }}</div>
-      </div>
+        (click)="openModal(card.identifier, card)" (keyup.enter)="openModal(card.identifier, card)"
+        [disabled]="card.identifier === 'events_participation_rate'">
+        <div class="gge-stat-inner">
+          <div class="gge-stat-top">
+            <div class="gge-stat-iconwrap">
+              <img [src]="card.logo" alt="" class="gge-stat-icon">
+            </div>
+            <div class="gge-stat-meta">
+              <div class="gge-stat-label" [title]="card.label | translate">{{ card.label | translate }}</div>
+              <div class="gge-stat-mini"> {{ serverService.currentServer?.name }} </div>
+            </div>
+            <div class="gge-stat-cta">
+              <span class="gge-stat-chevron" aria-hidden="true">›</span>
+            </div>
+          </div>
+          <div class="gge-stat-mid">
+            <div class="gge-stat-value" aria-live="polite">{{ card.value }}</div>
+            <div class="gge-stat-change"
+              [ngClass]="{ 'gge-up': card.valueCompare > 0, 'gge-down': card.valueCompare < 0 }">
+              {{ card.avg === '0' ? '-' : card.avg + ' ' + ('(depuis 1h)' | translate) }}
+            </div>
+          </div>
+          <div class="gge-stat-bottom">
+            <span class="gge-stat-badge" *ngIf="card.identifier !== 'events_participation_rate'">{{ 'Voir le détail' |
+              translate }}</span>
+          </div>
+        </div>
+        <span class="gge-ripple" aria-hidden="true"></span>
+      </button>
     </div>
   </div>
+
 
 
 
@@ -29,10 +45,11 @@
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="statsModalLabel" *ngIf="selectedCard"><img class="cardIcon" [src]="selectedCard!.logo"
-              [alt]="selectedCard.label | translate"> {{ selectedCard!.label | translate }}
+          <h5 class="modal-title" id="statsModalLabel" *ngIf="selectedCard"><img class="cardIcon"
+              [src]="selectedCard!.logo" [alt]="selectedCard.label | translate"> {{ selectedCard!.label | translate }}
           </h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" [attr.aria-label]="'Fermer' | translate"></button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"
+            [attr.aria-label]="'Fermer' | translate"></button>
         </div>
         <div class="modal-body" *ngIf="charts['statistics']">
           <ul class="nav nav-tabs pt-3 ps-3">
@@ -48,33 +65,15 @@
               </button>
             </li>
           </ul>
-          <app-charts-wrapper [ngClass]="selectedTab === 'graph' ? 'd-block' : 'd-none'" [series]="charts['statistics'].series" *ngIf="isBrowser"
-            [chart]="charts['statistics'].chart" [xaxis]="charts['statistics'].xaxis"
-            [yaxis]="charts['statistics'].yaxis" [plotOptions]="charts['statistics'].plotOptions"
-            [dataLabels]="charts['statistics'].dataLabels" [grid]="charts['statistics'].grid"
-            [colors]="charts['statistics'].colors" [fill]="charts['statistics'].fill"
+          <app-charts-wrapper [ngClass]="selectedTab === 'graph' ? 'd-block' : 'd-none'"
+            [series]="charts['statistics'].series" *ngIf="isBrowser" [chart]="charts['statistics'].chart"
+            [xaxis]="charts['statistics'].xaxis" [yaxis]="charts['statistics'].yaxis"
+            [plotOptions]="charts['statistics'].plotOptions" [dataLabels]="charts['statistics'].dataLabels"
+            [grid]="charts['statistics'].grid" [colors]="charts['statistics'].colors" [fill]="charts['statistics'].fill"
             [legend]="charts['statistics'].legend" [stroke]="charts['statistics'].stroke"
             [title]="charts['statistics'].title" [tooltip]="charts['statistics'].tooltip"
             [forecastDataPoints]="charts['statistics'].forecastDataPoints!"
             [annotations]="charts['statistics'].annotations!"></app-charts-wrapper>
-            <div class="chart-legend">
-              <div class="legend-item">
-                <span class="legend-color morning"></span>
-                <span>{{ 'Matinée (06h - 12h)' | translate }}</span>
-              </div>
-              <div class="legend-item">
-                <span class="legend-color afternoon"></span>
-                <span>{{ 'Après-midi (12h - 18h)' | translate }}</span>
-              </div>
-              <div class="legend-item">
-                <span class="legend-color evening"></span>
-                <span>{{ 'Soirée (18h - 00h)' | translate }}</span>
-              </div>
-              <div class="legend-item">
-                <span class="legend-color night"></span>
-                <span>{{ 'Nuit (00h - 06h)' | translate }}</span>
-              </div>
-            </div>
         </div>
       </div>
     </div>

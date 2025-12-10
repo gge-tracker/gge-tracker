@@ -316,6 +316,51 @@ export interface ApiPlayerSearchResponse {
   max_fame: number;
   updated_at: string;
 }
+
+export interface PlayerLiveRankingExtended extends PlayerLiveRanking {
+  legendary_level: number;
+  level: number;
+}
+
+export interface PlayerLiveRanking {
+  castle_position: [number, number];
+  player_id: string;
+  player_name: string;
+  server: string;
+  data: ApiLiveRankingSpecificPlayerData[];
+}
+
+export interface ApiLiveRankingSpecificPlayerResponse {
+  player: PlayerLiveRanking;
+}
+
+export interface ApiLiveRankingSpecificPlayerData {
+  legendary_level: number;
+  level: number;
+  might: number;
+  rank: number;
+  score: number;
+  timestamp: string;
+}
+
+export interface ApiLiveRankingResponse {
+  players: ApiLiveRanking[];
+  pagination: ApiPagination;
+}
+
+export interface ApiLiveRanking {
+  player_id: string;
+  player_name: string;
+  server: string;
+  rank: number;
+  level: number;
+  score: number;
+  legendary_level: number;
+  might: number;
+  castle_position: [number, number];
+  rank_diff: number;
+  score_diff: number;
+}
 export interface ApiAllianceSearchResponse {
   alliance_id: number;
   alliance_name: string;

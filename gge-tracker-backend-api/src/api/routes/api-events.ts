@@ -1,14 +1,17 @@
-import * as express from 'express';
-import { ApiHelper } from '../api-helper';
-import * as pg from 'pg';
 import { formatInTimeZone } from 'date-fns-tz';
-import { GgeTrackerServers } from '../services/empire-api-service';
+import * as express from 'express';
+import * as pg from 'pg';
+import { RouteErrorMessagesEnum } from '../enums/errors.enums';
+import { EventTypes } from '../enums/event-types.enums';
+import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
+import { ApiHelper } from '../helper/api-helper';
+import { ApiInvalidInputType } from '../types/parameter.types';
 
 /**
- * Abstract class providing API endpoints for event-related data.
+ * Abstract class providing API endpoints for event-related data (BTH, OR, GT, ...)
  *
  * The `ApiEvents` class implements the `ApiHelper` interface and exposes static methods to handle
- * HTTP requests for retrieving event lists, event player rankings, and detailed event statistics.
+ * HTTP requests for retrieving event lists, event player rankings, and detailed event statistics
  *
  * @abstract
  * @implements {ApiHelper}
@@ -19,17 +22,12 @@ export abstract class ApiEvents implements ApiHelper {
    * "outer realms" and "beyond the horizon" event sources. Results are cached
    * in Redis for performance optimization. If cached data is available, it is
    * returned immediately; otherwise, the data is queried from the database,
-   * formatted, cached, and then returned.
+   * formatted, cached, and then returned
    *
-   * @param request - The Express request object.
-   * @param response - The Express response object.
-   * @param eventPgDbpool - The PostgreSQL connection pool used for querying event data.
-   * @returns A Promise that resolves when the response has been sent.
-   *
-   * @remarks
-   * - The returned event objects include `event_num`, `player_count`, `type`, and a formatted `collect_date`.
-   * - On error, responds with HTTP 500 and an error message.
-   * - Uses `ApiHelper.redisClient` for caching and `ApiHelper.updateCache` to update the cache.
+   * @param request - The Express request object
+   * @param response - The Express response object
+   * @param eventPgDbpool - The PostgreSQL connection pool used for querying event data
+   * @returns A Promise that resolves when the response has been sent
    */
   public static async getEvents(
     request: express.Request,
@@ -114,7 +112,7 @@ export abstract class ApiEvents implements ApiHelper {
    *
    * HTTP responses:
    * - 200 OK: returns a JSON object containing an array of events with their IDs and associated dates
-   * - 500 Internal Server Error: on unexpected failures; the error is logged and a generic 500 message is returned
+   * - 500 Internal Server Error: on unexpected failures
    *
    * Response structure:
    * - {
@@ -144,7 +142,7 @@ export abstract class ApiEvents implements ApiHelper {
       /* ---------------------------------
        * Query from DB
        * --------------------------------- */
-      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServers.GLOBAL);
+      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServersEnum.GLOBAL);
       const query = `
         SELECT
           event_id,
@@ -187,7 +185,7 @@ export abstract class ApiEvents implements ApiHelper {
    * HTTP responses:
    * - 200 OK: returns a JSON object containing the alliance analysis data
    * - 400 Bad Request: if the alliance ID or event ID is invalid
-   * - 500 Internal Server Error: on unexpected failures; the error is logged and a generic 500 message is returned
+   * - 500 Internal Server Error: on unexpected failures
    *
    * Response structure:
    * - {
@@ -206,20 +204,17 @@ export abstract class ApiEvents implements ApiHelper {
       /* ---------------------------------
        * Validate request
        * --------------------------------- */
-      const allianceId = ApiHelper.getVerifiedId(String(request.params.allianceId));
-      const eventId = Number.parseInt(String(request.params.eventId));
+      const allianceId = ApiHelper.verifyIdWithCountryCode(String(request.params.allianceId));
+      const eventId = ApiHelper.validatePageNumber(request.params.eventId);
       if (allianceId === false || allianceId === undefined) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid alliance id' });
-        return;
-      } else if (!eventId || Number.isNaN(eventId) || eventId < 0 || eventId > 999_999_999) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid event id' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceId });
         return;
       }
       const realAllianceId = ApiHelper.removeCountryCode(allianceId);
       const countryCode = ApiHelper.getCountryCode(String(allianceId));
       const zone = ApiHelper.ggeTrackerManager.getZoneFromCode(countryCode);
       if (!zone) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid alliance id' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceId });
         return;
       }
       let replacedZone = zone.replaceAll(new RegExp('EmpireEx_?', 'g'), '');
@@ -241,7 +236,7 @@ export abstract class ApiEvents implements ApiHelper {
       /* ---------------------------------
        * Query from DB
        * --------------------------------- */
-      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServers.GLOBAL);
+      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServersEnum.GLOBAL);
       const query = `
         SELECT
           server_id,
@@ -304,9 +299,9 @@ export abstract class ApiEvents implements ApiHelper {
    * Search and return paginated "Grand Tournament" alliance data filtered by alliance name and hour
    *
    * HTTP responses:
-   * - 200 OK: returns cached or freshly fetched response object described above. If no matches, returns { total_items: 0, alliances: [] } (or the standardized response with empty alliances and pagination).
-   * - 400 Bad Request: when `date` is invalid or `alliance_name` is empty or exceeds 50 characters. (Client error messages indicate required format for date.)
-   * - 500 Internal Server Error: on unexpected failures; the error is logged and a generic 500 message is returned.
+   * - 200 OK: returns cached or freshly fetched response object described above. If no matches, returns { total_items: 0, alliances: [] } (or the standardized response with empty alliances and pagination)
+   * - 400 Bad Request: when `date` or `alliance_name` is invalid (or missing); returns appropriate error message
+   * - 500 Internal Server Error: on unexpected failures
    *
    * @param request - express.Request containing query parameters: alliance_name, date, page
    * @param response - express.Response used to send the HTTP response
@@ -320,7 +315,7 @@ export abstract class ApiEvents implements ApiHelper {
       /* ---------------------------------
        * Validate request parameters
        * --------------------------------- */
-      const allianceName = String(request.query.alliance_name || '').trim();
+      const allianceName = ApiHelper.validateSearchAndSanitize(request.query.alliance_name);
       const date = this.validateDate(request.query.date) ? new Date(String(request.query.date)) : null;
       if (!date) {
         response
@@ -331,8 +326,8 @@ export abstract class ApiEvents implements ApiHelper {
       const pagination_page = request.query.page ? Number.parseInt(String(request.query.page)) : 1;
       const maxAlliancesPerPage = 10;
       const offset = (pagination_page - 1) * maxAlliancesPerPage;
-      if (allianceName.length === 0 || allianceName.length > 50) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid alliance name' });
+      if (ApiHelper.isInvalidInput(allianceName)) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceName });
         return;
       }
 
@@ -350,7 +345,7 @@ export abstract class ApiEvents implements ApiHelper {
       /* ---------------------------------
        * Database query for total count
        * --------------------------------- */
-      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServers.GLOBAL);
+      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServersEnum.GLOBAL);
       const baseParameters: (string | number | Date)[] = [date];
       const queryCount = `
         SELECT
@@ -438,7 +433,7 @@ export abstract class ApiEvents implements ApiHelper {
   }
 
   /**
-   * Retrieves a paginated snapshot of "Grand Tournament" (Grand Tournament) alliances for a specific hour
+   * Retrieves a paginated snapshot of Grand Tournament alliances for a specific hour
    *
    * Query parameters
    * - date: required; ISO 8601 hour precision string (example: "2023-01-23T14:00:00.000Z"). If invalid, returns 400
@@ -446,31 +441,10 @@ export abstract class ApiEvents implements ApiHelper {
    * - subdivision_id: optional; integer 1..999_999. If out of range or not a number, returns 400
    * - page: optional; integer >= 1. Defaults to 1
    *
-   * Response structure :
-   * - {
-   *     event: {
-   *       division: { current_division: number, min_division: 1, max_division: 5 },
-   *       subdivision: { current_subdivision: number | null, min_subdivision: 1, max_subdivision: number },
-   *       alliances: Array<{
-   *         alliance_id: number | null,    // computed by concatenating DB alliance_id with server code then parseInt
-   *         alliance_name: string,
-   *         server: string | null,         // server outer_name resolved by zone lookup
-   *         rank: number,
-   *         score: number,
-   *         subdivision: number | null
-   *       }>
-   *     },
-   *     pagination: {
-   *       current_page: number,
-   *       total_pages: number,
-   *       current_items_count: number,
-   *       total_items_count: number
-   *     }
-   *   }
-   *
    * @param request - express.Request containing query parameters (date, division_id, subdivision_id, page)
    * @param response - express.Response used to send JSON responses and HTTP status codes
-   * @returns Promise<void> - resolves after sending the HTTP response
+   *
+   * @returns JSON response containing aggregated event data
    */
   public static async getGrandTournament(request: express.Request, response: express.Response): Promise<void> {
     try {
@@ -478,23 +452,19 @@ export abstract class ApiEvents implements ApiHelper {
        * Validate request parameters
        * --------------------------------- */
       const maxAlliancesPerPage = 10;
+      const maxDivisionId = 5;
       const date = this.validateDate(request.query.date) ? new Date(String(request.query.date)) : null;
       if (!date) {
-        response
-          .status(ApiHelper.HTTP_BAD_REQUEST)
-          .send({ error: 'Invalid date format. Please use YYYY-MM-DDTHH:00:00.000Z.' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidFlatDateFormat });
         return;
       }
-      const division_id = request.query.division_id ? Number.parseInt(String(request.query.division_id)) : 5;
-      const subdivision_id = request.query.subdivision_id
-        ? Number.parseInt(String(request.query.subdivision_id))
-        : undefined;
-      if (!division_id || Number.isNaN(division_id) || division_id < 1 || division_id > 5) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid division id' });
+      const division_id = ApiHelper.validatePageNumber(request.query.division_id, maxDivisionId + 1);
+      const subdivision_id = ApiHelper.validatePageNumber(request.query.subdivision_id, null);
+      if (division_id > maxDivisionId) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidDivisionId });
         return;
-      }
-      if (subdivision_id && (Number.isNaN(subdivision_id) || subdivision_id < 1 || subdivision_id > 999_999)) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid subdivision id' });
+      } else if (request.query.subdivision_id && !subdivision_id) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidSubdivisionId });
         return;
       }
       const pagination_page = request.query.page ? Number.parseInt(String(request.query.page)) : 1;
@@ -514,7 +484,7 @@ export abstract class ApiEvents implements ApiHelper {
        * Query database
        * --------------------------------- */
       const offset = (pagination_page - 1) * maxAlliancesPerPage;
-      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServers.GLOBAL);
+      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServersEnum.GLOBAL);
       const baseParameters: (string | number | Date)[] = [date, division_id];
       if (subdivision_id) baseParameters.push(subdivision_id);
       let index = 2;
@@ -615,20 +585,20 @@ export abstract class ApiEvents implements ApiHelper {
   }
 
   /**
-   * Retrieves a paginated list of players for a specific event, with optional filtering by player name and server.
+   * Retrieves a paginated list of players for a specific event, with optional filtering by player name and server
    *
    * @param request - The Express request object, containing route parameters and query parameters:
-   *   - `params.id`: The event ID (must be a valid number).
-   *   - `params.eventType`: The event type ("outer-realms" or "beyond-the-horizon").
-   *   - `query.page`: (Optional) The page number for pagination (defaults to 1).
-   *   - `query.player_name`: (Optional) Filter for player names (case-insensitive, max 50 chars).
-   *   - `query.server`: (Optional) Filter for server code (max 10 chars).
-   * @param response - The Express response object used to send the result or error.
-   * @param eventPgDbpool - The PostgreSQL connection pool for querying event data.
+   *   - `params.id`: The event ID (must be a valid number)
+   *   - `params.eventType`: The event type ("outer-realms" or "beyond-the-horizon")
+   *   - `query.page`: (Optional) The page number for pagination (defaults to 1)
+   *   - `query.player_name`: (Optional) Filter for player names (case-insensitive, max 50 chars)
+   *   - `query.server`: (Optional) Filter for server code (max 10 chars)
+   * @param response - The Express response object used to send the result or error
+   * @param eventPgDbpool - The PostgreSQL connection pool for querying event data
+   *
    * @returns A Promise that resolves when the response is sent. Responds with a JSON object containing:
-   *   - `players`: An array of player objects (with player_id, player_name, rank, point, level, legendary_level, server).
-   *   - `pagination`: Pagination metadata (current_page, total_pages, current_items_count, total_items_count).
-   *o.
+   *   - `players`: An array of player objects (with player_id, player_name, rank, point, level, legendary_level, server)
+   *   - `pagination`: Pagination metadata (current_page, total_pages, current_items_count, total_items_count)
    */
   public static async getEventPlayers(
     request: express.Request,
@@ -640,43 +610,39 @@ export abstract class ApiEvents implements ApiHelper {
        * Validate and parse parameters
        * --------------------------------- */
       const PAGINATION_LIMIT = 15;
-      const id = request.params.id;
-      let page = Number.parseInt(String(request.query.page)) || 1;
-      let playerNameFilter = request.query.player_name ? String(request.query.player_name) : null;
-      let serverFilter = request.query.server ? String(request.query.server) : null;
-      let eventType = request.params.eventType;
-      if (eventType !== 'outer-realms' && eventType !== 'beyond-the-horizon') {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid event type' });
+      const id = ApiHelper.validatePageNumber(request.params.id, null);
+      let page = ApiHelper.validatePageNumber(request.query.page);
+      let playerNameFilter = ApiHelper.validateSearchAndSanitize(request.query.player_name, { toLowerCase: true });
+      let serverFilter = ApiHelper.validateSearchAndSanitize(request.query.server, { maxLength: 20 });
+      let eventType = ApiHelper.validateSearchAndSanitize(request.params.eventType);
+      if (eventType !== EventTypes.OUTER_REALMS && eventType !== EventTypes.BEYOND_THE_HORIZON) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventType });
         return;
       }
       // Trick: we convert event type to match table name, e.g. "outer-realms" -> "outer_realms_ranking"
-      // This needs to be upgraded if we add more event types in the future.
+      // This needs to be upgraded if we add more event types in the future
       const sqlTable = eventType.trim().replaceAll('-', '_') + '_ranking';
-      if (!id || Number.isNaN(Number(id))) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid event ID' });
+      if (!id) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventId });
         return;
       }
-      if (Number.isNaN(page) || page < 1 || page > ApiHelper.MAX_RESULT_PAGE) {
-        page = 1;
-      }
-      if (playerNameFilter) {
-        playerNameFilter = playerNameFilter.trim().toLowerCase();
-      }
-      if (playerNameFilter && playerNameFilter.length > 50) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Player name filter is too long' });
+      if (playerNameFilter === ApiInvalidInputType) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
         return;
       }
-      if (serverFilter && serverFilter.length > 10) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid server filter' });
+      if (serverFilter === ApiInvalidInputType) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidServer });
         return;
       }
-      const cachedKey = `events:${eventType}:${id}:players:${page}:${playerNameFilter}:${serverFilter || 'all'}`;
+      const cachedKey = `events:${eventType}:${id}:players:${page}:${String(playerNameFilter)}:${String(serverFilter)}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
         return;
       }
 
+      const isValidPlayerNameFilter = ApiHelper.isValidInput(playerNameFilter);
+      const isValidServerFilter = ApiHelper.isValidInput(serverFilter);
       /* ---------------------------------
        * Count total items for pagination
        * --------------------------------- */
@@ -685,25 +651,25 @@ export abstract class ApiEvents implements ApiHelper {
         SELECT COUNT(*) AS total
         FROM ${sqlTable} O
         WHERE O.event_num = $${index++}
-        ${playerNameFilter ? `AND LOWER(player_name) LIKE $${index++}` : ''}
-        ${serverFilter ? `AND O.server = $${index++}` : ''}
+        ${isValidPlayerNameFilter ? `AND LOWER(player_name) LIKE $${index++}` : ''}
+        ${isValidServerFilter ? `AND O.server = $${index++}` : ''}
         `;
-      const countParameters: (string | number)[] = [id];
-      if (playerNameFilter) {
-        countParameters.push(`%${playerNameFilter}%`);
+      const parameters: (string | number)[] = [id];
+      if (isValidPlayerNameFilter) {
+        parameters.push(`%${playerNameFilter}%`);
       }
-      if (serverFilter) {
-        countParameters.push(serverFilter);
+      if (isValidServerFilter) {
+        parameters.push(serverFilter.toUpperCase());
       }
 
       /* ---------------------------------
        * Query paginated results
        * --------------------------------- */
       const countResult = await new Promise<{ total: number }>((resolve, reject) => {
-        eventPgDbpool.query(countQuery, countParameters, (error, results) => {
+        eventPgDbpool.query(countQuery, parameters, (error, results) => {
           if (error) {
             ApiHelper.logError(error, 'getEventPlayers_countQuery', request);
-            reject(new Error('An error occurred. Please try again later.'));
+            reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
           } else {
             resolve(results.rows[0]);
           }
@@ -732,18 +698,11 @@ export abstract class ApiEvents implements ApiHelper {
         SELECT player_id, player_name, rank, point, server
         FROM ${sqlTable}
         WHERE event_num = $${parameterIndex++}
-        ${playerNameFilter ? `AND LOWER(player_name) LIKE $${parameterIndex++}` : ''}
-        ${serverFilter ? `AND server = $${parameterIndex++}` : ''}
+        ${isValidPlayerNameFilter ? `AND LOWER(player_name) LIKE $${parameterIndex++}` : ''}
+        ${isValidServerFilter ? `AND server = $${parameterIndex++}` : ''}
         ORDER BY rank
         LIMIT $${parameterIndex++} OFFSET $${parameterIndex++}
         `;
-      const parameters: (string | number)[] = [id];
-      if (playerNameFilter) {
-        parameters.push(`%${playerNameFilter}%`);
-      }
-      if (serverFilter) {
-        parameters.push(serverFilter);
-      }
       parameters.push(PAGINATION_LIMIT, offset);
 
       /* ---------------------------------
@@ -753,7 +712,7 @@ export abstract class ApiEvents implements ApiHelper {
         eventPgDbpool.query(query, parameters, (error, results) => {
           if (error) {
             ApiHelper.logError(error, 'getEventPlayers_query', request);
-            reject(new Error('An error occurred. Please try again later.'));
+            reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
           } else {
             resolve(results.rows);
           }
@@ -765,7 +724,7 @@ export abstract class ApiEvents implements ApiHelper {
        * --------------------------------- */
       const players = results.map((result: any) => ({
         player_id: result.player_id
-          ? result.player_id + ApiHelper.ggeTrackerManager.getServerByCode(result.server)
+          ? result.player_id + ApiHelper.ggeTrackerManager.getOuterServer(result.server)?.code
           : null,
         player_name: result.player_name,
         rank: result.rank,
@@ -801,20 +760,20 @@ export abstract class ApiEvents implements ApiHelper {
   }
 
   /**
-   * Handles the retrieval and aggregation of event ranking data for a specified event type and event ID.
+   * Handles the retrieval and aggregation of event ranking data for a specified event type and event ID
    *
    * This endpoint supports only "outer-realms" and "beyond-the-horizon" event types. It performs multiple
    * database queries in parallel to gather statistics such as server rankings, top scores, rank distributions,
-   * score statistics, level distributions, and more for the given event. Results are cached in Redis for performance.
+   * score statistics, level distributions, and more for the given event. Results are cached in Redis for performance
    *
-   * @param request - Express request object, expects `eventType` and `id` as route parameters.
-   * @param response - Express response object used to send the aggregated event data or error messages.
-   * @param eventPgDbpool - PostgreSQL connection pool for executing queries.
+   * @param request - Express request object, expects `eventType` and `id` as route parameters
+   * @param response - Express response object used to send the aggregated event data or error messages
+   * @param eventPgDbpool - PostgreSQL connection pool for executing queries
    *
-   * @returns Sends a JSON response containing aggregated event statistics or an error message.
+   * @returns JSON response containing aggregated event data
    *
-   * @throws 400 - If the event type or event ID is invalid.
-   * @throws 500 - If a database or internal error occurs.
+   * @throws 400 - If the event type or event ID is invalid
+   * @throws 500 - If a database or internal error occurs
    */
   public static async getDataEventType(
     request: express.Request,
@@ -827,15 +786,15 @@ export abstract class ApiEvents implements ApiHelper {
        * --------------------------------- */
       let eventType = request.params.eventType;
       if (eventType !== 'outer-realms' && eventType !== 'beyond-the-horizon') {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid event type' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventType });
         return;
       }
       // Trick: we convert event type to match table name, e.g. "outer-realms" -> "outer_realms_ranking"
-      // This needs to be upgraded if we add more event types in the future.
+      // This needs to be upgraded if we add more event types in the future
       const sqlTable = eventType.trim().replaceAll('-', '_') + '_ranking';
       const id = request.params.id;
       if (!id || Number.isNaN(Number(id))) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid event ID' });
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventId });
         return;
       }
 
@@ -962,7 +921,7 @@ export abstract class ApiEvents implements ApiHelper {
             eventPgDbpool.query(request_.query, request_.params, (error, result) => {
               if (error) {
                 ApiHelper.logError(error, 'getDataEventType', request);
-                reject(new Error('An error occurred. Please try again later.'));
+                reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
               } else {
                 resolve(result.rows);
               }
@@ -1029,6 +988,243 @@ export abstract class ApiEvents implements ApiHelper {
     }
   }
 
+  /**
+   * Retrieves the live Outer Realms ranking data for a specific player
+   *
+   * This endpoint returns historical ranking data for a player in the Outer Realms event,
+   * including their score, rank, level, legendary level, might, and castle position over time
+   *
+   * @param request - Express request object containing the playerId in params
+   * @param request.params.playerId - The player ID with country code to look up
+   * @param response - Express response object
+   *
+   * @returns A Promise that resolves when the response is sent
+   *
+   * @throws {400} If the player ID is invalid or missing country code
+   * @throws {500} If there's an error querying the database or processing the request
+   */
+  public static async getLiveOuterRealmsRankingSpecificPlayer(
+    request: express.Request,
+    response: express.Response,
+  ): Promise<void> {
+    try {
+      /* ---------------------------------
+       * Validate and parse parameters
+       * --------------------------------- */
+      const playerId = ApiHelper.verifyIdWithCountryCode(request.params.playerId);
+      if (!playerId) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
+        return;
+      }
+
+      const clickhouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
+
+      /* ---------------------------------
+       * Database query for player data
+       * --------------------------------- */
+      const playersQuery = `
+        SELECT
+          player_id,
+          player_name,
+          server,
+          score,
+          rank,
+          level,
+          legendary_level,
+          might,
+          fetch_date,
+          castle_position_x,
+          castle_position_y
+        FROM ggetracker_global.outer_realms_ranking
+        WHERE player_id = {playerId:UInt32}
+        ORDER BY fetch_date DESC
+      `;
+      const rawResult = await clickhouseClient.query({
+        query: playersQuery,
+        query_params: {
+          playerId: playerId,
+        },
+      });
+
+      const json = await rawResult.json();
+
+      if (json.data.length === 0) {
+        response.status(ApiHelper.HTTP_NOT_FOUND).send({ player: null });
+        return;
+      }
+      const firstEntry: any = json.data[0];
+      const finalEntry = {
+        // PlayerID is a global playerID, so we do not need to append country code
+        player_id: firstEntry.player_id,
+        player_name: firstEntry.player_name,
+        server: firstEntry.server,
+        castle_position: [firstEntry.castle_position_x, firstEntry.castle_position_y],
+        data: json.data.map((row: any) => ({
+          timestamp: new Date(row.fetch_date).toISOString(),
+          might: row.might,
+          level: row.level,
+          legendary_level: row.legendary_level,
+          score: row.score,
+          rank: row.rank,
+        })),
+      };
+
+      /* ---------------------------------
+       * Update cache and send response
+       * --------------------------------- */
+      const responseData = { player: finalEntry };
+      response.status(ApiHelper.HTTP_OK).send(responseData);
+    } catch (error) {
+      const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
+      response.status(code).send({ error: message });
+      ApiHelper.logError(error, 'getLiveOuterRealmsRankingSpecificPlayer', request);
+      return;
+    }
+  }
+
+  public static async getLiveOuterRealmsRanking(request: express.Request, response: express.Response): Promise<void> {
+    try {
+      /* ---------------------------------
+       * Validate and parse parameters
+       * --------------------------------- */
+      const page = ApiHelper.validatePageNumber(request.query.page) || 1;
+      const searchPlayerName = ApiHelper.validateSearchAndSanitize(request.query.player_name, {
+        maxLength: 50,
+        toLowerCase: true,
+      });
+      const sizePerPage = 10;
+      const offset = (page - 1) * sizePerPage;
+      const mainTableName = 'ggetracker_global.outer_realms_ranking';
+      const fetchDateTableName = 'ggetracker_global.latest_fetch_date';
+      const clickhouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
+
+      /* ---------------------------------
+       * Query database for last fetch date
+       * --------------------------------- */
+      const lastFetchResult = await clickhouseClient.query({
+        query: `SELECT fetch_date FROM ${fetchDateTableName} ORDER BY fetch_date DESC LIMIT 1`,
+      });
+      const jsonLastFetch = (await lastFetchResult.json()) as { data: Array<{ fetch_date: string }> };
+      const lastFetchDate = jsonLastFetch.data[0]?.fetch_date;
+
+      if (!lastFetchDate) {
+        response.status(ApiHelper.HTTP_OK).send({ total_items: 0, players: [] });
+        return;
+      }
+
+      /* ---------------------------------
+       * Query database for players
+       * --------------------------------- */
+      const playersQuery = `
+        SELECT
+          now.player_id,
+          now.player_name,
+          now.server,
+          now.score,
+          now.rank,
+          now.level,
+          now.legendary_level,
+          now.might,
+          now.castle_position_x,
+          now.castle_position_y,
+          now.fetch_date,
+          (now.score - coalesce(before.score, now.score)) AS score_diff,
+          (coalesce(before.rank, now.rank) - now.rank) AS rank_diff
+        FROM ${mainTableName} AS now
+        LEFT JOIN ${mainTableName} AS before
+          ON before.player_id = now.player_id
+          AND before.fetch_date = (
+            SELECT MAX(fetch_date)
+            FROM ${mainTableName}
+            WHERE fetch_date < '${lastFetchDate}'
+          )
+        WHERE now.fetch_date = '${lastFetchDate}'
+          ${ApiHelper.isValidInput(searchPlayerName) ? `AND player_name_lower LIKE {searchPlayerName:String}` : ''}
+        ORDER BY now.rank ASC
+        LIMIT ${sizePerPage} OFFSET ${offset};
+      `;
+      const rawPlayersResult = await clickhouseClient.query({
+        query: playersQuery,
+        query_params: ApiHelper.isValidInput(searchPlayerName) ? { searchPlayerName: `%${searchPlayerName}%` } : {},
+      });
+      const jsonPlayers = await rawPlayersResult.json();
+      const playersResult: any = jsonPlayers.data;
+      if (playersResult.length === 0) {
+        response.status(ApiHelper.HTTP_OK).send({ total_items: 0, players: [] });
+        return;
+      }
+
+      /* ---------------------------------
+       * Event active verification
+       * --------------------------------- */
+      const nowTs = new Date();
+      const tenMinutesAgo = new Date(nowTs.getTime() - 10 * 60 * 1000);
+
+      if (!playersResult[0]?.fetch_date || new Date(playersResult[0]?.fetch_date) < tenMinutesAgo) {
+        response.status(ApiHelper.HTTP_FORBIDDEN).send({ error: RouteErrorMessagesEnum.EventNotActive });
+        return;
+      }
+
+      /* ---------------------------------
+       * Format results
+       * --------------------------------- */
+      const players = playersResult.map((row: any) => ({
+        player_id: row.player_id,
+        player_name: row.player_name,
+        server: row.server,
+        score: row.score,
+        rank: row.rank,
+        level: row.level,
+        legendary_level: row.legendary_level,
+        might: row.might,
+        rank_diff: row.rank_diff,
+        score_diff: row.score_diff,
+        castle_position: [row.castle_position_x, row.castle_position_y],
+      }));
+
+      /* ---------------------------------
+       * Query database for total count
+       * --------------------------------- */
+      const totalCountQuery = `
+        SELECT COUNT(*) AS total
+        FROM ${mainTableName}
+        WHERE fetch_date = '${lastFetchDate}'
+        ${ApiHelper.isValidInput(searchPlayerName) ? `AND player_name_lower LIKE {searchPlayerName:String}` : ''}
+      `;
+      const rawTotalResult = await clickhouseClient.query({
+        query: totalCountQuery,
+        query_params: ApiHelper.isValidInput(searchPlayerName) ? { searchPlayerName: `%${searchPlayerName}%` } : {},
+      });
+      const jsonTotal = (await rawTotalResult.json()) as { data: Array<{ total: number }> };
+      const total_items = Number(jsonTotal.data[0]?.total || 0);
+      const total_pages = Math.ceil(total_items / sizePerPage);
+
+      const responseData = {
+        players,
+        pagination: {
+          current_page: page,
+          total_pages,
+          current_items_count: players.length,
+          total_items_count: total_items,
+        },
+      };
+
+      response.status(ApiHelper.HTTP_OK).send(responseData);
+    } catch (error) {
+      const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
+      response.status(code).send({ error: message });
+      ApiHelper.logError(error, 'getLiveOuterRealmsRanking', request);
+      return;
+    }
+  }
+
+  /**
+   * Validates that the provided value is a date-time string with hour precision
+   * in strict UTC ISO-8601 form: YYYY-MM-DDTHH:00:00.000Z
+   *
+   * @upgrade This method should be replaced with a more robust date-time validation library if needed
+   * @param dateString - The value to validate as a date-time string
+   */
   private static validateDate(dateString: any): boolean {
     if (typeof dateString !== 'string') {
       return false;

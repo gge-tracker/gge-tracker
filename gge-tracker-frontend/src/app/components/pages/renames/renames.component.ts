@@ -1,32 +1,22 @@
 import { DatePipe, NgClass, NgFor, NgIf } from '@angular/common';
-import { Component } from '@angular/core';
-import { TranslateModule } from '@ngx-translate/core';
-
-import { ApiRenamesResponse, ErrorType, Rename, SearchType } from '@ggetracker-interfaces/empire-ranking';
-import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
+import { AfterViewInit, Component, inject, Injector, OnDestroy } from '@angular/core';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
-import { ServerBadgeComponent } from '@ggetracker-components/server-badge/server-badge.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
+import { ApiRenamesResponse, ErrorType, Rename, SearchType } from '@ggetracker-interfaces/empire-ranking';
+import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
+import { TopBarService } from '@ggetracker-services/topbar.service';
+import { TranslateModule } from '@ngx-translate/core';
+import { RenamesSwitcherComponent } from './renames-switcher/renames-switcher.component';
 
 @Component({
   selector: 'app-renames',
   standalone: true,
-  imports: [
-    NgClass,
-    SearchFormComponent,
-    TableComponent,
-    NgIf,
-    FormatNumberPipe,
-    DatePipe,
-    NgFor,
-    TranslateModule,
-    ServerBadgeComponent,
-  ],
+  imports: [NgClass, SearchFormComponent, TableComponent, NgIf, FormatNumberPipe, DatePipe, NgFor, TranslateModule],
   templateUrl: './renames.component.html',
   styleUrl: './renames.component.css',
 })
-export class RenamesComponent extends GenericComponent {
+export class RenamesComponent extends GenericComponent implements AfterViewInit, OnDestroy {
   public search = '';
   public currentViewType: 'players' | 'alliances' | undefined = undefined;
   public pageSize = 15;
@@ -41,9 +31,11 @@ export class RenamesComponent extends GenericComponent {
     movementType: null,
     isFiltered: false,
   };
+  private topBarService = inject(TopBarService);
 
   constructor() {
     super();
+    this.isInLoading = true;
     this.route.paramMap.subscribe((parameters) => {
       this.currentViewType = (parameters.get('type') as 'players' | 'alliances') || 'players';
       if (this.currentViewType === 'alliances') {
@@ -63,6 +55,18 @@ export class RenamesComponent extends GenericComponent {
       }
       this.init();
     });
+  }
+
+  public ngAfterViewInit(): void {
+    const viewType = this.currentViewType || 'players';
+    const injector = Injector.create({
+      providers: [{ provide: 'current', useValue: viewType }],
+    });
+    this.topBarService.attach(RenamesSwitcherComponent, injector);
+  }
+
+  public ngOnDestroy(): void {
+    this.topBarService.clear();
   }
 
   public applyFilters(): void {
@@ -96,6 +100,12 @@ export class RenamesComponent extends GenericComponent {
     if (allianceName === null || (this.searchType === 'alliance' && this.search === allianceName)) return;
     this.search = allianceName;
     void this.searchAlliance(allianceName);
+  }
+
+  public navigateToType(type: 'players' | 'alliances'): void {
+    if (type !== this.currentViewType) {
+      void this.router.navigate(['/renames', type]);
+    }
   }
 
   public async searchAlliance(allianceName: string): Promise<void> {

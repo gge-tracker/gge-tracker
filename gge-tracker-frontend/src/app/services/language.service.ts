@@ -9,12 +9,12 @@ import { LocalStorageService } from './local-storage.service';
 export class LanguageService {
   public currentLang = 'en';
   public langs = [
-    { code: 'en', label: 'English' },
-    { code: 'fr', label: 'Français' },
-    { code: 'nl', label: 'Nederlands' },
-    { code: 'pl', label: 'Polski' },
-    { code: 'ro', label: 'Română' },
-    { code: 'de', label: 'Deutsch' },
+    { code: 'en', label: 'English', flagUrl: 'https://flagsapi.com/GB/flat/32.png' },
+    { code: 'fr', label: 'Français', flagUrl: 'https://flagsapi.com/FR/flat/32.png' },
+    { code: 'nl', label: 'Nederlands', flagUrl: 'https://flagsapi.com/NL/flat/32.png' },
+    { code: 'pl', label: 'Polski', flagUrl: 'https://flagsapi.com/PL/flat/32.png' },
+    { code: 'ro', label: 'Română', flagUrl: 'https://flagsapi.com/RO/flat/32.png' },
+    { code: 'de', label: 'Deutsch', flagUrl: 'https://flagsapi.com/DE/flat/32.png' },
   ];
 
   // @ts-expect-error Property 'userLanguage' does not exist on type 'Navigator'.
@@ -29,6 +29,11 @@ export class LanguageService {
     this.currentLang = this.localStorage.getItem('lang') || this.defaultLang;
     this.translate.setDefaultLang(this.defaultLang);
     this.translate.use(this.currentLang);
+  }
+
+  public getFlagUrlForLang(lang: string): string {
+    const langObject = this.langs.find((l) => l.code === lang);
+    return langObject ? langObject.flagUrl : '';
   }
 
   public getCurrentLang(): string {
