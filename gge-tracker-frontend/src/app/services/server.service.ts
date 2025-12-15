@@ -91,7 +91,7 @@ export class ServerService {
     RU1: 'https://flagsapi.com/RU/flat/64.png',
     SA1: 'https://flagsapi.com/SA/flat/64.png',
     SK1: 'https://flagsapi.com/SK/flat/64.png',
-    SKN1: 'https://flagsapi.com/SK/flat/64.png',
+    SKN1: 'https://flagsapi.com/DK/flat/64.png',
     TR1: 'https://flagsapi.com/TR/flat/64.png',
     US1: 'https://flagsapi.com/US/flat/64.png',
     WORLD1: '/assets/int_flag.png',

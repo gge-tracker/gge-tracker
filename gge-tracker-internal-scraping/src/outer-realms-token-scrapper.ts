@@ -115,7 +115,7 @@ async function createOuterRealmsInstance(): Promise<void> {
     if (!statusResponse.data || statusResponse.data['EmpireEx_42'] !== true) {
       console.log('Deleting existing Outer Realms server configuration if any...');
       try {
-        await generic.fetchUrl(serverUrl + '/' + ID_SERVER, 'DELETE', null);
+        await generic.fetchUrl(serverUrl + '/' + TARGET_ID_SERVER, 'DELETE', null);
       } catch {}
       await new Promise((resolve) => setTimeout(resolve, 5000));
 
