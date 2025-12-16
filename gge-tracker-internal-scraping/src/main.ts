@@ -1149,8 +1149,10 @@ export class GenericFetchAndSaveBackend {
            * [PATCH #2512091]
            * In some cases, levelCategorySize can start at 2 (issue observed with bloodcrows)
            * Thus, we need to skip levelCategory 1 to avoid missing the entire event data...
+           * [PATCH #2512161]
+           * Same for war realms
            */
-          if (eventName === 'bloodcrows' && levelCategory <= 2) {
+          if ((eventName === 'bloodcrows' || eventName === 'war realms') && levelCategory <= 2) {
             continue;
           }
           Utils.logMessage(' [info] No event active (1)');
