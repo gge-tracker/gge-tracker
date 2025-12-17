@@ -58,7 +58,9 @@ class BaseSocket extends Log {
       }, 1000);
     }
     this.nbReconnects = 0;
-    await this.checkConnection();
+    if (this.reconnect) {
+      await this.checkConnection();
+    }
   }
 
   public async restart(): Promise<void> {
