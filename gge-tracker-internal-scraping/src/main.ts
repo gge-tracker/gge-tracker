@@ -417,6 +417,8 @@ export class GenericFetchAndSaveBackend {
                 });
               }
             }
+          } else {
+            console.error('Invalid response for URL:', url, data);
           }
         } catch (err) {
           console.error('Error on URL:', url, err);
@@ -424,8 +426,8 @@ export class GenericFetchAndSaveBackend {
         // Throttle management
         const delay = (ms: number): Promise<void> => new Promise((res) => setTimeout(res, ms));
         intervalTimer++;
-        if (intervalTimer === 25) {
-          await delay(100);
+        if (intervalTimer === 50) {
+          await delay(50);
           intervalTimer = 0;
         }
         done++;
@@ -451,7 +453,9 @@ export class GenericFetchAndSaveBackend {
       elapsedTimeInSeconds,
       'seconds (',
       elapsedTimeInMinutes,
-      'minutes)',
+      'minutes) : ',
+      dungeonMaps.length,
+      'dungeons found.',
     );
     console.log('Database connection successful');
     const values: any[] = [];
