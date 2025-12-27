@@ -1,6 +1,6 @@
 {
   "name": "empire-api",
-  "version": "25.12.08-beta",
+  "version": "25.12.27-beta",
   "description": "This is a fork of the original EmpireAPI (https://github.com/danadum/gge-auto-alt)",
   "main": "/app/server.js",
   "private": true,

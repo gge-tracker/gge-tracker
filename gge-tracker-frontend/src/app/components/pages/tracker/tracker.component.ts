@@ -71,7 +71,6 @@ export class TrackerComponent extends GenericComponent {
   ];
   public selectedRealm: number[] = [2];
   public filterByKid: number[] = [2];
-  public allowedServers = ['FR1', 'RO1', 'IT1', 'CZ1', 'SA1', 'DE1', 'NL1', 'E4K_BR1', 'TR1'];
   private localStorage = inject(LocalStorageService);
 
   constructor() {
@@ -79,6 +78,10 @@ export class TrackerComponent extends GenericComponent {
     this.isInLoading = true;
     this.resetHeaders();
     this.init();
+  }
+
+  public get allowedServers(): string[] {
+    return this.serverService.xmlServers.filter((s) => s.featured).map((s) => s.name);
   }
 
   public async nextPage(): Promise<void> {

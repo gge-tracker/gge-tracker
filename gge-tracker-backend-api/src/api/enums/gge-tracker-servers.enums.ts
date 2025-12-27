@@ -52,4 +52,5 @@ export enum GgeTrackerServersEnum {
   E4K_DE2 = 'E4K_DE2',
   E4K_US1 = 'E4K_US1',
   E4K_INT2 = 'E4K_INT2',
+  E4K_CN1 = 'E4K_CN1',
 }

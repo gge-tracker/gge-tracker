@@ -7,5 +7,11 @@ export enum AuthorizedSpecialServersEnum {
   DE1 = 'DE1',
   NL1 = 'NL1',
   E4K_BR1 = 'E4K_BR1',
+  E4K_HANT1 = 'E4K_HANT1',
+  E4K_CN1 = 'E4K_CN1',
   TR1 = 'TR1',
+  BR1 = 'BR1',
+  GR1 = 'GR1',
+  ES1 = 'ES1',
+  HU1 = 'HU1',
 }

@@ -4,6 +4,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { TranslatePipe } from '@ngx-translate/core';
 import package_ from '../../../../../package.json';
+import { environment } from 'environments/environment.production';
 
 export interface Contributor {
   name: string;
@@ -30,7 +31,7 @@ export class AboutComponent extends GenericComponent implements OnInit {
     this.isInLoading = false;
     this.constructDateVersion(package_.version);
     this.constructVersion(package_.version);
-    const url = 'https://ggetracker.github.io/i18n/contributors.xml';
+    const url = environment.i18nBaseUrl + 'contributors.xml';
     fetch(url)
       .then((response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);

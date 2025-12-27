@@ -7,6 +7,7 @@
 export const environment = {
   production: false,
   apiUrl: 'http://localhost:3000/api/v1/',
+  i18nBaseUrl: 'https://ggetracker.github.io/i18n-beta/',
 };
 
 console.log('Using development environment');

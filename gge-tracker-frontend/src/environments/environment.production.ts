@@ -7,6 +7,7 @@
 export const environment = {
   production: true,
   apiUrl: 'https://api.gge-tracker.com/api/v1/',
+  i18nBaseUrl: 'https://ggetracker.github.io/i18n/',
 };
 console.clear();
 const myColor = 'color:#e65045; font-size:15px;';
