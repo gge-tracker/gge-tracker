@@ -1,4 +1,4 @@
-import { DatePipe, NgClass, NgForOf, NgIf } from '@angular/common';
+import { DatePipe, NgClass, NgForOf, NgIf, NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -49,6 +49,8 @@ export interface IRankingStatsPlayer {
   totalCastles: number;
 }
 
+type Tabs = 'overview' | 'loot' | 'alliances' | 'castles';
+
 @Component({
   selector: 'app-player-stats',
   standalone: true,
@@ -64,6 +66,7 @@ export interface IRankingStatsPlayer {
     FormatNumberPipe,
     LevelPipe,
     FormsModule,
+    NgTemplateOutlet,
   ],
   templateUrl: './player-stats.component.html',
   styleUrl: './player-stats.component.css',
@@ -113,6 +116,14 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
   public searchTerm = '';
   public sortColumn: keyof Monument | null = null;
   public sortAsc = true;
+  public tabs: { key: Tabs; label: string; assetIcon?: string }[] = [
+    { key: 'overview', label: "Vue d'ensemble", assetIcon: 'players.png' },
+    { key: 'loot', label: 'Points de pillage hebdomadaire', assetIcon: 'loot.png' },
+    { key: 'alliances', label: 'Alliances', assetIcon: 'alliance.png' },
+    { key: 'castles', label: 'Châteaux', assetIcon: 'tools/castles.png' },
+  ];
+  public currentTab: Tabs = 'overview';
+  public maxLootPointsByWeek: { week: string; points: number }[] = [];
 
   private animationFrames: Partial<Record<keyof IRankingStatsPlayer, number>> = {};
   private localStorage = inject(LocalStorageService);
@@ -397,6 +408,154 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
       title: {},
       tooltip: {},
     };
+  }
+
+  private formatHourlyCategoriesIntl(lang: string): string[] {
+    const formatter = new Intl.DateTimeFormat(lang, {
+      hour: 'numeric',
+      hour12: undefined,
+    });
+
+    return Array.from({ length: 24 }, (_, index) => {
+      const date = new Date(2020, 0, 1, index);
+      return formatter.format(date);
+    });
+  }
+
+  private initHeatmapChartOption(name: string, data: ApexAxisChartSeries, color: string[]): void {
+    this.charts[name] = {
+      series: data,
+      chart: {
+        height: 650,
+        type: 'heatmap',
+      },
+      dataLabels: {
+        enabled: false,
+      },
+      colors: color,
+      xaxis: {
+        type: 'category',
+        categories: [],
+      },
+      title: {},
+      grid: {
+        padding: {
+          right: 20,
+        },
+      },
+      yaxis: {},
+      fill: {},
+      stroke: {},
+      tooltip: {
+        y: {
+          formatter: function (value): string {
+            if (value === null) return '?';
+            if (value > 0) return value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return '0';
+          },
+        },
+      },
+      legend: {},
+      plotOptions: {
+        heatmap: {
+          colorScale: {
+            ranges: [
+              { from: 0, to: 0, color: '#4e4e4e', name: '0' },
+              { from: 1, to: 1_000_000, color: '#FFF3E0', name: '0 - 1M' },
+              { from: 1_000_001, to: 10_000_000, color: '#FFE0B2', name: '1M - 10M' },
+              { from: 10_000_001, to: 50_000_000, color: '#FFCC80', name: '10M - 50M' },
+              { from: 50_000_001, to: 100_000_000, color: '#FFB74D', name: '50M - 100M' },
+              { from: 100_000_001, to: 250_000_000, color: '#FFA726', name: '100M - 250M' },
+              { from: 250_000_001, to: 500_000_000, color: '#FF9800', name: '250M - 500M' },
+              { from: 500_000_001, to: 1_000_000_000, color: '#FB8C00', name: '500M - 1Md' },
+              { from: 1_000_000_001, to: 2_000_000_000, color: '#F57C00', name: '1Md - 2Md' },
+              { from: 2_000_000_001, to: 3_000_000_000, color: '#EF6C00', name: '2Md - 3Md' },
+              { from: 3_000_000_001, to: 4_000_000_000, color: '#E65100', name: '3Md - 4Md' },
+              { from: 4_000_000_001, to: Number.MAX_SAFE_INTEGER, color: '#BF360C', name: '> 4Md' },
+            ],
+          },
+        },
+      },
+    };
+    this.spinnerLoadingByChart[name] = false;
+  }
+
+  private initAverageGainChart(name: string, data: ApexAxisChartSeries): void {
+    const lang = this.languageService.getCurrentLang();
+    this.charts[name] = {
+      series: data,
+      chart: {
+        type: 'area',
+        height: 250,
+        zoom: {},
+      },
+      stroke: {
+        curve: 'smooth',
+        width: 3,
+      },
+      xaxis: {
+        categories: this.formatHourlyCategoriesIntl(lang),
+      },
+      tooltip: {
+        y: {
+          formatter: (value): string => value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ','),
+        },
+      },
+      colors: ['#EF6C00'],
+      dataLabels: {
+        enabled: false,
+      },
+      title: {},
+      grid: {},
+      fill: {},
+      yaxis: {
+        labels: {
+          formatter: (value): string => value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ','),
+        },
+      },
+      legend: {},
+      plotOptions: {},
+    };
+    // @ts-expect-error: Property 'allowMouseWheelZoom' does not exist on type 'Zoom'
+    this.charts[name].chart.zoom.allowMouseWheelZoom = false;
+  }
+
+  private initHourlyActivityChart(name: string, data: ApexAxisChartSeries): void {
+    const lang = this.languageService.getCurrentLang();
+    this.charts[name] = {
+      series: data,
+      chart: {
+        type: 'bar',
+        height: 250,
+        zoom: {},
+      },
+      xaxis: {
+        categories: this.formatHourlyCategoriesIntl(lang),
+      },
+      yaxis: {
+        max: 100,
+        labels: {
+          formatter: (value): string => `${value}%`,
+        },
+      },
+      tooltip: {
+        y: {
+          formatter: (value): string => `${value}%`,
+        },
+      },
+      colors: ['#FB8C00'],
+      dataLabels: {
+        enabled: false,
+      },
+      title: {},
+      grid: {},
+      fill: {},
+      stroke: {},
+      legend: {},
+      plotOptions: {},
+    };
+    // @ts-expect-error: Property 'allowMouseWheelZoom' does not exist on type 'Zoom'
+    this.charts[name].chart.zoom.allowMouseWheelZoom = false;
   }
 
   private initChartOption(name: string, data: ApexAxisChartSeries, color: string[]): void {
@@ -748,6 +907,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
   }
 
   private initLootHistoryData(): void {
+    const maxPoints: { week: string; points: number }[] = [];
     const lootPoints = this.data['player_loot_history'];
     if (!lootPoints || lootPoints.length === 0) {
       return;
@@ -802,7 +962,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
         if (pointIndex !== -1) {
           const point = points[pointIndex];
           if (point > 0) {
-            lastNonZeroPoint = point; // Update the last non-zero point
+            lastNonZeroPoint = point;
           }
           return point;
         }
@@ -816,7 +976,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     const allWeeksData = allWeeksHours.map((weekHours) => {
       return fillData(weekHours);
     });
-    const colors = ['#00000000', '#cc9a12'];
+    const colors = ['#bfb58f', '#cc9a12'];
     const series = allWeeksData.map((weekData, index) => {
       const weekStartDate = new Date(firstMonday);
       weekStartDate.setDate(firstMonday.getDate() + index * 7);
@@ -824,8 +984,10 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
         if (weekData.length > allWeeksData[0].length) {
           weekData = weekData.slice(0, allWeeksData[0].length);
         }
+        const maxPoint = Math.max(...weekData.filter((point): point is number => point !== null));
+        maxPoints.push({ week: weekStartDate.toISOString().slice(0, 10), points: maxPoint });
         return {
-          name: this.translateService.instant('Semaine courante'),
+          name: this.translateService.instant('Semaine courante') + ' (' + this.getUnitByValue(maxPoint) + ')',
           data: weekData,
           color: colors[1],
         };
@@ -834,31 +996,111 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
         if (weekData.length > allWeeksData[0].length) {
           weekData = weekData.slice(0, allWeeksData[0].length);
         }
+        const maxPoint = Math.max(...weekData.filter((point): point is number => point !== null));
+        maxPoints.push({ week: weekStartDate.toISOString().slice(0, 10), points: maxPoint });
         if (index === allWeeksData.length - 2) {
           return {
-            name: this.translateService.instant('Semaine précédente'),
+            name: this.translateService.instant('Semaine précédente') + ' (' + this.getUnitByValue(maxPoint) + ')',
             data: weekData,
-            color: '#000000',
+            color: '#b8b29e',
           };
         }
         return {
-          name: this.translateService.instant('Semaine du 0 au 0', {
-            start: weekStartDate.toLocaleDateString(locale).slice(0, -5),
-            end: new Date(weekStartDate.getTime() + 6 * 24 * 60 * 60 * 1000).toLocaleDateString(locale).slice(0, -5),
-          }),
+          name:
+            this.translateService.instant('Semaine du 0 au 0', {
+              start: weekStartDate.toLocaleDateString(locale).slice(0, -5),
+              end: new Date(weekStartDate.getTime() + 6 * 24 * 60 * 60 * 1000).toLocaleDateString(locale).slice(0, -5),
+            }) +
+            ' (' +
+            this.getUnitByValue(maxPoint) +
+            ')',
           data: weekData,
           color: colors[0],
           hidden: true,
         };
       }
     });
+    const days = [
+      this.translateService.instant('Dimanche'),
+      this.translateService.instant('Lundi'),
+      this.translateService.instant('Mardi'),
+      this.translateService.instant('Mercredi'),
+      this.translateService.instant('Jeudi'),
+      this.translateService.instant('Vendredi'),
+      this.translateService.instant('Samedi'),
+    ];
+    this.maxLootPointsByWeek = maxPoints;
+    const maxSeriesLength = Math.max(...series.map((s: any) => s.data.length));
+    for (const serie of series) {
+      if (serie.data.length < maxSeriesLength) {
+        const lastPoint = Math.max(...serie.data.filter((point): point is number => point !== null));
+        while (serie.data.length < maxSeriesLength) {
+          serie.data.push(lastPoint);
+        }
+      }
+    }
+    // Initialise the chart 'loot-heatmap' (heatmap loot history)
+    const seriesHeatmap: ApexAxisChartSeries = [];
+    const allValues: number[] = [];
+    series.reverse().forEach((weekSerie) => {
+      if (weekSerie.data.length === 0) return;
+      if (seriesHeatmap.length >= 25) return; // Limit to 25 weeks for UI performance
+      const dailyMax = new Map<number, number>();
+      weekSerie.data.forEach((point: number | null, hourIndex: number) => {
+        const dayIndex = Math.floor(hourIndex / 24);
+        if (!dailyMax.has(dayIndex)) {
+          dailyMax.set(dayIndex, 0);
+        }
+
+        if (point !== null) {
+          dailyMax.set(dayIndex, Math.max(dailyMax.get(dayIndex)!, point));
+        }
+      });
+      const heatmapData: { x: string; y: number }[] = [];
+      dailyMax.forEach((maxValue, dayIndex) => {
+        const xLabel = days[dayIndex + 1 > 6 ? 0 : dayIndex + 1];
+        heatmapData.push({
+          x: xLabel,
+          y: maxValue,
+        });
+        allValues.push(maxValue);
+      });
+      seriesHeatmap.push({
+        name: weekSerie.name,
+        data: heatmapData,
+      });
+    });
+    const maxValue = allValues.length > 0 ? Math.max(...allValues) : 0;
+    // Initialize the chart 'loot-heatmap' (heatmap loot history)
+    this.initHeatmapChartOption('loot-heatmap', seriesHeatmap, colors);
+    this.charts['loot-heatmap'].plotOptions.heatmap!.colorScale!.ranges = this.buildHeatmapRanges(maxValue);
+    // Initialise the hourly activity rate chart 'loot-activity' (hourly activity rate loot history)
+    const lastWeeksData = allWeeksData.slice(-2);
+    const hourlyActivity = this.computeHourlyActivityRate(lastWeeksData.flat());
+    const seriesHourlyActivity: ApexAxisChartSeries = [
+      {
+        name: this.translateService.instant("Taux d'activité par heure"),
+        data: hourlyActivity,
+      },
+    ];
+    this.initHourlyActivityChart('hourly-activity', seriesHourlyActivity);
+    // Initialise the average gain per hour chart 'loot-average-gain' (average gain per hour loot history)
+    const avgGainPerHour = this.computeAverageGainPerHour(lastWeeksData.flat());
+    const seriesAvgGain: ApexAxisChartSeries = [
+      {
+        name: this.translateService.instant('Gain moyen par heure'),
+        data: avgGainPerHour,
+      },
+    ];
+    this.initAverageGainChart('avg-gain-hour', seriesAvgGain);
+    // Initialize the chart 'loot' (area loot history)
     this.initChartOption('loot', series, colors);
     this.charts['loot'].xaxis.type = 'datetime';
     const weekHoursReference = allWeeksHours[0];
     for (let index = 1; index < weekHoursReference.length; index++) {
       allWeeksHours[index] = weekHoursReference;
     }
-    this.charts['loot'].xaxis.categories = allWeeksHours.flat(); // Flatten the array
+    this.charts['loot'].xaxis.categories = allWeeksHours.flat();
     const labels = this.charts['loot'].xaxis.labels;
     if (labels) {
       labels.datetimeFormatter = {
@@ -870,16 +1112,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
       };
       labels.format = 'dddd';
     }
-    const days = [
-      this.translateService.instant('Dimanche'),
-      this.translateService.instant('Lundi'),
-      this.translateService.instant('Mardi'),
-      this.translateService.instant('Mercredi'),
-      this.translateService.instant('Jeudi'),
-      this.translateService.instant('Vendredi'),
-      this.translateService.instant('Samedi'),
-    ];
-    const NeedPMFormat = this.languageService.getCurrentLang() === 'en';
+    const needPMFormat = this.languageService.getCurrentLang() === 'en';
     const tooltipX = this.charts['loot'].tooltip.x;
     if (!tooltipX) return;
     tooltipX.formatter = function (value): string {
@@ -887,7 +1120,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
       const dayName = days[date.getDay()];
       const hours = date.getHours().toString().padStart(2, '0');
       const minutes = date.getMinutes().toString().padStart(2, '0');
-      if (NeedPMFormat) {
+      if (needPMFormat) {
         const ampm = Number(hours) >= 12 ? 'PM' : 'AM';
         const hourIn12Format = Number(hours) % 12 || 12;
         return `${dayName} ${hourIn12Format}:${minutes} ${ampm}`;
@@ -902,6 +1135,41 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     yLabels.formatter = function (value): string {
       return value === null ? '-' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
     };
+  }
+
+  private computeHourlyActivityRate(data: (number | null)[]): number[] {
+    const activityCount: number[] = Array.from({ length: 24 }, () => 0);
+    const totalCount: number[] = Array.from({ length: 24 }, () => 0);
+    for (let index = 1; index < data.length; index++) {
+      const current = data[index];
+      const previous = data[index - 1];
+      if (current === null || previous === null) continue;
+      const hour = index % 24;
+      totalCount[hour]++;
+      if (current > previous) {
+        activityCount[hour]++;
+      }
+    }
+    return activityCount.map((count, hour) =>
+      totalCount[hour] > 0 ? Math.round((count / totalCount[hour]) * 100) : 0,
+    );
+  }
+
+  private computeAverageGainPerHour(data: (number | null)[]): number[] {
+    const gains: number[] = Array.from({ length: 24 }, () => 0);
+    const counts: number[] = Array.from({ length: 24 }, () => 0);
+    for (let index = 1; index < data.length; index++) {
+      const current = data[index];
+      const previous = data[index - 1];
+      if (current === null || previous === null) continue;
+
+      if (current > previous) {
+        const hour = index % 24;
+        gains[hour] += current - previous;
+        counts[hour]++;
+      }
+    }
+    return gains.map((sum, h) => (counts[h] > 0 ? Math.round(sum / counts[h]) : 0));
   }
 
   /**
@@ -1020,6 +1288,73 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     this.initBerimondInvasionData();
     this.initSamuraiHistoryData();
     this.initBloodcrowHistoryData();
+  }
+
+  private buildHeatmapRanges(maxValue: number): any[] {
+    const ranges: any[] = [];
+    ranges.push({
+      from: 0,
+      to: 0,
+      color: '#000000',
+      name: '0',
+    });
+
+    if (maxValue <= 0) {
+      return ranges;
+    }
+
+    const maxSteps = 10;
+    const bases = [1, 2, 5];
+    const maxPower = Math.floor(Math.log10(maxValue));
+    const thresholds: number[] = [];
+
+    for (let p = maxPower - 2; p <= maxPower + 1; p++) {
+      for (const base of bases) {
+        const value = base * Math.pow(10, p);
+        if (value > 0 && value < maxValue) {
+          thresholds.push(value);
+        }
+      }
+    }
+
+    thresholds.push(maxValue);
+    thresholds.sort((a, b) => a - b);
+    const unique = [...new Set(thresholds)];
+    const step = Math.ceil(unique.length / maxSteps);
+    const selected = unique.filter((_, index) => index % step === 0);
+    const colors = [
+      '#FFF3E0',
+      '#FFE0B2',
+      '#FFCC80',
+      '#FFB74D',
+      '#FFA726',
+      '#FF9800',
+      '#FB8C00',
+      '#F57C00',
+      '#EF6C00',
+      '#E65100',
+    ];
+
+    let from = 1;
+
+    selected.forEach((to, index) => {
+      ranges.push({
+        from,
+        to,
+        color: colors[Math.min(index, colors.length - 1)],
+        name: `${this.formatValue(from)} – ${this.formatValue(to)}`,
+      });
+      from = to + 1;
+    });
+
+    return ranges;
+  }
+
+  private formatValue(value: number): string {
+    if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)} G`;
+    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)} M`;
+    if (value >= 1000) return `${(value / 1000).toFixed(1)} K`;
+    return value.toString();
   }
 
   private async initPlayerData(playerId: number): Promise<void> {

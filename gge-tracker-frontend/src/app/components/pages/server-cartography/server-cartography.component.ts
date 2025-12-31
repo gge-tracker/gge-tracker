@@ -717,6 +717,7 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     this.setMonuments();
     setTimeout(() => {
       this.genericInit();
+      this.generateHeatmap();
       this.cdr.detectChanges();
     }, 100);
     this.addHeatmapLayer(this.filteredCastles);

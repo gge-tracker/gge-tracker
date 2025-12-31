@@ -71,7 +71,7 @@
           </div>
           <div class="row g-3 mt-3 mb-2">
             <div class="map-main-search">
-              <app-search-form [formFilters]="null" [isInLoading]="isInLoading"
+              <app-search-form [formFilters]="formFilters" [isInLoading]="isInLoading"
                 [alliancePlaceholder]="'Rechercher une alliance' | translate"
                 [inputTip]="'Rechercher une alliance' | translate" [defaultSearch]="searchedAlliance"
                 [searchTypes]="{ player: false, alliance: true }" (searchAlliance)="searchAlliance($event)">

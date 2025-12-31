@@ -98,7 +98,7 @@ export class LiveOuterRealmsComponent extends GenericComponent {
     this.initGenericChartOption(
       'player-score-chart',
       {
-        type: 'line',
+        type: 'area',
         series: scoreSeries,
         colors: ['#008FFB'],
         title: this.translateService.instant('score_over_time'),
@@ -133,7 +133,7 @@ export class LiveOuterRealmsComponent extends GenericComponent {
     this.initGenericChartOption(
       'player-level-chart',
       {
-        type: 'line',
+        type: 'area',
         series: levelSeries,
         colors: ['#FEB019'],
         title: this.translateService.instant('level_over_time'),
@@ -143,6 +143,8 @@ export class LiveOuterRealmsComponent extends GenericComponent {
         tooltipYFormatter: this.formatLegendaryLevel,
       },
     );
+    this.charts['player-level-chart'].yaxis.labels.formatter = (value: number): string =>
+      this.formatLegendaryLevel(value);
 
     this.isInLoading = false;
   }
@@ -386,14 +388,7 @@ export class LiveOuterRealmsComponent extends GenericComponent {
         },
       },
 
-      markers: {
-        size: 3,
-        strokeWidth: 1.5,
-        strokeOpacity: 0.9,
-        strokeColors: '#181a1f',
-        colors: config.colors!.map((c) => c + 'dd'),
-        hover: { size: 5 },
-      },
+      markers: {},
       plotOptions: {
         area: {
           fillTo: 'origin',

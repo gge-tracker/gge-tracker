@@ -20,6 +20,126 @@ img {
   text-align: center;
 }
 
+.tabs-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.tabs-container > button {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 1rem;
+  margin: 0 5px;
+  padding: 10px 15px;
+  transition:
+    background 0.3s,
+    color 0.3s;
+}
+
+.kid-1 {
+  color: #d57026;
+  font-weight: bold;
+}
+
+.kid-2 {
+  color: #326283;
+  font-weight: bold;
+}
+
+.kid-3 {
+  color: #cbb674;
+  font-weight: bold;
+}
+
+.kid-0 {
+  color: #29940e;
+  font-weight: bold;
+}
+
+.castles-overview-section > div {
+  margin-top: 20px;
+  margin-left: 20px;
+  margin-right: 20px;
+}
+
+.castles-overview-section .table-wrapper {
+  margin-top: 10px;
+  border: 2px black solid;
+  padding: 20px;
+  box-shadow: 3px 2px 13px #00000066;
+}
+
+.castles-overview-section .assets-overview {
+  margin-left: 7%;
+  margin-right: 7%;
+}
+
+.castles-overview-section .assets-overview span {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #fff;
+}
+
+.castles-overview-section .table-wrapper table {
+  border: 1px solid #d8d8d8;
+  background: #f5f5f5;
+}
+
+.alliances-history-section {
+  margin-top: 20px;
+}
+
+.alliances-history-section table {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  color: #fff;
+}
+
+.alliances-history-section table th,
+.alliances-history-section table td {
+  padding: 10px;
+  text-align: left;
+}
+
+.alliances-history-section table th {
+  background: rgb(35 35 35 / 80%);
+  color: white;
+}
+
+.alliances-history-section table tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.alliances-history-section .btn-group a {
+  text-decoration: none;
+}
+
+.alliances-history-section table td {
+  background: #ffffff70;
+}
+.alliances-history-section table thead tr {
+  vertical-align: middle;
+}
+
+.tabs-container > button.active {
+  background-color: #0d6dfd88;
+  background-image: url("/assets/light-background-hover.png");
+  background-size: 20px;
+  color: #fff;
+}
+
+.tabs-container img {
+  width: auto;
+}
+
+.tabs-container > button:hover:not(.active) {
+  background: rgba(233, 233, 233, 0.041);
+}
+
 #allianceList img {
   cursor: pointer;
   transition: opacity 0.1s;
@@ -35,7 +155,7 @@ img {
   bottom: 0;
   color: white;
   content: attr(data-updates);
-  font-size: .55rem;
+  font-size: 0.55rem;
   height: 17px;
   left: 0;
   line-height: 17px;
@@ -48,7 +168,7 @@ img {
 }
 
 .banner {
-  background: url('/assets/banner.png');
+  background: url("/assets/banner.png");
 }
 
 .bg-castle {
@@ -63,13 +183,13 @@ img {
 }
 
 .btn-exit .btn.btn-danger {
-  background: rgba(252,0,0,0.726);
+  background: rgba(252, 0, 0, 0.726);
   border: 2px solid black;
   color: black;
 }
 
 .btn-exit .btn.btn-primary {
-  background: rgba(80,252,0,0.158);
+  background: rgba(80, 252, 0, 0.158);
   border: 2px solid black;
   color: black;
 }
@@ -99,15 +219,17 @@ img {
   border-radius: 15px;
   border: 2px solid #00000069;
   color: #fff;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
   width: 250px;
 }
 
 .event-card::before {
-  background: rgba(0,0,0,0.1);
+  background: rgba(0, 0, 0, 0.1);
   border-radius: 125px;
   bottom: -18px;
-  content: '';
+  content: "";
   height: 20px;
   left: 0;
   position: absolute;
@@ -115,7 +237,7 @@ img {
 }
 
 .event-card:hover {
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   transform: translateY(-5px);
 }
 
@@ -173,7 +295,7 @@ img {
 }
 
 .modern-table tbody tr:hover {
-  background: rgba(13,110,253,0.05);
+  background: rgba(13, 110, 253, 0.05);
 }
 
 .modern-table td {
@@ -190,11 +312,11 @@ img {
 }
 
 .modern-table th:hover {
-  background: rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .modern-table thead {
-  background: linear-gradient(90deg,#0d6efd,#1a418a);
+  background: linear-gradient(90deg, #0d6efd, #1a418a);
   color: #fff;
 }
 
@@ -223,7 +345,7 @@ img::selection {
   background-repeat: no-repeat;
   background-position-x: center;
   bottom: 0;
-  content: '';
+  content: "";
   left: 0;
   position: absolute;
   right: 0;
@@ -247,7 +369,7 @@ img::selection {
 
 .search-input:focus {
   border-color: #0d6efd;
-  box-shadow: 0 0 0 0.2rem rgba(13,110,253,.25);
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
 }
 
 .stat-card {
@@ -263,12 +385,12 @@ img::selection {
   &:hover {
     background: rgba(255, 255, 255, 0.07);
     transform: translateY(-3px);
-    box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
   }
 }
 
 .stat-icon img {
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
   height: 40px;
   margin-bottom: 0.5rem;
   width: 40px;
@@ -307,6 +429,3 @@ img::selection {
     background-position-y: -173px;
   }
 }
-
-
-

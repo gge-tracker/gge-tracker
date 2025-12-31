@@ -22,7 +22,7 @@ export class SearchFormComponent implements OnChanges, OnInit {
   public readonly Search = Search;
   public readonly Reset = Eraser;
   public readonly Funnel = Filter;
-  public formFilters = input.required<Record<string, string | boolean | undefined | null> | null>();
+  public formFilters = input.required<Record<string, string | boolean | undefined | number | null> | null>();
   public inputTip = input.required<string>();
   public searchTypes = input.required<Record<SearchType, boolean>>();
   public isInLoading = input.required<boolean>();
@@ -50,7 +50,7 @@ export class SearchFormComponent implements OnChanges, OnInit {
     this.updateNbFilterActivated();
   }
 
-  public getFormsFilter(): Record<string, string | boolean | null | undefined> | null {
+  public getFormsFilter(): Record<string, string | boolean | number | null | undefined> | null {
     return this.formFilters();
   }
 
@@ -105,7 +105,7 @@ export class SearchFormComponent implements OnChanges, OnInit {
   }
 
   public updateNbFilterActivated(): void {
-    const forms: Record<string, string | boolean | null | undefined> | null = this.formFilters();
+    const forms: Record<string, string | boolean | number | null | undefined> | null = this.formFilters();
     if (!forms) return;
     this.countFilterActivated =
       Object.keys(forms).filter((key) => forms[key] !== '' && forms[key] !== '-1' && forms[key] !== null).length - 1;

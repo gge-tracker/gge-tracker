@@ -746,3 +746,8 @@ input:checked + .slider:before {
     flex-direction: row;
   }
 }
+
+.globe-container {
+  width: 100%;
+  height: 100%;
+}

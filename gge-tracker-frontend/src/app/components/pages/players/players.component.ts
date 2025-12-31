@@ -1,4 +1,4 @@
-import { NgClass } from '@angular/common';
+import { NgClass, NgFor, NgIf } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
@@ -12,15 +12,57 @@ import {
   Player,
   SearchType,
 } from '@ggetracker-interfaces/empire-ranking';
+import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
 import { TranslateModule } from '@ngx-translate/core';
+import { ArrowBigRightDash, LucideAngularModule } from 'lucide-angular';
 import { PlayerTableContentComponent } from './player-table-content/player-table-content.component';
+import { IconComponent } from '@ggetracker-components/icon/icon.component';
+
+type FilterField = 'honor' | 'loot' | 'level' | 'might';
+type BoundType = 'min' | 'max';
+
+interface FormFilters {
+  minHonor: string;
+  maxHonor: string;
+  minLoot: string;
+  maxLoot: string;
+  minLevel: string;
+  maxLevel: string;
+  minMight: string;
+  maxMight: string;
+  allianceFilter: string;
+  protectionFilter: string;
+  banFilter: string;
+  isFiltered: boolean;
+  inactiveFilter: string;
+  playerCastleDistance: string;
+}
+
+type FilterKeyMap = {
+  [K in FilterField]: {
+    min: keyof FormFilters;
+    max: keyof FormFilters;
+  };
+};
 
 @Component({
   selector: 'app-players',
   standalone: true,
+  providers: [FormatNumberPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgClass, FormsModule, TableComponent, SearchFormComponent, TranslateModule, PlayerTableContentComponent],
+  imports: [
+    NgClass,
+    FormsModule,
+    NgFor,
+    NgIf,
+    TableComponent,
+    SearchFormComponent,
+    TranslateModule,
+    PlayerTableContentComponent,
+    LucideAngularModule,
+    IconComponent,
+  ],
   templateUrl: './players.component.html',
   styleUrl: './players.component.css',
 })
@@ -47,6 +89,18 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     ['alliance_name', 'Alliance', '/assets/min-alliance.png', true],
     ['', '', undefined, true],
   ];
+  public sortByOptions: { value: string; label: string }[] = [
+    { value: 'player_name', label: 'Pseudonyme' },
+    { value: 'level', label: 'Niveau' },
+    { value: 'might_current', label: 'Points de puissance' },
+    { value: 'might_all_time', label: 'Puissance maximale atteinte' },
+    { value: 'loot_current', label: 'Points de pillage hebdomadaire' },
+    { value: 'loot_all_time', label: 'Pillage maximal atteint' },
+    { value: 'current_fame', label: 'Points de gloire' },
+    { value: 'highest_fame', label: 'Gloire maximale atteinte' },
+    { value: 'honor', label: 'Honneur' },
+    { value: 'alliance_name', label: 'Alliance' },
+  ];
   public defaultPlayersTableHeaderSize = this.playersTableHeader.length;
   public formFilters = {
     minHonor: '',
@@ -64,8 +118,22 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     inactiveFilter: '1',
     playerCastleDistance: '',
   };
+  public readonly ArrowBigRightDash = ArrowBigRightDash;
+  public displayFormValues = {
+    might: { min: '', max: '' },
+    loot: { min: '', max: '' },
+    honor: { min: '', max: '' },
+    level: { min: '', max: '' },
+  };
+  private readonly FILTER_KEYS: FilterKeyMap = {
+    honor: { min: 'minHonor', max: 'maxHonor' },
+    loot: { min: 'minLoot', max: 'maxLoot' },
+    level: { min: 'minLevel', max: 'maxLevel' },
+    might: { min: 'minMight', max: 'maxMight' },
+  };
   private cdr = inject(ChangeDetectorRef);
   private localStorage = inject(LocalStorageService);
+  private formatNumberPipe = inject(FormatNumberPipe);
 
   constructor() {
     super();
@@ -103,6 +171,82 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     } else {
       void this.init();
     }
+  }
+
+  public parseValue(value: string | number): number {
+    if (typeof value === 'number') return value;
+    if (!value) return 0;
+    let string_ = value.replaceAll(/\s+/g, '').replaceAll(',', '').toUpperCase();
+    let multiplier = 1;
+    if (string_.endsWith('B')) {
+      multiplier = 1_000_000_000;
+      string_ = string_.slice(0, -1);
+    } else if (string_.endsWith('M')) {
+      multiplier = 1_000_000;
+      string_ = string_.slice(0, -1);
+    } else if (string_.endsWith('K')) {
+      multiplier = 1000;
+      string_ = string_.slice(0, -1);
+    }
+    const numeric = Number(string_);
+    if (Number.isNaN(numeric)) return 0;
+
+    return numeric * multiplier;
+  }
+
+  public onGenericFocus(type: 'min' | 'max', field: 'honor' | 'loot' | 'level' | 'might'): void {
+    let targetValue: string | null = null;
+    switch (field) {
+      case 'honor': {
+        targetValue = type === 'min' ? this.formFilters.minHonor : this.formFilters.maxHonor;
+        break;
+      }
+      case 'loot': {
+        targetValue = type === 'min' ? this.formFilters.minLoot : this.formFilters.maxLoot;
+        break;
+      }
+      case 'level': {
+        targetValue = type === 'min' ? this.formFilters.minLevel : this.formFilters.maxLevel;
+        break;
+      }
+      case 'might': {
+        targetValue = type === 'min' ? this.formFilters.minMight : this.formFilters.maxMight;
+        break;
+      }
+    }
+    if (targetValue != null) {
+      if (type === 'min') {
+        this.displayFormValues[field].min = targetValue.toString();
+      } else {
+        this.displayFormValues[field].max = targetValue.toString();
+      }
+    }
+  }
+
+  public onGenericInput(type: BoundType, field: FilterField, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const raw = input.value;
+    let numeric = raw === '' ? '' : Number(raw.replaceAll(/\s/g, ''));
+    if (numeric !== null && Number.isNaN(numeric)) {
+      numeric = this.parseValue(raw);
+      if (numeric === 0 && raw !== '0' && raw !== '') {
+        this.displayFormValues[field][type] = raw;
+        return;
+      }
+    }
+    const filterKey = this.FILTER_KEYS[field][type];
+    (this.formFilters as any)[filterKey] = numeric.toString();
+    this.displayFormValues[field][type] = raw;
+  }
+
+  public onGenericBlur(type: BoundType, field: FilterField): void {
+    const filterKey = this.FILTER_KEYS[field][type];
+    const value = this.formFilters[filterKey];
+    this.displayFormValues[field][type] = value == null || value === '' ? '' : this.formatNumber(Number(value));
+  }
+
+  public formatNumber(value: number): string {
+    return this.formatNumberPipe.transform(value);
   }
 
   public async nextPage(): Promise<void> {

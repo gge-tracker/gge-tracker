@@ -44,11 +44,6 @@
     <div class="divider"></div>
     <div class="topbar-actions flex items-center gap-4">
 
-      <!-- GitHub -->
-      <a href="https://github.com/gge-tracker/gge-tracker" target="_blank" rel="noopener" class="action-icon">
-        <i class="fa-brands fa-github"></i>
-      </a>
-
       <!-- Discord -->
       <div class="position-relative">
         <a href="https://discord.gg/eb6WSHQqYh" target="_blank" rel="noopener" class="action-icon">
@@ -66,6 +61,18 @@
         <app-icon name="Info" [size]="19"></app-icon>
         <span class="label d-none d-xxl-inline">{{ 'A propos' | translate }}</span>
       </button>
+
+      <!-- Dev API -->
+      <a href="https://petstore.swagger.io/?url=https://api.gge-tracker.com/api/v1/docs"
+        target="_blank" rel="noopener"  [title]="'API' | translate" class="action-icon">
+        <app-icon name="CodeXml" [size]="19"></app-icon>
+        <span class="label d-none d-xxl-inline">{{ 'API' | translate }}</span>
+      </a>
+
+      <!-- GitHub -->
+      <a href="https://github.com/gge-tracker/gge-tracker" target="_blank" rel="noopener" class="action-icon">
+        <i class="fa-brands fa-github"></i>
+      </a>
 
       <!-- Lang selector -->
       <div class="position-relative" id="language-menu">
