@@ -2290,7 +2290,7 @@ export class GenericFetchAndSaveBackend {
         highest_fame NUMERIC(20, 0),
         current_fame NUMERIC(20, 0),
         remaining_relocation_time INTEGER,
-        peace_disabled_at TIMESTAMP DEFAULT NULL,
+        peace_disabled_at TIMESTAMP DEFAULT NULL
       );
     `);
     const CHUNK_SIZE = 4000;
