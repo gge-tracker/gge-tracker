@@ -2290,7 +2290,7 @@ export class GenericFetchAndSaveBackend {
         current_fame NUMERIC(20, 0),
         remaining_relocation_time INTEGER,
         peace_disabled_at TIMESTAMP DEFAULT NULL,
-        allianceRank SMALLINT DEFAULT NULL
+        alliancerank SMALLINT DEFAULT NULL
       );
     `);
     const CHUNK_SIZE = 4000;
@@ -2311,7 +2311,7 @@ export class GenericFetchAndSaveBackend {
       'current_fame',
       'remaining_relocation_time',
       'peace_disabled_at',
-      'allianceRank',
+      'alliancerank',
     ];
     const nbColumns = columns.length;
     function chunkArray<T>(array: T[], chunkSize: number): T[][] {
