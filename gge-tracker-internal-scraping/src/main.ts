@@ -2335,8 +2335,8 @@ export class GenericFetchAndSaveBackend {
       const highestFame = data[10] || 0;
       const currentFame = data[11] || 0;
       const remainingRelocationTime = data[12] || 0;
-      const peaceDisabledAt = Number(remaining_peace_time) > 0 ? data[14] : null;
-      const allianceRank = data[15] || null;
+      const peaceDisabledAt = Number(remaining_peace_time) > 0 ? (data[14] ?? null) : null;
+      const alliancerank = data[15] ?? null;
       insertValues.push([
         playerId,
         might_current,
@@ -2354,7 +2354,7 @@ export class GenericFetchAndSaveBackend {
         currentFame,
         remainingRelocationTime,
         peaceDisabledAt,
-        allianceRank,
+        alliancerank,
       ]);
     }
     Utils.logMessage('Chunk array...');
