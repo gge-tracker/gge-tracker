@@ -1412,6 +1412,7 @@ export class GenericFetchAndSaveBackend {
                     this.playerLootAndMightPointHistoryList[uid.toString()][10] = infos['HF'];
                     this.playerLootAndMightPointHistoryList[uid.toString()][11] = infos['CF'];
                     this.playerLootAndMightPointHistoryList[uid.toString()][12] = infos['RRD'];
+                    this.playerLootAndMightPointHistoryList[uid.toString()][15] = infos['AR'];
                   }
                 } catch (error) {
                   Utils.logMessage(' [KO] Error while storing in playerMightHistoryList', JSON.stringify(player));
@@ -1634,6 +1635,7 @@ export class GenericFetchAndSaveBackend {
                     this.playerLootAndMightPointHistoryList[uid.toString()][10] = infos['HF'];
                     this.playerLootAndMightPointHistoryList[uid.toString()][11] = infos['CF'];
                     this.playerLootAndMightPointHistoryList[uid.toString()][12] = infos['RRD'];
+                    this.playerLootAndMightPointHistoryList[uid.toString()][15] = infos['AR'];
                   }
                 } catch (error) {
                   Utils.logMessage(' [KO] Error while storing in playerLootHistoryList', JSON.stringify(player));
@@ -1770,6 +1772,7 @@ export class GenericFetchAndSaveBackend {
                         this.playerLootAndMightPointHistoryList[uid.toString()][10] = infos['HF'];
                         this.playerLootAndMightPointHistoryList[uid.toString()][11] = infos['CF'];
                         this.playerLootAndMightPointHistoryList[uid.toString()][12] = infos['RRD'];
+                        this.playerLootAndMightPointHistoryList[uid.toString()][15] = infos['AR'];
                       }
                     } else if (c === true) {
                       c = false;
@@ -2286,7 +2289,8 @@ export class GenericFetchAndSaveBackend {
         highest_fame NUMERIC(20, 0),
         current_fame NUMERIC(20, 0),
         remaining_relocation_time INTEGER,
-        peace_disabled_at TIMESTAMP DEFAULT NULL
+        peace_disabled_at TIMESTAMP DEFAULT NULL,
+        allianceRank SMALLINT DEFAULT NULL
       );
     `);
     const CHUNK_SIZE = 4000;
@@ -2307,6 +2311,7 @@ export class GenericFetchAndSaveBackend {
       'current_fame',
       'remaining_relocation_time',
       'peace_disabled_at',
+      'allianceRank',
     ];
     const nbColumns = columns.length;
     function chunkArray<T>(array: T[], chunkSize: number): T[][] {
@@ -2331,6 +2336,7 @@ export class GenericFetchAndSaveBackend {
       const currentFame = data[11] || 0;
       const remainingRelocationTime = data[12] || 0;
       const peaceDisabledAt = Number(remaining_peace_time) > 0 ? data[14] : null;
+      const allianceRank = data[15] || null;
       insertValues.push([
         playerId,
         might_current,
@@ -2348,6 +2354,7 @@ export class GenericFetchAndSaveBackend {
         currentFame,
         remainingRelocationTime,
         peaceDisabledAt,
+        allianceRank,
       ]);
     }
     Utils.logMessage('Chunk array...');
@@ -2437,6 +2444,7 @@ export class GenericFetchAndSaveBackend {
         const currentFame = this.playerLootAndMightPointHistoryList[key][11] || 0;
         const remainingRelocationTime = this.playerLootAndMightPointHistoryList[key][12];
         const peaceDisabledAt = Number(rpt) > 0 ? this.playerLootAndMightPointHistoryList[key][14] : null;
+        const allianceRank = this.playerLootAndMightPointHistoryList[key][15] || null;
         updates[playerId] = [
           loot_current, // loot_current
           might_current, // might_current
@@ -2453,6 +2461,7 @@ export class GenericFetchAndSaveBackend {
           remainingRelocationTime, // remaining_relocation_time
           realmAp, // realm castles
           peaceDisabledAt, // peace_disabled_at
+          allianceRank, // alliance rank
         ];
         const targetedPlayer = this.currentPlayers.find((p) => p.playerId == playerId);
         const shouldInsert =
