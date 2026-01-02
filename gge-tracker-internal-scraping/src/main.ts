@@ -2279,6 +2279,7 @@ export class GenericFetchAndSaveBackend {
         loot_current BIGINT,
         might_all_time BIGINT,
         loot_all_time BIGINT,
+        alliance_rank SMALLINT,
         castles JSONB,
         castles_realm JSONB,
         honor INTEGER,
@@ -2290,7 +2291,6 @@ export class GenericFetchAndSaveBackend {
         current_fame NUMERIC(20, 0),
         remaining_relocation_time INTEGER,
         peace_disabled_at TIMESTAMP DEFAULT NULL,
-        alliancerank SMALLINT DEFAULT NULL
       );
     `);
     const CHUNK_SIZE = 4000;
@@ -2300,6 +2300,7 @@ export class GenericFetchAndSaveBackend {
       'loot_current',
       'might_all_time',
       'loot_all_time',
+      'alliance_rank',
       'castles',
       'castles_realm',
       'honor',
@@ -2311,7 +2312,6 @@ export class GenericFetchAndSaveBackend {
       'current_fame',
       'remaining_relocation_time',
       'peace_disabled_at',
-      'alliancerank',
     ];
     const nbColumns = columns.length;
     function chunkArray<T>(array: T[], chunkSize: number): T[][] {
@@ -2336,13 +2336,15 @@ export class GenericFetchAndSaveBackend {
       const currentFame = data[11] || 0;
       const remainingRelocationTime = data[12] || 0;
       const peaceDisabledAt = Number(remaining_peace_time) > 0 ? (data[14] ?? null) : null;
-      const alliancerank = data[15] ?? null;
+      const alliance_rank =
+        Number(data[15]) && Number(data[15]) >= 0 && Number(data[15]) <= 100 ? Number(data[15]) : -1;
       insertValues.push([
         playerId,
         might_current,
         loot_current,
         might_current,
         loot_current,
+        alliance_rank,
         castles,
         castles_realm,
         honor,
@@ -2354,7 +2356,6 @@ export class GenericFetchAndSaveBackend {
         currentFame,
         remainingRelocationTime,
         peaceDisabledAt,
-        alliancerank,
       ]);
     }
     Utils.logMessage('Chunk array...');
@@ -2370,9 +2371,7 @@ export class GenericFetchAndSaveBackend {
           return `(${placeholders.join(', ')})`;
         })
         .join(', ');
-
       const flatValues = chunk.flat();
-
       const query = `
         INSERT INTO tmp_players_update (${columns.join(', ')})
         VALUES ${valuesClause}
@@ -2388,6 +2387,7 @@ export class GenericFetchAndSaveBackend {
         might_current = tmp.might_current,
         loot_all_time = GREATEST(COALESCE(p.loot_all_time, 0), tmp.loot_all_time),
         might_all_time = GREATEST(COALESCE(p.might_all_time, 0), tmp.might_all_time),
+        alliance_rank = tmp.alliance_rank,
         castles = tmp.castles,
         castles_realm = tmp.castles_realm,
         honor = tmp.honor,
