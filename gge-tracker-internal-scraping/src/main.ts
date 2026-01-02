@@ -2337,7 +2337,7 @@ export class GenericFetchAndSaveBackend {
       const remainingRelocationTime = data[12] || 0;
       const peaceDisabledAt = Number(remaining_peace_time) > 0 ? (data[14] ?? null) : null;
       const alliance_rank =
-        Number(data[15]) && Number(data[15]) >= 0 && Number(data[15]) <= 100 ? Number(data[15]) : null;
+        Number(data[15]) !== undefined && Number(data[15]) >= 0 && Number(data[15]) <= 100 ? Number(data[15]) : null;
       insertValues.push([
         playerId,
         might_current,
