@@ -2444,7 +2444,7 @@ export class GenericFetchAndSaveBackend {
         const currentFame = this.playerLootAndMightPointHistoryList[key][11] || 0;
         const remainingRelocationTime = this.playerLootAndMightPointHistoryList[key][12];
         const peaceDisabledAt = Number(rpt) > 0 ? this.playerLootAndMightPointHistoryList[key][14] : null;
-        const allianceRank = this.playerLootAndMightPointHistoryList[key][15] || null;
+        const allianceRank = this.playerLootAndMightPointHistoryList[key][15];
         updates[playerId] = [
           loot_current, // loot_current
           might_current, // might_current
