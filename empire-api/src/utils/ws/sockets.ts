@@ -40,6 +40,9 @@ export abstract class SocketService {
     const sockets: { [key: string]: GgeEmpireSocket | GgeEmpire4KingdomsSocket } = {};
     const response = await fetch(url, { signal: AbortSignal.timeout(60 * 1000) });
     const data = new XMLParser().parse(await response.text());
+    if (!Array.isArray(data.network.instances.instance)) {
+      data.network.instances.instance = [data.network.instances.instance];
+    }
     for (const server of data.network.instances.instance) {
       if (!SocketService.getAllowedInstances().includes(server.zone)) continue;
       const { USERNAME, PASSWORD } = SocketService.getCredentials(server.zone);
