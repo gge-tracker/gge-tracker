@@ -6,7 +6,7 @@ import { GgeEmpire4KingdomsSocket } from './empire4kingdoms-socket.js';
 enum GgeXmlServerDescriptionUrls {
   E4K = 'https://gge-tracker.github.io/gge-cdn-mirror-files/e4k.xml',
   EP = 'https://gge-tracker.github.io/gge-cdn-mirror-files/1.xml',
-  SP = 'https://gge-tracker.github.io/gge-cdn-mirror-files/26.xml',
+  SP = 'https://gge-tracker.github.io/gge-cdn-mirror-files/39.xml',
 }
 
 export abstract class SocketService {
