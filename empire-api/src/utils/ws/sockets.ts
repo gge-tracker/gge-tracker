@@ -6,6 +6,7 @@ import { GgeEmpire4KingdomsSocket } from './empire4kingdoms-socket.js';
 enum GgeXmlServerDescriptionUrls {
   E4K = 'https://gge-tracker.github.io/gge-cdn-mirror-files/e4k.xml',
   EP = 'https://gge-tracker.github.io/gge-cdn-mirror-files/1.xml',
+  SP = 'https://gge-tracker.github.io/gge-cdn-mirror-files/26.xml',
 }
 
 export abstract class SocketService {
@@ -60,6 +61,9 @@ export abstract class SocketService {
   public static async getSockets(): Promise<{ [key: string]: GgeEmpireSocket | GgeEmpire4KingdomsSocket }> {
     return {
       ...((await SocketService.getGenericSockets(GgeXmlServerDescriptionUrls.EP, 'wss', GgeEmpireSocket)) as {
+        [key: string]: GgeEmpireSocket;
+      }),
+      ...((await SocketService.getGenericSockets(GgeXmlServerDescriptionUrls.SP, 'wss', GgeEmpireSocket)) as {
         [key: string]: GgeEmpireSocket;
       }),
       ...((await SocketService.getGenericSockets(GgeXmlServerDescriptionUrls.E4K, 'ws', GgeEmpire4KingdomsSocket)) as {
