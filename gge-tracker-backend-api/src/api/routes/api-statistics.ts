@@ -477,19 +477,20 @@ export abstract class ApiStatistics implements ApiHelper {
           }
         });
       });
+      let region = server.trim().toLowerCase();
+      if (region.startsWith('partner_')) {
+        region = region.slice(8);
+        region = region.replaceAll(/([A-Za-z])(\d)/g, '$1_$2');
+      }
       const p2 = new Promise((resolve, reject) => {
-        globalPool.query(
-          query_global_rank,
-          [ApiHelper.removeCountryCode(playerId), server.trim().toLowerCase()],
-          (error, results) => {
-            if (error) {
-              ApiHelper.logError(error, 'getRankingByPlayerId_query', request);
-              reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
-            } else {
-              resolve(results.rows[0]);
-            }
-          },
-        );
+        globalPool.query(query_global_rank, [ApiHelper.removeCountryCode(playerId), region], (error, results) => {
+          if (error) {
+            ApiHelper.logError(error, 'getRankingByPlayerId_query', request);
+            reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
+          } else {
+            resolve(results.rows[0]);
+          }
+        });
       });
       const [serverData, globalData] = await Promise.all([p1, p2]);
       if (!serverData || !globalData) {

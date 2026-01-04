@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 
 import { LanguageService } from './language.service';
 import { LocalStorageService } from './local-storage.service';
-import { environment } from 'environments/environment.production-beta';
+import { environment } from 'environments/environment';
 
 export interface ServerEntry {
   enabled: boolean;
@@ -46,6 +46,18 @@ export class ServerService {
     sa: ['SA1'],
     ru: ['RU1'],
     cn: ['CN1'],
+    gr: ['GR1'],
+    asia: ['ASIA'],
+    lt: ['LT1'],
+    skn: ['SKN1'],
+    sk: ['SK1'],
+    bg: ['BG1'],
+    gb: ['GB1'],
+    kr: ['KR1'],
+    jp: ['JP1'],
+    his: ['HIS1'],
+    ae: ['AE1'],
+    eg: ['EG1'],
   };
 
   public flagsUrl: Record<string, string> = {
@@ -83,6 +95,7 @@ export class ServerService {
     TR: 'https://flagsapi.com/TR/flat/64.png',
     US: 'https://flagsapi.com/US/flat/64.png',
     WORLD: '/assets/int_flag.png',
+    SP: '/assets/int_flag.png',
   };
   public ggeEmpireActiveServerPrefixes = [
     'AE1',
@@ -134,6 +147,8 @@ export class ServerService {
   public getFlagUrl(server: string): string {
     if (server.startsWith('E4K_')) {
       server = server.slice(4);
+    } else if (server.startsWith('PARTNER_')) {
+      server = 'SP';
     }
     const regex = /\d+$/g;
     server = server.replaceAll(regex, '');

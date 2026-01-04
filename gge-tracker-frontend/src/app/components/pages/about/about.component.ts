@@ -4,7 +4,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { TranslatePipe } from '@ngx-translate/core';
 import package_ from '../../../../../package.json';
-import { environment } from 'environments/environment.production';
+import { environment } from 'environments/environment';
 
 export interface Contributor {
   name: string;

@@ -102,9 +102,17 @@
       <a *ngIf="player.allianceName; else defaultAllianceName" class="alliance-link"
         (click)="clickOnAlliance.emit(player.allianceName)" (keydown.enter)="clickOnAlliance.emit(player.allianceName)">
         <span class="mobile-only">{{ 'Alliance' | translate }}:&nbsp;</span>
+        <img *ngIf="player.allianceId" src="/assets/alliance_ranks/{{ player.allianceRank ?? 0 }}.png"
+          class="alliance-rank-icon" [alt]="'Rank ' + (player.allianceRank ?? 0)">
         {{ player.allianceName }}
       </a>
       <ng-template #defaultAllianceName>-</ng-template>
+    </td>
+
+    <td class="col-alliance" *ngIf="hasAllianceRankColumn">
+      <span class="mobile-only">{{ "Rang dans l'alliance" | translate }}:&nbsp;</span>
+      <img src="/assets/alliance_ranks/{{ player.allianceRank ?? 0 }}.png"
+        class="alliance-rank-icon" [alt]="'Rank ' + (player.allianceRank ?? 0)">
     </td>
 
     <!-- Actions -->

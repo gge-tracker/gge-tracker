@@ -253,6 +253,10 @@ export class TrackerComponent extends GenericComponent {
   }
 
   private async getData(): Promise<void> {
+    if (this.serverService.currentServer && !this.allowedServers.includes(this.serverService.currentServer.name)) {
+      this.isInLoading = false;
+      return;
+    }
     this.getGenericData()
       .then((dungeons) => {
         this.responseTime = dungeons.response;

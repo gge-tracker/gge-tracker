@@ -37,6 +37,7 @@ export abstract class ApiPlayers implements ApiHelper {
    * - `banFilter`: Filter by ban status (0: not banned, 1: banned)
    * - `inactiveFilter`: Filter by activity (0: inactive, 1: active)
    * - `playerNameForDistance`: Player name to calculate distance from (required if ordering by distance)
+   * - `allianceRankFilter`: Comma-separated list of alliance ranks to exclude
    *
    * Caches results based on query parameters for performance
    *
@@ -62,6 +63,10 @@ export abstract class ApiPlayers implements ApiHelper {
       let maxLevelArray = String(request.query.maxLevel)?.split('/');
       let maxLevel = Number.parseInt(maxLevelArray[0]);
       let maxLegendaryLevel = Number.parseInt(maxLevelArray[1]);
+      let minFame = Number.parseInt(String(request.query.minFame));
+      let maxFame = Number.parseInt(String(request.query.maxFame));
+      let minCastleCount = Number.parseInt(String(request.query.castleCountMin));
+      let maxCastleCount = Number.parseInt(String(request.query.castleCountMax));
       let allianceFilter = Number.parseInt(String(request.query.allianceFilter));
       let protectionFilter = Number.parseInt(String(request.query.protectionFilter));
       let banFilter = Number.parseInt(String(request.query.banFilter));
@@ -69,6 +74,7 @@ export abstract class ApiPlayers implements ApiHelper {
       let playerNameForDistance = String(request.query.playerNameForDistance || '');
       let orderBy = String(request.query.orderBy || 'player_name');
       let filterByAlliance = String(request.query.alliance || '');
+      let allianceRankFilter: string | number[] = String(request.query.allianceRankFilter || '');
       let orderType = String(request.query.orderType || 'ASC');
       const orderByValues = [
         'player_name',
@@ -89,18 +95,22 @@ export abstract class ApiPlayers implements ApiHelper {
       if (orderType !== 'ASC' && orderType !== 'DESC') {
         orderType = 'ASC';
       }
-      minHonor = minHonor < 0 || Number.isNaN(minHonor) || minHonor > ApiHelper.MAX_RESULT_PAGE ? -1 : minHonor;
-      maxHonor = maxHonor < 0 || Number.isNaN(maxHonor) || maxHonor > ApiHelper.MAX_RESULT_PAGE ? -1 : maxHonor;
-      minMight = minMight < 0 || Number.isNaN(minMight) || minMight > ApiHelper.MAX_RESULT_PAGE ? -1 : minMight;
-      maxMight = maxMight < 0 || Number.isNaN(maxMight) || maxMight > ApiHelper.MAX_RESULT_PAGE ? -1 : maxMight;
-      minLoot = minLoot < 0 || Number.isNaN(minLoot) || minLoot > ApiHelper.MAX_RESULT_PAGE ? -1 : minLoot;
-      maxLoot = maxLoot < 0 || Number.isNaN(maxLoot) || maxLoot > ApiHelper.MAX_RESULT_PAGE ? -1 : maxLoot;
+      minHonor = minHonor < 0 || Number.isNaN(minHonor) || minHonor > ApiHelper.MAX_BIG_VALUE ? -1 : minHonor;
+      maxHonor = maxHonor < 0 || Number.isNaN(maxHonor) || maxHonor > ApiHelper.MAX_BIG_VALUE ? -1 : maxHonor;
+      minMight = minMight < 0 || Number.isNaN(minMight) || minMight > ApiHelper.MAX_BIG_VALUE ? -1 : minMight;
+      maxMight = maxMight < 0 || Number.isNaN(maxMight) || maxMight > ApiHelper.MAX_BIG_VALUE ? -1 : maxMight;
+      minLoot = minLoot < 0 || Number.isNaN(minLoot) || minLoot > ApiHelper.MAX_BIG_VALUE ? -1 : minLoot;
+      maxLoot = maxLoot < 0 || Number.isNaN(maxLoot) || maxLoot > ApiHelper.MAX_BIG_VALUE ? -1 : maxLoot;
       minLevel = minLevel < 0 || Number.isNaN(minLevel) || minLevel > 1000 ? -1 : minLevel;
       minLegendaryLevel =
         minLegendaryLevel < 0 || Number.isNaN(minLegendaryLevel) || minLegendaryLevel > 1000 ? -1 : minLegendaryLevel;
       maxLevel = maxLevel < 0 || Number.isNaN(maxLevel) || maxLevel > 1000 ? -1 : maxLevel;
       maxLegendaryLevel =
         maxLegendaryLevel < 0 || Number.isNaN(maxLegendaryLevel) || maxLegendaryLevel > 1000 ? -1 : maxLegendaryLevel;
+      minFame = minFame < 0 || Number.isNaN(minFame) || minFame > ApiHelper.MAX_BIG_VALUE ? -1 : minFame;
+      maxFame = maxFame < 0 || Number.isNaN(maxFame) || maxFame > ApiHelper.MAX_BIG_VALUE ? -1 : maxFame;
+      minCastleCount = minCastleCount < 0 || Number.isNaN(minCastleCount) ? -1 : minCastleCount;
+      maxCastleCount = maxCastleCount < 0 || Number.isNaN(maxCastleCount) ? -1 : maxCastleCount;
       allianceFilter =
         Number.isNaN(allianceFilter) || (allianceFilter !== 0 && allianceFilter !== 1) ? -1 : allianceFilter;
       protectionFilter =
@@ -108,6 +118,12 @@ export abstract class ApiPlayers implements ApiHelper {
       banFilter = Number.isNaN(banFilter) || (banFilter !== 0 && banFilter !== 1) ? -1 : banFilter;
       inactiveFilter =
         Number.isNaN(inactiveFilter) || (inactiveFilter !== 0 && inactiveFilter !== 1) ? -1 : inactiveFilter;
+      if (allianceRankFilter && allianceRankFilter !== '') {
+        allianceRankFilter = String(allianceRankFilter)
+          .split(',')
+          .map((value) => Number.parseInt(value))
+          .filter((value) => !Number.isNaN(value) && value >= 0 && value <= 10);
+      }
       if (playerNameForDistance && playerNameForDistance.length > 40) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
         return;
@@ -123,7 +139,7 @@ export abstract class ApiPlayers implements ApiHelper {
       const cachedKey =
         request['language'] +
         `:${cacheVersion}:` +
-        `players-page-${page}-orderBy-${orderBy}-orderType-${orderType}-alliance-${encodedAlliance}-minHonor-${minHonor}-maxHonor-${maxHonor}-minMight-${minMight}-maxMight-${maxMight}-minLoot-${minLoot}-maxLoot-${maxLoot}-minLevel-${minLevel}-${minLegendaryLevel}-maxLevel-${maxLevel}-${maxLegendaryLevel}-allianceFilter-${allianceFilter}-protectionFilter-${protectionFilter}-banFilter-${banFilter}-inactiveFilter-${inactiveFilter}-playerNameForDistance-${encodedPlayerNameForDistance}`;
+        `players-page-${page}-orderBy-${orderBy}-orderType-${orderType}-alliance-${encodedAlliance}-minHonor-${minHonor}-maxHonor-${maxHonor}-minMight-${minMight}-maxMight-${maxMight}-minLoot-${minLoot}-maxLoot-${maxLoot}-minLevel-${minLevel}-${minLegendaryLevel}-maxLevel-${maxLevel}-${maxLegendaryLevel}-allianceFilter-${allianceFilter}-protectionFilter-${protectionFilter}-banFilter-${banFilter}-inactiveFilter-${inactiveFilter}-playerNameForDistance-${encodedPlayerNameForDistance}-allianceRankFilter-${Array.isArray(allianceRankFilter) ? allianceRankFilter.join('-') : ''}-minFame-${minFame}-maxFame-${maxFame}-minCastleCount-${minCastleCount}-maxCastleCount-${maxCastleCount}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
@@ -154,6 +170,7 @@ export abstract class ApiPlayers implements ApiHelper {
           P.remaining_relocation_time,
           P.peace_disabled_at,
           P.updated_at,
+          P.alliance_rank,
           P.level,
           P.legendary_level`;
       const playerNameDistanceFilterActive = playerNameForDistance && playerNameForDistance !== '';
@@ -247,6 +264,26 @@ export abstract class ApiPlayers implements ApiHelper {
         filters.push(`P.legendary_level <= $${parameterIndex++}`);
         otherParameters.push(maxLegendaryLevel);
       }
+      if (minFame >= 0 && !Number.isNaN(minFame)) {
+        filters.push(`P.current_fame >= $${parameterIndex++}`);
+        otherParameters.push(minFame);
+      }
+      if (maxFame >= 0 && !Number.isNaN(maxFame)) {
+        filters.push(`P.current_fame <= $${parameterIndex++}`);
+        otherParameters.push(maxFame);
+      }
+      if (minCastleCount >= 0 && !Number.isNaN(minCastleCount)) {
+        filters.push(
+          `(COALESCE(jsonb_array_length(P.castles), 0) + COALESCE(jsonb_array_length(P.castles_realm), 0)) >= $${parameterIndex++}`,
+        );
+        otherParameters.push(minCastleCount);
+      }
+      if (maxCastleCount >= 0 && !Number.isNaN(maxCastleCount)) {
+        filters.push(
+          `(COALESCE(jsonb_array_length(P.castles), 0) + COALESCE(jsonb_array_length(P.castles_realm), 0)) <= $${parameterIndex++}`,
+        );
+        otherParameters.push(maxCastleCount);
+      }
       if (allianceFilter === 0) {
         filters.push(`P.alliance_id IS NULL`);
       } else if (allianceFilter === 1) {
@@ -266,6 +303,14 @@ export abstract class ApiPlayers implements ApiHelper {
         filters.push(`(P.castles IS NOT NULL AND jsonb_array_length(P.castles) > 0)`);
       } else if (inactiveFilter === 0) {
         filters.push(`(P.castles IS NULL OR jsonb_array_length(P.castles) = 0)`);
+      }
+      if (Array.isArray(allianceRankFilter) && allianceRankFilter.length > 0) {
+        const rankFilters: string[] = [];
+        allianceRankFilter.forEach((rank) => {
+          rankFilters.push(`P.alliance_rank <> $${parameterIndex++}`);
+          otherParameters.push(rank);
+        });
+        filters.push(`(${rankFilters.join(' AND ')})`);
       }
       if (filters.length > 0) {
         query += `WHERE ${filters.join(' AND ')} \n    `;
@@ -383,6 +428,7 @@ export abstract class ApiPlayers implements ApiHelper {
                 player_name: result.player_name,
                 alliance_name: result.alliance_name,
                 alliance_id: ApiHelper.addCountryCode(result.alliance_id, request['code']),
+                alliance_rank: result.alliance_rank,
                 might_current: result.might_current,
                 might_all_time: result.might_all_time,
                 loot_current: result.loot_current,
@@ -472,6 +518,7 @@ export abstract class ApiPlayers implements ApiHelper {
           P.name AS player_name,
           A.name AS alliance_name,
           A.id AS alliance_id,
+          P.alliance_rank,
           P.might_current,
           P.might_all_time,
           P.loot_current,
@@ -518,6 +565,7 @@ export abstract class ApiPlayers implements ApiHelper {
             player_name: result.player_name,
             alliance_name: result.alliance_name,
             alliance_id: ApiHelper.addCountryCode(result.alliance_id, request['code']),
+            alliance_rank: result.alliance_rank,
             might_current: result.might_current,
             might_all_time: result.might_all_time,
             loot_current: result.loot_current,

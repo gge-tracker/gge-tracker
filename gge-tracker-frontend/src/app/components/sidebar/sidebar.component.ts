@@ -24,31 +24,31 @@ export class SidebarComponent {
     {
       title: 'Rechercher et analyser',
       items: [
-        { label: 'Joueurs', id: 'players', iconUrl: '/assets/tools/players.png' },
-        { label: 'Alliances', id: 'alliances', iconUrl: '/assets/tools/alliances.png' },
-        { label: 'Changements de nom', id: 'renames/players', iconUrl: '/assets/tools/renames.png' },
-        { label: 'Mouvements', id: 'movements', iconUrl: '/assets/tools/movements.png' },
+        { label: 'Joueurs', id: 'players', iconUrl: '/assets/tools/players.webp' },
+        { label: 'Alliances', id: 'alliances', iconUrl: '/assets/tools/alliances.webp' },
+        { label: 'Changements de nom', id: 'renames/players', iconUrl: '/assets/tools/renames.webp' },
+        { label: 'Mouvements', id: 'movements', iconUrl: '/assets/tools/movements.webp' },
       ],
     },
     {
       title: 'Outils tactiques',
       items: [
-        { label: 'Cartographie', id: 'map', iconUrl: '/assets/tools/cartography.png' },
-        { label: 'Forteresses', id: 'dungeons', iconUrl: '/assets/tools/fortresses.png', frequency: 'Temps réel' },
-        { label: 'Châteaux', id: 'castles', iconUrl: '/assets/tools/castles.png', frequency: 'Temps réel' },
+        { label: 'Cartographie', id: 'map', iconUrl: '/assets/tools/cartography.webp' },
+        { label: 'Forteresses', id: 'dungeons', iconUrl: '/assets/tools/fortresses.webp', frequency: 'Temps réel' },
+        { label: 'Châteaux', id: 'castles', iconUrl: '/assets/tools/castles.webp', frequency: 'Temps réel' },
       ],
     },
     {
       title: 'Scores et classements',
       items: [
-        { label: 'Outer Realms', id: 'live/outer-realms', iconUrl: '/assets/tools/or.png', frequency: 'Temps réel' },
-        { label: 'Le Grand Tournoi', id: 'grand-tournament', iconUrl: '/assets/tools/gt.png', frequency: 'Par heure' },
-        { label: 'Scores finaux', id: 'events', iconUrl: '/assets/tools/events.png' },
+        { label: 'Outer Realms', id: 'live/outer-realms', iconUrl: '/assets/tools/or.webp', frequency: 'Temps réel' },
+        { label: 'Le Grand Tournoi', id: 'grand-tournament', iconUrl: '/assets/tools/gt.webp', frequency: 'Par heure' },
+        { label: 'Scores finaux', id: 'events', iconUrl: '/assets/tools/events.webp' },
       ],
     },
     {
       title: 'Analytique',
-      items: [{ label: 'Statistiques', id: 'statistics', iconUrl: '/assets/tools/stats.png' }],
+      items: [{ label: 'Statistiques', id: 'statistics', iconUrl: '/assets/tools/stats.webp' }],
     },
   ];
 

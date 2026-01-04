@@ -119,7 +119,7 @@ img, .sidebar-scroll {
 
 .sidebar-header {
   align-items: center;
-  background: url('/assets/sidebar-header.png') no-repeat center/cover;
+  background: url('/assets/sidebar-header.webp') no-repeat center/cover;
   border-bottom: 1px solid rgba(255,255,255,0.05);
   cursor: pointer;
   display: flex;

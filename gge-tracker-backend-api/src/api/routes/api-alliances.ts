@@ -140,6 +140,7 @@ export abstract class ApiAlliances implements ApiHelper {
               honor: Number(result.honor),
               max_honor: Number(result.max_honor),
               peace_disabled_at: result.peace_disabled_at,
+              alliance_rank: result.alliance_rank,
               updated_at: formatInTimeZone(
                 result.updated_at,
                 ApiHelper.APPLICATION_TIMEZONE,
@@ -437,6 +438,7 @@ export abstract class ApiAlliances implements ApiHelper {
         P.peace_disabled_at,
         P.updated_at,
         P.level,
+        P.alliance_rank,
         P.legendary_level,
         (
           POWER(

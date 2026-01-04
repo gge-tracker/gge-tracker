@@ -22,7 +22,7 @@ export class SearchFormComponent implements OnChanges, OnInit {
   public readonly Search = Search;
   public readonly Reset = Eraser;
   public readonly Funnel = Filter;
-  public formFilters = input.required<Record<string, string | boolean | undefined | number | null> | null>();
+  public formFilters = input.required<Record<string, string | boolean | undefined | number | null | string[]> | null>();
   public inputTip = input.required<string>();
   public searchTypes = input.required<Record<SearchType, boolean>>();
   public isInLoading = input.required<boolean>();
@@ -50,7 +50,7 @@ export class SearchFormComponent implements OnChanges, OnInit {
     this.updateNbFilterActivated();
   }
 
-  public getFormsFilter(): Record<string, string | boolean | number | null | undefined> | null {
+  public getFormsFilter(): Record<string, string | boolean | number | null | undefined | string[]> | null {
     return this.formFilters();
   }
 
@@ -105,10 +105,19 @@ export class SearchFormComponent implements OnChanges, OnInit {
   }
 
   public updateNbFilterActivated(): void {
-    const forms: Record<string, string | boolean | number | null | undefined> | null = this.formFilters();
+    const forms: Record<string, string | boolean | number | null | undefined | string[]> | null = this.formFilters();
     if (!forms) return;
-    this.countFilterActivated =
-      Object.keys(forms).filter((key) => forms[key] !== '' && forms[key] !== '-1' && forms[key] !== null).length - 1;
+    let nb =
+      Object.keys(forms).filter(
+        (key) => forms[key] !== '' && forms[key] !== '-1' && forms[key] !== null && typeof forms[key] !== 'object',
+      ).length - 1;
+    for (const key of Object.keys(forms)) {
+      if (Array.isArray(forms[key])) {
+        const array = forms[key] as string[];
+        nb += array.filter((value) => value === '1').length;
+      }
+    }
+    this.countFilterActivated = nb;
     this.cdr.detectChanges();
   }
 }

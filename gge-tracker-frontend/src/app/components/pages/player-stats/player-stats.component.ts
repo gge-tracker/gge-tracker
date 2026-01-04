@@ -120,7 +120,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     { key: 'overview', label: "Vue d'ensemble", assetIcon: 'players.png' },
     { key: 'loot', label: 'Points de pillage hebdomadaire', assetIcon: 'loot.png' },
     { key: 'alliances', label: 'Alliances', assetIcon: 'alliance.png' },
-    { key: 'castles', label: 'Châteaux', assetIcon: 'tools/castles.png' },
+    { key: 'castles', label: 'Châteaux', assetIcon: 'tools/castles.webp' },
   ];
   public currentTab: Tabs = 'overview';
   public maxLootPointsByWeek: { week: string; points: number }[] = [];
