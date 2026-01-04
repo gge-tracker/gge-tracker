@@ -1,8 +1,9 @@
 :host {
-    display: contents;
+  display: contents;
 }
 
-.col-distance, .col-honor {
+.col-distance,
+.col-honor {
   color: #ddd;
   font-weight: bold;
   text-align: center;
@@ -10,4 +11,10 @@
 
 .col-level {
   text-align: center;
+}
+
+img.alliance-rank-icon {
+  max-height: 19px;
+  vertical-align: middle;
+  max-width: 37px;
 }

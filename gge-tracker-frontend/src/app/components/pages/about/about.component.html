@@ -1,4 +1,4 @@
-<div class="container mb-5 pb-0">
+<div class="container about-container mb-5 pb-0">
   <ng-container *ngTemplateOutlet="apiLink; context: { message: 'API gge-tracker.com' }"></ng-container>
   <div class="text-end mb-2 release-note">
     <a href="/release-notes" class="text-decoration-none" target="_blank">
@@ -31,7 +31,7 @@
 
 <ng-template #contributors>
   <div class="section">
-    <div class="container mt-0 contrib-container">
+    <div class="container p-5 mt-0 contrib-container">
       <div class="row justify-content-left">
         <div class="col-6 col-sm-4 col-md-3 col-lg-2 text-center mb-4" *ngFor="let contrib of orderedContribs">
           <div class="contrib-avatar mx-auto mb-2">
@@ -47,7 +47,7 @@
 
 <ng-template #apiLink let-message="message">
   <div class="text-end mb-2">
-    <a href="https://petstore.swagger.io/?url=https://api.gge-tracker.com/api/v1/docs" target="_blank" class="text-decoration-none">
+    <a href="https://docs.gge-tracker.com" target="_blank" class="text-decoration-none">
       <i class="fa-solid fa-code" style="color: #007bff;"></i>
       &nbsp;{{ message }}
     </a>

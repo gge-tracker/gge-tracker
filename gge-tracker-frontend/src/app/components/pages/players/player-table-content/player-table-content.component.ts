@@ -25,4 +25,8 @@ export class PlayerTableContentComponent extends GenericComponent {
   public get hasAllianceColumn(): boolean {
     return this.playersTableHeader().some((header) => header[0] === 'alliance_name');
   }
+
+  public get hasAllianceRankColumn(): boolean {
+    return this.playersTableHeader().some((header) => header[0] === 'alliance_rank');
+  }
 }

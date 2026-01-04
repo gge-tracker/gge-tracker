@@ -21,7 +21,7 @@
     </div>
   </div>
   <div class="modal fade" id="filtersModal" tabindex="-1" aria-labelledby="filtersModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="filtersModalLabel">
@@ -74,7 +74,7 @@
                 </div>
               </div>
             </div>
-            <div class="row mt-3">
+            <div class="row mt-1">
               <!-- Loot -->
               <div class="col-12 col-sm my-1">
                 <div class="input-group">
@@ -116,7 +116,49 @@
                 </div>
               </div>
             </div>
-            <div class="row mt-3">
+            <div class="row mt-1">
+              <!-- Fame (glory) -->
+              <div class="col-12 col-sm my-1">
+                <div class="input-group">
+                  <span class="input-group-text">
+                    <img src="/assets/glory.png" [alt]="'Gloire' | translate" [title]="'Filtrer par gloire' | translate"
+                      height="24">
+                  </span>
+                  <input type="text" class="form-control ggetracker-input" id="fameMin"
+                    [value]="displayFormValues.fame.min" (focus)="onGenericFocus('min', 'fame')"
+                    (blur)="onGenericBlur('min', 'fame')" (input)="onGenericInput('min', 'fame', $event)"
+                    [title]="formFilters.minFame" [placeholder]="'Gloire min.' | translate">
+                  <div class="input-arrow">
+                    <lucide-icon [img]="ArrowBigRightDash" [size]="20" class="m-auto"></lucide-icon>
+                  </div>
+                  <input type="text" class="form-control ggetracker-input" id="fameMax"
+                    [value]="displayFormValues.fame.max" (focus)="onGenericFocus('max', 'fame')"
+                    (blur)="onGenericBlur('max', 'fame')" (input)="onGenericInput('max', 'fame', $event)"
+                    [title]="formFilters.maxFame" [placeholder]="'Gloire max.' | translate">
+                </div>
+              </div>
+              <!-- Castle count -->
+              <div class="col-12 col-sm my-1">
+                <div class="input-group">
+                  <span class="input-group-text">
+                    <img src="/assets/castle4.png" [alt]="'Châteaux' | translate"
+                      [title]="'Filtrer par nombre de châteaux' | translate" height="24">
+                  </span>
+                  <input type="text" class="form-control ggetracker-input" id="castleCountMin"
+                    [value]="displayFormValues.castleCount.min" (focus)="onGenericFocus('min', 'castleCount')"
+                    (blur)="onGenericBlur('min', 'castleCount')" (input)="onGenericInput('min', 'castleCount', $event)"
+                    [title]="formFilters.castleCountMin" [placeholder]="'Châteaux min.' | translate">
+                  <div class="input-arrow">
+                    <lucide-icon [img]="ArrowBigRightDash" [size]="20" class="m-auto"></lucide-icon>
+                  </div>
+                  <input type="text" class="form-control ggetracker-input" id="castleCountMax"
+                    [value]="displayFormValues.castleCount.max" (focus)="onGenericFocus('max', 'castleCount')"
+                    (blur)="onGenericBlur('max', 'castleCount')" (input)="onGenericInput('max', 'castleCount', $event)"
+                    [title]="formFilters.castleCountMax" [placeholder]="'Châteaux max.' | translate">
+                </div>
+              </div>
+            </div>
+            <div class="row mt-1">
               <!-- Filter by distance (playername) -->
               <div class="col-12 col-sm my-1">
                 <div class="input-group">
@@ -131,11 +173,10 @@
                 </div>
                 <div class="form-text text-muted small" [innerHTML]="'Distance-text' | translate"></div>
               </div>
-            </div>
             <div class="row">
               <!-- Filter by alliance -->
               <div class="col-12">
-                <div class="text-center mt-3 alliance-icon">
+                <div class="text-center mt-1 alliance-icon">
                   <img src="/assets/min-alliance.png" [alt]="'Alliance' | translate"
                     [title]="'Filtrer par alliance' | translate" height="32">
                 </div>
@@ -163,9 +204,32 @@
                   </div>
                 </div>
               </div>
+              <!-- Filter player rank -->
+              <div class="col-12">
+                <div class="d-flex  filter-rank-container"
+                  *ngIf="formFilters.allianceFilter !== '0'">
+                  <div class="col text-center checkbox-wrapper-15" *ngFor="let rank of [0,1,2,3,4,5,6,7,8,9]">
+                    <input class="inp-cbx d-none" type="checkbox" [id]="'allianceRank' + rank"
+                      [value]="formFilters.allianceRankFilter[rank]"
+                      [checked]="formFilters.allianceRankFilter[rank] === '0'"
+                      (change)="onAllianceRankFilterChanged(rank)">
+                    <label for="allianceRank{{ rank }}" class="cbx">
+                      <span>
+                        <svg width="12px" height="9px" viewbox="0 0 12 9">
+                          <polyline points="1 5 4 8 11 1"></polyline>
+                        </svg>
+                      </span>
+                      <div>
+                        <img src="/assets/alliance_ranks/{{ rank }}.png" class="alliance-rank-icon-filter mb-2"
+                          [alt]="'Rank ' + rank">
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
               <!-- Protection -->
               <div class="col-12">
-                <div class="text-center mt-3 peace-icon">
+                <div class="text-center mt-1 peace-icon">
                   <img src="/assets/peace.png" [alt]="'Protection'  | translate"
                     [title]="'Filtrer par protection' | translate" height="32">
                 </div>
@@ -195,7 +259,7 @@
               </div>
               <!-- Ban -->
               <div class="col-12">
-                <div class="text-center mt-3 ban-icon">
+                <div class="text-center mt-1 ban-icon">
                   <img src="/assets/error.png" [alt]="'Banissement' | translate"
                     [title]="'Filtrer par banissement' | translate" height="32">
                 </div>
@@ -225,7 +289,7 @@
               </div>
               <!-- Inactive player -->
               <div class="col-12">
-                <div class="text-center mt-3 inactive-icon">
+                <div class="text-center mt-1 inactive-icon">
                   <img src="/assets/compass.png" [alt]="'Inactif' | translate"
                     [title]="'Filtrer par joueur inactif (N\'étant pas sur la carte)' | translate" height="32">
                 </div>
@@ -254,7 +318,6 @@
                 </div>
               </div>
             </div>
-            <hr>
             <div class="row">
               <div class="col-12">
                 <div class="mt-3">
@@ -263,7 +326,7 @@
                     {{ 'Trier les résultats' | translate }}
                   </h5>
                 </div>
-                <div class="input-group align-items-center justify-content-center">
+                <div class="input-group align-items-center justify-content-center gge-tracker-select-container">
                   <select class="form-select w-auto mt-2" [(ngModel)]="sort">
                     <option *ngFor="let option of sortByOptions" [value]="option.value">{{ option.label | translate}}
                     </option>
@@ -277,8 +340,8 @@
                 </div>
               </div>
             </div>
-            <hr>
-            <div class="row mt-3">
+            <hr class="my-4">
+            <div class="row">
               <div class="col text-center">
                 <button class="gge-btn search" (click)="applyFilters()" data-bs-dismiss="modal">
                   <i class="fa-solid fa-check"></i>

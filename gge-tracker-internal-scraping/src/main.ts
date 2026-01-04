@@ -1412,6 +1412,7 @@ export class GenericFetchAndSaveBackend {
                     this.playerLootAndMightPointHistoryList[uid.toString()][10] = infos['HF'];
                     this.playerLootAndMightPointHistoryList[uid.toString()][11] = infos['CF'];
                     this.playerLootAndMightPointHistoryList[uid.toString()][12] = infos['RRD'];
+                    this.playerLootAndMightPointHistoryList[uid.toString()][15] = infos['AR'];
                   }
                 } catch (error) {
                   Utils.logMessage(' [KO] Error while storing in playerMightHistoryList', JSON.stringify(player));
@@ -1634,6 +1635,7 @@ export class GenericFetchAndSaveBackend {
                     this.playerLootAndMightPointHistoryList[uid.toString()][10] = infos['HF'];
                     this.playerLootAndMightPointHistoryList[uid.toString()][11] = infos['CF'];
                     this.playerLootAndMightPointHistoryList[uid.toString()][12] = infos['RRD'];
+                    this.playerLootAndMightPointHistoryList[uid.toString()][15] = infos['AR'];
                   }
                 } catch (error) {
                   Utils.logMessage(' [KO] Error while storing in playerLootHistoryList', JSON.stringify(player));
@@ -1770,6 +1772,7 @@ export class GenericFetchAndSaveBackend {
                         this.playerLootAndMightPointHistoryList[uid.toString()][10] = infos['HF'];
                         this.playerLootAndMightPointHistoryList[uid.toString()][11] = infos['CF'];
                         this.playerLootAndMightPointHistoryList[uid.toString()][12] = infos['RRD'];
+                        this.playerLootAndMightPointHistoryList[uid.toString()][15] = infos['AR'];
                       }
                     } else if (c === true) {
                       c = false;
@@ -2276,6 +2279,7 @@ export class GenericFetchAndSaveBackend {
         loot_current BIGINT,
         might_all_time BIGINT,
         loot_all_time BIGINT,
+        alliance_rank SMALLINT,
         castles JSONB,
         castles_realm JSONB,
         honor INTEGER,
@@ -2289,13 +2293,14 @@ export class GenericFetchAndSaveBackend {
         peace_disabled_at TIMESTAMP DEFAULT NULL
       );
     `);
-    const CHUNK_SIZE = 4000;
+    const CHUNK_SIZE = 3000;
     const columns = [
       'id',
       'might_current',
       'loot_current',
       'might_all_time',
       'loot_all_time',
+      'alliance_rank',
       'castles',
       'castles_realm',
       'honor',
@@ -2330,13 +2335,16 @@ export class GenericFetchAndSaveBackend {
       const highestFame = data[10] || 0;
       const currentFame = data[11] || 0;
       const remainingRelocationTime = data[12] || 0;
-      const peaceDisabledAt = Number(remaining_peace_time) > 0 ? data[14] : null;
+      const peaceDisabledAt = Number(remaining_peace_time) > 0 ? (data[14] ?? null) : null;
+      const alliance_rank =
+        Number(data[15]) !== undefined && Number(data[15]) >= 0 && Number(data[15]) <= 100 ? Number(data[15]) : null;
       insertValues.push([
         playerId,
         might_current,
         loot_current,
         might_current,
         loot_current,
+        alliance_rank,
         castles,
         castles_realm,
         honor,
@@ -2363,9 +2371,7 @@ export class GenericFetchAndSaveBackend {
           return `(${placeholders.join(', ')})`;
         })
         .join(', ');
-
       const flatValues = chunk.flat();
-
       const query = `
         INSERT INTO tmp_players_update (${columns.join(', ')})
         VALUES ${valuesClause}
@@ -2381,6 +2387,7 @@ export class GenericFetchAndSaveBackend {
         might_current = tmp.might_current,
         loot_all_time = GREATEST(COALESCE(p.loot_all_time, 0), tmp.loot_all_time),
         might_all_time = GREATEST(COALESCE(p.might_all_time, 0), tmp.might_all_time),
+        alliance_rank = tmp.alliance_rank,
         castles = tmp.castles,
         castles_realm = tmp.castles_realm,
         honor = tmp.honor,
@@ -2437,6 +2444,7 @@ export class GenericFetchAndSaveBackend {
         const currentFame = this.playerLootAndMightPointHistoryList[key][11] || 0;
         const remainingRelocationTime = this.playerLootAndMightPointHistoryList[key][12];
         const peaceDisabledAt = Number(rpt) > 0 ? this.playerLootAndMightPointHistoryList[key][14] : null;
+        const allianceRank = this.playerLootAndMightPointHistoryList[key][15];
         updates[playerId] = [
           loot_current, // loot_current
           might_current, // might_current
@@ -2453,6 +2461,7 @@ export class GenericFetchAndSaveBackend {
           remainingRelocationTime, // remaining_relocation_time
           realmAp, // realm castles
           peaceDisabledAt, // peace_disabled_at
+          allianceRank, // alliance rank
         ];
         const targetedPlayer = this.currentPlayers.find((p) => p.playerId == playerId);
         const shouldInsert =

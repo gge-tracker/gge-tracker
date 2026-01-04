@@ -204,6 +204,7 @@ div[after] {
 .nav-tabs {
   flex-wrap: nowrap;
   overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .nav-tabs .nav-link:not(.active):focus, .nav-tabs .nav-link:not(.active):hover {

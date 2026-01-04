@@ -20,13 +20,14 @@ import { SidebarComponent } from '@ggetracker-components/sidebar/sidebar.compone
 import { TopBarComponent } from '@ggetracker-components/top-bar/top-bar.component';
 import { myIcons } from '@ggetracker-components/icon/icon.component';
 import { ServerService } from '@ggetracker-services/server.service';
+import { environment } from 'environments/environment';
 
 export function DynamicTranslateLoaderFactory(http: HttpClient): TranslateLoader {
   const isBrowser = globalThis.window !== undefined;
   if (isBrowser && localStorage.getItem('lang_dev')) {
     return new LocalStorageTranslateLoader();
   } else {
-    return new TranslateHttpLoader(http, 'https://ggetracker.github.io/i18n/', '.json');
+    return new TranslateHttpLoader(http, environment.i18nBaseUrl, '.json');
   }
 }
 

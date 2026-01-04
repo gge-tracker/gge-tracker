@@ -19,7 +19,7 @@ import { ArrowBigRightDash, LucideAngularModule } from 'lucide-angular';
 import { PlayerTableContentComponent } from './player-table-content/player-table-content.component';
 import { IconComponent } from '@ggetracker-components/icon/icon.component';
 
-type FilterField = 'honor' | 'loot' | 'level' | 'might';
+type FilterField = 'honor' | 'loot' | 'level' | 'might' | 'fame' | 'castleCount';
 type BoundType = 'min' | 'max';
 
 interface FormFilters {
@@ -31,6 +31,10 @@ interface FormFilters {
   maxLevel: string;
   minMight: string;
   maxMight: string;
+  minFame: string;
+  maxFame: string;
+  castleCountMin: string;
+  castleCountMax: string;
   allianceFilter: string;
   protectionFilter: string;
   banFilter: string;
@@ -111,12 +115,17 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     maxLoot: '',
     minLevel: '',
     maxLevel: '',
+    minFame: '',
+    maxFame: '',
+    castleCountMin: '',
+    castleCountMax: '',
     allianceFilter: '-1',
     protectionFilter: '-1',
     banFilter: '-1',
     isFiltered: false,
     inactiveFilter: '1',
     playerCastleDistance: '',
+    allianceRankFilter: ['0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'],
   };
   public readonly ArrowBigRightDash = ArrowBigRightDash;
   public displayFormValues = {
@@ -124,12 +133,16 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     loot: { min: '', max: '' },
     honor: { min: '', max: '' },
     level: { min: '', max: '' },
+    fame: { min: '', max: '' },
+    castleCount: { min: '', max: '' },
   };
   private readonly FILTER_KEYS: FilterKeyMap = {
     honor: { min: 'minHonor', max: 'maxHonor' },
     loot: { min: 'minLoot', max: 'maxLoot' },
     level: { min: 'minLevel', max: 'maxLevel' },
     might: { min: 'minMight', max: 'maxMight' },
+    fame: { min: 'minFame', max: 'maxFame' },
+    castleCount: { min: 'castleCountMin', max: 'castleCountMax' },
   };
   private cdr = inject(ChangeDetectorRef);
   private localStorage = inject(LocalStorageService);
@@ -194,7 +207,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     return numeric * multiplier;
   }
 
-  public onGenericFocus(type: 'min' | 'max', field: 'honor' | 'loot' | 'level' | 'might'): void {
+  public onGenericFocus(type: 'min' | 'max', field: FilterField): void {
     let targetValue: string | null = null;
     switch (field) {
       case 'honor': {
@@ -211,6 +224,10 @@ export class PlayersComponent extends GenericComponent implements OnInit {
       }
       case 'might': {
         targetValue = type === 'min' ? this.formFilters.minMight : this.formFilters.maxMight;
+        break;
+      }
+      case 'fame': {
+        targetValue = type === 'min' ? (this.formFilters as any).minFame : (this.formFilters as any).maxFame;
         break;
       }
     }
@@ -369,6 +386,10 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     return Array.from({ length: this.maxPage || 1 }, (_, index) => index + 1);
   }
 
+  public onAllianceRankFilterChanged(index: number): void {
+    this.formFilters.allianceRankFilter[index] = this.formFilters.allianceRankFilter[index] === '0' ? '1' : '0';
+  }
+
   public async applyFilters(): Promise<void> {
     this.isInLoading = true;
     this.page = 1;
@@ -492,6 +513,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
         playerName: player.player_name,
         allianceName: player.alliance_name,
         allianceId: player.alliance_id,
+        allianceRank: player.alliance_rank,
         mightCurrent: player.might_current,
         mightAllTime: player.might_all_time,
         lootCurrent: player.loot_current ?? 0,
@@ -526,6 +548,16 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     if (this.formFilters.banFilter !== '-1') filters['banFilter'] = this.formFilters.banFilter;
     if (this.formFilters.inactiveFilter !== '-1') filters['inactiveFilter'] = this.formFilters.inactiveFilter;
     if (this.formFilters.playerCastleDistance) filters['playerNameForDistance'] = this.formFilters.playerCastleDistance;
+    if (this.formFilters.minFame) filters['minFame'] = this.formFilters.minFame;
+    if (this.formFilters.maxFame) filters['maxFame'] = this.formFilters.maxFame;
+    if (this.formFilters.castleCountMin) filters['castleCountMin'] = this.formFilters.castleCountMin;
+    if (this.formFilters.castleCountMax) filters['castleCountMax'] = this.formFilters.castleCountMax;
+    if (this.formFilters.allianceRankFilter.includes('1')) {
+      filters['allianceRankFilter'] = this.formFilters.allianceRankFilter
+        .map((value, index) => (value === '1' ? index : null))
+        .filter((value) => value !== null)
+        .join(',');
+    }
     this.formFilters.isFiltered = Object.keys(filters).length > 0;
     return filters;
   }

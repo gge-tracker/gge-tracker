@@ -21,6 +21,7 @@ export abstract class ApiHelper {
   public static readonly PAGINATION_LIMIT = 15;
   public static readonly REDIS_KEY_GGE_VERSION = 'gge_build_version';
   public static readonly MAX_RESULT_PAGE = 999_999_999;
+  public static readonly MAX_BIG_VALUE = 999_999_999_999;
   public static readonly BULK_REQUEST_MAX_IDS = 100;
   public static readonly HTTP_OK = Status.OK;
   public static readonly HTTP_CREATED = Status.CREATED;

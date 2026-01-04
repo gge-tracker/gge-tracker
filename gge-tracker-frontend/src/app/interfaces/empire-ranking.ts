@@ -126,6 +126,7 @@ export interface Player {
   playerName: string;
   allianceName: string | null;
   allianceId: number | null;
+  allianceRank: number | null;
   mightCurrent: number;
   mightAllTime: number;
   lootCurrent: number;
@@ -300,6 +301,7 @@ export interface ApiPlayerSearchResponse {
   player_name: string;
   alliance_name: string;
   alliance_id: number;
+  alliance_rank: number | null;
   might_all_time: number;
   might_current: number;
   loot_all_time: number;

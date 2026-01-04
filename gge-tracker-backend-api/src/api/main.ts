@@ -305,7 +305,33 @@ publicRoutes.get('/languages/:lang', routingInstance.getLanguage.bind(routingIns
 protectedRoutes.get('/', routingInstance.getStatus.bind(routingInstance));
 
 /**
- * @todo Swagger documentation
+ * @swagger
+ * /servers:
+ *   get:
+ *     summary: Retrieve the list of gge-tracker supported servers
+ *     description: This endpoint returns a list of all supported Goodgame Empire servers by gge-tracker
+ *     tags:
+ *       - Servers
+ *     responses:
+ *       200:
+ *         description: A list of supported servers
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: string
+ *                 example: "DE1"
+ *       500:
+ *         description: Internal server error occurred while retrieving servers
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Unable to fetch server list"
  */
 publicRoutes.get('/servers', routingInstance.getServers.bind(routingInstance));
 
@@ -346,7 +372,7 @@ publicRoutes.get('/servers', routingInstance.getServers.bind(routingInstance));
  *                         type: string
  *                         format: date-time
  *                         description: The timestamp when the data was collected
- *                         example: "2025-07-17 15:00:00"
+ *                         example: "2025-06-01 16:00:00"
  *       500:
  *         description: Internal server error occurred while retrieving events
  *         content:
@@ -368,6 +394,7 @@ publicRoutes.get('/events/list', routingInstance.getEvents.bind(routingInstance)
  *     description: This endpoint returns a list of Grand Tournament event dates
  *     tags:
  *       - Events
+ *       - Grand Tournament
  *     responses:
  *       200:
  *         description: A list of recorded events
@@ -391,7 +418,7 @@ publicRoutes.get('/events/list', routingInstance.getEvents.bind(routingInstance)
  *                           type: string
  *                           format: date-time
  *                           description: The date and time of the Grand Tournament event
- *                           example: "2025-10-27T18:00:00.000Z"
+ *                           example: "2025-06-01T16:00:00.000Z"
  *       500:
  *         description: Internal server error occurred while retrieving events
  *         content:
@@ -406,12 +433,227 @@ publicRoutes.get('/events/list', routingInstance.getEvents.bind(routingInstance)
 publicRoutes.get('/grand-tournament/dates', routingInstance.getGrandTournamentEventDates.bind(routingInstance));
 
 /**
- * @todo Swagger documentation
+ * @swagger
+ * /grand-tournament/alliances:
+ *   get:
+ *     summary: Retrieve Grand Tournament alliance rankings
+ *     description: |
+ *       This endpoint retrieves alliance rankings for the Grand Tournament event.
+ *       Results can be filtered by date and division, and are paginated.
+ *       The response includes division and subdivision boundaries, alliance rankings,
+ *       and pagination metadata.
+ *     tags:
+ *       - Events
+ *       - Grand Tournament
+ *     parameters:
+ *       - name: date
+ *         in: query
+ *         description: Reference date of the Grand Tournament snapshot (ISO 8601 format)
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *           example: "2025-06-01T01:00:00.000Z"
+ *       - name: division_id
+ *         in: query
+ *         description: Division identifier to filter alliances
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           example: 5
+ *       - name: subdivision_id
+ *         in: query
+ *         description: Subdivision identifier to filter alliances
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           example: 5
+ *       - name: page
+ *         in: query
+ *         description: Page number for paginated results
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *     responses:
+ *       '200':
+ *         description: Successful response with Grand Tournament alliance rankings
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 event:
+ *                   type: object
+ *                   properties:
+ *                     division:
+ *                       type: object
+ *                       properties:
+ *                         current_division:
+ *                           type: integer
+ *                           example: 5
+ *                         min_division:
+ *                           type: integer
+ *                           example: 1
+ *                         max_division:
+ *                           type: integer
+ *                           example: 5
+ *                     subdivision:
+ *                       type: object
+ *                       properties:
+ *                         current_subdivision:
+ *                           type: integer
+ *                           nullable: true
+ *                         min_subdivision:
+ *                           type: integer
+ *                         max_subdivision:
+ *                           type: integer
+ *                     alliances:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           alliance_id:
+ *                             type: integer
+ *                           alliance_name:
+ *                             type: string
+ *                           server:
+ *                             type: string
+ *                           rank:
+ *                             type: integer
+ *                           score:
+ *                             type: integer
+ *                           subdivision:
+ *                             type: integer
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     current_page:
+ *                       type: integer
+ *                     total_pages:
+ *                       type: integer
+ *                     current_items_count:
+ *                       type: integer
+ *                     total_items_count:
+ *                       type: integer
+ *       '400':
+ *         description: Bad request, invalid query parameters
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Invalid query parameters"
+ *       '500':
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "An error occurred during the request"
  */
 publicRoutes.get('/grand-tournament/alliances', routingInstance.getGrandTournamentEvents.bind(routingInstance));
 
 /**
- * @todo Swagger documentation
+ * @swagger
+ * /grand-tournament/alliance/{allianceId}/{eventId}:
+ *   get:
+ *     summary: Retrieve Grand Tournament analysis for a specific alliance
+ *     description: |
+ *       This endpoint retrieves the historical ranking and score evolution
+ *       of a specific alliance during a Grand Tournament event.
+ *       The response includes division, subdivision, rank, score, and timestamped data,
+ *       along with alliance metadata.
+ *     tags:
+ *       - Events
+ *       - Grand Tournament
+ *     parameters:
+ *       - name: allianceId
+ *         in: path
+ *         description: Unique identifier of the alliance
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - name: eventId
+ *         in: path
+ *         description: Identifier of the Grand Tournament event
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       '200':
+ *         description: Successful response with alliance Grand Tournament analysis
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 analysis:
+ *                   type: array
+ *                   description: Historical ranking and score evolution of the alliance
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       division:
+ *                         type: integer
+ *                         example: 5
+ *                       subdivision:
+ *                         type: integer
+ *                         example: 1
+ *                       rank:
+ *                         type: integer
+ *                         example: 1
+ *                       score:
+ *                         type: integer
+ *                       date:
+ *                         type: string
+ *                         description: Snapshot timestamp
+ *                         example: "2025-06-01 07:00:00"
+ *                 meta:
+ *                   type: object
+ *                   properties:
+ *                     alliance_id:
+ *                       type: integer
+ *                       example: 23850010
+ *                     alliance_name:
+ *                       type: string
+ *                     server:
+ *                       type: string
+ *       '400':
+ *         description: Bad request, invalid path parameters
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Invalid alliance or event id"
+ *       '404':
+ *         description: Alliance or event not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Alliance not found"
+ *       '500':
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "An error occurred during the request"
  */
 publicRoutes.get(
   '/grand-tournament/alliance/:allianceId/:eventId',
@@ -419,7 +661,97 @@ publicRoutes.get(
 );
 
 /**
- * @todo Swagger documentation
+ * @swagger
+ * /grand-tournament/search:
+ *   get:
+ *     summary: Search alliances in the Grand Tournament
+ *     description: |
+ *       This endpoint allows searching for alliances participating in the Grand Tournament
+ *       by alliance name at a specific snapshot date.
+ *       Results are paginated and include ranking, score, division, and subdivision information.
+ *     tags:
+ *       - Events
+ *       - Grand Tournament
+ *     parameters:
+ *       - name: date
+ *         in: query
+ *         description: Reference date of the Grand Tournament snapshot (ISO 8601 format)
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *           example: "2025-06-01T07:00:00.000Z"
+ *       - name: alliance_name
+ *         in: query
+ *         description: Alliance name to search for (partial or full match)
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - name: page
+ *         in: query
+ *         description: Page number for paginated results
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *     responses:
+ *       '200':
+ *         description: Successful response with matching Grand Tournament alliances
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 alliances:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       alliance_id:
+ *                         type: integer
+ *                       alliance_name:
+ *                         type: string
+ *                       server:
+ *                         type: string
+ *                       rank:
+ *                         type: integer
+ *                       score:
+ *                         type: integer
+ *                       division:
+ *                         type: integer
+ *                       subdivision:
+ *                         type: integer
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     current_page:
+ *                       type: integer
+ *                     total_pages:
+ *                       type: integer
+ *                     current_items_count:
+ *                       type: integer
+ *                     total_items_count:
+ *                       type: integer
+ *       '400':
+ *         description: Bad request, invalid query parameters
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Invalid query parameters"
+ *       '500':
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "An error occurred during the request"
  */
 publicRoutes.get(
   '/grand-tournament/search',
@@ -485,16 +817,16 @@ publicRoutes.get(
  *                       player_id:
  *                         type: string
  *                         nullable: true
- *                         example: "4207099010"
+ *                         example: "123456789"
  *                       player_name:
  *                         type: string
- *                         example: "haempli"
+ *                         example: "PlayerName"
  *                       rank:
  *                         type: integer
  *                         example: 2
  *                       point:
  *                         type: string
- *                         example: "379997"
+ *                         example: "1000"
  *                       server:
  *                         type: string
  *                         example: "DE1"
@@ -506,13 +838,13 @@ publicRoutes.get(
  *                       example: 1
  *                     total_pages:
  *                       type: integer
- *                       example: 1094
+ *                       example: 1000
  *                     current_items_count:
  *                       type: integer
  *                       example: 15
  *                     total_items_count:
  *                       type: string
- *                       example: "16400"
+ *                       example: "15000"
  *       400:
  *         description: Invalid event type or bad query parameter
  *         content:
@@ -578,7 +910,7 @@ publicRoutes.get('/events/:eventType/:id/players', routingInstance.getEventPlaye
  *                 collect_date:
  *                   type: string
  *                   format: date-time
- *                   example: "2025-07-17 15:00:00"
+ *                   example: "2025-06-01 16:00:00"
  *                 player_count:
  *                   type: integer
  *                   example: 0
@@ -598,7 +930,7 @@ publicRoutes.get('/events/:eventType/:id/players', routingInstance.getEventPlaye
  *                   properties:
  *                     top_1:
  *                       type: string
- *                       example: "417999"
+ *                       example: "100000"
  *                     top_2:
  *                       type: string
  *                     top_3:
@@ -809,7 +1141,7 @@ publicRoutes.get(
  *                       date:
  *                         type: string
  *                         description: The date and time when the name change occurred
- *                         example: "2025-04-10 13:08:00"
+ *                         example: "2025-06-01 16:00:00"
  *                       old_player_name:
  *                         type: string
  *                         description: The old player name
@@ -873,7 +1205,7 @@ publicRoutes.get('/updates/players/:playerId/names', routingInstance.getNamesUpd
  *                       date:
  *                         type: string
  *                         description: The date and time when the alliance change occurred
- *                         example: "2025-04-10 13:08:00"
+ *                         example: "2025-06-01 16:00:00"
  *                       old_alliance_name:
  *                         type: string
  *                         description: The old alliance name
@@ -889,7 +1221,7 @@ publicRoutes.get('/updates/players/:playerId/names', routingInstance.getNamesUpd
  *                       new_alliance_id:
  *                         type: string
  *                         description: The ID of the new alliance
- *                         example: "67890"
+ *                         example: "12346"
  *       400:
  *         description: Invalid player ID
  *         content:
@@ -945,9 +1277,7 @@ publicRoutes.get(
  *         description: Filter by kingdom ID (optional). If provided, only dungeons in this kingdom will be returned
  *         required: true
  *         schema:
- *           type: array
- *           items:
- *             type: integer
+ *           type: integer
  *           example: [1,2,3]
  *           enum:
  *             - 1
@@ -2309,7 +2639,7 @@ protectedRoutes.get('/alliances', routingInstance.getAlliances.bind(routingInsta
  *                       date:
  *                         type: string
  *                         description: The date and time when the statistics were recorded, in local timezone
- *                         example: "2025-03-04 16:07:00"
+ *                         example: "2025-06-01 16:00:00"
  *                       top_players:
  *                         type: string
  *                         description: JSON string representing the top 3 players, with their IDs and points. Specifically, the JSON string contains an object where the keys are event IDs and the values are arrays of player objects, each containing a player ID and points
@@ -2526,6 +2856,13 @@ publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayer
  *             - -1
  *             - 0
  *             - 1
+ *       - name: allianceRankFilter
+ *         in: query
+ *         description: Comma-separated list of alliance ranks to exclude
+ *         required: false
+ *         schema:
+ *           type: string
+ *           default: ""
  *     responses:
  *       '200':
  *         description: A list of players with pagination and filter details
@@ -2559,7 +2896,7 @@ publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayer
  *                     properties:
  *                       player_id:
  *                         type: string
- *                         description: The unique ID of the player, with the country code
+ *                         description: The unique ID of the player
  *                       player_name:
  *                         type: string
  *                         description: The name of the player
@@ -2568,7 +2905,10 @@ publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayer
  *                         description: The name of the player's alliance (if applicable)
  *                       alliance_id:
  *                         type: string
- *                         description: The unique ID of the alliance (if applicable), with the country code
+ *                         description: The unique ID of the alliance (if applicable)
+ *                       alliance_rank:
+ *                         type: string
+ *                         description: The rank ID of the player within the alliance (if applicable)
  *                       might_current:
  *                         type: integer
  *                         description: The current might of the player
@@ -2965,7 +3305,140 @@ publicRoutes.get(
 );
 
 /**
- * @todo Swagger documentation
+ * @swagger
+ * /statistics/alliance/{allianceId}/pulse:
+ *   get:
+ *     summary: Retrieve alliance might pulse statistics
+ *     description: |
+ *       This endpoint provides detailed might evolution statistics for a specific alliance.
+ *       It includes hourly might history, daily average might changes, intra-day variations,
+ *       and top player gains and losses over 24 hours and 7 days.
+ *     tags:
+ *       - Statistics
+ *     parameters:
+ *       - name: allianceId
+ *         in: path
+ *         description: Unique identifier of the alliance
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       '200':
+ *         description: Successful response with alliance might pulse statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 might_per_hour:
+ *                   type: array
+ *                   description: Hourly alliance might snapshots
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       date:
+ *                         type: string
+ *                       point:
+ *                         type: string
+ *                         description: Total alliance might at this timestamp
+ *                 daily_avg_might_change:
+ *                   type: array
+ *                   description: Daily average might change
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       date:
+ *                         type: string
+ *                       avg_diff:
+ *                         type: number
+ *                 might_intra_variation:
+ *                   type: array
+ *                   description: Average intra-day might variation
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       date:
+ *                         type: string
+ *                       avg_diff:
+ *                         type: number
+ *                 top_might_gain_24h:
+ *                   type: array
+ *                   description: Top player might gains over the last 24 hours
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       player_id:
+ *                         type: string
+ *                       diff:
+ *                         type: string
+ *                       current:
+ *                         type: string
+ *                 top_might_gain_7d:
+ *                   type: array
+ *                   description: Top player might gains over the last 7 days
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       player_id:
+ *                         type: string
+ *                       diff:
+ *                         type: string
+ *                       current:
+ *                         type: string
+ *                 top_might_loss_24h:
+ *                   type: array
+ *                   description: Top player might losses over the last 24 hours
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       player_id:
+ *                         type: string
+ *                       diff:
+ *                         type: string
+ *                       current:
+ *                         type: string
+ *                 top_might_loss_7d:
+ *                   type: array
+ *                   description: Top player might losses over the last 7 days
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       player_id:
+ *                         type: string
+ *                       diff:
+ *                         type: string
+ *                       current:
+ *                         type: string
+ *       '400':
+ *         description: Bad request, invalid alliance ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Invalid alliance id"
+ *       '404':
+ *         description: Alliance not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Alliance not found"
+ *       '500':
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "An error occurred during the request"
  */
 publicRoutes.get(
   '/statistics/alliance/:allianceId/pulse',
@@ -2973,7 +3446,111 @@ publicRoutes.get(
 );
 
 /**
- * @todo Swagger documentation
+ * @swagger
+ * /statistics/ranking/player/{playerId}:
+ *   get:
+ *     summary: Retrieve ranking and progression statistics for a player
+ *     description: |
+ *       This endpoint retrieves detailed ranking and progression statistics for a specific player.
+ *       It includes might, fame, loot, honor, levels, rankings, and castle locations.
+ *     tags:
+ *       - Statistics
+ *     parameters:
+ *       - name: playerId
+ *         in: path
+ *         description: Unique identifier of the player
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Successful response with player ranking statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 player_id:
+ *                   type: string
+ *                 server:
+ *                   type: string
+ *                 might_current:
+ *                   type: string
+ *                   description: Current might value
+ *                 might_all_time:
+ *                   type: string
+ *                   description: Highest might ever reached
+ *                 current_fame:
+ *                   type: string
+ *                 highest_fame:
+ *                   type: string
+ *                 peace_disabled_at:
+ *                   type: string
+ *                   nullable: true
+ *                   description: Date when peace protection was disabled
+ *                 loot_current:
+ *                   type: string
+ *                 loot_all_time:
+ *                   type: string
+ *                 level:
+ *                   type: integer
+ *                 legendary_level:
+ *                   type: integer
+ *                 honor:
+ *                   type: integer
+ *                 max_honor:
+ *                   type: integer
+ *                 castles:
+ *                   type: array
+ *                   description: Player castles positions in Great Kingdom. Each castle is represented as an array of integers [x, y, castle ID]
+ *                   items:
+ *                     type: array
+ *                     items:
+ *                       type: integer
+ *                     example: [100, 200, 4]
+ *                 castles_realm:
+ *                   type: array
+ *                   description: Player castles in other kingdoms (Ice, Sand, Fire). Each castle is represented as an array of integers [kingdom ID, x, y, castle ID]
+ *                   items:
+ *                     type: array
+ *                     items:
+ *                       type: integer
+ *                 server_rank:
+ *                   type: string
+ *                   description: Player rank on the player server, based on current might. 1 is the highest rank
+ *                 global_rank:
+ *                   type: string
+ *                   description: Player rank globally across all servers, based on current might. 1 is the highest rank. Only supported ggetracker servers are counted
+ *       '400':
+ *         description: Bad request, invalid player ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Invalid player id"
+ *       '404':
+ *         description: Player not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Player not found"
+ *       '500':
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "An error occurred during the request"
  */
 publicRoutes.get(
   '/statistics/ranking/player/:playerId',
@@ -3021,8 +3598,8 @@ publicRoutes.get(
  *                   additionalProperties:
  *                     type: number
  *                   example:
- *                     player_event_berimond_invasion_history: 0.105
- *                     player_event_berimond_kingdom_history: 4.691
+ *                     player_event_berimond_invasion_history: 0.123
+ *                     player_event_berimond_kingdom_history: 4.567
  *                 player_name:
  *                   type: string
  *                   example: "PlayerOne"
@@ -3045,10 +3622,10 @@ publicRoutes.get(
  *                         date:
  *                           type: string
  *                           format: date-time
- *                           example: "2025-04-01T18:32:00"
+ *                           example: "2025-06-01T16:00:00"
  *                         point:
  *                           type: integer
- *                           example: 129495536
+ *                           example: 1000
  *       '400':
  *         description: Bad request, invalid player ID
  *         content:
@@ -3138,8 +3715,8 @@ publicRoutes.get('/statistics/player/:playerId', routingInstance.getStatisticsBy
  *                   additionalProperties:
  *                     type: number
  *                   example:
- *                     player_event_berimond_invasion_history: 0.105
- *                     player_event_berimond_kingdom_history: 4.691
+ *                     player_event_berimond_invasion_history: 0.123
+ *                     player_event_berimond_kingdom_history: 4.567
  *                 player_name:
  *                   type: string
  *                   example: "PlayerOne"
@@ -3162,10 +3739,10 @@ publicRoutes.get('/statistics/player/:playerId', routingInstance.getStatisticsBy
  *                         date:
  *                           type: string
  *                           format: date-time
- *                           example: "2025-04-01T18:32:00"
+ *                           example: "2025-06-01T16:00:00"
  *                         point:
  *                           type: integer
- *                           example: 129495536
+ *                           example: 1000
  *       '400':
  *         description: Bad request, invalid player ID
  *         content:
@@ -3202,7 +3779,13 @@ publicRoutes.get(
   routingInstance.getStatisticsByPlayerIdAndEventNameAndDuration.bind(ApiRoutingController),
 );
 
+/**
+ * @todo swagger documentation
+ */
 publicRoutes.get('/live-ranking/outer-realms', routingInstance.getLiveOuterRealmsRanking.bind(routingInstance));
+/**
+ * @todo swagger documentation
+ */
 publicRoutes.get(
   '/live-ranking/outer-realms/player/:playerId',
   routingInstance.getLiveOuterRealmsRankingSpecificPlayer.bind(routingInstance),

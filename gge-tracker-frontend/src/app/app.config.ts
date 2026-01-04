@@ -7,9 +7,10 @@ import { TranslateHttpLoader } from '@ngx-translate/http-loader';
 
 import { routes } from './app.routes';
 import { ServerService } from '@ggetracker-services/server.service';
+import { environment } from 'environments/environment';
 
 const httpLoaderFactory: (http: HttpClient) => TranslateHttpLoader = (http: HttpClient) =>
-  new TranslateHttpLoader(http, 'https://ggetracker.github.io/i18n/', '.json');
+  new TranslateHttpLoader(http, environment.i18nBaseUrl, '.json');
 
 export const appConfig: ApplicationConfig = {
   providers: [
