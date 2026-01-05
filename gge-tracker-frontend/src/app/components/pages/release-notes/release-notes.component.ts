@@ -17,9 +17,9 @@ export enum EnumTypeReleaseNote {
 export class ReleaseNotesComponent {
   public readonly releaseNotes = [
     {
-      version: 'v26-01-04',
+      version: 'v26-01-05',
       type: EnumTypeReleaseNote.MAJOR,
-      date: '2026-01-04',
+      date: '2026-01-05',
       items: [
         '📦 [Server] Added new servers: EP-SK1, E4K-CN1, E4K-GB1, EP-BG1, EP-JP1, EP-WORLD2, PARTNER-SP3',
         '📦 [Server] Added E4K-HANT, E4K-CN1, EP-BR1, EP-GR1, EP-ES1, EP-HU1, EP-INT3 to advanced tools (realtime fortress tracker + castle visualizer across kingdoms)',
