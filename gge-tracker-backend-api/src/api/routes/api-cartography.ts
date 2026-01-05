@@ -39,7 +39,7 @@ export abstract class ApiCartography implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const pageNumber = ApiHelper.validatePageNumber(request.params.size, 10);
+      const pageNumber = request.params.size === '-1' ? -1 : ApiHelper.validatePageNumber(request.params.size, 10);
 
       /* ---------------------------------
        * Check cache
@@ -55,7 +55,7 @@ export abstract class ApiCartography implements ApiHelper {
       /* ---------------------------------
        * Query database and format result
        * --------------------------------- */
-      let limit = `LIMIT ${pageNumber}`;
+      let limit = pageNumber === -1 ? '' : `LIMIT ${pageNumber}`;
       // Get the limit clause based on the size parameter. However, the query does not use it
       // with parameterized queries to avoid SQL injection,  so we validate it strictly here
       // A more complex query with OFFSET would require a different approach

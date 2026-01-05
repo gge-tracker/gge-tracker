@@ -328,7 +328,7 @@
           </button>
         </div>
         <div class="text-center d-grid gap-2 mx-2 mt-3" *ngIf="watchModeAlliance !== 'one'">
-          <button class="btn btn-secondary btn-block" (click)="loadNewAlliance('1')">
+          <button class="btn btn-secondary btn-block" (click)="showUnallied ? removeItem('1') : loadNewAlliance('1')">
             <i class="fa-solid fa-ghost"></i>
             {{ showUnallied ? ('Masquer les joueurs sans alliance' | translate) : ('Afficher les joueurs sans alliance'
             | translate) }}
