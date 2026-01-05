@@ -21,7 +21,7 @@ export class ReleaseNotesComponent {
       type: EnumTypeReleaseNote.MAJOR,
       date: '2026-01-04',
       items: [
-        '📦 [Server] Added new servers: EP-SK1, E4K-CN1, E4K-GB1, EP-BG1, EP-JP1, PARTNER-SP3',
+        '📦 [Server] Added new servers: EP-SK1, E4K-CN1, E4K-GB1, EP-BG1, EP-JP1, EP-WORLD2, PARTNER-SP3',
         '📦 [Server] Added E4K-HANT, E4K-CN1, EP-BR1, EP-GR1, EP-ES1, EP-HU1, EP-INT3 to advanced tools (realtime fortress tracker + castle visualizer across kingdoms)',
         '🐞 [Bugfix] Fixed an issue where the SKN1 flag was not displaying correctly',
         '✨ [Miscellaneous] Added advanced weekly player points analytics (hourly activity rate, average gain and weekly activity map) to the player analysis tool',

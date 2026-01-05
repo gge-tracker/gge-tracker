@@ -393,6 +393,15 @@ export class ApiGgeTrackerManager extends DatabaseManager {
       code: '060',
       zone: 'EmpireEx_46',
     },
+    [GgeTrackerServersEnum.WORLD2]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-world2',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_world2',
+      },
+      outer_name: 'LIVE2',
+      code: '061',
+      zone: 'EmpireEx_49',
+    },
     [GgeTrackerServersEnum.GLOBAL]: {
       databases: { sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-global', olap: '' },
       outer_name: '',

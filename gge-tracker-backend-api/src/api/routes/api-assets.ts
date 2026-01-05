@@ -422,65 +422,68 @@ export abstract class ApiAssets implements ApiHelper {
             loader.maintainScriptOrder = true;
             loader.setCrossOrigin?.('anonymous');
             loader.on('complete', () => {
-              let building;
-              if (globalThis.Library[name][name]) {
-                building = new globalThis.Library[name][name]();
-              } else if (type) {
-                // Special handling for certain building types. This is a bit hacky but works for now
-                // This is retried from the original GGE code
-                const l = 'Level' + level;
-                switch (type) {
-                  case 'gate': {
-                    const n = `Basic_Gate_${l}`;
-                    building = new globalThis.Library[name][n]();
-                    break;
+              try {
+                let building;
+                if (globalThis.Library[name][name]) {
+                  building = new globalThis.Library[name][name]();
+                } else if (type) {
+                  // Special handling for certain building types. This is a bit hacky but works for now
+                  // This is retried from the original GGE code
+                  const l = 'Level' + level;
+                  switch (type) {
+                    case 'gate': {
+                      const n = `Basic_Gate_${l}`;
+                      building = new globalThis.Library[name][n]();
+                      break;
+                    }
+                    case 'defence': {
+                      const n = `Castlewall_Defence_${l}`;
+                      building = new globalThis.Library[name][n]();
+                      break;
+                    }
+                    case 'tower': {
+                      const n = `Guard_Tower_${l}`;
+                      building = new globalThis.Library[name][n]();
+                      break;
+                    }
+                    default: {
+                      resolve(false);
+                    }
                   }
-                  case 'defence': {
-                    const n = `Castlewall_Defence_${l}`;
-                    building = new globalThis.Library[name][n]();
-                    break;
-                  }
-                  case 'tower': {
-                    const n = `Guard_Tower_${l}`;
-                    building = new globalThis.Library[name][n]();
-                    break;
-                  }
-                  default: {
-                    resolve(false);
-                  }
+                } else if (globalThis.Library[name]) {
+                  const l = 'Level' + level;
+                  const names = name.split('_');
+                  const lastPart = names.at(-1);
+                  names.pop();
+                  const baseName = names.join('_');
+                  const n = baseName + '_' + l + '_' + lastPart;
+                  building = new globalThis.Library[name][n]();
+                } else {
+                  resolve(false);
                 }
-              } else if (globalThis.Library[name]) {
-                const l = 'Level' + level;
-                const names = name.split('_');
-                const lastPart = names.at(-1);
-                names.pop();
-                const baseName = names.join('_');
-                const n = baseName + '_' + l + '_' + lastPart;
-                building = new globalThis.Library[name][n]();
-              } else {
-                resolve(false);
+                // Center and scale the building on the canvas
+                const canvasWidth = canvas.width;
+                const canvasHeight = canvas.height;
+                stage.addChild(building);
+                stage.update();
+                const bounds = building.getBounds() || building.nominalBounds;
+                if (!bounds) {
+                  return reject(new Error(`An error occurred while generating the image`));
+                }
+                const centerX = bounds.x + bounds.width / 2;
+                const centerY = bounds.y + bounds.height / 2;
+                // Calculate scale to fit the canvas
+                const scale = Math.min(canvasWidth / bounds.width, canvasHeight / bounds.height);
+                building.scaleX = building.scaleY = scale;
+                building.regX = centerX;
+                building.regY = centerY;
+                building.x = canvasWidth / 2;
+                building.y = canvasHeight / 2;
+                stage.update();
+                resolve(true);
+              } catch (error) {
+                reject(error);
               }
-              // Center and scale the building on the canvas
-              const canvasWidth = canvas.width;
-              const canvasHeight = canvas.height;
-              stage.addChild(building);
-              stage.update();
-              const bounds = building.getBounds() || building.nominalBounds;
-              if (!bounds) {
-                ApiHelper.logError(new Error(`Bounds not found`), 'getGeneratedImage', request);
-                return reject(new Error(`An error occurred while generating the image`));
-              }
-              const centerX = bounds.x + bounds.width / 2;
-              const centerY = bounds.y + bounds.height / 2;
-              // Calculate scale to fit the canvas
-              const scale = Math.min(canvasWidth / bounds.width, canvasHeight / bounds.height);
-              building.scaleX = building.scaleY = scale;
-              building.regX = centerX;
-              building.regY = centerY;
-              building.x = canvasWidth / 2;
-              building.y = canvasHeight / 2;
-              stage.update();
-              resolve(true);
             });
             loader.on('error', (error: { message?: string; target?: any }) => {
               console.error('Preload error', error);
