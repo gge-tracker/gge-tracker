@@ -1341,7 +1341,7 @@ export class GenericFetchAndSaveBackend {
         }
         const max = data?.content?.LR ?? 50000;
         Utils.logMessage('Request succeeded:', max, 'players found');
-        if (data?.content?.L) {
+        if (data?.content?.L && max && Number(max) >= 0) {
           while (c) {
             let p = await this.fetchDataAndReturn(6, levelCategory, i);
             let players = p?.content?.L ?? [];
