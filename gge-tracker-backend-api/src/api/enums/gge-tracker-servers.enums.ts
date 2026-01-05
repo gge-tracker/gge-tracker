@@ -45,6 +45,7 @@ export enum GgeTrackerServersEnum {
   AE1 = 'AE1',
   EG1 = 'EG1',
   WORLD1 = 'WORLD1',
+  WORLD2 = 'WORLD2',
   E4K_HANT1 = 'E4K_HANT1',
   E4K_BR1 = 'E4K_BR1',
   E4K_FR1 = 'E4K_FR1',

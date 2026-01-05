@@ -735,10 +735,30 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
 
   private async initPlayerStats(): Promise<void> {
     if (!this.playerId) return;
-    const stats = await this.apiRestService.getRankingStatsByPlayerId(this.playerId);
+    let stats = await this.apiRestService.getRankingStatsByPlayerId(this.playerId);
     if (stats.success === false) {
-      this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
-      return;
+      stats = {
+        data: {
+          player_id: this.playerId,
+          server: '',
+          might_current: -1,
+          might_all_time: -1,
+          current_fame: -1,
+          highest_fame: -1,
+          peace_disabled_at: null,
+          loot_current: -1,
+          loot_all_time: -1,
+          level: 0,
+          legendary_level: -1,
+          honor: -1,
+          max_honor: -1,
+          server_rank: -1,
+          global_rank: -1,
+          castles: [],
+          castles_realm: [],
+        },
+        success: true,
+      };
     }
     this.stats = this.mapStatsFromData(stats.data);
     this.fillQuantity();
@@ -838,6 +858,8 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
       globalCastles.push(...castles.map((castle) => [0, ...castle]));
     }
     if (castlesRealm) {
+      const allowedIds = new Set([1, 12, 3, 4, 22, 23, 26, 28]);
+      castlesRealm = castlesRealm.filter((castle) => allowedIds.has(castle[3]));
       globalCastles.push(...castlesRealm);
     }
     return globalCastles;

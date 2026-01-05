@@ -53,11 +53,13 @@ export default function createApp(sockets: {
 
   app.post('/server', async (request, response) => {
     try {
-      const { server, socket_url, password, username } = request.body as {
+      const { server, socket_url, password, username, serverType, autoReconnect } = request.body as {
         server: string;
         socket_url: string;
         password: string;
         username: string;
+        serverType: string;
+        autoReconnect: boolean;
       };
       if (!(server && socket_url && password && username)) {
         response.status(400).json({ error: 'Missing parameters' });
@@ -74,7 +76,34 @@ export default function createApp(sockets: {
         response.status(400).json({ error: 'Invalid socket URL' });
         return;
       }
-      const socketServer = new GgeLiveTemporaryServerSocket('wss://' + socket_url, server, username, password, false);
+      let socketServer: GgeEmpire4KingdomsSocket | GgeEmpireSocket | GgeLiveTemporaryServerSocket;
+      let autoReconnectValue = autoReconnect ?? false;
+      switch (serverType) {
+        case 'ep': {
+          socketServer = new GgeEmpireSocket('wss://' + socket_url, server, username, password, autoReconnectValue);
+          break;
+        }
+        case 'e4k': {
+          socketServer = new GgeEmpire4KingdomsSocket(
+            'ws://' + socket_url,
+            server,
+            username,
+            password,
+            autoReconnectValue,
+          );
+          break;
+        }
+        default: {
+          socketServer = new GgeLiveTemporaryServerSocket(
+            'wss://' + socket_url,
+            server,
+            username,
+            password,
+            autoReconnectValue,
+          );
+          return;
+        }
+      }
       sockets[server] = socketServer;
       void socketServer.connectMethod();
       response.status(200).json({ message: 'Server added' });
