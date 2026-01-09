@@ -141,11 +141,7 @@ export abstract class ApiAlliances implements ApiHelper {
               max_honor: Number(result.max_honor),
               peace_disabled_at: result.peace_disabled_at,
               alliance_rank: result.alliance_rank,
-              updated_at: formatInTimeZone(
-                result.updated_at,
-                ApiHelper.APPLICATION_TIMEZONE,
-                'yyyy-MM-dd HH:mm' + ':00',
-              ),
+              updated_at: new Date(result.updated_at).toISOString(),
               level: Number(result.level),
               legendary_level: Number(result.legendary_level),
             };

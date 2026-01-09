@@ -86,11 +86,7 @@ export abstract class ApiEvents implements ApiHelper {
             event_num: result.event_num,
             player_count: result.player_count,
             type: result.type,
-            collect_date: formatInTimeZone(
-              result.collect_date,
-              ApiHelper.APPLICATION_TIMEZONE,
-              'yyyy-MM-dd HH:mm' + ':00',
-            ),
+            collect_date: new Date(result.collect_date).toISOString(),
           }));
           /* ---------------------------------
            * Update cache and send response
@@ -947,11 +943,7 @@ export abstract class ApiEvents implements ApiHelper {
       const responseData = {
         event_id: id,
         event_type: eventType,
-        collect_date: formatInTimeZone(
-          eventInfo[0]?.collect_date,
-          ApiHelper.APPLICATION_TIMEZONE,
-          'yyyy-MM-dd HH:mm' + ':00',
-        ),
+        collect_date: new Date(eventInfo[0]?.collect_date).toISOString(),
         player_count: eventInfo[0]?.player_count || 0,
         nb_in_top_100: nbInTop100,
         top_scores: {

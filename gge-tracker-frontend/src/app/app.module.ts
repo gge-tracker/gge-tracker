@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
-import { APP_INITIALIZER, NgModule } from '@angular/core';
+import { APP_INITIALIZER, LOCALE_ID, NgModule } from '@angular/core';
 import { BrowserModule, provideClientHydration } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { RouterModule } from '@angular/router';
@@ -21,6 +21,20 @@ import { TopBarComponent } from '@ggetracker-components/top-bar/top-bar.componen
 import { myIcons } from '@ggetracker-components/icon/icon.component';
 import { ServerService } from '@ggetracker-services/server.service';
 import { environment } from 'environments/environment';
+import { registerLocaleData } from '@angular/common';
+import localeFr from '@angular/common/locales/fr';
+import localeEnGb from '@angular/common/locales/en-GB';
+import localeNl from '@angular/common/locales/nl';
+import localePl from '@angular/common/locales/pl';
+import localeRo from '@angular/common/locales/ro';
+import localeDe from '@angular/common/locales/de';
+
+registerLocaleData(localeFr, 'fr-FR');
+registerLocaleData(localeEnGb, 'en-GB');
+registerLocaleData(localeNl, 'nl-NL');
+registerLocaleData(localePl, 'pl-PL');
+registerLocaleData(localeRo, 'ro-RO');
+registerLocaleData(localeDe, 'de-DE');
 
 export function DynamicTranslateLoaderFactory(http: HttpClient): TranslateLoader {
   const isBrowser = globalThis.window !== undefined;
@@ -65,6 +79,7 @@ export function DynamicTranslateLoaderFactory(http: HttpClient): TranslateLoader
       deps: [ServerService],
       multi: true,
     },
+    { provide: LOCALE_ID, useValue: 'en-GB' },
   ],
 })
 export class AppRoutingModule {}

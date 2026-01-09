@@ -330,8 +330,8 @@ export abstract class ApiStatistics implements ApiHelper {
       const cacheKey = `statistics:alliances:${allianceId}:pulse`;
       const cachedData = await ApiHelper.redisClient.get(cacheKey);
       if (cachedData) {
-        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
-        return;
+        // response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        // return;
       }
 
       /* ---------------------------------
@@ -625,11 +625,9 @@ export abstract class ApiStatistics implements ApiHelper {
             const clickhouseResult = await clickhouseClient.query({ query });
             const result = await clickhouseResult.json();
             points[table] = result.data.map((row: any) => {
-              const utcDate = toDate(row.first_entry);
-              const localDate = formatInTimeZone(utcDate, ApiHelper.APPLICATION_TIMEZONE, 'yyyy-MM-dd HH:mm' + ':00');
               return {
                 player_id: ApiHelper.addCountryCode(row.player_id, code),
-                date: localDate,
+                date: new Date(row.first_entry).toISOString(),
                 point: row.point,
               };
             });
@@ -850,11 +848,7 @@ export abstract class ApiStatistics implements ApiHelper {
        * Format query results
        * --------------------------------- */
       const formatHourly = mightHourly.data.map((row) => ({
-        date: formatInTimeZone(
-          toDate((row as { hour: string }).hour),
-          ApiHelper.APPLICATION_TIMEZONE,
-          'yyyy-MM-dd HH:00:00',
-        ),
+        date: new Date((row as { hour: string }).hour).toISOString(),
         point: (row as { total: number }).total,
       }));
       const formatAvgChange = mightAvg.data.map((row: { day: string; avg_diff: number }) => ({
@@ -974,10 +968,8 @@ export abstract class ApiStatistics implements ApiHelper {
               const clickhouseQuery = await clickhouseClient.query({ query });
               const result = await clickhouseQuery.json();
               points[table] = result.data.map((row: any) => {
-                const utcDate = toDate(row.created_at);
-                const localDate = formatInTimeZone(utcDate, ApiHelper.APPLICATION_TIMEZONE, 'yyyy-MM-dd HH:mm' + ':00');
                 return {
-                  date: localDate,
+                  date: new Date(row.created_at).toISOString(),
                   point: row.point,
                 };
               });
@@ -1000,10 +992,8 @@ export abstract class ApiStatistics implements ApiHelper {
               const clickhouseQuery = await clickhouseClient.query({ query });
               const result = await clickhouseQuery.json();
               points[table] = result.data.map((row: any) => {
-                const utcDate = toDate(row.created_at);
-                const localDate = formatInTimeZone(utcDate, ApiHelper.APPLICATION_TIMEZONE, 'yyyy-MM-dd HH:mm' + ':00');
                 return {
-                  date: localDate,
+                  date: new Date(row.created_at).toISOString(),
                   point: row.point,
                 };
               });

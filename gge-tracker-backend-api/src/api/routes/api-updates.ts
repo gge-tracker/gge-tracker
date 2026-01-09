@@ -109,11 +109,7 @@ export abstract class ApiUpdates implements ApiHelper {
                 legendary_level: result.legendary_level,
                 old_alliance_id: result.old_alliance_id ? ApiHelper.addCountryCode(result.old_alliance_id, code) : null,
                 new_alliance_id: result.new_alliance_id ? ApiHelper.addCountryCode(result.new_alliance_id, code) : null,
-                created_at: formatInTimeZone(
-                  result.created_at,
-                  ApiHelper.APPLICATION_TIMEZONE,
-                  'yyyy-MM-dd HH:mm' + ':00',
-                ),
+                created_at: new Date(result.created_at).toISOString(),
               };
             });
 
@@ -204,10 +200,8 @@ export abstract class ApiUpdates implements ApiHelper {
            * Map results to updates
            * --------------------------------- */
           const updates = results.rows.map((result: any) => {
-            const utcDate = toDate(result['created_at']);
-            const localDate = formatInTimeZone(utcDate, ApiHelper.APPLICATION_TIMEZONE, 'yyyy-MM-dd HH:mm' + ':00');
             return {
-              date: localDate,
+              date: new Date(result.created_at).toISOString(),
               old_player_name: result.old_name,
               new_player_name: result.new_name,
             };
@@ -308,10 +302,8 @@ export abstract class ApiUpdates implements ApiHelper {
            * Map results to updates
            * --------------------------------- */
           const updates = results.rows.map((result: any) => {
-            const utcDate = toDate(result['created_at']);
-            const localDate = formatInTimeZone(utcDate, ApiHelper.APPLICATION_TIMEZONE, 'yyyy-MM-dd HH:mm' + ':00');
             return {
-              date: localDate,
+              date: new Date(result.created_at).toISOString(),
               old_alliance_name: result.old_alliance_name,
               old_alliance_id: ApiHelper.addCountryCode(result.old_alliance_id, request['code']),
               new_alliance_name: result.new_alliance_name,

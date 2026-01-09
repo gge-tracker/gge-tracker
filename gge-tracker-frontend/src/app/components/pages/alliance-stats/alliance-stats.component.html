@@ -169,7 +169,7 @@
           }}</em>
       </div>
       <div *ngFor="let group of groupedUpdatedByMonths[actualMonth]" class="timeline-day mb-4">
-        <div class="day-title text-light bg-custom p-2 rounded">{{ group.date | date }} <small>({{
+        <div class="day-title text-light bg-custom p-2 rounded">{{ group.date | date:'fullDate':'':langageService.getCurrentLocale() | titlecase }} <small>({{
             group.updates.length }})</small></div>
         <div *ngFor="let update of group.updates" class="timeline-event d-flex align-items-center my-2 p-2">
           <div class="event-icon rounded-circle text-center text-light me-2"

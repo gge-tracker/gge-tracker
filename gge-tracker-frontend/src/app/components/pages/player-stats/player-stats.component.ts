@@ -180,10 +180,24 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
             void this.router.navigate(['/']);
             return;
           }
+          const formatLocal = (iso: string): string => {
+            const d = new Date(iso);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+              2,
+              '0',
+            )}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(
+              2,
+              '0',
+            )}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+          };
           this.data = Object.fromEntries(
             Object.entries(data.points).map(([key, value]) => [
               key,
-              value.map((point) => ({ ...point, variation: 0 })),
+              value.map((point) => ({
+                date: formatLocal(point.date),
+                point: point.point,
+                variation: 0,
+              })),
             ]),
           ) as Record<ApiPlayerStatsType, EventGenericVariation[]>;
           this.allianceName = data.alliance_name;

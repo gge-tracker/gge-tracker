@@ -1,4 +1,4 @@
-import { DatePipe, LowerCasePipe, NgClass, NgFor, NgIf } from '@angular/common';
+import { DatePipe, LowerCasePipe, NgClass, NgFor, NgIf, TitleCasePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -70,6 +70,7 @@ enum ChartTypeHeights {
     NgClass,
     NgIf,
     DatePipe,
+    TitleCasePipe,
     TranslateModule,
     PlayerStatsCardComponent,
     LowerCasePipe,

@@ -215,11 +215,7 @@ export abstract class ApiServer implements ApiHelper {
               position_y_old: result.position_y_old,
               position_x_new: result.position_x_new,
               position_y_new: result.position_y_new,
-              created_at: formatInTimeZone(
-                result.created_at,
-                ApiHelper.APPLICATION_TIMEZONE,
-                'yyyy-MM-dd HH:mm' + ':00',
-              ),
+              created_at: new Date(result.created_at).toISOString(),
             };
           });
           const responseContent = {
@@ -441,7 +437,7 @@ export abstract class ApiServer implements ApiHelper {
            * --------------------------------- */
           const renames = results.rows.map((result: any) => {
             return {
-              date: formatInTimeZone(result.created_at, ApiHelper.APPLICATION_TIMEZONE, 'yyyy-MM-dd HH:mm' + ':00'),
+              date: new Date(result.created_at).toISOString(),
               player_name: result.player_name,
               player_might: result.player_might,
               alliance_name: result.alliance_name,
@@ -578,11 +574,7 @@ export abstract class ApiServer implements ApiHelper {
               event_bloodcrow_players: Number(result.event_bloodcrow_players),
               event_samurai_players: Number(result.event_samurai_players),
               event_war_realms_players: Number(result.event_war_realms_players),
-              created_at: formatInTimeZone(
-                result.created_at,
-                ApiHelper.APPLICATION_TIMEZONE,
-                'yyyy-MM-dd HH:mm' + ':00',
-              ),
+              created_at: new Date(result.created_at).toISOString(),
             };
           });
 

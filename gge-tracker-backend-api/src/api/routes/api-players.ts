@@ -439,7 +439,7 @@ export abstract class ApiPlayers implements ApiHelper {
                 current_fame: result.current_fame,
                 remaining_relocation_time: result.remaining_relocation_time,
                 peace_disabled_at: result.peace_disabled_at,
-                updated_at: formatInTimeZone(result.updated_at, ApiHelper.APPLICATION_TIMEZONE, 'yyyy-MM-dd HH:mm'),
+                updated_at: new Date(result.updated_at).toISOString(),
                 level: result.level,
                 legendary_level: result.legendary_level,
                 calculated_distance:
@@ -573,7 +573,7 @@ export abstract class ApiPlayers implements ApiHelper {
             honor: result.honor,
             max_honor: result.max_honor,
             peace_disabled_at: result.peace_disabled_at,
-            updated_at: formatInTimeZone(result.updated_at, ApiHelper.APPLICATION_TIMEZONE, 'yyyy-MM-dd HH:mm'),
+            updated_at: new Date(result.updated_at).toISOString(),
             level: result.level,
             legendary_level: result.legendary_level,
             highest_fame: result.highest_fame,
@@ -666,7 +666,7 @@ export abstract class ApiPlayers implements ApiHelper {
         } else {
           const topPlayers = results.rows.map((result: any) => {
             const utcDate = toDate(result['created_at']);
-            const localDate = formatInTimeZone(utcDate, ApiHelper.APPLICATION_TIMEZONE, 'yyyy-MM-dd HH:mm' + ':00');
+            const localDate = new Date(utcDate).toISOString();
             return {
               date: localDate,
               top_players: result.events_top_3_names,
@@ -815,7 +815,7 @@ export abstract class ApiPlayers implements ApiHelper {
           peace_disabled_at: row.peace_disabled_at,
           level: row.level,
           legendary_level: row.legendary_level,
-          updated_at: formatInTimeZone(row.updated_at, ApiHelper.APPLICATION_TIMEZONE, 'yyyy-MM-dd HH:mm'),
+          updated_at: row.updated_at,
         }));
 
         /* ---------------------------------

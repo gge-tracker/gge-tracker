@@ -9,12 +9,12 @@ import { LocalStorageService } from './local-storage.service';
 export class LanguageService {
   public currentLang = 'en';
   public langs = [
-    { code: 'en', label: 'English', flagUrl: 'https://flagsapi.com/GB/flat/32.png' },
-    { code: 'fr', label: 'Français', flagUrl: 'https://flagsapi.com/FR/flat/32.png' },
-    { code: 'nl', label: 'Nederlands', flagUrl: 'https://flagsapi.com/NL/flat/32.png' },
-    { code: 'pl', label: 'Polski', flagUrl: 'https://flagsapi.com/PL/flat/32.png' },
-    { code: 'ro', label: 'Română', flagUrl: 'https://flagsapi.com/RO/flat/32.png' },
-    { code: 'de', label: 'Deutsch', flagUrl: 'https://flagsapi.com/DE/flat/32.png' },
+    { code: 'en', label: 'English', flagUrl: 'https://flagsapi.com/GB/flat/32.png', locale: 'en-GB' },
+    { code: 'fr', label: 'Français', flagUrl: 'https://flagsapi.com/FR/flat/32.png', locale: 'fr-FR' },
+    { code: 'nl', label: 'Nederlands', flagUrl: 'https://flagsapi.com/NL/flat/32.png', locale: 'nl-NL' },
+    { code: 'pl', label: 'Polski', flagUrl: 'https://flagsapi.com/PL/flat/32.png', locale: 'pl-PL' },
+    { code: 'ro', label: 'Română', flagUrl: 'https://flagsapi.com/RO/flat/32.png', locale: 'ro-RO' },
+    { code: 'de', label: 'Deutsch', flagUrl: 'https://flagsapi.com/DE/flat/32.png', locale: 'de-DE' },
   ];
 
   // @ts-expect-error Property 'userLanguage' does not exist on type 'Navigator'.
@@ -38,6 +38,11 @@ export class LanguageService {
 
   public getCurrentLang(): string {
     return this.currentLang;
+  }
+
+  public getCurrentLocale(): string {
+    const langObject = this.langs.find((l) => l.code === this.currentLang);
+    return langObject ? langObject.locale : 'en-GB';
   }
 
   public setCurrentLang(lang: string): void {
