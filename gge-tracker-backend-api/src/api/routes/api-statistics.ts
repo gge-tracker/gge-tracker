@@ -330,8 +330,8 @@ export abstract class ApiStatistics implements ApiHelper {
       const cacheKey = `statistics:alliances:${allianceId}:pulse`;
       const cachedData = await ApiHelper.redisClient.get(cacheKey);
       if (cachedData) {
-        // response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
-        // return;
+        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        return;
       }
 
       /* ---------------------------------
