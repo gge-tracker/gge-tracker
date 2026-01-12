@@ -2969,7 +2969,7 @@ protectedRoutes.get('/players', routingInstance.getPlayers.bind(routingInstance)
 
 /**
  * @openapi
- * /players/bulk:
+ * /players:
  *   post:
  *     summary: Retrieve multiple players by their IDs
  *     description: |

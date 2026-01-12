@@ -101,7 +101,7 @@ export default function createApp(sockets: {
             password,
             autoReconnectValue,
           );
-          return;
+          break;
         }
       }
       sockets[server] = socketServer;
