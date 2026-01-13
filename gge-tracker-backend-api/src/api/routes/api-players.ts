@@ -1,4 +1,4 @@
-import { formatInTimeZone, toDate } from 'date-fns-tz';
+import { toDate } from 'date-fns-tz';
 import * as express from 'express';
 import * as pg from 'pg';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
@@ -169,6 +169,7 @@ export abstract class ApiPlayers implements ApiHelper {
           P.current_fame,
           P.remaining_relocation_time,
           P.peace_disabled_at,
+          P.castles,
           P.updated_at,
           P.alliance_rank,
           P.level,
@@ -437,6 +438,7 @@ export abstract class ApiPlayers implements ApiHelper {
                 max_honor: result.max_honor,
                 highest_fame: result.highest_fame,
                 current_fame: result.current_fame,
+                castles: result.castles,
                 remaining_relocation_time: result.remaining_relocation_time,
                 peace_disabled_at: result.peace_disabled_at,
                 updated_at: new Date(result.updated_at).toISOString(),
