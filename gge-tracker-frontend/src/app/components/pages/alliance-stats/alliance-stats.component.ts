@@ -677,14 +677,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     this.playerNameForDistance = '';
     this.localStorage.removeItem('allianceDistancePlayerName_' + this.apiRestService.serverService.currentServer?.name);
     this.cdr.detectChanges();
-    if (this.membersTableHeader.length === this.defaultMembersTableHeaderSize + 1) {
-      this.membersTableHeader.splice(-2, 1);
-      this.cdr.detectChanges();
-    }
-  }
-
-  public getDefaultTableDistanceEntry(): [string, string, (string | undefined)?, (boolean | undefined)?] {
-    return ['distance', 'Distance (m)', undefined, undefined];
+    this.removeHeaderTableBlock();
   }
 
   public async onAddDistanceColumn(): Promise<void> {
@@ -698,9 +691,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     this.isDistanceIsInLoading = false;
     if (!data) return;
     this.players = this.mapPlayersFromApi(data.players);
-    if (this.membersTableHeader.length === this.defaultMembersTableHeaderSize) {
-      this.membersTableHeader.splice(-1, 0, this.getDefaultTableDistanceEntry());
-    }
+    this.addHeaderTableBlock();
   }
 
   public cumulSeriesLabels(chartName: keyof typeof ApiPlayerStatsType): void {
@@ -859,10 +850,8 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     const data = await this.getAllianceMembers();
     if (!data) return;
     this.players = this.mapPlayersFromApi(data.players);
-    if (this.membersTableHeader.length === this.defaultMembersTableHeaderSize && this.playerNameForDistance !== '') {
-      const block: [string, string, (string | undefined)?, (boolean | undefined)?] =
-        this.getDefaultTableDistanceEntry();
-      this.membersTableHeader.splice(-1, 0, block);
+    if (this.playerNameForDistance !== '') {
+      this.addHeaderTableBlock();
     }
     this.addPageTitle(data.alliance_name);
     this.allianceName = data.alliance_name;
@@ -1689,6 +1678,23 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     // Set the time to 00:00:00.000 UTC
     currentMonday.setUTCHours(0, 0, 0, 0);
     return currentMonday;
+  }
+
+  private getDefaultTableDistanceEntry(): [string, string, (string | undefined)?, (boolean | undefined)?] {
+    return ['distance', 'Distance (m)', undefined, undefined];
+  }
+
+  private addHeaderTableBlock(): void {
+    if (this.membersTableHeader.length === this.defaultMembersTableHeaderSize) {
+      this.membersTableHeader.splice(-2, 0, this.getDefaultTableDistanceEntry());
+    }
+  }
+
+  private removeHeaderTableBlock(): void {
+    const distanceIndex = this.membersTableHeader.findIndex((entry) => entry[0] === 'distance');
+    if (distanceIndex !== -1) {
+      this.membersTableHeader.splice(distanceIndex, 1);
+    }
   }
 
   private getCurrentSunday(): Date {
