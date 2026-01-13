@@ -161,6 +161,7 @@ export abstract class ApiHelper {
     const colorize = (text: string): string => this.colorize(text, redColor, resetColor);
     console.log(colorize(`----- ERROR LOG START #${uniqueId} -----`));
     console.log(colorize(`* Unique ID: ${uniqueId}`));
+    console.log(colorize(`* Timestamp: ${new Date().toISOString()}`));
     if (error instanceof Error) {
       console.log(colorize(`* Error message: ${error.message}`));
       console.log(colorize(`* Stack trace:\n${error.stack || ''}`));
