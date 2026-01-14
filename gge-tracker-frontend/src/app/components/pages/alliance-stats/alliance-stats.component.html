@@ -182,7 +182,7 @@
               <strong class="text-dark">{{ update.player_name }}</strong>&nbsp;<small>({{ update.level }})</small>
             </span>
             <span [ngClass]="{ 'text-success': update.action === 'joined', 'text-danger': update.action === 'left' }">
-              <i class="far fa-clock"></i> {{ update.created_at | date: 'HH:mm' }} •
+              <i class="far fa-clock"></i>&nbsp;{{ update.created_at | date: 'shortTime' }} •
               <ng-container *ngIf="update.action === 'joined'">{{ 'A rejoint l\'alliance' | translate
                 }}&nbsp;</ng-container>
               <ng-container *ngIf="update.action === 'left'">{{ 'A quitté l\'alliance' | translate

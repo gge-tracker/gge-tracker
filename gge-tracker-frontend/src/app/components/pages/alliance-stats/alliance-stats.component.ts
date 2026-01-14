@@ -933,16 +933,19 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
 
       const might_change = action === 'joined' ? `+${v}${unit} ${mightTranslate}` : `-${v}${unit} ${mightTranslate}`;
 
-      const eventDate = update.created_at.split(' ')[0];
-      if (!groupedByDate.has(eventDate)) {
-        groupedByDate.set(eventDate, {
-          date: eventDate,
+      const eventDate = new Date(update.created_at);
+      eventDate.setHours(eventDate.getHours(), 0, 0, 0);
+      const eventDateString = eventDate.toISOString().split('T')[0];
+      if (!groupedByDate.has(eventDateString)) {
+        groupedByDate.set(eventDateString, {
+          date: eventDate.toISOString(),
           updates: [],
         });
       }
-
-      groupedByDate.get(eventDate)?.updates.push({
-        created_at: update.created_at,
+      const date = new Date(update.created_at);
+      date.setHours(date.getHours(), 0, 0, 0);
+      groupedByDate.get(eventDateString)?.updates.push({
+        created_at: date.toISOString(),
         action,
         player_name: update.player_name,
         level,
@@ -953,7 +956,9 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     this.groupedUpdates = [...groupedByDate.values()].sort((a, b) => b.date.localeCompare(a.date));
     this.groupedUpdatedByMonths = this.groupedUpdates.reduce(
       (accumulator, update) => {
-        const [year, month] = update.date.split('-');
+        const date = new Date(update.date);
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
         const key = `${year}-${month}`;
         if (!accumulator[key]) {
           accumulator[key] = [];
