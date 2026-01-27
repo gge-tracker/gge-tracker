@@ -22,6 +22,8 @@ RUN if [ "$BUILD_ENV" = "beta" ]; then \
     cp src/app/app.component.html.beta src/app/app.component.html; \
     fi
 RUN if [ "$BUILD_ENV" = "beta" ]; then \
+    NEW_VERSION="beta.$(date +%s)"; \
+    sed -i "3s/\"version\": \".*\"/\"version\": \"${NEW_VERSION}\"/" package.json; \
     cp src/environments/environment.production-beta.ts src/environments/environment.production.ts; \
     fi
 RUN npm run build --output-path=dist --configuration=production
