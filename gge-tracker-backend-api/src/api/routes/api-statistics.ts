@@ -1,4 +1,3 @@
-import { formatInTimeZone, toDate } from 'date-fns-tz';
 import * as express from 'express';
 import * as pg from 'pg';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
@@ -65,7 +64,13 @@ export abstract class ApiStatistics implements ApiHelper {
        * --------------------------------- */
       try {
         const { diffs, points } = await this.getPlayersEventsStatisticsFromAllianceId(allianceId);
-        const data = { diffs, points };
+        const data = {
+          diffs,
+          points,
+          timezoneOffset: ApiHelper.ggeTrackerManager.getTimezoneOffsetByCode(
+            ApiHelper.getCountryCode(String(allianceId)) || '',
+          ),
+        };
         void ApiHelper.updateCache(cachedKey, data);
         response.status(ApiHelper.HTTP_OK).send(data);
       } catch (error) {
@@ -423,6 +428,13 @@ export abstract class ApiStatistics implements ApiHelper {
        * SQL queries
        * --------------------------------- */
       const query_internal_rank = `
+        WITH fame_ranked AS (
+          SELECT
+            id,
+            RANK() OVER (ORDER BY current_fame DESC) AS player_current_fame_rank
+          FROM players
+          WHERE castles <> '[]'
+        )
         SELECT
           players.id AS player_id,
           players.might_current,
@@ -438,13 +450,16 @@ export abstract class ApiStatistics implements ApiHelper {
           players.max_honor,
           players.castles,
           players.castles_realm,
-          players.player_rank
+          players.player_rank,
+          players.updated_at,
+          fr.player_current_fame_rank
         FROM (
           SELECT
-          players.*,
-          RANK() OVER (ORDER BY players.might_current DESC) AS player_rank
+            players.*,
+            RANK() OVER (ORDER BY players.might_current DESC) AS player_rank
           FROM players
         ) AS players
+        LEFT JOIN fame_ranked fr ON fr.id = players.id
         LEFT JOIN alliances ON players.alliance_id = alliances.id
         WHERE players.id = $${parameterIndex++}
         LIMIT 1;
@@ -517,8 +532,10 @@ export abstract class ApiStatistics implements ApiHelper {
         max_honor: serverData['max_honor'],
         castles: serverData['castles'],
         castles_realm: serverData['castles_realm'],
+        updated_at: new Date(serverData['updated_at']).toISOString(),
         server_rank: serverData['player_rank'] || 0,
         global_rank: globalData['global_rank'],
+        player_current_fame_rank: serverData['player_current_fame_rank'],
       };
 
       /* ---------------------------------

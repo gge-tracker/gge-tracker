@@ -16,6 +16,7 @@ export interface IApiToken {
   outer_name: string;
   code: string;
   zone: string;
+  timezoneOffset?: number;
 }
 
 export interface ILimitedApiToken {

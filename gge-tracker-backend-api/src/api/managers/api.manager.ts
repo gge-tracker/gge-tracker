@@ -252,6 +252,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
       },
       outer_name: 'US1',
       code: '080',
+      timezoneOffset: +5,
       zone: 'EmpireEx_21',
     },
     [GgeTrackerServersEnum.AU1]: {
@@ -489,6 +490,15 @@ export class ApiGgeTrackerManager extends DatabaseManager {
       code: '167',
       zone: 'EmpirefourkingdomsExGG_5',
     },
+    [GgeTrackerServersEnum.E4K_RU1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_E4K_DB_NAME + '-ru1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_E4K_DB_NAME + '_ru1',
+      },
+      outer_name: 'E4K_RU1',
+      code: '195',
+      zone: 'EmpirefourkingdomsExGG_10',
+    },
     [GgeTrackerServersEnum.PARTNER_SP3]: {
       databases: {
         sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_SPECIAL_SERVER_NAME + '-3',
@@ -579,6 +589,14 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    */
   public getOuterServer(serverName: GgeTrackerServersEnum): IApiToken | null {
     return this.getActivatedServerValues().find((server) => server.outer_name === serverName) || null;
+  }
+
+  public getTimezoneOffsetByCode(code: string): number | null {
+    const server = this.getServerByCode(code);
+    if (server && 'timezoneOffset' in server && typeof server.timezoneOffset === 'number') {
+      return server.timezoneOffset;
+    }
+    return null;
   }
 
   /**

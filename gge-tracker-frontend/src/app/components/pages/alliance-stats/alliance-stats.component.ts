@@ -370,6 +370,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   private statsInProgress = false;
   private data: ApiPlayerStatsForAlliance | null = null;
   private titleService = inject(Title);
+  private timezoneOffset: number | null = null;
 
   public ngOnInit(): void {
     this.init();
@@ -1271,16 +1272,17 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   }
 
   private initLootHistoryData(data: ApiPlayerStatsForAlliance): void {
+    const timezoneOffet: number | null = this.timezoneOffset;
     const serieChoosen = this.graphPages.player_loot_history;
     const playerMap = new Map<number, { playerName: string; segments: [number, number][] }>();
     const now = new Date();
     const currentMonday = new Date(now);
     currentMonday.setUTCDate(currentMonday.getUTCDate() - ((currentMonday.getUTCDay() + 6) % 7));
-    currentMonday.setUTCHours(1, 0, 0, 0);
+    currentMonday.setUTCHours(1 + (timezoneOffet ?? 0), 0, 0, 0);
     const startOfWeek = new Date(currentMonday);
     const endOfWeek = new Date(currentMonday);
     endOfWeek.setUTCDate(endOfWeek.getUTCDate() + 7);
-    endOfWeek.setUTCHours(0, 0, 0, 0);
+    endOfWeek.setUTCHours(timezoneOffet ?? 0, 0, 0, 0);
     startOfWeek.setUTCDate(startOfWeek.getUTCDate() - serieChoosen * 7);
     endOfWeek.setUTCDate(endOfWeek.getUTCDate() - serieChoosen * 7);
     const weekHours = this.generateWeekHours(startOfWeek, endOfWeek);
@@ -1332,9 +1334,6 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       for (let index = 1; index < alignedData.length; index++) {
         const [currentTimestamp, currentScore] = alignedData[index];
         const [, previousScore] = alignedData[index - 1];
-        const isMondayReset =
-          new Date(currentTimestamp).getUTCDay() === 1 && new Date(currentTimestamp).getUTCHours() === 1;
-        if (isMondayReset) continue;
         if (currentScore === 0 && previousScore !== null && previousScore > currentScore) {
           const hasFutureHigherPoint = alignedData.slice(index + 1).some(([, futureScore]) => {
             return futureScore !== null && futureScore > currentScore;
@@ -2313,6 +2312,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         return;
       }
       playersData = response.data.points;
+      this.timezoneOffset = response.data.timezoneOffset ?? -1;
     } catch {
       this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
       return;

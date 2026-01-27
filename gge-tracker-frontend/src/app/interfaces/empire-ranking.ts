@@ -515,6 +515,7 @@ export interface ApiPlayerStatsByPlayerId {
 export interface ApiPlayerStatsByAllianceId {
   diffs: Record<ApiPlayerStatsType, number>;
   points: ApiPlayerStatsForAlliance;
+  timezoneOffset: number | null;
 }
 
 export interface ApiAllianceHealthResponse {
@@ -721,6 +722,8 @@ export interface ApiRankingStatsPlayer {
   current_fame: number;
   highest_fame: number;
   peace_disabled_at: string | null;
+  player_current_fame_rank: string | null;
+  updated_at: string;
   loot_current: number;
   loot_all_time: number;
   level: number | null;
