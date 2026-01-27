@@ -105,6 +105,10 @@ img {
   text-align: left;
 }
 
+.stat-card {
+  height: 100%;
+}
+
 .alliances-history-section table th {
   background: rgb(35 35 35 / 80%);
   color: white;
@@ -428,4 +432,170 @@ img::selection {
   100% {
     background-position-y: -173px;
   }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.fame-dashboard {
+  --fame-glass: rgba(15, 25, 20, 0.75); /* Teinte très légèrement verte pour fusionner avec la map */
+  --fame-border: rgba(255, 255, 255, 0.1);
+  --fame-gold: #f4be52;
+  --fame-danger: #ff5f52;
+  --fame-success: #4ade80;
+  --fame-text-muted: #94a3b8;
+}
+
+/* Base Dashboard */
+.fame-dashboard {
+  color: white;
+  animation: fadeIn 0.6s ease-out;
+}
+
+/* Glass Unification */
+.dashboard-header-glass {
+  background: var(--fame-glass);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--fame-border);
+  border-radius: 24px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.border-end-glass {
+  border-right: 1px solid var(--fame-border);
+}
+
+/* Avatar & Icon Aura */
+.fame-avatar-aura {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Progress Meter */
+.fame-progress-track {
+  height: 8px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.fame-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #c5a059, #f4be52);
+  border-radius: 10px;
+  box-shadow: 0 0 15px rgba(244, 190, 82, 0.4);
+}
+
+/* Decay Card Design */
+.decay-projection-card {
+  background: rgba(0,0,0,0.25);
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid rgba(255,95,82,0.2);
+}
+
+.decay-projection-card .value {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: var(--fame-gold);
+}
+
+/* Titles Smart Grid (UX Solution) */
+.titles-smart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.grid-item-fame {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--fame-border);
+  border-radius: 12px;
+  padding: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.grid-item-fame:hover {
+  transform: translateY(-4px) scale(1.02);
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.3);
+}
+
+/* Status: SECURED */
+.grid-item-fame.secured {
+  background: linear-gradient(135deg, rgba(74, 222, 128, 0.1), transparent);
+  border-left: 3px solid var(--fame-success);
+}
+.grid-item-fame.secured .title-name-sm { color: white; font-weight: 600; }
+
+/* Status: DANGER (Proche de la perte) */
+.grid-item-fame.danger {
+  border: 1px solid var(--fame-danger);
+  background: rgba(255, 95, 82, 0.1);
+  animation: pulse-red 2s infinite;
+}
+
+/* Status: LOCKED */
+.grid-item-fame.locked {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+
+/* Special Cards Horizontal Row */
+.special-titles-row {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 10px;
+}
+
+.special-card-mini {
+  flex: 0 0 160px;
+  background: var(--fame-glass);
+  border: 1px solid var(--fame-border);
+  border-radius: 14px;
+  padding: 12px;
+  text-align: center;
+}
+
+.special-card-mini.attained {
+  border-color: var(--fame-gold);
+  background: linear-gradient(135deg, rgba(244, 190, 82, 0.2), transparent);
+}
+
+/* Animations */
+@keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulse-red {
+  0% { box-shadow: 0 0 0 0 rgba(255, 95, 82, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(255, 95, 82, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 95, 82, 0); }
+}
+
+/* Responsive */
+@media (max-width: 991px) {
+  .border-end-glass { border-right: none; border-bottom: 1px solid var(--fame-border); }
+  .titles-smart-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
 }

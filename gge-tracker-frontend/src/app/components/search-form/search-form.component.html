@@ -34,5 +34,9 @@
         [countFilterActivated]="countFilterActivated"
       ></app-filter>
     </div>
+    <div *ngIf="exportDataEnabled()" class="col-auto">
+      <button class="btn-modern btn-filter" (click)="exportData.emit()" [title]="'Exporter les données' | translate">
+        <lucide-icon class="lucide lucide-download" [img]="Download"></lucide-icon>
+      </button>
   </div>
 </div>

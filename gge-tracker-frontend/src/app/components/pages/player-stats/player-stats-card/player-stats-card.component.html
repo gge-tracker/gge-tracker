@@ -1,8 +1,7 @@
 <div class="bg-white p-1 rounded shadow stats-container position-relative">
 
   <div class="text-center pt-3 cover-might position-relative"
-    [style]="'background-color: ' + backgroundColour() + ';background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, .8)), url('  + backgroundIconImage() + ');'"
-    >
+    [style]="'background-color: ' + backgroundColour() + ';background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, .8)), url('  + backgroundIconImage() + ');'">
     <ng-content select="[before]"></ng-content>
     <h1 class="title">{{ title() }}</h1>
     <p class="text-light"><small>{{ subtitle() }}</small></p>
@@ -10,51 +9,46 @@
   </div>
   <ul class="nav nav-tabs mt-3 ps-3 align-items-center">
     <li class="nav-item" *ngFor="let chart of charts() | keyvalue: originalOrder">
-      <button class="nav-link" (click)="changeTab(chart.key) "
-        [ngClass]="selectedTab === chart.key ? 'active' : ''">
+      <button class="nav-link" (click)="changeTab(chart.key) " [ngClass]="selectedTab === chart.key ? 'active' : ''">
         <i [ngClass]="getIcon(chart.key)"></i>
         {{ chart.key | translate}}</button>
     </li>
-    <li class="nav-item"  *ngIf="data.length > 0">
-      <button class="nav-link" (click)="changeTab('table')"
-        [ngClass]="selectedTab === 'Données' ? 'active' : ''">
+    <li class="nav-item" *ngIf="data.length > 0">
+      <button class="nav-link" (click)="changeTab('table')" [ngClass]="selectedTab === 'Données' ? 'active' : ''">
         <i class="fas fa-table"></i>
         {{ 'Données' | translate }}</button>
     </li>
   </ul>
-  <div class="mx-3" *ngFor="let chart of charts() | keyvalue" [ngClass]="selectedTab === chart.key ? 'd-block' : 'd-none'">
+  <div class="mx-3" *ngFor="let chart of charts() | keyvalue"
+    [ngClass]="selectedTab === chart.key ? 'd-block' : 'd-none'">
     <ng-container *ngIf="!isReady">
       <ng-container *ngTemplateOutlet="loadingChart"></ng-container>
     </ng-container>
-    <app-charts-wrapper #chartComp *ngIf="chart.value && chart.value.series && selectedTab === chart.key && isBrowser" [ngClass]="isReady ? '' : 'opacity-0'"
-      [series]="chart.value.series"
-      [annotations]="chart.value.annotations || {}"
-      [chart]="chart.value.chart"
-      [xaxis]="chart.value.xaxis"
-      [yaxis]="chart.value.yaxis"
-      [dataLabels]="chart.value.dataLabels"
-      [plotOptions]="chart.value.plotOptions"
-      [labels]="chart.value.labels || []"
-      [grid]="chart.value.grid"
-      [colors]="chart.value.colors"
-      [markers]="chart.value.markers || {}"
-      [fill]="chart.value.fill"
-      [stroke]="chart.value.stroke"
-      [title]="chart.value.title"
-      [tooltip]="chart.value.tooltip"
-      [legend]="chart.value.legend"
-      (chartComponentOutput)="onChartComponentInitialized($event)"
-    ></app-charts-wrapper>
-    <div class="text-center" *ngIf="chart.value && chart.value.series && selectedTab === chart.key && isBrowser && isReady">
-        <div class="btn-group" *ngIf="isWeekly()">
-          <button class="gge-btn light-yellow btn-sm" (click)="changePeriod('day')" (keyup.enter)="changePeriod('day')" [ngClass]="period === 'day' ? 'active' : ''">{{ 'Dernières 24h' | translate }}</button>
-        <button class="gge-btn light-yellow btn-sm" (click)="changePeriod('week')" (keyup.enter)="changePeriod('week')" [ngClass]="period === 'week' ? 'active' : ''">{{ 'Derniers 7 jours' | translate  }}</button>
-        <button class="gge-btn light-yellow btn-sm" (click)="changePeriod('month')" (keyup.enter)="changePeriod('month')" [ngClass]="period === 'month' ? 'active' : ''">{{ 'Derniers 30 jours' | translate  }}</button>
-        <button class="gge-btn light-yellow btn-sm" (click)="changePeriod('year')" (keyup.enter)="changePeriod('year')" [ngClass]="period === 'year' ? 'active' : ''">{{ 'Tous' | translate  }}</button>
+    <app-charts-wrapper #chartComp *ngIf="chart.value && chart.value.series && selectedTab === chart.key && isBrowser"
+      [ngClass]="isReady ? '' : 'opacity-0'" [series]="chart.value.series" [annotations]="chart.value.annotations || {}"
+      [chart]="chart.value.chart" [xaxis]="chart.value.xaxis" [yaxis]="chart.value.yaxis"
+      [dataLabels]="chart.value.dataLabels" [plotOptions]="chart.value.plotOptions" [labels]="chart.value.labels || []"
+      [grid]="chart.value.grid" [colors]="chart.value.colors" [markers]="chart.value.markers || {}"
+      [fill]="chart.value.fill" [stroke]="chart.value.stroke" [title]="chart.value.title"
+      [tooltip]="chart.value.tooltip" [legend]="chart.value.legend"
+      (chartComponentOutput)="onChartComponentInitialized($event)"></app-charts-wrapper>
+    <div class="text-center"
+      *ngIf="chart.value && chart.value.series && selectedTab === chart.key && isBrowser && isReady">
+      <div class="btn-group" *ngIf="isWeekly()">
+        <button class="gge-btn light-yellow btn-sm" (click)="changePeriod('day')" (keyup.enter)="changePeriod('day')"
+          [ngClass]="period === 'day' ? 'active' : ''">{{ 'Dernières 24h' | translate }}</button>
+        <button class="gge-btn light-yellow btn-sm" (click)="changePeriod('week')" (keyup.enter)="changePeriod('week')"
+          [ngClass]="period === 'week' ? 'active' : ''">{{ 'Derniers 7 jours' | translate }}</button>
+        <button class="gge-btn light-yellow btn-sm" (click)="changePeriod('month')"
+          (keyup.enter)="changePeriod('month')" [ngClass]="period === 'month' ? 'active' : ''">{{ 'Derniers 30 jours' |
+          translate }}</button>
+        <button class="gge-btn light-yellow btn-sm" (click)="changePeriod('year')" (keyup.enter)="changePeriod('year')"
+          [ngClass]="period === 'year' ? 'active' : ''">{{ 'Tous' | translate }}</button>
       </div>
     </div>
   </div>
-  <div class="mx-3 cadre-table-scroll" [ngClass]="selectedTab === 'Données' ? 'd-block' : 'd-none'" *ngIf="data().length > 0">
+  <div class="mx-3 cadre-table-scroll" [ngClass]="selectedTab === 'Données' ? 'd-block' : 'd-none'"
+    *ngIf="data().length > 0">
     <table class="table">
       <thead>
         <tr>
@@ -73,8 +67,10 @@
             <i class="fas fa-info-circle" [title]="entry.point + ' ' + ('points' | translate)"></i>
           </td>
           <td>
-            <span class="badge bg-success" *ngIf="entry.variation > 0" [title]="entry.variation + ' ' + ('points' | translate)">+{{ entry.variation | formatNumber }}</span>
-            <span class="badge bg-danger" *ngIf="entry.variation < 0" [title]="entry.variation + ' ' + ('points' | translate)">{{ entry.variation | formatNumber }}</span>
+            <span class="badge bg-success" *ngIf="entry.variation > 0"
+              [title]="entry.variation + ' ' + ('points' | translate)">+{{ entry.variation | formatNumber }}</span>
+            <span class="badge bg-danger" *ngIf="entry.variation < 0"
+              [title]="entry.variation + ' ' + ('points' | translate)">{{ entry.variation | formatNumber }}</span>
             <span class="badge bg-secondary" *ngIf="entry.variation === 0">-</span>
           </td>
         </tr>

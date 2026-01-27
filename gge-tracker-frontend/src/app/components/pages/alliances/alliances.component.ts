@@ -1,5 +1,5 @@
 import { NgClass, NgFor, NgIf } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
@@ -27,7 +27,7 @@ import { TranslateModule } from '@ngx-translate/core';
   templateUrl: './alliances.component.html',
   styleUrl: './alliances.component.css',
 })
-export class AlliancesComponent extends GenericComponent {
+export class AlliancesComponent extends GenericComponent implements OnInit {
   public alliances: Alliance[] = [];
   public page = 1;
   public maxPage?: number;
@@ -44,10 +44,17 @@ export class AlliancesComponent extends GenericComponent {
   constructor() {
     super();
     this.isInLoading = true;
+  }
+
+  public ngOnInit(): void {
+    const urlParameters = this.route.snapshot.queryParams;
+    const page = urlParameters['page'] ? Number(urlParameters['page']) : 1;
+    this.page = page;
     void this.init();
   }
 
   public async searchAlliance(allianceName: string): Promise<void> {
+    this.page = 1;
     this.search = allianceName;
     if (this.isInLoading) return;
     if (this.search === '') {
@@ -176,13 +183,16 @@ export class AlliancesComponent extends GenericComponent {
     try {
       const data = await this.apiRestService.getGenericData(
         this.apiRestService.getAlliances.bind(this.apiRestService),
-        1,
+        this.page,
         this.sort,
         this.reverse ? 'DESC' : 'ASC',
       );
       this.responseTime = data.response;
       this.maxPage = data.data.pagination.total_pages;
-      this.alliances = this.mapAlliancesFromApi(data.data, (index: number) => index + 1);
+      this.alliances = this.mapAlliancesFromApi(
+        data.data,
+        (index: number) => (this.page - 1) * this.pageSize + index + 1,
+      );
       this.structureAlliancesData(this.alliances);
       this.isInLoading = false;
     } catch {
@@ -212,6 +222,7 @@ export class AlliancesComponent extends GenericComponent {
       this.maxPage = 1;
       this.allianceCount = 1;
     }
+    void this.updateGenericParamsInUrl({ page: this.page }, { page: 1 });
     return alliances.alliances.map((alliance, index: number) => {
       return {
         id: alliance.alliance_id,

@@ -76,7 +76,8 @@
               <i class="fa-solid fa-filter-circle-xmark subdivision-indicator ms-2 pointer" (click)="clearSubDivisionFilter()"></i>
             </ng-template>
           </td>
-          <td>{{ alliance.rank }}</td>
+          <td>
+            <span class="mobile-only">{{ 'Classement dans la sous-division' | translate }}:&nbsp;</span>{{ alliance.rank }}</td>
           <td class="col-actions">
             <a class="action-icon" [ngClass]="{'disabled': alliance.disabled}"
               (click)="analyzeAlliance(alliance.alliance_id)" href="javascript:void(0);"

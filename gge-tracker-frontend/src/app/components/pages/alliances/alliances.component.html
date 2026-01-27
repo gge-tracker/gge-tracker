@@ -51,10 +51,9 @@
 
             <!-- Player Count -->
             <td class="col-metric px-2" [title]="alliance.playerCount | formatNumber:'visual'">
-              <span class="mobile-only">{{ 'Nombre de joueurs' | translate }}:&nbsp;</span>
               <div class="metric">
                 <div class="metric-header">
-                  <span class="metric-current">{{ alliance.playerCount | formatNumber }}</span>
+                  <span class="metric-current"><span class="mobile-only">{{ 'Nombre de joueurs' | translate }}:&nbsp;</span>{{ alliance.playerCount | formatNumber }}</span>
                   <span class="metric-max">65</span>
                 </div>
                 <div class="metric-bar-bg">
@@ -65,10 +64,9 @@
 
             <!-- Might -->
             <td class="col-metric px-2" [title]="alliance.mightAllTime | formatNumber:'visual'">
-              <span class="mobile-only">{{ 'Puissance' | translate }}:&nbsp;</span>
               <div class="metric">
                 <div class="metric-header">
-                  <span class="metric-current">{{ alliance.mightCurrent | formatNumber }}</span>
+                  <span class="metric-current"><span class="mobile-only">{{ 'Puissance' | translate }}:&nbsp;</span>{{ alliance.mightCurrent | formatNumber }}</span>
                   <span class="metric-max">{{ alliance.mightAllTime | formatNumber }}</span>
                 </div>
                 <div class="metric-bar-bg">
@@ -80,10 +78,9 @@
 
             <!-- Loot -->
             <td class="col-metric px-2" [title]="alliance.lootAllTime | formatNumber:'visual'">
-              <span class="mobile-only">{{ 'Pillage hebdomadaire' | translate }}:&nbsp;</span>
               <div class="metric">
                 <div class="metric-header">
-                  <span class="metric-current">{{ alliance.lootCurrent | formatNumber }}</span>
+                  <span class="metric-current"><span class="mobile-only">{{ 'Pillage hebdomadaire' | translate }}:&nbsp;</span>{{ alliance.lootCurrent | formatNumber }}</span>
                   <span class="metric-max">{{ alliance.lootAllTime | formatNumber }}</span>
                 </div>
                 <div class="metric-bar-bg">
@@ -95,10 +92,9 @@
 
             <!-- Fame -->
             <td class="col-metric px-2" [title]="alliance.highestFame | formatNumber:'visual'">
-              <span class="mobile-only">{{ 'Points de gloire' | translate }}:&nbsp;</span>
               <div class="metric">
                 <div class="metric-header">
-                  <span class="metric-current">{{ alliance.currentFame | formatNumber }}</span>
+                  <span class="metric-current"><span class="mobile-only">{{ 'Points de gloire' | translate }}:&nbsp;</span>{{ alliance.currentFame | formatNumber }}</span>
                   <span class="metric-max">{{ alliance.highestFame | formatNumber }}</span>
                 </div>
                 <div class="metric-bar-bg">

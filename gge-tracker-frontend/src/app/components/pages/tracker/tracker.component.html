@@ -1,7 +1,7 @@
 <div class="container my-3 dungeons">
   <div class="row">
     <div class="col-12" [ngClass]="{'loading': isInLoading}">
-      <div class="search mb-2">
+      <div class="search container-fluid mb-2">
         <div class="row mb-2">
           <div class="col">
             <div class="input-group">
@@ -22,9 +22,9 @@
             </div>
           </div>
         </div>
-        <div class="row">
+        <div class="row actions">
           <div class="col">
-            <div class="input-group">
+            <div class="input-group flex-nowrap">
               <app-search-bar [attrListInput]="[]" [searchInput]="filterByPlayerName"
                 (searchEmitter)="filterByPlayerName = $event" [inputType]="'string'" [name]="'player-name'"
                 [placeholderInput]="'Nom du joueur' | translate" [hasContent]="true">
@@ -88,14 +88,14 @@
                 {{ dungeon.rank }}
               </td>
               <td>
-                <div class="d-flex">
+                <div class="d-flex justify-content-center">
                   <div>
                     <img [src]="dungeon.image" alt="{{ dungeon.kid }}" class="img-fluid" width="30">
                   </div>
                   <span class="ms-2 dungeon-{{ dungeon.kid }}">{{ getRealmName(dungeon.kid) | translate }}</span>
                 </div>
               </td>
-              <td>{{ dungeon.position }}</td>
+              <td><span class="mobile-only">{{ 'Position' | translate }}:&nbsp;</span> {{ dungeon.position }}</td>
               <td *ngIf="headers.length === 5">
                 {{ dungeon.distance ? dungeon.distance + 'm' : '?' }}
               </td>

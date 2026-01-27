@@ -247,6 +247,10 @@
   display: none;
 }
 
+::ng-deep .table-custom .mobile-only-reverse {
+  display: none !important;
+}
+
 ::ng-deep .table-custom tbody tr {
   border-bottom: 1px solid rgba(255,255,255,0.02);
   transform-origin: left center;
@@ -419,6 +423,11 @@
 
   50% {
     background-position: 0% 100%;
+  }
+}
+@media (min-width: 900px) {
+  ::ng-deep .table-custom .mobile-only-reverse {
+    display: block !important;
   }
 }
 

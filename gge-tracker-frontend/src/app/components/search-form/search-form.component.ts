@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { SearchType } from '@ggetracker-interfaces/empire-ranking';
 import { UtilitiesService } from '@ggetracker-services/utilities.service';
 import { TranslateModule } from '@ngx-translate/core';
-import { Eraser, Filter, HardDrive, LucideAngularModule, Search } from 'lucide-angular';
+import { Download, Eraser, Filter, HardDrive, LucideAngularModule, Search } from 'lucide-angular';
 import { FilterComponent } from '../filter/filter.component';
 
 @Component({
@@ -20,6 +20,7 @@ export class SearchFormComponent implements OnChanges, OnInit {
   public search = '';
   public readonly HardDrive = HardDrive;
   public readonly Search = Search;
+  public readonly Download = Download;
   public readonly Reset = Eraser;
   public readonly Funnel = Filter;
   public formFilters = input.required<Record<string, string | boolean | undefined | number | null | string[]> | null>();
@@ -29,6 +30,8 @@ export class SearchFormComponent implements OnChanges, OnInit {
   public utilitiesService = inject(UtilitiesService);
   public searchPlayer = output<string>();
   public searchAlliance = output<string>();
+  public exportDataEnabled = input<boolean>(false);
+  public exportData = output<void>();
   public filterActive = false;
   public defaultSearch = input<string>();
   public alliancePlaceholder = input<string>();

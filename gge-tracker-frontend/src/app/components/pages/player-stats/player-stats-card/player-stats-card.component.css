@@ -25,6 +25,11 @@ i.fas.fa-spinner.fa-spin {
   opacity: 0;
 }
 
+.btn-group {
+  max-width: 100%;
+  overflow-y: auto;
+}
+
 .spinner-container {
   left: 50%;
   position: absolute;

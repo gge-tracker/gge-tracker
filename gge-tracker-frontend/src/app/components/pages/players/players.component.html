@@ -5,7 +5,7 @@
         [inputTip]="'Rechercher un joueur ou une alliance' | translate" [defaultSearch]="search" [searchTypes]="{
           player: true,
           alliance: true
-        }" (searchAlliance)="searchAlliance($event)" (searchPlayer)="searchPlayer($event)"></app-search-form>
+        }" (searchAlliance)="searchAlliance($event)" (searchPlayer)="searchPlayer($event)" [exportDataEnabled]="true" (exportData)="exportData()"></app-search-form>
 
       <div class="flex flex-col justify-between gap-6 mt-2">
         <app-table #table [sort]="sort" [reverse]="reverse" [isInLoading]="isInLoading" [maxPage]="maxPage!"

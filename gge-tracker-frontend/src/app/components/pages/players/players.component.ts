@@ -169,6 +169,8 @@ export class PlayersComponent extends GenericComponent implements OnInit {
       this.addHeaderTableBlock();
     }
     const urlParameters = this.route.snapshot.queryParams;
+    const page = urlParameters['page'] ? Number(urlParameters['page']) : 1;
+    this.page = page;
     if (urlParameters['alliance']) {
       this.search = urlParameters['alliance'];
       this.isInLoading = false;
@@ -182,7 +184,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
       this.isInLoading = false;
       this.cdr.detectChanges();
     } else {
-      void this.init();
+      void this.init(this.page);
     }
   }
 
@@ -309,12 +311,11 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     }
     this.isInLoading = true;
     try {
-      this.page = 1;
       const data = await this.getGenericData();
       this.responseTime = data.response;
       const players = data.data;
       this.searchType = 'alliance';
-      this.players = this.mapPlayersFromApi(players, (index: number) => index + 1);
+      this.players = this.mapPlayersFromApi(players, (index: number) => (this.page - 1) * this.pageSize + index + 1);
       this.isInLoading = false;
       this.cdr.detectChanges();
     } catch {
@@ -485,6 +486,60 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     this.localStorage.setItem('favories', JSON.stringify(favoriteIds));
   }
 
+  public exportData(): void {
+    const headers = [
+      'Rank',
+      'Player Name',
+      'Alliance ID',
+      'Alliance Name',
+      'Alliance Rank',
+      'Level',
+      'Current Might',
+      'Highest Might',
+      'Current Loot',
+      'Highest Loot',
+      'Current Glory',
+      'Highest Glory',
+      'Current Honor',
+      'Highest Honor',
+      'Peace Disabled At',
+      'Distance (m)',
+    ];
+    const rows: any[][] = [];
+    this.players.forEach((player) => {
+      const row = [
+        player.rank,
+        this.escapeCsv(player.playerName),
+        Number(player.allianceId),
+        this.escapeCsv(player.allianceName),
+        `url=/assets/alliance_ranks/${player.allianceRank}.png`,
+        this.constructPlayerLevel(player.level ?? 0, player.legendaryLevel ?? 0),
+        Number(player.mightCurrent),
+        Number(player.mightAllTime),
+        Number(player.lootCurrent),
+        Number(player.lootAllTime),
+        Number(player.currentFame),
+        Number(player.highestFame),
+        Number(player.honor),
+        Number(player.maxHonor),
+        player.peaceDisabledAt ? this.escapeCsv(new Date(player.peaceDisabledAt).toLocaleString()) : '',
+        Number(player.distance ?? 0),
+      ];
+      rows.push(row);
+    });
+    void this.utilitiesService.exportDataXlsx(
+      'Players',
+      headers,
+      rows,
+      `players_${this.apiRestService.serverService.currentServer?.name || 'server'}_page_${this.page}_${new Date().toISOString()}.xlsx`,
+    );
+  }
+
+  private escapeCsv(value: string | null | undefined): string {
+    if (value == null) return '';
+    return `"${value.replaceAll('"', '""')}"`;
+  }
+
   private addHeaderTableBlock(): void {
     if (this.playersTableHeader.length === 8) {
       const block: [string, string, (string | undefined)?, (boolean | undefined)?] = [
@@ -505,6 +560,14 @@ export class PlayersComponent extends GenericComponent implements OnInit {
       this.maxPage = 1;
       this.playerCount = 1;
     }
+    void this.updateGenericParamsInUrl(
+      {
+        page: this.page,
+        player: this.searchType === 'player' ? this.search : undefined,
+        alliance: this.searchType === 'alliance' ? this.search : undefined,
+      },
+      { page: 1, player: '', alliance: '' },
+    );
     const favoriePlayers: string[] = JSON.parse(this.localStorage.getItem('favories') || '[]');
     return players.players.map((player, index) => {
       return {
@@ -600,14 +663,14 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     }
   }
 
-  private async init(): Promise<void> {
+  private async init(page = 1): Promise<void> {
     try {
-      this.page = 1;
+      this.page = page;
       const players = await this.getGenericData();
       this.structuredPlayersData(players.data.players);
       this.responseTime = players.response;
       this.maxPage = players.data.pagination.total_pages;
-      this.players = this.mapPlayersFromApi(players.data, (index: number) => index + 1);
+      this.players = this.mapPlayersFromApi(players.data, (index: number) => (page - 1) * this.pageSize + index + 1);
       this.isInLoading = false;
       this.cdr.detectChanges();
     } catch {

@@ -40,6 +40,29 @@ export class GenericComponent {
     this.renderer = this.rendererFactory.createRenderer(null, null);
   }
 
+  public async updatePageInUrl(page: number): Promise<void> {
+    await this.updateGenericParamsInUrl({ page: page }, { page: 1 });
+  }
+
+  public async updateGenericParamsInUrl(
+    parameters: { [key: string]: any },
+    defaultParameters: { [key: string]: any },
+  ): Promise<void> {
+    const queryParameters: { [key: string]: any } = {};
+    for (const key in parameters) {
+      if (parameters[key] === defaultParameters[key]) {
+        queryParameters[key] = null;
+      } else {
+        queryParameters[key] = parameters[key];
+      }
+    }
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: queryParameters,
+      queryParamsHandling: 'merge',
+    });
+  }
+
   public getOpacityForPeaceTime(peaceDisabledAt: string | null): number {
     if (!peaceDisabledAt) return 1;
     // Calculate the time difference in seconds

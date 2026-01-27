@@ -39,7 +39,7 @@
       </div>
     </div>
   </div>
-  <div class="flex items-center gap-4">
+  <div class="flex items-center gap-4 actions h-100 overflow-hidden">
     <div #topbarHost></div>
     <div class="divider"></div>
     <div class="topbar-actions flex items-center gap-4">
@@ -64,13 +64,13 @@
 
       <!-- Dev API -->
       <a href="https://docs.gge-tracker.com"
-        target="_blank" rel="noopener"  [title]="'API' | translate" class="action-icon">
+        target="_blank" rel="noopener"  [title]="'API' | translate" class="action-icon api-btn">
         <app-icon name="CodeXml" [size]="19"></app-icon>
         <span class="label d-none d-xxl-inline">{{ 'API' | translate }}</span>
       </a>
 
       <!-- GitHub -->
-      <a href="https://github.com/gge-tracker/gge-tracker" target="_blank" rel="noopener" class="action-icon">
+      <a href="https://github.com/gge-tracker/gge-tracker" target="_blank" rel="noopener" class="action-icon github-btn">
         <i class="fa-brands fa-github"></i>
       </a>
 

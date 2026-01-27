@@ -6,3 +6,11 @@
 ::ng-deep .renames #table-component td {
   padding: 8px 0;
 }
+
+.old-value {
+  background-color: rgba(255, 0, 0, 0.05);
+}
+
+.new-value {
+  background-color: rgba(0, 255, 0, 0.05);
+}

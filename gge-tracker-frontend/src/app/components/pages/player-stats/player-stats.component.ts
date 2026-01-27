@@ -27,6 +27,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import Gradient from 'javascript-color-gradient';
 import { ApexAxisChartSeries } from 'ng-apexcharts';
 import { PlayerStatsCardComponent } from './player-stats-card/player-stats-card.component';
+import { IconComponent } from '@ggetracker-components/icon/icon.component';
 
 export interface IRankingStatsPlayer {
   playerId: number;
@@ -35,6 +36,8 @@ export interface IRankingStatsPlayer {
   mightAllTime: number;
   currentFame: number;
   highestFame: number;
+  playerCurrentFameRank: number;
+  updatedAt: Date;
   peaceDisabledAt: Date | null;
   lootCurrent: number;
   lootAllTime: number;
@@ -49,7 +52,17 @@ export interface IRankingStatsPlayer {
   totalCastles: number;
 }
 
-type Tabs = 'overview' | 'loot' | 'alliances' | 'castles';
+type Tabs = 'overview' | 'loot' | 'alliances' | 'castles' | 'glory';
+
+interface RankingFameTitle {
+  decay?: number;
+  displayType: string;
+  topX?: number;
+  mightValue: string;
+  threshold?: number;
+  titleID: string;
+  type: string;
+}
 
 @Component({
   selector: 'app-player-stats',
@@ -67,6 +80,7 @@ type Tabs = 'overview' | 'loot' | 'alliances' | 'castles';
     LevelPipe,
     FormsModule,
     NgTemplateOutlet,
+    IconComponent,
   ],
   templateUrl: './player-stats.component.html',
   styleUrl: './player-stats.component.css',
@@ -76,12 +90,15 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
   public radialCharts: Record<string, ChartOptions> = {};
   public eventDataSegments: Record<string, ApiGenericData[][]> = {};
   public playerId?: number;
+  public currentPlayerTitle: RankingFameTitle | null = null;
+  public currentTopXFameTitle: RankingFameTitle | null = null;
   public playerName?: string;
   public allianceName?: string;
   public allianceId?: number;
   public favories: Record<number, string> = {};
   public activeOptionButton = '';
   public currentSemaine?: string;
+  public isAtRisk = false;
   public data: Record<ApiPlayerStatsType, EventGenericVariation[]> = {
     player_event_berimond_invasion_history: [],
     player_event_berimond_kingdom_history: [],
@@ -111,6 +128,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
   };
   public monumentsList: Monument[] = [];
   public pageSize = 10;
+  public readonly currentI18nTitleKey = 'titles.playerTitle_';
   public currentPage = 1;
   public totalPages = 1;
   public searchTerm = '';
@@ -121,9 +139,12 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     { key: 'loot', label: 'Points de pillage hebdomadaire', assetIcon: 'loot.png' },
     { key: 'alliances', label: 'Alliances', assetIcon: 'alliance.png' },
     { key: 'castles', label: 'Châteaux', assetIcon: 'tools/castles.webp' },
+    { key: 'glory', label: 'Gloire', assetIcon: 'glory.png' },
   ];
   public currentTab: Tabs = 'overview';
   public maxLootPointsByWeek: { week: string; points: number }[] = [];
+  public fameTitles: RankingFameTitle[] = [];
+  public fameTitlesTopX: RankingFameTitle[] = [];
 
   private animationFrames: Partial<Record<keyof IRankingStatsPlayer, number>> = {};
   private localStorage = inject(LocalStorageService);
@@ -217,6 +238,38 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
         void this.router.navigate(['/']);
       }
     });
+  }
+
+  public async getPlayerGloryTitle(): Promise<RankingFameTitle[]> {
+    const jsonConfigPath = 'assets/titles/titles.json';
+    const json = await this.apiRestService.apiFetch(jsonConfigPath);
+    if (json.success) {
+      const titles: RankingFameTitle[] = (json.data as RankingFameTitle[]).map((title: RankingFameTitle) => ({
+        decay: title.decay === undefined ? undefined : Number(title.decay),
+        displayType: title.displayType,
+        mightValue: title.mightValue,
+        threshold: title.threshold === undefined ? undefined : Number(title.threshold),
+        topX: title.topX === undefined ? undefined : Number(title.topX),
+        titleID: title.titleID,
+        type: title.type,
+      }));
+      const fameTitles = titles.filter((title) => title.type === 'FAME').reverse();
+      this.fameTitlesTopX = fameTitles.filter((title) => title.topX !== undefined);
+      this.fameTitles = fameTitles.filter((title) => title.topX === undefined);
+      const currentFameTitle = this.fameTitles
+        .filter((title) => title.threshold && Number(title.threshold) < this.stats!.currentFame)
+        .reduce((max, t) => (Number(t.threshold) > Number(max.threshold) ? t : max));
+      const currentFameTopXTitle = this.fameTitlesTopX.reduce((min, t) =>
+        Number(t.topX!) < Number(min.topX!) ? t : min,
+      );
+
+      this.isAtRisk =
+        currentFameTitle.decay !== undefined &&
+        ((100 - currentFameTitle.decay) * this.stats!.currentFame) / 100 < (currentFameTitle.threshold ?? 0);
+
+      return [currentFameTitle, currentFameTopXTitle];
+    }
+    throw new Error('Unable to load titles configuration');
   }
 
   public getScoreboardFromEvent(eventId: number): number | null {
@@ -764,10 +817,12 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
           loot_all_time: -1,
           level: 0,
           legendary_level: -1,
+          updated_at: '',
           honor: -1,
           max_honor: -1,
           server_rank: -1,
           global_rank: -1,
+          player_current_fame_rank: '-1',
           castles: [],
           castles_realm: [],
         },
@@ -775,6 +830,9 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
       };
     }
     this.stats = this.mapStatsFromData(stats.data);
+    const [currentFameTitle, currentTopXFame] = await this.getPlayerGloryTitle();
+    this.currentPlayerTitle = currentFameTitle;
+    this.currentTopXFameTitle = currentTopXFame;
     this.fillQuantity();
     this.setMonuments();
     for (const key of Object.keys(this.stats)) {
@@ -847,6 +905,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     return {
       playerId: Number(data.player_id),
       server: data.server,
+      playerCurrentFameRank: Number(data.player_current_fame_rank),
       mightCurrent: Number(data.might_current),
       mightAllTime: Number(data.might_all_time),
       currentFame: Number(data.current_fame),
@@ -860,6 +919,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
       maxHonor: Number(data.max_honor),
       serverRank: Number(data.server_rank),
       globalRank: Number(data.global_rank),
+      updatedAt: new Date(data.updated_at),
       totalLevel: Number(data.level) + Number(data.legendary_level || 0),
       castles: castles,
       totalCastles: castles.length,

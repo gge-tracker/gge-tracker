@@ -1,8 +1,8 @@
 <div class="container my-3 movements">
   <div class="row g-4">
     <div class="col-12" [ngClass]="{'loading': isInLoading}">
-      <div class="row mt-3 row-gap-3">
-        <div *ngFor="let event of events; let i = index" class="col-12 col-md-6">
+      <div class="container-fluid row mt-3 row-gap-3">
+        <div *ngFor="let event of events; let i = index" class="col-12 col-lg-6">
           <div tabindex="0" [title]="'Voir le détail' | translate" (click)="onEventClick(event)"
             (keyup.enter)="onEventClick(event)" (keydown.space)="onEventClick(event)" class="event-card"
             [ngStyle]="{'background-image': 'url(/assets/' + event.type + '.png)'}">

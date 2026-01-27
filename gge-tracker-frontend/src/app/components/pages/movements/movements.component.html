@@ -51,7 +51,7 @@
             </td>
             <td><img [src]="'/assets/castle' + movement.type + '.png'"
                 [title]="getCastleType(movement.type) | translate" [alt]="getCastleType(movement.type)"></td>
-            <td [innerHTML]="getDescription(movement.type, movement.positionOld, movement.positionNew).image"></td>
+            <td class="mobile-only-reverse" [innerHTML]="getDescription(movement.type, movement.positionOld, movement.positionNew).image"></td>
             <td>{{ ((getDescription(movement.type, movement.positionOld, movement.positionNew).keyword) | translate) + '
               '
               + getDescription(movement.type, movement.positionOld, movement.positionNew).description }}</td>

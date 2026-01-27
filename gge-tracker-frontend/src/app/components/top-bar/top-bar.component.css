@@ -248,6 +248,7 @@ a:visited {
   top: calc(100% + 0.5rem);
   width: max-content;
   z-index: 50;
+  max-width: clamp(230px, 40vw, 100vw);
 }
 
 .server-dropdown .srv-region {
@@ -340,6 +341,7 @@ a:visited {
   position: sticky;
   top: 0;
   z-index: 30;
+  max-width: 100%;
 }
 
 .topbar-actions .action-icon {
@@ -398,13 +400,13 @@ a:visited {
 }
 
 @media (max-width: 480px) {
-  .lang-pill {
-    display: none;
+  .about-btn, .github-btn, .api-btn {
+    display: none !important;
   }
 }
 
 @media (max-width: 640px) {
   .search-wrapper {
-    display: none;
+    display: none !important;
   }
 }
