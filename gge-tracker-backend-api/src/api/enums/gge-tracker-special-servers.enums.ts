@@ -18,4 +18,6 @@ export enum AuthorizedSpecialServersEnum {
   PARTNER_SP3 = 'PARTNER_SP3',
   BG1 = 'BG1',
   AU1 = 'AU1',
+  US1 = 'US1',
+  E4K_RU1 = 'E4K_RU1',
 }
