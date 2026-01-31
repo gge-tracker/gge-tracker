@@ -177,6 +177,29 @@ services:
       start_period: 5s
       interval: 5s
       timeout: 5s
+    restart: always
+
+  dungeon-update-worker:
+    build:
+      context: ./../gge-tracker-internal-scraping
+      dockerfile: Dockerfile
+    container_name: dungeon-update-worker
+    restart: unless-stopped
+    networks:
+      - backend
+    volumes:
+      - ./../gge-tracker-internal-scraping/config/servers.conf:/app/config/servers.conf:ro
+      - ./../gge-tracker-internal-scraping/logs:/app/logs
+    command: ["dist/dungeon-update.worker.js"]
+    environment:
+      - INTERVAL_MS=${DUNGEON_UPDATE_INTERVAL_MS:-120000}
+      - SQL_USER=${SQL_USER}
+      - SQL_PASSWORD=${SQL_PASSWORD}
+    deploy:
+      resources:
+        limits:
+          cpus: "0.2"
+          memory: 300M
 
   empire-api:
     build:

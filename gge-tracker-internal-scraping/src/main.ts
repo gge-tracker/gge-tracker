@@ -52,6 +52,8 @@ export class GenericFetchAndSaveBackend {
     alliancesUpdated: 0,
     criticalErrors: 0,
   };
+  public connection: mysql.Pool;
+  public pgSqlConnection: pg.Pool;
   public allianceUpdated: { [key: string]: boolean } = {};
   private readonly WEBHOOK_URL: string = process.env.WEBHOOK_URL || '';
   private readonly CURRENT_ENV: string = process.env.ENVIRONMENT || 'development';
@@ -64,8 +66,6 @@ export class GenericFetchAndSaveBackend {
   private playerLootAndMightPointHistoryList: { [key: string]: any[] } = {};
   private playerEventPointHistoryList: { [key: string]: { [key: string]: number | null } } = {};
   private customPlayersAttributesList: { [key: string]: any } = {};
-  private connection: mysql.Pool;
-  private pgSqlConnection: pg.Pool;
   private currentPlayers: PlayerDatabase[] = [];
   private isE4KServer: boolean = false;
   private readonly ENV_LT = {
@@ -755,19 +755,27 @@ export class GenericFetchAndSaveBackend {
             await new Promise((resolve) => setTimeout(resolve, 30));
           }
           done++;
-          const percent = (done / totalRequests) * 100;
-          const barWidth = 40;
-          const filled = Math.round(barWidth * (done / totalRequests));
-          const bar =
-            '[' +
-            '█'.repeat(filled) +
-            '-'.repeat(barWidth - filled) +
-            `] ${percent.toFixed(1)}% (${done}/${totalRequests})`;
-          process.stdout.clearLine(0);
-          process.stdout.cursorTo(0);
-          process.stdout.write(bar);
+          if (process.stdout.isTTY) {
+            const percent = (done / totalRequests) * 100;
+            const barWidth = 40;
+            const filled = Math.round(barWidth * (done / totalRequests));
+            const bar =
+              '[' +
+              '█'.repeat(filled) +
+              '-'.repeat(barWidth - filled) +
+              `] ${percent.toFixed(1)}% (${done}/${totalRequests})`;
+            process.stdout.clearLine(0);
+            process.stdout.cursorTo(0);
+            process.stdout.write(bar);
+          }
         } catch (err) {
-          console.error('Error on URL:', url, err);
+          const code = err.code;
+          if (code !== 'ERR_BAD_REQUEST' && code !== 'ECONNRESET') {
+            console.error('Unexpected error code on URL:', url, err);
+          } else {
+            console.error('Error on URL:', url);
+          }
+          throw new Error('Terminating due to error while fetching dungeon data.');
         }
       }
     }
@@ -784,7 +792,6 @@ export class GenericFetchAndSaveBackend {
     );
     console.log('Dungeons list updated successfully');
     console.log('Squares count:', Object.keys(squares).length);
-    await this.connection.end();
   }
 
   public async startOuterRealmsDataFetch(): Promise<void> {
