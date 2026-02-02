@@ -510,6 +510,8 @@ export interface ApiPlayerStatsByPlayerId {
   diffs: Record<ApiPlayerStatsType, number>;
   player_name: string;
   points: ApiPlayerStats;
+  glory_points_100: { top: number; point: number }[];
+  timezone_offset: number | null;
 }
 
 export interface ApiPlayerStatsByAllianceId {

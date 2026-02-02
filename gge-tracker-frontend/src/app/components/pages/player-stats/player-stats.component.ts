@@ -1,4 +1,4 @@
-import { DatePipe, NgClass, NgForOf, NgIf, NgTemplateOutlet } from '@angular/common';
+import { DatePipe, NgClass, NgForOf, NgIf, NgStyle, NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -27,7 +27,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import Gradient from 'javascript-color-gradient';
 import { ApexAxisChartSeries } from 'ng-apexcharts';
 import { PlayerStatsCardComponent } from './player-stats-card/player-stats-card.component';
-import { IconComponent } from '@ggetracker-components/icon/icon.component';
+import { firstValueFrom } from 'rxjs';
 
 export interface IRankingStatsPlayer {
   playerId: number;
@@ -80,7 +80,7 @@ interface RankingFameTitle {
     LevelPipe,
     FormsModule,
     NgTemplateOutlet,
-    IconComponent,
+    NgStyle,
   ],
   templateUrl: './player-stats.component.html',
   styleUrl: './player-stats.component.css',
@@ -92,7 +92,10 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
   public playerId?: number;
   public currentPlayerTitle: RankingFameTitle | null = null;
   public currentTopXFameTitle: RankingFameTitle | null = null;
+  public nextFameTitle: RankingFameTitle | null = null;
+  public fameProgressStrokeOffset: number = 0;
   public playerName?: string;
+  public timezoneOffset: number | null = null;
   public allianceName?: string;
   public allianceId?: number;
   public favories: Record<number, string> = {};
@@ -139,12 +142,14 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     { key: 'loot', label: 'Points de pillage hebdomadaire', assetIcon: 'loot.png' },
     { key: 'alliances', label: 'Alliances', assetIcon: 'alliance.png' },
     { key: 'castles', label: 'Châteaux', assetIcon: 'tools/castles.webp' },
-    { key: 'glory', label: 'Gloire', assetIcon: 'glory.png' },
+    { key: 'glory', label: 'Points de gloire', assetIcon: 'glory.png' },
   ];
   public currentTab: Tabs = 'overview';
   public maxLootPointsByWeek: { week: string; points: number }[] = [];
   public fameTitles: RankingFameTitle[] = [];
   public fameTitlesTopX: RankingFameTitle[] = [];
+  public top100Glory: { top: number; point: number }[] = [];
+  public fameProgressPercentage: number = 0;
 
   private animationFrames: Partial<Record<keyof IRankingStatsPlayer, number>> = {};
   private localStorage = inject(LocalStorageService);
@@ -176,7 +181,18 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     return null;
   }
 
+  public updateTab(key: Tabs): void {
+    this.currentTab = key;
+    void this.router.navigate([], {
+      fragment: this.currentTab,
+    });
+  }
+
   public async ngOnInit(): Promise<void> {
+    const selectedTab = await firstValueFrom(this.route.fragment);
+    if (selectedTab && this.tabs.some((tab) => tab.key === selectedTab)) {
+      this.currentTab = selectedTab as Tabs;
+    }
     this.route.params.subscribe(async (parameters) => {
       this.isInLoading = true;
       this.cdr.detectChanges();
@@ -187,6 +203,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
           if (response.success === false) throw new Error('API Error');
           const data = response.data;
           this.playerName = data.player_name;
+          this.timezoneOffset = data.timezone_offset;
           this.addStructuredPlayerData({
             name: this.playerName,
             url: `gge-tracker.com/player/${playerId}`,
@@ -223,6 +240,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
           ) as Record<ApiPlayerStatsType, EventGenericVariation[]>;
           this.allianceName = data.alliance_name;
           this.allianceId = data.alliance_id;
+          this.top100Glory = data.glory_points_100;
           this.playerId = playerId;
           this.fillData();
           void this.initPlayerData(playerId).then(() => {
@@ -240,7 +258,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     });
   }
 
-  public async getPlayerGloryTitle(): Promise<RankingFameTitle[]> {
+  public async getPlayerGloryTitle(): Promise<[RankingFameTitle | null, RankingFameTitle | null]> {
     const jsonConfigPath = 'assets/titles/titles.json';
     const json = await this.apiRestService.apiFetch(jsonConfigPath);
     if (json.success) {
@@ -255,19 +273,37 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
       }));
       const fameTitles = titles.filter((title) => title.type === 'FAME').reverse();
       this.fameTitlesTopX = fameTitles.filter((title) => title.topX !== undefined);
+      this.fameTitlesTopX.forEach((title) => {
+        const topTitle = this.top100Glory.find((g) => g.top === (title.topX ?? -1));
+        if (topTitle) {
+          title.threshold = topTitle.point;
+        }
+      });
       this.fameTitles = fameTitles.filter((title) => title.topX === undefined);
       const currentFameTitle = this.fameTitles
         .filter((title) => title.threshold && Number(title.threshold) < this.stats!.currentFame)
         .reduce((max, t) => (Number(t.threshold) > Number(max.threshold) ? t : max));
-      const currentFameTopXTitle = this.fameTitlesTopX.reduce((min, t) =>
-        Number(t.topX!) < Number(min.topX!) ? t : min,
+      const currentFameTopXTitle = this.fameTitlesTopX.find(
+        (title) => title.topX && this.stats!.playerCurrentFameRank <= title.topX!,
       );
-
+      if (currentFameTopXTitle) {
+        this.nextFameTitle =
+          this.fameTitlesTopX.find((title) => title.topX && title.topX < currentFameTopXTitle.topX!) || null;
+      } else {
+        const reversedFameTitles = [...this.fameTitles].reverse();
+        this.nextFameTitle =
+          reversedFameTitles.find((title) => title.threshold && Number(title.threshold) > this.stats!.currentFame) ||
+          null;
+        if (this.nextFameTitle === null && this.fameTitlesTopX.length > 0) {
+          this.nextFameTitle = this.fameTitlesTopX.at(-1) || null;
+        }
+      }
+      this.fameProgressPercentage = ((this.stats!.currentFame || 1) * 100) / (this.nextFameTitle?.threshold ?? 1);
+      this.fameProgressStrokeOffset = 226 - (226 * this.fameProgressPercentage) / 100;
       this.isAtRisk =
         currentFameTitle.decay !== undefined &&
         ((100 - currentFameTitle.decay) * this.stats!.currentFame) / 100 < (currentFameTitle.threshold ?? 0);
-
-      return [currentFameTitle, currentFameTopXTitle];
+      return [currentFameTitle ?? null, currentFameTopXTitle ?? null];
     }
     throw new Error('Unable to load titles configuration');
   }
@@ -1020,7 +1056,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     const firstMonday = new Date(Date.UTC(firstDate.getUTCFullYear(), firstDate.getUTCMonth(), firstDate.getUTCDate()));
     const dayOfWeek = firstMonday.getUTCDay();
     firstMonday.setUTCDate(firstMonday.getUTCDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1));
-    firstMonday.setUTCHours(1, 0, 0, 0);
+    firstMonday.setUTCHours(1 + (this.timezoneOffset ?? 0), 0, 0, 0);
     // Step 2: Generate all weeks from the first Monday to the current date
     const currentDate = new Date();
     const generateWeekHours = (start: Date, end: Date): string[] => {
@@ -1037,7 +1073,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     while (currentMonday <= currentDate) {
       const currentSunday = new Date(currentMonday);
       currentSunday.setDate(currentMonday.getDate() + 6);
-      currentSunday.setUTCHours(23, 0, 0, 0);
+      currentSunday.setUTCHours(23 + (this.timezoneOffset ?? 0), 0, 0, 0);
       allWeeksHours.push(generateWeekHours(currentMonday, currentSunday));
       currentMonday.setDate(currentMonday.getDate() + 7);
     }
@@ -1376,14 +1412,20 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
   private fillData(): void {
     this.setDefaultAlliance();
     void this.initPlayerStats();
-    this.initMightHistoryData();
-    this.initLootHistoryData();
-    this.initWarRealmsData();
-    this.initNomadHistoryData();
-    this.initBerimondKingdomData();
-    this.initBerimondInvasionData();
-    this.initSamuraiHistoryData();
-    this.initBloodcrowHistoryData();
+    this.cdr.detectChanges();
+    setTimeout(() => {
+      this.initMightHistoryData();
+      this.initLootHistoryData();
+    }, 500);
+    setTimeout(() => {
+      this.initWarRealmsData();
+      this.initNomadHistoryData();
+      this.initBerimondKingdomData();
+      this.initBerimondInvasionData();
+      this.initSamuraiHistoryData();
+      this.initBloodcrowHistoryData();
+      this.cdr.detectChanges();
+    }, 1000);
   }
 
   private buildHeatmapRanges(maxValue: number): any[] {

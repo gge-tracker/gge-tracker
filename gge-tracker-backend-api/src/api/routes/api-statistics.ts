@@ -52,7 +52,9 @@ export abstract class ApiStatistics implements ApiHelper {
       /* ---------------------------------
        * Cache validation
        * --------------------------------- */
-      const cachedKey = `statistics:alliances:${allianceId}`;
+      const language = ApiHelper.ggeTrackerManager.getServerNameFromRequestId(allianceId);
+      const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${language}`)) || '1';
+      const cachedKey = `statistics:alliances:${language}:${cacheVersion}:${allianceId}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
@@ -115,7 +117,9 @@ export abstract class ApiStatistics implements ApiHelper {
       /* ---------------------------------
        * Cache validation
        * --------------------------------- */
-      const cacheKey = `statistics:players:${playerId}`;
+      const language = ApiHelper.ggeTrackerManager.getServerNameFromRequestId(playerId);
+      const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${language}`)) || '1';
+      const cacheKey = `statistics:players:${language}:${cacheVersion}:${playerId}`;
       const cachedData = await ApiHelper.redisClient.get(cacheKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
@@ -139,6 +143,17 @@ export abstract class ApiStatistics implements ApiHelper {
       if (!pool || !code) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
         return;
+      }
+
+      /* ---------------------------------
+       * Glory points cache key
+       * --------------------------------- */
+      const gloryPointsCacheKey = `leaderboard:glory:${language}:${cacheVersion}:top100:${code}`;
+      const cachedGloryPoints = await ApiHelper.redisClient.get(gloryPointsCacheKey);
+      let code100GloryPoints = cachedGloryPoints ? JSON.parse(cachedGloryPoints) : null;
+      if (!cachedGloryPoints || true) {
+        code100GloryPoints = await this.getTop100GloryPointsByCountryCode(code);
+        void ApiHelper.updateCache(gloryPointsCacheKey, code100GloryPoints, 4000);
       }
 
       /* ---------------------------------
@@ -171,7 +186,18 @@ export abstract class ApiStatistics implements ApiHelper {
           undefined,
           basicTables,
         );
-        const data = { diffs, player_name: playerName, alliance_name: allianceName, alliance_id: allianceId, points };
+        const timezoneOffset = ApiHelper.ggeTrackerManager.getTimezoneOffsetByCode(
+          ApiHelper.getCountryCode(String(playerId)) || '',
+        );
+        const data = {
+          diffs,
+          player_name: playerName,
+          alliance_name: allianceName,
+          alliance_id: allianceId,
+          points,
+          glory_points_100: code100GloryPoints,
+          timezone_offset: timezoneOffset,
+        };
         void ApiHelper.updateCache(cacheKey, data);
         response.status(ApiHelper.HTTP_OK).send(data);
         return;
@@ -1035,6 +1061,46 @@ export abstract class ApiStatistics implements ApiHelper {
       return { diffs, points };
     } catch (error) {
       return { error: error.message };
+    }
+  }
+
+  /**
+   * Retrieves the top 100 players by glory points for a specific country code
+   * It returns only the entries for ranks 1, 10, 50, and 100 (for special glory milestones)
+   * @param countryCode - The country code to filter players by
+   * @returns A promise that resolves to an array of objects containing the rank and current fame of the top players
+   */
+  private static async getTop100GloryPointsByCountryCode(
+    countryCode: string,
+  ): Promise<Array<{ top: number; point: number }>> {
+    try {
+      const serverName = ApiHelper.ggeTrackerManager.getServerNameFromCode(countryCode);
+      const pool = ApiHelper.ggeTrackerManager.getPgSqlPool(serverName);
+      if (!pool) {
+        throw new Error('Invalid global database connection');
+      }
+      const query = `
+        SELECT
+          current_fame
+        FROM players
+        ORDER BY current_fame DESC
+        LIMIT 100;
+      `;
+      const result: any[] = await new Promise((resolve, reject) => {
+        pool.query(query, (error, results) => {
+          if (error) {
+            reject(new Error(error.message));
+          } else {
+            resolve(results.rows);
+          }
+        });
+      });
+      return result
+        .map((row, index) => ({ top: index + 1, point: row.current_fame }))
+        .filter((entry) => [1, 10, 50, 100].includes(entry.top));
+    } catch (error) {
+      ApiHelper.logError(error, 'getTop100GloryPointsByCountryCode', null);
+      return [];
     }
   }
 }

@@ -66,7 +66,7 @@
       </div>
       <div class="container-fluid mt-3" style="margin-bottom: 70px;" *ngIf="playerId && isBrowser">
         <div class="row g-3 mb-3 mt-1">
-          <div class="col-12 col-md">
+          <div class="col-6 col-md-4 col-xl">
             <div class="stat-card text-center">
               <div class="stat-icon">
                 <img src="/assets/pp3.png" [alt]="'Points de puissance' | translate">
@@ -76,7 +76,7 @@
                 formatNumber }}</div>
             </div>
           </div>
-          <div class="col-12 col-md">
+          <div class="col-6 col-md-4 col-xl">
             <div class="stat-card text-center">
               <div class="stat-icon">
                 <img src="/assets/honor2.png" [alt]="'Honneur' | translate">
@@ -85,7 +85,7 @@
               <div class="stat-value" *ngIf="stats; else spinnerRankignStats">{{ animatedStats['honor'] }}</div>
             </div>
           </div>
-          <div class="col-12 col-md">
+          <div class="col-6 col-md-4 col-xl">
             <div class="stat-card text-center">
               <div class="stat-icon">
                 <img src="/assets/ranking.png" [alt]="'Classement' | translate">
@@ -95,7 +95,7 @@
                 formatNumber }}</div>
             </div>
           </div>
-          <div class="col-12 col-md">
+          <div class="col-6 col-md-4 col-xl">
             <div class="stat-card text-center">
               <div class="stat-icon">
                 <img src="/assets/ranking.png" [alt]="'Classement mondial' | translate">
@@ -105,7 +105,7 @@
                 formatNumber }}</div>
             </div>
           </div>
-          <div class="col-12 col-md">
+          <div class="col-6 col-md-4 col-xl">
             <div class="stat-card text-center">
               <div class="stat-icon">
                 <img src="/assets/lvl.png" [alt]="'Niveau' | translate">
@@ -115,7 +115,7 @@
                 level }}</div>
             </div>
           </div>
-          <div class="col-12 col-md">
+          <div class="col-6 col-md-4 col-xl">
             <div class="stat-card text-center" data-bs-toggle="modal" data-bs-target="#patriarchModal">
               <div class="stat-icon">
                 <img src="/assets/list-item.png" [alt]="'Nombre de chateaux' | translate">
@@ -128,7 +128,7 @@
         </div>
 
         <div class="tabs-container">
-          <button class="tab-button" *ngFor="let tab of tabs" (click)="currentTab = tab.key"
+          <button class="tab-button" *ngFor="let tab of tabs" (click)="updateTab(tab.key)"
             [ngClass]="{'active': currentTab === tab.key}">
             <img *ngIf="tab.assetIcon" [src]="'/assets/' + tab.assetIcon" width="24" height="24"
               [alt]="tab.label | translate">
@@ -259,123 +259,151 @@
         </div>
 
         <div class="tab-content" *ngIf="currentTab === 'glory' && currentPlayerTitle">
-          <div class="fame-dashboard">
-  <div class="dashboard-header-glass mb-4 p-1">
-    <div class="row g-0 align-items-stretch">
+          <div class="tab-content" *ngIf="currentTab === 'glory' && currentPlayerTitle">
+            <div class="fame-dashboard-modern">
+              <div class="fame-hero-card mb-4">
+                <div class="row g-0">
+                  <div class="col-lg-7 p-4 position-relative z-1">
+                    <div class="d-flex align-items-center mb-4">
+                      <div class="fame-emblem-wrapper me-4">
+                        <svg class="progress-ring position-absolute" width="80" height="80">
+                          <circle class="progress-ring__circle" stroke="white" stroke-width="3" fill="transparent"
+                            [ngStyle]="{ 'stroke-dashoffset': fameProgressStrokeOffset + 'px' }" r="36" cx="40"
+                            cy="40" />
+                        </svg>
+                        <img src="/assets/glory.png" alt="Glory" class="fame-icon-lg">
+                      </div>
+                      <div>
+                        <div class="text-uppercase text-gold-50 fs-7 ls-1 fw-bold mb-1">{{ 'Classement' | translate }}
+                        </div>
+                        <h1 class="display-6 fw-black text-white text-uppercase mb-0 text-shadow-glow">
+                          {{ (currentTopXFameTitle ? (currentI18nTitleKey + currentTopXFameTitle.titleID) :
+                          (currentI18nTitleKey + currentPlayerTitle.titleID)) | translate }}
+                        </h1>
+                        <div class="d-flex align-items-center mt-2 gap-3">
+                          <span class="badge bg-dark-glass border-gold text-gold">
+                            #{{ stats?.playerCurrentFameRank ?? 0 | formatNumber }}
+                          </span>
+                          <span class="text-white-50 fs-7">
+                            <i class="bi bi-clock me-1"></i> {{ stats?.updatedAt | date:'shortTime' }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
 
-      <div class="col-lg-8 border-end-glass">
-        <div class="p-4 h-100 position-relative overflow-hidden">
-          <div class="d-flex align-items-start justify-content-between mb-4">
-            <div class="d-flex align-items-center">
-              <div class="fame-avatar-aura me-3">
-                <img src="/assets/glory.png" alt="Glory" class="fame-icon">
-                <div class="aura-spinner"></div>
+                    <div class="fame-progress-wrapper mt-auto">
+                      <div class="d-flex justify-content-between text-white mb-2 fs-6 fw-bold">
+                        <span>
+                          {{ stats?.currentFame ?? 0 | formatNumber }}
+                          <span class="fw-normal">{{ 'Points de gloire' | translate }}</span>
+                        </span>
+                        <span>
+                          {{ (nextFameTitle?.threshold ?? 0) | formatNumber }}
+                          <span class="fw-normal" *ngIf="nextFameTitle">
+                            ({{ (nextFameTitle ? (currentI18nTitleKey + nextFameTitle.titleID) : '-') | translate }})
+                          </span>
+                        </span>
+                      </div>
+                      <div class="progress-track">
+                        <div class="progress-fill" [style.width.%]="fameProgressPercentage"></div>
+                        <div class="decay-marker"
+                          [style.left.%]="((((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) / (nextFameTitle?.threshold ?? 1)) * 100"
+                          [style.width.%]="fameProgressPercentage-(((((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) / (nextFameTitle?.threshold ?? 1)) * 100)">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-lg-5 p-4 bg-gradient-dark border-start-glass d-flex flex-column justify-content-center">
+                    <div class="decay-box">
+                      <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-uppercase text-danger-light fs-7 fw-bold ls-1">
+                          {{ 'Prévision journalière' | translate }}
+                        </span>
+                        <span class="badge bg-danger-subtle text-danger">{{ 'Perte de gloire' | translate: {'0':
+                          currentPlayerTitle.decay} }}</span>
+                      </div>
+                      <div class="decay-stat-row mb-2">
+                        <span class="label text-white-50">{{ 'Perte estimée' | translate }}</span>
+                        <span class="value text-danger fw-bold">-{{ ((stats?.currentFame ?? 0) *
+                          (currentPlayerTitle.decay ?? 0)) / 100 | formatNumber }}</span>
+                      </div>
+                      <div class="decay-stat-row big-stat">
+                        <span class="label text-white-50">{{ 'Points de gloire' | translate }}</span>
+                        <span class="value text-white">
+                          {{ ((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100 | formatNumber }}
+                        </span>
+                      </div>
+                      <div class="alert-mini mt-3" [ngClass]="{
+                        'alert-safe': (((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) >= (currentPlayerTitle.threshold ?? 0),
+                        'alert-risk': (((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) < (currentPlayerTitle.threshold ?? 0)
+                      }">
+                        <span
+                          *ngIf="(((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) >= (currentPlayerTitle.threshold ?? 0)">
+                          <i class="bi bi-shield-check me-2"></i> {{ 'Titre sécurisé' | translate }}
+                        </span>
+                        <span
+                          *ngIf="(((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) < (currentPlayerTitle.threshold ?? 0)">
+                          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                          {{ 'Attention : Risque de rétrogradation' | translate }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div>
-                <h1 class="h4 mb-1 fw-black text-white text-uppercase ls-2">
-                  {{ (currentTopXFameTitle ? (currentI18nTitleKey + currentTopXFameTitle.titleID) : (currentI18nTitleKey + currentPlayerTitle.titleID)) | translate }}
-                </h1>
-                <div class="status-indicator-row">
-                  <span class="status-pill-minimal me-3">
-                    <app-icon name="Clock" class="me-1 d-inline-block" width="12" height="12"></app-icon>
-                    {{ 'Mise à jour' | translate }} {{ stats?.updatedAt | date:'HH:mm' }}
-                  </span>
-                  <hr>
-                  <span class="status-pill-minimal">
-                    <app-icon name="Globe" class="me-1 d-inline-block" width="12" height="12"></app-icon>
-                    {{ 'Serveur' | translate }} {{ stats?.server }}
-                  </span>
+
+              <div class="section-header mb-3">
+                <h3 class="h5 text-white fw-bold"><span class="text-gold">★</span> {{ 'Titres de gloire' | translate }}
+                </h3>
+              </div>
+
+              <div class="row g-3 mb-5">
+                <div *ngFor="let fameTitle of fameTitlesTopX" class="col-lg-3 col-sm-6 col-12">
+                  <div class="prestige-card"
+                    [class.active]="(stats?.playerCurrentFameRank ?? 0) <= (fameTitle.topX ?? -1)">
+                    <div class="prestige-rank">#{{ fameTitle.topX }}</div>
+                    <div class="prestige-name">{{ currentI18nTitleKey + fameTitle.titleID | translate }}</div>
+                    <div class="prestige-req">{{ fameTitle.threshold ?? -1 | formatNumber }} pts</div>
+                    <div class="glow-effect"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="fame-ladder">
+                <div *ngFor="let fameTitle of fameTitles" class="ladder-item" [ngClass]="{
+                    'status-secured': (((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) >= (fameTitle.threshold ?? 0),
+                    'status-danger': (stats?.currentFame ?? 0) >= (fameTitle.threshold ?? 0) && (((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) < (fameTitle.threshold ?? 0),
+                    'status-locked': (stats?.currentFame ?? 0) < (fameTitle.threshold ?? -1)
+                  }">
+                  <div class="status-strip"></div>
+
+                  <div class="ladder-content">
+                    <div class="ladder-info">
+                      <span class="ladder-threshold">{{ (fameTitle?.threshold ?? -1) | formatNumber }}</span>
+                      <span class="ladder-name">{{ currentI18nTitleKey + fameTitle.titleID | translate }}</span>
+                    </div>
+
+                    <div class="ladder-state-icon">
+                      <ng-container *ngIf="(stats?.currentFame ?? 0) < (fameTitle.threshold ?? -1)">
+                        <span class="icon-lock"><i class="bi bi-lock-fill"></i></span>
+                      </ng-container>
+
+                      <ng-container *ngIf="(stats?.currentFame ?? 0) >= (fameTitle.threshold ?? 0)">
+                        <span class="icon-check"
+                          *ngIf="(((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) >= (fameTitle.threshold ?? 0)">
+                          <i class="bi bi-check-circle-fill"></i>
+                        </span>
+                        <span class="icon-warning"
+                          *ngIf="(((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) < (fameTitle.threshold ?? 0)">
+                          <i class="bi bi-exclamation-triangle-fill"></i>
+                        </span>
+                      </ng-container>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-            <div class="rank-display">
-              <div class="rank-label">{{ 'CLASSEMENT' | translate }}</div>
-              <div class="rank-number">#{{ stats?.playerCurrentFameRank ?? 0 | formatNumber }}</div>
-            </div>
           </div>
-
-          <div class="fame-meter-container">
-            <div class="d-flex justify-content-between mb-2">
-              <span class="fame-count text-white fw-bold">{{ stats?.currentFame ?? 0 | formatNumber }} <small class="fw-normal opacity-50">Pts</small></span>
-              <span class="fame-next-step text-white-50 small">{{ 'Vers titre suivant' | translate }}</span>
-            </div>
-            <div class="fame-progress-track">
-              <div class="fame-progress-fill" [style.width.%]="75"></div> <div class="fame-glow"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-lg-4">
-        <div class="p-4 h-100 bg-white-05">
-          <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3 class="h6 mb-0 fw-bold text-white text-uppercase ls-1">
-              <app-icon name="TrendingDown" class="me-2 text-danger d-inline-block" width="16" height="16"></app-icon>
-              {{ 'Impact Déclin' | translate }}
-            </h3>
-            <span class="decay-percent">-{{ currentPlayerTitle.decay }}%</span>
-          </div>
-
-          <div class="decay-projection-card">
-            <div class="label">{{ 'PRÉVISION MINUIT' | translate }}</div>
-            <div class="value">{{ ((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100 | formatNumber }}</div>
-            <div class="loss-calc">
-              <app-icon name="ArrowDown01" class="me-1" width="12" height="12"></app-icon>
-              -{{ ((stats?.currentFame ?? 0) * (currentPlayerTitle.decay ?? 0)) / 100 | formatNumber }}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="row g-4">
-    <div class="col-12">
-      <h3 class="section-title">
-        <app-icon name="Trophy" class="me-2 text-warning" width="18" height="18"></app-icon>
-        {{ 'Titres de l\'Élite' | translate }}
-      </h3>
-      <div class="special-titles-row">
-        <div *ngFor="let fameTitle of fameTitlesTopX"
-             class="special-card-mini"
-             [class.attained]="(stats?.playerCurrentFameRank ?? 0) <= (fameTitle.topX ?? -1)">
-          <div class="card-inner">
-            <span class="title-id">Top {{ fameTitle.topX }}</span>
-            <span class="title-name">{{ currentI18nTitleKey + fameTitle.titleID | translate }}</span>
-            <div class="attained-check" *ngIf="(stats?.playerCurrentFameRank ?? 0) <= (fameTitle.topX ?? -1)">
-              <app-icon name="Zap" width="14" height="14"></app-icon>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-12">
-      <h3 class="section-title">
-        <app-icon name="ArrowUpRight" class="me-2 text-success" width="18" height="18"></app-icon>
-        {{ 'Paliers de Progression' | translate }}
-      </h3>
-      <div class="titles-smart-grid">
-        <div *ngFor="let fameTitle of fameTitles"
-             class="grid-item-fame"
-             [ngClass]="{
-               'secured': (((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) >= (fameTitle.threshold ?? 0),
-               'danger': (stats?.currentFame ?? 0) >= (fameTitle.threshold ?? 0) && (((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) < (fameTitle.threshold ?? 0),
-               'locked': (stats?.currentFame ?? 0) < (fameTitle.threshold ?? -1)
-             }">
-          <div class="grid-item-inner">
-            <div class="threshold-tag">{{ (fameTitle?.threshold ?? -1) | formatNumber }}</div>
-            <div class="title-name-sm">{{ currentI18nTitleKey + fameTitle.titleID | translate }}</div>
-
-            <div class="status-overlay" *ngIf="(stats?.currentFame ?? 0) >= (fameTitle.threshold ?? 0) && (((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) < (fameTitle.threshold ?? 0)">
-              <app-icon name="TriangleAlert" width="14" height="14"></app-icon>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
         </div>
       </div>
     </div>
