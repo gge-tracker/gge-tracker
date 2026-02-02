@@ -20,7 +20,10 @@ class GgeEmpire4KingdomsTcp extends BaseSocket implements GgeEmpireSocketImpl {
   }
 
   public async getHostAndPort(): Promise<{ host: string; port: number }> {
-    const [hostPart, portPart] = this.url.replace('tcp://', '').split(':');
+    let [hostPart, portPart] = this.url.replace('tcp://', '').split(':');
+    if (!portPart) {
+      portPart = '443';
+    }
     return { host: hostPart, port: Number(portPart) };
   }
 
@@ -91,11 +94,11 @@ class GgeEmpire4KingdomsTcp extends BaseSocket implements GgeEmpireSocketImpl {
   }
 
   private handleTcpData(data: Buffer): void {
-    const messages = data
-      .toString()
-      .split('\0')
-      .filter((message) => message.trim() !== '');
-    for (const message of messages) {
+    let parsedData = data.toString();
+    let nullIndex: number;
+    while ((nullIndex = parsedData.indexOf('\u0000')) !== -1) {
+      const message = parsedData.slice(0, Math.max(0, nullIndex));
+      parsedData = parsedData.slice(Math.max(0, nullIndex + 1));
       void this._onMessage(message);
     }
   }
