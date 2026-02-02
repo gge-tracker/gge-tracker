@@ -183,6 +183,18 @@ class BaseSocket extends Log {
     }
   }
 
+  public async _onMessage(message: any): Promise<void> {
+    message = message.toString();
+    const response = await this.parseResponse(message);
+    this._processResponse(response);
+    if (this.onMessage) this.onMessage(message);
+  }
+
+  protected send(data: string): void {
+    if (this.onSend) this.onSend(data);
+    this.ws.send(data);
+  }
+
   private async ping(): Promise<void> {
     if (!this.connected.isSet) return;
     this.sendRawCommand('pin', ['<RoundHouseKick>']);
@@ -194,13 +206,6 @@ class BaseSocket extends Log {
     if (this.onOpen) this.onOpen(this.ws);
   }
 
-  private async _onMessage(message: any): Promise<void> {
-    message = message.toString();
-    const response = await this.parseResponse(message);
-    this._processResponse(response);
-    if (this.onMessage) this.onMessage(message);
-  }
-
   private _onError(error: unknown): void {
     if (this.onError) this.onError(error);
   }
@@ -209,11 +214,6 @@ class BaseSocket extends Log {
     this.opened.clear();
     this.closed.set();
     if (this.onClose) this.onClose(code, reason);
-  }
-
-  private send(data: string): void {
-    if (this.onSend) this.onSend(data);
-    this.ws.send(data);
   }
 
   private _sendCommandMessage(data: string[]): void {
