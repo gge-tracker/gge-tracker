@@ -1,7 +1,7 @@
 import { XMLParser } from 'fast-xml-parser';
 import fs from 'node:fs';
 import { GgeEmpireSocket } from './empire-socket.js';
-import { GgeEmpire4KingdomsSocket } from './empire4kingdoms-socket.js';
+import { GgeEmpire4KingdomsTcp } from './empire4kingdoms-tcp.js';
 
 enum GgeXmlServerDescriptionUrls {
   E4K = 'https://gge-tracker.github.io/gge-cdn-mirror-files/e4k.xml',
@@ -35,9 +35,9 @@ export abstract class SocketService {
   public static async getGenericSockets(
     url: string,
     protocol: string,
-    socketClass: typeof GgeEmpireSocket | typeof GgeEmpire4KingdomsSocket,
-  ): Promise<{ [key: string]: GgeEmpireSocket | GgeEmpire4KingdomsSocket }> {
-    const sockets: { [key: string]: GgeEmpireSocket | GgeEmpire4KingdomsSocket } = {};
+    socketClass: typeof GgeEmpireSocket | typeof GgeEmpire4KingdomsTcp,
+  ): Promise<{ [key: string]: GgeEmpireSocket | GgeEmpire4KingdomsTcp }> {
+    const sockets: { [key: string]: GgeEmpireSocket | GgeEmpire4KingdomsTcp } = {};
     const response = await fetch(url, { signal: AbortSignal.timeout(60 * 1000) });
     const data = new XMLParser().parse(await response.text());
     if (!Array.isArray(data.network.instances.instance)) {
@@ -61,7 +61,7 @@ export abstract class SocketService {
     return sockets;
   }
 
-  public static async getSockets(): Promise<{ [key: string]: GgeEmpireSocket | GgeEmpire4KingdomsSocket }> {
+  public static async getSockets(): Promise<{ [key: string]: GgeEmpireSocket | GgeEmpire4KingdomsTcp }> {
     return {
       ...((await SocketService.getGenericSockets(GgeXmlServerDescriptionUrls.EP, 'wss', GgeEmpireSocket)) as {
         [key: string]: GgeEmpireSocket;
@@ -69,19 +69,19 @@ export abstract class SocketService {
       ...((await SocketService.getGenericSockets(GgeXmlServerDescriptionUrls.SP, 'wss', GgeEmpireSocket)) as {
         [key: string]: GgeEmpireSocket;
       }),
-      ...((await SocketService.getGenericSockets(GgeXmlServerDescriptionUrls.E4K, 'ws', GgeEmpire4KingdomsSocket)) as {
-        [key: string]: GgeEmpire4KingdomsSocket;
+      ...((await SocketService.getGenericSockets(GgeXmlServerDescriptionUrls.E4K, 'tcp', GgeEmpire4KingdomsTcp)) as {
+        [key: string]: GgeEmpire4KingdomsTcp;
       }),
     };
   }
 
-  public static connectSockets(sockets: { [key: string]: GgeEmpireSocket | GgeEmpire4KingdomsSocket }): void {
+  public static connectSockets(sockets: { [key: string]: GgeEmpireSocket | GgeEmpire4KingdomsTcp }): void {
     for (const socket of Object.values(sockets)) {
       void socket.connect();
     }
   }
 
-  public static restartSockets(sockets: { [key: string]: GgeEmpireSocket | GgeEmpire4KingdomsSocket }): void {
+  public static restartSockets(sockets: { [key: string]: GgeEmpireSocket | GgeEmpire4KingdomsTcp }): void {
     for (const socket of Object.values(sockets)) {
       void socket.restart();
     }
