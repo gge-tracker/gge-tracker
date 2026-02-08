@@ -850,7 +850,7 @@ export class GenericFetchAndSaveBackend {
       const entriesByPage = initialResponse.data.content?.L?.length || 0;
       const increment = Math.ceil(Number(entriesByPage) / 2);
       let hasMore = true;
-      let maxItemLimit = 50000;
+      let maxItemLimit = initialResponse.data.content?.LR || 0;
       let item = increment;
       let playerEntries = new Map<
         number,
@@ -867,7 +867,7 @@ export class GenericFetchAndSaveBackend {
           castlePositionY: number;
         }
       >();
-      while (hasMore && item < maxItemLimit) {
+      while (hasMore && item < maxItemLimit + increment) {
         let response: AxiosResponse<any>;
         let tryCount = 0;
         do {

@@ -183,8 +183,10 @@ class BaseSocket extends Log {
     }
   }
 
-  public async _onMessage(message: any): Promise<void> {
-    message = message.toString();
+  public async _onMessage(message: any, needToStringOption = true): Promise<void> {
+    if (needToStringOption) {
+      message = message.toString();
+    }
     const response = await this.parseResponse(message);
     this._processResponse(response);
     if (this.onMessage) this.onMessage(message);

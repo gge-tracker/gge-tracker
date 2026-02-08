@@ -99,7 +99,7 @@ class GgeEmpire4KingdomsTcp extends BaseSocket implements GgeEmpireSocketImpl {
     while ((nullIndex = parsedData.indexOf('\u0000')) !== -1) {
       const message = parsedData.slice(0, Math.max(0, nullIndex));
       parsedData = parsedData.slice(Math.max(0, nullIndex + 1));
-      void this._onMessage(message);
+      void this._onMessage(message, false);
     }
   }
 
