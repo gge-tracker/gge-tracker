@@ -1,4 +1,13 @@
-import { DatePipe, isPlatformBrowser, KeyValuePipe, NgClass, NgFor, NgIf, NgTemplateOutlet } from '@angular/common';
+import {
+  DatePipe,
+  isPlatformBrowser,
+  KeyValuePipe,
+  NgClass,
+  NgFor,
+  NgIf,
+  NgTemplateOutlet,
+  NgStyle,
+} from '@angular/common';
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -33,6 +42,7 @@ import { ChartComponent } from 'ng-apexcharts';
     KeyValuePipe,
     TranslateModule,
     NgTemplateOutlet,
+    NgStyle,
   ],
   templateUrl: './player-stats-card.component.html',
   styleUrl: './player-stats-card.component.css',
@@ -43,6 +53,7 @@ export class PlayerStatsCardComponent implements AfterViewInit, OnInit {
   public isBrowser = isPlatformBrowser(this.platformId);
   public isReady = false;
   public title = input.required<string>();
+  public onePlayerOnly = input<boolean>(true);
   public subtitle = input<string>();
   public charts = input.required<Partial<Record<ChartTypes, ChartOptions | null>>>();
   public data = input.required<EventGenericVariation[]>();
@@ -77,6 +88,25 @@ export class PlayerStatsCardComponent implements AfterViewInit, OnInit {
         this.cdr.detectChanges();
       }, 200);
     }
+  }
+
+  public getPlayerColor(entry: EventGenericVariation): string {
+    if (entry.point === 0) {
+      return 'gray';
+    }
+    // We randomize color based on player name to have consistent colors for same players
+    let hash = 0;
+    if (!entry.playerName) {
+      return '#000000';
+    }
+    for (let index = 0; index < entry.playerName.length; index++) {
+      const code = entry.playerName.codePointAt(index);
+      if (code) {
+        hash = code + ((hash << 5) - hash);
+      }
+    }
+    const color = Math.floor(Math.abs((Math.sin(hash) * 16_777_215) % 16_777_215)).toString(16);
+    return `#${'000000'.slice(0, Math.max(0, 6 - color.length)) + color}`;
   }
 
   public changeTab(tab: string): void {

@@ -18,9 +18,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import { ArrowBigRightDash, LucideAngularModule } from 'lucide-angular';
 import { PlayerTableContentComponent } from './player-table-content/player-table-content.component';
 import { IconComponent } from '@ggetracker-components/icon/icon.component';
-
-type FilterField = 'honor' | 'loot' | 'level' | 'might' | 'fame' | 'castleCount';
-type BoundType = 'min' | 'max';
+import { BoundType, FilterField, FilterKeyMap } from '@ggetracker-interfaces/filter';
 
 interface FormFilters {
   minHonor: string;
@@ -42,13 +40,6 @@ interface FormFilters {
   inactiveFilter: string;
   playerCastleDistance: string;
 }
-
-type FilterKeyMap = {
-  [K in FilterField]: {
-    min: keyof FormFilters;
-    max: keyof FormFilters;
-  };
-};
 
 @Component({
   selector: 'app-players',
@@ -136,7 +127,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     fame: { min: '', max: '' },
     castleCount: { min: '', max: '' },
   };
-  private readonly FILTER_KEYS: FilterKeyMap = {
+  private readonly FILTER_KEYS: FilterKeyMap<FormFilters> = {
     honor: { min: 'minHonor', max: 'maxHonor' },
     loot: { min: 'minLoot', max: 'maxLoot' },
     level: { min: 'minLevel', max: 'maxLevel' },
@@ -188,28 +179,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     }
   }
 
-  public parseValue(value: string | number): number {
-    if (typeof value === 'number') return value;
-    if (!value) return 0;
-    let string_ = value.replaceAll(/\s+/g, '').replaceAll(',', '').toUpperCase();
-    let multiplier = 1;
-    if (string_.endsWith('B')) {
-      multiplier = 1_000_000_000;
-      string_ = string_.slice(0, -1);
-    } else if (string_.endsWith('M')) {
-      multiplier = 1_000_000;
-      string_ = string_.slice(0, -1);
-    } else if (string_.endsWith('K')) {
-      multiplier = 1000;
-      string_ = string_.slice(0, -1);
-    }
-    const numeric = Number(string_);
-    if (Number.isNaN(numeric)) return 0;
-
-    return numeric * multiplier;
-  }
-
-  public onGenericFocus(type: 'min' | 'max', field: FilterField): void {
+  public onGenericFocus(type: BoundType, field: FilterField): void {
     let targetValue: string | null = null;
     switch (field) {
       case 'honor': {
@@ -247,7 +217,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     const raw = input.value;
     let numeric = raw === '' ? '' : Number(raw.replaceAll(/\s/g, ''));
     if (numeric !== null && Number.isNaN(numeric)) {
-      numeric = this.parseValue(raw);
+      numeric = this.utilitiesService.parseValue(raw);
       if (numeric === 0 && raw !== '0' && raw !== '') {
         this.displayFormValues[field][type] = raw;
         return;
@@ -261,11 +231,8 @@ export class PlayersComponent extends GenericComponent implements OnInit {
   public onGenericBlur(type: BoundType, field: FilterField): void {
     const filterKey = this.FILTER_KEYS[field][type];
     const value = this.formFilters[filterKey];
-    this.displayFormValues[field][type] = value == null || value === '' ? '' : this.formatNumber(Number(value));
-  }
-
-  public formatNumber(value: number): string {
-    return this.formatNumberPipe.transform(value);
+    this.displayFormValues[field][type] =
+      value == null || value === '' ? '' : this.utilitiesService.formatNumber(this.formatNumberPipe, Number(value));
   }
 
   public async nextPage(): Promise<void> {
@@ -509,11 +476,11 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     this.players.forEach((player) => {
       const row = [
         player.rank,
-        this.escapeCsv(player.playerName),
+        this.utilitiesService.escapeCsv(player.playerName),
         Number(player.allianceId),
-        this.escapeCsv(player.allianceName),
+        this.utilitiesService.escapeCsv(player.allianceName),
         `url=/assets/alliance_ranks/${player.allianceRank}.png`,
-        this.constructPlayerLevel(player.level ?? 0, player.legendaryLevel ?? 0),
+        this.utilitiesService.constructPlayerLevel(player.level ?? 0, player.legendaryLevel ?? 0),
         Number(player.mightCurrent),
         Number(player.mightAllTime),
         Number(player.lootCurrent),
@@ -522,7 +489,9 @@ export class PlayersComponent extends GenericComponent implements OnInit {
         Number(player.highestFame),
         Number(player.honor),
         Number(player.maxHonor),
-        player.peaceDisabledAt ? this.escapeCsv(new Date(player.peaceDisabledAt).toLocaleString()) : '',
+        player.peaceDisabledAt
+          ? this.utilitiesService.escapeCsv(new Date(player.peaceDisabledAt).toLocaleString())
+          : '',
         Number(player.distance ?? 0),
       ];
       rows.push(row);
@@ -533,11 +502,6 @@ export class PlayersComponent extends GenericComponent implements OnInit {
       rows,
       `players_${this.apiRestService.serverService.currentServer?.name || 'server'}_page_${this.page}_${new Date().toISOString()}.xlsx`,
     );
-  }
-
-  private escapeCsv(value: string | null | undefined): string {
-    if (value == null) return '';
-    return `"${value.replaceAll('"', '""')}"`;
   }
 
   private addHeaderTableBlock(): void {
@@ -642,13 +606,6 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     }
   }
 
-  private constructPlayerLevel(level: number, legendaryLevel: number): string {
-    if (legendaryLevel >= 70) {
-      return `${level}/${legendaryLevel}`;
-    }
-    return level.toString();
-  }
-
   private structuredPlayersData(players: ApiPlayerSearchResponse[]): void {
     if (this.isBrowser && players.length > 0) {
       this.addStructuredPlayersData(
@@ -657,7 +614,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
           url: `gge-tracker.com/player/${player.player_id}`,
           alliance: player.alliance_name || '',
           might: player.might_current,
-          level: this.constructPlayerLevel(player.level || 0, player.legendary_level || 0),
+          level: this.utilitiesService.constructPlayerLevel(player.level || 0, player.legendary_level || 0),
         })),
       );
     }

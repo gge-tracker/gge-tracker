@@ -45,6 +45,7 @@ import {
   Activity,
   BriefcaseConveyorBelt,
   ChartSpline,
+  Download,
   Earth,
   Flag,
   LucideAngularModule,
@@ -61,6 +62,16 @@ enum ChartTypeHeights {
   LARGE = 650,
 }
 
+interface CardConfig {
+  chartKey: keyof typeof ApiPlayerStatsType;
+  title: string;
+  dataName: string;
+  data: EventGenericVariation[];
+  backgroundColour: string;
+  singleChart?: boolean;
+  backgroundIconImage: string;
+  eventTitleKey: keyof typeof ApiPlayerStatsType;
+}
 @Component({
   selector: 'app-alliance-stats',
   standalone: true,
@@ -90,6 +101,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   public isDistanceIsInLoading = false;
   public page = 1;
   public maxPage?: number;
+  public readonly Download = Download;
   public pageSize = 15;
   public responseTime = 0;
   public playerCount = 0;
@@ -225,18 +237,13 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     player_loot_history: 0,
     player_event_berimond_invasion_history: -1,
   };
-  public readonly statsCardConfigs: {
-    chartKey: keyof typeof ApiPlayerStatsType;
-    title: string;
-    dataName: string;
-    backgroundColour: string;
-    backgroundIconImage: string;
-    eventTitleKey: keyof typeof ApiPlayerStatsType;
-  }[] = [
+  public readonly statsCardConfigs: CardConfig[] = [
     {
       chartKey: 'might',
       title: 'Points de puissance',
       dataName: 'Point de puissance',
+      data: [],
+      singleChart: true,
       backgroundColour: 'rgb(255 230 35)',
       backgroundIconImage: '/assets/banner-pp.png',
       eventTitleKey: 'might',
@@ -245,6 +252,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       chartKey: 'loot',
       title: 'Points de pillage',
       dataName: 'Point de pillage',
+      data: [],
       backgroundColour: '#e7a220',
       backgroundIconImage: '/assets/banner-loot.png',
       eventTitleKey: 'loot',
@@ -253,6 +261,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       chartKey: 'war_realms',
       title: 'Guerre des royaumes',
       dataName: 'Point de guerre des royaumes',
+      data: [],
       backgroundColour: 'rgb(216 182 255)',
       backgroundIconImage: '/assets/banner-realm.png',
       eventTitleKey: 'war_realms',
@@ -261,6 +270,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       chartKey: 'bloodcrow',
       title: 'Corbeaux de sang',
       dataName: 'Point de corbeaux de sang',
+      data: [],
       backgroundColour: 'rgb(216 182 255)',
       backgroundIconImage: '/assets/banner-bloodcrow.png',
       eventTitleKey: 'bloodcrow',
@@ -269,6 +279,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       chartKey: 'berimond_kingdom',
       title: 'Bataille de Berimond',
       dataName: 'Point de Berimond',
+      data: [],
       backgroundColour: '#00aaff',
       backgroundIconImage: '/assets/banner-berimond.png',
       eventTitleKey: 'berimond_kingdom',
@@ -277,6 +288,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       chartKey: 'nomad',
       title: 'Nomades',
       dataName: 'Point de nomades',
+      data: [],
       backgroundColour: 'rgb(255 130 54)',
       backgroundIconImage: '/assets/banner-nomad.png',
       eventTitleKey: 'nomad',
@@ -285,6 +297,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       chartKey: 'samurai',
       title: 'Samouraïs',
       dataName: 'Point de samouraïs',
+      data: [],
       backgroundColour: '#58771db5',
       backgroundIconImage: '/assets/banner-samurai.png',
       eventTitleKey: 'samurai',
@@ -562,11 +575,6 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     const serieChoosen = this.graphPages[graphKey];
     this.graphPages[graphKey] = serieChoosen - 1;
     switch (graphKey) {
-      case ApiPlayerStatsType.might: {
-        this.seriesLabels.might = true;
-        this.initMightHistoryData(this.data);
-        break;
-      }
       case ApiPlayerStatsType.berimond_kingdom: {
         this.seriesLabels.berimond_kingdom = true;
         this.initBerimondKingdomData(this.data);
@@ -612,11 +620,6 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       return;
     this.graphPages[graphKey] = serieChoosen + 1;
     switch (graphKey) {
-      case ApiPlayerStatsType.might: {
-        this.seriesLabels.might = true;
-        this.initMightHistoryData(this.data);
-        break;
-      }
       case ApiPlayerStatsType.berimond_kingdom: {
         this.seriesLabels.berimond_kingdom = true;
         this.initBerimondKingdomData(this.data);
@@ -753,12 +756,58 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         }
       });
     }
-    const nbPlayers = this.players.length;
     this.players = this.players.map((player, index) => {
-      player.rank = this.reverse ? index + 1 : nbPlayers - index;
+      player.rank = index + 1;
       return player;
     });
     this.cdr.detectChanges();
+  }
+
+  public exportData(): void {
+    const headers = [
+      'Rank',
+      'Player Name',
+      'Alliance Rank',
+      'Level',
+      'Current Might',
+      'Highest Might',
+      'Current Loot',
+      'Highest Loot',
+      'Current Glory',
+      'Highest Glory',
+      'Current Honor',
+      'Highest Honor',
+      'Peace Disabled At',
+      'Distance (m)',
+    ];
+    const rows: any[][] = [];
+    this.players.forEach((player) => {
+      const row = [
+        player.rank,
+        this.utilitiesService.escapeCsv(player.playerName),
+        `url=/assets/alliance_ranks/${player.allianceRank}.png`,
+        this.utilitiesService.constructPlayerLevel(player.level ?? 0, player.legendaryLevel ?? 0),
+        Number(player.mightCurrent),
+        Number(player.mightAllTime),
+        Number(player.lootCurrent),
+        Number(player.lootAllTime),
+        Number(player.currentFame),
+        Number(player.highestFame),
+        Number(player.honor),
+        Number(player.maxHonor),
+        player.peaceDisabledAt
+          ? this.utilitiesService.escapeCsv(new Date(player.peaceDisabledAt).toLocaleString())
+          : '',
+        Number(player.distance ?? 0),
+      ];
+      rows.push(row);
+    });
+    void this.utilitiesService.exportDataXlsx(
+      'Players',
+      headers,
+      rows,
+      `alliance_players_${this.allianceName.replaceAll(' ', '_')}_${new Date().toISOString()}.xlsx`,
+    );
   }
 
   /**
@@ -1229,6 +1278,10 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
 
   private initMightHistoryData(data: ApiPlayerStatsForAlliance): void {
     this.initGenericEventData('might', ApiPlayerStatsType.might, data, this.graphPages.player_might_history);
+    const config = this.statsCardConfigs.find((config) => config.chartKey === 'might');
+    if (config) {
+      this.initStatsCardData(config, data, ApiPlayerStatsType.might);
+    }
   }
 
   private initBerimondKingdomData(data: ApiPlayerStatsForAlliance): void {
@@ -1238,6 +1291,10 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       data,
       this.graphPages.player_event_berimond_kingdom_history,
     );
+    const config = this.statsCardConfigs.find((config) => config.chartKey === 'berimond_kingdom');
+    if (config) {
+      this.initStatsCardData(config, data, ApiPlayerStatsType.berimond_kingdom);
+    }
   }
 
   private initWarRealmsData(data: ApiPlayerStatsForAlliance): void {
@@ -1247,6 +1304,10 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       data,
       this.graphPages.player_event_war_realms_history,
     );
+    const config = this.statsCardConfigs.find((config) => config.chartKey === 'war_realms');
+    if (config) {
+      this.initStatsCardData(config, data, ApiPlayerStatsType.war_realms);
+    }
   }
 
   private initBloodcrowData(data: ApiPlayerStatsForAlliance): void {
@@ -1256,10 +1317,18 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       data,
       this.graphPages.player_event_bloodcrow_history,
     );
+    const config = this.statsCardConfigs.find((config) => config.chartKey === 'bloodcrow');
+    if (config) {
+      this.initStatsCardData(config, data, ApiPlayerStatsType.bloodcrow);
+    }
   }
 
   private initNomadData(data: ApiPlayerStatsForAlliance): void {
     this.initGenericEventData('nomad', ApiPlayerStatsType.nomad, data, this.graphPages.player_event_nomad_history);
+    const config = this.statsCardConfigs.find((config) => config.chartKey === 'nomad');
+    if (config) {
+      this.initStatsCardData(config, data, ApiPlayerStatsType.nomad);
+    }
   }
 
   private initSamuraiData(data: ApiPlayerStatsForAlliance): void {
@@ -1269,20 +1338,24 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       data,
       this.graphPages.player_event_samurai_history,
     );
+    const config = this.statsCardConfigs.find((config) => config.chartKey === 'samurai');
+    if (config) {
+      this.initStatsCardData(config, data, ApiPlayerStatsType.samurai);
+    }
   }
 
   private initLootHistoryData(data: ApiPlayerStatsForAlliance): void {
-    const timezoneOffet: number | null = this.timezoneOffset;
+    const timezoneOffset: number | null = this.timezoneOffset;
     const serieChoosen = this.graphPages.player_loot_history;
     const playerMap = new Map<number, { playerName: string; segments: [number, number][] }>();
     const now = new Date();
     const currentMonday = new Date(now);
     currentMonday.setUTCDate(currentMonday.getUTCDate() - ((currentMonday.getUTCDay() + 6) % 7));
-    currentMonday.setUTCHours(1 + (timezoneOffet ?? 0), 0, 0, 0);
+    currentMonday.setUTCHours(1 + (timezoneOffset ?? 0), 0, 0, 0);
     const startOfWeek = new Date(currentMonday);
     const endOfWeek = new Date(currentMonday);
     endOfWeek.setUTCDate(endOfWeek.getUTCDate() + 7);
-    endOfWeek.setUTCHours(timezoneOffet ?? 0, 0, 0, 0);
+    endOfWeek.setUTCHours(timezoneOffset ?? 0, 0, 0, 0);
     startOfWeek.setUTCDate(startOfWeek.getUTCDate() - serieChoosen * 7);
     endOfWeek.setUTCDate(endOfWeek.getUTCDate() - serieChoosen * 7);
     const weekHours = this.generateWeekHours(startOfWeek, endOfWeek);
@@ -1332,7 +1405,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         return [hourTimestamp, score];
       });
       for (let index = 1; index < alignedData.length; index++) {
-        const [currentTimestamp, currentScore] = alignedData[index];
+        const [, currentScore] = alignedData[index];
         const [, previousScore] = alignedData[index - 1];
         if (currentScore === 0 && previousScore !== null && previousScore > currentScore) {
           const hasFutureHigherPoint = alignedData.slice(index + 1).some(([, futureScore]) => {
@@ -1409,6 +1482,70 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     this.initChartOption('loot', selectedSegmentsMapped, filledColorsMapped);
     this.constructParticipationRateChart('loot', selectedSegmentsMapped);
     this.constructRadarChart('loot', selectedSegmentsMapped);
+    const config = this.statsCardConfigs.find((config) => config.chartKey === 'loot');
+    if (config) {
+      this.initStatsCardData(config, selectedSegmentsMapped);
+    }
+  }
+
+  private formatPlayerNameForStatsCard(name: string): string {
+    if (name.endsWith(' 💤')) {
+      return name.slice(0, -2);
+    } else {
+      const regex = /\s\(([\d,.]+[A-Za-z]{0,1})\)$/;
+      const match = name.match(regex);
+      if (match) {
+        return name.replace(regex, '');
+      }
+      return name;
+    }
+  }
+
+  private initStatsCardData(
+    config: CardConfig,
+    data: ApiPlayerStatsForAlliance | { name: string; data: [number, number | null][]; lastValue: number }[],
+    eventKey?: ApiPlayerStatsType,
+  ): void {
+    let statsCardData: {
+      playerName: string;
+      point: number;
+      date: string;
+      variation: number;
+    }[] = [];
+
+    if (Array.isArray(data)) {
+      statsCardData = data.map((entry) => ({
+        playerName: this.formatPlayerNameForStatsCard(entry.name),
+        point: entry.lastValue,
+        date: '',
+        variation: 0,
+      }));
+    } else if (eventKey) {
+      const eventData = data[eventKey];
+      if (!eventData) return;
+      const lastRecordByPlayer = new Map<string, { point: number; date: string }>();
+      for (const record of eventData) {
+        const playerName = this.getPlayerName(record.player_id.toString());
+        const existing = lastRecordByPlayer.get(playerName);
+        if (!existing || new Date(record.date).getTime() > new Date(existing.date).getTime()) {
+          lastRecordByPlayer.set(playerName, {
+            point: record.point,
+            date: record.date,
+          });
+        }
+      }
+      statsCardData = [...lastRecordByPlayer.entries()].map(([playerName, { point, date }]) => ({
+        playerName,
+        point,
+        date,
+        variation: 0,
+      }));
+      statsCardData.sort((a, b) => b.point - a.point);
+    }
+    const configIndex = this.statsCardConfigs.findIndex((c) => c.chartKey === config.chartKey);
+    if (configIndex !== -1) {
+      this.statsCardConfigs[configIndex].data = statsCardData;
+    }
   }
 
   private getPlayerName(playerId: string): string {

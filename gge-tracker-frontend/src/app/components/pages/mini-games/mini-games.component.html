@@ -1,0 +1,181 @@
+<div class="gge-tracker-game-wrapper" *ngIf="!isInLoading && dailyTarget">
+
+  <div class="bg-glow"></div>
+
+  <div class="game-container container-sm">
+
+    <header class="game-header text-center mb-4">
+      <div class="badge-server mb-2">{{ dailyTarget.server }}</div>
+      <h1 class="game-title">Find the Player</h1>
+
+      <div class="progress-container mt-3" *ngIf="!isWin && !isLose">
+        <div class="d-flex justify-content-between text-white small mb-1">
+          <span>Tentatives</span>
+          <span *ngIf="maxAttempts !== Infinity">{{ remainingTries }} restants</span>
+          <span *ngIf="maxAttempts === Infinity">
+            <i class="fas fa-infinity"></i> {{ 'restants' | translate }}</span>
+        </div>
+        <div class="progress" style="height: 6px;">
+          <div class="progress-bar bg-gradient-primary" role="progressbar"
+            [style.width.%]="((maxAttempts - remainingTries) / maxAttempts) * 100"></div>
+        </div>
+      </div>
+
+      <div class="status-message mt-3" *ngIf="isWin">
+        <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill">
+          <i class="bi bi-trophy-fill me-2"></i>{{ 'Victoire !' | translate }}
+        </span>
+      </div>
+      <div class="status-message mt-3" *ngIf="isLose">
+        <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 rounded-pill">
+          <i class="bi bi-x-circle-fill me-2"></i>{{ 'Perdu' | translate }}
+        </span>
+      </div>
+    </header>
+
+    <div class="input-area card glass-panel mb-4" *ngIf="!isWin && !isLose">
+      <div class="card-body p-2">
+        <form class="guess-form d-flex gap-2" (ngSubmit)="submitGuess()">
+          <div class="input-group input-group-lg custom-input-group">
+            <span class="input-group-text bg-transparent border-0 search-icon">
+              <i class="fas fa-search"></i>
+            </span>
+            <input type="text" class="form-control bg-transparent border-0 text-white" [(ngModel)]="search" name="guess"
+              (input)="autoCompletePlayerNames($event)" [placeholder]="'Rechercher un joueur' | translate"
+              autocomplete="off" />
+          </div>
+          <button type="submit" class="btn btn-action" [disabled]="isSubmitting || !search || !canGuess()">
+            <i class="fas fa-arrow-right"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+    <div class="autocomplete-suggestions" *ngIf="autoCompleteSuggestions.length > 0">
+      <div class="suggestion-item" *ngFor="let suggestion of autoCompleteSuggestions"
+        (click)="search = suggestion; autoCompleteSuggestions = []">
+        {{ suggestion }}
+      </div>
+    </div>
+
+    <div class="result-card glass-panel win-mode p-4 text-center mb-4" *ngIf="isWin">
+      <h2 class="h3 fw-bold text-white">Joueur trouvé !</h2>
+      <p class="text-white-50">Le joueur était bien <strong>{{ guesses[0].playerName }}</strong>.</p>
+      <div class="stat-highlight my-3">
+        <span class="display-4 fw-bold text-gradient-gold">{{ guesses.length }}</span>
+        <span class="d-block text-uppercase text-xs tracking-wider">Essais</span>
+      </div>
+      <button class="btn btn-light w-100 fw-bold rounded-pill py-3 hover-scale" (click)="copyToClipboard()">
+        <i class="fas fa-clipboard me-2"></i>
+        {{ 'Partager le résultat' | translate }}
+      </button>
+    </div>
+
+    <div class="result-card glass-panel lose-mode p-4 text-center mb-4" *ngIf="!isWin && guesses.length >= maxAttempts">
+      <div class="skull-icon mb-2">💀</div>
+      <h2 class="h4 text-white">{{ 'Game Over' | translate }}</h2>
+      <p class="text-white-50">
+        <a href="https://gge-tracker.com/player/{{ dailyTarget.player_id }}" target="_blank"
+          class="text-decoration-none text-gradient-primary">
+          {{ 'Voir le profil du joueur' | translate }}
+        </a>
+        <button class="btn btn-outline-light ms-3 rounded-pill py-1" (click)="setUnlimitedTries()">
+          <i class="fas fa-redo-alt me-1"></i>
+          {{ 'Continuer à jouer' | translate }}
+        </button>
+      </p>
+      <button class="btn btn-outline-light w-100 rounded-pill py-2 mt-3" (click)="copyToClipboard()">
+        <i class="fas fa-clipboard me-2"></i>
+        {{ 'Partager le résultat' | translate }}
+      </button>
+    </div>
+
+    <div class="mini-game-container" *ngIf="!isInLoading && dailyTarget">
+
+      <div class="guesses-container">
+        <div class="guess-card glass-panel" *ngFor="let guess of guesses; let i = index" [class.latest]="i === 0">
+
+          <div class="guess-header">
+            <div class="player-info">
+              <span class="index-badge">#{{ guesses.length - i }}</span>
+              <strong class="player-name">{{ guess.playerName }}</strong>
+            </div>
+
+            <div class="distance-badge">
+              <span class="direction-emoji">{{ directionEmojiMap[guess.direction!] }}</span>
+              <span>{{ guess.distance | number:'1.0-0' }}m</span>
+              <i class="fa-solid fa-compass"
+                [style.transform]="'rotate(' + getCompassRotation(guess.direction!) + 'deg)'"></i>
+            </div>
+          </div>
+
+          <div class="stats-grid">
+
+            <div class="stat-box rank-box" [ngClass]="getDirectionClass(guess.allianceRank.direction!)">
+              <span class="stat-label">{{ 'Rang' | translate }}</span>
+              <div class="stat-content">
+                <div class="rank-img-container">
+                  <img [src]="'assets/alliance_ranks/' + guess.allianceRank.guess + '.png'" alt="Rank" class="rank-img">
+                </div>
+                <div class="indicator-icon">
+                  <i [class]="getArrowIcon(guess.allianceRank.direction!)"></i>
+                </div>
+              </div>
+            </div>
+
+            <div class="stat-box" [ngClass]="getDirectionClass(guess.level.direction!)">
+              <span class="stat-label">{{ 'Niveau' | translate }}</span>
+              <div class="stat-content">
+                <span class="value">{{ guess.level.guess }}</span>
+                <div class="indicator-icon">
+                  <i [class]="getArrowIcon(guess.level.direction!)"></i>
+                </div>
+              </div>
+            </div>
+
+            <div class="stat-box" [ngClass]="getDirectionClass(guess.legendaryLevel.direction!)">
+              <span class="stat-label">{{ 'Niveau légendaire' | translate }}</span>
+              <div class="stat-content">
+                <span class="value">{{ guess.legendaryLevel.guess ?? 0 }}</span>
+                <div class="indicator-icon">
+                  <i [class]="getArrowIcon(guess.legendaryLevel.direction!)"></i>
+                </div>
+              </div>
+            </div>
+
+            <div class="stat-box" [ngClass]="getDirectionClass(guess.honor.direction!)">
+              <span class="stat-label">{{ 'Honneur' | translate }}</span>
+              <div class="stat-content">
+                <span class="value">{{ guess.honor.guess | number }}</span>
+                <div class="indicator-icon">
+                  <i [class]="getArrowIcon(guess.honor.direction!)"></i>
+                </div>
+              </div>
+            </div>
+
+            <div class="stat-box" [ngClass]="getDirectionClass(guess.might.direction!)">
+              <span class="stat-label">{{ 'Puissance' | translate }}</span>
+              <div class="stat-content">
+                <span class="value">{{ guess.might.guess | formatNumber }}</span>
+                <div class="indicator-icon">
+                  <i [class]="getArrowIcon(guess.might.direction!)"></i>
+                </div>
+              </div>
+            </div>
+
+            <div class="stat-box protection-box down" [class.is-match]="guess.isProtection.status">
+              <span class="stat-label">{{ 'Protection' | translate }}</span>
+              <div class="stat-content">
+                <span class="value">{{ guess.isProtection.guess ? 'Oui' : 'Non' }}</span>
+                <div class="indicator-icon">
+                  <i class="fa-solid" [ngClass]="guess.isProtection.status ? 'fa-check' : 'fa-xmark'"></i>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

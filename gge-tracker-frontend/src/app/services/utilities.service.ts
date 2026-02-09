@@ -7,6 +7,7 @@ import { ToastService } from './toast.service';
 import { ApiLastUpdates, ErrorType } from '@ggetracker-interfaces/empire-ranking';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
+import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 
 @Injectable({
   providedIn: 'root',
@@ -21,6 +22,42 @@ export class UtilitiesService {
 
   constructor() {
     this.loadLastUpdates();
+  }
+
+  public escapeCsv(value: string | null | undefined): string {
+    if (value == null) return '';
+    return `"${value.replaceAll('"', '""')}"`;
+  }
+
+  public constructPlayerLevel(level: number, legendaryLevel: number): string {
+    if (legendaryLevel >= 70) {
+      return `${level}/${legendaryLevel}`;
+    }
+    return level.toString();
+  }
+
+  public parseValue(value: string | number): number {
+    if (typeof value === 'number') return value;
+    if (!value) return 0;
+    let string_ = value.replaceAll(/\s+/g, '').replaceAll(',', '').toUpperCase();
+    let multiplier = 1;
+    if (string_.endsWith('B')) {
+      multiplier = 1_000_000_000;
+      string_ = string_.slice(0, -1);
+    } else if (string_.endsWith('M')) {
+      multiplier = 1_000_000;
+      string_ = string_.slice(0, -1);
+    } else if (string_.endsWith('K')) {
+      multiplier = 1000;
+      string_ = string_.slice(0, -1);
+    }
+    const numeric = Number(string_);
+    if (Number.isNaN(numeric)) return 0;
+    return numeric * multiplier;
+  }
+
+  public formatNumber(formatNumberPipe: FormatNumberPipe, value: number): string {
+    return formatNumberPipe.transform(value);
   }
 
   public async exportDataXlsx(

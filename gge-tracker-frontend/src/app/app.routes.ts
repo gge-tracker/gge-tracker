@@ -20,6 +20,7 @@ import { titleResolver } from '@ggetracker-resolvers/title.resolver';
 import { ViewCastleComponent } from '@ggetracker-pages/view-castle/view-castle.component';
 import { GrandTournamentComponent } from '@ggetracker-pages/grand-tournament/grand-tournament.component';
 import { LiveOuterRealmsComponent } from '@ggetracker-pages/live-outer-realms/live-outer-realms.component';
+import { MiniGamesComponent } from '@ggetracker-pages/mini-games/mini-games.component';
 
 export const routes: Routes = [
   {
@@ -210,6 +211,15 @@ export const routes: Routes = [
         data: {
           description: 'Real-time tracking of Outer Realms rankings and player activities in Goodgame Empire.',
           titleKey: 'Événements',
+        },
+      },
+      {
+        path: 'mini-games',
+        component: MiniGamesComponent,
+        resolve: { titleResolver },
+        data: {
+          description: '',
+          titleKey: 'Mini Jeux',
         },
       },
       {

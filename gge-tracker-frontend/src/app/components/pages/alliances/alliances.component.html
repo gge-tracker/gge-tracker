@@ -10,6 +10,8 @@
           player: false,
           alliance: true
         }"
+        [exportDataEnabled]="true"
+        (exportData)="exportData()"
         (searchAlliance)="searchAlliance($event)"
       ></app-search-form>
 

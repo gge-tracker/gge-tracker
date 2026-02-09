@@ -3,6 +3,9 @@ import * as express from 'express';
 import * as pg from 'pg';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
+import { parseQuery, querySchema } from '../helper/parse-query';
+import { CacheKeyBuilder } from '../helper/cache/cache-key-builder';
+import { QueryFilterBuilder } from '../helper/filters/impl/query-filter-builder';
 
 /**
  * Abstract class providing API endpoints for player-related operations
@@ -50,32 +53,6 @@ export abstract class ApiPlayers implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      let page = ApiHelper.validatePageNumber(request.query.page);
-      let minHonor = Number.parseInt(String(request.query.minHonor));
-      let maxHonor = Number.parseInt(String(request.query.maxHonor));
-      let minMight = Number.parseInt(String(request.query.minMight));
-      let maxMight = Number.parseInt(String(request.query.maxMight));
-      let minLoot = Number.parseInt(String(request.query.minLoot));
-      let maxLoot = Number.parseInt(String(request.query.maxLoot));
-      let minLevelArray = String(request.query.minLevel)?.split('/');
-      let minLevel = Number.parseInt(minLevelArray[0]);
-      let minLegendaryLevel = Number.parseInt(minLevelArray[1]);
-      let maxLevelArray = String(request.query.maxLevel)?.split('/');
-      let maxLevel = Number.parseInt(maxLevelArray[0]);
-      let maxLegendaryLevel = Number.parseInt(maxLevelArray[1]);
-      let minFame = Number.parseInt(String(request.query.minFame));
-      let maxFame = Number.parseInt(String(request.query.maxFame));
-      let minCastleCount = Number.parseInt(String(request.query.castleCountMin));
-      let maxCastleCount = Number.parseInt(String(request.query.castleCountMax));
-      let allianceFilter = Number.parseInt(String(request.query.allianceFilter));
-      let protectionFilter = Number.parseInt(String(request.query.protectionFilter));
-      let banFilter = Number.parseInt(String(request.query.banFilter));
-      let inactiveFilter = Number.parseInt(String(request.query.inactiveFilter));
-      let playerNameForDistance = String(request.query.playerNameForDistance || '');
-      let orderBy = String(request.query.orderBy || 'player_name');
-      let filterByAlliance = String(request.query.alliance || '');
-      let allianceRankFilter: string | number[] = String(request.query.allianceRankFilter || '');
-      let orderType = String(request.query.orderType || 'ASC');
       const orderByValues = [
         'player_name',
         'loot_current',
@@ -89,58 +66,72 @@ export abstract class ApiPlayers implements ApiHelper {
         'remaining_relocation_time',
         'distance',
       ];
-      if (!orderByValues.includes(orderBy)) {
-        orderBy = 'player_name';
-      }
-      if (orderType !== 'ASC' && orderType !== 'DESC') {
-        orderType = 'ASC';
-      }
-      minHonor = minHonor < 0 || Number.isNaN(minHonor) || minHonor > ApiHelper.MAX_BIG_VALUE ? -1 : minHonor;
-      maxHonor = maxHonor < 0 || Number.isNaN(maxHonor) || maxHonor > ApiHelper.MAX_BIG_VALUE ? -1 : maxHonor;
-      minMight = minMight < 0 || Number.isNaN(minMight) || minMight > ApiHelper.MAX_BIG_VALUE ? -1 : minMight;
-      maxMight = maxMight < 0 || Number.isNaN(maxMight) || maxMight > ApiHelper.MAX_BIG_VALUE ? -1 : maxMight;
-      minLoot = minLoot < 0 || Number.isNaN(minLoot) || minLoot > ApiHelper.MAX_BIG_VALUE ? -1 : minLoot;
-      maxLoot = maxLoot < 0 || Number.isNaN(maxLoot) || maxLoot > ApiHelper.MAX_BIG_VALUE ? -1 : maxLoot;
-      minLevel = minLevel < 0 || Number.isNaN(minLevel) || minLevel > 1000 ? -1 : minLevel;
-      minLegendaryLevel =
-        minLegendaryLevel < 0 || Number.isNaN(minLegendaryLevel) || minLegendaryLevel > 1000 ? -1 : minLegendaryLevel;
-      maxLevel = maxLevel < 0 || Number.isNaN(maxLevel) || maxLevel > 1000 ? -1 : maxLevel;
-      maxLegendaryLevel =
-        maxLegendaryLevel < 0 || Number.isNaN(maxLegendaryLevel) || maxLegendaryLevel > 1000 ? -1 : maxLegendaryLevel;
-      minFame = minFame < 0 || Number.isNaN(minFame) || minFame > ApiHelper.MAX_BIG_VALUE ? -1 : minFame;
-      maxFame = maxFame < 0 || Number.isNaN(maxFame) || maxFame > ApiHelper.MAX_BIG_VALUE ? -1 : maxFame;
-      minCastleCount = minCastleCount < 0 || Number.isNaN(minCastleCount) ? -1 : minCastleCount;
-      maxCastleCount = maxCastleCount < 0 || Number.isNaN(maxCastleCount) ? -1 : maxCastleCount;
-      allianceFilter =
-        Number.isNaN(allianceFilter) || (allianceFilter !== 0 && allianceFilter !== 1) ? -1 : allianceFilter;
-      protectionFilter =
-        Number.isNaN(protectionFilter) || (protectionFilter !== 0 && protectionFilter !== 1) ? -1 : protectionFilter;
-      banFilter = Number.isNaN(banFilter) || (banFilter !== 0 && banFilter !== 1) ? -1 : banFilter;
-      inactiveFilter =
-        Number.isNaN(inactiveFilter) || (inactiveFilter !== 0 && inactiveFilter !== 1) ? -1 : inactiveFilter;
-      if (allianceRankFilter && allianceRankFilter !== '') {
-        allianceRankFilter = String(allianceRankFilter)
-          .split(',')
-          .map((value) => Number.parseInt(value))
-          .filter((value) => !Number.isNaN(value) && value >= 0 && value <= 10);
-      }
-      if (playerNameForDistance && playerNameForDistance.length > 40) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
-        return;
-      }
-      playerNameForDistance = playerNameForDistance.trim().toLowerCase();
-      const encodedPlayerNameForDistance = encodeURIComponent(playerNameForDistance);
-      const encodedAlliance = encodeURIComponent(filterByAlliance);
+      const parsedQuery = parseQuery(
+        request.query,
+        querySchema({
+          maxBigValue: ApiHelper.MAX_BIG_VALUE,
+          orderByValues,
+          orderByDefault: 'player_name',
+        }),
+      );
+      const {
+        minHonor,
+        maxHonor,
+        minMight,
+        maxMight,
+        minLoot,
+        maxLoot,
+        minLevel,
+        maxLevel,
+        minFame,
+        maxFame,
+        castleCountMin,
+        castleCountMax,
+        alliance,
+        allianceFilter,
+        protectionFilter,
+        banFilter,
+        inactiveFilter,
+        allianceRankFilter,
+        playerNameForDistance,
+        orderBy,
+        orderType,
+      } = parsedQuery;
+      let { page } = parsedQuery;
 
       /* ---------------------------------
        * Cache validation
        * --------------------------------- */
-      const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${request['language']}`)) || '1';
-      const cachedKey =
-        request['language'] +
-        `:${cacheVersion}:` +
-        `players-page-${page}-orderBy-${orderBy}-orderType-${orderType}-alliance-${encodedAlliance}-minHonor-${minHonor}-maxHonor-${maxHonor}-minMight-${minMight}-maxMight-${maxMight}-minLoot-${minLoot}-maxLoot-${maxLoot}-minLevel-${minLevel}-${minLegendaryLevel}-maxLevel-${maxLevel}-${maxLegendaryLevel}-allianceFilter-${allianceFilter}-protectionFilter-${protectionFilter}-banFilter-${banFilter}-inactiveFilter-${inactiveFilter}-playerNameForDistance-${encodedPlayerNameForDistance}-allianceRankFilter-${Array.isArray(allianceRankFilter) ? allianceRankFilter.join('-') : ''}-minFame-${minFame}-maxFame-${maxFame}-minCastleCount-${minCastleCount}-maxCastleCount-${maxCastleCount}`;
-      const cachedData = await ApiHelper.redisClient.get(cachedKey);
+      const cacheVersion = await ApiHelper.getCacheVersion(ApiHelper.redisClient, request['language']);
+      const cacheKey = new CacheKeyBuilder(request['language'])
+        .with(cacheVersion)
+        .with('players')
+        .withParams({
+          page,
+          orderBy,
+          orderType,
+          alliance,
+          minHonor,
+          maxHonor,
+          minMight,
+          maxMight,
+          minLoot,
+          maxLoot,
+          minLevel: minLevel ? minLevel.join('/') : undefined,
+          maxLevel: maxLevel ? maxLevel.join('/') : undefined,
+          minFame,
+          maxFame,
+          castleCountMin,
+          castleCountMax,
+          allianceFilter,
+          protectionFilter,
+          banFilter,
+          inactiveFilter,
+          playerNameForDistance,
+          allianceRankFilter: Array.isArray(allianceRankFilter) ? allianceRankFilter.join('-') : undefined,
+        })
+        .build();
+      const cachedData = await ApiHelper.redisClient.get(cacheKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
         return;
@@ -152,7 +143,7 @@ export abstract class ApiPlayers implements ApiHelper {
       let totalPages = 0;
       let playerCount = 0;
       let countQuery: string;
-      let parameterIndex = 1;
+      let parameterIndex = 0;
       let query: string = `
         SELECT
           P.id AS player_id,
@@ -184,22 +175,22 @@ export abstract class ApiPlayers implements ApiHelper {
           (
             POWER(
               LEAST(
-                ABS(CAST(MC.castle_x AS INTEGER) - $${parameterIndex++}),
-                1287 - ABS(CAST(MC.castle_x AS INTEGER) - $${parameterIndex++})
+                ABS(CAST(MC.castle_x AS INTEGER) - $${++parameterIndex}),
+                1287 - ABS(CAST(MC.castle_x AS INTEGER) - $${++parameterIndex})
               ),
               2
               ) +
               POWER(
-              ABS(CAST(MC.castle_y AS INTEGER) - $${parameterIndex++}),
+              ABS(CAST(MC.castle_y AS INTEGER) - $${++parameterIndex}),
               2
             )
           ) AS calculated_distance`;
       }
       query += `
         FROM
-            players P
+          players P
         LEFT JOIN
-            alliances A ON P.alliance_id = A.id
+          alliances A ON P.alliance_id = A.id
         `;
 
       if (playerNameDistanceFilterActive) {
@@ -219,127 +210,45 @@ export abstract class ApiPlayers implements ApiHelper {
       /* ---------------------------------
        * Filter results
        * --------------------------------- */
-      const otherParameters: (string | number)[] = [];
-      const filters: string[] = [];
-      if (filterByAlliance && filterByAlliance !== '') {
-        filters.push(`A.name = $${parameterIndex++}`);
-        otherParameters.push(filterByAlliance);
-      }
-      if (minHonor >= 0 && !Number.isNaN(minHonor)) {
-        filters.push(`P.honor >= $${parameterIndex++}`);
-        otherParameters.push(minHonor);
-      }
-      if (maxHonor >= 0 && !Number.isNaN(maxHonor)) {
-        filters.push(`P.honor <= $${parameterIndex++}`);
-        otherParameters.push(maxHonor);
-      }
-      if (minMight >= 0 && !Number.isNaN(minMight)) {
-        filters.push(`P.might_current >= $${parameterIndex++}`);
-        otherParameters.push(minMight);
-      }
-      if (maxMight >= 0 && !Number.isNaN(maxMight)) {
-        filters.push(`P.might_current <= $${parameterIndex++}`);
-        otherParameters.push(maxMight);
-      }
-      if (minLoot >= 0 && !Number.isNaN(minLoot)) {
-        filters.push(`P.loot_current >= $${parameterIndex++}`);
-        otherParameters.push(minLoot);
-      }
-      if (maxLoot >= 0 && !Number.isNaN(maxLoot)) {
-        filters.push(`P.loot_current <= $${parameterIndex++}`);
-        otherParameters.push(maxLoot);
-      }
-      if (minLevel >= 0 && !Number.isNaN(minLevel)) {
-        filters.push(`P.level >= $${parameterIndex++}`);
-        otherParameters.push(minLevel);
-      }
-      if (minLegendaryLevel >= 0 && !Number.isNaN(minLegendaryLevel)) {
-        filters.push(`P.legendary_level >= $${parameterIndex++}`);
-        otherParameters.push(minLegendaryLevel);
-      }
-      if (maxLevel >= 0 && !Number.isNaN(maxLevel)) {
-        filters.push(`P.level <= $${parameterIndex++}`);
-        otherParameters.push(maxLevel);
-      }
-      if (maxLegendaryLevel >= 0 && !Number.isNaN(maxLegendaryLevel)) {
-        filters.push(`P.legendary_level <= $${parameterIndex++}`);
-        otherParameters.push(maxLegendaryLevel);
-      }
-      if (minFame >= 0 && !Number.isNaN(minFame)) {
-        filters.push(`P.current_fame >= $${parameterIndex++}`);
-        otherParameters.push(minFame);
-      }
-      if (maxFame >= 0 && !Number.isNaN(maxFame)) {
-        filters.push(`P.current_fame <= $${parameterIndex++}`);
-        otherParameters.push(maxFame);
-      }
-      if (minCastleCount >= 0 && !Number.isNaN(minCastleCount)) {
-        filters.push(
-          `(COALESCE(jsonb_array_length(P.castles), 0) + COALESCE(jsonb_array_length(P.castles_realm), 0)) >= $${parameterIndex++}`,
-        );
-        otherParameters.push(minCastleCount);
-      }
-      if (maxCastleCount >= 0 && !Number.isNaN(maxCastleCount)) {
-        filters.push(
-          `(COALESCE(jsonb_array_length(P.castles), 0) + COALESCE(jsonb_array_length(P.castles_realm), 0)) <= $${parameterIndex++}`,
-        );
-        otherParameters.push(maxCastleCount);
-      }
-      if (allianceFilter === 0) {
-        filters.push(`P.alliance_id IS NULL`);
-      } else if (allianceFilter === 1) {
-        filters.push(`P.alliance_id IS NOT NULL`);
-      }
-      if (protectionFilter === 0) {
-        if (banFilter !== 1) filters.push(`(P.peace_disabled_at IS NULL OR P.peace_disabled_at <= NOW())`);
-      } else if (protectionFilter === 1) {
-        filters.push(`P.peace_disabled_at IS NOT NULL AND P.peace_disabled_at > NOW()`);
-      }
-      if (banFilter === 0) {
-        filters.push(`(P.peace_disabled_at IS NULL OR P.peace_disabled_at <= NOW() + INTERVAL '63 days')`);
-      } else if (banFilter === 1) {
-        filters.push(`P.peace_disabled_at > NOW() + INTERVAL '63 days'`);
-      }
-      if (inactiveFilter === 1) {
-        filters.push(`(P.castles IS NOT NULL AND jsonb_array_length(P.castles) > 0)`);
-      } else if (inactiveFilter === 0) {
-        filters.push(`(P.castles IS NULL OR jsonb_array_length(P.castles) = 0)`);
-      }
-      if (Array.isArray(allianceRankFilter) && allianceRankFilter.length > 0) {
-        const rankFilters: string[] = [];
-        allianceRankFilter.forEach((rank) => {
-          rankFilters.push(`P.alliance_rank <> $${parameterIndex++}`);
-          otherParameters.push(rank);
-        });
-        filters.push(`(${rankFilters.join(' AND ')})`);
-      }
-      if (filters.length > 0) {
-        query += `WHERE ${filters.join(' AND ')} \n    `;
-      }
-      const parameters: any[] = [
-        ...otherParameters,
-        ApiHelper.PAGINATION_LIMIT,
-        (page - 1) * ApiHelper.PAGINATION_LIMIT,
-      ];
+      const qb = new QueryFilterBuilder(parameterIndex + 1);
+
+      qb.alliance().name(alliance).excludeRanks(allianceRankFilter);
+
+      qb.player()
+        .name(alliance)
+        .honor(minHonor, maxHonor)
+        .might(minMight, maxMight)
+        .loot(minLoot, maxLoot)
+        .level(minLevel[0], maxLevel[0])
+        .legendaryLevel(minLevel[1], maxLevel[1])
+        .fame(minFame, maxFame)
+        .allianceStatus(allianceFilter)
+        .activity(inactiveFilter);
+
+      qb.castle().count(castleCountMin, castleCountMax);
+
+      qb.protection().status(protectionFilter, banFilter).ban(banFilter);
+
+      const { where, values } = qb.build();
+      parameterIndex = qb.getLastParameterIndex();
+      const parameters: any[] = [...values, ApiHelper.PAGINATION_LIMIT, (page - 1) * ApiHelper.PAGINATION_LIMIT];
 
       /* ---------------------------------
        * Execute count query (pagination)
        * --------------------------------- */
       countQuery = `SELECT COUNT(P.id) AS player_count FROM players P LEFT JOIN alliances A ON P.alliance_id = A.id `;
-      if (filters.length > 0) {
-        countQuery += `WHERE ${filters.join(' AND ')} \n    `;
-        if (playerNameDistanceFilterActive) {
-          // Tricky part, we need to re-index the $ parameters for the count query
-          countQuery = countQuery.replaceAll(/\$(\d+)/g, (match, p1) => {
-            return `$${Number.parseInt(p1) - 3}`;
-          });
-        }
+      countQuery += where;
+      if (playerNameDistanceFilterActive) {
+        // Tricky part, we need to re-index the $ parameters for the count query
+        countQuery = countQuery.replaceAll(/\$(\d+)/g, (match, p1) => {
+          return `$${Number.parseInt(p1) - 3}`;
+        });
       }
       /* ---------------------------------
        * Query count results
        * --------------------------------- */
       await new Promise((resolve, reject) => {
-        (request['pg_pool'] as pg.Pool).query(countQuery, otherParameters, (error, results) => {
+        (request['pg_pool'] as pg.Pool).query(countQuery, values, (error, results) => {
           if (error) {
             ApiHelper.logError(error, 'getPlayers_countQuery', request);
             reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
@@ -357,6 +266,7 @@ export abstract class ApiPlayers implements ApiHelper {
       /* ---------------------------------
        * Finalize query
        * --------------------------------- */
+      query += `${where} `;
       if (orderBy === 'distance') {
         if (playerNameForDistance && playerNameForDistance !== '') {
           query += `ORDER BY calculated_distance ${orderType}`;
@@ -455,7 +365,7 @@ export abstract class ApiPlayers implements ApiHelper {
           /* ---------------------------------
            * Update cache
            * --------------------------------- */
-          void ApiHelper.updateCache(cachedKey, responseContent);
+          void ApiHelper.updateCache(cacheKey, responseContent);
           response.status(ApiHelper.HTTP_OK).send(responseContent);
         }
       });

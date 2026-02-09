@@ -53,6 +53,43 @@ export class AlliancesComponent extends GenericComponent implements OnInit {
     void this.init();
   }
 
+  public exportData(): void {
+    const headers = [
+      'Rank',
+      'Alliance ID',
+      'Alliance Name',
+      'Player Count',
+      'Current Might',
+      'Highest Might',
+      'Current Loot',
+      'Highest Loot',
+      'Current Fame',
+      'Highest Fame',
+    ];
+    const rows: any[][] = [];
+    this.alliances.forEach((alliance) => {
+      const row = [
+        alliance.rank,
+        Number(alliance.id),
+        this.utilitiesService.escapeCsv(alliance.name),
+        Number(alliance.playerCount),
+        Number(alliance.mightCurrent),
+        Number(alliance.mightAllTime),
+        Number(alliance.lootCurrent),
+        Number(alliance.lootAllTime),
+        Number(alliance.currentFame),
+        Number(alliance.highestFame),
+      ];
+      rows.push(row);
+    });
+    void this.utilitiesService.exportDataXlsx(
+      'Players',
+      headers,
+      rows,
+      `alliances_${this.apiRestService.serverService.currentServer?.name || 'server'}_page_${this.page}_${new Date().toISOString()}.xlsx`,
+    );
+  }
+
   public async searchAlliance(allianceName: string): Promise<void> {
     this.page = 1;
     this.search = allianceName;

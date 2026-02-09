@@ -18,6 +18,7 @@ import { ApiStatistics } from '../routes/api-statistics';
 import { ApiStatus } from '../routes/api-status';
 import { ApiUpdates } from '../routes/api-updates';
 import { QueueService } from '../services/queue-service';
+import { ApiMiniGame } from '../routes/api-mini-game';
 
 /**
  * Manages API controller endpoints for the Gge Tracker backend.
@@ -108,6 +109,18 @@ export class ApiRoutingController {
 
   public getItems(request: express.Request, response: express.Response): void {
     void ApiAssets.getItems(request, response);
+  }
+
+  public getDailyMiniGame(request: express.Request, response: express.Response): void {
+    void ApiMiniGame.getDailyMiniGame(request, response);
+  }
+
+  public getAutoCompletePlayerNames(request: express.Request, response: express.Response): void {
+    void ApiMiniGame.getAutoCompletePlayerNames(request, response);
+  }
+
+  public submitMiniGameGuess(request: express.Request, response: express.Response): void {
+    void ApiMiniGame.submitMiniGameGuess(request, response);
   }
 
   public getLanguage(request: express.Request, response: express.Response): void {

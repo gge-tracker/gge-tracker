@@ -100,24 +100,29 @@
           [(ngModel)]="playerNameForDistance">
       </div>
       <div class="col-auto">
-        <button class="btn btn-primary btn-sm"
-          (click)="onAddDistanceColumn()"
-          [disabled]="!playerNameForDistance.trim()">
-          <div *ngIf="!isDistanceIsInLoading; else isDistanceIsInLoadingTmplate">
-            <img src="/assets/players.png" height="24" [title]="'Filtrer par distance depuis le château principal d\'un joueur' | translate" [attr.alt]="'Filtrer par distance depuis le château principal d\'un joueur' | translate">
-            {{ 'Afficher la distance' | translate }}
-          </div>
-          <ng-template #isDistanceIsInLoadingTmplate>
-            <i class="fas fa-spinner fa-spin me-1"></i>
-          </ng-template>
-        </button>
+        <div class="btn-group" role="group" aria-label="Distance buttons">
+          <button class="btn btn-primary btn-sm"
+            (click)="onAddDistanceColumn()"
+            [disabled]="!playerNameForDistance.trim()">
+            <div *ngIf="!isDistanceIsInLoading; else isDistanceIsInLoadingTmplate">
+              <img src="/assets/players.png" height="24" [title]="'Filtrer par distance depuis le château principal d\'un joueur' | translate" [attr.alt]="'Filtrer par distance depuis le château principal d\'un joueur' | translate">
+              {{ 'Afficher la distance' | translate }}
+            </div>
+            <ng-template #isDistanceIsInLoadingTmplate>
+              <i class="fas fa-spinner fa-spin me-1"></i>
+            </ng-template>
+          </button>
+            <button class="btn btn-secondary btn-cancel btn-sm"
+              (click)="resetDistanceColumn()"
+              [title]="'Réinitialiser' | translate"
+              [disabled]="!playerNameForDistance.trim()">
+              <i class="fas fa-times"></i>
+            </button>
+        </div>
       </div>
       <div class="col-auto">
-        <button class="btn btn-secondary btn-sm"
-          (click)="resetDistanceColumn()"
-          [title]="'Réinitialiser' | translate"
-          [disabled]="!playerNameForDistance.trim()">
-          <i class="fas fa-times"></i>
+        <button class="btn-filter btn btn-light btn-sm" (click)="exportData()" [title]="'Exporter les données' | translate">
+          <lucide-icon class="lucide lucide-download" [img]="Download"></lucide-icon>
         </button>
       </div>
       <div class="form-text text-muted small mb-3 text-end" [innerHTML]="'Distance-text' | translate"></div>
@@ -204,24 +209,26 @@
         <app-player-stats-card *ngIf="charts[config.chartKey]" [charts]="config.chartKey === 'might' ?
             {
               'Evolution': charts[config.chartKey]!,
+              'Données': null,
             } : {
               'Evolution': charts[config.chartKey]!,
               'Participation': participationRateCharts[config.chartKey] || null,
-              'Classement': radarCharts[config.chartKey] || null,
+              'Données':  null,
             }
           " [subtitle]="eventTitles[config.chartKey]"
-          [ngClass]="fullScreenModalKey === config.chartKey ? 'fullscreen' : ''" [data]="[]" [playerId]="allianceId"
+          [ngClass]="fullScreenModalKey === config.chartKey ? 'fullscreen' : ''" [data]="config.data" [playerId]="allianceId"
+          [onePlayerOnly]="false"
           [eventName]="config.eventTitleKey" [title]="config.title | translate" [dataName]="config.dataName"
           [backgroundIconImage]="config.backgroundIconImage" [backgroundColour]="config.backgroundColour"
           (changeTabOutput)="changeTabGraph(config.chartKey, $event)">
-          <div before class="previous-graph">
+          <div before class="previous-graph" *ngIf="!config.singleChart">
             <span (click)="previousGraph(ApiPlayerStatsType[config.chartKey])"
               (keyup.enter)="previousGraph(ApiPlayerStatsType[config.chartKey])" tabindex="0"
               [title]="'Graphique précédent' | translate">
               <i class="fas fa-chevron-left"></i>
             </span>
           </div>
-          <div after class="next-graph">
+          <div after class="next-graph" *ngIf="!config.singleChart">
             <span (click)="nextGraph(ApiPlayerStatsType[config.chartKey])"
               (keyup.enter)="nextGraph(ApiPlayerStatsType[config.chartKey])" tabindex="0"
               [title]="'Graphique suivant' | translate">

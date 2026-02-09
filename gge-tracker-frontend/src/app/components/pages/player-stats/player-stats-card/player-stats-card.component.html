@@ -47,36 +47,59 @@
       </div>
     </div>
   </div>
-  <div class="mx-3 cadre-table-scroll" [ngClass]="selectedTab === 'Données' ? 'd-block' : 'd-none'"
-    *ngIf="data().length > 0">
+  <ng-container *ngIf="data().length > 0">
+    <div class="mx-3 cadre-table-scroll" [ngClass]="selectedTab === 'Données' ? 'd-block' : 'd-none'">
+      <table class="table" *ngIf="onePlayerOnly(); else multiplePlayers">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>{{ 'Date' | translate }}</th>
+            <th>{{ dataName() | translate }}</th>
+            <th>{{ 'Variations' | translate}}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let entry of data(); let i = index">
+            <td>{{ i + 1 }}</td>
+            <td>{{ entry.date | date: ('Date_2' | translate) }}</td>
+            <td>
+              {{ entry.point | formatNumber }}
+              <i class="fas fa-info-circle" [title]="entry.point + ' ' + ('points' | translate)"></i>
+            </td>
+            <td>
+              <span class="badge bg-success" *ngIf="entry.variation > 0"
+                [title]="entry.variation + ' ' + ('points' | translate)">+{{ entry.variation | formatNumber }}</span>
+              <span class="badge bg-danger" *ngIf="entry.variation < 0"
+                [title]="entry.variation + ' ' + ('points' | translate)">{{ entry.variation | formatNumber }}</span>
+              <span class="badge bg-secondary" *ngIf="entry.variation === 0">-</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </ng-container>
+
+  <ng-template #multiplePlayers>
     <table class="table">
       <thead>
         <tr>
           <th>#</th>
-          <th>{{ 'Date' | translate }}</th>
-          <th>{{ dataName() | translate }}</th>
-          <th>{{ 'Variations' | translate}}</th>
+          <th>{{ 'Joueur' | translate }}</th>
+          <th>{{ 'Points' | translate }}</th>
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let entry of inversedData; let i = index">
+        <tr *ngFor="let entry of data(); let i = index">
           <td>{{ i + 1 }}</td>
-          <td>{{ entry.date | date: ('Date_2' | translate) }}</td>
+          <td [ngStyle]="{'color': getPlayerColor(entry) }">{{ entry.playerName }}</td>
           <td>
             {{ entry.point | formatNumber }}
             <i class="fas fa-info-circle" [title]="entry.point + ' ' + ('points' | translate)"></i>
           </td>
-          <td>
-            <span class="badge bg-success" *ngIf="entry.variation > 0"
-              [title]="entry.variation + ' ' + ('points' | translate)">+{{ entry.variation | formatNumber }}</span>
-            <span class="badge bg-danger" *ngIf="entry.variation < 0"
-              [title]="entry.variation + ' ' + ('points' | translate)">{{ entry.variation | formatNumber }}</span>
-            <span class="badge bg-secondary" *ngIf="entry.variation === 0">-</span>
-          </td>
         </tr>
       </tbody>
     </table>
-  </div>
+  </ng-template>
   <ng-content></ng-content>
 </div>
 

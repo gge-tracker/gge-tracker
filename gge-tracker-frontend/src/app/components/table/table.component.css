@@ -13,9 +13,9 @@
 
 ::ng-deep #table-component .badge-inactive {
   align-items: center;
-  background: rgba(80,80,80,0.28);
+  background: rgba(80, 80, 80, 0.28);
   border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.03);
+  border: 1px solid rgba(255, 255, 255, 0.03);
   color: #fff;
   display: inline-flex;
   font-weight: 700;
@@ -37,58 +37,58 @@
 }
 
 ::ng-deep #table-component .bar-black {
-  background: linear-gradient(90deg,#1f2937,#6b7280);
-  box-shadow: 0 6px 18px rgba(80,80,80,0.12);
+  background: linear-gradient(90deg, #1f2937, #6b7280);
+  box-shadow: 0 6px 18px rgba(80, 80, 80, 0.12);
 }
 
 ::ng-deep #table-component .bar-blue {
-  background: linear-gradient(90deg,#1e40af,#60a5fa);
-  box-shadow: 0 6px 18px rgba(70,130,220,0.12);
+  background: linear-gradient(90deg, #1e40af, #60a5fa);
+  box-shadow: 0 6px 18px rgba(70, 130, 220, 0.12);
 }
 
 ::ng-deep #table-component .bar-cyan {
-  background: linear-gradient(90deg,#0e7490,#22d3ee);
-  box-shadow: 0 6px 18px rgba(40,180,220,0.12);
+  background: linear-gradient(90deg, #0e7490, #22d3ee);
+  box-shadow: 0 6px 18px rgba(40, 180, 220, 0.12);
 }
 
 ::ng-deep #table-component .bar-gray {
-  background: linear-gradient(90deg,#374151,#9ca3af);
-  box-shadow: 0 6px 18px rgba(100,100,100,0.12);
+  background: linear-gradient(90deg, #374151, #9ca3af);
+  box-shadow: 0 6px 18px rgba(100, 100, 100, 0.12);
 }
 
 ::ng-deep #table-component .bar-green {
-  background: linear-gradient(90deg,#047857,#34d399);
-  box-shadow: 0 6px 18px rgba(20,160,120,0.12);
+  background: linear-gradient(90deg, #047857, #34d399);
+  box-shadow: 0 6px 18px rgba(20, 160, 120, 0.12);
 }
 
 ::ng-deep #table-component .bar-green-dark {
-  background: linear-gradient(90deg,#166534,#4ade80);
-  box-shadow: 0 6px 18px rgba(20,160,100,0.12);
+  background: linear-gradient(90deg, #166534, #4ade80);
+  box-shadow: 0 6px 18px rgba(20, 160, 100, 0.12);
 }
 
 ::ng-deep #table-component .bar-purple {
-  background: linear-gradient(90deg,#6d28d9,#a78bfa);
-  box-shadow: 0 6px 18px rgba(120,80,200,0.12);
+  background: linear-gradient(90deg, #6d28d9, #a78bfa);
+  box-shadow: 0 6px 18px rgba(120, 80, 200, 0.12);
 }
 
 ::ng-deep #table-component .bar-red {
-  background: linear-gradient(90deg,#b91c1c,#f87171);
-  box-shadow: 0 6px 18px rgba(220,70,70,0.12);
+  background: linear-gradient(90deg, #b91c1c, #f87171);
+  box-shadow: 0 6px 18px rgba(220, 70, 70, 0.12);
 }
 
 ::ng-deep #table-component .bar-rose {
-  background: linear-gradient(90deg,#a21b3a,#fb7185);
-  box-shadow: 0 6px 18px rgba(250,100,120,0.12);
+  background: linear-gradient(90deg, #a21b3a, #fb7185);
+  box-shadow: 0 6px 18px rgba(250, 100, 120, 0.12);
 }
 
 ::ng-deep #table-component .bar-teal {
-  background: linear-gradient(90deg,#115e59,#2dd4bf);
-  box-shadow: 0 6px 18px rgba(30,160,140,0.12);
+  background: linear-gradient(90deg, #115e59, #2dd4bf);
+  box-shadow: 0 6px 18px rgba(30, 160, 140, 0.12);
 }
 
 ::ng-deep #table-component .bar-yellow {
-  background: linear-gradient(90deg,#b45309,#fbbf24);
-  box-shadow: 0 6px 18px rgba(220,170,60,0.12);
+  background: linear-gradient(90deg, #b45309, #fbbf24);
+  box-shadow: 0 6px 18px rgba(220, 170, 60, 0.12);
 }
 
 ::ng-deep #table-component .btn-favorite.is-favorite {
@@ -97,15 +97,17 @@
 }
 
 ::ng-deep #table-component .btn-icon {
-  filter: drop-shadow(0 3px 8px rgba(0,0,0,0.45));
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.45));
   height: 32px;
   opacity: 0.92;
-  transition: transform var(--transition), filter 160ms;
+  transition:
+    transform var(--transition),
+    filter 160ms;
   width: 32px;
 }
 
 ::ng-deep #table-component .btn-icon:hover {
-  filter: drop-shadow(0 6px 20px rgba(0,0,0,0.6));
+  filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.6));
   transform: translateY(-3px) scale(1.06);
 }
 
@@ -128,10 +130,10 @@
 
 ::ng-deep #table-component .level-box {
   align-items: center;
-  background: linear-gradient(180deg,#2a120f,#170a08);
+  background: linear-gradient(180deg, #2a120f, #170a08);
   border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.04);
-  box-shadow: inset 0 2px 8px rgba(0,0,0,0.45);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.45);
   display: flex;
   justify-content: center;
   margin: auto;
@@ -141,7 +143,7 @@
 }
 
 ::ng-deep #table-component .level-legendary {
-  background: linear-gradient(180deg,#09110a,#051009);
+  background: linear-gradient(180deg, #09110a, #051009);
   color: #4ade80;
   font-size: 10px;
   font-weight: bold;
@@ -156,7 +158,7 @@
 }
 
 ::ng-deep #table-component .level-separator {
-  background: rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.2);
   height: 1px;
   margin: 2px auto;
   transform: rotate(90deg);
@@ -171,16 +173,18 @@
 
 ::ng-deep #table-component .metric-bar {
   border-radius: inherit;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
   height: 100%;
-  transition: width 520ms cubic-bezier(0.2,0.9,0.2,1), box-shadow 260ms;
+  transition:
+    width 520ms cubic-bezier(0.2, 0.9, 0.2, 1),
+    box-shadow 260ms;
 }
 
 ::ng-deep #table-component .metric-bar-bg {
-  background: linear-gradient(180deg,#050505,#09110a);
+  background: linear-gradient(180deg, #050505, #09110a);
   border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.03);
-  box-shadow: inset 0 -1px 6px rgba(0,0,0,0.5);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 -1px 6px rgba(0, 0, 0, 0.5);
   height: 8px;
   overflow: hidden;
   width: 100%;
@@ -219,7 +223,7 @@
 ::ng-deep #table-component tbody tr {
   animation: fadeInUp 0.2s ease forwards;
   background: #0a0a0aa1;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   transform: translateY(0);
   transition: background 0.2s ease;
 }
@@ -252,21 +256,24 @@
 }
 
 ::ng-deep .table-custom tbody tr {
-  border-bottom: 1px solid rgba(255,255,255,0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
   transform-origin: left center;
-  transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+  transition:
+    background var(--transition),
+    transform var(--transition),
+    box-shadow var(--transition);
 }
 
 ::ng-deep .table-custom tbody tr.row-favorite {
   background-color: #0733ff4d !important;
-  box-shadow: 0 0 12px rgba(10,40,255,0.3);
+  box-shadow: 0 0 12px rgba(10, 40, 255, 0.3);
   position: relative;
 }
 
 ::ng-deep .table-custom tbody tr.row-favorite::after {
   animation: favoritePulse 2.5s ease-in-out infinite;
   background-size: 100% 200%;
-  background-image: linear-gradient(180deg,#4d76ff,#1a47ff,#4d76ff);
+  background-image: linear-gradient(180deg, #4d76ff, #1a47ff, #4d76ff);
   border-radius: 0 4px 4px 0;
   content: "";
   height: 100%;
@@ -276,14 +283,19 @@
   width: 4px;
 }
 
-::ng-deep .table-custom tbody tr:focus, ::ng-deep .table-custom tbody tr:focus-within {
+::ng-deep .table-custom tbody tr:focus,
+::ng-deep .table-custom tbody tr:focus-within {
   outline-offset: 4px;
-  outline: 3px solid rgba(38,198,218,0.12);
+  outline: 3px solid rgba(38, 198, 218, 0.12);
 }
 
 ::ng-deep .table-custom tbody tr:hover {
-  background: linear-gradient( 90deg, rgba(255,255,255,0.02), rgba(38,198,218,0.015) );
-  box-shadow: 0 8px 28px rgba(4,8,6,0.25);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.02),
+    rgba(38, 198, 218, 0.015)
+  );
+  box-shadow: 0 8px 28px rgba(4, 8, 6, 0.25);
   transform: translateY(-4px);
 }
 
@@ -292,14 +304,14 @@
   --accent: #26c6da;
   --bg-0: #08110b;
   --danger: #ff6b6b;
-  --glass-border: rgba(255,255,255,0.04);
+  --glass-border: rgba(255, 255, 255, 0.04);
   --muted: #98a39a;
-  --panel: rgba(12,14,12,0.6);
+  --panel: rgba(12, 14, 12, 0.6);
   --radius: 12px;
-  --row-highlight: rgba(38,198,218,0.06);
-  --shadow-1: 0 6px 22px rgba(0,0,0,0.45);
+  --row-highlight: rgba(38, 198, 218, 0.06);
+  --shadow-1: 0 6px 22px rgba(0, 0, 0, 0.45);
   --text: #e6efe9;
-  --transition: 220ms cubic-bezier(0.2,0.9,0.2,1);
+  --transition: 220ms cubic-bezier(0.2, 0.9, 0.2, 1);
 }
 
 #table-component > div {
@@ -308,32 +320,47 @@
 }
 
 .table-custom {
-  background: linear-gradient( 180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02) );
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.02),
+    rgba(0, 0, 0, 0.02)
+  );
   border-collapse: collapse;
   border-radius: var(--radius);
   box-shadow: var(--shadow-1);
   color: var(--text);
-  font-family: "Inter", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  font-family:
+    "Inter",
+    "Segoe UI",
+    Roboto,
+    system-ui,
+    -apple-system,
+    sans-serif;
   overflow: clip;
   width: 100%;
 }
 
-.table-custom th[aria-sort="ascending"] .lucide-icon, .table-custom th[aria-sort="descending"] .lucide-icon {
+.table-custom th[aria-sort="ascending"] .lucide-icon,
+.table-custom th[aria-sort="descending"] .lucide-icon {
   opacity: 1;
   transform: rotate(0deg);
 }
 
 .table-custom thead {
   backdrop-filter: blur(6px);
-  background: linear-gradient( 180deg, rgba(10,12,10,0.85), rgba(8,10,8,0.78) );
-  box-shadow: 0 6px 18px rgba(0,0,0,0.28);
+  background: linear-gradient(
+    180deg,
+    rgba(10, 12, 10, 0.85),
+    rgba(8, 10, 8, 0.78)
+  );
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
   position: sticky;
   top: 0;
   z-index: 1;
 }
 
 .table-custom thead th {
-  border-bottom: 1px solid rgba(255,255,255,0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   color: var(--muted);
   font-size: 13px;
   font-weight: 700;
@@ -357,7 +384,7 @@
 }
 
 .table-custom thead th img {
-  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.45));
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
   height: 36px;
   margin-right: 8px;
   object-fit: contain;
@@ -370,7 +397,11 @@
 }
 
 .table-custom thead th.pointer:hover {
-  background: linear-gradient( 90deg, rgba(38,198,218,0.02), rgba(126,231,135,0.01) );
+  background: linear-gradient(
+    90deg,
+    rgba(38, 198, 218, 0.02),
+    rgba(126, 231, 135, 0.01)
+  );
   color: var(--text);
 }
 
@@ -391,7 +422,7 @@
 }
 
 .table-custom::after {
-  background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.12));
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.12));
   border-radius: 0 0 var(--radius) var(--radius);
   bottom: 0;
   content: "";
@@ -447,12 +478,15 @@
 
   ::ng-deep #table-component .table-custom tr {
     border-radius: 12px;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
     margin: 10px 0;
     padding: 12px;
   }
 
-  ::ng-deep #table-component .table-custom, ::ng-deep #table-component .table-custom tbody, ::ng-deep #table-component .table-custom td, ::ng-deep #table-component .table-custom tr {
+  ::ng-deep #table-component .table-custom,
+  ::ng-deep #table-component .table-custom tbody,
+  ::ng-deep #table-component .table-custom td,
+  ::ng-deep #table-component .table-custom tr {
     display: block;
     width: 100%;
     padding: 1px 6px;

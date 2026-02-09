@@ -33,11 +33,13 @@ a {
 
 .glass-card {
   backdrop-filter: blur(4px);
-  background: rgba(255,255,255,0.05);
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 1rem;
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   padding: 1.5rem;
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
 .glass-card:hover {
@@ -48,7 +50,7 @@ a {
   color: #f9fafb;
   font-size: 2.3rem;
   font-weight: 700;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
 .release-header .date {

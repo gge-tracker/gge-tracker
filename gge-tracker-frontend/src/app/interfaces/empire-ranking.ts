@@ -195,6 +195,8 @@ export interface EventEntry {
 
 export interface EventGenericVariation extends ApiGenericData {
   variation: number;
+  playerName?: string;
+  __hourKey?: string;
 }
 
 export enum CastleType {
@@ -493,6 +495,7 @@ export type ApiPlayerStatsValue = (typeof ApiPlayerStatsType)[keyof typeof ApiPl
 
 export interface ApiGenericData {
   date: string;
+  utcDate?: string;
   point: number;
 }
 

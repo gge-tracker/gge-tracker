@@ -232,6 +232,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
             Object.entries(data.points).map(([key, value]) => [
               key,
               value.map((point) => ({
+                utcDate: point.date, // Keep the original UTC date for specific use cases (e.g. loot history)
                 date: formatLocal(point.date),
                 point: point.point,
                 variation: 0,
@@ -1038,120 +1039,131 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     this.initChartOption('bloodcrow', series, colors.getColors());
   }
 
+  private generateWeekHours(start: Date, end: Date): string[] {
+    const hours: string[] = [];
+    const current = new Date(start);
+    while (current.getTime() <= end.getTime()) {
+      hours.push(current.toISOString().slice(0, 16).replace('T', ' '));
+      current.setUTCHours(current.getUTCHours() + 1);
+    }
+    return hours;
+  }
+
+  private fillLootData(
+    weekHours: string[],
+    RESET_OFFSET: number,
+    dates: string[],
+    points: number[],
+  ): (number | null)[] {
+    let lastNonZeroPoint: number | null = null;
+    return weekHours.map((hour) => {
+      const hourDate = new Date(hour + ':00Z');
+      const isMondayReset = hourDate.getUTCDay() === 1 && hourDate.getUTCHours() === RESET_OFFSET + 1;
+      if (isMondayReset) {
+        return 0;
+      }
+      const index = dates.indexOf(hour);
+      if (index !== -1) {
+        const value = points[index];
+        if (value > 0) {
+          lastNonZeroPoint = value;
+        }
+        return value;
+      }
+      if (lastNonZeroPoint === null) {
+        return 0;
+      }
+      return null;
+    });
+  }
+
   private initLootHistoryData(): void {
     const maxPoints: { week: string; points: number }[] = [];
     const lootPoints = this.data['player_loot_history'];
     if (!lootPoints || lootPoints.length === 0) {
       return;
     }
-    // Sort by converting timestamps to numbers (date in string format yyyy-mm-dd hh:mm:ss)
-    lootPoints.sort((a, b) => {
-      const dateA = new Date(a['date']).getTime();
-      const dateB = new Date(b['date']).getTime();
-      return dateA - dateB;
-    });
-    // Get the first date and find the previous or current Monday
-    const firstDate = new Date(lootPoints[0]['date']);
-    // Step 1: Find the first Monday
-    const firstMonday = new Date(Date.UTC(firstDate.getUTCFullYear(), firstDate.getUTCMonth(), firstDate.getUTCDate()));
-    const dayOfWeek = firstMonday.getUTCDay();
-    firstMonday.setUTCDate(firstMonday.getUTCDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1));
-    firstMonday.setUTCHours(1 + (this.timezoneOffset ?? 0), 0, 0, 0);
-    // Step 2: Generate all weeks from the first Monday to the current date
-    const currentDate = new Date();
-    const generateWeekHours = (start: Date, end: Date): string[] => {
-      const dates = [];
-      const current = new Date(start);
-      while (current <= end) {
-        dates.push(current.toISOString().replace('T', ' ').slice(0, 16));
-        current.setHours(current.getHours() + 1);
+    lootPoints.forEach((point) => {
+      if (point.utcDate) {
+        point.date = point.utcDate;
       }
-      return dates;
-    };
-    const allWeeksHours: string[][] = [];
+    });
+    lootPoints.sort((a, b) => {
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
+    });
+    const RESET_OFFSET = this.timezoneOffset ?? 0;
+    const firstPointDate = new Date(lootPoints[0].date);
+    const firstMonday = new Date(firstPointDate);
+    const dow = firstMonday.getUTCDay();
+    firstMonday.setUTCDate(firstMonday.getUTCDate() - (dow === 0 ? 6 : dow - 1));
+
+    firstMonday.setUTCHours(1 + RESET_OFFSET, 0, 0, 0);
     const currentMonday = new Date(firstMonday);
-    while (currentMonday <= currentDate) {
-      const currentSunday = new Date(currentMonday);
-      currentSunday.setDate(currentMonday.getDate() + 6);
-      currentSunday.setUTCHours(23 + (this.timezoneOffset ?? 0), 0, 0, 0);
-      allWeeksHours.push(generateWeekHours(currentMonday, currentSunday));
-      currentMonday.setDate(currentMonday.getDate() + 7);
+    const currentDate = new Date();
+    const allWeeksHours: string[][] = [];
+
+    while (currentMonday.getTime() <= currentDate.getTime()) {
+      const weekEnd = new Date(currentMonday);
+      weekEnd.setUTCDate(weekEnd.getUTCDate() + 7);
+      weekEnd.setUTCHours(RESET_OFFSET, 0, 0, 0);
+      weekEnd.setUTCHours(weekEnd.getUTCHours() - 1);
+
+      allWeeksHours.push(this.generateWeekHours(currentMonday, weekEnd));
+      currentMonday.setUTCDate(currentMonday.getUTCDate() + 7);
     }
-    // Step 3: Extract dates and points from lootPoints
-    const dates = lootPoints.map((point) => {
-      return point['date'].slice(0, Math.max(0, point['date'].length - 5)) + '00';
+
+    const dates = lootPoints.map((p) => {
+      const d = new Date(p.date);
+      d.setUTCMinutes(0, 0, 0);
+      return d.toISOString().slice(0, 16).replace('T', ' ');
     });
-    const points = lootPoints.map((point) => point['point']);
-    const fillData = (weekHours: string[]): (number | null)[] => {
-      let lastNonZeroPoint: number | null = null;
-      return weekHours.map((hour) => {
-        const hourDate = new Date(hour);
-        const isMondayMidnight = hourDate.getDay() === 1 && hourDate.getHours() === 0;
-        const pointIndex = dates.indexOf(hour);
-        if (isMondayMidnight) {
-          return 0;
-        }
-        if (pointIndex !== -1) {
-          const point = points[pointIndex];
-          if (point > 0) {
-            lastNonZeroPoint = point;
-          }
-          return point;
-        }
-        if (lastNonZeroPoint === null) {
-          return 0;
-        }
-        return null;
-      });
-    };
-    // Step 4: Fill the data for each week
-    const allWeeksData = allWeeksHours.map((weekHours) => {
-      return fillData(weekHours);
-    });
+    const points = lootPoints.map((p) => Number(p.point));
+    const allWeeksData = allWeeksHours.map((weekHours) => this.fillLootData(weekHours, RESET_OFFSET, dates, points));
     const colors = ['#bfb58f', '#cc9a12'];
     const series = allWeeksData.map((weekData, index) => {
       const weekStartDate = new Date(firstMonday);
-      weekStartDate.setDate(firstMonday.getDate() + index * 7);
+      weekStartDate.setUTCDate(firstMonday.getUTCDate() + index * 7);
+      if (weekData.length > allWeeksData[0].length) {
+        weekData = weekData.slice(0, allWeeksData[0].length);
+      }
+      const maxPoint = Math.max(...weekData.filter((p): p is number => p !== null));
+      maxPoints.push({
+        week: weekStartDate.toISOString().slice(0, 10),
+        points: maxPoint,
+      });
       if (index === allWeeksData.length - 1) {
-        if (weekData.length > allWeeksData[0].length) {
-          weekData = weekData.slice(0, allWeeksData[0].length);
-        }
-        const maxPoint = Math.max(...weekData.filter((point): point is number => point !== null));
-        maxPoints.push({ week: weekStartDate.toISOString().slice(0, 10), points: maxPoint });
         return {
           name: this.translateService.instant('Semaine courante') + ' (' + this.getUnitByValue(maxPoint) + ')',
           data: weekData,
           color: colors[1],
         };
-      } else {
-        const locale = this.languageService.getCurrentLang();
-        if (weekData.length > allWeeksData[0].length) {
-          weekData = weekData.slice(0, allWeeksData[0].length);
-        }
-        const maxPoint = Math.max(...weekData.filter((point): point is number => point !== null));
-        maxPoints.push({ week: weekStartDate.toISOString().slice(0, 10), points: maxPoint });
-        if (index === allWeeksData.length - 2) {
-          return {
-            name: this.translateService.instant('Semaine précédente') + ' (' + this.getUnitByValue(maxPoint) + ')',
-            data: weekData,
-            color: '#b8b29e',
-          };
-        }
+      }
+
+      if (index === allWeeksData.length - 2) {
         return {
-          name:
-            this.translateService.instant('Semaine du 0 au 0', {
-              start: weekStartDate.toLocaleDateString(locale).slice(0, -5),
-              end: new Date(weekStartDate.getTime() + 6 * 24 * 60 * 60 * 1000).toLocaleDateString(locale).slice(0, -5),
-            }) +
-            ' (' +
-            this.getUnitByValue(maxPoint) +
-            ')',
+          name: this.translateService.instant('Semaine précédente') + ' (' + this.getUnitByValue(maxPoint) + ')',
           data: weekData,
-          color: colors[0],
-          hidden: true,
+          color: '#b8b29e',
         };
       }
+
+      const locale = this.languageService.getCurrentLang();
+
+      return {
+        name:
+          this.translateService.instant('Semaine du 0 au 0', {
+            start: weekStartDate.toLocaleDateString(locale).slice(0, -5),
+            end: new Date(weekStartDate.getTime() + 6 * 24 * 3_600_000).toLocaleDateString(locale).slice(0, -5),
+          }) +
+          ' (' +
+          this.getUnitByValue(maxPoint) +
+          ')',
+        data: weekData,
+        color: colors[0],
+        hidden: true,
+      };
     });
+
     const days = [
       this.translateService.instant('Dimanche'),
       this.translateService.instant('Lundi'),
@@ -1171,7 +1183,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
         }
       }
     }
-    // Initialise the chart 'loot-heatmap' (heatmap loot history)
+    // Initialize the chart 'loot-heatmap' (heatmap loot history)
     const seriesHeatmap: ApexAxisChartSeries = [];
     const allValues: number[] = [];
     series.reverse().forEach((weekSerie) => {
@@ -1206,7 +1218,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     // Initialize the chart 'loot-heatmap' (heatmap loot history)
     this.initHeatmapChartOption('loot-heatmap', seriesHeatmap, colors);
     this.charts['loot-heatmap'].plotOptions.heatmap!.colorScale!.ranges = this.buildHeatmapRanges(maxValue);
-    // Initialise the hourly activity rate chart 'loot-activity' (hourly activity rate loot history)
+    // Initialize the hourly activity rate chart 'loot-activity' (hourly activity rate loot history)
     const lastWeeksData = allWeeksData.slice(-2);
     const hourlyActivity = this.computeHourlyActivityRate(lastWeeksData.flat());
     const seriesHourlyActivity: ApexAxisChartSeries = [
@@ -1216,7 +1228,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
       },
     ];
     this.initHourlyActivityChart('hourly-activity', seriesHourlyActivity);
-    // Initialise the average gain per hour chart 'loot-average-gain' (average gain per hour loot history)
+    // Initialize the average gain per hour chart 'loot-average-gain' (average gain per hour loot history)
     const avgGainPerHour = this.computeAverageGainPerHour(lastWeeksData.flat());
     const seriesAvgGain: ApexAxisChartSeries = [
       {
@@ -1247,11 +1259,30 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     const needPMFormat = this.languageService.getCurrentLang() === 'en';
     const tooltipX = this.charts['loot'].tooltip.x;
     if (!tooltipX) return;
+    const offsetHours = this.timezoneOffset ?? 0;
     tooltipX.formatter = function (value): string {
       const date = new Date(value);
       const dayName = days[date.getDay()];
       const hours = date.getHours().toString().padStart(2, '0');
       const minutes = date.getMinutes().toString().padStart(2, '0');
+      if (needPMFormat) {
+        const ampm = Number(hours) >= 12 ? 'PM' : 'AM';
+        const hourIn12Format = Number(hours) % 12 || 12;
+        return `${dayName} ${hourIn12Format}:${minutes} ${ampm}`;
+      }
+      return `${dayName} ${hours}h${minutes}`;
+    };
+    tooltipX.formatter = function (value, { dataPointIndex }): string {
+      const now = new Date();
+      const monday = new Date(now);
+      const day = monday.getDay() || 7;
+      monday.setDate(monday.getDate() - day + 1);
+      monday.setHours(offsetHours + 1, 0, 0, 0);
+      const pointDate = new Date(monday);
+      pointDate.setHours(pointDate.getHours() + dataPointIndex + 1);
+      const dayName = days[pointDate.getDay()];
+      const hours = pointDate.getHours().toString().padStart(2, '0');
+      const minutes = pointDate.getMinutes().toString().padStart(2, '0');
       if (needPMFormat) {
         const ampm = Number(hours) >= 12 ? 'PM' : 'AM';
         const hourIn12Format = Number(hours) % 12 || 12;
@@ -1269,6 +1300,11 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     };
   }
 
+  /**
+   * This function computes the hourly activity rate based on the provided data.
+   * @param data An array of numbers (or nulls) representing the data points for which to compute the hourly activity rate
+   * @returns An array of hourly activity rates for each hour of the day (0-23) expressed as percentages
+   */
   private computeHourlyActivityRate(data: (number | null)[]): number[] {
     const activityCount: number[] = Array.from({ length: 24 }, () => 0);
     const totalCount: number[] = Array.from({ length: 24 }, () => 0);
@@ -1287,6 +1323,13 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     );
   }
 
+  /**
+   * This function computes the average gain per hour based on the provided data.
+   * It iterates through the data points, comparing each point with the previous one to calculate the gain.
+   * The gains are accumulated for each hour of the day, and the average gain is computed by dividing the total gain by the count of gains for that hour.
+   * @param data An array of numbers (or nulls) representing the data points for which to compute the average gain per hour
+   * @returns An array of average gains for each hour of the day (0-23)
+   */
   private computeAverageGainPerHour(data: (number | null)[]): number[] {
     const gains: number[] = Array.from({ length: 24 }, () => 0);
     const counts: number[] = Array.from({ length: 24 }, () => 0);

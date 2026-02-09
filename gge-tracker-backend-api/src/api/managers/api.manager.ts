@@ -352,9 +352,14 @@ export class ApiGgeTrackerManager extends DatabaseManager {
       zone: 'EmpireEx_32',
     },
     [GgeTrackerServersEnum.AE1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-ae1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_ae1',
+      },
       outer_name: 'AE1',
       zone: 'EmpireEx_33',
-      disabled: true,
+      timezoneOffset: -1,
+      code: '086',
     },
     [GgeTrackerServersEnum.EG1]: {
       databases: {
@@ -397,9 +402,14 @@ export class ApiGgeTrackerManager extends DatabaseManager {
       zone: 'EmpireEx_37',
     },
     [GgeTrackerServersEnum.ES2]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-es2',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_es2',
+      },
       outer_name: 'ES2',
+      timezoneOffset: -1,
+      code: '022',
       zone: 'EmpireEx_38',
-      disabled: true,
     },
     // EmpireEx_39 does not exist
     // EmpireEx_40 does not exist
@@ -685,6 +695,16 @@ export class ApiGgeTrackerManager extends DatabaseManager {
   public getZoneFromCode(code: string): string | null {
     const server = this.getServerByCode(code);
     return server ? server.zone : null;
+  }
+
+  /**
+   * Retrieves the server code associated with a given outer server name
+   * @param outerName - The outer name of the server to search for
+   * @returns The server code as a string if a matching server is found; otherwise, `null`
+   */
+  public getCodeFromOuterName(outerName: string): string | null {
+    const server = this.getActivatedServerValues().find((server) => server.outer_name === outerName);
+    return server ? server.code : null;
   }
 
   /**

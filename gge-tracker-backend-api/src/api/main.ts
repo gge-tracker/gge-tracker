@@ -99,6 +99,7 @@ const bypassRules = [
   RoutesManager.fromPrefix('/api/v1/assets', true),
   RoutesManager.fromPrefix('/api/v1/languages', true),
   RoutesManager.fromRegExp(String.raw`^/api/v2/view/\d+`, true),
+  RoutesManager.fromExact('/api/v1/mini-games/guesses/autocomplete', true),
 ];
 
 const managerInstance = new ApiGgeTrackerManager();
@@ -230,6 +231,24 @@ publicRoutes.get('/assets/common/:asset', routingInstance.getAsset.bind(routingI
  *         description: Internal server error
  */
 publicRoutes.get('/assets/items', routingInstance.getItems.bind(routingInstance));
+
+/**
+ * @todo
+ */
+protectedRoutes.post('/mini-games/guess', routingInstance.submitMiniGameGuess.bind(routingInstance));
+
+/**
+ * @todo
+ */
+protectedRoutes.get(
+  '/mini-games/guesses/autocomplete',
+  routingInstance.getAutoCompletePlayerNames.bind(routingInstance),
+);
+
+/**
+ * @todo
+ */
+protectedRoutes.get('/mini-games/daily', routingInstance.getDailyMiniGame.bind(routingInstance));
 
 /**
  * @swagger

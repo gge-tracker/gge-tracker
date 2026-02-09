@@ -24,3 +24,20 @@ export interface ILimitedApiToken {
   zone: string;
   disabled: boolean;
 }
+
+export type SqlPrimitive = string | number | boolean | Date | null;
+
+export type SqlValue = SqlPrimitive | readonly SqlPrimitive[];
+
+export interface SqlCondition {
+  sql: string;
+  value?: SqlValue;
+}
+
+export type QueryValue = unknown;
+
+export type ParsedValue = number | string | boolean | number[] | string[] | undefined;
+
+export interface QueryField<T> {
+  parse: (value: QueryValue) => T;
+}

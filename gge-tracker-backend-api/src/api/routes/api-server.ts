@@ -1,9 +1,11 @@
-import { formatInTimeZone } from 'date-fns-tz';
 import * as express from 'express';
 import * as pg from 'pg';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { ApiInvalidInputType } from '../types/parameter.types';
+import { QueryFilterBuilder } from '../helper/filters/impl/query-filter-builder';
+import { parseQuery, querySchema } from '../helper/parse-query';
+import { CacheKeyBuilder } from '../helper/cache/cache-key-builder';
 
 /**
  * Abstract class providing API endpoints for server-side data retrieval and operations
@@ -46,73 +48,99 @@ export abstract class ApiServer implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const page = ApiHelper.validatePageNumber(request.query.page);
-      const filterByCastleType = Number.isNaN(Number.parseInt(String(request.query.castleType)))
-        ? -1
-        : Number.parseInt(String(request.query.castleType));
-      const filterByMovementType = Number.isNaN(Number.parseInt(String(request.query.movementType)))
-        ? -1
-        : Number.parseInt(String(request.query.movementType));
-      const searchInputHash = request.query.search ? ApiHelper.hashValue(String(request.query.search)) : 'no_search';
-      const searchTypeHash = request.query.searchType
-        ? ApiHelper.hashValue(String(request.query.searchType))
-        : 'no_search';
+      const {
+        page,
+        castleType,
+        movementType,
+        searchType,
+        search,
+        allianceId,
+        minHonor,
+        maxHonor,
+        minMight,
+        maxMight,
+        minLoot,
+        maxLoot,
+        minLevel,
+        maxLevel,
+        minFame,
+        maxFame,
+        castleCountMin,
+        castleCountMax,
+        allianceFilter,
+        protectionFilter,
+        banFilter,
+        inactiveFilter,
+        allianceRankFilter,
+      } = parseQuery(request.query, querySchema({ maxBigValue: ApiHelper.MAX_BIG_VALUE }));
+
       const viewPerPage = 10;
-      const searchInput = request.query.search ? String(request.query.search) : null;
-      const searchType = request.query.searchType ? String(request.query.searchType) : null;
-      const allianceId = request.query.allianceId ? String(request.query.allianceId) : null;
-      const allianceIdHash = allianceId ? ApiHelper.hashValue(allianceId) : 'no_search';
-      if (filterByMovementType !== -1 && (filterByMovementType < 1 || filterByMovementType > 3)) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidInput });
-        return;
-      } else if (searchType !== 'player' && searchType !== 'alliance' && searchType !== null) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidInput });
-        return;
-      } else if (searchInput && searchInput.length > 30) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidInput });
-        return;
-      }
 
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${request['language']}`)) || '1';
-      const cachedKey =
-        request['language'] +
-        `:${cacheVersion}:` +
-        `server-movements-page-${page}-search-${searchInputHash}-type-${searchTypeHash}-castleType-${filterByCastleType}-movementType-${filterByMovementType}-allianceId-${allianceIdHash}`;
-      const cachedData = await ApiHelper.redisClient.get(cachedKey);
+      const cacheVersion = await ApiHelper.getCacheVersion(ApiHelper.redisClient, request['language']);
+      const cacheKey = new CacheKeyBuilder(request['language'])
+        .with(cacheVersion)
+        .with('movements')
+        .withParams({
+          page,
+          minHonor,
+          maxHonor,
+          minMight,
+          maxMight,
+          minLoot,
+          maxLoot,
+          minLevel: minLevel ? minLevel.join('/') : undefined,
+          maxLevel: maxLevel ? maxLevel.join('/') : undefined,
+          minFame,
+          maxFame,
+          castleCountMin,
+          castleCountMax,
+          allianceFilter,
+          protectionFilter,
+          banFilter,
+          inactiveFilter,
+          allianceRankFilter: Array.isArray(allianceRankFilter) ? allianceRankFilter.join('-') : undefined,
+          castleType,
+          movementType,
+          searchType,
+          search,
+          allianceId,
+        })
+        .build();
+      const cachedData = await ApiHelper.redisClient.get(cacheKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
         return;
       }
-
       /* ---------------------------------
        * Build query filters
        * --------------------------------- */
-      let parameterIndex = 1;
-      const conditions: string[] = [];
-      const values: any[] = [];
-      if (filterByCastleType !== -1) {
-        conditions.push(`M.castle_type = $${parameterIndex++}`);
-        values.push(filterByCastleType);
-      }
-      if (filterByMovementType !== -1) {
-        conditions.push(`M.movement_type = $${parameterIndex++}`);
-        const value = filterByMovementType === 1 ? 'add' : filterByMovementType === 2 ? 'remove' : 'move';
-        values.push(value);
-      }
-      if (searchType && searchType === 'player' && searchInput) {
-        conditions.push(`P.name = $${parameterIndex++}`);
-        values.push(searchInput);
-      }
-      if (allianceId) {
-        conditions.push(`A.id = $${parameterIndex++}`);
-        values.push(ApiHelper.removeCountryCode(Number(allianceId)));
-      } else if (searchType && searchType === 'alliance' && searchInput) {
-        conditions.push(`A.name = $${parameterIndex++}`);
-        values.push(searchInput);
-      }
+      const qb = new QueryFilterBuilder();
+
+      qb.movement().castleType(castleType).movementType(movementType);
+
+      qb.player()
+        .name(search, searchType)
+        .honor(minHonor, maxHonor)
+        .might(minMight, maxMight)
+        .loot(minLoot, maxLoot)
+        .level(minLevel[0], maxLevel[0])
+        .legendaryLevel(minLevel[1], maxLevel[1])
+        .fame(minFame, maxFame)
+        .activity(inactiveFilter);
+
+      qb.castle().count(castleCountMin, castleCountMax);
+
+      qb.alliance()
+        .byIdOrName(allianceId, search, searchType)
+        .presence(allianceFilter)
+        .excludeRanks(allianceRankFilter);
+
+      qb.protection().status(protectionFilter, banFilter).ban(banFilter);
+
+      const { where, values } = qb.build();
 
       /* ---------------------------------
        * Get movements count for pagination
@@ -128,8 +156,8 @@ export abstract class ApiServer implements ApiHelper {
         LEFT JOIN
           alliances A ON P.alliance_id = A.id
         `;
-      if (conditions.length > 0) {
-        countQuery += ` WHERE ` + conditions.join(' AND ');
+      if (where.length > 0) {
+        countQuery += ` ${where}`;
       }
 
       /* ---------------------------------
@@ -157,7 +185,7 @@ export abstract class ApiServer implements ApiHelper {
             total_items_count: movementsCount,
           },
         };
-        void ApiHelper.updateCache(cachedKey, responseContent);
+        void ApiHelper.updateCache(cacheKey, responseContent);
         response.status(ApiHelper.HTTP_OK).send(responseContent);
         return;
       }
@@ -187,9 +215,10 @@ export abstract class ApiServer implements ApiHelper {
         LEFT JOIN
           alliances A ON P.alliance_id = A.id
         `;
-      if (conditions.length > 0) {
-        query += ` WHERE ` + conditions.join(' AND ');
+      if (where.length > 0) {
+        query += ` ${where}`;
       }
+      let parameterIndex = qb.getLastParameterIndex();
       query += ` ORDER BY M.created_at DESC LIMIT $${parameterIndex++} OFFSET $${parameterIndex++};`;
 
       /* ---------------------------------
@@ -230,7 +259,7 @@ export abstract class ApiServer implements ApiHelper {
           /* ---------------------------------
            * Cache response and send to client
            * --------------------------------- */
-          void ApiHelper.updateCache(cachedKey, responseContent);
+          void ApiHelper.updateCache(cacheKey, responseContent);
           response.status(ApiHelper.HTTP_OK).send(responseContent);
         }
       });
