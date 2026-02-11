@@ -9,6 +9,7 @@ const E4kEnumLoginStatus = {
 
 class GgeEmpire4KingdomsTcp extends BaseSocket implements GgeEmpireSocketImpl {
   private socket: net.Socket;
+  private _buffer = Buffer.alloc(0);
   constructor(url: string, serverHeader: string, username: string, password: string, autoReconnect = true) {
     super(url, serverHeader, GgeServerType.E4K, autoReconnect);
     this.url = url;
@@ -94,12 +95,13 @@ class GgeEmpire4KingdomsTcp extends BaseSocket implements GgeEmpireSocketImpl {
   }
 
   private handleTcpData(data: Buffer): void {
-    let parsedData = data.toString();
+    this._buffer = Buffer.concat([this._buffer, data]);
     let nullIndex: number;
-    while ((nullIndex = parsedData.indexOf('\u0000')) !== -1) {
-      const message = parsedData.slice(0, Math.max(0, nullIndex));
-      parsedData = parsedData.slice(Math.max(0, nullIndex + 1));
-      void this._onMessage(message, false);
+    while ((nullIndex = this._buffer.indexOf(0)) !== -1) {
+      const messageBuffer = this._buffer.subarray(0, nullIndex);
+      this._buffer = this._buffer.subarray(nullIndex + 1);
+      const message = messageBuffer.toString();
+      this._onMessage(message, false);
     }
   }
 

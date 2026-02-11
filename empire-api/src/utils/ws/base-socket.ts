@@ -10,6 +10,7 @@ export enum GgeServerType {
 }
 
 class BaseSocket extends Log {
+  private static readonly XML_REGEX = /<msg t='(.*?)'><body action='(.*?)' r='(.*?)'>(.*?)<\/body><\/msg>/;
   public opened: AsyncEvent;
   public closed: AsyncEvent;
   public connected: AsyncEvent;
@@ -183,11 +184,11 @@ class BaseSocket extends Log {
     }
   }
 
-  public async _onMessage(message: any, needToStringOption = true): Promise<void> {
+  public _onMessage(message: any, needToStringOption = true): void {
     if (needToStringOption) {
       message = message.toString();
     }
-    const response = await this.parseResponse(message);
+    const response = this.parseResponse(message);
     this._processResponse(response);
     if (this.onMessage) this.onMessage(message);
   }
@@ -197,7 +198,7 @@ class BaseSocket extends Log {
     this.ws.send(data);
   }
 
-  private async ping(): Promise<void> {
+  private ping(): void {
     if (!this.connected.isSet) return;
     this.sendRawCommand('pin', ['<RoundHouseKick>']);
     setTimeout(() => this.ping(), 60 * 1000);
@@ -236,9 +237,9 @@ class BaseSocket extends Log {
     return message.response;
   }
 
-  private async parseResponse(response: string): Promise<any> {
+  private parseResponse(response: string): any {
     if (response.startsWith('<')) {
-      const parsed = /<msg t='(.*?)'><body action='(.*?)' r='(.*?)'>(.*?)<\/body><\/msg>/.exec(response);
+      const parsed = BaseSocket.XML_REGEX.exec(response);
       return {
         type: 'xml',
         payload: {
