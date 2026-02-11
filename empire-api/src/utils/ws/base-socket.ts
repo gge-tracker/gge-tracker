@@ -160,7 +160,9 @@ class BaseSocket extends Log {
   }
 
   public close(): void {
-    this.ws.close();
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.close();
+    }
   }
 
   public handleErrorResponse(message: string, timeout: number = 5 * 60 * 1000): void {
