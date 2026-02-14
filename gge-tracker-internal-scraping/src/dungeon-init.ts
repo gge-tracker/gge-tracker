@@ -7,6 +7,7 @@
 //
 //  Copyrights (c) 2025 - gge-tracker.com & gge-tracker contributors
 //
+import { exit } from 'node:process';
 import { GenericFetchAndSaveBackend } from './main';
 
 const ID_SERVER = process.env.ID_SERVER;
@@ -38,9 +39,15 @@ const postgresConfig = {
 async function executeFillInOrder(): Promise<void> {
   console.log('Starting the dungeon fetcher for ' + logSuffix + '...');
   const generic = new GenericFetchAndSaveBackend(BASE_API_URL, DATABASE_CONFIG, {}, postgresConfig, logSuffix);
-  await generic.getDungeonsList(2, 1286);
-  await generic.getDungeonsList(1, 1286);
-  await generic.getDungeonsList(3, 1286);
+  await generic.getDungeonsList(2);
+  console.log('Finished fetching dungeons for ' + logSuffix + '. Waiting 1 minute before fetching again...');
+  await new Promise((resolve) => setTimeout(resolve, 60000));
+  await generic.getDungeonsList(1);
+  console.log('Finished fetching dungeons for ' + logSuffix + '. Waiting 1 minute before fetching again...');
+  await new Promise((resolve) => setTimeout(resolve, 60000));
+  await generic.getDungeonsList(3);
+  console.log('Finished fetching dungeons for ' + logSuffix + '.');
+  exit(0);
 }
 
 void executeFillInOrder();
