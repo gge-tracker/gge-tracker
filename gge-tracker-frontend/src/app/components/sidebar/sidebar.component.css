@@ -40,12 +40,14 @@ img,
   font-weight: 500;
   gap: 12px;
   overflow: hidden;
-  padding: 10px 16px;
+  padding: 4px 16px;
   position: relative;
   transition:
     background 0.2s,
     color 0.2s;
   width: 100%;
+  margin: 7px 0;
+  text-decoration: none;
 }
 
 .nav-item .icon {
@@ -54,10 +56,10 @@ img,
 }
 
 .nav-item.active-nav {
-  background-size: 25px;
   background:
     url("/assets/light-background-hover.png"), rgba(251, 191, 36, 0.05);
   color: white;
+  background-size: 25px;
 }
 
 .nav-item.active-nav .icon {
@@ -169,6 +171,7 @@ img,
   flex: 1;
   overflow-y: auto;
   padding: 1.5rem 0.75rem;
+  padding-top: 5px;
 }
 
 .sidebar-scroll::-webkit-scrollbar {

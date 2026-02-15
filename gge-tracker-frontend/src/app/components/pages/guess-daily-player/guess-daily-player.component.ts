@@ -5,6 +5,9 @@ import { GenericComponent } from '@ggetracker-components/generic/generic.compone
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { ApiRestService } from '@ggetracker-services/api-rest.service';
 import { TranslatePipe } from '@ngx-translate/core';
+import { Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
+import { IconComponent } from '@ggetracker-components/icon/icon.component';
 
 interface DailyTarget {
   id: string;
@@ -41,13 +44,13 @@ interface GuessResult {
 }
 
 @Component({
-  selector: 'app-mini-games',
+  selector: 'app-guess-daily-player',
   standalone: true,
-  imports: [NgIf, NgFor, NgClass, FormsModule, TranslatePipe, DecimalPipe, FormatNumberPipe],
-  templateUrl: './mini-games.component.html',
-  styleUrls: ['./mini-games.component.scss'],
+  imports: [NgIf, NgFor, NgClass, FormsModule, TranslatePipe, DecimalPipe, FormatNumberPipe, IconComponent],
+  templateUrl: './guess-daily-player.component.html',
+  styleUrls: ['./guess-daily-player.component.css'],
 })
-export class MiniGamesComponent extends GenericComponent implements OnInit {
+export class GuessDailyPlayerComponent extends GenericComponent implements OnInit {
   public dailyTarget: DailyTarget | null = null;
   public search: string = '';
   public guesses: GuessResult[] = [];
@@ -68,41 +71,63 @@ export class MiniGamesComponent extends GenericComponent implements OnInit {
     W: '⬅️',
     NW: '↖️',
   };
+  public isInputFocused: boolean = false;
+  private searchSubject = new Subject<string>();
 
   public async ngOnInit(): Promise<void> {
-    const dailyResponse = await this.apiRestService.apiFetch(ApiRestService.apiUrl + 'mini-games/daily');
-    if (dailyResponse.success) {
-      this.dailyTarget = dailyResponse.data as DailyTarget;
-      this.todayGameDate = this.dailyTarget.game_date.split('T')[0];
-    }
-    const savedGuesses = localStorage.getItem('miniGameGuesses');
-    if (savedGuesses) {
-      const parsed = JSON.parse(savedGuesses) as { gameId: string; guesses: GuessResult[] };
-      if (parsed.gameId === this.dailyTarget!.id) {
-        this.guesses = parsed.guesses;
-        if (this.guesses.some((g) => g.win)) {
-          this.isWin = true;
-        } else if (this.guesses.length >= this.maxAttempts) {
-          this.isLose = true;
-        }
+    try {
+      this.searchSubject
+        .pipe(
+          debounceTime(400),
+          distinctUntilChanged(),
+          switchMap((value: string) =>
+            this.apiRestService.apiFetch(
+              ApiRestService.apiUrl + 'mini-games/guesses/autocomplete?query=' + encodeURIComponent(value),
+            ),
+          ),
+        )
+        .subscribe((response: any) => {
+          if (response.success) {
+            this.autoCompleteSuggestions = response.data as string[];
+            this.isInputFocused = true;
+          }
+        });
+      const dailyResponse = await this.apiRestService.apiFetch(ApiRestService.apiUrl + 'mini-games/daily');
+      if (dailyResponse.success) {
+        this.dailyTarget = dailyResponse.data as DailyTarget;
+        this.todayGameDate = this.dailyTarget.game_date.split('T')[0];
+        this.isInLoading = false;
       }
-    }
-    for (const key in localStorage) {
-      if (key.startsWith('miniGameGuesses')) {
-        const item = localStorage.getItem(key);
-        if (item) {
-          try {
-            const parsed = JSON.parse(item) as { gameId: string; guesses: GuessResult[] };
-            if (parsed.gameId !== this.dailyTarget!.id || parsed.guesses.length > this.maxAttempts) {
-              localStorage.removeItem(key);
-            }
-          } catch {
-            localStorage.removeItem(key);
+      const savedGuesses = localStorage.getItem('miniGameGuesses');
+      if (savedGuesses) {
+        const parsed = JSON.parse(savedGuesses) as { gameId: string; guesses: GuessResult[] };
+        if (parsed.gameId === this.dailyTarget!.id) {
+          this.guesses = parsed.guesses;
+          if (this.guesses.some((g) => g.win)) {
+            this.isWin = true;
+          } else if (this.guesses.length >= this.maxAttempts) {
+            this.isLose = true;
           }
         }
       }
+      for (const key in localStorage) {
+        if (key.startsWith('miniGameGuesses')) {
+          const item = localStorage.getItem(key);
+          if (item) {
+            try {
+              const parsed = JSON.parse(item) as { gameId: string; guesses: GuessResult[] };
+              if (parsed.gameId !== this.dailyTarget!.id || parsed.guesses.length > this.maxAttempts) {
+                localStorage.removeItem(key);
+              }
+            } catch {
+              localStorage.removeItem(key);
+            }
+          }
+        }
+      }
+    } catch {
+      this.isInLoading = false;
     }
-    this.isInLoading = false;
   }
 
   public get remainingTries(): number {
@@ -147,13 +172,9 @@ export class MiniGamesComponent extends GenericComponent implements OnInit {
   public autoCompletePlayerNames(event: any): void {
     const value = event.target.value;
     if (value.length >= 2) {
-      void this.apiRestService
-        .apiFetch(ApiRestService.apiUrl + 'mini-games/guesses/autocomplete?query=' + encodeURIComponent(value))
-        .then((response) => {
-          if (response.success) {
-            this.autoCompleteSuggestions = response.data as string[];
-          }
-        });
+      this.searchSubject.next(value);
+    } else {
+      this.autoCompleteSuggestions = [];
     }
   }
 
@@ -179,6 +200,16 @@ export class MiniGamesComponent extends GenericComponent implements OnInit {
         return '';
       }
     }
+  }
+
+  public updateSearch(suggestion: string): void {
+    this.search = suggestion;
+    this.autoCompleteSuggestions = [];
+    this.isInputFocused = false;
+  }
+
+  public updateInputFocusState(isFocused: boolean): void {
+    this.isInputFocused = isFocused;
   }
 
   public getArrowIcon(direction: string): string {
@@ -233,12 +264,12 @@ export class MiniGamesComponent extends GenericComponent implements OnInit {
 
     return [
       `🗺️ GGE Daily Player #${date} (${this.dailyTarget?.server})`,
-      `🏰 ${this.isWin ? attempts : 'X'} / ${max}`,
+      ` Tries: ${this.isWin ? attempts : 'X'}/${max === Infinity ? '∞' : max}`,
       '',
       ...lines,
       '',
       this.isWin ? 'Found the player!' : 'Better luck tomorrow!',
-      'https://ggetracker.com',
+      'https://gge-tracker.com/guess',
     ].join('\n');
   }
 
@@ -256,7 +287,6 @@ export class MiniGamesComponent extends GenericComponent implements OnInit {
   public async copyToClipboard(): Promise<void> {
     const text = this.buildShareText();
     await navigator.clipboard.writeText(text);
-    alert('Result copied in clipboard!');
   }
 
   public getDirectionArrow(direction: string): string {

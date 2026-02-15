@@ -19,7 +19,7 @@ export class SidebarComponent {
   public version = package_.version.split('-')[0].replaceAll('.', '-');
   public readonly menuStructure: {
     title: string;
-    items: { label: string; id: string; iconUrl?: string; frequency?: 'Temps réel' | 'Par heure' }[];
+    items: { label: string; id?: string; url?: string; iconUrl?: string; frequency?: 'Temps réel' | 'Par heure' }[];
   }[] = [
     {
       title: 'Rechercher et analyser',
@@ -49,6 +49,20 @@ export class SidebarComponent {
     {
       title: 'Analytique',
       items: [{ label: 'Statistiques', id: 'statistics', iconUrl: '/assets/tools/stats.webp' }],
+    },
+    {
+      title: 'Défis quotidiens',
+      items: [{ label: 'Qui est-ce ?', id: 'guess', iconUrl: '/assets/tools/guess.webp' }],
+    },
+    {
+      title: 'Autres outils',
+      items: [
+        {
+          label: 'Empire-Rankings',
+          url: 'https://danadum.github.io/empire-rankings/',
+          iconUrl: '/assets/tools/empire-rankings.webp',
+        },
+      ],
     },
   ];
 

@@ -1,9 +1,8 @@
-export type FilterKeyMap<FormFilters> = {
-  [K in FilterField]: {
+export type FilterKeyMap<FormFilters, T extends string | number | symbol> = {
+  [K in T]: {
     min: keyof FormFilters;
     max: keyof FormFilters;
   };
 };
 
-export type FilterField = 'honor' | 'loot' | 'level' | 'might' | 'fame' | 'castleCount';
 export type BoundType = 'min' | 'max';

@@ -215,10 +215,18 @@ export class ApiRestService {
     page: number,
     orderBy?: string,
     orderType?: string,
+    filters?: Record<string, string | number>,
   ): Promise<ApiResponse<ApiAllianceResponse>> {
     let request = `${ApiRestService.apiUrl}alliances?page=${page}`;
     if (orderBy) request += `&orderBy=${orderBy}`;
     if (orderType) request += `&orderType=${orderType}`;
+    if (filters) {
+      for (const key in filters) {
+        if (filters[key] !== undefined) {
+          request += `&${key}=${filters[key]}`;
+        }
+      }
+    }
     const response = await this.apiFetch<ApiAllianceResponse>(request);
     if (!response.success) return response;
     return { success: true, data: response.data };

@@ -6,6 +6,7 @@ import {
   ElementRef,
   inject,
   Injector,
+  input,
   ViewChild,
 } from '@angular/core';
 import { ServerService } from '@ggetracker-services/server.service';
@@ -30,6 +31,7 @@ import { OverlayModule } from '@angular/cdk/overlay';
 })
 export class TopBarComponent implements AfterViewInit {
   @ViewChild('topbarHost', { read: ElementRef }) public host!: ElementRef;
+  public sidebarBtn = input<boolean>(true);
   public discordMemberCount = 0;
   public serverService = inject(ServerService);
   public languageService = inject(LanguageService);
@@ -58,8 +60,6 @@ export class TopBarComponent implements AfterViewInit {
     );
     this.topBarService.registerOutlet(outlet);
     this.listener = this.handlePointerDown.bind(this);
-    // Add pointerdown listener to the document to handle closing menus. We cannot use Angular CDK Overlay
-    // or click events because native elements like dataLists will be broken.
     document.addEventListener('pointerdown', this.listener, { capture: true });
   }
 

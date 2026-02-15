@@ -66,7 +66,7 @@ export abstract class ApiMiniGame implements ApiHelper {
   public static async getAutoCompletePlayerNames(request: express.Request, response: express.Response): Promise<void> {
     try {
       const { query } = request.query;
-      if (typeof query !== 'string' || query.trim() === '') {
+      if (typeof query !== 'string' || query.trim() === '' || query.length > 50) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid query parameter' });
         return;
       }
@@ -90,7 +90,7 @@ export abstract class ApiMiniGame implements ApiHelper {
   public static async submitMiniGameGuess(request: express.Request, response: express.Response): Promise<void> {
     try {
       const { guess, requestGameId } = request.body;
-      if (typeof guess !== 'string' || guess.trim() === '') {
+      if (typeof guess !== 'string' || guess.trim() === '' || guess.length > 50) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: 'Invalid guess input' });
         return;
       } else if (

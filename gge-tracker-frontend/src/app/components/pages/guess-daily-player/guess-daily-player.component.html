@@ -1,17 +1,15 @@
 <div class="gge-tracker-game-wrapper" *ngIf="!isInLoading && dailyTarget">
-
   <div class="bg-glow"></div>
-
   <div class="game-container container-sm">
-
     <header class="game-header text-center mb-4">
       <div class="badge-server mb-2">{{ dailyTarget.server }}</div>
-      <h1 class="game-title">Find the Player</h1>
+      <h1 class="game-title">{{ 'Qui est-ce ?' | translate }}</h1>
+      <em>{{ 'game_description' | translate }}</em>
 
       <div class="progress-container mt-3" *ngIf="!isWin && !isLose">
         <div class="d-flex justify-content-between text-white small mb-1">
-          <span>Tentatives</span>
-          <span *ngIf="maxAttempts !== Infinity">{{ remainingTries }} restants</span>
+          <span>{{ 'Tentatives' | translate }}</span>
+          <span *ngIf="maxAttempts !== Infinity">{{ remainingTries }} {{ 'restants' | translate }}</span>
           <span *ngIf="maxAttempts === Infinity">
             <i class="fas fa-infinity"></i> {{ 'restants' | translate }}</span>
         </div>
@@ -23,7 +21,7 @@
 
       <div class="status-message mt-3" *ngIf="isWin">
         <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill">
-          <i class="bi bi-trophy-fill me-2"></i>{{ 'Victoire !' | translate }}
+          <i class="bi bi-trophy-fill me-2"></i>{{ 'Victoire' | translate }} !
         </span>
       </div>
       <div class="status-message mt-3" *ngIf="isLose">
@@ -33,36 +31,38 @@
       </div>
     </header>
 
-    <div class="input-area card glass-panel mb-4" *ngIf="!isWin && !isLose">
-      <div class="card-body p-2">
-        <form class="guess-form d-flex gap-2" (ngSubmit)="submitGuess()">
-          <div class="input-group input-group-lg custom-input-group">
-            <span class="input-group-text bg-transparent border-0 search-icon">
-              <i class="fas fa-search"></i>
-            </span>
-            <input type="text" class="form-control bg-transparent border-0 text-white" [(ngModel)]="search" name="guess"
-              (input)="autoCompletePlayerNames($event)" [placeholder]="'Rechercher un joueur' | translate"
-              autocomplete="off" />
-          </div>
-          <button type="submit" class="btn btn-action" [disabled]="isSubmitting || !search || !canGuess()">
-            <i class="fas fa-arrow-right"></i>
-          </button>
-        </form>
+    <div *ngIf="!isWin && !isLose" class="mb-4">
+      <div class="input-area card glass-panel">
+        <div class="card-body p-2">
+          <form class="guess-form d-flex gap-2" (ngSubmit)="submitGuess()">
+            <div class="input-group input-group-lg custom-input-group">
+              <span class="input-group-text bg-transparent border-0 search-icon">
+                <app-icon [name]="'Search'"></app-icon>
+              </span>
+              <input type="text" class="form-control bg-transparent border-0 text-white" [(ngModel)]="search" name="guess"
+                (input)="autoCompletePlayerNames($event)" [placeholder]="'Rechercher un joueur' | translate"
+                autocomplete="off" (blur)="updateInputFocusState(false)" (focus)="updateInputFocusState(true)">
+            </div>
+            <button type="submit" class="btn btn-action" [disabled]="isSubmitting || !search || !canGuess()">
+              <i class="fas fa-arrow-right"></i>
+            </button>
+          </form>
+        </div>
       </div>
-    </div>
-    <div class="autocomplete-suggestions" *ngIf="autoCompleteSuggestions.length > 0">
-      <div class="suggestion-item" *ngFor="let suggestion of autoCompleteSuggestions"
-        (click)="search = suggestion; autoCompleteSuggestions = []">
-        {{ suggestion }}
+      <div class="autocomplete-suggestions ms-3" *ngIf="autoCompleteSuggestions.length > 0" [ngClass]="{'d-block': isInputFocused, 'd-none': !isInputFocused}">
+        <div class="suggestion-item" *ngFor="let suggestion of autoCompleteSuggestions"
+          (mousedown)="updateSearch(suggestion)">
+          {{ suggestion }}
+        </div>
       </div>
     </div>
 
     <div class="result-card glass-panel win-mode p-4 text-center mb-4" *ngIf="isWin">
-      <h2 class="h3 fw-bold text-white">Joueur trouvé !</h2>
-      <p class="text-white-50">Le joueur était bien <strong>{{ guesses[0].playerName }}</strong>.</p>
+      <h2 class="h3 fw-bold text-white">{{ 'Joueur trouvé' | translate }} !</h2>
+      <p class="text-white-50">{{ 'Le joueur était bien {0}' | translate: [guesses[0].playerName] }}</p>
       <div class="stat-highlight my-3">
         <span class="display-4 fw-bold text-gradient-gold">{{ guesses.length }}</span>
-        <span class="d-block text-uppercase text-xs tracking-wider">Essais</span>
+        <span class="d-block text-uppercase text-xs tracking-wider">{{ 'Essais' | translate }}</span>
       </div>
       <button class="btn btn-light w-100 fw-bold rounded-pill py-3 hover-scale" (click)="copyToClipboard()">
         <i class="fas fa-clipboard me-2"></i>
@@ -71,8 +71,10 @@
     </div>
 
     <div class="result-card glass-panel lose-mode p-4 text-center mb-4" *ngIf="!isWin && guesses.length >= maxAttempts">
-      <div class="skull-icon mb-2">💀</div>
-      <h2 class="h4 text-white">{{ 'Game Over' | translate }}</h2>
+      <div class="skull-icon mb-2">
+        <i class="fas fa-skull-crossbones fa-2x"></i>
+      </div>
+      <h2 class="h4 text-white">{{ 'Partie terminée' | translate }}</h2>
       <p class="text-white-50">
         <a href="https://gge-tracker.com/player/{{ dailyTarget.player_id }}" target="_blank"
           class="text-decoration-none text-gradient-primary">
@@ -90,10 +92,8 @@
     </div>
 
     <div class="mini-game-container" *ngIf="!isInLoading && dailyTarget">
-
       <div class="guesses-container">
         <div class="guess-card glass-panel" *ngFor="let guess of guesses; let i = index" [class.latest]="i === 0">
-
           <div class="guess-header">
             <div class="player-info">
               <span class="index-badge">#{{ guesses.length - i }}</span>
@@ -109,7 +109,6 @@
           </div>
 
           <div class="stats-grid">
-
             <div class="stat-box rank-box" [ngClass]="getDirectionClass(guess.allianceRank.direction!)">
               <span class="stat-label">{{ 'Rang' | translate }}</span>
               <div class="stat-content">
@@ -171,11 +170,9 @@
                 </div>
               </div>
             </div>
-
           </div>
         </div>
       </div>
     </div>
-
   </div>
 </div>

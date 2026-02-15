@@ -18,7 +18,9 @@ import { TranslateModule } from '@ngx-translate/core';
 import { ArrowBigRightDash, LucideAngularModule } from 'lucide-angular';
 import { PlayerTableContentComponent } from './player-table-content/player-table-content.component';
 import { IconComponent } from '@ggetracker-components/icon/icon.component';
-import { BoundType, FilterField, FilterKeyMap } from '@ggetracker-interfaces/filter';
+import { BoundType, FilterKeyMap } from '@ggetracker-interfaces/filter';
+
+type FilterField = 'honor' | 'loot' | 'level' | 'might' | 'fame' | 'castleCount';
 
 interface FormFilters {
   minHonor: string;
@@ -127,7 +129,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     fame: { min: '', max: '' },
     castleCount: { min: '', max: '' },
   };
-  private readonly FILTER_KEYS: FilterKeyMap<FormFilters> = {
+  private readonly FILTER_KEYS: FilterKeyMap<FormFilters, FilterField> = {
     honor: { min: 'minHonor', max: 'maxHonor' },
     loot: { min: 'minLoot', max: 'maxLoot' },
     level: { min: 'minLevel', max: 'maxLevel' },

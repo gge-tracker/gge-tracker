@@ -6,10 +6,12 @@ import { GenericComponent } from '@ggetracker-components/generic/generic.compone
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
 import { ApiMovementsResponse, ErrorType, Movement, SearchType } from '@ggetracker-interfaces/empire-ranking';
-import { BoundType, FilterField, FilterKeyMap } from '@ggetracker-interfaces/filter';
+import { BoundType, FilterKeyMap } from '@ggetracker-interfaces/filter';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { TranslateModule } from '@ngx-translate/core';
 import { ArrowBigRightDash, LucideAngularModule } from 'lucide-angular';
+
+type FilterField = 'honor' | 'loot' | 'level' | 'might' | 'fame' | 'castleCount';
 
 interface FormFilters {
   minHonor: string;
@@ -94,7 +96,7 @@ export class MovementsComponent extends GenericComponent {
     playerCastleDistance: '',
     isFiltered: false,
   };
-  private readonly FILTER_KEYS: FilterKeyMap<FormFilters> = {
+  private readonly FILTER_KEYS: FilterKeyMap<FormFilters, FilterField> = {
     honor: { min: 'minHonor', max: 'maxHonor' },
     loot: { min: 'minLoot', max: 'maxLoot' },
     level: { min: 'minLevel', max: 'maxLevel' },

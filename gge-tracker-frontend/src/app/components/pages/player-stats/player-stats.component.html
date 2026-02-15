@@ -285,7 +285,8 @@
                             #{{ stats?.playerCurrentFameRank ?? 0 | formatNumber }}
                           </span>
                           <span class="text-white-50 fs-7">
-                            <i class="bi bi-clock me-1"></i> {{ stats?.updatedAt | date:'shortTime' }}
+                            <i class="fas fa-clock me-1"></i>
+                            {{ stats?.updatedAt | date:'shortTime' }}
                           </span>
                         </div>
                       </div>
@@ -297,7 +298,7 @@
                           {{ stats?.currentFame ?? 0 | formatNumber }}
                           <span class="fw-normal">{{ 'Points de gloire' | translate }}</span>
                         </span>
-                        <span>
+                        <span [title]="nextFameTitle?.threshold">
                           {{ (nextFameTitle?.threshold ?? 0) | formatNumber }}
                           <span class="fw-normal" *ngIf="nextFameTitle">
                             ({{ (nextFameTitle ? (currentI18nTitleKey + nextFameTitle.titleID) : '-') | translate }})
@@ -324,12 +325,12 @@
                       </div>
                       <div class="decay-stat-row mb-2">
                         <span class="label text-white-50">{{ 'Perte estimée' | translate }}</span>
-                        <span class="value text-danger fw-bold">-{{ ((stats?.currentFame ?? 0) *
+                        <span class="value text-danger fw-bold" [title]="-((stats?.currentFame ?? 0) * (currentPlayerTitle.decay ?? 0)) / 100">-{{ ((stats?.currentFame ?? 0) *
                           (currentPlayerTitle.decay ?? 0)) / 100 | formatNumber }}</span>
                       </div>
                       <div class="decay-stat-row big-stat">
                         <span class="label text-white-50">{{ 'Points de gloire' | translate }}</span>
-                        <span class="value text-white">
+                        <span class="value text-white" [title]="(stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0)) / 100">
                           {{ ((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100 | formatNumber }}
                         </span>
                       </div>
@@ -339,11 +340,12 @@
                       }">
                         <span
                           *ngIf="(((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) >= (currentPlayerTitle.threshold ?? 0)">
-                          <i class="bi bi-shield-check me-2"></i> {{ 'Titre sécurisé' | translate }}
+                          <i class="fas fa-check-circle me-2"></i>
+                          {{ 'Titre sécurisé' | translate }}
                         </span>
                         <span
                           *ngIf="(((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) < (currentPlayerTitle.threshold ?? 0)">
-                          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                          <i class="fas fa-exclamation-triangle me-2"></i>
                           {{ 'Attention : Risque de rétrogradation' | translate }}
                         </span>
                       </div>
@@ -385,17 +387,19 @@
 
                     <div class="ladder-state-icon">
                       <ng-container *ngIf="(stats?.currentFame ?? 0) < (fameTitle.threshold ?? -1)">
-                        <span class="icon-lock"><i class="bi bi-lock-fill"></i></span>
+                        <span class="icon-lock">
+                          <i class="fas fa-lock"></i>
+                        </span>
                       </ng-container>
 
                       <ng-container *ngIf="(stats?.currentFame ?? 0) >= (fameTitle.threshold ?? 0)">
                         <span class="icon-check"
                           *ngIf="(((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) >= (fameTitle.threshold ?? 0)">
-                          <i class="bi bi-check-circle-fill"></i>
+                          <i class="fas fa-check-circle"></i>
                         </span>
                         <span class="icon-warning"
                           *ngIf="(((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) < (fameTitle.threshold ?? 0)">
-                          <i class="bi bi-exclamation-triangle-fill"></i>
+                          <i class="fas fa-exclamation-triangle"></i>
                         </span>
                       </ng-container>
                     </div>

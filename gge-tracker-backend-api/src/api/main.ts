@@ -99,7 +99,6 @@ const bypassRules = [
   RoutesManager.fromPrefix('/api/v1/assets', true),
   RoutesManager.fromPrefix('/api/v1/languages', true),
   RoutesManager.fromRegExp(String.raw`^/api/v2/view/\d+`, true),
-  RoutesManager.fromExact('/api/v1/mini-games/guesses/autocomplete', true),
 ];
 
 const managerInstance = new ApiGgeTrackerManager();

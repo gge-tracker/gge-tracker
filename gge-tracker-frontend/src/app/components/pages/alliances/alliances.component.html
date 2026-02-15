@@ -125,3 +125,122 @@
       </div>
     </div>
   </div>
+
+
+  <div class="modal fade" id="filtersModal" tabindex="-1" aria-labelledby="filtersModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="filtersModalLabel">
+            <i class="fa-solid fa-filter"></i>&nbsp;{{ 'Filtrer les résultats' | translate }}
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"
+            [attr.aria-label]="'Fermer' | translate"></button>
+        </div>
+        <div class="modal-body">
+          <div class="filters-container">
+            <div class="row">
+              <!-- Might -->
+              <div class="col-12 col-sm my-1">
+                <div class="input-group">
+                  <span class="input-group-text">
+                    <img src="/assets/pp1.png" [alt]="'Puissance' | translate"
+                      [title]="'Filtrer par point de puissance' | translate" height="24">
+                  </span>
+                  <input type="text" class="form-control ggetracker-input" id="mightMin"
+                    [value]="displayFormValues.might.min" (focus)="onGenericFocus('min', 'might')"
+                    (blur)="onGenericBlur('min', 'might')" (input)="onGenericInput('min', 'might', $event)"
+                    [title]="formFilters.minMight" [placeholder]="'Puissance min.' | translate">
+                  <div class="input-arrow">
+                    <lucide-icon [img]="ArrowBigRightDash" [size]="20" class="m-auto"></lucide-icon>
+                  </div>
+                  <input type="text" class="form-control ggetracker-input" id="mightMax"
+                    [value]="displayFormValues.might.max" (focus)="onGenericFocus('max', 'might')"
+                    (blur)="onGenericBlur('max', 'might')" (input)="onGenericInput('max', 'might', $event)"
+                    [title]="formFilters.maxMight" [placeholder]="'Puissance max.' | translate">
+                </div>
+              </div>
+            </div>
+            <div class="row mt-1">
+              <!-- Loot -->
+              <div class="col-12 col-sm my-1">
+                <div class="input-group">
+                  <span class="input-group-text">
+                    <img src="/assets/loot.png" [alt]="'Pillage' | translate"
+                      [title]="'Filtrer par point de pillage' | translate" height="24">
+                  </span>
+                  <input type="text" class="form-control ggetracker-input" id="lootMin"
+                    [value]="displayFormValues.loot.min" (focus)="onGenericFocus('min', 'loot')"
+                    (blur)="onGenericBlur('min', 'loot')" (input)="onGenericInput('min', 'loot', $event)"
+                    [title]="formFilters.minLoot" [placeholder]="'Pillage min.' | translate">
+                  <div class="input-arrow">
+                    <lucide-icon [img]="ArrowBigRightDash" [size]="20" class="m-auto"></lucide-icon>
+                  </div>
+                  <input type="text" class="form-control ggetracker-input" id="lootMax"
+                    [value]="displayFormValues.loot.max" (focus)="onGenericFocus('max', 'loot')"
+                    (blur)="onGenericBlur('max', 'loot')" (input)="onGenericInput('max', 'loot', $event)"
+                    [title]="formFilters.maxLoot" [placeholder]="'Pillage max.' | translate">
+                </div>
+              </div>
+            </div>
+            <div class="row mt-1">
+              <!-- Fame (glory) -->
+              <div class="col-12 col-sm my-1">
+                <div class="input-group">
+                  <span class="input-group-text">
+                    <img src="/assets/glory.png" [alt]="'Gloire' | translate" [title]="'Filtrer par gloire' | translate"
+                      height="24">
+                  </span>
+                  <input type="text" class="form-control ggetracker-input" id="fameMin"
+                    [value]="displayFormValues.fame.min" (focus)="onGenericFocus('min', 'fame')"
+                    (blur)="onGenericBlur('min', 'fame')" (input)="onGenericInput('min', 'fame', $event)"
+                    [title]="formFilters.minFame" [placeholder]="'Gloire min.' | translate">
+                  <div class="input-arrow">
+                    <lucide-icon [img]="ArrowBigRightDash" [size]="20" class="m-auto"></lucide-icon>
+                  </div>
+                  <input type="text" class="form-control ggetracker-input" id="fameMax"
+                    [value]="displayFormValues.fame.max" (focus)="onGenericFocus('max', 'fame')"
+                    (blur)="onGenericBlur('max', 'fame')" (input)="onGenericInput('max', 'fame', $event)"
+                    [title]="formFilters.maxFame" [placeholder]="'Gloire max.' | translate">
+                </div>
+              </div>
+            </div>
+            <div class="row mt-1">
+              <div class="row">
+                <div class="col-12">
+                  <div class="mt-3">
+                    <h5 class="d-flex">
+                      <app-icon [name]="'ArrowDown01'" [size]="24" class="me-2"></app-icon>
+                      {{ 'Trier les résultats' | translate }}
+                    </h5>
+                  </div>
+                  <div class="input-group align-items-center justify-content-center gge-tracker-select-container">
+                    <select class="form-select w-auto mt-2" [(ngModel)]="sort">
+                      <option *ngFor="let option of sortByOptions" [value]="option.value">{{ option.label | translate}}
+                      </option>
+                    </select>
+                    <button class="gge-btn reset sort mt-2" (click)="sort = sort; reverse = !reverse">
+                      <i class="fa-solid" [ngClass]="{'fa-arrow-down-long': !reverse, 'fa-arrow-up-long': reverse}"></i>
+                      &nbsp;
+                      <span *ngIf="!reverse">{{ 'Descendant' | translate }}</span>
+                      <span *ngIf="reverse">{{ 'Ascendant' | translate }}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <hr class="my-4">
+              <div class="row">
+                <div class="col text-center">
+                  <button class="gge-btn search" (click)="applyFilters()" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-check"></i>
+                    &nbsp;
+                    <span>{{ 'Appliquer les filtres' | translate }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>

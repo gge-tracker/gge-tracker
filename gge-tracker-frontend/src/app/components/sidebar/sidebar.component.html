@@ -7,12 +7,23 @@
     <div *ngFor="let section of menuStructure">
       <h3 class="sidebar-section-title">{{ section.title | translate }}</h3>
 
-      <button *ngFor="let item of section.items" class="nav-item" [class.active-nav]="isActive(item.id)"
-        [routerLink]="item.id" [title]="item.label | translate">
-        <img *ngIf="item.iconUrl" [src]="item.iconUrl" alt="{{ item.label | translate }}" class="img-icon" />
-        <span>{{ item.label | translate }}</span>
-        <span *ngIf="item.frequency" class="badge-frequency">{{ item.frequency | translate }}</span>
-      </button>
+      <ng-container  *ngFor="let item of section.items">
+        <button class="nav-item" [class.active-nav]="isActive(item.id || 'no-active')" *ngIf="!item.url; else externalUrlButton"
+          [routerLink]="item.id" [title]="item.label | translate">
+          <img *ngIf="item.iconUrl" [src]="item.iconUrl" alt="{{ item.label | translate }}" class="img-icon" />
+          <span>{{ item.label | translate }}</span>
+          <span *ngIf="item.frequency" class="badge-frequency">{{ item.frequency | translate }}</span>
+        </button>
+        <ng-template #externalUrlButton>
+          <a class="nav-item" [href]="item.url" target="_blank" rel="noopener noreferrer" [title]="item.label | translate">
+            <img *ngIf="item.iconUrl" [src]="item.iconUrl" alt="{{ item.label | translate }}" class="img-icon" />
+            <span>{{ item.label | translate }}</span>
+            <span class="badge-frequency">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            </span>
+          </a>
+        </ng-template>
+      </ng-container>
 
     </div>
   </div>

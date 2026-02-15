@@ -519,13 +519,11 @@ img::selection {
   height: 100%;
 }
 .prestige-card.active {
-  background: linear-gradient(
-    180deg,
-    rgba(197, 160, 89, 0.1) 0%,
-    rgba(0, 0, 0, 0) 100%
-  );
   border-color: var(--fame-gold);
   box-shadow: 0 0 15px rgba(197, 160, 89, 0.1);
+  background-color: #c5a05933;
+  background-image: url(/assets/light-background-hover.png);
+  background-size: 22px;
 }
 .prestige-rank {
   font-size: 0.8rem;
