@@ -1,2 +1,3 @@
 # Ignore Docker Compose override files for production, which may contain sensitive information
 *prod.yml
+*.override.yml

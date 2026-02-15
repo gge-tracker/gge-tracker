@@ -78,6 +78,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_int1',
       },
       outer_name: 'INT1',
+      timezoneOffset: -1,
       code: '071',
       zone: 'EmpireEx',
     },
@@ -87,12 +88,14 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_de1',
       },
       outer_name: 'DE1',
+      timezoneOffset: -1,
       code: '010',
       zone: 'EmpireEx_2',
     },
     [GgeTrackerServersEnum.FR1]: {
       databases: { sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME, olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME },
       outer_name: 'FR1',
+      timezoneOffset: -1,
       code: '020',
       zone: 'EmpireEx_3',
     },
@@ -102,6 +105,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_cz1',
       },
       outer_name: 'CZ1',
+      timezoneOffset: 0,
       code: '030',
       zone: 'EmpireEx_4',
     },
@@ -111,6 +115,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_PL1',
       },
       outer_name: 'PL1',
+      timezoneOffset: -1,
       code: '065',
       zone: 'EmpireEx_5',
     },
@@ -120,6 +125,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_PT1',
       },
       outer_name: 'PT1',
+      timezoneOffset: -1,
       code: '055',
       zone: 'EmpireEx_6',
     },
@@ -133,6 +139,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-es1',
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_es1',
       },
+      timezoneOffset: -1,
       outer_name: 'ES1',
       code: '074',
       zone: 'EmpireEx_8',
@@ -143,6 +150,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_IT1',
       },
       outer_name: 'IT1',
+      timezoneOffset: -1,
       code: '075',
       zone: 'EmpireEx_9',
     },
@@ -152,6 +160,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_tr1',
       },
       outer_name: 'TR1',
+      timezoneOffset: -1,
       code: '090',
       zone: 'EmpireEx_10',
     },
@@ -161,6 +170,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_nl1',
       },
       outer_name: 'NL1',
+      timezoneOffset: 0,
       code: '050',
       zone: 'EmpireEx_11',
     },
@@ -170,6 +180,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_hu1',
       },
       outer_name: 'HU1',
+      timezoneOffset: 0,
       code: '015',
       zone: 'EmpireEx_12',
     },
@@ -179,6 +190,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_skn1',
       },
       outer_name: 'SKN1',
+      timezoneOffset: -1,
       zone: 'EmpireEx_13',
       code: '193',
     },
@@ -188,6 +200,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_ru1',
       },
       outer_name: 'RU1',
+      timezoneOffset: -1,
       code: '031',
       zone: 'EmpireEx_14',
     },
@@ -197,6 +210,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_ro1',
       },
       outer_name: 'RO1',
+      timezoneOffset: 0,
       code: '040',
       zone: 'EmpireEx_15',
     },
@@ -206,6 +220,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_bg1',
       },
       outer_name: 'BG1',
+      timezoneOffset: -1,
       code: '012',
       zone: 'EmpireEx_16',
     },
@@ -215,6 +230,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_hu2',
       },
       outer_name: 'HU2',
+      timezoneOffset: -1,
       code: '014',
       zone: 'EmpireEx_17',
     },
@@ -224,6 +240,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_sk1',
       },
       outer_name: 'SK1',
+      timezoneOffset: -1,
       zone: 'EmpireEx_18',
       code: '013',
     },
@@ -233,6 +250,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_gb1',
       },
       outer_name: 'GB1',
+      timezoneOffset: -1,
       zone: 'EmpireEx_19',
       code: '201',
     },
@@ -242,6 +260,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_BR1',
       },
       outer_name: 'BR1',
+      timezoneOffset: 3,
       code: '095',
       zone: 'EmpireEx_20',
     },
@@ -252,6 +271,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
       },
       outer_name: 'US1',
       code: '080',
+      timezoneOffset: 5,
       zone: 'EmpireEx_21',
     },
     [GgeTrackerServersEnum.AU1]: {
@@ -260,6 +280,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_au1',
       },
       outer_name: 'AU1',
+      timezoneOffset: -2,
       code: '045',
       zone: 'EmpireEx_22',
     },
@@ -274,6 +295,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_jp1',
       },
       outer_name: 'JP1',
+      timezoneOffset: -2,
       code: '087',
       zone: 'EmpireEx_24',
     },
@@ -288,6 +310,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_IN1',
       },
       outer_name: 'IN1',
+      timezoneOffset: -2,
       code: '085',
       zone: 'EmpireEx_26',
     },
@@ -297,6 +320,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_cn1',
       },
       outer_name: 'CN1',
+      timezoneOffset: -2,
       code: '026',
       zone: 'EmpireEx_27',
     },
@@ -306,6 +330,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_gr1',
       },
       outer_name: 'GR1',
+      timezoneOffset: -1,
       code: '011',
       zone: 'EmpireEx_28',
     },
@@ -322,13 +347,19 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_sa1',
       },
       outer_name: 'SA1',
+      timezoneOffset: -1,
       code: '073',
       zone: 'EmpireEx_32',
     },
     [GgeTrackerServersEnum.AE1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-ae1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_ae1',
+      },
       outer_name: 'AE1',
       zone: 'EmpireEx_33',
-      disabled: true,
+      timezoneOffset: -1,
+      code: '086',
     },
     [GgeTrackerServersEnum.EG1]: {
       databases: {
@@ -336,6 +367,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_eg1',
       },
       outer_name: 'EG1',
+      timezoneOffset: -1,
       zone: 'EmpireEx_34',
       code: '267',
     },
@@ -345,6 +377,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_ar1',
       },
       outer_name: 'ARAB1',
+      timezoneOffset: -1,
       code: '035',
       zone: 'EmpireEx_35',
     },
@@ -354,6 +387,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_asia',
       },
       outer_name: 'ASIA',
+      timezoneOffset: -1,
       zone: 'EmpireEx_36',
       code: '459',
     },
@@ -363,13 +397,19 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_hant1',
       },
       outer_name: 'HANT',
+      timezoneOffset: -1,
       code: '025',
       zone: 'EmpireEx_37',
     },
     [GgeTrackerServersEnum.ES2]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-es2',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_es2',
+      },
       outer_name: 'ES2',
+      timezoneOffset: -1,
+      code: '022',
       zone: 'EmpireEx_38',
-      disabled: true,
     },
     // EmpireEx_39 does not exist
     // EmpireEx_40 does not exist
@@ -381,6 +421,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_int3',
       },
       outer_name: 'INT3',
+      timezoneOffset: 0,
       code: '070',
       zone: 'EmpireEx_43',
     },
@@ -390,6 +431,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_world1',
       },
       outer_name: 'LIVE',
+      timezoneOffset: 0,
       code: '060',
       zone: 'EmpireEx_46',
     },
@@ -399,6 +441,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_world2',
       },
       outer_name: 'LIVE2',
+      timezoneOffset: 0,
       code: '061',
       zone: 'EmpireEx_49',
     },
@@ -414,6 +457,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_E4K_DB_NAME + '_hant1',
       },
       outer_name: 'E4K_HANT1',
+      timezoneOffset: -2,
       code: '462',
       zone: 'EmpirefourkingdomsExGG_30',
     },
@@ -423,6 +467,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_E4K_DB_NAME + '_br1',
       },
       outer_name: 'E4K_BR1',
+      timezoneOffset: 3,
       code: '202',
       zone: 'EmpirefourkingdomsExGG_13',
     },
@@ -432,6 +477,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_E4K_DB_NAME + '_fr1',
       },
       outer_name: 'E4K_FR1',
+      timezoneOffset: -1,
       code: '164',
       zone: 'EmpirefourkingdomsExGG_2',
     },
@@ -441,6 +487,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_E4K_DB_NAME + '_de1',
       },
       outer_name: 'E4K_DE1',
+      timezoneOffset: -1,
       code: '121',
       zone: 'EmpirefourkingdomsExGG',
     },
@@ -450,6 +497,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_E4K_DB_NAME + '_de2',
       },
       outer_name: 'E4K_DE2',
+      timezoneOffset: -1,
       code: '192',
       zone: 'EmpirefourkingdomsExGG_28',
     },
@@ -459,6 +507,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_E4K_DB_NAME + '_us1',
       },
       outer_name: 'E4K_US1',
+      timezoneOffset: 5,
       code: '203',
       zone: 'EmpirefourkingdomsExGG_4',
     },
@@ -468,6 +517,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_E4K_DB_NAME + '_int2',
       },
       outer_name: 'E4K_INT2',
+      timezoneOffset: -1,
       code: '186',
       zone: 'EmpirefourkingdomsExGG_21',
     },
@@ -477,6 +527,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_E4K_DB_NAME + '_cn1',
       },
       outer_name: 'E4K_CN1',
+      timezoneOffset: -2,
       code: '216',
       zone: 'EmpirefourkingdomsExGG_16',
     },
@@ -486,8 +537,29 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_E4K_DB_NAME + '_gb1',
       },
       outer_name: 'E4K_GB1',
+      timezoneOffset: -1,
       code: '167',
       zone: 'EmpirefourkingdomsExGG_5',
+    },
+    [GgeTrackerServersEnum.E4K_RU1]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_E4K_DB_NAME + '-ru1',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_E4K_DB_NAME + '_ru1',
+      },
+      outer_name: 'E4K_RU1',
+      timezoneOffset: -1,
+      code: '195',
+      zone: 'EmpirefourkingdomsExGG_10',
+    },
+    [GgeTrackerServersEnum.E4K_WORLD2]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_E4K_DB_NAME + '-world2',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_E4K_DB_NAME + '_world2',
+      },
+      outer_name: 'E4K_WORLD2',
+      timezoneOffset: -1,
+      code: '177',
+      zone: 'EmpirefourkingdomsExGG_37',
     },
     [GgeTrackerServersEnum.PARTNER_SP3]: {
       databases: {
@@ -495,6 +567,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_SPECIAL_SERVER_NAME + '_3',
       },
       outer_name: 'PARTNER_SP3',
+      timezoneOffset: -1,
       code: '903',
       zone: 'EmpireExSP_3',
     },
@@ -581,6 +654,14 @@ export class ApiGgeTrackerManager extends DatabaseManager {
     return this.getActivatedServerValues().find((server) => server.outer_name === serverName) || null;
   }
 
+  public getTimezoneOffsetByCode(code: string): number | null {
+    const server = this.getServerByCode(code);
+    if (server && 'timezoneOffset' in server && typeof server.timezoneOffset === 'number') {
+      return server.timezoneOffset;
+    }
+    return null;
+  }
+
   /**
    * Retrieves the server information associated with the specified code
    *
@@ -627,6 +708,16 @@ export class ApiGgeTrackerManager extends DatabaseManager {
   }
 
   /**
+   * Retrieves the server code associated with a given outer server name
+   * @param outerName - The outer name of the server to search for
+   * @returns The server code as a string if a matching server is found; otherwise, `null`
+   */
+  public getCodeFromOuterName(outerName: string): string | null {
+    const server = this.getActivatedServerValues().find((server) => server.outer_name === outerName);
+    return server ? server.code : null;
+  }
+
+  /**
    * Retrieves the server name associated with a given player ID
    *
    * This method searches through the available servers and returns the server name
@@ -639,6 +730,14 @@ export class ApiGgeTrackerManager extends DatabaseManager {
     const entry = this.getActivatedServerEntries().find(
       (token) => token[1].code === ApiHelper.getCountryCode(playerId.toString()),
     );
+    if (entry) {
+      return entry[0];
+    }
+    return null;
+  }
+
+  public getServerNameFromCode(code: string): string | null {
+    const entry = this.getActivatedServerEntries().find((token) => token[1].code === code);
     if (entry) {
       return entry[0];
     }

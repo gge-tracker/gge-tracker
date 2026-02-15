@@ -10,6 +10,7 @@ export enum GgeServerType {
 }
 
 class BaseSocket extends Log {
+  private static readonly XML_REGEX = /<msg t='(.*?)'><body action='(.*?)' r='(.*?)'>(.*?)<\/body><\/msg>/;
   public opened: AsyncEvent;
   public closed: AsyncEvent;
   public connected: AsyncEvent;
@@ -159,7 +160,9 @@ class BaseSocket extends Log {
   }
 
   public close(): void {
-    this.ws.close();
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.close();
+    }
   }
 
   public handleErrorResponse(message: string, timeout: number = 5 * 60 * 1000): void {
@@ -183,7 +186,21 @@ class BaseSocket extends Log {
     }
   }
 
-  private async ping(): Promise<void> {
+  public _onMessage(message: any, needToStringOption = true): void {
+    if (needToStringOption) {
+      message = message.toString();
+    }
+    const response = this.parseResponse(message);
+    this._processResponse(response);
+    if (this.onMessage) this.onMessage(message);
+  }
+
+  protected send(data: string): void {
+    if (this.onSend) this.onSend(data);
+    this.ws.send(data);
+  }
+
+  private ping(): void {
     if (!this.connected.isSet) return;
     this.sendRawCommand('pin', ['<RoundHouseKick>']);
     setTimeout(() => this.ping(), 60 * 1000);
@@ -194,13 +211,6 @@ class BaseSocket extends Log {
     if (this.onOpen) this.onOpen(this.ws);
   }
 
-  private async _onMessage(message: any): Promise<void> {
-    message = message.toString();
-    const response = await this.parseResponse(message);
-    this._processResponse(response);
-    if (this.onMessage) this.onMessage(message);
-  }
-
   private _onError(error: unknown): void {
     if (this.onError) this.onError(error);
   }
@@ -209,11 +219,6 @@ class BaseSocket extends Log {
     this.opened.clear();
     this.closed.set();
     if (this.onClose) this.onClose(code, reason);
-  }
-
-  private send(data: string): void {
-    if (this.onSend) this.onSend(data);
-    this.ws.send(data);
   }
 
   private _sendCommandMessage(data: string[]): void {
@@ -234,9 +239,9 @@ class BaseSocket extends Log {
     return message.response;
   }
 
-  private async parseResponse(response: string): Promise<any> {
+  private parseResponse(response: string): any {
     if (response.startsWith('<')) {
-      const parsed = /<msg t='(.*?)'><body action='(.*?)' r='(.*?)'>(.*?)<\/body><\/msg>/.exec(response);
+      const parsed = BaseSocket.XML_REGEX.exec(response);
       return {
         type: 'xml',
         payload: {

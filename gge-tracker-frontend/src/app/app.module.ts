@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
-import { APP_INITIALIZER, LOCALE_ID, NgModule } from '@angular/core';
+import { APP_INITIALIZER, LOCALE_ID, NgModule, isDevMode } from '@angular/core';
 import { BrowserModule, provideClientHydration } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { RouterModule } from '@angular/router';
@@ -28,6 +28,7 @@ import localeNl from '@angular/common/locales/nl';
 import localePl from '@angular/common/locales/pl';
 import localeRo from '@angular/common/locales/ro';
 import localeDe from '@angular/common/locales/de';
+import { ServiceWorkerModule } from '@angular/service-worker';
 
 registerLocaleData(localeFr, 'fr-FR');
 registerLocaleData(localeEnGb, 'en-GB');
@@ -68,6 +69,10 @@ export function DynamicTranslateLoaderFactory(http: HttpClient): TranslateLoader
     }),
     SidebarComponent,
     TopBarComponent,
+    ServiceWorkerModule.register('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      registrationStrategy: 'registerWhenStable:30000',
+    }),
   ],
   bootstrap: [AppComponent],
   providers: [

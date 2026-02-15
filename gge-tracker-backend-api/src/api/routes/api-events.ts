@@ -142,10 +142,15 @@ export abstract class ApiEvents implements ApiHelper {
       const query = `
         SELECT
           event_id,
-          ARRAY_AGG(DISTINCT date_trunc('hour', created_at) ORDER BY date_trunc('hour', created_at)) AS dates
-        FROM grand_tournament
+          ARRAY_AGG(hour ORDER BY hour) AS dates
+        FROM (
+          SELECT DISTINCT
+            event_id,
+            date_trunc('hour', created_at) AS hour
+          FROM grand_tournament
+        ) s
         GROUP BY event_id
-        ORDER BY event_id ASC;
+        ORDER BY event_id;
       `;
       const { rows } = await pgPool.query(query);
       if (rows.length === 0) {

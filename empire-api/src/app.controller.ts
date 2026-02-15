@@ -5,6 +5,7 @@ import { HeadersUtilities } from './utils/nested-headers.js';
 import { GgeEmpireSocket } from './utils/ws/empire-socket.js';
 import { GgeEmpire4KingdomsSocket } from './utils/ws/empire4kingdoms-socket.js';
 import { GgeLiveTemporaryServerSocket } from './utils/ws/live-temporary-server-socket.js';
+import { GgeEmpire4KingdomsTcp } from './utils/ws/empire4kingdoms-tcp.js';
 
 interface CommandInterface {
   [key: string]: {
@@ -18,7 +19,7 @@ const commands: CommandInterface = JSON.parse(
 );
 
 export default function createApp(sockets: {
-  [x: string]: GgeEmpire4KingdomsSocket | GgeEmpireSocket | GgeLiveTemporaryServerSocket;
+  [x: string]: GgeEmpire4KingdomsSocket | GgeEmpireSocket | GgeLiveTemporaryServerSocket | GgeEmpire4KingdomsTcp;
 }): express.Express {
   const app = express();
   app.use(express.json());
@@ -76,7 +77,11 @@ export default function createApp(sockets: {
         response.status(400).json({ error: 'Invalid socket URL' });
         return;
       }
-      let socketServer: GgeEmpire4KingdomsSocket | GgeEmpireSocket | GgeLiveTemporaryServerSocket;
+      let socketServer:
+        | GgeEmpire4KingdomsSocket
+        | GgeEmpireSocket
+        | GgeLiveTemporaryServerSocket
+        | GgeEmpire4KingdomsTcp;
       let autoReconnectValue = autoReconnect ?? false;
       switch (serverType) {
         case 'ep': {
@@ -84,6 +89,16 @@ export default function createApp(sockets: {
           break;
         }
         case 'e4k': {
+          socketServer = new GgeEmpire4KingdomsTcp(
+            'tcp://' + socket_url,
+            server,
+            username,
+            password,
+            autoReconnectValue,
+          );
+          break;
+        }
+        case 'e4k-legacy': {
           socketServer = new GgeEmpire4KingdomsSocket(
             'ws://' + socket_url,
             server,

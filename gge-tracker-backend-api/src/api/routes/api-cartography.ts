@@ -67,6 +67,8 @@ export abstract class ApiCartography implements ApiHelper {
             SUM(might_current) AS total_might
           FROM players
           WHERE alliance_id IS NOT NULL
+          AND castles IS NOT NULL
+          AND castles != '[]'
           GROUP BY alliance_id
           ORDER BY total_might DESC
           ${limit})
@@ -291,6 +293,8 @@ export abstract class ApiCartography implements ApiHelper {
           alliances A ON P.alliance_id = A.id
         WHERE
           alliance_id = $${parameterIndex++}
+        AND P.castles IS NOT NULL
+        AND P.castles != '[]'
         ORDER BY
           castles DESC;
         `;

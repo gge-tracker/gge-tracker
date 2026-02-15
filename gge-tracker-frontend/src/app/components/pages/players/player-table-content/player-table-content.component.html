@@ -44,10 +44,9 @@
 
     <!-- Might -->
     <td class="col-metric px-2" [title]="player.mightAllTime | formatNumber:'visual'">
-      <span class="mobile-only">{{ 'Puissance' | translate }}:&nbsp;</span>
       <div class="metric">
         <div class="metric-header">
-          <span class="metric-current">{{ player.mightCurrent | formatNumber }}</span>
+          <span class="metric-current"><span class="mobile-only">{{ 'Puissance' | translate }}:&nbsp;</span>{{ player.mightCurrent | formatNumber }}</span>
           <span class="metric-max">{{ player.mightAllTime | formatNumber }}</span>
         </div>
         <div class="metric-bar-bg">
@@ -58,10 +57,9 @@
 
     <!-- Loot -->
     <td class="col-metric px-2" [title]="player.lootAllTime | formatNumber:'visual'">
-      <span class="mobile-only">{{ 'Pillage hebdomadaire' | translate }}:&nbsp;</span>
       <div class="metric">
         <div class="metric-header">
-          <span class="metric-current">{{ player.lootCurrent | formatNumber }}</span>
+          <span class="metric-current"><span class="mobile-only">{{ 'Pillage hebdomadaire' | translate }}:&nbsp;</span>{{ player.lootCurrent | formatNumber }}</span>
           <span class="metric-max">{{ player.lootAllTime | formatNumber }}</span>
         </div>
         <div class="metric-bar-bg">
@@ -73,10 +71,9 @@
 
     <!-- Fame -->
     <td class="col-metric px-2" [title]="player.highestFame | formatNumber:'visual'">
-      <span class="mobile-only">{{ 'Points de gloire' | translate }}:&nbsp;</span>
       <div class="metric">
         <div class="metric-header">
-          <span class="metric-current">{{ player.currentFame | formatNumber }}</span>
+          <span class="metric-current"><span class="mobile-only">{{ 'Points de gloire' | translate }}:&nbsp;</span>{{ player.currentFame | formatNumber }}</span>
           <span class="metric-max">{{ player.highestFame | formatNumber }}</span>
         </div>
         <div class="metric-bar-bg">
@@ -84,6 +81,7 @@
         </div>
       </div>
     </td>
+    <span class="mobile-only"><hr></span>
 
     <!-- Honor -->
     <td class="col-honor">

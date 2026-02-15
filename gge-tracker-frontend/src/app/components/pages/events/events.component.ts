@@ -137,6 +137,7 @@ export class EventsComponent extends GenericComponent {
     this.responseTime = players.response;
     this.players = players.data.players;
     this.tableLoading = false;
+    void this.updatePageInUrl(this.page);
     this.cdr.detectChanges();
   }
 
@@ -149,6 +150,7 @@ export class EventsComponent extends GenericComponent {
     const players = data.data;
     this.players = players.players;
     this.tableLoading = false;
+    void this.updatePageInUrl(this.page);
     this.cdr.detectChanges();
   }
 
@@ -161,6 +163,7 @@ export class EventsComponent extends GenericComponent {
     const players = data.data;
     this.players = players.players;
     this.tableLoading = false;
+    void this.updatePageInUrl(this.page);
     this.cdr.detectChanges();
   }
 
@@ -308,6 +311,9 @@ export class EventsComponent extends GenericComponent {
           }
           this.eventId = Number.parseInt(parameters['eventId']);
           this.eventType = parameters['eventType'] as EventType;
+          const urlParameters = this.route.snapshot.queryParams;
+          const page = urlParameters['page'] ? Number(urlParameters['page']) : 1;
+          this.page = page;
           const eventPlayers = await this.getEventPlayersById();
           this.responseTime = eventPlayers.response;
           this.players = eventPlayers.data.players;

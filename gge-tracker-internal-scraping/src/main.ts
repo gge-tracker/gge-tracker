@@ -19,6 +19,7 @@ import { createClient } from 'redis';
 import { HIGHSCORES_CONFIG } from './definitions/highest_scores.config';
 import { SWAP_RANK_POINTS_TABLE } from './definitions/swap-rank-points.config';
 import { Castle, CastleMovement, DungeonMap, HighScoreKey, PlayerDatabase } from './interfaces';
+import * as readline from 'readline';
 import Utils from './utils';
 
 /**
@@ -52,6 +53,8 @@ export class GenericFetchAndSaveBackend {
     alliancesUpdated: 0,
     criticalErrors: 0,
   };
+  public connection: mysql.Pool;
+  public pgSqlConnection: pg.Pool;
   public allianceUpdated: { [key: string]: boolean } = {};
   private readonly WEBHOOK_URL: string = process.env.WEBHOOK_URL || '';
   private readonly CURRENT_ENV: string = process.env.ENVIRONMENT || 'development';
@@ -64,8 +67,6 @@ export class GenericFetchAndSaveBackend {
   private playerLootAndMightPointHistoryList: { [key: string]: any[] } = {};
   private playerEventPointHistoryList: { [key: string]: { [key: string]: number | null } } = {};
   private customPlayersAttributesList: { [key: string]: any } = {};
-  private connection: mysql.Pool;
-  private pgSqlConnection: pg.Pool;
   private currentPlayers: PlayerDatabase[] = [];
   private isE4KServer: boolean = false;
   private readonly ENV_LT = {
@@ -380,22 +381,94 @@ export class GenericFetchAndSaveBackend {
    * This method use a MariaDB connection pool (legacy database)
    *
    * @param worldNumber - The identifier of the world to retrieve dungeons from.
-   * @param mapSize - The size of the map to scan for dungeons.
    * @returns A Promise that resolves when the dungeon list has been retrieved and stored.
    */
-  public async getDungeonsList(worldNumber: number, mapSize: number): Promise<void> {
+  public async getDungeonsList(worldNumber: number): Promise<void> {
+    const pgPool = new pg.Pool(this.PGSQL_CONFIG);
+    const pgSqlPlayerCastles = 'SELECT castles_realm FROM players WHERE castles IS NOT NULL';
+    const pgSqlPlayerCastlesResult = await pgPool.query(pgSqlPlayerCastles);
+    if (!pgSqlPlayerCastlesResult.rows || pgSqlPlayerCastlesResult.rows.length === 0) {
+      Utils.logMessage('No castles found in the database. Aborting dungeon retrieval.');
+      return;
+    }
+    const castles: Castle[] = [];
+    for (const { castles_realm } of pgSqlPlayerCastlesResult.rows) {
+      if (!Array.isArray(castles_realm)) continue;
+      for (const castleData of castles_realm) {
+        if (
+          Array.isArray(castleData) &&
+          castleData.length === 4 &&
+          castleData[3] === 12 &&
+          castleData[0] === worldNumber
+        ) {
+          castles.push([castleData[0], castleData[1], castleData[2]]);
+        }
+      }
+    }
+
+    if (castles.length === 0) {
+      return;
+    }
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    for (const castle of castles) {
+      const [, x, y] = castle;
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    }
+
     const step = 12;
+    const zone = step + 1;
+    const margin = zone * 2;
+
+    minX -= margin;
+    minY -= margin;
+    maxX += margin;
+    maxY += margin;
+
+    minX = Math.max(0, minX);
+    minY = Math.max(0, minY);
+    maxX = Math.min(this.MAP_SIZE, maxX);
+    maxY = Math.min(this.MAP_SIZE, maxY);
+
+    minX = Math.floor(minX / zone) * zone;
+    minY = Math.floor(minY / zone) * zone;
+    maxX = Math.ceil(maxX / zone) * zone;
+    maxY = Math.ceil(maxY / zone) * zone;
+
+    const totalRequests = Math.ceil((maxX - minX) / zone) * Math.ceil((maxY - minY) / zone);
+
+    const confirmationMessage = `About to retrieve dungeons for world ${worldNumber} with the following parameters:
+- minX: ${minX}
+- minY: ${minY}
+- maxX: ${maxX}
+- maxY: ${maxY}
+- step: ${step}
+- zone: ${zone}
+This will result in approximately ${totalRequests} API requests, which may take around ${Math.ceil(totalRequests / 120 + 3)} minutes to complete. Do you want to proceed? (yes/no)`;
+    const userInput = await this.askConfirmation(confirmationMessage);
+    if (!userInput) {
+      Utils.logMessage('Dungeon retrieval aborted by user.');
+      return;
+    }
     const dungeonMaps: DungeonMap[] = [];
-    const numSteps = Math.ceil(mapSize / (step + 1));
-    const totalRequests = numSteps * numSteps;
-    let intervalTimer = 0;
     let done = 0;
     const start = new Date();
-    for (let yIndex = 0; yIndex < numSteps; yIndex++) {
-      const y = yIndex * (step + 1);
-      const xRange = yIndex % 2 === 0 ? [...Array(numSteps).keys()] : [...Array(numSteps).keys()].reverse();
-      for (const xIndex of xRange) {
-        const x = xIndex * (step + 1);
+    let rowIndex = 0;
+    for (let y = minY; y <= maxY; y += zone) {
+      const xValues: number[] = [];
+      for (let x = minX; x <= maxX; x += zone) {
+        xValues.push(x);
+      }
+      if (rowIndex % 2 !== 0) {
+        xValues.reverse();
+      }
+      for (const x of xValues) {
         const AX1 = x;
         const AY1 = y;
         const AX2 = x + step;
@@ -419,17 +492,38 @@ export class GenericFetchAndSaveBackend {
             }
           } else {
             console.error('Invalid response for URL:', url, data);
+            console.error('Waiting 3 seconds before retrying...');
+            await this.sleep(3000);
+            // We retry once if the response is invalid, as it can be a temporary issue
+            const retryResponse = await axios.get(url);
+            const retryData = retryResponse.data;
+            if (retryData && retryData['return_code'] == '0') {
+              const dungeons = retryData.content?.AI ?? [];
+              for (const dungeon of dungeons) {
+                if (dungeon[0] == '11') {
+                  dungeonMaps.push({
+                    coordinates: [dungeon[1], dungeon[2]],
+                    time: dungeon[5],
+                    playerId: dungeon[6],
+                    updatedAt: new Date(),
+                  });
+                }
+              }
+            } else {
+              console.error('Retry failed for URL:', url, retryData);
+            }
           }
         } catch (err) {
-          console.error('Error on URL:', url, err);
+          console.error('Error on URL:', url, err.code);
+          this.DB_UPDATES.criticalErrors++;
+          if (this.DB_UPDATES.criticalErrors >= 10) {
+            console.error('Too many errors encountered. Aborting dungeon retrieval.');
+            return;
+          }
         }
         // Throttle management
         const delay = (ms: number): Promise<void> => new Promise((res) => setTimeout(res, ms));
-        intervalTimer++;
-        if (intervalTimer === 50) {
-          await delay(50);
-          intervalTimer = 0;
-        }
+        await delay(500);
         done++;
         const percent = (done / totalRequests) * 100;
         const barWidth = 40;
@@ -443,6 +537,7 @@ export class GenericFetchAndSaveBackend {
         process.stdout.cursorTo(0);
         process.stdout.write(bar);
       }
+      rowIndex++;
     }
     const end = new Date();
     const elapsedTime = end.getTime() - start.getTime();
@@ -755,19 +850,27 @@ export class GenericFetchAndSaveBackend {
             await new Promise((resolve) => setTimeout(resolve, 30));
           }
           done++;
-          const percent = (done / totalRequests) * 100;
-          const barWidth = 40;
-          const filled = Math.round(barWidth * (done / totalRequests));
-          const bar =
-            '[' +
-            '█'.repeat(filled) +
-            '-'.repeat(barWidth - filled) +
-            `] ${percent.toFixed(1)}% (${done}/${totalRequests})`;
-          process.stdout.clearLine(0);
-          process.stdout.cursorTo(0);
-          process.stdout.write(bar);
+          if (process.stdout.isTTY) {
+            const percent = (done / totalRequests) * 100;
+            const barWidth = 40;
+            const filled = Math.round(barWidth * (done / totalRequests));
+            const bar =
+              '[' +
+              '█'.repeat(filled) +
+              '-'.repeat(barWidth - filled) +
+              `] ${percent.toFixed(1)}% (${done}/${totalRequests})`;
+            process.stdout.clearLine(0);
+            process.stdout.cursorTo(0);
+            process.stdout.write(bar);
+          }
         } catch (err) {
-          console.error('Error on URL:', url, err);
+          const code = err.code;
+          if (code !== 'ERR_BAD_REQUEST' && code !== 'ECONNRESET') {
+            console.error('Unexpected error code on URL:', url, err);
+          } else {
+            console.error('Error on URL:', url);
+          }
+          throw new Error('Terminating due to error while fetching dungeon data.');
         }
       }
     }
@@ -784,7 +887,6 @@ export class GenericFetchAndSaveBackend {
     );
     console.log('Dungeons list updated successfully');
     console.log('Squares count:', Object.keys(squares).length);
-    await this.connection.end();
   }
 
   public async startOuterRealmsDataFetch(): Promise<void> {
@@ -843,7 +945,7 @@ export class GenericFetchAndSaveBackend {
       const entriesByPage = initialResponse.data.content?.L?.length || 0;
       const increment = Math.ceil(Number(entriesByPage) / 2);
       let hasMore = true;
-      let maxItemLimit = 50000;
+      let maxItemLimit = initialResponse.data.content?.LR || 0;
       let item = increment;
       let playerEntries = new Map<
         number,
@@ -860,7 +962,7 @@ export class GenericFetchAndSaveBackend {
           castlePositionY: number;
         }
       >();
-      while (hasMore && item < maxItemLimit) {
+      while (hasMore && item < maxItemLimit + increment) {
         let response: AxiosResponse<any>;
         let tryCount = 0;
         do {
@@ -2269,6 +2371,20 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('=========== END STACK TRACE =============');
       this.DB_UPDATES.criticalErrors++;
     }
+  }
+
+  private askConfirmation(question: string): Promise<boolean> {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+
+    return new Promise((resolve) => {
+      rl.question(question, (answer) => {
+        rl.close();
+        resolve(answer.trim().toLowerCase() === 'y');
+      });
+    });
   }
 
   private async bulkUpdatePlayers(updates: Record<number, any[]>): Promise<void> {

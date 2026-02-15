@@ -5,6 +5,9 @@ import { BehaviorSubject, firstValueFrom } from 'rxjs';
 import { ApiRestService } from './api-rest.service';
 import { ToastService } from './toast.service';
 import { ApiLastUpdates, ErrorType } from '@ggetracker-interfaces/empire-ranking';
+import * as ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
+import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 
 @Injectable({
   providedIn: 'root',
@@ -19,6 +22,133 @@ export class UtilitiesService {
 
   constructor() {
     this.loadLastUpdates();
+  }
+
+  public escapeCsv(value: string | null | undefined): string {
+    if (value == null) return '';
+    return `"${value.replaceAll('"', '""')}"`;
+  }
+
+  public constructPlayerLevel(level: number, legendaryLevel: number): string {
+    if (legendaryLevel >= 70) {
+      return `${level}/${legendaryLevel}`;
+    }
+    return level.toString();
+  }
+
+  public parseValue(value: string | number): number {
+    if (typeof value === 'number') return value;
+    if (!value) return 0;
+    let string_ = value.replaceAll(/\s+/g, '').replaceAll(',', '').toUpperCase();
+    let multiplier = 1;
+    if (string_.endsWith('B')) {
+      multiplier = 1_000_000_000;
+      string_ = string_.slice(0, -1);
+    } else if (string_.endsWith('M')) {
+      multiplier = 1_000_000;
+      string_ = string_.slice(0, -1);
+    } else if (string_.endsWith('K')) {
+      multiplier = 1000;
+      string_ = string_.slice(0, -1);
+    }
+    const numeric = Number(string_);
+    if (Number.isNaN(numeric)) return 0;
+    return numeric * multiplier;
+  }
+
+  public formatNumber(formatNumberPipe: FormatNumberPipe, value: number): string {
+    return formatNumberPipe.transform(value);
+  }
+
+  public async exportDataXlsx(
+    worksheetName: string,
+    headers: string[],
+    dataRows: any[][],
+    fileName: string,
+  ): Promise<void> {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet(worksheetName);
+    const headerRow = worksheet.addRow(headers);
+    headerRow.font = { bold: true };
+    dataRows.forEach((dataRow) => {
+      worksheet.addRow(dataRow);
+    });
+    for (let colIndex = 0; colIndex < worksheet.columns.length; colIndex++) {
+      const column = worksheet.columns[colIndex];
+      let maxLength = 10;
+      for (let rowIndex = 1; rowIndex <= worksheet.rowCount; rowIndex++) {
+        const row = worksheet.getRow(rowIndex);
+        const cell = row.getCell(colIndex + 1);
+        const cellValue = cell.value ? cell.value.toString() : '';
+        maxLength = Math.max(maxLength, cellValue.length);
+        if (cellValue.startsWith('url=')) {
+          const imageUrl = cellValue.slice(4);
+          const imageData = await this.loadImageNativeSize(imageUrl);
+          const imageId = workbook.addImage({
+            base64: imageData.base64,
+            extension: 'png',
+          });
+          if (imageData.height > 20) {
+            const scale = 20 / imageData.height;
+            imageData.width = imageData.width * scale;
+            imageData.height = 20;
+          }
+          worksheet.addImage(imageId, {
+            tl: { col: colIndex, row: rowIndex - 1 },
+            ext: { width: imageData.width, height: imageData.height },
+          });
+          const items = imageUrl.split('/');
+          cell.value = items.at(-1)?.split('.')[0];
+          maxLength = Math.max(maxLength, 5);
+        }
+      }
+      column.width = maxLength + 2;
+    }
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    saveAs(blob, fileName);
+  }
+
+  public async loadImageNativeSize(url: string): Promise<{ base64: string; width: number; height: number }> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = url;
+
+      img.addEventListener('load', () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        const context = canvas.getContext('2d');
+        if (!context) {
+          reject('Canvas context not available');
+          return;
+        }
+
+        context.drawImage(img, 0, 0);
+
+        resolve({
+          base64: canvas.toDataURL('image/png'),
+          width: img.width,
+          height: img.height,
+        });
+      });
+
+      img.addEventListener('error', (error) => {
+        reject(error);
+      });
+    });
+  }
+
+  public async loadImageAsBase64(url: string): Promise<string> {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.addEventListener('load', () => resolve(reader.result as string));
+      reader.readAsDataURL(blob);
+    });
   }
 
   public loadLastUpdates(): void {

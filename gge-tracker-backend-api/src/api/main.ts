@@ -232,6 +232,24 @@ publicRoutes.get('/assets/common/:asset', routingInstance.getAsset.bind(routingI
 publicRoutes.get('/assets/items', routingInstance.getItems.bind(routingInstance));
 
 /**
+ * @todo
+ */
+protectedRoutes.post('/mini-games/guess', routingInstance.submitMiniGameGuess.bind(routingInstance));
+
+/**
+ * @todo
+ */
+protectedRoutes.get(
+  '/mini-games/guesses/autocomplete',
+  routingInstance.getAutoCompletePlayerNames.bind(routingInstance),
+);
+
+/**
+ * @todo
+ */
+protectedRoutes.get('/mini-games/daily', routingInstance.getDailyMiniGame.bind(routingInstance));
+
+/**
  * @swagger
  * /languages/{lang}:
  *   get:

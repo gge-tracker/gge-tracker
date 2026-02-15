@@ -51,6 +51,7 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
   public currentDates: string[] = [];
   public currentEventId = 0;
   public currentDate = '';
+  public defaultDate = '';
   public readonly Calendar = Calendar;
   public division = {
     current_division: 0,
@@ -109,6 +110,10 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
   ): Promise<void> {
     this.isDataLoading = true;
     const response = await this.apiRestService.getGrandTournamentAlliances(date, division, page, subdivision);
+    void this.updateGenericParamsInUrl(
+      { page: page, date: date, subdivision: subdivision, division: division },
+      { page: 1, date: this.defaultDate, subdivision: 0, division: 5 },
+    );
     if (!response.success) {
       this.toastService.add(ErrorType.ERROR_OCCURRED, 5000, 'error');
       return;
@@ -218,7 +223,21 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
     }
     this.currentDates = dates.reverse();
     this.currentDate = dates.at(0) || '';
-    await this.loadAlliances(5, 1, this.currentDate);
+    this.defaultDate = this.currentDate;
+    const urlParameters = this.route.snapshot.queryParams;
+    const page = urlParameters['page'] ? Number(urlParameters['page']) : 1;
+    const subdivision = urlParameters['subdivision'] ? Number(urlParameters['subdivision']) : 0;
+    const division = urlParameters['division'] ? Number(urlParameters['division']) : 5;
+    const date = urlParameters['date'] ?? this.currentDate;
+    this.currentDate = date;
+    this.division.current_division = division;
+    this.subdivision.current_subdivision = subdivision;
+    this.currentEventId =
+      this.events.find((event) => event.dates.includes(this.currentDate))?.event_id || this.currentEventId;
+    if (subdivision > 0) {
+      this.isSubDivisionFilterActivated = true;
+    }
+    await this.loadAlliances(division, page, this.currentDate, subdivision > 0 ? subdivision : undefined);
     this.isInLoading = false;
   }
 
@@ -228,6 +247,7 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
 
   public async searchAlliance(alliance: string, page = 1): Promise<void> {
     this.search = alliance;
+    this.isSubDivisionFilterActivated = false;
     if (this.search.trim() === '') {
       this.division.current_division = 5;
       await this.loadAlliances(this.division.current_division, page, this.currentDate);
@@ -235,6 +255,15 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
     }
     this.division.current_division = 0;
     const response = await this.apiRestService.getGrandTournamentSearchAlliance(this.currentDate, this.search, page);
+    void this.updateGenericParamsInUrl(
+      {
+        page: page,
+        date: this.currentDate,
+        subdivision: this.subdivision.current_subdivision,
+        division: this.division.current_division,
+      },
+      { page: 1, date: this.defaultDate, subdivision: 0, division: 5 },
+    );
     if (!response.success) {
       this.toastService.add(ErrorType.NO_ALLIANCE_FOUND, 5000, 'error');
       return;

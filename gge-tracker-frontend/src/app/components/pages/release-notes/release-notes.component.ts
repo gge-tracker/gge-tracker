@@ -17,6 +17,27 @@ export enum EnumTypeReleaseNote {
 export class ReleaseNotesComponent {
   public readonly releaseNotes = [
     {
+      version: 'v26-02-15',
+      type: EnumTypeReleaseNote.MAJOR,
+      date: '2026-02-15',
+      items: [
+        '📦 [Server] Added new servers: E4K-RU1, E4K-WORLD2, EP-ES2, EP-AE1',
+        '📦 [Server] Added EP-BG1, PARTNER_SP3, EP-AU1, E4K-RU1, EP-US1 to advanced tools (realtime fortress tracker + castle visualizer across kingdoms)',
+        '🛠️ [Tools] Added movement filtering and alliance filtering',
+        '🛠️ [Tools] Added export button (xlsx) for player, alliance, and movement lists',
+        "✨ [Player Analysis] Added new 'Glory' tab with detailed glory statistics (current title, estimated loss, points needed for next title, etc.)",
+        '✨ [Miscellaneous] Replaced circular ranking chart with raw points table on alliance event statistics page',
+        '✨ [Miscellaneous] Added PWA support (Progressive Web App)',
+        '✨ [Miscellaneous] Restored Danadum "Empire Rankings" link in the sidebar',
+        '🛠️ [Mini-Game] Added daily mini-game "Who is it" (find a mystery player using distance, direction, and clue-based guesses)',
+        '🐞 [Bugfix] Fixed UTC issues affecting hourly activity rate and alliance/player loot charts',
+        '🐞 [Bugfix] Fixed "Distance (m)" column displayed in incorrect position',
+        '🐞 [Bugfix] Fixed player sorting in alliance tab',
+        '🐞 [Bugfix] Fixed sidebar overlapping certain charts',
+        '🐞 [API] Cartography endpoint no longer returns inactive players',
+      ],
+    },
+    {
       version: 'v26-01-05',
       type: EnumTypeReleaseNote.MAJOR,
       date: '2026-01-05',

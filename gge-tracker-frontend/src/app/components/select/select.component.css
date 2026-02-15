@@ -12,9 +12,9 @@ select.decorated option:hover {
   -webkit-appearance: none;
   appearance: none;
   backdrop-filter: blur(10px);
-  background: rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.055);
+  border: 1px solid rgba(255, 255, 255, 0.055);
   color: var(--text);
   cursor: pointer;
   font-size: 0.95rem;
@@ -26,7 +26,7 @@ select.decorated option:hover {
 
 .modern-select option {
   background: #1e1e2f;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   color: #f5f5f5;
   font-size: 0.9rem;
   padding: 0.6rem 1rem;
@@ -37,9 +37,10 @@ select.decorated option:hover {
   font-weight: 600;
 }
 
-.modern-select option:focus, .modern-select option:hover {
-  background: rgba(38,198,218,0.15);
-  color: var(--accent,#26c6da);
+.modern-select option:focus,
+.modern-select option:hover {
+  background: rgba(38, 198, 218, 0.15);
+  color: var(--accent, #26c6da);
 }
 
 .modern-select-wrapper {
@@ -56,12 +57,13 @@ select.decorated option:hover {
   right: 1rem;
   top: 50%;
   transform: translateY(-50%);
-  transition: color .25s ease;
+  transition: color 0.25s ease;
 }
 
-.modern-select:focus, .modern-select:hover {
-  background: rgba(255,255,255,0.25);
-  box-shadow: 0 0 0 3px rgba(255,255,255,0.2);
+.modern-select:focus,
+.modern-select:hover {
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
   outline: none;
 }
 

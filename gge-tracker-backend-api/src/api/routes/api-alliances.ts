@@ -4,6 +4,9 @@ import * as pg from 'pg';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { ApiInvalidInputType } from '../types/parameter.types';
+import { parseQuery, querySchema } from '../helper/parse-query';
+import { CacheKeyBuilder } from '../helper/cache/cache-key-builder';
+import { QueryFilterBuilder } from '../helper/filters/impl/query-filter-builder';
 
 /**
  * Abstract class providing API endpoints for alliance-related operations
@@ -194,7 +197,6 @@ export abstract class ApiAlliances implements ApiHelper {
        * Check cache
        * --------------------------------- */
       const encodedAllianceName = encodeURIComponent(allianceName);
-      // This is a protected endpoint, so we can assume pg_pool and code are always set
       const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${request['language']}`)) || '1';
       const cachedKey = request['language'] + `:${cacheVersion}:` + `alliances:${encodedAllianceName}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
@@ -272,9 +274,6 @@ export abstract class ApiAlliances implements ApiHelper {
       /* ---------------------------------
        * Validate and normalize query parameters
        * --------------------------------- */
-      let page = ApiHelper.validatePageNumber(request.query.page);
-      let orderBy = ApiHelper.getParsedString(request.query.orderBy) || 'alliance_name';
-      let orderType = ApiHelper.getParsedString(request.query.orderType) || 'ASC';
       const orderByValues: string[] = [
         'alliance_name',
         'loot_current',
@@ -285,19 +284,49 @@ export abstract class ApiAlliances implements ApiHelper {
         'current_fame',
         'highest_fame',
       ];
-      if (!orderByValues.includes(orderBy)) {
-        orderBy = 'alliance_name';
-      }
-      if (orderType !== 'ASC' && orderType !== 'DESC') {
-        orderType = 'ASC';
-      }
+      const parsedQuery = parseQuery(
+        request.query,
+        querySchema({
+          maxBigValue: ApiHelper.MAX_BIG_VALUE,
+          orderByValues,
+          orderByDefault: 'alliance_name',
+        }),
+      );
+      const {
+        orderBy,
+        orderType,
+        minMight,
+        maxMight,
+        minLoot,
+        maxLoot,
+        minFame,
+        maxFame,
+        minMemberCount,
+        maxMemberCount,
+      } = parsedQuery;
+      let { page } = parsedQuery;
       /* ---------------------------------
        * Check cache
        * --------------------------------- */
-      const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${request['language']}`)) || '1';
-      const cachedKey =
-        request['language'] + `:${cacheVersion}:` + `alliances-page-${page}-orderBy-${orderBy}-orderType-${orderType}`;
-      const cachedData = await ApiHelper.redisClient.get(cachedKey);
+      const cacheVersion = await ApiHelper.getCacheVersion(ApiHelper.redisClient, request['language']);
+      const cacheKey = new CacheKeyBuilder(request['language'])
+        .with(cacheVersion)
+        .with('alliances')
+        .withParams({
+          page,
+          orderBy,
+          orderType,
+          minMight,
+          maxMight,
+          minLoot,
+          maxLoot,
+          minFame,
+          maxFame,
+          minMemberCount,
+          maxMemberCount,
+        })
+        .build();
+      const cachedData = await ApiHelper.redisClient.get(cacheKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
         return;
@@ -333,7 +362,16 @@ export abstract class ApiAlliances implements ApiHelper {
       /* ---------------------------------
        * Fetch paginated alliance data
        * --------------------------------- */
-      let parameterIndex = 1;
+      const qb = new QueryFilterBuilder();
+      qb.player().activity(1);
+      qb.alliance()
+        .might(minMight, maxMight)
+        .loot(minLoot, maxLoot)
+        .fame(minFame, maxFame)
+        .membersCount(minMemberCount, maxMemberCount);
+
+      const { where, values } = qb.build();
+      let parameterIndex = qb.getLastParameterIndex();
       const query = `
         SELECT
           A.id AS alliance_id,
@@ -349,7 +387,7 @@ export abstract class ApiAlliances implements ApiHelper {
           alliances A
         LEFT JOIN
           players P ON A.id = P.alliance_id
-        WHERE P.castles IS NOT NULL AND jsonb_array_length(P.castles) > 0
+        ${where}
         GROUP BY
           A.id
         HAVING
@@ -360,7 +398,7 @@ export abstract class ApiAlliances implements ApiHelper {
       const sqlDuration = Date.now();
       (request['pg_pool'] as pg.Pool).query(
         query,
-        [ApiHelper.PAGINATION_LIMIT, (page - 1) * ApiHelper.PAGINATION_LIMIT],
+        [...values, ApiHelper.PAGINATION_LIMIT, (page - 1) * ApiHelper.PAGINATION_LIMIT],
         (error, results) => {
           if (error) {
             response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
@@ -393,7 +431,7 @@ export abstract class ApiAlliances implements ApiHelper {
                 };
               }),
             };
-            void ApiHelper.updateCache(cachedKey, responseContent);
+            void ApiHelper.updateCache(cacheKey, responseContent);
             response.status(ApiHelper.HTTP_OK).send(responseContent);
           }
         },

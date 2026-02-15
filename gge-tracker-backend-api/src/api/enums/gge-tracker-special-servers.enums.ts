@@ -15,4 +15,9 @@ export enum AuthorizedSpecialServersEnum {
   ES1 = 'ES1',
   HU1 = 'HU1',
   INT3 = 'INT3',
+  PARTNER_SP3 = 'PARTNER_SP3',
+  BG1 = 'BG1',
+  AU1 = 'AU1',
+  US1 = 'US1',
+  E4K_RU1 = 'E4K_RU1',
 }

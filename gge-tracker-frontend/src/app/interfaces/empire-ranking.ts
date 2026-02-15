@@ -195,6 +195,8 @@ export interface EventEntry {
 
 export interface EventGenericVariation extends ApiGenericData {
   variation: number;
+  playerName?: string;
+  __hourKey?: string;
 }
 
 export enum CastleType {
@@ -493,6 +495,7 @@ export type ApiPlayerStatsValue = (typeof ApiPlayerStatsType)[keyof typeof ApiPl
 
 export interface ApiGenericData {
   date: string;
+  utcDate?: string;
   point: number;
 }
 
@@ -510,11 +513,14 @@ export interface ApiPlayerStatsByPlayerId {
   diffs: Record<ApiPlayerStatsType, number>;
   player_name: string;
   points: ApiPlayerStats;
+  glory_points_100: { top: number; point: number }[];
+  timezone_offset: number | null;
 }
 
 export interface ApiPlayerStatsByAllianceId {
   diffs: Record<ApiPlayerStatsType, number>;
   points: ApiPlayerStatsForAlliance;
+  timezoneOffset: number | null;
 }
 
 export interface ApiAllianceHealthResponse {
@@ -721,6 +727,8 @@ export interface ApiRankingStatsPlayer {
   current_fame: number;
   highest_fame: number;
   peace_disabled_at: string | null;
+  player_current_fame_rank: string | null;
+  updated_at: string;
   loot_current: number;
   loot_all_time: number;
   level: number | null;

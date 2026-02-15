@@ -65,11 +65,12 @@ export class ApiRestService {
    * @param url The URL to fetch data from
    * @returns A promise that resolves to the data fetched from the API
    */
-  public async apiFetch<T>(url: string, doNotUpdateLocation = true): Promise<ApiResponse<T>> {
+  public async apiFetch<T>(url: string, doNotUpdateLocation = true, options?: RequestInit): Promise<ApiResponse<T>> {
     try {
       const now = Date.now();
       const response = await fetch(url, {
         headers: { 'gge-server': this.serverService.currentServer!.name },
+        ...options,
       });
       if (!response.ok) {
         if (response.status === 429) {
@@ -214,10 +215,18 @@ export class ApiRestService {
     page: number,
     orderBy?: string,
     orderType?: string,
+    filters?: Record<string, string | number>,
   ): Promise<ApiResponse<ApiAllianceResponse>> {
     let request = `${ApiRestService.apiUrl}alliances?page=${page}`;
     if (orderBy) request += `&orderBy=${orderBy}`;
     if (orderType) request += `&orderType=${orderType}`;
+    if (filters) {
+      for (const key in filters) {
+        if (filters[key] !== undefined) {
+          request += `&${key}=${filters[key]}`;
+        }
+      }
+    }
     const response = await this.apiFetch<ApiAllianceResponse>(request);
     if (!response.success) return response;
     return { success: true, data: response.data };
@@ -358,10 +367,17 @@ export class ApiRestService {
     searchType: string | null,
     castleType: number | null,
     movementType: number | null,
+    filters?: Record<string, string | number>,
   ): Promise<ApiResponse<ApiMovementsResponse>> {
-    const response = await this.apiFetch<ApiMovementsResponse>(
-      `${ApiRestService.apiUrl}server/movements?page=${page}&search=${search}&searchType=${searchType}&castleType=${castleType}&movementType=${movementType}`,
-    );
+    let request = `${ApiRestService.apiUrl}server/movements?page=${page}&search=${search}&searchType=${searchType}&castleType=${castleType}&movementType=${movementType}`;
+    if (filters) {
+      for (const key in filters) {
+        if (filters[key] !== undefined) {
+          request += `&${key}=${filters[key]}`;
+        }
+      }
+    }
+    const response = await this.apiFetch<ApiMovementsResponse>(request);
     if (!response.success) return response;
     return { success: true, data: response.data };
   }

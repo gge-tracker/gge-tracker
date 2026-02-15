@@ -1,4 +1,4 @@
-import { DatePipe, NgClass, NgForOf, NgIf, NgTemplateOutlet } from '@angular/common';
+import { DatePipe, NgClass, NgForOf, NgIf, NgStyle, NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -27,6 +27,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import Gradient from 'javascript-color-gradient';
 import { ApexAxisChartSeries } from 'ng-apexcharts';
 import { PlayerStatsCardComponent } from './player-stats-card/player-stats-card.component';
+import { firstValueFrom } from 'rxjs';
 
 export interface IRankingStatsPlayer {
   playerId: number;
@@ -35,6 +36,8 @@ export interface IRankingStatsPlayer {
   mightAllTime: number;
   currentFame: number;
   highestFame: number;
+  playerCurrentFameRank: number;
+  updatedAt: Date;
   peaceDisabledAt: Date | null;
   lootCurrent: number;
   lootAllTime: number;
@@ -49,7 +52,17 @@ export interface IRankingStatsPlayer {
   totalCastles: number;
 }
 
-type Tabs = 'overview' | 'loot' | 'alliances' | 'castles';
+type Tabs = 'overview' | 'loot' | 'alliances' | 'castles' | 'glory';
+
+interface RankingFameTitle {
+  decay?: number;
+  displayType: string;
+  topX?: number;
+  mightValue: string;
+  threshold?: number;
+  titleID: string;
+  type: string;
+}
 
 @Component({
   selector: 'app-player-stats',
@@ -67,6 +80,7 @@ type Tabs = 'overview' | 'loot' | 'alliances' | 'castles';
     LevelPipe,
     FormsModule,
     NgTemplateOutlet,
+    NgStyle,
   ],
   templateUrl: './player-stats.component.html',
   styleUrl: './player-stats.component.css',
@@ -76,12 +90,18 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
   public radialCharts: Record<string, ChartOptions> = {};
   public eventDataSegments: Record<string, ApiGenericData[][]> = {};
   public playerId?: number;
+  public currentPlayerTitle: RankingFameTitle | null = null;
+  public currentTopXFameTitle: RankingFameTitle | null = null;
+  public nextFameTitle: RankingFameTitle | null = null;
+  public fameProgressStrokeOffset: number = 0;
   public playerName?: string;
+  public timezoneOffset: number | null = null;
   public allianceName?: string;
   public allianceId?: number;
   public favories: Record<number, string> = {};
   public activeOptionButton = '';
   public currentSemaine?: string;
+  public isAtRisk = false;
   public data: Record<ApiPlayerStatsType, EventGenericVariation[]> = {
     player_event_berimond_invasion_history: [],
     player_event_berimond_kingdom_history: [],
@@ -111,6 +131,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
   };
   public monumentsList: Monument[] = [];
   public pageSize = 10;
+  public readonly currentI18nTitleKey = 'titles.playerTitle_';
   public currentPage = 1;
   public totalPages = 1;
   public searchTerm = '';
@@ -121,9 +142,14 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     { key: 'loot', label: 'Points de pillage hebdomadaire', assetIcon: 'loot.png' },
     { key: 'alliances', label: 'Alliances', assetIcon: 'alliance.png' },
     { key: 'castles', label: 'Châteaux', assetIcon: 'tools/castles.webp' },
+    { key: 'glory', label: 'Points de gloire', assetIcon: 'glory.png' },
   ];
   public currentTab: Tabs = 'overview';
   public maxLootPointsByWeek: { week: string; points: number }[] = [];
+  public fameTitles: RankingFameTitle[] = [];
+  public fameTitlesTopX: RankingFameTitle[] = [];
+  public top100Glory: { top: number; point: number }[] = [];
+  public fameProgressPercentage: number = 0;
 
   private animationFrames: Partial<Record<keyof IRankingStatsPlayer, number>> = {};
   private localStorage = inject(LocalStorageService);
@@ -155,7 +181,18 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     return null;
   }
 
+  public updateTab(key: Tabs): void {
+    this.currentTab = key;
+    void this.router.navigate([], {
+      fragment: this.currentTab,
+    });
+  }
+
   public async ngOnInit(): Promise<void> {
+    const selectedTab = await firstValueFrom(this.route.fragment);
+    if (selectedTab && this.tabs.some((tab) => tab.key === selectedTab)) {
+      this.currentTab = selectedTab as Tabs;
+    }
     this.route.params.subscribe(async (parameters) => {
       this.isInLoading = true;
       this.cdr.detectChanges();
@@ -166,6 +203,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
           if (response.success === false) throw new Error('API Error');
           const data = response.data;
           this.playerName = data.player_name;
+          this.timezoneOffset = data.timezone_offset;
           this.addStructuredPlayerData({
             name: this.playerName,
             url: `gge-tracker.com/player/${playerId}`,
@@ -194,6 +232,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
             Object.entries(data.points).map(([key, value]) => [
               key,
               value.map((point) => ({
+                utcDate: point.date, // Keep the original UTC date for specific use cases (e.g. loot history)
                 date: formatLocal(point.date),
                 point: point.point,
                 variation: 0,
@@ -202,6 +241,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
           ) as Record<ApiPlayerStatsType, EventGenericVariation[]>;
           this.allianceName = data.alliance_name;
           this.allianceId = data.alliance_id;
+          this.top100Glory = data.glory_points_100;
           this.playerId = playerId;
           this.fillData();
           void this.initPlayerData(playerId).then(() => {
@@ -217,6 +257,56 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
         void this.router.navigate(['/']);
       }
     });
+  }
+
+  public async getPlayerGloryTitle(): Promise<[RankingFameTitle | null, RankingFameTitle | null]> {
+    const jsonConfigPath = 'assets/titles/titles.json';
+    const json = await this.apiRestService.apiFetch(jsonConfigPath);
+    if (json.success) {
+      const titles: RankingFameTitle[] = (json.data as RankingFameTitle[]).map((title: RankingFameTitle) => ({
+        decay: title.decay === undefined ? undefined : Number(title.decay),
+        displayType: title.displayType,
+        mightValue: title.mightValue,
+        threshold: title.threshold === undefined ? undefined : Number(title.threshold),
+        topX: title.topX === undefined ? undefined : Number(title.topX),
+        titleID: title.titleID,
+        type: title.type,
+      }));
+      const fameTitles = titles.filter((title) => title.type === 'FAME').reverse();
+      this.fameTitlesTopX = fameTitles.filter((title) => title.topX !== undefined);
+      this.fameTitlesTopX.forEach((title) => {
+        const topTitle = this.top100Glory.find((g) => g.top === (title.topX ?? -1));
+        if (topTitle) {
+          title.threshold = topTitle.point;
+        }
+      });
+      this.fameTitles = fameTitles.filter((title) => title.topX === undefined);
+      const currentFameTitle = this.fameTitles
+        .filter((title) => title.threshold && Number(title.threshold) < this.stats!.currentFame)
+        .reduce((max, t) => (Number(t.threshold) > Number(max.threshold) ? t : max));
+      const currentFameTopXTitle = this.fameTitlesTopX.find(
+        (title) => title.topX && this.stats!.playerCurrentFameRank <= title.topX!,
+      );
+      if (currentFameTopXTitle) {
+        this.nextFameTitle =
+          this.fameTitlesTopX.find((title) => title.topX && title.topX < currentFameTopXTitle.topX!) || null;
+      } else {
+        const reversedFameTitles = [...this.fameTitles].reverse();
+        this.nextFameTitle =
+          reversedFameTitles.find((title) => title.threshold && Number(title.threshold) > this.stats!.currentFame) ||
+          null;
+        if (this.nextFameTitle === null && this.fameTitlesTopX.length > 0) {
+          this.nextFameTitle = this.fameTitlesTopX.at(-1) || null;
+        }
+      }
+      this.fameProgressPercentage = ((this.stats!.currentFame || 1) * 100) / (this.nextFameTitle?.threshold ?? 1);
+      this.fameProgressStrokeOffset = 226 - (226 * this.fameProgressPercentage) / 100;
+      this.isAtRisk =
+        currentFameTitle.decay !== undefined &&
+        ((100 - currentFameTitle.decay) * this.stats!.currentFame) / 100 < (currentFameTitle.threshold ?? 0);
+      return [currentFameTitle ?? null, currentFameTopXTitle ?? null];
+    }
+    throw new Error('Unable to load titles configuration');
   }
 
   public getScoreboardFromEvent(eventId: number): number | null {
@@ -764,10 +854,12 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
           loot_all_time: -1,
           level: 0,
           legendary_level: -1,
+          updated_at: '',
           honor: -1,
           max_honor: -1,
           server_rank: -1,
           global_rank: -1,
+          player_current_fame_rank: '-1',
           castles: [],
           castles_realm: [],
         },
@@ -775,6 +867,9 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
       };
     }
     this.stats = this.mapStatsFromData(stats.data);
+    const [currentFameTitle, currentTopXFame] = await this.getPlayerGloryTitle();
+    this.currentPlayerTitle = currentFameTitle;
+    this.currentTopXFameTitle = currentTopXFame;
     this.fillQuantity();
     this.setMonuments();
     for (const key of Object.keys(this.stats)) {
@@ -847,6 +942,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     return {
       playerId: Number(data.player_id),
       server: data.server,
+      playerCurrentFameRank: Number(data.player_current_fame_rank),
       mightCurrent: Number(data.might_current),
       mightAllTime: Number(data.might_all_time),
       currentFame: Number(data.current_fame),
@@ -860,6 +956,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
       maxHonor: Number(data.max_honor),
       serverRank: Number(data.server_rank),
       globalRank: Number(data.global_rank),
+      updatedAt: new Date(data.updated_at),
       totalLevel: Number(data.level) + Number(data.legendary_level || 0),
       castles: castles,
       totalCastles: castles.length,
@@ -942,120 +1039,131 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     this.initChartOption('bloodcrow', series, colors.getColors());
   }
 
+  private generateWeekHours(start: Date, end: Date): string[] {
+    const hours: string[] = [];
+    const current = new Date(start);
+    while (current.getTime() <= end.getTime()) {
+      hours.push(current.toISOString().slice(0, 16).replace('T', ' '));
+      current.setUTCHours(current.getUTCHours() + 1);
+    }
+    return hours;
+  }
+
+  private fillLootData(
+    weekHours: string[],
+    RESET_OFFSET: number,
+    dates: string[],
+    points: number[],
+  ): (number | null)[] {
+    let lastNonZeroPoint: number | null = null;
+    return weekHours.map((hour) => {
+      const hourDate = new Date(hour + ':00Z');
+      const isMondayReset = hourDate.getUTCDay() === 1 && hourDate.getUTCHours() === RESET_OFFSET + 1;
+      if (isMondayReset) {
+        return 0;
+      }
+      const index = dates.indexOf(hour);
+      if (index !== -1) {
+        const value = points[index];
+        if (value > 0) {
+          lastNonZeroPoint = value;
+        }
+        return value;
+      }
+      if (lastNonZeroPoint === null) {
+        return 0;
+      }
+      return null;
+    });
+  }
+
   private initLootHistoryData(): void {
     const maxPoints: { week: string; points: number }[] = [];
     const lootPoints = this.data['player_loot_history'];
     if (!lootPoints || lootPoints.length === 0) {
       return;
     }
-    // Sort by converting timestamps to numbers (date in string format yyyy-mm-dd hh:mm:ss)
-    lootPoints.sort((a, b) => {
-      const dateA = new Date(a['date']).getTime();
-      const dateB = new Date(b['date']).getTime();
-      return dateA - dateB;
-    });
-    // Get the first date and find the previous or current Monday
-    const firstDate = new Date(lootPoints[0]['date']);
-    // Step 1: Find the first Monday
-    const firstMonday = new Date(Date.UTC(firstDate.getUTCFullYear(), firstDate.getUTCMonth(), firstDate.getUTCDate()));
-    const dayOfWeek = firstMonday.getUTCDay();
-    firstMonday.setUTCDate(firstMonday.getUTCDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1));
-    firstMonday.setUTCHours(1, 0, 0, 0);
-    // Step 2: Generate all weeks from the first Monday to the current date
-    const currentDate = new Date();
-    const generateWeekHours = (start: Date, end: Date): string[] => {
-      const dates = [];
-      const current = new Date(start);
-      while (current <= end) {
-        dates.push(current.toISOString().replace('T', ' ').slice(0, 16));
-        current.setHours(current.getHours() + 1);
+    lootPoints.forEach((point) => {
+      if (point.utcDate) {
+        point.date = point.utcDate;
       }
-      return dates;
-    };
-    const allWeeksHours: string[][] = [];
+    });
+    lootPoints.sort((a, b) => {
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
+    });
+    const RESET_OFFSET = this.timezoneOffset ?? 0;
+    const firstPointDate = new Date(lootPoints[0].date);
+    const firstMonday = new Date(firstPointDate);
+    const dow = firstMonday.getUTCDay();
+    firstMonday.setUTCDate(firstMonday.getUTCDate() - (dow === 0 ? 6 : dow - 1));
+
+    firstMonday.setUTCHours(1 + RESET_OFFSET, 0, 0, 0);
     const currentMonday = new Date(firstMonday);
-    while (currentMonday <= currentDate) {
-      const currentSunday = new Date(currentMonday);
-      currentSunday.setDate(currentMonday.getDate() + 6);
-      currentSunday.setUTCHours(23, 0, 0, 0);
-      allWeeksHours.push(generateWeekHours(currentMonday, currentSunday));
-      currentMonday.setDate(currentMonday.getDate() + 7);
+    const currentDate = new Date();
+    const allWeeksHours: string[][] = [];
+
+    while (currentMonday.getTime() <= currentDate.getTime()) {
+      const weekEnd = new Date(currentMonday);
+      weekEnd.setUTCDate(weekEnd.getUTCDate() + 7);
+      weekEnd.setUTCHours(RESET_OFFSET, 0, 0, 0);
+      weekEnd.setUTCHours(weekEnd.getUTCHours() - 1);
+
+      allWeeksHours.push(this.generateWeekHours(currentMonday, weekEnd));
+      currentMonday.setUTCDate(currentMonday.getUTCDate() + 7);
     }
-    // Step 3: Extract dates and points from lootPoints
-    const dates = lootPoints.map((point) => {
-      return point['date'].slice(0, Math.max(0, point['date'].length - 5)) + '00';
+
+    const dates = lootPoints.map((p) => {
+      const d = new Date(p.date);
+      d.setUTCMinutes(0, 0, 0);
+      return d.toISOString().slice(0, 16).replace('T', ' ');
     });
-    const points = lootPoints.map((point) => point['point']);
-    const fillData = (weekHours: string[]): (number | null)[] => {
-      let lastNonZeroPoint: number | null = null;
-      return weekHours.map((hour) => {
-        const hourDate = new Date(hour);
-        const isMondayMidnight = hourDate.getDay() === 1 && hourDate.getHours() === 0;
-        const pointIndex = dates.indexOf(hour);
-        if (isMondayMidnight) {
-          return 0;
-        }
-        if (pointIndex !== -1) {
-          const point = points[pointIndex];
-          if (point > 0) {
-            lastNonZeroPoint = point;
-          }
-          return point;
-        }
-        if (lastNonZeroPoint === null) {
-          return 0;
-        }
-        return null;
-      });
-    };
-    // Step 4: Fill the data for each week
-    const allWeeksData = allWeeksHours.map((weekHours) => {
-      return fillData(weekHours);
-    });
+    const points = lootPoints.map((p) => Number(p.point));
+    const allWeeksData = allWeeksHours.map((weekHours) => this.fillLootData(weekHours, RESET_OFFSET, dates, points));
     const colors = ['#bfb58f', '#cc9a12'];
     const series = allWeeksData.map((weekData, index) => {
       const weekStartDate = new Date(firstMonday);
-      weekStartDate.setDate(firstMonday.getDate() + index * 7);
+      weekStartDate.setUTCDate(firstMonday.getUTCDate() + index * 7);
+      if (weekData.length > allWeeksData[0].length) {
+        weekData = weekData.slice(0, allWeeksData[0].length);
+      }
+      const maxPoint = Math.max(...weekData.filter((p): p is number => p !== null));
+      maxPoints.push({
+        week: weekStartDate.toISOString().slice(0, 10),
+        points: maxPoint,
+      });
       if (index === allWeeksData.length - 1) {
-        if (weekData.length > allWeeksData[0].length) {
-          weekData = weekData.slice(0, allWeeksData[0].length);
-        }
-        const maxPoint = Math.max(...weekData.filter((point): point is number => point !== null));
-        maxPoints.push({ week: weekStartDate.toISOString().slice(0, 10), points: maxPoint });
         return {
           name: this.translateService.instant('Semaine courante') + ' (' + this.getUnitByValue(maxPoint) + ')',
           data: weekData,
           color: colors[1],
         };
-      } else {
-        const locale = this.languageService.getCurrentLang();
-        if (weekData.length > allWeeksData[0].length) {
-          weekData = weekData.slice(0, allWeeksData[0].length);
-        }
-        const maxPoint = Math.max(...weekData.filter((point): point is number => point !== null));
-        maxPoints.push({ week: weekStartDate.toISOString().slice(0, 10), points: maxPoint });
-        if (index === allWeeksData.length - 2) {
-          return {
-            name: this.translateService.instant('Semaine précédente') + ' (' + this.getUnitByValue(maxPoint) + ')',
-            data: weekData,
-            color: '#b8b29e',
-          };
-        }
+      }
+
+      if (index === allWeeksData.length - 2) {
         return {
-          name:
-            this.translateService.instant('Semaine du 0 au 0', {
-              start: weekStartDate.toLocaleDateString(locale).slice(0, -5),
-              end: new Date(weekStartDate.getTime() + 6 * 24 * 60 * 60 * 1000).toLocaleDateString(locale).slice(0, -5),
-            }) +
-            ' (' +
-            this.getUnitByValue(maxPoint) +
-            ')',
+          name: this.translateService.instant('Semaine précédente') + ' (' + this.getUnitByValue(maxPoint) + ')',
           data: weekData,
-          color: colors[0],
-          hidden: true,
+          color: '#b8b29e',
         };
       }
+
+      const locale = this.languageService.getCurrentLang();
+
+      return {
+        name:
+          this.translateService.instant('Semaine du 0 au 0', {
+            start: weekStartDate.toLocaleDateString(locale).slice(0, -5),
+            end: new Date(weekStartDate.getTime() + 6 * 24 * 3_600_000).toLocaleDateString(locale).slice(0, -5),
+          }) +
+          ' (' +
+          this.getUnitByValue(maxPoint) +
+          ')',
+        data: weekData,
+        color: colors[0],
+        hidden: true,
+      };
     });
+
     const days = [
       this.translateService.instant('Dimanche'),
       this.translateService.instant('Lundi'),
@@ -1075,7 +1183,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
         }
       }
     }
-    // Initialise the chart 'loot-heatmap' (heatmap loot history)
+    // Initialize the chart 'loot-heatmap' (heatmap loot history)
     const seriesHeatmap: ApexAxisChartSeries = [];
     const allValues: number[] = [];
     series.reverse().forEach((weekSerie) => {
@@ -1110,7 +1218,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     // Initialize the chart 'loot-heatmap' (heatmap loot history)
     this.initHeatmapChartOption('loot-heatmap', seriesHeatmap, colors);
     this.charts['loot-heatmap'].plotOptions.heatmap!.colorScale!.ranges = this.buildHeatmapRanges(maxValue);
-    // Initialise the hourly activity rate chart 'loot-activity' (hourly activity rate loot history)
+    // Initialize the hourly activity rate chart 'loot-activity' (hourly activity rate loot history)
     const lastWeeksData = allWeeksData.slice(-2);
     const hourlyActivity = this.computeHourlyActivityRate(lastWeeksData.flat());
     const seriesHourlyActivity: ApexAxisChartSeries = [
@@ -1120,7 +1228,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
       },
     ];
     this.initHourlyActivityChart('hourly-activity', seriesHourlyActivity);
-    // Initialise the average gain per hour chart 'loot-average-gain' (average gain per hour loot history)
+    // Initialize the average gain per hour chart 'loot-average-gain' (average gain per hour loot history)
     const avgGainPerHour = this.computeAverageGainPerHour(lastWeeksData.flat());
     const seriesAvgGain: ApexAxisChartSeries = [
       {
@@ -1151,11 +1259,30 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     const needPMFormat = this.languageService.getCurrentLang() === 'en';
     const tooltipX = this.charts['loot'].tooltip.x;
     if (!tooltipX) return;
+    const offsetHours = this.timezoneOffset ?? 0;
     tooltipX.formatter = function (value): string {
       const date = new Date(value);
       const dayName = days[date.getDay()];
       const hours = date.getHours().toString().padStart(2, '0');
       const minutes = date.getMinutes().toString().padStart(2, '0');
+      if (needPMFormat) {
+        const ampm = Number(hours) >= 12 ? 'PM' : 'AM';
+        const hourIn12Format = Number(hours) % 12 || 12;
+        return `${dayName} ${hourIn12Format}:${minutes} ${ampm}`;
+      }
+      return `${dayName} ${hours}h${minutes}`;
+    };
+    tooltipX.formatter = function (value, { dataPointIndex }): string {
+      const now = new Date();
+      const monday = new Date(now);
+      const day = monday.getDay() || 7;
+      monday.setDate(monday.getDate() - day + 1);
+      monday.setHours(offsetHours + 1, 0, 0, 0);
+      const pointDate = new Date(monday);
+      pointDate.setHours(pointDate.getHours() + dataPointIndex + 1);
+      const dayName = days[pointDate.getDay()];
+      const hours = pointDate.getHours().toString().padStart(2, '0');
+      const minutes = pointDate.getMinutes().toString().padStart(2, '0');
       if (needPMFormat) {
         const ampm = Number(hours) >= 12 ? 'PM' : 'AM';
         const hourIn12Format = Number(hours) % 12 || 12;
@@ -1173,6 +1300,11 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     };
   }
 
+  /**
+   * This function computes the hourly activity rate based on the provided data.
+   * @param data An array of numbers (or nulls) representing the data points for which to compute the hourly activity rate
+   * @returns An array of hourly activity rates for each hour of the day (0-23) expressed as percentages
+   */
   private computeHourlyActivityRate(data: (number | null)[]): number[] {
     const activityCount: number[] = Array.from({ length: 24 }, () => 0);
     const totalCount: number[] = Array.from({ length: 24 }, () => 0);
@@ -1191,6 +1323,13 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     );
   }
 
+  /**
+   * This function computes the average gain per hour based on the provided data.
+   * It iterates through the data points, comparing each point with the previous one to calculate the gain.
+   * The gains are accumulated for each hour of the day, and the average gain is computed by dividing the total gain by the count of gains for that hour.
+   * @param data An array of numbers (or nulls) representing the data points for which to compute the average gain per hour
+   * @returns An array of average gains for each hour of the day (0-23)
+   */
   private computeAverageGainPerHour(data: (number | null)[]): number[] {
     const gains: number[] = Array.from({ length: 24 }, () => 0);
     const counts: number[] = Array.from({ length: 24 }, () => 0);
@@ -1316,14 +1455,20 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
   private fillData(): void {
     this.setDefaultAlliance();
     void this.initPlayerStats();
-    this.initMightHistoryData();
-    this.initLootHistoryData();
-    this.initWarRealmsData();
-    this.initNomadHistoryData();
-    this.initBerimondKingdomData();
-    this.initBerimondInvasionData();
-    this.initSamuraiHistoryData();
-    this.initBloodcrowHistoryData();
+    this.cdr.detectChanges();
+    setTimeout(() => {
+      this.initMightHistoryData();
+      this.initLootHistoryData();
+    }, 500);
+    setTimeout(() => {
+      this.initWarRealmsData();
+      this.initNomadHistoryData();
+      this.initBerimondKingdomData();
+      this.initBerimondInvasionData();
+      this.initSamuraiHistoryData();
+      this.initBloodcrowHistoryData();
+      this.cdr.detectChanges();
+    }, 1000);
   }
 
   private buildHeatmapRanges(maxValue: number): any[] {

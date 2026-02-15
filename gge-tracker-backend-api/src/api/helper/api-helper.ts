@@ -5,6 +5,7 @@ import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { Status } from '../enums/http-status.enums';
 import { ApiGgeTrackerManager } from '../managers/api.manager';
 import { ApiInputErrorType, ApiInvalidInputType, ApiUndefinedInputType } from '../types/parameter.types';
+import * as cacheVersion from './cache/cache-version';
 
 /**
  * Abstract utility class providing helper methods and constants for API operations
@@ -161,6 +162,7 @@ export abstract class ApiHelper {
     const colorize = (text: string): string => this.colorize(text, redColor, resetColor);
     console.log(colorize(`----- ERROR LOG START #${uniqueId} -----`));
     console.log(colorize(`* Unique ID: ${uniqueId}`));
+    console.log(colorize(`* Timestamp: ${new Date().toISOString()}`));
     if (error instanceof Error) {
       console.log(colorize(`* Error message: ${error.message}`));
       console.log(colorize(`* Stack trace:\n${error.stack || ''}`));
@@ -187,6 +189,10 @@ export abstract class ApiHelper {
     const path = await import('node:path');
     this.file = await fs.promises.readFile(path.join(__dirname, './../assets/assets.json'));
     return this.file;
+  }
+
+  public static async getCacheVersion(redis: RedisClientType<any>, language: string): Promise<string> {
+    return cacheVersion.getCacheVersion(redis, language) || '1';
   }
 
   /**
@@ -354,6 +360,25 @@ export abstract class ApiHelper {
   }
 
   /**
+   * Calculates the compass direction (e.g., N, NE, E, SE, S, SW, W, NW) based on the provided deltaX and deltaY coordinates
+   * @param deltaX The difference in the X coordinate (horizontal) between the target and guessed positions
+   * @param deltaY The difference in the Y coordinate (vertical) between the target and guessed positions
+   * @returns A string representing the compass direction from the guessed position to the target position
+   */
+  public static calculateDirection(deltaX: number, deltaY: number): string {
+    const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
+    if (angle >= -22.5 && angle < 22.5) return 'E';
+    if (angle >= 22.5 && angle < 67.5) return 'NE';
+    if (angle >= 67.5 && angle < 112.5) return 'N';
+    if (angle >= 112.5 && angle < 157.5) return 'NW';
+    if (angle >= 157.5 || angle < -157.5) return 'W';
+    if (angle >= -157.5 && angle < -112.5) return 'SW';
+    if (angle >= -112.5 && angle < -67.5) return 'S';
+    if (angle >= -67.5 && angle < -22.5) return 'SE';
+    return '';
+  }
+
+  /**
    * Attempts to fetch a resource from the specified URL, with up to three retries on failure
    * If the URL starts with "https://empire-html5.goodgamestudios.com/default/", or "https://discord.com", it rewrites the URL
    * to use a CDN proxy. If the URL ends with ".json", the response is parsed as JSON and returned
@@ -363,7 +388,7 @@ export abstract class ApiHelper {
    * @returns A Promise that resolves to a Response object containing the fetched data
    * @throws An error if all retry attempts fail or if the network response is not ok
    */
-  public static async fetchWithFallback(url: string): Promise<Response> {
+  public static async fetchWithFallback(url: string, headers?: Record<string, string>): Promise<Response> {
     const retries = 3;
     // Rewrite URL to use CDN proxy if it matches the specified pattern
     if (url?.startsWith('https://empire-html5.goodgamestudios.com/default/')) {
@@ -371,7 +396,7 @@ export abstract class ApiHelper {
     }
     for (let index = 0; index < retries; index++) {
       try {
-        const response = await fetch(url);
+        const response = await fetch(url, { headers });
         if (!response.ok) throw new Error('Network response was not ok');
         if (url.endsWith('.json')) {
           const json = await response.json();

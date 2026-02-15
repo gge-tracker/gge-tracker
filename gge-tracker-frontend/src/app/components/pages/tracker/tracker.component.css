@@ -17,6 +17,12 @@
   font-weight: bold;
 }
 
+:host ::ng-deep .table-custom tr td i.fa-dungeon {
+  font-size: 1.2rem;
+  color: #3e9212;
+  margin-right: 0.3rem;
+}
+
 :host ::ng-deep .ng-dropdown-panel {
   background: #ffffffce;
   border-radius: 12px;
@@ -76,10 +82,14 @@
   border-color: transparent transparent #616161 !important;
 }
 
+
 td, th {
   text-align: center;
 }
 
+.actions {
+  row-gap: 8px;
+}
 .btn-help {
   background: rgba(219,219,219,0.2);
 }

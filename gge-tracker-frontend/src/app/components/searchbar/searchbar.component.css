@@ -11,7 +11,7 @@
 }
 
 .input-group-text {
-  background: rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 0 12px 12px 0;
   border-radius: 12px 0 0 12px;
   border: none;
@@ -21,7 +21,7 @@
 
 .search-input {
   backdrop-filter: blur(12px);
-  background: rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 12px;
   border: none;
   color: #fff;
@@ -33,7 +33,9 @@
 
 input:-webkit-autofill,
 input:-webkit-autofill:focus {
-    transition: background-color 0s 600000s, color 0s 600000s !important;
+  transition:
+    background-color 0s 600000s,
+    color 0s 600000s !important;
 }
 
 .search-input::placeholder {
@@ -41,12 +43,13 @@ input:-webkit-autofill:focus {
 }
 
 .search-input:focus {
-  background: rgba(255,255,255,0.25);
-  box-shadow: 0 0 0 3px rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
   outline: 0;
 }
 
-.search-input[type="number"]::-webkit-inner-spin-button, .search-input[type="number"]::-webkit-outer-spin-button {
+.search-input[type="number"]::-webkit-inner-spin-button,
+.search-input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   background-color: transparent;
   margin: 0;
