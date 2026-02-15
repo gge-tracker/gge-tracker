@@ -1,6 +1,6 @@
 {
   "name": "gge-tracker",
-  "version": "26.01.05-beta",
+  "version": "26.02.15-beta",
   "scripts": {
     "ng": "ng",
     "start": "ng serve --host 0.0.0.0",
