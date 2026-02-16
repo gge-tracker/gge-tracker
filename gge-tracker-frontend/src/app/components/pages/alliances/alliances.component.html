@@ -4,7 +4,7 @@
     <div class="col-12" [ngClass]="{'loading': isInLoading}">
       <app-search-form
         [isInLoading]="isInLoading"
-        [formFilters]="null"
+        [formFilters]="formFilters"
         [inputTip]="'Rechercher une alliance' | translate"
         [searchTypes]="{
           player: false,
@@ -202,6 +202,26 @@
                     [value]="displayFormValues.fame.max" (focus)="onGenericFocus('max', 'fame')"
                     (blur)="onGenericBlur('max', 'fame')" (input)="onGenericInput('max', 'fame', $event)"
                     [title]="formFilters.maxFame" [placeholder]="'Gloire max.' | translate">
+                </div>
+              </div>
+            </div>
+            <div class="row mt-1">
+              <!-- Member count -->
+              <div class="col-12 col-sm my-1">
+                <div class="input-group">
+                  <span class="input-group-text">
+                    <img src="/assets/member-list.png" [alt]="'Nombre de joueurs' | translate"
+                      [title]="'Filtrer par nombre de membres' | translate" height="24">
+                  </span>
+                  <input type="number" class="form-control ggetracker-input" id="playerCountMin"
+                    [value]="formFilters.minPlayerCount" min="0" max="65" autocomplete="off"
+                    [title]="formFilters.minPlayerCount" [placeholder]="'Nombre de membres min.' | translate">
+                  <div class="input-arrow">
+                    <lucide-icon [img]="ArrowBigRightDash" [size]="20" class="m-auto"></lucide-icon>
+                  </div>
+                  <input type="number" class="form-control ggetracker-input" id="playerCountMax"
+                    [value]="formFilters.maxPlayerCount" min="0" max="65" autocomplete="off"
+                    [title]="formFilters.maxPlayerCount" [placeholder]="'Nombre de membres max.' | translate">
                 </div>
               </div>
             </div>

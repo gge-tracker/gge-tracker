@@ -13,7 +13,7 @@ import { LocalStorageService } from '@ggetracker-services/local-storage.service'
 import { TranslateModule } from '@ngx-translate/core';
 import { ArrowBigRightDash, LucideAngularModule } from 'lucide-angular';
 
-type FilterField = 'might' | 'loot' | 'fame' | 'memberCount';
+type FilterField = 'might' | 'loot' | 'fame' | 'playerCount';
 
 interface FormFilters {
   minMight?: number;
@@ -22,8 +22,8 @@ interface FormFilters {
   maxLoot?: number;
   minFame?: number;
   maxFame?: number;
-  minMemberCount?: number;
-  maxMemberCount?: number;
+  minPlayerCount?: number;
+  maxPlayerCount?: number;
   isFiltered: boolean;
 }
 
@@ -65,15 +65,15 @@ export class AlliancesComponent extends GenericComponent implements OnInit {
     maxLoot: '',
     minFame: '',
     maxFame: '',
-    minMemberCount: '',
-    maxMemberCount: '',
+    minPlayerCount: '',
+    maxPlayerCount: '',
     isFiltered: false,
   };
   public displayFormValues = {
     might: { min: '', max: '' },
     loot: { min: '', max: '' },
     fame: { min: '', max: '' },
-    memberCount: { min: '', max: '' },
+    playerCount: { min: '', max: '' },
   };
   public sortByOptions: { value: string; label: string }[] = [
     { value: 'might_current', label: 'Points de puissance' },
@@ -89,7 +89,7 @@ export class AlliancesComponent extends GenericComponent implements OnInit {
     might: { min: 'minMight', max: 'maxMight' },
     loot: { min: 'minLoot', max: 'maxLoot' },
     fame: { min: 'minFame', max: 'maxFame' },
-    memberCount: { min: 'minMemberCount', max: 'maxMemberCount' },
+    playerCount: { min: 'minPlayerCount', max: 'maxPlayerCount' },
   };
 
   private localStorage = inject(LocalStorageService);
@@ -300,8 +300,8 @@ export class AlliancesComponent extends GenericComponent implements OnInit {
         targetValue = type === 'min' ? this.formFilters.minFame : this.formFilters.maxFame;
         break;
       }
-      case 'memberCount': {
-        targetValue = type === 'min' ? this.formFilters.minMemberCount : this.formFilters.maxMemberCount;
+      case 'playerCount': {
+        targetValue = type === 'min' ? this.formFilters.minPlayerCount : this.formFilters.maxPlayerCount;
         break;
       }
     }
@@ -345,8 +345,8 @@ export class AlliancesComponent extends GenericComponent implements OnInit {
     if (this.formFilters.maxLoot) filters['maxLoot'] = this.formFilters.maxLoot;
     if (this.formFilters.minFame) filters['minFame'] = this.formFilters.minFame;
     if (this.formFilters.maxFame) filters['maxFame'] = this.formFilters.maxFame;
-    if (this.formFilters.minMemberCount) filters['minMemberCount'] = this.formFilters.minMemberCount;
-    if (this.formFilters.maxMemberCount) filters['maxMemberCount'] = this.formFilters.maxMemberCount;
+    if (this.formFilters.minPlayerCount) filters['minPlayerCount'] = this.formFilters.minPlayerCount;
+    if (this.formFilters.maxPlayerCount) filters['maxPlayerCount'] = this.formFilters.maxPlayerCount;
     this.formFilters.isFiltered = Object.keys(filters).length > 0;
     return filters;
   }

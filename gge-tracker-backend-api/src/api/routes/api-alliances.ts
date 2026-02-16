@@ -1,4 +1,3 @@
-import { formatInTimeZone } from 'date-fns-tz';
 import * as express from 'express';
 import * as pg from 'pg';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
@@ -301,8 +300,8 @@ export abstract class ApiAlliances implements ApiHelper {
         maxLoot,
         minFame,
         maxFame,
-        minMemberCount,
-        maxMemberCount,
+        minPlayerCount,
+        maxPlayerCount,
       } = parsedQuery;
       let { page } = parsedQuery;
       /* ---------------------------------
@@ -322,8 +321,8 @@ export abstract class ApiAlliances implements ApiHelper {
           maxLoot,
           minFame,
           maxFame,
-          minMemberCount,
-          maxMemberCount,
+          minPlayerCount,
+          maxPlayerCount,
         })
         .build();
       const cachedData = await ApiHelper.redisClient.get(cacheKey);
@@ -332,46 +331,34 @@ export abstract class ApiAlliances implements ApiHelper {
         return;
       }
       /* ---------------------------------
-       * Count total alliances for pagination
-       * --------------------------------- */
-      let totalPages = 0;
-      let allianceCount = 0;
-      const countQuery = `
-        SELECT
-          COUNT(id) AS alliance_count
-        FROM
-          alliances
-        WHERE
-          (SELECT COUNT(id) FROM players WHERE alliance_id = alliances.id AND castles IS NOT NULL) > 0`;
-      const promiseCountQuery = new Promise((resolve, reject) => {
-        (request['pg_pool'] as pg.Pool).query(countQuery, (error, results) => {
-          if (error) {
-            ApiHelper.logError(error, 'getAlliances', request);
-            reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
-          } else {
-            allianceCount = results.rows[0]['alliance_count'];
-            totalPages = Math.ceil(allianceCount / ApiHelper.PAGINATION_LIMIT);
-            if (page > totalPages) {
-              page = totalPages;
-            }
-            resolve(null);
-          }
-        });
-      });
-      await promiseCountQuery;
-      /* ---------------------------------
-       * Fetch paginated alliance data
+       * Construct SQL queries
        * --------------------------------- */
       const qb = new QueryFilterBuilder();
       qb.player().activity(1);
-      qb.alliance()
-        .might(minMight, maxMight)
-        .loot(minLoot, maxLoot)
-        .fame(minFame, maxFame)
-        .membersCount(minMemberCount, maxMemberCount);
-
       const { where, values } = qb.build();
       let parameterIndex = qb.getLastParameterIndex();
+      const havingSqlConditions = `
+        HAVING
+          COUNT(P.id) > 0
+          ${minMight === undefined ? '' : `AND SUM(P.might_current) >= $${parameterIndex++}`}
+          ${maxMight === undefined ? '' : `AND SUM(P.might_current) <= $${parameterIndex++}`}
+          ${minLoot === undefined ? '' : `AND SUM(P.loot_current) >= $${parameterIndex++}`}
+          ${maxLoot === undefined ? '' : `AND SUM(P.loot_current) <= $${parameterIndex++}`}
+          ${minFame === undefined ? '' : `AND SUM(P.current_fame) >= $${parameterIndex++}`}
+          ${maxFame === undefined ? '' : `AND SUM(P.current_fame) <= $${parameterIndex++}`}
+          ${minPlayerCount === undefined ? '' : `AND COUNT(P.id) >= $${parameterIndex++}`}
+          ${maxPlayerCount === undefined ? '' : `AND COUNT(P.id) <= $${parameterIndex++}`}
+      `;
+      let v = [...values];
+      if (minMight !== undefined) v.push(minMight);
+      if (maxMight !== undefined) v.push(maxMight);
+      if (minLoot !== undefined) v.push(minLoot);
+      if (maxLoot !== undefined) v.push(maxLoot);
+      if (minFame !== undefined) v.push(minFame);
+      if (maxFame !== undefined) v.push(maxFame);
+      if (minPlayerCount !== undefined) v.push(minPlayerCount);
+      if (maxPlayerCount !== undefined) v.push(maxPlayerCount);
+      v.push(ApiHelper.PAGINATION_LIMIT, (page - 1) * ApiHelper.PAGINATION_LIMIT);
       const query = `
         SELECT
           A.id AS alliance_id,
@@ -390,52 +377,90 @@ export abstract class ApiAlliances implements ApiHelper {
         ${where}
         GROUP BY
           A.id
-        HAVING
-          COUNT(P.id) > 0
+        ${havingSqlConditions}
         ORDER BY ${orderBy} ${orderType}
         LIMIT $${parameterIndex++} OFFSET $${parameterIndex++};
-    `;
-      const sqlDuration = Date.now();
-      (request['pg_pool'] as pg.Pool).query(
-        query,
-        [...values, ApiHelper.PAGINATION_LIMIT, (page - 1) * ApiHelper.PAGINATION_LIMIT],
-        (error, results) => {
+      `;
+      /* ---------------------------------
+       * Count total alliances for pagination
+       * --------------------------------- */
+      let totalPages = 0;
+      let allianceCount = 0;
+      const countQuery = `
+        SELECT
+          COUNT(id) AS alliance_count
+        FROM
+          alliances
+        WHERE
+          id IN (
+            SELECT
+              A.id
+            FROM
+              alliances A
+            LEFT JOIN
+              players P ON A.id = P.alliance_id
+            ${where}
+            GROUP BY
+              A.id
+            ${havingSqlConditions}
+          );
+      `;
+      const promiseCountQuery = new Promise((resolve, reject) => {
+        (request['pg_pool'] as pg.Pool).query(countQuery, v.slice(0, -2), (error, results) => {
           if (error) {
-            response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+            ApiHelper.logError(error, 'getAlliances', request);
+            reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
           } else {
-            /* ---------------------------------
-             * Format and send response
-             * --------------------------------- */
-            const pagination = {
-              current_page: page,
-              total_pages: totalPages,
-              current_items_count: results.rowCount,
-              total_items_count: allianceCount,
-            };
-            const sqlDurationEnd = Date.now();
-            const durationMs = sqlDurationEnd - sqlDuration;
-            const responseContent = {
-              duration: durationMs / 1000 + 's',
-              pagination,
-              alliances: results.rows.map((result: any) => {
-                return {
-                  alliance_id: ApiHelper.addCountryCode(result.alliance_id, request['code']),
-                  alliance_name: result.alliance_name,
-                  might_current: result.might_current,
-                  might_all_time: result.might_all_time,
-                  loot_current: result.loot_current,
-                  loot_all_time: result.loot_all_time,
-                  current_fame: result.current_fame,
-                  highest_fame: result.highest_fame,
-                  player_count: result.player_count,
-                };
-              }),
-            };
-            void ApiHelper.updateCache(cacheKey, responseContent);
-            response.status(ApiHelper.HTTP_OK).send(responseContent);
+            allianceCount = results.rows[0]['alliance_count'];
+            totalPages = Math.ceil(allianceCount / ApiHelper.PAGINATION_LIMIT);
+            if (page > totalPages) {
+              page = totalPages;
+            }
+            resolve(null);
           }
-        },
-      );
+        });
+      });
+      await promiseCountQuery;
+      /* ---------------------------------
+       * Fetch paginated alliance data
+       * --------------------------------- */
+      const sqlDuration = Date.now();
+      (request['pg_pool'] as pg.Pool).query(query, v, (error, results) => {
+        if (error) {
+          response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+        } else {
+          /* ---------------------------------
+           * Format and send response
+           * --------------------------------- */
+          const pagination = {
+            current_page: page,
+            total_pages: totalPages,
+            current_items_count: results.rowCount,
+            total_items_count: allianceCount,
+          };
+          const sqlDurationEnd = Date.now();
+          const durationMs = sqlDurationEnd - sqlDuration;
+          const responseContent = {
+            duration: durationMs / 1000 + 's',
+            pagination,
+            alliances: results.rows.map((result: any) => {
+              return {
+                alliance_id: ApiHelper.addCountryCode(result.alliance_id, request['code']),
+                alliance_name: result.alliance_name,
+                might_current: result.might_current,
+                might_all_time: result.might_all_time,
+                loot_current: result.loot_current,
+                loot_all_time: result.loot_all_time,
+                current_fame: result.current_fame,
+                highest_fame: result.highest_fame,
+                player_count: result.player_count,
+              };
+            }),
+          };
+          void ApiHelper.updateCache(cacheKey, responseContent);
+          response.status(ApiHelper.HTTP_OK).send(responseContent);
+        }
+      });
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
