@@ -214,13 +214,13 @@
                       [title]="'Filtrer par nombre de membres' | translate" height="24">
                   </span>
                   <input type="number" class="form-control ggetracker-input" id="playerCountMin"
-                    [value]="formFilters.minPlayerCount" min="0" max="65" autocomplete="off"
+                    [(ngModel)]="formFilters.minPlayerCount" min="0" max="65" autocomplete="off"
                     [title]="formFilters.minPlayerCount" [placeholder]="'Nombre de membres min.' | translate">
                   <div class="input-arrow">
                     <lucide-icon [img]="ArrowBigRightDash" [size]="20" class="m-auto"></lucide-icon>
                   </div>
                   <input type="number" class="form-control ggetracker-input" id="playerCountMax"
-                    [value]="formFilters.maxPlayerCount" min="0" max="65" autocomplete="off"
+                    [(ngModel)]="formFilters.maxPlayerCount" min="0" max="65" autocomplete="off"
                     [title]="formFilters.maxPlayerCount" [placeholder]="'Nombre de membres max.' | translate">
                 </div>
               </div>
