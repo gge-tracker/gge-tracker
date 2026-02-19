@@ -460,9 +460,9 @@ This will result in approximately ${totalRequests} API requests, which may take 
     let done = 0;
     const start = new Date();
     let rowIndex = 0;
-    for (let y = minY; y <= maxY; y += zone) {
+    for (let y = minY; y < maxY; y += zone) {
       const xValues: number[] = [];
-      for (let x = minX; x <= maxX; x += zone) {
+      for (let x = minX; x < maxX; x += zone) {
         xValues.push(x);
       }
       if (rowIndex % 2 !== 0) {
@@ -523,7 +523,10 @@ This will result in approximately ${totalRequests} API requests, which may take 
         }
         // Throttle management
         const delay = (ms: number): Promise<void> => new Promise((res) => setTimeout(res, ms));
-        await delay(500);
+        const minValue = 500;
+        const maxValue = 1500;
+        const random = Math.floor(Math.random() * (maxValue - minValue + 1)) + minValue;
+        await delay(random);
         done++;
         const percent = (done / totalRequests) * 100;
         const barWidth = 40;
