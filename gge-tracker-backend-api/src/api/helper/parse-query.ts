@@ -119,8 +119,8 @@ export interface QuerySchema {
   searchType: QueryField<string | undefined>;
   search: QueryField<string | undefined>;
   allianceId: QueryField<number | undefined>;
-  minMemberCount: QueryField<number | undefined>;
-  maxMemberCount: QueryField<number | undefined>;
+  minPlayerCount: QueryField<number | undefined>;
+  maxPlayerCount: QueryField<number | undefined>;
 }
 
 export const querySchema = (limits: {
@@ -154,8 +154,8 @@ export const querySchema = (limits: {
   castleType: qNumber({ min: -1, max: 100 }),
   movementType: qNumber({ min: -1, max: 3 }),
   searchType: qSearchType(),
-  minMemberCount: qNumber({ max: limits.maxBigValue }),
-  maxMemberCount: qNumber({ max: limits.maxBigValue }),
+  minPlayerCount: qNumber({ min: 0, max: 65 }),
+  maxPlayerCount: qNumber({ min: 0, max: 65 }),
   search: qString({ max: 40 }),
 });
 

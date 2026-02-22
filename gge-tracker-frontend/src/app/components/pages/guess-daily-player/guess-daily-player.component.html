@@ -59,7 +59,7 @@
 
     <div class="result-card glass-panel win-mode p-4 text-center mb-4" *ngIf="isWin">
       <h2 class="h3 fw-bold text-white">{{ 'Joueur trouvé' | translate }} !</h2>
-      <p class="text-white-50">{{ 'Le joueur était bien {0}' | translate: [guesses[0].playerName] }}</p>
+      <p class="text-white-50">{{ 'Le joueur était bien {0}' | translate: {'0': guesses[0].playerName} }}</p>
       <div class="stat-highlight my-3">
         <span class="display-4 fw-bold text-gradient-gold">{{ guesses.length }}</span>
         <span class="d-block text-uppercase text-xs tracking-wider">{{ 'Essais' | translate }}</span>
