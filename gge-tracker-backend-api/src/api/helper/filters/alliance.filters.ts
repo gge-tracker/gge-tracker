@@ -12,14 +12,14 @@ export class AllianceFilters extends AbstractFilterBuilder<AllianceFilters> {
     if (allianceId) {
       this.add(this.eq('A.id', ApiHelper.removeCountryCode(Number(allianceId))));
     } else if (searchType === 'alliance' && searchInput) {
-      this.add(this.eq('A.name', ApiHelper.removeCountryCode(searchInput)));
+      this.add(this.eq('LOWER(A.name)', searchInput.trim().toLowerCase()));
     }
     return this.self();
   }
 
   public name(allianceName: string): AllianceFilters {
     if (allianceName) {
-      this.add(this.eq('A.name', ApiHelper.removeCountryCode(allianceName)));
+      this.add(this.eq('LOWER(A.name)', allianceName.trim().toLowerCase()));
     }
     return this.self();
   }
