@@ -192,11 +192,16 @@ export abstract class ApiCastle implements ApiHelper {
           })),
         },
         // Note: The constructionItems structure is based on observed patterns and may require adjustments
-        // Each item contains an OID and a list of CIL entries with CID and S values
+        // Each item contains an OID and a list of CIL entries with CID, S, and RS values
         constructionItems: Object.fromEntries(
           gca.CI.map((item) => {
             const { OID, CIL } = item;
-            return [OID.toString(), CIL.map((c: { CID: number; S: number }) => [c.CID, c.S] as [number, number])];
+            return [
+              OID.toString(),
+              CIL.map(
+                (c: { CID: number; S: number; RS: number }) => [c.CID, c.S, c.RS ?? 0] as [number, number, number],
+              ),
+            ];
           }),
         ),
       };
