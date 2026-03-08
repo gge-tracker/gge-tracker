@@ -160,7 +160,7 @@ class BaseSocket extends Log {
   }
 
   public close(): void {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
       this.ws.close();
     }
   }
