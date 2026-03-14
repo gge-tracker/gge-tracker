@@ -138,15 +138,15 @@
 
         <div class="tab-content" *ngIf="currentTab === 'overview'">
           <div class="row">
-            <div class="col-12 col-lg-6 mb-2">
-              <app-player-stats-card [charts]="{ 'Graphique': charts['might'] }" *ngIf="charts['might']" [data]="[]"
+            <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="might">
+              <app-player-stats-card [charts]="{ 'Graphique': charts['might'] }" *ngIf="charts['might'] && chartVisibles.might" [data]="[]"
                 [title]="'Points de puissance' | translate" [dataName]="'Points de puissance' | translate"
                 [backgroundIconImage]="'/assets/banner-pp.png'" [needSpecialLoader]="true"
                 [eventName]="'player_might_history'" [isWeekly]="true" [playerId]="playerId"
                 (updateData)="updateData($event)" [backgroundColour]="'rgb(255 230 35)'"></app-player-stats-card>
             </div>
-            <div class="col-12 col-lg-6 mb-2">
-              <app-player-stats-card [charts]="{ 'Graphique': charts['loot'] }" *ngIf="charts['loot']" [data]="[]"
+            <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="loot">
+              <app-player-stats-card [charts]="{ 'Graphique': charts['loot'] }" *ngIf="charts['loot'] && chartVisibles.loot" [data]="[]"
                 [title]="'Pillage hebdomadaire' | translate" [dataName]="'Points de pillage' | translate"
                 [playerId]="playerId" [eventName]="'player_loot_history'" (updateData)="updateData($event)"
                 [backgroundIconImage]="'/assets/banner-loot.png'"
@@ -154,16 +154,16 @@
             </div>
           </div>
           <div class="row mt-3">
-            <div class="col-12 col-lg-6 mb-2">
-              <app-player-stats-card [charts]="{ 'Graphique': charts['warRealms'] }" *ngIf="charts['warRealms']"
+            <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="warRealms">
+              <app-player-stats-card [charts]="{ 'Graphique': charts['warRealms'] }" *ngIf="charts['warRealms'] && chartVisibles.warRealms"
                 [data]="[]" [title]="'Guerre des royaumes' | translate" [playerId]="playerId"
                 [eventName]="'player_event_war_realms_history'" (updateData)="updateData($event)"
                 [dataName]="'Points de guerre des royaumes' | translate"
                 [backgroundIconImage]="'/assets/banner-realm.png'"
                 [backgroundColour]="'rgb(216 182 255)'"></app-player-stats-card>
             </div>
-            <div class="col-12 col-lg-6 mb-2">
-              <app-player-stats-card [charts]="{ 'Graphique': charts['bloodcrow'] }" *ngIf="charts['bloodcrow']"
+            <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="bloodcrow">
+              <app-player-stats-card [charts]="{ 'Graphique': charts['bloodcrow'] }" *ngIf="charts['bloodcrow'] && chartVisibles.bloodcrow"
                 [data]="[]" [title]="'Corbeaux de sang' | translate" [playerId]="playerId"
                 [eventName]="'player_event_bloodcrow_history'" (updateData)="updateData($event)"
                 [dataName]="'Points de corbeaux de sang' | translate"
@@ -172,16 +172,16 @@
             </div>
           </div>
           <div class="row mt-3">
-            <div class="col-12 col-lg-6 mb-2">
+            <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="berimondKingdom">
               <app-player-stats-card [charts]="{ 'Graphique': charts['berimondKingdom'] }"
-                *ngIf="charts['berimondKingdom']" [data]="[]" [title]="'Bataille de Berimond' | translate"
+                *ngIf="charts['berimondKingdom'] && chartVisibles.berimondKingdom" [data]="[]" [title]="'Bataille de Berimond' | translate"
                 [playerId]="playerId" [eventName]="'player_event_berimond_kingdom_history'"
                 (updateData)="updateData($event)" [dataName]="'Points de Berimond' | translate"
                 [backgroundIconImage]="'/assets/banner-berimond.png'"
                 [backgroundColour]="'#00aaff'"></app-player-stats-card>
             </div>
-            <div class="col-12 col-lg-6 mb-2">
-              <app-player-stats-card #nomadChart [charts]="{ 'Graphique': charts['nomad'] }" *ngIf="charts['nomad']"
+            <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="nomad">
+              <app-player-stats-card [charts]="{ 'Graphique': charts['nomad'] }" *ngIf="charts['nomad'] && chartVisibles.nomad"
                 [data]="[]" [title]="'Nomades' | translate" [dataName]="'Points de nomades' | translate"
                 [playerId]="playerId" [eventName]="'player_event_nomad_history'" (updateData)="updateData($event)"
                 [backgroundIconImage]="'/assets/banner-nomad.png'"
@@ -189,9 +189,8 @@
             </div>
           </div>
           <div class="row mt-3">
-            <div class="col-12 col-lg-6 mb-2">
-              <app-player-stats-card #samuraiChart [charts]="{ 'Graphique': charts['samurai'] }"
-                *ngIf="charts['samurai']" [data]="[]" [title]="'Samouraïs' | translate"
+            <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="samurai">
+              <app-player-stats-card [charts]="{ 'Graphique': charts['samurai'] }" *ngIf="charts['samurai'] && chartVisibles.samurai" [data]="[]" [title]="'Samouraïs' | translate"
                 [dataName]="'Points de samouraïs' | translate" [playerId]="playerId"
                 [eventName]="'player_event_samurai_history'" (updateData)="updateData($event)"
                 [backgroundIconImage]="'/assets/banner-samurai.png'"

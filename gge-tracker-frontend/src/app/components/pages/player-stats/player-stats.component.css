@@ -9,6 +9,9 @@ img {
   -o-user-drag: none;
   -webkit-user-drag: none;
 }
+div[data-chart] {
+  min-height: 500px;
+}
 #allianceList {
   bottom: 0;
   left: 0;

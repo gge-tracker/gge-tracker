@@ -1,11 +1,23 @@
 import { DatePipe, NgClass, NgForOf, NgIf, NgStyle, NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
+import {
+  AfterViewInit,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  ElementRef,
+  inject,
+  OnInit,
+  QueryList,
+  ViewChild,
+  ViewChildren,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import {
   AlliancesUpdates,
   ApiGenericData,
+  ApiPlayerStats,
   ApiPlayerStatsByPlayerId,
   ApiPlayerStatsType,
   ApiRankingStatsPlayer,
@@ -85,7 +97,7 @@ interface RankingFameTitle {
   templateUrl: './player-stats.component.html',
   styleUrl: './player-stats.component.css',
 })
-export class PlayerStatsComponent extends GenericComponent implements OnInit {
+export class PlayerStatsComponent extends GenericComponent implements OnInit, AfterViewInit {
   public charts: Record<string, ChartOptions> = {};
   public radialCharts: Record<string, ChartOptions> = {};
   public eventDataSegments: Record<string, ApiGenericData[][]> = {};
@@ -150,6 +162,15 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
   public fameTitlesTopX: RankingFameTitle[] = [];
   public top100Glory: { top: number; point: number }[] = [];
   public fameProgressPercentage: number = 0;
+  public chartVisibles = {
+    might: false,
+    loot: false,
+    warRealms: false,
+    bloodcrow: false,
+    berimondKingdom: false,
+    nomad: false,
+    samurai: false,
+  };
 
   private animationFrames: Partial<Record<keyof IRankingStatsPlayer, number>> = {};
   private localStorage = inject(LocalStorageService);
@@ -162,6 +183,8 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     { name: 'Les Pics du feu', id: 3 },
     { name: 'Les Îles orageuses', id: 4 },
   ];
+  private observer!: IntersectionObserver;
+  @ViewChildren('chartContainer', { read: ElementRef }) private chartContainers!: QueryList<ElementRef>;
 
   constructor() {
     super();
@@ -170,6 +193,31 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     if (favories) {
       this.favories = JSON.parse(favories);
     }
+  }
+
+  public ngAfterViewInit(): void {
+    this.observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const element = entry.target as HTMLElement;
+          const chartName = element.dataset['chart'] as keyof typeof this.chartVisibles;
+          if (chartName) {
+            this.chartVisibles[chartName] = true;
+          }
+          this.observer.unobserve(element);
+          this.cdr.detectChanges();
+        });
+      },
+      {
+        rootMargin: '100px',
+        threshold: 0.1,
+      },
+    );
+    this.observeCharts();
+    this.chartContainers.changes.subscribe(() => {
+      this.observeCharts();
+    });
   }
 
   public get peaceDisabledAtInDays(): number | null {
@@ -186,6 +234,44 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
     void this.router.navigate([], {
       fragment: this.currentTab,
     });
+  }
+
+  public formatLocalDate(iso: string): string {
+    const d = new Date(iso);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+      2,
+      '0',
+    )}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(
+      2,
+      '0',
+    )}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+  }
+
+  public initDataSegments(points: ApiPlayerStats): void {
+    this.data = Object.fromEntries(
+      Object.entries(points).map(([key, value]) => {
+        let filtered = value;
+        if (key === 'player_might_history') {
+          filtered = value.filter((point, index, array) => {
+            if (index === 0 || index === array.length - 1) {
+              return true;
+            }
+            const previous = array[index - 1].point;
+            const next = array[index + 1].point;
+            return !(previous === point.point && next === point.point);
+          });
+        }
+        return [
+          key,
+          filtered.map((point) => ({
+            utcDate: point.date,
+            date: this.formatLocalDate(point.date),
+            point: point.point,
+            variation: 0,
+          })),
+        ];
+      }),
+    ) as Record<ApiPlayerStatsType, EventGenericVariation[]>;
   }
 
   public async ngOnInit(): Promise<void> {
@@ -218,27 +304,8 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
             void this.router.navigate(['/']);
             return;
           }
-          const formatLocal = (iso: string): string => {
-            const d = new Date(iso);
-            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
-              2,
-              '0',
-            )}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(
-              2,
-              '0',
-            )}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
-          };
-          this.data = Object.fromEntries(
-            Object.entries(data.points).map(([key, value]) => [
-              key,
-              value.map((point) => ({
-                utcDate: point.date, // Keep the original UTC date for specific use cases (e.g. loot history)
-                date: formatLocal(point.date),
-                point: point.point,
-                variation: 0,
-              })),
-            ]),
-          ) as Record<ApiPlayerStatsType, EventGenericVariation[]>;
+          this.initDataSegments(data.points);
+          this.observeCharts();
           this.allianceName = data.alliance_name;
           this.allianceId = data.alliance_id;
           this.top100Glory = data.glory_points_100;
@@ -669,6 +736,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
       title: {},
       tooltip: {
         shared: true,
+        intersect: false,
         x: {
           format: dateFormat,
         },
@@ -722,9 +790,9 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
       dataLabels: {
         enabled: false,
       },
+      markers: {},
       stroke: {
-        width: [2, 2, 0],
-        curve: 'smooth',
+        width: 2,
       },
       grid: {
         row: {
@@ -816,7 +884,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
 
   private initWarRealmsData(): void {
     const warRealms = this.data['player_event_war_realms_history'];
-    this.setGenericVariations(warRealms);
+    // this.setGenericVariations(warRealms);
     const eventData = this.groupEventDataByTimeGaps(this.eventDataSegments['warRealms'], warRealms);
     const series = this.generateEventSeries(eventData);
     // @ts-expect-error: Property 'hidden' does not exist on type 'SeriesOptionsType'
@@ -827,7 +895,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
 
   private initNomadHistoryData(): void {
     const nomadPoints = this.data['player_event_nomad_history'];
-    this.setGenericVariations(nomadPoints);
+    // this.setGenericVariations(nomadPoints);
     const eventData = this.groupEventDataByTimeGaps(this.eventDataSegments['nomad'], nomadPoints);
     const series = this.generateEventSeries(eventData);
     // @ts-expect-error: Property 'hidden' does not exist on type 'SeriesOptionsType'
@@ -978,7 +1046,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
 
   private initMightHistoryData(): void {
     const mightPoints = this.data['player_might_history'];
-    this.setGenericVariations(mightPoints);
+    // this.setGenericVariations(mightPoints);
     const { dates, points } = this.getPointsAndDates(mightPoints);
     this.translateService.get('Points de puissance').subscribe((translated) => {
       this.initChartOption('might', [{ name: translated, data: points }], ['#eae077']);
@@ -993,7 +1061,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
 
   private initBerimondKingdomData(): void {
     const berimondPoints = this.data['player_event_berimond_kingdom_history'];
-    this.setGenericVariations(berimondPoints);
+    // this.setGenericVariations(berimondPoints);
     const eventData = this.groupEventDataByTimeGaps(this.eventDataSegments['berimondKingdom'], berimondPoints);
     const series = this.generateEventSeries(eventData);
     // @ts-expect-error: Property 'hidden' does not exist on type 'SeriesOptionsType'
@@ -1005,7 +1073,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
 
   private initBerimondInvasionData(): void {
     const berimondPoints = this.data['player_event_berimond_invasion_history'];
-    this.setGenericVariations(berimondPoints);
+    // this.setGenericVariations(berimondPoints);
     const eventData = this.groupEventDataByTimeGaps(this.eventDataSegments['berimondInvasion'], berimondPoints);
     const series = this.generateEventSeries(eventData);
     // @ts-expect-error: Property 'hidden' does not exist on type 'SeriesOptionsType'
@@ -1017,7 +1085,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
 
   private initSamuraiHistoryData(): void {
     const samuraiPoints = this.data['player_event_samurai_history'];
-    this.setGenericVariations(samuraiPoints);
+    // this.setGenericVariations(samuraiPoints);
     const eventData = this.groupEventDataByTimeGaps(this.eventDataSegments['samurai'], samuraiPoints);
     const series = this.generateEventSeries(eventData);
     // @ts-expect-error: Property 'hidden' does not exist on type 'SeriesOptionsType'
@@ -1029,7 +1097,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
 
   private initBloodcrowHistoryData(): void {
     const bloodcrowPoints = this.data['player_event_bloodcrow_history'];
-    this.setGenericVariations(bloodcrowPoints);
+    // this.setGenericVariations(bloodcrowPoints);
     const eventData = this.groupEventDataByTimeGaps(this.eventDataSegments['bloodcrow'], bloodcrowPoints);
     const series = this.generateEventSeries(eventData);
     // @ts-expect-error: Property 'hidden' does not exist on type 'SeriesOptionsType'
@@ -1665,5 +1733,16 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit {
         duration: '-',
       },
     ];
+  }
+
+  private observeCharts(): void {
+    this.chartContainers.forEach((chart) => {
+      const element = chart.nativeElement as HTMLElement;
+
+      if (!element.dataset['observed']) {
+        element.dataset['observed'] = 'true';
+        this.observer.observe(element);
+      }
+    });
   }
 }

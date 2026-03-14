@@ -16,6 +16,7 @@ img,
   font-size: 0.7rem;
   margin-left: auto;
   text-transform: uppercase;
+  opacity: .5;
 }
 
 .img-icon {
