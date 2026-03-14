@@ -41,6 +41,7 @@ export abstract class ApiAlliances implements ApiHelper {
       }
       let playerNameForDistance = ApiHelper.validateSearchAndSanitize(request.query.playerNameForDistance, {
         maxLength: 40,
+        toLowerCase: false,
       });
       if (playerNameForDistance === ApiInvalidInputType) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
@@ -81,7 +82,7 @@ export abstract class ApiAlliances implements ApiHelper {
       if (ApiHelper.isValidInput(playerNameForDistance)) {
         // If player name is provided, get player's main castle coordinates
         let parameterIndex = 1;
-        const playerQuery = `SELECT castles FROM players WHERE LOWER(name) = $${parameterIndex++} LIMIT 1`;
+        const playerQuery = `SELECT castles FROM players WHERE LOWER(name) = LOWER($${parameterIndex++}) LIMIT 1`;
         const playerResults: any[] = await new Promise((resolve, reject) => {
           pool.query(playerQuery, [playerNameForDistance], (error, results) => {
             if (error) {
@@ -187,7 +188,7 @@ export abstract class ApiAlliances implements ApiHelper {
       /* ---------------------------------
        * Validate and normalize alliance name
        * --------------------------------- */
-      const allianceName = ApiHelper.validateSearchAndSanitize(request.params.allianceName);
+      const allianceName = ApiHelper.validateSearchAndSanitize(request.params.allianceName, { toLowerCase: false });
       if (ApiHelper.isInvalidInput(allianceName)) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceName });
         return;
@@ -223,7 +224,7 @@ export abstract class ApiAlliances implements ApiHelper {
         LEFT JOIN
           players P ON A.id = P.alliance_id
         WHERE
-          LOWER(A.name) = $${parameterIndex++}
+          LOWER(A.name) = LOWER($${parameterIndex++})
         GROUP BY
           A.id
         LIMIT 1;

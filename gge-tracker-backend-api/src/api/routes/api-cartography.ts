@@ -139,7 +139,7 @@ export abstract class ApiCartography implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const allianceName = ApiHelper.validateSearchAndSanitize(request.params.allianceName);
+      const allianceName = ApiHelper.validateSearchAndSanitize(request.params.allianceName, { toLowerCase: false });
       if (ApiHelper.isInvalidInput(allianceName)) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceName });
         return;
@@ -193,7 +193,7 @@ export abstract class ApiCartography implements ApiHelper {
           INNER JOIN
             alliances A ON P.alliance_id = A.id
           WHERE
-            LOWER(A.name) = $${parameterIndex++}
+            LOWER(A.name) = LOWER($${parameterIndex++})
           AND P.castles IS NOT NULL
           AND P.castles != '[]'
           ORDER BY

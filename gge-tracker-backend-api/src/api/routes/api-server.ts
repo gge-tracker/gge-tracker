@@ -345,15 +345,19 @@ export abstract class ApiServer implements ApiHelper {
       const conditions: string[] = [];
       const values: any[] = [];
       if (searchType && searchType === 'player' && ApiHelper.isValidInput(searchInput) && showType === 'players') {
-        conditions.push(`LOWER(R.old_name) = $${parameterIndex++} OR LOWER(R.new_name) = $${parameterIndex++}`);
+        conditions.push(
+          `LOWER(R.old_name) = LOWER($${parameterIndex++}) OR LOWER(R.new_name) = LOWER($${parameterIndex++})`,
+        );
         values.push(searchInput, searchInput);
       }
       if (searchType && searchType === 'alliance' && ApiHelper.isValidInput(searchInput)) {
         if (showType === 'players') {
-          conditions.push(`LOWER(A.name) = $${parameterIndex++}`);
+          conditions.push(`LOWER(A.name) = LOWER($${parameterIndex++})`);
           values.push(searchInput);
         } else {
-          conditions.push(`LOWER(R.old_name) = $${parameterIndex++} OR LOWER(R.new_name) = $${parameterIndex++}`);
+          conditions.push(
+            `LOWER(R.old_name) = LOWER($${parameterIndex++}) OR LOWER(R.new_name) = LOWER($${parameterIndex++})`,
+          );
           values.push(searchInput, searchInput);
         }
       }

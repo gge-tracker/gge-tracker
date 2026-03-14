@@ -402,7 +402,7 @@ export abstract class ApiPlayers implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const playerName = ApiHelper.validateSearchAndSanitize(request.params.playerName);
+      const playerName = ApiHelper.validateSearchAndSanitize(request.params.playerName, { toLowerCase: false });
       if (ApiHelper.isInvalidInput(playerName)) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
         return;
@@ -448,7 +448,7 @@ export abstract class ApiPlayers implements ApiHelper {
         LEFT JOIN
           alliances A ON P.alliance_id = A.id
         WHERE
-          LOWER(P.name) = $${parameterIndex++}
+          LOWER(P.name) = LOWER($${parameterIndex++})
         LIMIT 1;
       `;
 

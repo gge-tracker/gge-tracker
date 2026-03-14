@@ -613,7 +613,7 @@ export abstract class ApiEvents implements ApiHelper {
       const PAGINATION_LIMIT = 15;
       const id = ApiHelper.validatePageNumber(request.params.id, null);
       let page = ApiHelper.validatePageNumber(request.query.page);
-      let playerNameFilter = ApiHelper.validateSearchAndSanitize(request.query.player_name, { toLowerCase: true });
+      let playerNameFilter = ApiHelper.validateSearchAndSanitize(request.query.player_name, { toLowerCase: false });
       let serverFilter = ApiHelper.validateSearchAndSanitize(request.query.server, { maxLength: 20 });
       let eventType = ApiHelper.validateSearchAndSanitize(request.params.eventType);
       if (eventType !== EventTypes.OUTER_REALMS && eventType !== EventTypes.BEYOND_THE_HORIZON) {
@@ -652,7 +652,7 @@ export abstract class ApiEvents implements ApiHelper {
         SELECT COUNT(*) AS total
         FROM ${sqlTable} O
         WHERE O.event_num = $${index++}
-        ${isValidPlayerNameFilter ? `AND LOWER(player_name) LIKE $${index++}` : ''}
+        ${isValidPlayerNameFilter ? `AND LOWER(player_name) LIKE LOWER($${index++})` : ''}
         ${isValidServerFilter ? `AND O.server = $${index++}` : ''}
         `;
       const parameters: (string | number)[] = [id];
@@ -699,7 +699,7 @@ export abstract class ApiEvents implements ApiHelper {
         SELECT player_id, player_name, rank, point, server
         FROM ${sqlTable}
         WHERE event_num = $${parameterIndex++}
-        ${isValidPlayerNameFilter ? `AND LOWER(player_name) LIKE $${parameterIndex++}` : ''}
+        ${isValidPlayerNameFilter ? `AND LOWER(player_name) LIKE LOWER($${parameterIndex++})` : ''}
         ${isValidServerFilter ? `AND server = $${parameterIndex++}` : ''}
         ORDER BY rank
         LIMIT $${parameterIndex++} OFFSET $${parameterIndex++}
@@ -1087,7 +1087,7 @@ export abstract class ApiEvents implements ApiHelper {
       const page = ApiHelper.validatePageNumber(request.query.page) || 1;
       const searchPlayerName = ApiHelper.validateSearchAndSanitize(request.query.player_name, {
         maxLength: 50,
-        toLowerCase: true,
+        toLowerCase: false,
       });
       const sizePerPage = 10;
       const offset = (page - 1) * sizePerPage;
@@ -1136,7 +1136,7 @@ export abstract class ApiEvents implements ApiHelper {
             WHERE fetch_date < '${lastFetchDate}'
           )
         WHERE now.fetch_date = '${lastFetchDate}'
-          ${ApiHelper.isValidInput(searchPlayerName) ? `AND player_name_lower LIKE {searchPlayerName:String}` : ''}
+          ${ApiHelper.isValidInput(searchPlayerName) ? `AND player_name_lower ILIKE {searchPlayerName:String}` : ''}
         ORDER BY now.rank ASC
         LIMIT ${sizePerPage} OFFSET ${offset};
       `;
@@ -1186,7 +1186,7 @@ export abstract class ApiEvents implements ApiHelper {
         SELECT COUNT(*) AS total
         FROM ${mainTableName}
         WHERE fetch_date = '${lastFetchDate}'
-        ${ApiHelper.isValidInput(searchPlayerName) ? `AND player_name_lower LIKE {searchPlayerName:String}` : ''}
+        ${ApiHelper.isValidInput(searchPlayerName) ? `AND player_name_lower ILIKE {searchPlayerName:String}` : ''}
       `;
       const rawTotalResult = await clickhouseClient.query({
         query: totalCountQuery,

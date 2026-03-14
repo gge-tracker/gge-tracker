@@ -164,20 +164,16 @@ export abstract class ApiDungeons implements ApiHelper {
       let playerId: number | null = null;
       let realCooldownExpr = `TIMESTAMPADD(SECOND, D.attack_cooldown, D.updated_at)`;
       if (filterByPlayerName) {
-        const playerQuery = `SELECT id FROM players WHERE LOWER(name) = $1 LIMIT 1`;
+        const playerQuery = `SELECT id FROM players WHERE LOWER(name) = LOWER($1) LIMIT 1`;
         const playerResults: any[] = await new Promise((resolve, reject) => {
-          (request['pg_pool'] as pg.Pool).query(
-            playerQuery,
-            [filterByPlayerName.trim().toLowerCase()],
-            (error, results) => {
-              if (error) {
-                ApiHelper.logError(error, 'getDungeons_countQuery', request);
-                reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
-              } else {
-                resolve(results.rows);
-              }
-            },
-          );
+          (request['pg_pool'] as pg.Pool).query(playerQuery, [filterByPlayerName.trim()], (error, results) => {
+            if (error) {
+              ApiHelper.logError(error, 'getDungeons_countQuery', request);
+              reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
+            } else {
+              resolve(results.rows);
+            }
+          });
         });
         if (playerResults.length === 0) {
           conditions.push('1 = 0');

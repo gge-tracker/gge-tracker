@@ -241,7 +241,7 @@ export abstract class ApiCastle implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const playerName = ApiHelper.validateSearchAndSanitize(request.params.playerName, { toLowerCase: true });
+      const playerName = ApiHelper.validateSearchAndSanitize(request.params.playerName, { toLowerCase: false });
       const code = request['code'];
       const targetEmpireEx = ApiHelper.ggeTrackerManager.getZoneFromCode(code);
       if (ApiHelper.isInvalidInput(playerName) || !ApiHelper.ggeTrackerManager.isValidCode(code) || !targetEmpireEx) {
@@ -258,7 +258,7 @@ export abstract class ApiCastle implements ApiHelper {
       /* ---------------------------------
        * Query from DB to get player ID
        * --------------------------------- */
-      const query = `SELECT id FROM players WHERE LOWER(name) = $1 AND castles IS NOT NULL AND castles != '[]' LIMIT 1;`;
+      const query = `SELECT id FROM players WHERE LOWER(name) = LOWER($1) AND castles IS NOT NULL AND castles != '[]' LIMIT 1;`;
       const result = await (request['pg_pool'] as pg.Pool).query(query, [playerName]);
       if (!result?.rows || result.rows.length === 0 || !result.rows[0].id) {
         response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.PlayerNotFound });
