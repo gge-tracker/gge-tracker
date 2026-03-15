@@ -280,6 +280,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     }
     this.isInLoading = true;
     try {
+      this.page = 1;
       const data = await this.getGenericData();
       this.responseTime = data.response;
       const players = data.data;
