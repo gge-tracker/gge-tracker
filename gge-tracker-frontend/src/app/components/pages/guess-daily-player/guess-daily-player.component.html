@@ -164,7 +164,7 @@
             <div class="stat-box protection-box down" [class.is-match]="guess.isProtection.status">
               <span class="stat-label">{{ 'Protection' | translate }}</span>
               <div class="stat-content">
-                <span class="value">{{ guess.isProtection.guess ? 'Oui' : 'Non' }}</span>
+                <span class="value">{{ guess.isProtection.guess ? ('Oui' | translate) : ('Non' | translate) }}</span>
                 <div class="indicator-icon">
                   <i class="fa-solid" [ngClass]="guess.isProtection.status ? 'fa-check' : 'fa-xmark'"></i>
                 </div>
