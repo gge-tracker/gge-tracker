@@ -111,8 +111,9 @@ async function createOuterRealmsInstance(): Promise<void> {
 
     console.log('Checking Empire API Realtime status for Outer Realms server...');
     const statusResponse = await generic.fetchUrl(statusUrl, 'GET', null);
+    const realtimeRedisStatus = await generic.getRedisValue('outerRealmsDataFetchError');
 
-    if (!statusResponse.data || statusResponse.data['EmpireEx_42'] !== true) {
+    if (!statusResponse.data || statusResponse.data['EmpireEx_42'] !== true || realtimeRedisStatus) {
       console.log('Deleting existing Outer Realms server configuration if any...');
       try {
         await generic.fetchUrl(serverUrl + '/' + TARGET_ID_SERVER, 'DELETE', null);

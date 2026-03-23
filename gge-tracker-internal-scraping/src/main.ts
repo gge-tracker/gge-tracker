@@ -21,6 +21,7 @@ import { SWAP_RANK_POINTS_TABLE } from './definitions/swap-rank-points.config';
 import { Castle, CastleMovement, DungeonMap, HighScoreKey, PlayerDatabase } from './interfaces';
 import * as readline from 'readline';
 import Utils from './utils';
+import { TEMP_SERVER_SETTINGS } from './definitions/temp-server-events.config';
 
 /**
  * This class provides a comprehensive backend service for fetching, processing,
@@ -157,6 +158,16 @@ export class GenericFetchAndSaveBackend {
     } else {
       return await axios.get(url);
     }
+  }
+
+  public async getRedisValue(key: string): Promise<string | null> {
+    const redisClient = createClient({
+      url: 'redis://redis-server:6379',
+    });
+    await redisClient.connect();
+    const value = await redisClient.get(key);
+    await redisClient.quit();
+    return value;
   }
 
   public async fillGrandTournamentResults(): Promise<void> {
@@ -892,6 +903,19 @@ This will result in approximately ${totalRequests} API requests, which may take 
     console.log('Squares count:', Object.keys(squares).length);
   }
 
+  public getCorrespondigLtByOuterRealmsType(type: string): string | null {
+    switch (type) {
+      case 'collector':
+        return HIGHSCORES_CONFIG.TEMP_SERVER_DAILY_COLLECTOR_POINTS as unknown as string;
+      case 'might':
+        return HIGHSCORES_CONFIG.TEMP_SERVER_DAILY_MIGHT_POINTS_BUILDINGS as unknown as string;
+      case 'rankSwap':
+        return HIGHSCORES_CONFIG.TEMP_SERVER_DAILY_RANK_SWAP as unknown as string;
+      default:
+        return null;
+    }
+  }
+
   public async startOuterRealmsDataFetch(): Promise<void> {
     const start = new Date();
     const type = 'hgh';
@@ -903,47 +927,51 @@ This will result in approximately ${totalRequests} API requests, which may take 
       Utils.logMessage('=====================================');
       let LT: number | null = null;
       let initialResponse: AxiosResponse<any>;
-      const ltValues = [
-        HIGHSCORES_CONFIG.TEMP_SERVER_DAILY_COLLECTOR_POINTS,
-        HIGHSCORES_CONFIG.TEMP_SERVER_DAILY_RANK_SWAP,
-        HIGHSCORES_CONFIG.TEMP_SERVER_DAILY_MIGHT_POINTS_BUILDINGS,
-      ] as number[];
       const redisClient = createClient({
         url: 'redis://redis-server:6379',
       });
       await redisClient.connect();
-      const lastLtValue = await redisClient.get(`outer-realms:last-active-lt:${this.CURRENT_ENV}`);
-      if (lastLtValue) {
-        initialResponse = await this.genericFetchData(type, { LT: Number(lastLtValue), LID, SV: '1' });
-        if (initialResponse.data.return_code == '0' && initialResponse.data.content?.L?.length > 0) {
-          LT = Number(lastLtValue);
-          Utils.logMessage(` Active Outer Realms event found with last known LT=${LT}. Proceeding with data fetch.`);
-        } else {
-          Utils.logMessage(` No active Outer Realms event found with last known LT=${lastLtValue}.`);
-        }
-      }
-      if (!LT) {
-        for (const ltValue of ltValues) {
-          initialResponse = await this.genericFetchData(type, { LT: ltValue, LID, SV: '1' });
-          if (initialResponse.data.return_code == '0' && initialResponse.data.content?.L?.length > 0) {
-            LT = ltValue;
-            Utils.logMessage(` Active Outer Realms event found with LT=${LT}. Proceeding with data fetch.`);
-            break;
-          } else {
-            Utils.logMessage(` No active Outer Realms event found with LT=${ltValue}.`);
+      const temporaryServerData = await redisClient.get(`temporaryServerData`);
+      if (temporaryServerData) {
+        const tempServerSetting = TEMP_SERVER_SETTINGS.find(
+          (el) => el.settingID && Number(el.settingID) === Number(temporaryServerData),
+        );
+        if (tempServerSetting) {
+          const type = tempServerSetting.scoringSystem;
+          if (['collector', 'might', 'rankSwap'].includes(type)) {
+            const correspondingLt = this.getCorrespondigLtByOuterRealmsType(type);
+            if (correspondingLt) {
+              LT = Number(correspondingLt);
+              Utils.logMessage(
+                ` Temporary server setting found with scoring system '${type}' corresponding to LT=${LT}. Proceeding with data fetch using this LT.`,
+              );
+            }
           }
         }
-      }
-      if (LT) {
-        if (LT !== Number(lastLtValue)) {
-          Utils.logMessage(` Updating last active LT in Redis to ${LT}.`);
-          await redisClient.set(`outer-realms:last-active-lt:${this.CURRENT_ENV}`, String(LT));
+        initialResponse = await this.genericFetchData(type, { LT: Number(LT), LID, SV: '1' });
+        if (initialResponse.data.return_code == '0' && initialResponse.data.content?.L?.length > 0) {
+          Utils.logMessage(` Active Outer Realms event found with last known LT=${LT}. Proceeding with data fetch.`);
+        } else {
+          Utils.logMessage(
+            ` No active Outer Realms event found with last known LT=${LT}. Exiting temporary server LT check.`,
+          );
+          await redisClient.set(`outerRealmsDataFetchError`, 'No active event found with known LT codes');
+          await redisClient.quit();
+          return;
         }
       } else {
-        Utils.logMessage(' No active Outer Realms event found with any known LT code. Aborting data fetch.');
+        Utils.logMessage(' No temporary server setting found in Redis. Exiting temporary server LT check.');
+        await redisClient.set(`outerRealmsDataFetchError`, 'No active event found with known LT codes');
         await redisClient.quit();
         return;
       }
+      if (!LT) {
+        Utils.logMessage(' No active Outer Realms event found with any known LT code. Aborting data fetch.');
+        await redisClient.set(`outerRealmsDataFetchError`, 'No active event found with known LT codes');
+        await redisClient.quit();
+        return;
+      }
+      await redisClient.del(`outerRealmsDataFetchError`);
       await redisClient.quit();
       const entriesByPage = initialResponse.data.content?.L?.length || 0;
       const increment = Math.ceil(Number(entriesByPage) / 2);
