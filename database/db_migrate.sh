@@ -14,7 +14,7 @@
 
 cd "$(dirname "$0")"
 
-if [ "$(hostname)" != "database-migrate" ]; then
+if [[ "$(hostname)" != "database-migrate" ]]; then
   echo -e "\e[31mError: This script must be run inside the 'database-migrate' container and cannot be run directly on the host.\nPlease use 'docker-compose' command to run it.\e[0m"
   exit 1
 fi
@@ -147,7 +147,7 @@ verify_variables() {
     "CLICKHOUSE_PASSWORD"
   )
   for VAR in "${REQUIRED_VARS[@]}"; do
-    if [ -z "${!VAR:-}" ]; then
+    if [[ -z "${!VAR:-}" ]]; then
       log "Error: Environment variable $VAR is not set." "error"
       exit 1
     fi
@@ -156,16 +156,16 @@ verify_variables() {
 }
 
 verify_postgres_filled() {
-  if [ "$(docker ps -q -f name=$POSTGRES_CONTAINER_NAME)" ]; then
+  if [[ "$(docker ps -q -f name=$POSTGRES_CONTAINER_NAME)" ]]; then
     log "[PostgreSQL] Verifying if PostgreSQL database is already filled..." "info"
     DATABASES=$(docker exec -i "$POSTGRES_CONTAINER_NAME" psql -U "$SQL_USER" -d postgres -t -c "SELECT datname FROM pg_database WHERE datistemplate = false;") >> "$TARGET_LOG_FILE" 2>&1
-    if [ $? -ne 0 ]; then
+    if [[ $? -ne 0 ]]; then
       log "[PostgreSQL] Error fetching databases from PostgreSQL." "error"
       exit 1
     fi
     NB_DATABASES=$(echo "$DATABASES" | wc -l)
     log "[PostgreSQL] Number of databases found: $NB_DATABASES" "info"
-    if [ "$NB_DATABASES" -ge "$PG_SQL_NB_DATABASES" ]; then
+    if [[ "$NB_DATABASES" -ge "$PG_SQL_NB_DATABASES" ]]; then
       log "[PostgreSQL] PostgreSQL is already filled." "info"
       exit 0
     else
@@ -178,16 +178,16 @@ verify_postgres_filled() {
 }
 
 verify_clickhouse_filled() {
-  if [ "$(docker ps -q -f name=$CLICKHOUSE_CONTAINER_NAME)" ]; then
+  if [[ "$(docker ps -q -f name=$CLICKHOUSE_CONTAINER_NAME)" ]]; then
     log "[ClickHouse] Verifying if ClickHouse database is already filled..." "info"
     DATABASES=$(docker exec -i "$CLICKHOUSE_CONTAINER_NAME" clickhouse-client --user="$CLICKHOUSE_USER" --password="$CLICKHOUSE_PASSWORD" --query="SHOW DATABASES;") >> "$TARGET_LOG_FILE" 2>&1
-    if [ $? -ne 0 ]; then
+    if [[ $? -ne 0 ]]; then
       log "[ClickHouse] Error fetching databases from ClickHouse." "error"
       exit 1
     fi
     NB_DATABASES=$(echo "$DATABASES" | wc -l)
     log "[ClickHouse] Number of databases found: $NB_DATABASES" "info"
-    if [ "$NB_DATABASES" -ge "$CLICKHOUSE_NB_DATABASES" ]; then
+    if [[ "$NB_DATABASES" -ge "$CLICKHOUSE_NB_DATABASES" ]]; then
       exit 0
     else
       log "[ClickHouse] ClickHouse is empty. Proceeding with migrations."
@@ -199,17 +199,17 @@ verify_clickhouse_filled() {
 }
 
 verify_mariadb_filled() {
-  if [ "$(docker ps -q -f name=$MARIADB_CONTAINER_NAME)" ]; then
+  if [[ "$(docker ps -q -f name=$MARIADB_CONTAINER_NAME)" ]]; then
     log "[MariaDB] Verifying if MariaDB database is already filled..." "info"
     DATABASES=$(docker exec -e MYSQL_PWD="$SQL_ROOT_PASSWORD" -i "$MARIADB_CONTAINER_NAME" \
     sh -c "exec mariadb -u root -e 'SHOW DATABASES;'") >> "$TARGET_LOG_FILE" 2>&1
-    if [ $? -ne 0 ]; then
+    if [[ $? -ne 0 ]]; then
       log "[MariaDB] Error fetching databases from MariaDB." "error"
       exit 1
     fi
     NB_DATABASES=$(echo "$DATABASES" | wc -l)
     log "[MariaDB] Number of databases found: $NB_DATABASES" "info"
-    if [ "$NB_DATABASES" -ge "$MARIADB_NB_DATABASES" ]; then
+    if [[ "$NB_DATABASES" -ge "$MARIADB_NB_DATABASES" ]]; then
       exit 0
     else
       log "[MariaDB] MariaDB is empty. Proceeding with migrations."
@@ -224,7 +224,7 @@ show_footer() {
   exit_code=$?
   end_time=$(date +%s)
   duration=$((end_time - start_time))
-  if [ $exit_code -ne 0 ]; then
+  if [[ $exit_code -ne 0 ]]; then
     color="error"
   else
     color=""
@@ -233,7 +233,7 @@ show_footer() {
   log "----------------------------------------" $color
   log "" $color
   log "Total execution time: $duration seconds." $color
-  if [ $exit_code -ne 0 ]; then
+  if [[ $exit_code -ne 0 ]]; then
     log "Database migration script encountered errors." $color
   else
     log "Database migration script completed successfully." $color
@@ -267,7 +267,7 @@ log() {
 
 execute_clickhouse() {
   log "[ClickHouse] Verifying structure for ClickHouse..." "info"
-  if [ "$(docker ps -q -f name=$CLICKHOUSE_CONTAINER_NAME)" ]; then
+  if [[ "$(docker ps -q -f name=$CLICKHOUSE_CONTAINER_NAME)" ]]; then
     log "[ClickHouse] Checking structure..." "info"
     DATABASES=$(docker exec -i "$CLICKHOUSE_CONTAINER_NAME" clickhouse-client --user="$CLICKHOUSE_USER" --password="$CLICKHOUSE_PASSWORD" --query="SHOW DATABASES;") >> "$TARGET_LOG_FILE" 2>&1
     SYS_DATABASES="default system information_schema INFORMATION_SCHEMA"
@@ -279,23 +279,23 @@ execute_clickhouse() {
     NB_DATABASES=$(echo "$DATABASES" | wc -l)
     log "[ClickHouse] Success. Number of databases: $NB_DATABASES"
 
-    if [ "$WITH_SEED" = true ]; then
+    if [[ "$WITH_SEED" = true ]]; then
       log "[ClickHouse] Importing sql seed file into all databases..." "info"
       i=1
       for DB in $DATABASES; do
         log "[ClickHouse] Importing seed into database: $DB... ($i/$NB_DATABASES)" "info"
         ((i++))
         TABLES=$(docker exec -i "$CLICKHOUSE_CONTAINER_NAME" clickhouse-client --user="$CLICKHOUSE_USER" --password="$CLICKHOUSE_PASSWORD" --database="$DB" --query="SHOW TABLES;") >> "$TARGET_LOG_FILE" 2>&1
-        if [ $? -ne 0 ]; then
+        if [[ $? -ne 0 ]]; then
           log "[ClickHouse] Error fetching tables from database: $DB." "error"
           exit 1
         fi
         for TABLE in $TABLES; do
           CSV_FILE="$CLICKHOUSE_PATH/data/$TABLE.csv"
-          if [ -f "$CSV_FILE" ]; then
+          if [[ -f "$CSV_FILE" ]]; then
             log "[ClickHouse] Importing $CSV_FILE into $DB.$TABLE..." "info"
             docker exec -i "$CLICKHOUSE_CONTAINER_NAME" clickhouse-client --user="$CLICKHOUSE_USER" --password="$CLICKHOUSE_PASSWORD" --database="$DB" --query="INSERT INTO $TABLE FORMAT CSV" < "$CSV_FILE" >> "$TARGET_LOG_FILE" 2>&1
-            if [ $? -ne 0 ]; then
+            if [[ $? -ne 0 ]]; then
               log "[ClickHouse] Error importing $CSV_FILE into $DB.$TABLE." "error"
               exit 1
             fi
@@ -304,7 +304,7 @@ execute_clickhouse() {
             log "[ClickHouse] Warning: CSV file $CSV_FILE not found. Skipping import for table $TABLE." "warning"
           fi
         done
-        if [ $? -ne 0 ]; then
+        if [[ $? -ne 0 ]]; then
           log "[ClickHouse] Error importing seed into database: $DB." "error"
           exit 1
         fi
@@ -319,16 +319,16 @@ execute_clickhouse() {
 }
 
 create_clickhouse_structure() {
-  if [ "$(docker ps -q -f name=$CLICKHOUSE_CONTAINER_NAME)" ]; then
+  if [[ "$(docker ps -q -f name=$CLICKHOUSE_CONTAINER_NAME)" ]]; then
     log "[ClickHouse] Copying structure file to container..." "info"
     docker cp "$CLICKHOUSE_PATH/$STRUCTURE_FILE" $CLICKHOUSE_CONTAINER_NAME:/"$STRUCTURE_FILE" >> "$TARGET_LOG_FILE" 2>&1
-    if [ $? -ne 0 ]; then
+    if [[ $? -ne 0 ]]; then
       log "[ClickHouse] Error copying structure file to container." "error"
       exit 1
     fi
     log "[ClickHouse] Applying structure migrations..." "info"
     docker exec -i $CLICKHOUSE_CONTAINER_NAME clickhouse-client --multiquery --user="$CLICKHOUSE_USER" --password="$CLICKHOUSE_PASSWORD" < "$CLICKHOUSE_PATH/$STRUCTURE_FILE" >> "$TARGET_LOG_FILE" 2>&1
-    if [ $? -ne 0 ]; then
+    if [[ $? -ne 0 ]]; then
       log "[ClickHouse] Error applying migrations." "error"
       exit 1
     fi
@@ -339,10 +339,10 @@ create_clickhouse_structure() {
 }
 
 create_mariadb_first_database() {
-  if [ "$(docker ps -q -f name=$MARIADB_CONTAINER_NAME)" ]; then
+  if [[ "$(docker ps -q -f name=$MARIADB_CONTAINER_NAME)" ]]; then
     log "[MariaDB] Creating initial database '$SQL_DATABASE'..." "info"
     docker exec -i $MARIADB_CONTAINER_NAME mariadb -u root -p"$SQL_ROOT_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS \`$SQL_DATABASE\`;" >> "$TARGET_LOG_FILE" 2>&1
-    if [ $? -ne 0 ]; then
+    if [[ $? -ne 0 ]]; then
       log "[MariaDB] Error creating database." "error"
       exit 1
     fi
@@ -353,16 +353,16 @@ create_mariadb_first_database() {
 }
 
 create_postgres_structure() {
-  if [ "$(docker ps -q -f name=$POSTGRES_CONTAINER_NAME)" ]; then
+  if [[ "$(docker ps -q -f name=$POSTGRES_CONTAINER_NAME)" ]]; then
     log "[PostgreSQL] Copying structure file to container..." "info"
     docker cp "$POSTGRES_PATH/$STRUCTURE_FILE" $POSTGRES_CONTAINER_NAME:/docker-entrypoint-initdb.d/"$STRUCTURE_FILE" >> "$TARGET_LOG_FILE" 2>&1
-    if [ $? -ne 0 ]; then
+    if [[ $? -ne 0 ]]; then
       log "[PostgreSQL] Error copying structure file to container." "error"
       exit 1
     fi
     log "[PostgreSQL] Applying structure migrations..." "info"
     docker exec -i $POSTGRES_CONTAINER_NAME psql -U "$SQL_USER" -d "postgres" -f "/docker-entrypoint-initdb.d/$STRUCTURE_FILE" >> "$TARGET_LOG_FILE" 2>&1
-    if [ $? -ne 0 ]; then
+    if [[ $? -ne 0 ]]; then
       log "[PostgreSQL] Error applying migrations." "error"
       exit 1
     fi
@@ -373,7 +373,7 @@ create_postgres_structure() {
 }
 
 execute_postgres() {
-  if [ "$(docker ps -q -f name=$POSTGRES_CONTAINER_NAME)" ]; then
+  if [[ "$(docker ps -q -f name=$POSTGRES_CONTAINER_NAME)" ]]; then
     log "[PostgreSQL] Verifying structure for PostgreSQL..." "info"
     DATABASES=$(docker exec -i $POSTGRES_CONTAINER_NAME psql -U "$SQL_USER" -d "postgres" -t -c "SELECT datname FROM pg_database WHERE datistemplate = false;") >> "$TARGET_LOG_FILE" 2>&1
     SYS_DATABASES="template0 template1 postgres"
@@ -384,23 +384,23 @@ execute_postgres() {
     done
     NB_DATABASES=$(echo "$DATABASES" | wc -l)
     log "[PostgreSQL] Preliminary check successful. Number of databases: $NB_DATABASES"
-    if [ "$WITH_SEED" = true ]; then
+    if [[ "$WITH_SEED" = true ]]; then
       log "[PostgreSQL] Importing CSV seed file into all databases..." "info"
       i=0
       for DB in $DATABASES; do
         R_NB_DATABASES=$((NB_DATABASES))
         ((i++))
-        if  [ "$DB" == "empire-ranking-global" ]; then
+        if  [[ "$DB" == "empire-ranking-global" ]]; then
           log "[PostgreSQL] Skipping seeding for database: $DB. ($i/$R_NB_DATABASES)" "info"
           continue
         fi
         log "[PostgreSQL] Importing seed into database: $DB... ($i/$R_NB_DATABASES)" "info"
         for csv_file in "$POSTGRES_PATH/data/"*.csv; do
-          [ -e "$csv_file" ] || continue
+          [[ -e "$csv_file" ]] || continue
           echo "[PostgreSQL] Importing $csv_file into $DB..." >> "$TARGET_LOG_FILE" 2>&1
           sql_table_name=$(basename "$csv_file" .csv | sed 's/^[0-9]*-//')
           docker exec -i "$POSTGRES_CONTAINER_NAME" psql -U "$SQL_USER" -d "$DB" -c "\copy $sql_table_name FROM STDIN WITH CSV HEADER NULL 'NULL'" < "$csv_file" >> "$TARGET_LOG_FILE" 2>&1
-          if [ $? -ne 0 ]; then
+          if [[ $? -ne 0 ]]; then
             log "[PostgreSQL] Error importing $csv_file into $DB." "error"
             exit 1
           fi
@@ -411,7 +411,7 @@ execute_postgres() {
       log "[PostgreSQL] All databases have been seeded."
       log "[PostgreSQL] Executing global ranking mapping script..." "info"
       ${POSTGRES_PATH}/${MAP_GLOBAL_RANKING} >> "$TARGET_LOG_FILE" 2>&1
-      if [ $? -ne 0 ]; then
+      if [[ $? -ne 0 ]]; then
         log "[PostgreSQL] Error executing global ranking mapping script." "error"
         exit 1
       fi
@@ -423,10 +423,10 @@ execute_postgres() {
 }
 
 drop_all_clickhouse_databases() {
-  if [ "$(docker ps -q -f name=$CLICKHOUSE_CONTAINER_NAME)" ]; then
+  if [[ "$(docker ps -q -f name=$CLICKHOUSE_CONTAINER_NAME)" ]]; then
     log "[ClickHouse] Dropping all ClickHouse databases..." "info"
     DATABASES=$(docker exec -i "$CLICKHOUSE_CONTAINER_NAME" clickhouse-client --user="$CLICKHOUSE_USER" --password="$CLICKHOUSE_PASSWORD" --query="SHOW DATABASES;") >> "$TARGET_LOG_FILE" 2>&1
-    if [ $? -ne 0 ]; then
+    if [[ $? -ne 0 ]]; then
       log "[ClickHouse] Error dropping databases." "error"
       exit 1
     fi
@@ -443,7 +443,7 @@ drop_all_clickhouse_databases() {
       ((i++))
       log "[ClickHouse] Dropping database ($i/$count): $DB..." "info"
       docker exec -i "$CLICKHOUSE_CONTAINER_NAME" clickhouse-client --user="$CLICKHOUSE_USER" --password="$CLICKHOUSE_PASSWORD" --query="DROP DATABASE IF EXISTS $DB;" >> "$TARGET_LOG_FILE" 2>&1
-      if [ $? -ne 0 ]; then
+      if [[ $? -ne 0 ]]; then
         log "[ClickHouse] Error dropping database: $DB." "error"
         exit 1
       fi
@@ -456,10 +456,10 @@ drop_all_clickhouse_databases() {
 }
 
 drop_all_postgres_databases() {
-  if [ "$(docker ps -q -f name=$POSTGRES_CONTAINER_NAME)" ]; then
+  if [[ "$(docker ps -q -f name=$POSTGRES_CONTAINER_NAME)" ]]; then
     log "[PostgreSQL] Dropping databases and objects..." "info"
     DATABASES=$(docker exec -i "$POSTGRES_CONTAINER_NAME" psql -U "$SQL_USER" -d postgres -t -c "SELECT datname FROM pg_database WHERE datistemplate = false;") >> "$TARGET_LOG_FILE" 2>&1
-    if [ $? -ne 0 ]; then
+    if [[ $? -ne 0 ]]; then
       log "[PostgreSQL] Error dropping databases." "error"
       exit 1
     fi
@@ -476,7 +476,7 @@ drop_all_postgres_databases() {
       ((i++))
       log "[PostgreSQL] Dropping database ($i/$count): $DB..." "info"
       docker exec -i "$POSTGRES_CONTAINER_NAME" psql -U "$SQL_USER" -d postgres -c "DROP DATABASE IF EXISTS \"$DB\" WITH (FORCE);" >> "$TARGET_LOG_FILE" 2>&1
-      if [ $? -ne 0 ]; then
+      if [[ $? -ne 0 ]]; then
         log "[PostgreSQL] Error dropping database: $DB." "error"
         exit 1
       fi
@@ -491,11 +491,11 @@ drop_all_postgres_databases() {
 }
 
 drop_all_mariadb_databases() {
-  if [ "$(docker ps -q -f name=$MARIADB_CONTAINER_NAME)" ]; then
+  if [[ "$(docker ps -q -f name=$MARIADB_CONTAINER_NAME)" ]]; then
     log "[MariaDB] Dropping all MariaDB databases..." "info"
     DATABASES=$(docker exec -e MYSQL_PWD="$SQL_ROOT_PASSWORD" -i "$MARIADB_CONTAINER_NAME" \
     sh -c "exec mariadb -u root -e 'SHOW DATABASES;'") >> "$TARGET_LOG_FILE" 2>&1
-    if [ $? -ne 0 ]; then
+    if [[ $? -ne 0 ]]; then
       log "[MariaDB] Error dropping databases." "error"
       exit 1
     fi
@@ -513,7 +513,7 @@ drop_all_mariadb_databases() {
       log "[MariaDB] Dropping database ($i/$count): $DB..." "info"
       docker exec -e MYSQL_PWD="$SQL_ROOT_PASSWORD" -i "$MARIADB_CONTAINER_NAME" \
       sh -c "exec mariadb -u root -e 'DROP DATABASE IF EXISTS \`$DB\`;' " >> "$TARGET_LOG_FILE" 2>&1
-      if [ $? -ne 0 ]; then
+      if [[ $? -ne 0 ]]; then
         log "[MariaDB] Error dropping database: $DB." "error"
         exit 1
       fi
@@ -527,10 +527,10 @@ drop_all_mariadb_databases() {
 
 execute_mariadb() {
   log "[MariaDB] Running migrations for MariaDB..." "info"
-  if [ "$(docker ps -q -f name=$MARIADB_CONTAINER_NAME)" ]; then
+  if [[ "$(docker ps -q -f name=$MARIADB_CONTAINER_NAME)" ]]; then
     log "[MariaDB] Applying structure migrations..."
     docker exec -i "$MARIADB_CONTAINER_NAME" mariadb -u root -p"$SQL_ROOT_PASSWORD" "$SQL_DATABASE" < "$MARIADB_PATH/$STRUCTURE_FILE" >> "$TARGET_LOG_FILE" 2>&1
-    if [ $? -ne 0 ]; then
+    if [[ $? -ne 0 ]]; then
       log "[MariaDB] Error applying structure migrations" "error"
       exit 1
     fi
@@ -538,7 +538,7 @@ execute_mariadb() {
     log "[MariaDB] Verifying migrations..." "info"
     DATABASES=$(docker exec -e MYSQL_PWD="$SQL_ROOT_PASSWORD" -i "$MARIADB_CONTAINER_NAME" \
     sh -c "exec mariadb -u root -e 'SHOW DATABASES;'") >> "$TARGET_LOG_FILE" 2>&1
-    if [ $? -ne 0 ]; then
+    if [[ $? -ne 0 ]]; then
       log "[MariaDB] Error verifying migration" "error"
       exit 1
     fi
@@ -550,12 +550,12 @@ execute_mariadb() {
     done
     NB_DATABASES=$(echo "$DATABASES" | wc -l)
     log "[MariaDB] Number of databases: $NB_DATABASES. Verification successful."
-    if [ "$WITH_SEED" = true ]; then
+    if [[ "$WITH_SEED" = true ]]; then
       log "[MariaDB] Seeding data for development..." "info"
       DB_TXT="$MARIADB_PATH/$DATABASES_TXT"
       SEED_FILE="$MARIADB_PATH/$SEED_FILE"
       $MARIADB_PATH/$CREATE_FILE "$SEED_FILE" >> "$TARGET_LOG_FILE" 2>&1
-      if [ $? -ne 0 ]; then
+      if [[ $? -ne 0 ]]; then
         log "[MariaDB] Error creating seed file." "error"
         exit 1
       fi
@@ -567,7 +567,7 @@ execute_mariadb() {
         log "[MariaDB] Successfully prepared seed file for database: $DB."
         log "[MariaDB] Importing seed into database: $DB..." "info"
         docker exec -i "$MARIADB_CONTAINER_NAME" mariadb -u root -p"$SQL_ROOT_PASSWORD" "$DB" < "$SEED_FILE" >> "$TARGET_LOG_FILE" 2>&1
-        if [ $? -ne 0 ]; then
+        if [[ $? -ne 0 ]]; then
           log "[MariaDB] Error importing seed into database: $DB." "error"
           exit 1
         fi
