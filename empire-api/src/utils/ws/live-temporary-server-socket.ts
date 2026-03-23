@@ -1,5 +1,6 @@
 import { BaseSocket, GgeServerType } from './base-socket.js';
 import { GgeEmpireSocketImpl } from './gge-socket-impl.js';
+import { createClient } from 'redis';
 
 class GgeLiveTemporaryServerSocket extends BaseSocket implements GgeEmpireSocketImpl {
   constructor(url: string, serverHeader: string, username: string, password: string, autoReconnect: boolean) {
@@ -10,12 +11,14 @@ class GgeLiveTemporaryServerSocket extends BaseSocket implements GgeEmpireSocket
     this.password = password;
     this.reconnect = autoReconnect;
     this.connectMethod = this.connect.bind(this);
+    this.onMessage = (message: string, parsedMessage: { type: string; payload: any }): void =>
+      void this.handleMessage(message, parsedMessage);
   }
 
   public async connect(): Promise<void> {
     try {
       this.init();
-      this.onClose = (code, reason): void => this.handleCloseState(code, reason);
+      this.onClose = (code, reason): void => this.handleCloseState(code, reason, false);
       if (!(await this.opened.wait(60_000))) throw new Error('Socket not connected');
       this.log('⌛ [connect] Socket connected, sending login commands...');
       this.sendXmlMessage('sys', 'verChk', '0', "<ver v='166' />");
@@ -48,6 +51,31 @@ class GgeLiveTemporaryServerSocket extends BaseSocket implements GgeEmpireSocket
       }
     } catch (error) {
       this.log('❌ [connect]', error.message);
+    }
+  }
+
+  private async handleMessage(_message: string, parsedMessage: { type: string; payload: any }): Promise<void> {
+    try {
+      if (parsedMessage.type === 'json' && parsedMessage.payload.command === 'gbd') {
+        this.log('[INFO] [handleMessage] Received gbd message, checking for temporary server data...');
+        const content = parsedMessage.payload.data;
+        if (content?.sei?.E) {
+          const temporaryServer = content.sei.E.find((event: any) => event.EID === 106);
+          if (temporaryServer && temporaryServer.TSID) {
+            const redisClient = createClient({
+              url: 'redis://redis-server:6379',
+            });
+            await redisClient.connect();
+            await redisClient.set('temporaryServerData', temporaryServer.TSID);
+            await redisClient.quit();
+            this.log('[INFO] [handleMessage] Temporary server TSID saved to Redis:', temporaryServer.TSID);
+          }
+        } else {
+          this.log('[ERR] [handleMessage] gbd message received but no sei.E array found:', parsedMessage.payload.data);
+        }
+      }
+    } catch (error) {
+      this.log('[ERR] [handleMessage] Error processing message:', (error as Error)?.message || error);
     }
   }
 

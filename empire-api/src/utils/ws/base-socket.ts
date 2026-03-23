@@ -26,7 +26,7 @@ class BaseSocket extends Log {
   protected nbReconnects: number;
   protected onSend: (data: string) => void;
   protected onOpen: (ws: WebSocket) => void;
-  protected onMessage: (message: string) => void;
+  protected onMessage: (message: string, parsedMessage: { type: string; payload: any }) => Promise<void> | void;
   protected onError: (error: unknown) => void;
   protected onClose: (code: number, reason: Buffer) => void;
 
@@ -140,14 +140,14 @@ class BaseSocket extends Log {
     void this.restart();
   }
 
-  public handleCloseState(code: number, reason: Buffer): void {
+  public handleCloseState(code: number, reason: Buffer, reconnect: boolean = true): void {
     this.log(
       '⚡ [onClose] Socket closed with code:',
       code,
       'and reason:',
       reason ? reason.toString() : 'No reason provided',
     );
-    this.disconnect(true);
+    this.disconnect(reconnect);
   }
 
   public init(): void {
@@ -192,7 +192,7 @@ class BaseSocket extends Log {
     }
     const response = this.parseResponse(message);
     this._processResponse(response);
-    if (this.onMessage) this.onMessage(message);
+    if (this.onMessage) void this.onMessage(message, response);
   }
 
   protected send(data: string): void {
@@ -239,7 +239,7 @@ class BaseSocket extends Log {
     return message.response;
   }
 
-  private parseResponse(response: string): any {
+  private parseResponse(response: string): { type: string; payload: any } {
     if (response.startsWith('<')) {
       const parsed = BaseSocket.XML_REGEX.exec(response);
       return {
