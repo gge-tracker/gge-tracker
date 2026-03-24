@@ -3,13 +3,13 @@ import { GgeEmpireSocketImpl } from './gge-socket-impl.js';
 import { createClient } from 'redis';
 
 class GgeLiveTemporaryServerSocket extends BaseSocket implements GgeEmpireSocketImpl {
-  constructor(url: string, serverHeader: string, username: string, password: string, autoReconnect: boolean) {
-    super(url, serverHeader, GgeServerType.LIVE, autoReconnect);
+  constructor(url: string, serverHeader: string, username: string, password: string) {
+    super(url, serverHeader, GgeServerType.LIVE, false);
     this.url = url;
     this.serverHeader = serverHeader;
     this.username = username;
     this.password = password;
-    this.reconnect = autoReconnect;
+    this.reconnect = false;
     this.connectMethod = this.connect.bind(this);
     this.onMessage = (message: string, parsedMessage: { type: string; payload: any }): void =>
       void this.handleMessage(message, parsedMessage);

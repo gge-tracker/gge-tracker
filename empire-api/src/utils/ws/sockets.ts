@@ -52,7 +52,7 @@ export abstract class SocketService {
         );
         continue;
       }
-      const socket = new socketClass(`${protocol}://${server.server}`, server.zone, USERNAME, PASSWORD);
+      const socket = new socketClass(`${protocol}://${server.server}`, server.zone, USERNAME, PASSWORD, true);
       console.log(
         `[${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}] [${server.zone}] Matching server found: creating socket...`,
       );

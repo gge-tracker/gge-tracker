@@ -52,6 +52,24 @@ export default function createApp(sockets: {
     }
   });
 
+  app.post('/server/:server/reconnect', async (request, response) => {
+    try {
+      const { server } = request.params as { server: string };
+      if (!server) {
+        response.status(400).json({ error: 'Missing parameters' });
+        return;
+      }
+      if (server in sockets) {
+        await sockets[server].restart();
+        response.status(200).json({ message: 'Server reconnecting' });
+      } else {
+        response.status(404).json({ error: 'Server not found' });
+      }
+    } catch (error) {
+      response.status(500).json({ error: error.message });
+    }
+  });
+
   app.post('/server', async (request, response) => {
     try {
       const { server, socket_url, password, username, serverType, autoReconnect } = request.body as {
@@ -109,13 +127,7 @@ export default function createApp(sockets: {
           break;
         }
         default: {
-          socketServer = new GgeLiveTemporaryServerSocket(
-            'wss://' + socket_url,
-            server,
-            username,
-            password,
-            autoReconnectValue,
-          );
+          socketServer = new GgeLiveTemporaryServerSocket('wss://' + socket_url, server, username, password);
           break;
         }
       }
