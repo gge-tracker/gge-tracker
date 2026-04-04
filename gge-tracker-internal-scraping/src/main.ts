@@ -1038,6 +1038,8 @@ This will result in approximately ${totalRequests} API requests, which may take 
                 rank = Number(entry[0]);
                 const rankPointsEntry = SWAP_RANK_POINTS_TABLE.find((rp) => rank >= rp.maxRank && rank <= rp.minRank);
                 score = rankPointsEntry ? rankPointsEntry.rankPoints : 0;
+              } else {
+                rank = Number(entry[0]);
               }
               playerEntries.set(OID, {
                 OID,
