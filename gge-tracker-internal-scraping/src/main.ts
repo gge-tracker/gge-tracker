@@ -5,7 +5,7 @@
 //  \___  /\___  / \___  >          |__|  |__|  (____  /\___  >__|_ \\___  >__|
 // /_____//_____/      \/                            \/     \/     \/    \/
 //
-//  Copyrights (c) 2025 - gge-tracker.com & gge-tracker contributors
+//  Copyrights (c) 2025-2026 - gge-tracker.com & gge-tracker contributors
 //
 import axios, { AxiosResponse } from 'axios';
 import { ClickHouse } from 'clickhouse';
@@ -15,13 +15,13 @@ import { RowDataPacket } from 'mysql2/promise';
 import pLimit from 'p-limit';
 import * as pg from 'pg';
 import { exit } from 'process';
+import * as readline from 'readline';
 import { createClient } from 'redis';
 import { HIGHSCORES_CONFIG } from './definitions/highest_scores.config';
 import { SWAP_RANK_POINTS_TABLE } from './definitions/swap-rank-points.config';
-import { Castle, CastleMovement, DungeonMap, HighScoreKey, PlayerDatabase } from './interfaces';
-import * as readline from 'readline';
-import Utils from './utils';
 import { TEMP_SERVER_SETTINGS } from './definitions/temp-server-events.config';
+import { Castle, CastleMovement, DungeonMap, HighScoreKey, PlayerDatabase } from './interfaces';
+import Utils from './utils';
 
 /**
  * This class provides a comprehensive backend service for fetching, processing,
@@ -937,16 +937,22 @@ This will result in approximately ${totalRequests} API requests, which may take 
           (el) => el.settingID && Number(el.settingID) === Number(temporaryServerData),
         );
         if (tempServerSetting) {
-          const type = tempServerSetting.scoringSystem;
-          if (['collector', 'might', 'rankSwap'].includes(type)) {
-            const correspondingLt = this.getCorrespondigLtByOuterRealmsType(type);
+          const scoringSystemType = tempServerSetting.scoringSystem;
+          if (['collector', 'might', 'rankSwap'].includes(scoringSystemType)) {
+            const correspondingLt = this.getCorrespondigLtByOuterRealmsType(scoringSystemType);
             if (correspondingLt) {
               LT = Number(correspondingLt);
               Utils.logMessage(
-                ` Temporary server setting found with scoring system '${type}' corresponding to LT=${LT}. Proceeding with data fetch using this LT.`,
+                ` Temporary server setting found with scoring system '${scoringSystemType}' corresponding to LT=${LT}. Proceeding with data fetch using this LT.`,
               );
             }
+          } else {
+            throw new Error(`Unrecognized scoring system type '${scoringSystemType}' in temporary server settings.`);
           }
+        } else {
+          throw new Error(
+            `No matching temporary server setting found for temporaryServerData value: ${temporaryServerData}`,
+          );
         }
         initialResponse = await this.genericFetchData(type, { LT: Number(LT), LID, SV: '1' });
         if (initialResponse.data.return_code == '0' && initialResponse.data.content?.L?.length > 0) {
@@ -2017,15 +2023,27 @@ This will result in approximately ${totalRequests} API requests, which may take 
     this.customPlayersAttributesList['alliance_name_update_count']++;
   }
 
-  private async updatePlayerAlliance(playerId: number, allianceId: any, currentAllianceId: any): Promise<void> {
+  private async updatePlayerAlliance(
+    playerId: number,
+    allianceId: any,
+    currentAllianceId: any,
+    allianceName: any,
+    currentAllianceName: any,
+  ): Promise<void> {
     const pgSqlQueryUpdatePlayerAlliance = 'UPDATE players SET alliance_id = $1 WHERE id = $2';
     await Promise.all([this.pgSqlQuery(pgSqlQueryUpdatePlayerAlliance, [allianceId, playerId])]);
     const pgSqlQueryInsertAllianceUpdateHistory = `
-            INSERT INTO player_alliance_update (player_id, old_alliance_id, new_alliance_id)
-            VALUES ($1, $2, $3)
+            INSERT INTO player_alliance_update (player_id, old_alliance_id, new_alliance_id, old_alliance_name, new_alliance_name)
+            VALUES ($1, $2, $3, $4, $5)
         `;
     await Promise.all([
-      this.pgSqlQuery(pgSqlQueryInsertAllianceUpdateHistory, [playerId, currentAllianceId, allianceId]),
+      this.pgSqlQuery(pgSqlQueryInsertAllianceUpdateHistory, [
+        playerId,
+        currentAllianceId,
+        allianceId,
+        currentAllianceName,
+        allianceName,
+      ]),
     ]);
     this.customPlayersAttributesList['player_alliance_update_count'] =
       this.customPlayersAttributesList['player_alliance_update_count'] || 0;
@@ -2185,12 +2203,18 @@ This will result in approximately ${totalRequests} API requests, which may take 
             'New alliance :',
             allianceId,
           );
-          await this.updatePlayerAlliance(playerId, allianceId, currentAllianceId);
+          await this.updatePlayerAlliance(playerId, allianceId, currentAllianceId, allianceName, currentAllianceName);
         } catch (error) {
           if (error.code === 'ER_NO_REFERENCED_ROW_2' || error.code == '23503') {
             try {
               await this.addAllianceInDatabase(allianceId, allianceName);
-              await this.updatePlayerAlliance(playerId, allianceId, currentAllianceId);
+              await this.updatePlayerAlliance(
+                playerId,
+                allianceId,
+                currentAllianceId,
+                allianceName,
+                currentAllianceName,
+              );
             } catch (error) {
               if (error.code !== 'ER_NO_REFERENCED_ROW_2' && error.code !== '23503') {
                 // Do nothing
