@@ -1,5 +1,5 @@
 import { Component, Input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { LucideAngularModule, icons } from 'lucide-angular';
 
 export const myIcons: Pick<
@@ -38,9 +38,10 @@ export const myIcons: Pick<
  * Usage: <app-icon name="Search" size="32"></app-icon>
  */
 @Component({
-    selector: 'app-icon',
-    imports: [CommonModule, LucideAngularModule],
-    template: ` <lucide-icon [name]="name" [size]="size" class="lucide d-flex"> </lucide-icon> `
+  selector: 'app-icon',
+  imports: [LucideAngularModule],
+  template: ` <lucide-icon [name]="name" [size]="size" class="lucide d-flex"> </lucide-icon> `,
+  standalone: true,
 })
 export class IconComponent {
   @Input() public name: keyof typeof myIcons = 'Info';

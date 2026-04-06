@@ -2,10 +2,11 @@ import { NgClass } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 
 @Component({
-    selector: '[appIconToggle]',
-    imports: [NgClass],
-    templateUrl: './icon-toggle.component.html',
-    styleUrl: './icon-toggle.component.css'
+  selector: '[appIconToggle]',
+  imports: [NgClass],
+  standalone: true,
+  templateUrl: './icon-toggle.component.html',
+  styleUrl: './icon-toggle.component.css',
 })
 export class IconToggleComponent {
   @Input() public validated = false;

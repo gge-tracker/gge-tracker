@@ -6,7 +6,7 @@
           player: true,
           alliance: true
         }" (searchAlliance)="searchAlliance($event)" (searchPlayer)="searchPlayer($event)" [exportDataEnabled]="true"
-        (exportData)="exportData()"></app-search-form>
+      (exportData)="exportData()"></app-search-form>
 
       <div class="flex flex-col justify-between gap-6 mt-2">
         <app-table #table [sort]="sort" [reverse]="reverse" [isInLoading]="isInLoading" [maxPage]="maxPage!"
@@ -15,7 +15,7 @@
           <app-player-table-content [players]="players" [playersTableHeader]="playersTableHeader"
             [distanceEnabled]="playersTableHeader.length > defaultPlayersTableHeaderSize"
             (clickOnAlliance)="searchAlliance($event)"
-            (toggleFavorite)="toggleFavorite($event)"></app-player-table-content>
+          (toggleFavorite)="toggleFavorite($event)"></app-player-table-content>
         </app-table>
       </div>
     </div>
@@ -28,7 +28,7 @@
             <i class="fa-solid fa-filter"></i>&nbsp;{{ 'Filtrer les résultats' | translate }}
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"
-            [attr.aria-label]="'Fermer' | translate"></button>
+          [attr.aria-label]="'Fermer' | translate"></button>
         </div>
         <div class="modal-body">
           <div class="filters-container">
@@ -167,11 +167,15 @@
                   (change)="onRealmChange($event)"
                   [multiple]="true" [closeOnSelect]="false" class="form-control">
                   <ng-template ng-option-tmp let-item="item">
-                    <img *ngIf="item.key !== '999'" [src]="'assets/dungeon' + item.key + '.png'" width="20" class="ms-2" />
+                    @if (item.key !== '999') {
+                      <img [src]="'assets/dungeon' + item.key + '.png'" width="20" class="ms-2" />
+                    }
                     {{ item.label | translate }}
                   </ng-template>
                   <ng-template ng-label-tmp let-item="item">
-                    <img *ngIf="item.key !== '999'" [src]="'assets/dungeon' + item.key + '.png'" width="20" class="ms-2" />
+                    @if (item.key !== '999') {
+                      <img [src]="'assets/dungeon' + item.key + '.png'" width="20" class="ms-2" />
+                    }
                     {{ item.label | translate }}
                   </ng-template>
                 </ng-select>
@@ -225,26 +229,30 @@
                 </div>
                 <!-- Filter player rank -->
                 <div class="col-12">
-                  <div class="d-flex  filter-rank-container" *ngIf="formFilters.allianceFilter !== '0'">
-                    <div class="col text-center checkbox-wrapper-15" *ngFor="let rank of [0,1,2,3,4,5,6,7,8,9]">
-                      <input class="inp-cbx d-none" type="checkbox" [id]="'allianceRank' + rank"
-                        name="allianceRankFilter"
-                        [value]="formFilters.allianceRankFilter[rank]"
-                        [checked]="formFilters.allianceRankFilter[rank] === '0'"
-                        (change)="onAllianceRankFilterChanged(rank)">
-                      <label for="allianceRank{{ rank }}" class="cbx">
-                        <span>
-                          <svg width="12px" height="9px" viewbox="0 0 12 9">
-                            <polyline points="1 5 4 8 11 1"></polyline>
-                          </svg>
-                        </span>
-                        <div>
-                          <img src="/assets/alliance_ranks/{{ rank }}.png" class="alliance-rank-icon-filter mb-2"
-                            [alt]="'Rank ' + rank">
+                  @if (formFilters.allianceFilter !== '0') {
+                    <div class="d-flex  filter-rank-container">
+                      @for (rank of [0,1,2,3,4,5,6,7,8,9]; track rank) {
+                        <div class="col text-center checkbox-wrapper-15">
+                          <input class="inp-cbx d-none" type="checkbox" [id]="'allianceRank' + rank"
+                            name="allianceRankFilter"
+                            [value]="formFilters.allianceRankFilter[rank]"
+                            [checked]="formFilters.allianceRankFilter[rank] === '0'"
+                            (change)="onAllianceRankFilterChanged(rank)">
+                          <label for="allianceRank{{ rank }}" class="cbx">
+                            <span>
+                              <svg width="12px" height="9px" viewbox="0 0 12 9">
+                                <polyline points="1 5 4 8 11 1"></polyline>
+                              </svg>
+                            </span>
+                            <div>
+                              <img src="/assets/alliance_ranks/{{ rank }}.png" class="alliance-rank-icon-filter mb-2"
+                                [alt]="'Rank ' + rank">
+                            </div>
+                          </label>
                         </div>
-                      </label>
+                      }
                     </div>
-                  </div>
+                  }
                 </div>
                 <!-- Protection -->
                 <div class="col-12">
@@ -347,14 +355,20 @@
                   </div>
                   <div class="input-group align-items-center justify-content-center gge-tracker-select-container">
                     <select class="form-select w-auto mt-2" [(ngModel)]="sort">
-                      <option *ngFor="let option of sortByOptions" [value]="option.value">{{ option.label | translate}}
-                      </option>
+                      @for (option of sortByOptions; track option) {
+                        <option [value]="option.value">{{ option.label | translate}}
+                        </option>
+                      }
                     </select>
                     <button class="gge-btn reset sort mt-2" (click)="sort = sort; reverse = !reverse">
                       <i class="fa-solid" [ngClass]="{'fa-arrow-down-long': !reverse, 'fa-arrow-up-long': reverse}"></i>
                       &nbsp;
-                      <span *ngIf="!reverse">{{ 'Descendant' | translate }}</span>
-                      <span *ngIf="reverse">{{ 'Ascendant' | translate }}</span>
+                      @if (!reverse) {
+                        <span>{{ 'Descendant' | translate }}</span>
+                      }
+                      @if (reverse) {
+                        <span>{{ 'Ascendant' | translate }}</span>
+                      }
                     </button>
                   </div>
                 </div>
@@ -375,7 +389,7 @@
                       [disabled]="!areFiltersChanged()"
                       class="gge-btn search"
                       (click)="saveFilters()"
-                    >
+                      >
                       {{ 'Enregistrer les filtres' | translate }}
                     </button>
                     <button
@@ -385,7 +399,7 @@
                       [disabled]="!areFiltersSavedInLocalStorage"
                       class="gge-btn search"
                       (click)="loadFiltersFromLocalStorage()"
-                    >
+                      >
                       {{ 'Charger les filtres' | translate }}
                     </button>
                     <button
@@ -395,7 +409,7 @@
                       [disabled]="!areFiltersChanged()"
                       class="gge-btn reset"
                       (click)="resetFilters()"
-                    >
+                      >
                       {{ 'Réinitialiser les filtres' | translate }}
                     </button>
                   </div>

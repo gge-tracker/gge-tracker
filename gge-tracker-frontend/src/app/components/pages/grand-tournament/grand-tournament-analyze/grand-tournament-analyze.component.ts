@@ -21,10 +21,11 @@ interface GenericChartConfig {
 }
 
 @Component({
-    selector: 'app-grand-tournament-analyze',
-    imports: [CommonModule, TranslateModule, LucideAngularModule, ChartsWrapperComponent],
-    templateUrl: './grand-tournament-analyze.component.html',
-    styleUrls: ['./grand-tournament-analyze.component.css']
+  standalone: true,
+  selector: 'app-grand-tournament-analyze',
+  imports: [CommonModule, TranslateModule, LucideAngularModule, ChartsWrapperComponent],
+  templateUrl: './grand-tournament-analyze.component.html',
+  styleUrls: ['./grand-tournament-analyze.component.css'],
 })
 export class GrandTournamentAnalyzeComponent extends GenericComponent implements OnInit {
   public entries = input.required<any[]>();

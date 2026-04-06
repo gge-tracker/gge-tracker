@@ -1,4 +1,4 @@
-import { DecimalPipe, NgClass, NgFor, NgIf } from '@angular/common';
+import { DecimalPipe, NgClass } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -28,24 +28,23 @@ interface FormFilters {
 }
 
 @Component({
-    selector: 'app-alliances',
-    providers: [FormatNumberPipe],
-    imports: [
-        NgFor,
-        NgIf,
-        LucideAngularModule,
-        NgClass,
-        RouterLink,
-        IconComponent,
-        FormsModule,
-        FormatNumberPipe,
-        TableComponent,
-        SearchFormComponent,
-        TranslateModule,
-        DecimalPipe,
-    ],
-    templateUrl: './alliances.component.html',
-    styleUrl: './alliances.component.css'
+  selector: 'app-alliances',
+  providers: [FormatNumberPipe],
+  imports: [
+    LucideAngularModule,
+    NgClass,
+    RouterLink,
+    IconComponent,
+    FormsModule,
+    FormatNumberPipe,
+    TableComponent,
+    SearchFormComponent,
+    TranslateModule,
+    DecimalPipe,
+  ],
+  standalone: true,
+  templateUrl: './alliances.component.html',
+  styleUrl: './alliances.component.css',
 })
 export class AlliancesComponent extends GenericComponent implements OnInit {
   public alliances: Alliance[] = [];

@@ -1,4 +1,4 @@
-import { NgClass, NgFor, NgIf } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
@@ -29,21 +29,19 @@ interface GenericChartConfig {
 }
 
 @Component({
-    selector: 'app-live-outer-realms',
-    imports: [
-        NgClass,
-        SearchFormComponent,
-        TranslateModule,
-        TableComponent,
-        NgFor,
-        NgIf,
-        FormatNumberPipe,
-        RouterModule,
-        NgFor,
-        LiveOuterRealmsStatisticsModalComponent,
-    ],
-    templateUrl: './live-outer-realms.component.html',
-    styleUrls: ['./live-outer-realms.component.css']
+  selector: 'app-live-outer-realms',
+  standalone: true,
+  imports: [
+    NgClass,
+    SearchFormComponent,
+    TranslateModule,
+    TableComponent,
+    FormatNumberPipe,
+    RouterModule,
+    LiveOuterRealmsStatisticsModalComponent,
+  ],
+  templateUrl: './live-outer-realms.component.html',
+  styleUrls: ['./live-outer-realms.component.css'],
 })
 export class LiveOuterRealmsComponent extends GenericComponent {
   public players: ApiLiveRanking[] = [];
@@ -248,7 +246,6 @@ export class LiveOuterRealmsComponent extends GenericComponent {
         background: 'transparent',
         animations: {
           enabled: true,
-          easing: 'easeinout',
           speed: 350,
         },
         locales: this.rankingService.CHART_LOCALES,
@@ -310,10 +307,7 @@ export class LiveOuterRealmsComponent extends GenericComponent {
         horizontalAlign: 'right',
         offsetY: -8,
         markers: {
-          width: 10,
-          height: 10,
           strokeWidth: 0,
-          radius: 12,
         },
         labels: {
           colors: 'rgba(255,255,255,0.7)',

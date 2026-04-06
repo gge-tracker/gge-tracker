@@ -1,4 +1,4 @@
-import { DatePipe, NgClass, NgFor, NgIf } from '@angular/common';
+import { DatePipe, NgClass } from '@angular/common';
 import { Component, inject, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -37,23 +37,22 @@ interface FormFilters {
 }
 
 @Component({
-    selector: 'app-movements',
-    imports: [
-        NgFor,
-        NgIf,
-        NgClass,
-        FormsModule,
-        FormatNumberPipe,
-        TableComponent,
-        DatePipe,
-        SearchFormComponent,
-        RouterLink,
-        LucideAngularModule,
-        TranslateModule,
-    ],
-    providers: [FormatNumberPipe],
-    templateUrl: './movements.component.html',
-    styleUrl: './movements.component.css'
+  selector: 'app-movements',
+  imports: [
+    NgClass,
+    FormsModule,
+    FormatNumberPipe,
+    TableComponent,
+    DatePipe,
+    SearchFormComponent,
+    RouterLink,
+    LucideAngularModule,
+    TranslateModule,
+  ],
+  standalone: true,
+  providers: [FormatNumberPipe],
+  templateUrl: './movements.component.html',
+  styleUrl: './movements.component.css',
 })
 export class MovementsComponent extends GenericComponent {
   @ViewChild('searchForm') public searchForm!: SearchFormComponent;

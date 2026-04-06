@@ -1,18 +1,21 @@
 <div class="player-stats-view position-relative">
-  <div class="d-none d-md-block" *ngIf="!isInLoading">
-    <div class="btn-exit right">
-      <button class="btn btn-primary mt-3" (click)="addPlayerToFavorites()"
-        *ngIf="!isInFavorites(); else notInFavorites">
-        <i class="fas fa-star"></i>
-        {{ 'Ajouter en favoris' | translate }}</button>
-      <ng-template #notInFavorites>
-        <button class="btn btn-primary mt-3" (click)="removePlayerFromFavorites()">
-          <i class="fas fa-star"></i>
+  @if (!isInLoading) {
+    <div class="d-none d-md-block">
+      <div class="btn-exit right">
+        @if (!isInFavorites()) {
+          <button class="btn btn-primary mt-3" (click)="addPlayerToFavorites()"
+            >
+            <i class="fas fa-star"></i>
+          {{ 'Ajouter en favoris' | translate }}</button>
+        } @else {
+          <button class="btn btn-primary mt-3" (click)="removePlayerFromFavorites()">
+            <i class="fas fa-star"></i>
           {{ 'Retirer des favoris' | translate }}</button>
-      </ng-template>
+        }
+      </div>
     </div>
-  </div>
-  <ng-container *ngIf="!isInLoading">
+  }
+  @if (!isInLoading) {
     <div class="player-stats-overlay"></div>
     <div class="position-relative player-stats-container">
       <div class="position-relative bg-castle d-flex flex-column justify-content-center"
@@ -20,7 +23,7 @@
         <div class="mt-3 mx-auto position-relative" style="width: fit-content;">
           <img src="/assets/banner.png" class="img-fluid" [alt]="'Bannière' | translate">
           <span class="position-absolute top-50 start-50 translate-middle text-white fs-1" style="width: max-content">
-            {{ playerName }}</span>
+          {{ playerName }}</span>
           <div id="allianceList">
             <a href="/castles?search={{ playerName }}" [title]="'Voir les châteaux' | translate">
               <img src="/assets/icon_castles.png" width="50" [alt]="'Paramètres' | translate" class="img-fluid mt-3">
@@ -30,400 +33,498 @@
               <img src="/assets/icon_alliance.png" width="50" [title]="'Voir l\'historique des alliances' | translate"
                 class="img-fluid mt-3" alt="Alliance" data-bs-toggle="modal" data-bs-target="#allianceModal">
             </div>
-            <div *ngIf="playerUpdates && playerUpdates.length > 1"
-              class="d-inline-block alliance-more-info position-relative" [attr.data-updates]="playerUpdates!.length-1">
-              <img src="/assets/icon_name.png" width="50"
-                [title]="'Voir l\'historique des pseudonymes du joueur' | translate" class="img-fluid mt-3"
-                [alt]="'Pseudonyme' | translate" data-bs-toggle="modal" data-bs-target="#playerModal">
-            </div>
-            <div *ngIf="stats && stats.peaceDisabledAt" class="d-inline-block alliance-more-info position-relative"
-              [attr.data-updates]="peaceDisabledAtInDays">
-              <img src="/assets/icon_peace.png" width="50"
-                [title]="('Actuellement en protection Fin le' | translate) + ' ' + (stats.peaceDisabledAt | date: ('Date_1' | translate))"
-                class="img-fluid mt-3" [alt]="'Protection' | translate">
-            </div>
+            @if (playerUpdates && playerUpdates.length > 1) {
+              <div
+                class="d-inline-block alliance-more-info position-relative" [attr.data-updates]="playerUpdates!.length-1">
+                <img src="/assets/icon_name.png" width="50"
+                  [title]="'Voir l\'historique des pseudonymes du joueur' | translate" class="img-fluid mt-3"
+                  [alt]="'Pseudonyme' | translate" data-bs-toggle="modal" data-bs-target="#playerModal">
+              </div>
+            }
+            @if (stats && stats.peaceDisabledAt) {
+              <div class="d-inline-block alliance-more-info position-relative"
+                [attr.data-updates]="peaceDisabledAtInDays">
+                <img src="/assets/icon_peace.png" width="50"
+                  [title]="('Actuellement en protection Fin le' | translate) + ' ' + (stats.peaceDisabledAt | date: ('Date_1' | translate))"
+                  class="img-fluid mt-3" [alt]="'Protection' | translate">
+              </div>
+            }
           </div>
         </div>
         <div class="container-fluid mt-3 leaderboard d-flex flex-wrap justify-content-around text-center">
-          <div *ngFor="let event of events" class="card event-card m-2">
-            <div *ngIf="getScoreboardFromEvent(event)" class="card-body d-flex flex-column justify-content-between">
-              <h5 class="card-title"><img src="/assets/star.png" alt="Top 3"></h5>
-              <div class="card-content d-flex align-items-center">
-                <div class="img-container me-3">
-                  <img [src]="'/assets/event-logo-id-' + event + '.png'" class="img-fluid" alt="Event" width="90"
-                    height="90" [title]="getEventName(event)">
+          @for (event of events; track event) {
+            <div class="card event-card m-2">
+              @if (getScoreboardFromEvent(event)) {
+                <div class="card-body d-flex flex-column justify-content-between">
+                  <h5 class="card-title"><img src="/assets/star.png" alt="Top 3"></h5>
+                  <div class="card-content d-flex align-items-center">
+                    <div class="img-container me-3">
+                      <img [src]="'/assets/event-logo-id-' + event + '.png'" class="img-fluid" alt="Event" width="90"
+                        height="90" [title]="getEventName(event)">
+                    </div>
+                    <div class="event-details">
+                      <p class="card-text">
+                        <span class="highlight-hours">{{ getScoreboardFromEvent(event) }}h</span>
+                        &nbsp;{{ 'dans le top 3 du serveur' | translate }}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div class="event-details">
-                  <p class="card-text">
-                    <span class="highlight-hours">{{ getScoreboardFromEvent(event) }}h</span>
-                    &nbsp;{{ 'dans le top 3 du serveur' | translate }}
-                  </p>
-                </div>
-              </div>
+              }
             </div>
-          </div>
+          }
         </div>
       </div>
-      <div class="container-fluid mt-3" style="margin-bottom: 70px;" *ngIf="playerId && isBrowser">
-        <div class="row g-3 mb-3 mt-1">
-          <div class="col-6 col-md-4 col-xl">
-            <div class="stat-card text-center">
-              <div class="stat-icon">
-                <img src="/assets/pp3.png" [alt]="'Points de puissance' | translate">
-              </div>
-              <div class="stat-title" *ngIf="stats">{{ 'Puissance' | translate }}</div>
-              <div class="stat-value" *ngIf="stats; else spinnerRankignStats">{{ (animatedStats['mightCurrent'] || 0) |
-                formatNumber }}</div>
-            </div>
-          </div>
-          <div class="col-6 col-md-4 col-xl">
-            <div class="stat-card text-center">
-              <div class="stat-icon">
-                <img src="/assets/honor2.png" [alt]="'Honneur' | translate">
-              </div>
-              <div class="stat-title" *ngIf="stats">{{ 'Honneur' | translate }}</div>
-              <div class="stat-value" *ngIf="stats; else spinnerRankignStats">{{ animatedStats['honor'] }}</div>
-            </div>
-          </div>
-          <div class="col-6 col-md-4 col-xl">
-            <div class="stat-card text-center">
-              <div class="stat-icon">
-                <img src="/assets/ranking.png" [alt]="'Classement' | translate">
-              </div>
-              <div class="stat-title" *ngIf="stats">{{ 'Classement' | translate }} ({{ stats.server }})</div>
-              <div class="stat-value" *ngIf="stats; else spinnerRankignStats">{{ (animatedStats['serverRank'] || 0) |
-                formatNumber }}</div>
-            </div>
-          </div>
-          <div class="col-6 col-md-4 col-xl">
-            <div class="stat-card text-center">
-              <div class="stat-icon">
-                <img src="/assets/ranking.png" [alt]="'Classement mondial' | translate">
-              </div>
-              <div class="stat-title" *ngIf="stats">{{ 'Classement mondial' | translate }}</div>
-              <div class="stat-value" *ngIf="stats; else spinnerRankignStats">{{ (animatedStats['globalRank'] || 0) |
-                formatNumber }}</div>
-            </div>
-          </div>
-          <div class="col-6 col-md-4 col-xl">
-            <div class="stat-card text-center">
-              <div class="stat-icon">
-                <img src="/assets/lvl.png" [alt]="'Niveau' | translate">
-              </div>
-              <div class="stat-title" *ngIf="stats">{{ 'Niveau' | translate }}</div>
-              <div class="stat-value" *ngIf="stats; else spinnerRankignStats">{{ (animatedStats['totalLevel'] || 0) |
-                level }}</div>
-            </div>
-          </div>
-          <div class="col-6 col-md-4 col-xl">
-            <div class="stat-card text-center" data-bs-toggle="modal" data-bs-target="#patriarchModal">
-              <div class="stat-icon">
-                <img src="/assets/list-item.png" [alt]="'Nombre de chateaux' | translate">
-              </div>
-              <div class="stat-title" *ngIf="stats">{{ 'Nombre de chateaux' | translate }}</div>
-              <div class="stat-value" *ngIf="stats; else spinnerRankignStats">{{ (animatedStats['totalCastles'] || 0) |
-                formatNumber }}</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="tabs-container">
-          <button class="tab-button" *ngFor="let tab of tabs" (click)="updateTab(tab.key)"
-            [ngClass]="{'active': currentTab === tab.key}">
-            <img *ngIf="tab.assetIcon" [src]="'/assets/' + tab.assetIcon" width="24" height="24"
-              [alt]="tab.label | translate">
-            <span class="d-none d-lg-inline">&nbsp;{{ tab.label | translate }}</span>
-          </button>
-        </div>
-
-        <div class="tab-content" *ngIf="currentTab === 'overview'">
-          <div class="row">
-            <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="might">
-              <app-player-stats-card [charts]="{ 'Graphique': charts['might'] }"
-                *ngIf="charts['might'] && chartVisibles.might" [data]="[]" [title]="'Points de puissance' | translate"
-                [dataName]="'Points de puissance' | translate" [backgroundIconImage]="'/assets/banner-pp.png'"
-                [needSpecialLoader]="true" [eventName]="'player_might_history'" [isWeekly]="true" [playerId]="playerId"
-                (updateData)="updateData($event)" [backgroundColour]="'rgb(255 230 35)'"></app-player-stats-card>
-            </div>
-            <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="loot">
-              <app-player-stats-card [charts]="{ 'Graphique': charts['loot'] }"
-                *ngIf="charts['loot'] && chartVisibles.loot" [data]="[]" [title]="'Pillage hebdomadaire' | translate"
-                [dataName]="'Points de pillage' | translate" [playerId]="playerId" [eventName]="'player_loot_history'"
-                (updateData)="updateData($event)" [backgroundIconImage]="'/assets/banner-loot.png'"
-                [backgroundColour]="'#e7a220'"></app-player-stats-card>
-            </div>
-          </div>
-          <div class="row mt-3">
-            <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="warRealms">
-              <app-player-stats-card [charts]="{ 'Graphique': charts['warRealms'] }"
-                *ngIf="charts['warRealms'] && chartVisibles.warRealms" [data]="[]"
-                [title]="'Guerre des royaumes' | translate" [playerId]="playerId"
-                [eventName]="'player_event_war_realms_history'" (updateData)="updateData($event)"
-                [dataName]="'Points de guerre des royaumes' | translate"
-                [backgroundIconImage]="'/assets/banner-realm.png'"
-                [backgroundColour]="'rgb(216 182 255)'"></app-player-stats-card>
-            </div>
-            <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="bloodcrow">
-              <app-player-stats-card [charts]="{ 'Graphique': charts['bloodcrow'] }"
-                *ngIf="charts['bloodcrow'] && chartVisibles.bloodcrow" [data]="[]"
-                [title]="'Corbeaux de sang' | translate" [playerId]="playerId"
-                [eventName]="'player_event_bloodcrow_history'" (updateData)="updateData($event)"
-                [dataName]="'Points de corbeaux de sang' | translate"
-                [backgroundIconImage]="'/assets/banner-bloodcrow.png'"
-                [backgroundColour]="'rgb(216 182 255)'"></app-player-stats-card>
-            </div>
-          </div>
-          <div class="row mt-3">
-            <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="berimondKingdom">
-              <app-player-stats-card [charts]="{ 'Graphique': charts['berimondKingdom'] }"
-                *ngIf="charts['berimondKingdom'] && chartVisibles.berimondKingdom" [data]="[]"
-                [title]="'Bataille de Berimond' | translate" [playerId]="playerId"
-                [eventName]="'player_event_berimond_kingdom_history'" (updateData)="updateData($event)"
-                [dataName]="'Points de Berimond' | translate" [backgroundIconImage]="'/assets/banner-berimond.png'"
-                [backgroundColour]="'#00aaff'"></app-player-stats-card>
-            </div>
-            <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="nomad">
-              <app-player-stats-card [charts]="{ 'Graphique': charts['nomad'] }"
-                *ngIf="charts['nomad'] && chartVisibles.nomad" [data]="[]" [title]="'Nomades' | translate"
-                [dataName]="'Points de nomades' | translate" [playerId]="playerId"
-                [eventName]="'player_event_nomad_history'" (updateData)="updateData($event)"
-                [backgroundIconImage]="'/assets/banner-nomad.png'"
-                [backgroundColour]="'rgb(255 130 54)'"></app-player-stats-card>
-            </div>
-          </div>
-          <div class="row mt-3">
-            <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="samurai">
-              <app-player-stats-card [charts]="{ 'Graphique': charts['samurai'] }"
-                *ngIf="charts['samurai'] && chartVisibles.samurai" [data]="[]" [title]="'Samouraïs' | translate"
-                [dataName]="'Points de samouraïs' | translate" [playerId]="playerId"
-                [eventName]="'player_event_samurai_history'" (updateData)="updateData($event)"
-                [backgroundIconImage]="'/assets/banner-samurai.png'"
-                [backgroundColour]="'#58771db5'"></app-player-stats-card>
-            </div>
-          </div>
-        </div>
-
-        <div class="tab-content" *ngIf="currentTab === 'loot'">
-          <div class="row">
-            <div class="col-12">
-              <app-player-stats-card [charts]="{ 'Graphique': charts['hourly-activity'] }"
-                *ngIf="charts['hourly-activity']" [data]="[]" [title]="'Taux d\'activité par heure' | translate"
-                [subtitle]="'Semaine précédente' | translate" [dataName]="'Taux d\'activité par heure' | translate"
-                [playerId]="playerId" [eventName]="'player_loot_history'" (updateData)="updateData($event)"
-                [backgroundIconImage]="'/assets/banner-loot.png'"
-                [backgroundColour]="'#e7a220'"></app-player-stats-card>
-            </div>
-          </div>
-          <div class="row mt-3">
-            <div class="col-12">
-              <app-player-stats-card [charts]="{ 'Graphique': charts['avg-gain-hour'] }" *ngIf="charts['avg-gain-hour']"
-                [data]="[]" [title]="'Gain moyen par heure' | translate" [subtitle]="'Semaine précédente' | translate"
-                [dataName]="'Gain moyen par heure' | translate" [playerId]="playerId"
-                [eventName]="'player_loot_history'" (updateData)="updateData($event)"
-                [backgroundIconImage]="'/assets/banner-loot.png'"
-                [backgroundColour]="'#e7a220'"></app-player-stats-card>
-            </div>
-          </div>
-          <div class="row mt-3">
-            <div class="col-12">
-              <app-player-stats-card [charts]="{ 'Graphique': charts['loot-heatmap'] }" *ngIf="charts['loot-heatmap']"
-                [data]="[]" [title]="'Carte d\'activité hebdomadaire' | translate"
-                [dataName]="'Carte d\'activité hebdomadaire' | translate" [playerId]="playerId"
-                [eventName]="'player_loot_history'" (updateData)="updateData($event)"
-                [backgroundIconImage]="'/assets/banner-loot.png'"
-                [backgroundColour]="'#e7a220'"></app-player-stats-card>
-            </div>
-          </div>
-          <div class="row mt-3">
-            <div class="col-12">
-              <app-player-stats-card [charts]="{ 'Graphique': charts['loot'] }" *ngIf="charts['loot']" [data]="[]"
-                [title]="'Pillage hebdomadaire' | translate" [dataName]="'Points de pillage' | translate"
-                [playerId]="playerId" [eventName]="'player_loot_history'" (updateData)="updateData($event)"
-                [backgroundIconImage]="'/assets/banner-loot.png'"
-                [backgroundColour]="'#e7a220'"></app-player-stats-card>
-            </div>
-          </div>
-        </div>
-
-        <div class="tab-content" *ngIf="currentTab === 'alliances'">
-          <div class="row">
-            <div class="col-12 alliances-history-section">
-              <ng-container *ngTemplateOutlet="allianceHistoryContentTimeline"></ng-container>
-            </div>
-          </div>
-        </div>
-
-        <div class="tab-content" *ngIf="currentTab === 'castles'">
-          <div class="row mt-3">
-            <div class="col-12 castles-overview-section">
-              <ng-container *ngTemplateOutlet="patriarchOverviewContent"></ng-container>
-            </div>
-          </div>
-        </div>
-
-        <div class="tab-content" *ngIf="currentTab === 'glory' && currentPlayerTitle">
-          <div class="fame-dashboard-modern">
-            <div class="fame-hero-card mb-4">
-              <div class="row g-0">
-                <div class="col-lg-7 p-4 position-relative z-1">
-                  <div class="d-flex align-items-center mb-4">
-                    <div class="fame-emblem-wrapper me-4">
-                      <svg class="progress-ring position-absolute" width="80" height="80">
-                        <circle class="progress-ring__circle" stroke="white" stroke-width="3" fill="transparent"
-                          [ngStyle]="{ 'stroke-dashoffset': fameProgressStrokeOffset + 'px' }" r="36" cx="40" cy="40" />
-                      </svg>
-                      <img src="/assets/glory.png" alt="Glory" class="fame-icon-lg">
-                    </div>
-                    <div>
-                      <div class="text-uppercase text-gold-50 fs-7 ls-1 fw-bold mb-1">{{ 'Classement' | translate }}
-                      </div>
-                      <h1 class="display-6 fw-black text-white text-uppercase mb-0 text-shadow-glow">
-                        {{ (currentTopXFameTitle ? (currentI18nTitleKey + currentTopXFameTitle.titleID) :
-                        (currentI18nTitleKey + currentPlayerTitle.titleID)) | translate }}
-                      </h1>
-                      <div class="d-flex align-items-center mt-2 gap-3">
-                        <span class="badge bg-dark-glass border-gold text-gold">
-                          #{{ stats?.playerCurrentFameRank ?? 0 | formatNumber }}
-                        </span>
-                        <span class="text-white-50 fs-7">
-                          <i class="fas fa-clock me-1"></i>
-                          {{ stats?.updatedAt | date:'shortTime' }}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="fame-progress-wrapper mt-auto">
-                    <div class="d-flex justify-content-between text-white mb-2 fs-6 fw-bold">
-                      <span>
-                        {{ stats?.currentFame ?? 0 | formatNumber }}
-                        <span class="fw-normal">{{ 'Points de gloire' | translate }}</span>
-                      </span>
-                      <span [title]="nextFameTitle?.threshold">
-                        {{ (nextFameTitle?.threshold ?? 0) | formatNumber }}
-                        <span class="fw-normal" *ngIf="nextFameTitle">
-                          ({{ (nextFameTitle ? (currentI18nTitleKey + nextFameTitle.titleID) : '-') | translate }})
-                        </span>
-                      </span>
-                    </div>
-                    <div class="progress-track">
-                      <div class="progress-fill" [style.width.%]="fameProgressPercentage"></div>
-                      <div class="decay-marker"
-                        [style.left.%]="((((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) / (nextFameTitle?.threshold ?? 1)) * 100"
-                        [style.width.%]="fameProgressPercentage-(((((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) / (nextFameTitle?.threshold ?? 1)) * 100)">
-                      </div>
-                    </div>
-                  </div>
+      @if (playerId && isBrowser) {
+        <div class="container-fluid mt-3" style="margin-bottom: 70px;">
+          <div class="row g-3 mb-3 mt-1">
+            <div class="col-6 col-md-4 col-xl">
+              <div class="stat-card text-center">
+                <div class="stat-icon">
+                  <img src="/assets/pp3.png" [alt]="'Points de puissance' | translate">
                 </div>
-                <div class="col-lg-5 p-4 bg-gradient-dark border-start-glass d-flex flex-column justify-content-center">
-                  <div class="decay-box">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                      <span class="text-uppercase text-danger-light fs-7 fw-bold ls-1">
-                        {{ 'Prévision journalière' | translate }}
-                      </span>
-                      <span class="badge bg-danger-subtle text-danger">{{ 'Perte de gloire' | translate: {'0':
-                        currentPlayerTitle.decay} }}</span>
+                @if (stats) {
+                  <div class="stat-title">{{ 'Puissance' | translate }}</div>
+                }
+                @if (stats) {
+                  <div class="stat-value">{{ (animatedStats['mightCurrent'] || 0) |
+                  formatNumber }}</div>
+                } @else {
+                  <div class="text-center spinner-container">
+                    <i class="fas fa-spinner fa-spin"></i>
+                  </div>
+                }
+              </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl">
+              <div class="stat-card text-center">
+                <div class="stat-icon">
+                  <img src="/assets/honor2.png" [alt]="'Honneur' | translate">
+                </div>
+                @if (stats) {
+                  <div class="stat-title">{{ 'Honneur' | translate }}</div>
+                }
+                @if (stats) {
+                  <div class="stat-value">{{ animatedStats['honor'] }}</div>
+                } @else {
+                  <div class="text-center spinner-container">
+                    <i class="fas fa-spinner fa-spin"></i>
+                  </div>
+                }
+              </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl">
+              <div class="stat-card text-center">
+                <div class="stat-icon">
+                  <img src="/assets/ranking.png" [alt]="'Classement' | translate">
+                </div>
+                @if (stats) {
+                  <div class="stat-title">{{ 'Classement' | translate }} ({{ stats.server }})</div>
+                }
+                @if (stats) {
+                  <div class="stat-value">{{ (animatedStats['serverRank'] || 0) |
+                  formatNumber }}</div>
+                } @else {
+                  <div class="text-center spinner-container">
+                    <i class="fas fa-spinner fa-spin"></i>
+                  </div>
+                }
+              </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl">
+              <div class="stat-card text-center">
+                <div class="stat-icon">
+                  <img src="/assets/ranking.png" [alt]="'Classement mondial' | translate">
+                </div>
+                @if (stats) {
+                  <div class="stat-title">{{ 'Classement mondial' | translate }}</div>
+                }
+                @if (stats) {
+                  <div class="stat-value">{{ (animatedStats['globalRank'] || 0) |
+                  formatNumber }}</div>
+                } @else {
+                  <div class="text-center spinner-container">
+                    <i class="fas fa-spinner fa-spin"></i>
+                  </div>
+                }
+              </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl">
+              <div class="stat-card text-center">
+                <div class="stat-icon">
+                  <img src="/assets/lvl.png" [alt]="'Niveau' | translate">
+                </div>
+                @if (stats) {
+                  <div class="stat-title">{{ 'Niveau' | translate }}</div>
+                }
+                @if (stats) {
+                  <div class="stat-value">{{ (animatedStats['totalLevel'] || 0) |
+                  level }}</div>
+                } @else {
+                  <div class="text-center spinner-container">
+                    <i class="fas fa-spinner fa-spin"></i>
+                  </div>
+                }
+              </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl">
+              <div class="stat-card text-center" data-bs-toggle="modal" data-bs-target="#patriarchModal">
+                <div class="stat-icon">
+                  <img src="/assets/list-item.png" [alt]="'Nombre de chateaux' | translate">
+                </div>
+                @if (stats) {
+                  <div class="stat-title">{{ 'Nombre de chateaux' | translate }}</div>
+                }
+                @if (stats) {
+                  <div class="stat-value">{{ (animatedStats['totalCastles'] || 0) |
+                  formatNumber }}</div>
+                } @else {
+                  <div class="text-center spinner-container">
+                    <i class="fas fa-spinner fa-spin"></i>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+          <div class="tabs-container">
+            @for (tab of tabs; track tab) {
+              <button class="tab-button" (click)="updateTab(tab.key)"
+                [ngClass]="{'active': currentTab === tab.key}">
+                @if (tab.assetIcon) {
+                  <img [src]="'/assets/' + tab.assetIcon" width="24" height="24"
+                    [alt]="tab.label | translate">
+                }
+                <span class="d-none d-lg-inline">&nbsp;{{ tab.label | translate }}</span>
+              </button>
+            }
+          </div>
+          @if (currentTab === 'overview') {
+            <div class="tab-content">
+              <div class="row">
+                <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="might">
+                  @if (charts['might'] && chartVisibles.might) {
+                    <app-player-stats-card [charts]="{ 'Graphique': charts['might'] }"
+                      [data]="[]" [title]="'Points de puissance' | translate"
+                      [dataName]="'Points de puissance' | translate" [backgroundIconImage]="'/assets/banner-pp.png'"
+                      [needSpecialLoader]="true" [eventName]="'player_might_history'" [isWeekly]="true" [playerId]="playerId"
+                    (updateData)="updateData($event)" [backgroundColour]="'rgb(255 230 35)'"></app-player-stats-card>
+                  }
+                </div>
+                <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="loot">
+                  @if (charts['loot'] && chartVisibles.loot) {
+                    <app-player-stats-card [charts]="{ 'Graphique': charts['loot'] }"
+                      [data]="[]" [title]="'Pillage hebdomadaire' | translate"
+                      [dataName]="'Points de pillage' | translate" [playerId]="playerId" [eventName]="'player_loot_history'"
+                      (updateData)="updateData($event)" [backgroundIconImage]="'/assets/banner-loot.png'"
+                    [backgroundColour]="'#e7a220'"></app-player-stats-card>
+                  }
+                </div>
+              </div>
+              <div class="row mt-3">
+                <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="warRealms">
+                  @if (charts['warRealms'] && chartVisibles.warRealms) {
+                    <app-player-stats-card [charts]="{ 'Graphique': charts['warRealms'] }"
+                      [data]="[]"
+                      [title]="'Guerre des royaumes' | translate" [playerId]="playerId"
+                      [eventName]="'player_event_war_realms_history'" (updateData)="updateData($event)"
+                      [dataName]="'Points de guerre des royaumes' | translate"
+                      [backgroundIconImage]="'/assets/banner-realm.png'"
+                    [backgroundColour]="'rgb(216 182 255)'"></app-player-stats-card>
+                  }
+                </div>
+                <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="bloodcrow">
+                  @if (charts['bloodcrow'] && chartVisibles.bloodcrow) {
+                    <app-player-stats-card [charts]="{ 'Graphique': charts['bloodcrow'] }"
+                      [data]="[]"
+                      [title]="'Corbeaux de sang' | translate" [playerId]="playerId"
+                      [eventName]="'player_event_bloodcrow_history'" (updateData)="updateData($event)"
+                      [dataName]="'Points de corbeaux de sang' | translate"
+                      [backgroundIconImage]="'/assets/banner-bloodcrow.png'"
+                    [backgroundColour]="'rgb(216 182 255)'"></app-player-stats-card>
+                  }
+                </div>
+              </div>
+              <div class="row mt-3">
+                <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="berimondKingdom">
+                  @if (charts['berimondKingdom'] && chartVisibles.berimondKingdom) {
+                    <app-player-stats-card [charts]="{ 'Graphique': charts['berimondKingdom'] }"
+                      [data]="[]"
+                      [title]="'Bataille de Berimond' | translate" [playerId]="playerId"
+                      [eventName]="'player_event_berimond_kingdom_history'" (updateData)="updateData($event)"
+                      [dataName]="'Points de Berimond' | translate" [backgroundIconImage]="'/assets/banner-berimond.png'"
+                    [backgroundColour]="'#00aaff'"></app-player-stats-card>
+                  }
+                </div>
+                <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="nomad">
+                  @if (charts['nomad'] && chartVisibles.nomad) {
+                    <app-player-stats-card [charts]="{ 'Graphique': charts['nomad'] }"
+                      [data]="[]" [title]="'Nomades' | translate"
+                      [dataName]="'Points de nomades' | translate" [playerId]="playerId"
+                      [eventName]="'player_event_nomad_history'" (updateData)="updateData($event)"
+                      [backgroundIconImage]="'/assets/banner-nomad.png'"
+                    [backgroundColour]="'rgb(255 130 54)'"></app-player-stats-card>
+                  }
+                </div>
+              </div>
+              <div class="row mt-3">
+                <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="samurai">
+                  @if (charts['samurai'] && chartVisibles.samurai) {
+                    <app-player-stats-card [charts]="{ 'Graphique': charts['samurai'] }"
+                      [data]="[]" [title]="'Samouraïs' | translate"
+                      [dataName]="'Points de samouraïs' | translate" [playerId]="playerId"
+                      [eventName]="'player_event_samurai_history'" (updateData)="updateData($event)"
+                      [backgroundIconImage]="'/assets/banner-samurai.png'"
+                    [backgroundColour]="'#58771db5'"></app-player-stats-card>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+          @if (currentTab === 'loot') {
+            <div class="tab-content">
+              <div class="row">
+                <div class="col-12">
+                  @if (charts['hourly-activity']) {
+                    <app-player-stats-card [charts]="{ 'Graphique': charts['hourly-activity'] }"
+                      [data]="[]" [title]="'Taux d\'activité par heure' | translate"
+                      [subtitle]="'Semaine précédente' | translate" [dataName]="'Taux d\'activité par heure' | translate"
+                      [playerId]="playerId" [eventName]="'player_loot_history'" (updateData)="updateData($event)"
+                      [backgroundIconImage]="'/assets/banner-loot.png'"
+                    [backgroundColour]="'#e7a220'"></app-player-stats-card>
+                  }
+                </div>
+              </div>
+              <div class="row mt-3">
+                <div class="col-12">
+                  @if (charts['avg-gain-hour']) {
+                    <app-player-stats-card [charts]="{ 'Graphique': charts['avg-gain-hour'] }"
+                      [data]="[]" [title]="'Gain moyen par heure' | translate" [subtitle]="'Semaine précédente' | translate"
+                      [dataName]="'Gain moyen par heure' | translate" [playerId]="playerId"
+                      [eventName]="'player_loot_history'" (updateData)="updateData($event)"
+                      [backgroundIconImage]="'/assets/banner-loot.png'"
+                    [backgroundColour]="'#e7a220'"></app-player-stats-card>
+                  }
+                </div>
+              </div>
+              <div class="row mt-3">
+                <div class="col-12">
+                  @if (charts['loot-heatmap']) {
+                    <app-player-stats-card [charts]="{ 'Graphique': charts['loot-heatmap'] }"
+                      [data]="[]" [title]="'Carte d\'activité hebdomadaire' | translate"
+                      [dataName]="'Carte d\'activité hebdomadaire' | translate" [playerId]="playerId"
+                      [eventName]="'player_loot_history'" (updateData)="updateData($event)"
+                      [backgroundIconImage]="'/assets/banner-loot.png'"
+                    [backgroundColour]="'#e7a220'"></app-player-stats-card>
+                  }
+                </div>
+              </div>
+              <div class="row mt-3">
+                <div class="col-12">
+                  @if (charts['loot']) {
+                    <app-player-stats-card [charts]="{ 'Graphique': charts['loot'] }" [data]="[]"
+                      [title]="'Pillage hebdomadaire' | translate" [dataName]="'Points de pillage' | translate"
+                      [playerId]="playerId" [eventName]="'player_loot_history'" (updateData)="updateData($event)"
+                      [backgroundIconImage]="'/assets/banner-loot.png'"
+                    [backgroundColour]="'#e7a220'"></app-player-stats-card>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+          @if (currentTab === 'alliances') {
+            <div class="tab-content">
+              <div class="row">
+                <div class="col-12 alliances-history-section">
+                  <ng-container *ngTemplateOutlet="allianceHistoryContentTimeline"></ng-container>
+                </div>
+              </div>
+            </div>
+          }
+          @if (currentTab === 'castles') {
+            <div class="tab-content">
+              <div class="row mt-3">
+                <div class="col-12 castles-overview-section">
+                  <ng-container *ngTemplateOutlet="patriarchOverviewContent"></ng-container>
+                </div>
+              </div>
+            </div>
+          }
+          @if (currentTab === 'glory' && currentPlayerTitle) {
+            <div class="tab-content">
+              <div class="fame-dashboard-modern">
+                <div class="fame-hero-card mb-4">
+                  <div class="row g-0">
+                    <div class="col-lg-7 p-4 position-relative z-1">
+                      <div class="d-flex align-items-center mb-4">
+                        <div class="fame-emblem-wrapper me-4">
+                          <svg class="progress-ring position-absolute" width="80" height="80">
+                            <circle class="progress-ring__circle" stroke="white" stroke-width="3" fill="transparent"
+                              [ngStyle]="{ 'stroke-dashoffset': fameProgressStrokeOffset + 'px' }" r="36" cx="40" cy="40" />
+                          </svg>
+                          <img src="/assets/glory.png" alt="Glory" class="fame-icon-lg">
+                        </div>
+                        <div>
+                          <div class="text-uppercase text-gold-50 fs-7 ls-1 fw-bold mb-1">{{ 'Classement' | translate }}
+                          </div>
+                          <h1 class="display-6 fw-black text-white text-uppercase mb-0 text-shadow-glow">
+                            {{ (currentTopXFameTitle ? (currentI18nTitleKey + currentTopXFameTitle.titleID) :
+                            (currentI18nTitleKey + currentPlayerTitle.titleID)) | translate }}
+                          </h1>
+                          <div class="d-flex align-items-center mt-2 gap-3">
+                            <span class="badge bg-dark-glass border-gold text-gold">
+                              #{{ stats?.playerCurrentFameRank ?? 0 | formatNumber }}
+                            </span>
+                            <span class="text-white-50 fs-7">
+                              <i class="fas fa-clock me-1"></i>
+                              {{ stats?.updatedAt | date:'shortTime' }}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="fame-progress-wrapper mt-auto">
+                        <div class="d-flex justify-content-between text-white mb-2 fs-6 fw-bold">
+                          <span>
+                            {{ stats?.currentFame ?? 0 | formatNumber }}
+                            <span class="fw-normal">{{ 'Points de gloire' | translate }}</span>
+                          </span>
+                          <span [title]="nextFameTitle?.threshold">
+                            {{ (nextFameTitle?.threshold ?? 0) | formatNumber }}
+                            @if (nextFameTitle) {
+                              <span class="fw-normal">
+                                ({{ (nextFameTitle ? (currentI18nTitleKey + nextFameTitle.titleID) : '-') | translate }})
+                              </span>
+                            }
+                          </span>
+                        </div>
+                        <div class="progress-track">
+                          <div class="progress-fill" [style.width.%]="fameProgressPercentage"></div>
+                          <div class="decay-marker"
+                            [style.left.%]="((((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) / (nextFameTitle?.threshold ?? 1)) * 100"
+                            [style.width.%]="fameProgressPercentage-(((((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) / (nextFameTitle?.threshold ?? 1)) * 100)">
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div class="decay-stat-row mb-2">
-                      <span class="label text-white-50">{{ 'Perte estimée' | translate }}</span>
-                      <span class="value text-danger fw-bold"
-                        [title]="-((stats?.currentFame ?? 0) * (currentPlayerTitle.decay ?? 0)) / 100">-{{
-                        ((stats?.currentFame ?? 0) *
-                        (currentPlayerTitle.decay ?? 0)) / 100 | formatNumber }}</span>
-                    </div>
-                    <div class="decay-stat-row big-stat">
-                      <span class="label text-white-50">{{ 'Points de gloire' | translate }}</span>
-                      <span class="value text-white"
-                        [title]="(stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0)) / 100">
-                        {{ ((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100 | formatNumber }}
-                      </span>
-                    </div>
+                    <div class="col-lg-5 p-4 bg-gradient-dark border-start-glass d-flex flex-column justify-content-center">
+                      <div class="decay-box">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                          <span class="text-uppercase text-danger-light fs-7 fw-bold ls-1">
+                            {{ 'Prévision journalière' | translate }}
+                          </span>
+                          <span class="badge bg-danger-subtle text-danger">{{ 'Perte de gloire' | translate: {'0':
+                          currentPlayerTitle.decay} }}</span>
+                        </div>
+                        <div class="decay-stat-row mb-2">
+                          <span class="label text-white-50">{{ 'Perte estimée' | translate }}</span>
+                          <span class="value text-danger fw-bold"
+                            [title]="-((stats?.currentFame ?? 0) * (currentPlayerTitle.decay ?? 0)) / 100">-{{
+                            ((stats?.currentFame ?? 0) *
+                          (currentPlayerTitle.decay ?? 0)) / 100 | formatNumber }}</span>
+                        </div>
+                        <div class="decay-stat-row big-stat">
+                          <span class="label text-white-50">{{ 'Points de gloire' | translate }}</span>
+                          <span class="value text-white"
+                            [title]="(stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0)) / 100">
+                            {{ ((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100 | formatNumber }}
+                          </span>
+                        </div>
                     <div class="alert-mini mt-3" [ngClass]="{
                         'alert-safe': (((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) >= (currentPlayerTitle.threshold ?? 0),
                         'alert-risk': (((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) < (currentPlayerTitle.threshold ?? 0)
                       }">
-                      <span
-                        *ngIf="(((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) >= (currentPlayerTitle.threshold ?? 0)">
-                        <i class="fas fa-check-circle me-2"></i>
-                        {{ 'Titre sécurisé' | translate }}
-                      </span>
-                      <span
-                        *ngIf="(((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) < (currentPlayerTitle.threshold ?? 0)">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        {{ 'Attention : Risque de rétrogradation' | translate }}
-                      </span>
+                          @if ((((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) >= (currentPlayerTitle.threshold ?? 0)) {
+                            <span
+                              >
+                              <i class="fas fa-check-circle me-2"></i>
+                              {{ 'Titre sécurisé' | translate }}
+                            </span>
+                          }
+                          @if ((((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) < (currentPlayerTitle.threshold ?? 0)) {
+                            <span
+                              >
+                              <i class="fas fa-exclamation-triangle me-2"></i>
+                              {{ 'Attention : Risque de rétrogradation' | translate }}
+                            </span>
+                          }
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
+                <div class="section-header mb-3">
+                  <h3 class="h5 text-white fw-bold"><span class="text-gold">★</span> {{ 'Titres de gloire' | translate }}
+                </h3>
               </div>
-            </div>
-
-            <div class="section-header mb-3">
-              <h3 class="h5 text-white fw-bold"><span class="text-gold">★</span> {{ 'Titres de gloire' | translate }}
-              </h3>
-            </div>
-
-            <div class="row g-3 mb-5">
-              <div *ngFor="let fameTitle of fameTitlesTopX" class="col-lg-3 col-sm-6 col-12">
-                <div class="prestige-card"
-                  [class.active]="(stats?.playerCurrentFameRank ?? 0) <= (fameTitle.topX ?? -1)">
-                  <div class="prestige-rank">#{{ fameTitle.topX }}</div>
-                  <div class="prestige-name">{{ currentI18nTitleKey + fameTitle.titleID | translate }}</div>
-                  <div class="prestige-req">{{ fameTitle.threshold ?? -1 | formatNumber }} pts</div>
-                  <div class="glow-effect"></div>
-                </div>
+              <div class="row g-3 mb-5">
+                @for (fameTitle of fameTitlesTopX; track fameTitle) {
+                  <div class="col-lg-3 col-sm-6 col-12">
+                    <div class="prestige-card"
+                      [class.active]="(stats?.playerCurrentFameRank ?? 0) <= (fameTitle.topX ?? -1)">
+                      <div class="prestige-rank">#{{ fameTitle.topX }}</div>
+                      <div class="prestige-name">{{ currentI18nTitleKey + fameTitle.titleID | translate }}</div>
+                      <div class="prestige-req">{{ fameTitle.threshold ?? -1 | formatNumber }} pts</div>
+                      <div class="glow-effect"></div>
+                    </div>
+                  </div>
+                }
               </div>
-            </div>
-
-            <div class="fame-ladder">
-              <div *ngFor="let fameTitle of fameTitles" class="ladder-item" [ngClass]="{
+              <div class="fame-ladder">
+                @for (fameTitle of fameTitles; track fameTitle) {
+<div class="ladder-item" [ngClass]="{
                     'status-secured': (((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) >= (fameTitle.threshold ?? 0),
                     'status-danger': (stats?.currentFame ?? 0) >= (fameTitle.threshold ?? 0) && (((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) < (fameTitle.threshold ?? 0),
                     'status-locked': (stats?.currentFame ?? 0) < (fameTitle.threshold ?? -1)
                   }">
-                <div class="status-strip"></div>
-
-                <div class="ladder-content">
-                  <div class="ladder-info">
-                    <span class="ladder-threshold">{{ (fameTitle?.threshold ?? -1) | formatNumber }}</span>
-                    <span class="ladder-name">{{ currentI18nTitleKey + fameTitle.titleID | translate }}</span>
+                    <div class="status-strip"></div>
+                    <div class="ladder-content">
+                      <div class="ladder-info">
+                        <span class="ladder-threshold">{{ (fameTitle?.threshold ?? -1) | formatNumber }}</span>
+                        <span class="ladder-name">{{ currentI18nTitleKey + fameTitle.titleID | translate }}</span>
+                      </div>
+                      <div class="ladder-state-icon">
+                        @if ((stats?.currentFame ?? 0) < (fameTitle.threshold ?? -1)) {
+                          <span class="icon-lock">
+                            <i class="fas fa-lock"></i>
+                          </span>
+                        }
+                        @if ((stats?.currentFame ?? 0) >= (fameTitle.threshold ?? 0)) {
+                          @if ((((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) >= (fameTitle.threshold ?? 0)) {
+                            <span class="icon-check"
+                              >
+                              <i class="fas fa-check-circle"></i>
+                            </span>
+                          }
+                          @if ((((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) < (fameTitle.threshold ?? 0)) {
+                            <span class="icon-warning"
+                              >
+                              <i class="fas fa-exclamation-triangle"></i>
+                            </span>
+                          }
+                        }
+                      </div>
+                    </div>
                   </div>
-
-                  <div class="ladder-state-icon">
-                    <ng-container *ngIf="(stats?.currentFame ?? 0) < (fameTitle.threshold ?? -1)">
-                      <span class="icon-lock">
-                        <i class="fas fa-lock"></i>
-                      </span>
-                    </ng-container>
-
-                    <ng-container *ngIf="(stats?.currentFame ?? 0) >= (fameTitle.threshold ?? 0)">
-                      <span class="icon-check"
-                        *ngIf="(((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) >= (fameTitle.threshold ?? 0)">
-                        <i class="fas fa-check-circle"></i>
-                      </span>
-                      <span class="icon-warning"
-                        *ngIf="(((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) < (fameTitle.threshold ?? 0)">
-                        <i class="fas fa-exclamation-triangle"></i>
-                      </span>
-                    </ng-container>
-                  </div>
-                </div>
+                }
               </div>
             </div>
           </div>
-        </div>
-
-        <div class="tab-content" *ngIf="currentTab === 'events'">
-          <div class="container-fluid row mt-3 row-gap-3">
-            <div *ngFor="let event of outerEvents" class="col-12 col-lg-6">
-              <app-event-card [event]="event" [options]="{ displayMode: 'ranking' }"
-                (click)="navigateToEvent(event)"></app-event-card>
+        }
+        @if (currentTab === 'events') {
+          <div class="tab-content">
+            <div class="container-fluid row mt-3 row-gap-3">
+              @for (event of outerEvents; track event) {
+                <div class="col-12 col-lg-6">
+                  <app-event-card [event]="event" [options]="{ displayMode: 'ranking' }"
+                  (click)="navigateToEvent(event)"></app-event-card>
+                </div>
+              }
             </div>
           </div>
-        </div>
+        }
       </div>
-    </div>
-  </ng-container>
+    }
+  </div>
+}
 </div>
 
 
@@ -433,7 +534,7 @@
       <div class="modal-header">
         <h5 class="modal-title" id="playerModalLabel" translate>Historique des changements de pseudonymes</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"
-          [attr.aria-label]="'Fermer' | translate"></button>
+        [attr.aria-label]="'Fermer' | translate"></button>
       </div>
       <div class="modal-body">
         <div class="table-responsive">
@@ -451,11 +552,13 @@
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let player of playerUpdates">
-                <td>{{ player.date ? ((player.date | date: 'dd/MM/yyyy HH') + 'h') : ('Pseudonyme initial' | translate)
+              @for (player of playerUpdates; track player) {
+                <tr>
+                  <td>{{ player.date ? ((player.date | date: 'dd/MM/yyyy HH') + 'h') : ('Pseudonyme initial' | translate)
                   }}</td>
-                <td>{{ player.player }}</td>
-              </tr>
+                  <td>{{ player.player }}</td>
+                </tr>
+              }
             </tbody>
           </table>
         </div>
@@ -470,7 +573,7 @@
       <div class="modal-header">
         <h5 class="modal-title" id="allianceModalLabel" translate>Historique des changements d'alliances</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"
-          [attr.aria-label]="'Fermer' | translate"></button>
+        [attr.aria-label]="'Fermer' | translate"></button>
       </div>
       <div class="modal-body">
         <ng-container *ngTemplateOutlet="allianceHistoryContent"></ng-container>
@@ -481,39 +584,47 @@
 
 <ng-template #allianceHistoryContentTimeline>
   <div class="ggetracker-hist-flow compact">
-    <div class="ggetracker-hist-event" *ngFor="let alliance of allianceUpdates" [ngClass]="{
+    @for (alliance of allianceUpdates; track alliance) {
+<div class="ggetracker-hist-event" [ngClass]="{
       'is-empty': !alliance.alliance,
       'is-rename': alliance.original_new_alliance_name
       }">
-      <div class="ggetracker-hist-type">
-        <i *ngIf="!alliance.alliance" class="fas fa-sign-out-alt"></i>
-        <i *ngIf="alliance.alliance" class="fas fa-sign-in-alt"></i>
+        <div class="ggetracker-hist-type">
+          @if (!alliance.alliance) {
+            <i class="fas fa-sign-out-alt"></i>
+          }
+          @if (alliance.alliance) {
+            <i class="fas fa-sign-in-alt"></i>
+          }
+        </div>
+        <div class="ggetracker-hist-block">
+          <div class="ggetracker-hist-header">
+            <div class="ggetracker-hist-date">
+              <i class="fas fa-calendar"></i>
+              {{ alliance.date ? (alliance.date | date: 'dd MMM yy, HH') + 'h' : ('Alliance initiale' | translate) }}
+            </div>
+            <div class="ggetracker-hist-duration-text">
+              {{ alliance.duration }}
+            </div>
+          </div>
+          <div class="ggetracker-hist-flowline">
+            @if (alliance.original_new_alliance_name) {
+              <span class="from">
+                {{ alliance.original_new_alliance_name }}
+              </span>
+            }
+            <span class="to" [ngClass]="{ 'original': alliance.original_new_alliance_name }">
+              {{ alliance.original_new_alliance_name ? (("Nouveau nom d'alliance" | translate: {'0': alliance.alliance})) : (alliance.alliance ?? ('Sans alliance' |
+              translate)) }}
+            </span>
+          </div>
+          <div class="ggetracker-hist-bar-wrapper">
+            <div class="ggetracker-hist-bar" [style.width.%]="(alliance.durationValue / maxDuration) * 100">
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="ggetracker-hist-block">
-        <div class="ggetracker-hist-header">
-          <div class="ggetracker-hist-date">
-            <i class="fas fa-calendar"></i>
-            {{ alliance.date ? (alliance.date | date: 'dd MMM yy, HH') + 'h' : ('Alliance initiale' | translate) }}
-          </div>
-          <div class="ggetracker-hist-duration-text">
-            {{ alliance.duration }}
-          </div>
-        </div>
-        <div class="ggetracker-hist-flowline">
-          <span *ngIf="alliance.original_new_alliance_name" class="from">
-            {{ alliance.original_new_alliance_name }}
-          </span>
-          <span class="to" [ngClass]="{ 'original': alliance.original_new_alliance_name }">
-            {{ alliance.original_new_alliance_name ? (("Nouveau nom d'alliance" | translate: {'0': alliance.alliance})) : (alliance.alliance ?? ('Sans alliance' |
-            translate)) }}
-          </span>
-        </div>
-        <div class="ggetracker-hist-bar-wrapper">
-          <div class="ggetracker-hist-bar" [style.width.%]="(alliance.durationValue / maxDuration) * 100">
-          </div>
-        </div>
-      </div>
-    </div>
+    }
   </div>
 </ng-template>
 
@@ -540,38 +651,43 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let alliance of allianceUpdates">
-          <td>{{ alliance.date ? ((alliance.date | date: 'dd/MM/yyyy HH') + 'h') : ('Alliance initiale' |
+        @for (alliance of allianceUpdates; track alliance) {
+          <tr>
+            <td>{{ alliance.date ? ((alliance.date | date: 'dd/MM/yyyy HH') + 'h') : ('Alliance initiale' |
             translate) }}</td>
-          <td [ngClass]="{'text-muted': !alliance.alliance}">
-            {{ alliance.original_new_alliance_name ?? (alliance.alliance ?? ('Sans alliance' | translate)) }}
-            <div *ngIf="alliance.original_new_alliance_name" class="badge-alliance-name-history px-2">
-              <span [title]="'Nouveau nom d\'alliance' | translate: {'0': alliance.alliance}">{{ alliance.alliance }}</span>
-            </div>
-          </td>
-          <td>{{ alliance.duration }}</td>
-          <td *ngIf="alliance.alliance; else noAlliance">
-            <div class="btn-group">
-              <a class="gge-btn search btn-sm" data-bs-dismiss="modal" [routerLink]="['/', 'players']"
-                [queryParams]="{'alliance': alliance.alliance}" [title]="'Voir les membres de l\'alliance' | translate">
-                <i class="fas fa-eye"></i>
-                <span class="d-none d-lg-inline">&nbsp;{{ 'Voir les membres' | translate }}</span>
-              </a>
-              <a class="gge-btn search btn-sm" data-bs-dismiss="modal" [routerLink]="['/', 'map', alliance.id]"
-                [title]="'Voir l\'alliance sur la carte' | translate">
-                <img src="/assets/map.png" width="16" class="img-fluid" [alt]="'Voir sur la carte' | translate">
-                <span class="d-none d-lg-inline">&nbsp;{{ 'Voir sur la carte' | translate }}</span>
-              </a>
-            </div>
-          </td>
-          <ng-template #noAlliance>
-            <td>
-              <span class="text-muted"><em>
+            <td [ngClass]="{'text-muted': !alliance.alliance}">
+              {{ alliance.original_new_alliance_name ?? (alliance.alliance ?? ('Sans alliance' | translate)) }}
+              @if (alliance.original_new_alliance_name) {
+                <div class="badge-alliance-name-history px-2">
+                  <span [title]="'Nouveau nom d\'alliance' | translate: {'0': alliance.alliance}">{{ alliance.alliance }}</span>
+                </div>
+              }
+            </td>
+            <td>{{ alliance.duration }}</td>
+            @if (alliance.alliance) {
+              <td>
+                <div class="btn-group">
+                  <a class="gge-btn search btn-sm" data-bs-dismiss="modal" [routerLink]="['/', 'players']"
+                    [queryParams]="{'alliance': alliance.alliance}" [title]="'Voir les membres de l\'alliance' | translate">
+                    <i class="fas fa-eye"></i>
+                    <span class="d-none d-lg-inline">&nbsp;{{ 'Voir les membres' | translate }}</span>
+                  </a>
+                  <a class="gge-btn search btn-sm" data-bs-dismiss="modal" [routerLink]="['/', 'map', alliance.id]"
+                    [title]="'Voir l\'alliance sur la carte' | translate">
+                    <img src="/assets/map.png" width="16" class="img-fluid" [alt]="'Voir sur la carte' | translate">
+                    <span class="d-none d-lg-inline">&nbsp;{{ 'Voir sur la carte' | translate }}</span>
+                  </a>
+                </div>
+              </td>
+            } @else {
+              <td>
+                <span class="text-muted"><em>
                   {{ 'Aucune action' | translate }}
                 </em></span>
-            </td>
-          </ng-template>
-        </tr>
+              </td>
+            }
+          </tr>
+        }
       </tbody>
     </table>
   </div>
@@ -585,7 +701,7 @@
           quantity.patriarch }})
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"
-          [attr.aria-label]="'Fermer' | translate"></button>
+        [attr.aria-label]="'Fermer' | translate"></button>
       </div>
       <div class="modal-body">
         <ng-container *ngTemplateOutlet="patriarchOverviewContent"></ng-container>
@@ -599,92 +715,95 @@
     <div class="col">
       <img src="/assets/castle1.png" [alt]="'Chateau principal' | translate" [title]="'Chateau principal' | translate">
       <br>
-      <span>{{ quantity.castle }}</span>
-    </div>
-    <div class="col">
-      <img src="/assets/castle4.png" [alt]="'Avant-poste' | translate" [title]="'Avant-poste' | translate">
-      <br>
-      <span>{{ quantity.outpost }}</span>
-    </div>
-    <div class="col">
-      <img src="/assets/monument.png" [alt]="'Monument' | translate" [title]="'Monument' | translate">
-      <br>
-      <span>{{ quantity.monument }}</span>
-    </div>
-    <div class="col">
-      <img src="/assets/labo.png" [alt]="'Laboratoire' | translate" [title]="'Laboratoire' | translate">
-      <br>
-      <span>{{ quantity.laboratory }}</span>
-    </div>
-    <div class="col">
-      <img src="/assets/tour-royale.png" [alt]="'Tour royale' | translate" [title]="'Tour royale' | translate">
-      <br>
-      <span>{{ quantity.royalTower }}</span>
-    </div>
-    <div class="col">
-      <img src="/assets/capitale.png" [alt]="'Capitale' | translate" [title]="'Capitale' | translate">
-      <br>
-      <span>{{ quantity.capital }}</span>
-    </div>
-    <div class="col">
-      <img src="/assets/cite-marchande.png" [alt]="'Cité marchande' | translate" [title]="'Cité marchande' | translate">
-      <br>
-      <span>{{ quantity.city }}</span>
-    </div>
-  </div>
-  <div class="table-wrapper rounded-3">
-    <div class="d-flex align-items-center mb-3 px-2 pt-2">
-      <i class="fa-solid fa-magnifying-glass me-2 text-muted"></i>
-      <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
-        placeholder="{{ 'Rechercher' | translate }}..." class="form-control search-input flex-grow-1" />
-    </div>
-    <div class="table-responsive">
-      <table class="modern-table w-100">
-        <thead>
-          <tr>
-            <th (click)="sortBy('type')">
-              {{ 'Type de patrimoine' | translate }}
-              <i *ngIf="sortColumn === 'type'" class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
-                [class.fa-arrow-down]="!sortAsc"></i>
-            </th>
-            <th (click)="sortBy('kingdom')">
-              {{ 'Royaume' | translate }}
-              <i *ngIf="sortColumn === 'kingdom'" class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
-                [class.fa-arrow-down]="!sortAsc"></i>
-            </th>
-            <th (click)="sortBy('position')">
-              {{ 'Position' | translate }}
-              <i *ngIf="sortColumn === 'position'" class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
-                [class.fa-arrow-down]="!sortAsc"></i>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let monument of paginatedMonuments">
-            <td>{{ monument.type }}</td>
-            <td class="kid-{{ monument.kingdom }}">{{ getRealmName(monument.kingdom) | translate}}</td>
-            <td>{{ monument.position }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+        <span>{{ quantity.castle }}</span>
+      </div>
+      <div class="col">
+        <img src="/assets/castle4.png" [alt]="'Avant-poste' | translate" [title]="'Avant-poste' | translate">
+        <br>
+          <span>{{ quantity.outpost }}</span>
+        </div>
+        <div class="col">
+          <img src="/assets/monument.png" [alt]="'Monument' | translate" [title]="'Monument' | translate">
+          <br>
+            <span>{{ quantity.monument }}</span>
+          </div>
+          <div class="col">
+            <img src="/assets/labo.png" [alt]="'Laboratoire' | translate" [title]="'Laboratoire' | translate">
+            <br>
+              <span>{{ quantity.laboratory }}</span>
+            </div>
+            <div class="col">
+              <img src="/assets/tour-royale.png" [alt]="'Tour royale' | translate" [title]="'Tour royale' | translate">
+              <br>
+                <span>{{ quantity.royalTower }}</span>
+              </div>
+              <div class="col">
+                <img src="/assets/capitale.png" [alt]="'Capitale' | translate" [title]="'Capitale' | translate">
+                <br>
+                  <span>{{ quantity.capital }}</span>
+                </div>
+                <div class="col">
+                  <img src="/assets/cite-marchande.png" [alt]="'Cité marchande' | translate" [title]="'Cité marchande' | translate">
+                  <br>
+                    <span>{{ quantity.city }}</span>
+                  </div>
+                </div>
+                <div class="table-wrapper rounded-3">
+                  <div class="d-flex align-items-center mb-3 px-2 pt-2">
+                    <i class="fa-solid fa-magnifying-glass me-2 text-muted"></i>
+                    <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
+                      placeholder="{{ 'Rechercher' | translate }}..." class="form-control search-input flex-grow-1" />
+                  </div>
+                  <div class="table-responsive">
+                    <table class="modern-table w-100">
+                      <thead>
+                        <tr>
+                          <th (click)="sortBy('type')">
+                            {{ 'Type de patrimoine' | translate }}
+                            @if (sortColumn === 'type') {
+                              <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
+                              [class.fa-arrow-down]="!sortAsc"></i>
+                            }
+                          </th>
+                          <th (click)="sortBy('kingdom')">
+                            {{ 'Royaume' | translate }}
+                            @if (sortColumn === 'kingdom') {
+                              <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
+                              [class.fa-arrow-down]="!sortAsc"></i>
+                            }
+                          </th>
+                          <th (click)="sortBy('position')">
+                            {{ 'Position' | translate }}
+                            @if (sortColumn === 'position') {
+                              <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
+                              [class.fa-arrow-down]="!sortAsc"></i>
+                            }
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (monument of paginatedMonuments; track monument) {
+                          <tr>
+                            <td>{{ monument.type }}</td>
+                            <td class="kid-{{ monument.kingdom }}">{{ getRealmName(monument.kingdom) | translate}}</td>
+                            <td>{{ monument.position }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
 
-    <div class="pagination-modern d-flex justify-content-center align-items-center mt-3 gap-2">
-      <button class="btn btn-light btn-sm rounded-circle shadow-sm" (click)="changePage(-1)"
-        [disabled]="currentPage <= 1">
-        <i class="fa-solid fa-chevron-left"></i>
-      </button>
-      <span class="page-indicator">{{ currentPage }} / {{ totalPages }}</span>
-      <button class="btn btn-light btn-sm rounded-circle shadow-sm" (click)="changePage(1)"
-        [disabled]="currentPage >= totalPages">
-        <i class="fa-solid fa-chevron-right"></i>
-      </button>
-    </div>
-  </div>
-</ng-template>
+                  <div class="pagination-modern d-flex justify-content-center align-items-center mt-3 gap-2">
+                    <button class="btn btn-light btn-sm rounded-circle shadow-sm" (click)="changePage(-1)"
+                      [disabled]="currentPage <= 1">
+                      <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <span class="page-indicator">{{ currentPage }} / {{ totalPages }}</span>
+                    <button class="btn btn-light btn-sm rounded-circle shadow-sm" (click)="changePage(1)"
+                      [disabled]="currentPage >= totalPages">
+                      <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                  </div>
+                </div>
+              </ng-template>
 
-<ng-template #spinnerRankignStats>
-  <div class="text-center spinner-container">
-    <i class="fas fa-spinner fa-spin"></i>
-  </div>
-</ng-template>

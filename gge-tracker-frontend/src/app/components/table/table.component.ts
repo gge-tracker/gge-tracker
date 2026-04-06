@@ -1,13 +1,14 @@
-import { NgClass, NgForOf, NgIf, NgTemplateOutlet } from '@angular/common';
+import { NgClass, NgTemplateOutlet } from '@angular/common';
 import { Component, input, output } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
 import { ChevronsDown, ChevronsUp, ChevronsUpDown, LucideAngularModule } from 'lucide-angular';
 
 @Component({
-    selector: 'app-table',
-    imports: [NgIf, NgForOf, NgTemplateOutlet, NgClass, TranslateModule, LucideAngularModule],
-    templateUrl: './table.component.html',
-    styleUrl: './table.component.css'
+  selector: 'app-table',
+  imports: [NgTemplateOutlet, NgClass, TranslateModule, LucideAngularModule],
+  standalone: true,
+  templateUrl: './table.component.html',
+  styleUrl: './table.component.css',
 })
 export class TableComponent {
   public sort = input.required<string>();

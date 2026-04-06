@@ -1,4 +1,4 @@
-import { DecimalPipe, NgClass, NgFor, NgIf } from '@angular/common';
+import { DecimalPipe, NgClass } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
@@ -44,10 +44,11 @@ interface GuessResult {
 }
 
 @Component({
-    selector: 'app-guess-daily-player',
-    imports: [NgIf, NgFor, NgClass, FormsModule, TranslatePipe, DecimalPipe, FormatNumberPipe, IconComponent],
-    templateUrl: './guess-daily-player.component.html',
-    styleUrls: ['./guess-daily-player.component.css']
+  selector: 'app-guess-daily-player',
+  imports: [NgClass, FormsModule, TranslatePipe, DecimalPipe, FormatNumberPipe, IconComponent],
+  standalone: true,
+  templateUrl: './guess-daily-player.component.html',
+  styleUrls: ['./guess-daily-player.component.css'],
 })
 export class GuessDailyPlayerComponent extends GenericComponent implements OnInit {
   public dailyTarget: DailyTarget | null = null;

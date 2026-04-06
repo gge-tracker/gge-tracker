@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, input, output, QueryList, ViewChildren } from '@angular/core';
 import {
   ApexAnnotations,
@@ -21,9 +20,10 @@ import {
 } from 'ng-apexcharts';
 
 @Component({
-    selector: 'app-chart-client',
-    imports: [CommonModule, NgApexchartsModule],
-    template: `
+  selector: 'app-chart-client',
+  standalone: true,
+  imports: [NgApexchartsModule],
+  template: `
     <apx-chart
       #componentRef
       [series]="series()"
@@ -45,7 +45,7 @@ import {
       [forecastDataPoints]="forecastDataPoints() || {}"
     >
     </apx-chart>
-  `
+  `,
 })
 export class ChartsClientComponent implements AfterViewInit {
   public series = input.required<ApexAxisChartSeries>();

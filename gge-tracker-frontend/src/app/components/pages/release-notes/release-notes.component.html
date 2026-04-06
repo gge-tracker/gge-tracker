@@ -15,22 +15,26 @@
       </div>. Thanks! :)
     </em>
     <div class="timeline mt-3">
-      <div class="release-card glass-card" *ngFor="let note of releaseNotes">
-        <div class="release-header d-flex justify-content-between align-items-center">
-          <div class="version d-flex align-items-center">
-            <span class="badge-type me-2" [ngClass]="note.type.toLowerCase()">{{ note.type }}</span>
-            <i class="fa-regular fa-bookmark me-1"></i> {{ note.version }}
+      @for (note of releaseNotes; track note) {
+        <div class="release-card glass-card">
+          <div class="release-header d-flex justify-content-between align-items-center">
+            <div class="version d-flex align-items-center">
+              <span class="badge-type me-2" [ngClass]="note.type.toLowerCase()">{{ note.type }}</span>
+              <i class="fa-regular fa-bookmark me-1"></i> {{ note.version }}
+            </div>
+            <div class="date">
+              <i class="fa-regular fa-calendar"></i> {{ note.date | date:'MM/dd' }}
+            </div>
           </div>
-          <div class="date">
-            <i class="fa-regular fa-calendar"></i> {{ note.date | date:'MM/dd' }}
-          </div>
+          <ul class="release-items mt-3">
+            @for (item of note.items; track item) {
+              <li>
+                <i class="fa-regular fa-circle-dot"></i> {{ item }}
+              </li>
+            }
+          </ul>
         </div>
-        <ul class="release-items mt-3">
-          <li *ngFor="let item of note.items">
-            <i class="fa-regular fa-circle-dot"></i> {{ item }}
-          </li>
-        </ul>
-      </div>
+      }
     </div>
   </div>
 </body>

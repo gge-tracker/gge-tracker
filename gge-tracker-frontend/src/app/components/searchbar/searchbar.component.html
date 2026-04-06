@@ -1,8 +1,10 @@
 
 <div [ngClass]="{'input-group': hasContent() }" class="modern-search-input-wrapper flex-nowrap">
-  <span class="input-group-text px-2" *ngIf="hasContent()">
-    <ng-content></ng-content>
-  </span>
+  @if (hasContent()) {
+    <span class="input-group-text px-2">
+      <ng-content></ng-content>
+    </span>
+  }
   <input
     #input
     [attr.list]="attrListInput()"

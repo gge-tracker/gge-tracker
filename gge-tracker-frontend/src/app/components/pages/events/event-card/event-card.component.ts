@@ -1,5 +1,5 @@
 /* eslint-disable unicorn/consistent-function-scoping */
-import { DatePipe, LowerCasePipe, NgClass, NgStyle, TitleCasePipe, NgIf } from '@angular/common';
+import { DatePipe, LowerCasePipe, NgClass, NgStyle, TitleCasePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
 import { CalendarCheck, LucideAngularModule, SquareUser, Trophy } from 'lucide-angular';
@@ -8,21 +8,21 @@ import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { OuterEventData } from '@ggetracker-interfaces/empire-ranking';
 
 @Component({
-    selector: 'app-event-card',
-    changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [
-        TranslatePipe,
-        NgStyle,
-        LucideAngularModule,
-        DatePipe,
-        LowerCasePipe,
-        FormatNumberPipe,
-        TitleCasePipe,
-        NgClass,
-        NgIf,
-    ],
-    templateUrl: './event-card.component.html',
-    styleUrls: ['./event-card.component.css']
+  standalone: true,
+  selector: 'app-event-card',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [
+    TranslatePipe,
+    NgStyle,
+    LucideAngularModule,
+    DatePipe,
+    LowerCasePipe,
+    FormatNumberPipe,
+    TitleCasePipe,
+    NgClass,
+  ],
+  templateUrl: './event-card.component.html',
+  styleUrls: ['./event-card.component.css'],
 })
 export class EventCardComponent<T extends EventList | OuterEventData> {
   public readonly CalendarCheck = CalendarCheck;

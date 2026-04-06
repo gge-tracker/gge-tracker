@@ -1,4 +1,4 @@
-import { NgFor, NgTemplateOutlet } from '@angular/common';
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
@@ -12,10 +12,11 @@ export interface Contributor {
 }
 
 @Component({
-    selector: 'app-about',
-    imports: [NgTemplateOutlet, NgFor, TranslatePipe],
-    templateUrl: './about.component.html',
-    styleUrl: './about.component.css'
+  selector: 'app-about',
+  imports: [NgTemplateOutlet, TranslatePipe],
+  templateUrl: './about.component.html',
+  standalone: true,
+  styleUrl: './about.component.css',
 })
 export class AboutComponent extends GenericComponent implements OnInit {
   public version = '';

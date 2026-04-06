@@ -1,4 +1,3 @@
-import { NgFor, NgIf } from '@angular/common';
 import { ChangeDetectorRef, Component, inject, input, OnChanges, OnInit, output, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SearchType } from '@ggetracker-interfaces/empire-ranking';
@@ -8,10 +7,11 @@ import { Download, Eraser, Filter, HardDrive, LucideAngularModule, Search } from
 import { FilterComponent } from '../filter/filter.component';
 
 @Component({
-    selector: 'app-search-form',
-    imports: [NgIf, FormsModule, TranslateModule, LucideAngularModule, NgFor, FilterComponent],
-    templateUrl: './search-form.component.html',
-    styleUrl: './search-form.component.css'
+  selector: 'app-search-form',
+  standalone: true,
+  imports: [FormsModule, TranslateModule, LucideAngularModule, FilterComponent],
+  templateUrl: './search-form.component.html',
+  styleUrl: './search-form.component.css',
 })
 export class SearchFormComponent implements OnChanges, OnInit {
   public searchType: SearchType = 'player';

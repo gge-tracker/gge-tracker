@@ -1,14 +1,14 @@
-import { NgIf } from '@angular/common';
 import { Component, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiPlayerStatsType } from '@ggetracker-interfaces/empire-ranking';
 import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
-    selector: 'app-stats-card-content',
-    imports: [NgIf, FormsModule, TranslateModule],
-    templateUrl: './stats-card-content.component.html',
-    styleUrl: './stats-card-content.component.css'
+  selector: 'app-stats-card-content',
+  standalone: true,
+  imports: [FormsModule, TranslateModule],
+  templateUrl: './stats-card-content.component.html',
+  styleUrl: './stats-card-content.component.css',
 })
 export class StatsCardContentComponent {
   public previousGraphOutput = output<ApiPlayerStatsType>();

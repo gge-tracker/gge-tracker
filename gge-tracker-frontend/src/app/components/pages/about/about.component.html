@@ -30,17 +30,19 @@
 </div>
 
 <ng-template #contributors>
-    <div class="container contrib-container">
-      <div class="row justify-content-left">
-        <div class="col-6 col-sm-4 col-md-3 col-lg-2 text-center mb-4" *ngFor="let contrib of orderedContribs">
+  <div class="container contrib-container">
+    <div class="row justify-content-left">
+      @for (contrib of orderedContribs; track contrib) {
+        <div class="col-6 col-sm-4 col-md-3 col-lg-2 text-center mb-4">
           <div class="contrib-avatar mx-auto mb-2">
             <span class="server-badge">{{ contrib.server }}</span>
             <span class="initials">{{ contrib.name.charAt(0).toUpperCase() }}</span>
           </div>
           <div class="fw-bold contrib-name">{{ contrib.name }}</div>
         </div>
-      </div>
+      }
     </div>
+  </div>
 </ng-template>
 
 <ng-template #apiLink let-message="message">

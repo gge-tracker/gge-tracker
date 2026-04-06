@@ -1,4 +1,4 @@
-import { DatePipe, NgClass, NgForOf, NgIf, NgStyle, NgTemplateOutlet } from '@angular/common';
+import { DatePipe, NgClass, NgStyle, NgTemplateOutlet } from '@angular/common';
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -48,26 +48,25 @@ import { CalendarCheck, LucideAngularModule, SquareUser } from 'lucide-angular';
 import { EventCardComponent } from '@ggetracker-pages/events/event-card/event-card.component';
 
 @Component({
-    selector: 'app-player-stats',
-    changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [
-        NgIf,
-        NgClass,
-        RouterLink,
-        PlayerStatsCardComponent,
-        NgForOf,
-        DatePipe,
-        TranslateModule,
-        FormatNumberPipe,
-        LucideAngularModule,
-        LevelPipe,
-        FormsModule,
-        NgTemplateOutlet,
-        NgStyle,
-        EventCardComponent,
-    ],
-    templateUrl: './player-stats.component.html',
-    styleUrl: './player-stats.component.css'
+  selector: 'app-player-stats',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [
+    NgClass,
+    RouterLink,
+    PlayerStatsCardComponent,
+    DatePipe,
+    TranslateModule,
+    FormatNumberPipe,
+    LucideAngularModule,
+    LevelPipe,
+    FormsModule,
+    NgTemplateOutlet,
+    NgStyle,
+    EventCardComponent,
+  ],
+  standalone: true,
+  templateUrl: './player-stats.component.html',
+  styleUrl: './player-stats.component.css',
 })
 export class PlayerStatsComponent extends GenericComponent implements OnInit, AfterViewInit {
   public charts: Record<string, ChartOptions> = {};
@@ -898,7 +897,6 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     // this.setGenericVariations(warRealms);
     const eventData = this.groupEventDataByTimeGaps(this.eventDataSegments['warRealms'], warRealms);
     const series = this.generateEventSeries(eventData);
-    // @ts-expect-error: Property 'hidden' does not exist on type 'SeriesOptionsType'
     series.forEach((serie, index) => (serie['hidden'] = index !== series.length - 1));
     const colors = ['#d2b8f2', '#c4a1f0', '#ae81e6', '#945adb', '#7d37d4'];
     this.initChartOption('warRealms', series, colors);
@@ -909,7 +907,6 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     // this.setGenericVariations(nomadPoints);
     const eventData = this.groupEventDataByTimeGaps(this.eventDataSegments['nomad'], nomadPoints);
     const series = this.generateEventSeries(eventData);
-    // @ts-expect-error: Property 'hidden' does not exist on type 'SeriesOptionsType'
     series.forEach((serie, index) => (serie['hidden'] = index !== series.length - 1));
     const colors = new Gradient();
     colors.setColorGradient('#ffcc00', '#ff0000');
@@ -1074,7 +1071,6 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     // this.setGenericVariations(berimondPoints);
     const eventData = this.groupEventDataByTimeGaps(this.eventDataSegments['berimondKingdom'], berimondPoints);
     const series = this.generateEventSeries(eventData);
-    // @ts-expect-error: Property 'hidden' does not exist on type 'SeriesOptionsType'
     series.forEach((serie, index) => (serie['hidden'] = index !== series.length - 1));
     const colors = new Gradient();
     colors.setColorGradient('#00aaff', '#00aaff');
@@ -1086,7 +1082,6 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     // this.setGenericVariations(berimondPoints);
     const eventData = this.groupEventDataByTimeGaps(this.eventDataSegments['berimondInvasion'], berimondPoints);
     const series = this.generateEventSeries(eventData);
-    // @ts-expect-error: Property 'hidden' does not exist on type 'SeriesOptionsType'
     series.forEach((serie, index) => (serie['hidden'] = index !== series.length - 1));
     const colors = new Gradient();
     colors.setColorGradient('#00aaff', '#00aaff');
@@ -1098,7 +1093,6 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     // this.setGenericVariations(samuraiPoints);
     const eventData = this.groupEventDataByTimeGaps(this.eventDataSegments['samurai'], samuraiPoints);
     const series = this.generateEventSeries(eventData);
-    // @ts-expect-error: Property 'hidden' does not exist on type 'SeriesOptionsType'
     series.forEach((serie, index) => (serie['hidden'] = index !== series.length - 1));
     const colors = new Gradient();
     colors.setColorGradient('#9ED334', '#58771D');
@@ -1110,7 +1104,6 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     // this.setGenericVariations(bloodcrowPoints);
     const eventData = this.groupEventDataByTimeGaps(this.eventDataSegments['bloodcrow'], bloodcrowPoints);
     const series = this.generateEventSeries(eventData);
-    // @ts-expect-error: Property 'hidden' does not exist on type 'SeriesOptionsType'
     series.forEach((serie, index) => (serie['hidden'] = index !== series.length - 1));
     const colors = new Gradient();
     colors.setColorGradient('#8e5da3', '#8e5da3');

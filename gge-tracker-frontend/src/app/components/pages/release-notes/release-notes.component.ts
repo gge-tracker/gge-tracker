@@ -8,10 +8,11 @@ export enum EnumTypeReleaseNote {
 }
 
 @Component({
-    selector: 'app-release-notes',
-    imports: [CommonModule],
-    templateUrl: './release-notes.component.html',
-    styleUrl: './release-notes.component.css'
+  selector: 'app-release-notes',
+  imports: [CommonModule],
+  standalone: true,
+  templateUrl: './release-notes.component.html',
+  styleUrl: './release-notes.component.css',
 })
 export class ReleaseNotesComponent {
   public readonly releaseNotes = [

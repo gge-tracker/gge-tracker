@@ -1,4 +1,4 @@
-import { NgClass, NgFor, NgIf } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import package_ from '../../../../package.json';
@@ -7,10 +7,11 @@ import { ApiRestService } from '@ggetracker-services/api-rest.service';
 import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
-    selector: 'app-sidebar',
-    imports: [NgFor, RouterLink, NgIf, TranslateModule, NgClass],
-    templateUrl: './sidebar.component.html',
-    styleUrls: ['./sidebar.component.css']
+  selector: 'app-sidebar',
+  imports: [RouterLink, TranslateModule, NgClass],
+  standalone: true,
+  templateUrl: './sidebar.component.html',
+  styleUrls: ['./sidebar.component.css'],
 })
 export class SidebarComponent {
   public sidebarService = inject(SidebarService);

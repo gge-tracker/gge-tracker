@@ -1,4 +1,4 @@
-import { NgClass, NgFor, NgIf } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
@@ -14,22 +14,21 @@ import { TranslateModule } from '@ngx-translate/core';
 import { LucideAngularModule, MessageCircleQuestion, Search, X } from 'lucide-angular';
 
 @Component({
-    selector: 'app-tracker',
-    imports: [
-        NgClass,
-        TableComponent,
-        LucideAngularModule,
-        SearchbarComponent,
-        SelectComponent,
-        NgIf,
-        NgFor,
-        TranslateModule,
-        CooldownPipe,
-        FormsModule,
-        NgSelectModule,
-    ],
-    templateUrl: './tracker.component.html',
-    styleUrl: './tracker.component.css'
+  selector: 'app-tracker',
+  imports: [
+    NgClass,
+    TableComponent,
+    LucideAngularModule,
+    SearchbarComponent,
+    SelectComponent,
+    TranslateModule,
+    CooldownPipe,
+    FormsModule,
+    NgSelectModule,
+  ],
+  standalone: true,
+  templateUrl: './tracker.component.html',
+  styleUrl: './tracker.component.css',
 })
 export class TrackerComponent extends GenericComponent {
   public realms: KingdomRealm[] = [

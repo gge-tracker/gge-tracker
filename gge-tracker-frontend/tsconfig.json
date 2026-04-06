@@ -6,13 +6,27 @@
     "strict": true,
     "baseUrl": "./src",
     "paths": {
-      "@ggetracker-pipes/*": [ "./app/pipes/*" ],
-      "@ggetracker-resolvers/*": [ "./app/resolvers/*" ],
-      "@ggetracker-services/*": [ "./app/services/*" ],
-      "@ggetracker-interfaces/*": [ "./app/interfaces/*" ],
-      "@ggetracker-modules/*": [ "./app/modules/*" ],
-      "@ggetracker-pages/*": [ "./app/components/pages/*" ],
-      "@ggetracker-components/*": [ "./app/components/*" ],
+      "@ggetracker-pipes/*": [
+        "./app/pipes/*"
+      ],
+      "@ggetracker-resolvers/*": [
+        "./app/resolvers/*"
+      ],
+      "@ggetracker-services/*": [
+        "./app/services/*"
+      ],
+      "@ggetracker-interfaces/*": [
+        "./app/interfaces/*"
+      ],
+      "@ggetracker-modules/*": [
+        "./app/modules/*"
+      ],
+      "@ggetracker-pages/*": [
+        "./app/components/pages/*"
+      ],
+      "@ggetracker-components/*": [
+        "./app/components/*"
+      ]
     },
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": true,
@@ -23,7 +37,7 @@
     "sourceMap": true,
     "declaration": false,
     "experimentalDecorators": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "importHelpers": true,
     "target": "es2022",

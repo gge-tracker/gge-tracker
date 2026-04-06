@@ -1,4 +1,3 @@
-import { NgFor } from '@angular/common';
 import { Component, OnInit, OnDestroy, ElementRef, ViewChild } from '@angular/core';
 
 interface Troop {
@@ -14,27 +13,29 @@ interface Troop {
 }
 
 @Component({
-    selector: 'app-troops-animation',
-    imports: [NgFor],
-    template: `
+  selector: 'app-troops-animation',
+  imports: [],
+  standalone: true,
+  template: `
     <div #container class="troops-container position-relative overflow-hidden">
-      <img
-        *ngFor="let troop of troops"
-        src="assets/troop.png"
-        [style.width.px]="troop.size"
-        [style.height.px]="troop.size"
-        [style.position]="'absolute'"
-        [style.left.px]="troop.x"
-        [style.top.px]="troop.y"
-        [style.transform]="getFlip(troop.dx)"
-        [style.filter]="teamFilters[troop.team]"
-        alt="troop"
-        draggable="false"
-      />
+      @for (troop of troops; track troop) {
+        <img
+          src="assets/troop.png"
+          [style.width.px]="troop.size"
+          [style.height.px]="troop.size"
+          [style.position]="'absolute'"
+          [style.left.px]="troop.x"
+          [style.top.px]="troop.y"
+          [style.transform]="getFlip(troop.dx)"
+          [style.filter]="teamFilters[troop.team]"
+          alt="troop"
+          draggable="false"
+        />
+      }
     </div>
   `,
-    styles: [
-        `
+  styles: [
+    `
       .troops-container {
         width: 100%;
         height: 100%;
@@ -42,7 +43,7 @@ interface Troop {
         user-select: none;
       }
     `,
-    ]
+  ],
 })
 export class TroopsAnimationComponent implements OnInit, OnDestroy {
   @ViewChild('container', { static: true })

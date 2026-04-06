@@ -1,4 +1,4 @@
-import { DecimalPipe, NgClass, NgFor, NgIf, NgStyle } from '@angular/common';
+import { DecimalPipe, NgClass, NgStyle } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -37,28 +37,27 @@ import { Castle, LucideAngularModule } from 'lucide-angular';
 import { BuildingImgComponent } from './app-building-img/building-img.component';
 
 @Component({
-    selector: 'app-view-castle',
-    imports: [
-        NgIf,
-        SearchFormComponent,
-        TranslatePipe,
-        NgFor,
-        NgClass,
-        DecimalPipe,
-        LucideAngularModule,
-        LoadingComponent,
-        FormsModule,
-        BuildingImgComponent,
-        SwitchComponent,
-        NgStyle,
-        SelectComponent,
-        FilterComponent,
-        SearchbarComponent,
-        SearchbarComponent,
-    ],
-    changeDetection: ChangeDetectionStrategy.OnPush,
-    templateUrl: './view-castle.component.html',
-    styleUrl: './view-castle.component.css'
+  selector: 'app-view-castle',
+  imports: [
+    SearchFormComponent,
+    TranslatePipe,
+    NgClass,
+    DecimalPipe,
+    LucideAngularModule,
+    LoadingComponent,
+    FormsModule,
+    BuildingImgComponent,
+    SwitchComponent,
+    NgStyle,
+    SelectComponent,
+    FilterComponent,
+    SearchbarComponent,
+    SearchbarComponent,
+  ],
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  templateUrl: './view-castle.component.html',
+  styleUrl: './view-castle.component.css',
 })
 export class ViewCastleComponent extends GenericComponent implements OnInit {
   /**

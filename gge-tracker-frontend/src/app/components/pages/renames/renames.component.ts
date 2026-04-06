@@ -1,4 +1,4 @@
-import { DatePipe, NgClass, NgFor, NgIf } from '@angular/common';
+import { DatePipe, NgClass } from '@angular/common';
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -19,11 +19,12 @@ import { RenamesSwitcherComponent } from './renames-switcher/renames-switcher.co
 import { CURRENT } from './rename.token';
 
 @Component({
-    selector: 'app-renames',
-    changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [NgClass, SearchFormComponent, TableComponent, NgIf, FormatNumberPipe, DatePipe, NgFor, TranslateModule],
-    templateUrl: './renames.component.html',
-    styleUrl: './renames.component.css'
+  selector: 'app-renames',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [NgClass, SearchFormComponent, TableComponent, FormatNumberPipe, DatePipe, TranslateModule],
+  standalone: true,
+  templateUrl: './renames.component.html',
+  styleUrl: './renames.component.css',
 })
 export class RenamesComponent extends GenericComponent implements AfterViewInit, OnDestroy {
   public search = '';

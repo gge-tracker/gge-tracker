@@ -5,10 +5,11 @@ import { FormsModule } from '@angular/forms';
  * A standalone switch component for toggling values
  */
 @Component({
-    selector: 'app-switch',
-    imports: [FormsModule],
-    templateUrl: './switch.component.html',
-    styleUrls: ['./switch.component.css']
+  selector: 'app-switch',
+  imports: [FormsModule],
+  standalone: true,
+  templateUrl: './switch.component.html',
+  styleUrls: ['./switch.component.css'],
 })
 export class SwitchComponent implements OnInit {
   public id = input.required<string>();

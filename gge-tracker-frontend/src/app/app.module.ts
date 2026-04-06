@@ -6,7 +6,6 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { RouterModule } from '@angular/router';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
-import { TranslateHttpLoader } from '@ngx-translate/http-loader';
 import { LUCIDE_ICONS, LucideAngularModule, LucideIconProvider, Spline } from 'lucide-angular';
 
 import { AppComponent } from './app.component';
@@ -28,6 +27,7 @@ import localePl from '@angular/common/locales/pl';
 import localeRo from '@angular/common/locales/ro';
 import localeDe from '@angular/common/locales/de';
 import { ServiceWorkerModule } from '@angular/service-worker';
+import { Observable } from 'rxjs/internal/Observable';
 
 registerLocaleData(localeFr, 'fr-FR');
 registerLocaleData(localeEnGb, 'en-GB');
@@ -36,12 +36,29 @@ registerLocaleData(localePl, 'pl-PL');
 registerLocaleData(localeRo, 'ro-RO');
 registerLocaleData(localeDe, 'de-DE');
 
+export class CustomHttpLoader implements TranslateLoader {
+  constructor(private http: HttpClient) {}
+
+  public getTranslation(lang: string): Observable<any> {
+    if (localStorage.getItem('lang_dev')) {
+      const localData = localStorage.getItem(`lang_${lang}`);
+      if (localData) {
+        return new Observable((observer) => {
+          observer.next(JSON.parse(localData));
+          observer.complete();
+        });
+      }
+    }
+    return this.http.get(`${environment.i18nBaseUrl}${lang}.json`);
+  }
+}
+
 export function DynamicTranslateLoaderFactory(http: HttpClient): TranslateLoader {
   const isBrowser = globalThis.window !== undefined;
   if (isBrowser && localStorage.getItem('lang_dev')) {
     return new LocalStorageTranslateLoader();
   } else {
-    return new TranslateHttpLoader(http, environment.i18nBaseUrl, '.json');
+    return new CustomHttpLoader(http);
   }
 }
 

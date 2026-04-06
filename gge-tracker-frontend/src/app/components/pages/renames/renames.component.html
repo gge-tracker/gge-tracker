@@ -24,45 +24,48 @@
           (navigateToPage)="navigateTo($event)"
           (previousPage)="previousPage()"
           (nextPage)="nextPage()">
-          <tr *ngIf="renames.length === 0 && !isInLoading">
-            <td colspan="10" class="no-data">{{ 'Aucun résultat' | translate }}</td>
-          </tr>
-          <tr *ngFor="let movement of renames">
-            <!-- Rank -->
-            <td class="col-rank">
-              <span class="mobile-only">#</span>
-              {{ movement.rank }}
-            </td>
-
-            <!-- Old player name -->
-            <td class="col-name old-value">
-              <span class="mobile-only">{{ 'Ancien nom' | translate }}:&nbsp;</span>
-              <span class="name">{{ movement.oldPlayerName }}</span>
-            </td>
-
-            <!-- New player name -->
-            <td class="col-name new-value">
-              <span class="mobile-only">{{ 'Nouveau nom' | translate }}:&nbsp;</span>
-              <span class="name">{{ movement.updatedPlayerName }}</span>
-            </td>
-
-            <!-- Might -->
-            <td *ngIf="currentViewType === 'players'">
-              <span class="mobile-only">{{ 'Puissance' | translate }}:&nbsp;</span>
-              {{ (movement.might ? movement.might : 0) | formatNumber }}
-            </td>
-
-            <!-- Alliance -->
-            <td *ngIf="currentViewType === 'players'">
-              <span class="mobile-only">{{ 'Alliance' | translate }}:&nbsp;</span>
-              {{ movement.alliance ?? '-' }}
-            </td>
-
-            <!-- Movement date-->
-            <td class="timeline-date">
-              {{ movement.date | date: ('Date_1' | translate)}}
-            </td>
-          </tr>
+          @if (renames.length === 0 && !isInLoading) {
+            <tr>
+              <td colspan="10" class="no-data">{{ 'Aucun résultat' | translate }}</td>
+            </tr>
+          }
+          @for (movement of renames; track movement) {
+            <tr>
+              <!-- Rank -->
+              <td class="col-rank">
+                <span class="mobile-only">#</span>
+                {{ movement.rank }}
+              </td>
+              <!-- Old player name -->
+              <td class="col-name old-value">
+                <span class="mobile-only">{{ 'Ancien nom' | translate }}:&nbsp;</span>
+                <span class="name">{{ movement.oldPlayerName }}</span>
+              </td>
+              <!-- New player name -->
+              <td class="col-name new-value">
+                <span class="mobile-only">{{ 'Nouveau nom' | translate }}:&nbsp;</span>
+                <span class="name">{{ movement.updatedPlayerName }}</span>
+              </td>
+              <!-- Might -->
+              @if (currentViewType === 'players') {
+                <td>
+                  <span class="mobile-only">{{ 'Puissance' | translate }}:&nbsp;</span>
+                  {{ (movement.might ? movement.might : 0) | formatNumber }}
+                </td>
+              }
+              <!-- Alliance -->
+              @if (currentViewType === 'players') {
+                <td>
+                  <span class="mobile-only">{{ 'Alliance' | translate }}:&nbsp;</span>
+                  {{ movement.alliance ?? '-' }}
+                </td>
+              }
+              <!-- Movement date-->
+              <td class="timeline-date">
+                {{ movement.date | date: ('Date_1' | translate)}}
+              </td>
+            </tr>
+          }
         </app-table>
       </div>
     </div>

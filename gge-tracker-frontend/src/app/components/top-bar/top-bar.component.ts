@@ -4,7 +4,6 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
-  ComponentFactoryResolver,
   ElementRef,
   inject,
   Injector,
@@ -14,7 +13,7 @@ import {
 import { ServerService } from '@ggetracker-services/server.service';
 import { SidebarService } from '@ggetracker-services/sidebar.service';
 import { IconComponent } from '@ggetracker-components/icon/icon.component';
-import { NgFor, NgIf } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import { UtilitiesService } from '@ggetracker-services/utilities.service';
@@ -25,11 +24,12 @@ import { TopBarService } from '@ggetracker-services/topbar.service';
 import { OverlayModule } from '@angular/cdk/overlay';
 
 @Component({
-    selector: 'app-top-bar',
-    changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [IconComponent, NgFor, NgIf, FormsModule, TranslateModule, RouterModule, OverlayModule],
-    templateUrl: './top-bar.component.html',
-    styleUrls: ['./top-bar.component.css']
+  selector: 'app-top-bar',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  standalone: true,
+  imports: [IconComponent, FormsModule, TranslateModule, RouterModule, OverlayModule],
+  templateUrl: './top-bar.component.html',
+  styleUrls: ['./top-bar.component.css'],
 })
 export class TopBarComponent implements AfterViewInit {
   @ViewChild('topbarHost', { read: ElementRef }) public host!: ElementRef;
@@ -44,7 +44,6 @@ export class TopBarComponent implements AfterViewInit {
   private topBarService = inject(TopBarService);
   private injector = inject(Injector);
   private appRef = inject(ApplicationRef);
-  private componentFactoryResolver = inject(ComponentFactoryResolver);
   private listener?: (event: PointerEvent) => void;
   private cdr = inject(ChangeDetectorRef);
 
@@ -55,12 +54,7 @@ export class TopBarComponent implements AfterViewInit {
   }
 
   public ngAfterViewInit(): void {
-    const outlet = new DomPortalOutlet(
-      this.host.nativeElement,
-      this.componentFactoryResolver,
-      this.appRef,
-      this.injector,
-    );
+    const outlet = new DomPortalOutlet(this.host.nativeElement, this.appRef, this.injector);
     this.topBarService.registerOutlet(outlet);
     this.listener = this.handlePointerDown.bind(this);
     document.addEventListener('pointerdown', this.listener, { capture: true });

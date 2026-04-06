@@ -36,107 +36,103 @@
           (navigateToPage)="navigateTo($event)"
           (previousPage)="previousPage()"
           (nextPage)="nextPage()">
-          <tr *ngIf="alliances.length === 0  && !isInLoading">
-            <td colspan="10" class="no-data">{{ 'Aucune alliance trouvée' | translate }}</td>
-          </tr>
-          <tr *ngFor="let alliance of alliances">
-
-            <!-- Rank -->
-            <td class="col-rank">
-              <span class="mobile-only">#</span>
-              {{ alliance.rank }}
-            </td>
-
-            <!-- Name -->
-            <td class="col-name">
-              <span class="name">{{ alliance.name }}</span>
-            </td>
-
-            <!-- Player Count -->
-            <td class="col-metric px-2" [title]="alliance.playerCount | formatNumber:'visual'">
-              <div class="metric">
-                <div class="metric-header">
-                  <span class="metric-current"><span class="mobile-only">{{ 'Nombre de joueurs' | translate }}:&nbsp;</span>{{ alliance.playerCount | formatNumber }}</span>
-                  <span class="metric-max">65</span>
-                </div>
-                <div class="metric-bar-bg">
-                  <div class="metric-bar bar-purple" [style.width.%]="(alliance.playerCount / 65) * 100"></div>
-                </div>
-              </div>
-            </td>
-
-            <!-- Might -->
-            <td class="col-metric px-2" [title]="alliance.mightAllTime | formatNumber:'visual'">
-              <div class="metric">
-                <div class="metric-header">
-                  <span class="metric-current"><span class="mobile-only">{{ 'Puissance' | translate }}:&nbsp;</span>{{ alliance.mightCurrent | formatNumber }}</span>
-                  <span class="metric-max">{{ alliance.mightAllTime | formatNumber }}</span>
-                </div>
-                <div class="metric-bar-bg">
-                  <div class="metric-bar bar-yellow"
-                    [style.width.%]="(alliance.mightCurrent / alliance.mightAllTime) * 100"></div>
-                </div>
-              </div>
-            </td>
-
-            <!-- Loot -->
-            <td class="col-metric px-2" [title]="alliance.lootAllTime | formatNumber:'visual'">
-              <div class="metric">
-                <div class="metric-header">
-                  <span class="metric-current"><span class="mobile-only">{{ 'Pillage hebdomadaire' | translate }}:&nbsp;</span>{{ alliance.lootCurrent | formatNumber }}</span>
-                  <span class="metric-max">{{ alliance.lootAllTime | formatNumber }}</span>
-                </div>
-                <div class="metric-bar-bg">
-                  <div class="metric-bar bar-gray" [style.width.%]="(alliance.lootCurrent / alliance.lootAllTime) * 100">
+          @if (alliances.length === 0  && !isInLoading) {
+            <tr>
+              <td colspan="10" class="no-data">{{ 'Aucune alliance trouvée' | translate }}</td>
+            </tr>
+          }
+          @for (alliance of alliances; track alliance) {
+            <tr>
+              <!-- Rank -->
+              <td class="col-rank">
+                <span class="mobile-only">#</span>
+                {{ alliance.rank }}
+              </td>
+              <!-- Name -->
+              <td class="col-name">
+                <span class="name">{{ alliance.name }}</span>
+              </td>
+              <!-- Player Count -->
+              <td class="col-metric px-2" [title]="alliance.playerCount | formatNumber:'visual'">
+                <div class="metric">
+                  <div class="metric-header">
+                    <span class="metric-current"><span class="mobile-only">{{ 'Nombre de joueurs' | translate }}:&nbsp;</span>{{ alliance.playerCount | formatNumber }}</span>
+                    <span class="metric-max">65</span>
+                  </div>
+                  <div class="metric-bar-bg">
+                    <div class="metric-bar bar-purple" [style.width.%]="(alliance.playerCount / 65) * 100"></div>
                   </div>
                 </div>
-              </div>
-            </td>
-
-            <!-- Fame -->
-            <td class="col-metric px-2" [title]="alliance.highestFame | formatNumber:'visual'">
-              <div class="metric">
-                <div class="metric-header">
-                  <span class="metric-current"><span class="mobile-only">{{ 'Points de gloire' | translate }}:&nbsp;</span>{{ alliance.currentFame | formatNumber }}</span>
-                  <span class="metric-max">{{ alliance.highestFame | formatNumber }}</span>
+              </td>
+              <!-- Might -->
+              <td class="col-metric px-2" [title]="alliance.mightAllTime | formatNumber:'visual'">
+                <div class="metric">
+                  <div class="metric-header">
+                    <span class="metric-current"><span class="mobile-only">{{ 'Puissance' | translate }}:&nbsp;</span>{{ alliance.mightCurrent | formatNumber }}</span>
+                    <span class="metric-max">{{ alliance.mightAllTime | formatNumber }}</span>
+                  </div>
+                  <div class="metric-bar-bg">
+                    <div class="metric-bar bar-yellow"
+                    [style.width.%]="(alliance.mightCurrent / alliance.mightAllTime) * 100"></div>
+                  </div>
                 </div>
-                <div class="metric-bar-bg">
-                  <div class="metric-bar bar-blue"
+              </td>
+              <!-- Loot -->
+              <td class="col-metric px-2" [title]="alliance.lootAllTime | formatNumber:'visual'">
+                <div class="metric">
+                  <div class="metric-header">
+                    <span class="metric-current"><span class="mobile-only">{{ 'Pillage hebdomadaire' | translate }}:&nbsp;</span>{{ alliance.lootCurrent | formatNumber }}</span>
+                    <span class="metric-max">{{ alliance.lootAllTime | formatNumber }}</span>
+                  </div>
+                  <div class="metric-bar-bg">
+                    <div class="metric-bar bar-gray" [style.width.%]="(alliance.lootCurrent / alliance.lootAllTime) * 100">
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <!-- Fame -->
+              <td class="col-metric px-2" [title]="alliance.highestFame | formatNumber:'visual'">
+                <div class="metric">
+                  <div class="metric-header">
+                    <span class="metric-current"><span class="mobile-only">{{ 'Points de gloire' | translate }}:&nbsp;</span>{{ alliance.currentFame | formatNumber }}</span>
+                    <span class="metric-max">{{ alliance.highestFame | formatNumber }}</span>
+                  </div>
+                  <div class="metric-bar-bg">
+                    <div class="metric-bar bar-blue"
                     [style.width.%]="(alliance.currentFame / alliance.highestFame) * 100"></div>
+                  </div>
                 </div>
-              </div>
-            </td>
-
-            <!-- Active Player Count -->
-            <td class="col-metric px-2" [title]="alliance.activePlayerCount + ' / ' + alliance.playerCount + ' (' + ((alliance.activePlayerCount / alliance.playerCount) * 100 | number:'1.0-2') + '%)'">
-              <div class="metric">
-                <div class="metric-header">
-                  <span class="metric-current"><span class="mobile-only">{{ 'Joueurs actifs' | translate }}:&nbsp;</span>{{ alliance.activePlayerCount }} / {{ alliance.playerCount }}</span>
-                  <span class="metric-max">
-                    {{ (alliance.activePlayerCount / alliance.playerCount) * 100 | number:'1.0-2' }}%
-                  </span>
+              </td>
+              <!-- Active Player Count -->
+              <td class="col-metric px-2" [title]="alliance.activePlayerCount + ' / ' + alliance.playerCount + ' (' + ((alliance.activePlayerCount / alliance.playerCount) * 100 | number:'1.0-2') + '%)'">
+                <div class="metric">
+                  <div class="metric-header">
+                    <span class="metric-current"><span class="mobile-only">{{ 'Joueurs actifs' | translate }}:&nbsp;</span>{{ alliance.activePlayerCount }} / {{ alliance.playerCount }}</span>
+                    <span class="metric-max">
+                      {{ (alliance.activePlayerCount / alliance.playerCount) * 100 | number:'1.0-2' }}%
+                    </span>
+                  </div>
+                  <div class="metric-bar-bg">
+                    <div class="metric-bar bar-green" [style.width.%]="(alliance.activePlayerCount / alliance.playerCount) * 100"></div>
+                  </div>
                 </div>
-                <div class="metric-bar-bg">
-                  <div class="metric-bar bar-green" [style.width.%]="(alliance.activePlayerCount / alliance.playerCount) * 100"></div>
+              </td>
+              <!-- Actions -->
+              <td class="text-end">
+                <div class="d-flex justify-content-center">
+                  <a [routerLink]="['/', 'map', alliance.id]">
+                    <img src="/assets/icon_world.png" [alt]="'Carte d\'alliance' | translate"
+                      [title]="'Carte d\'alliance' | translate" height="24" class="btn-icon">
+                  </a>
+                  <a [routerLink]="['/', 'alliance', alliance.id]">
+                    <img src="/assets/icon_analyze.png" [alt]="'Analyser l\'alliance' | translate"
+                      [title]="'Analyser l\'alliance' | translate" height="24"
+                      class="ms-1 btn-icon">
+                  </a>
                 </div>
-              </div>
-            </td>
-
-            <!-- Actions -->
-            <td class="text-end">
-              <div class="d-flex justify-content-center">
-                <a [routerLink]="['/', 'map', alliance.id]">
-                  <img src="/assets/icon_world.png" [alt]="'Carte d\'alliance' | translate"
-                    [title]="'Carte d\'alliance' | translate" height="24" class="btn-icon">
-                </a>
-                <a [routerLink]="['/', 'alliance', alliance.id]">
-                  <img src="/assets/icon_analyze.png" [alt]="'Analyser l\'alliance' | translate"
-                    [title]="'Analyser l\'alliance' | translate" height="24"
-                    class="ms-1 btn-icon">
-                </a>
-              </div>
-            </td>
-          </tr>
+              </td>
+            </tr>
+          }
         </app-table>
       </div>
     </div>
@@ -151,7 +147,7 @@
             <i class="fa-solid fa-filter"></i>&nbsp;{{ 'Filtrer les résultats' | translate }}
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"
-            [attr.aria-label]="'Fermer' | translate"></button>
+          [attr.aria-label]="'Fermer' | translate"></button>
         </div>
         <div class="modal-body">
           <div class="filters-container">
@@ -252,14 +248,20 @@
                   </div>
                   <div class="input-group align-items-center justify-content-center gge-tracker-select-container">
                     <select class="form-select w-auto mt-2" [(ngModel)]="sort">
-                      <option *ngFor="let option of sortByOptions" [value]="option.value">{{ option.label | translate}}
-                      </option>
+                      @for (option of sortByOptions; track option) {
+                        <option [value]="option.value">{{ option.label | translate}}
+                        </option>
+                      }
                     </select>
                     <button class="gge-btn reset sort mt-2" (click)="sort = sort; reverse = !reverse">
                       <i class="fa-solid" [ngClass]="{'fa-arrow-down-long': !reverse, 'fa-arrow-up-long': reverse}"></i>
                       &nbsp;
-                      <span *ngIf="!reverse">{{ 'Descendant' | translate }}</span>
-                      <span *ngIf="reverse">{{ 'Ascendant' | translate }}</span>
+                      @if (!reverse) {
+                        <span>{{ 'Descendant' | translate }}</span>
+                      }
+                      @if (reverse) {
+                        <span>{{ 'Ascendant' | translate }}</span>
+                      }
                     </button>
                   </div>
                 </div>

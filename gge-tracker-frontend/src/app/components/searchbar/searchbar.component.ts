@@ -1,4 +1,4 @@
-import { NgClass, NgIf } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { Component, input, OnChanges, OnInit, output, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -7,10 +7,11 @@ import { RouterModule } from '@angular/router';
  * SearchbarComponent provides a customizable search bar UI element
  */
 @Component({
-    selector: 'app-search-bar',
-    imports: [FormsModule, RouterModule, NgIf, NgClass],
-    templateUrl: './searchbar.component.html',
-    styleUrls: ['./searchbar.component.css']
+  selector: 'app-search-bar',
+  imports: [FormsModule, RouterModule, NgClass],
+  standalone: true,
+  templateUrl: './searchbar.component.html',
+  styleUrls: ['./searchbar.component.css'],
 })
 export class SearchbarComponent implements OnInit, OnChanges {
   public attrListInput = input.required<string[]>();
