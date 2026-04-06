@@ -24,4 +24,5 @@ export enum AuthorizedSpecialServersEnum {
   IN1 = 'IN1',
   E4K_INT2 = 'E4K_INT2',
   E4K_FR1 = 'E4K_FR1',
+  E4K_DE1 = 'E4K_DE1',
 }

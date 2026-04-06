@@ -387,7 +387,7 @@
 .table-custom thead th .sort {
   align-items: center;
   position: absolute;
-  right: 0.6rem;
+  right: 0;
   top: 50%;
   transform: translateY(-50%);
 }
@@ -479,6 +479,21 @@
   ::ng-deep #table-component .table-custom td {
     border-bottom: none;
     text-align: center;
+  }
+
+  ::ng-deep #table-component a.alliance-link {
+    justify-content: center;
+  }
+
+  ::ng-deep #table-component .table-custom td.col-name {
+    display: block;
+    width: auto;
+    float: right;
+  }
+
+  ::ng-deep #table-component .table-custom td.col-rank {
+    display: inline-block;
+    width: auto;
   }
 
   ::ng-deep #table-component .table-custom thead {

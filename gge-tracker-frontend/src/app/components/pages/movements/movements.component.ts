@@ -110,7 +110,7 @@ export class MovementsComponent extends GenericComponent {
   constructor() {
     super();
     this.isInLoading = true;
-    void this.init();
+    this.init().catch(console.error);
   }
 
   public async nextPage(): Promise<void> {

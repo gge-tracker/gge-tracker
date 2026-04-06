@@ -1,41 +1,30 @@
 <div class="container my-3 movements">
   <div class="row g-4">
     <div class="col-12" [ngClass]="{'loading': isInLoading}">
-      <div class="container-fluid row mt-3 row-gap-3">
+      <div class="container-fluid row mt-3 row-gap-3" *ngIf="!currentEvent">
         <div *ngFor="let event of events; let i = index" class="col-12 col-lg-6">
-          <div tabindex="0" [title]="'Voir le détail' | translate" (click)="onEventClick(event)"
-            (keyup.enter)="onEventClick(event)" (keydown.space)="onEventClick(event)" class="event-card"
-            [ngStyle]="{'background-image': 'url(/assets/' + event.type + '.png)'}">
-            <div class="event-overlay">
-              <div class="event-header">
-                <div class="event-badge">
-                  <lucide-icon class="icons calendar-check" [img]="CalendarCheck"></lucide-icon>
-                  &nbsp;
-                  {{ 'Événement du 0 au 0' | translate: { start: (event.from | date: ('Date_7' | translate)), end:
-                  (event.to | date: ('Date_7' | translate)) } }}
-                </div>
-                <div class="event-players">
-                  <lucide-icon class="icons square-user" [img]="SquareUser"></lucide-icon>
-                  &nbsp;
-                  {{ event.playerCount | formatNumber }} {{ 'Joueurs' | translate | lowercase }}
-                </div>
-              </div>
-              <h5 class="event-title">
-                {{ getEventName(event.type) | titlecase }}
-                <span class="event-icon">
-                  <i class="fa-solid" [ngClass]="{
-                    'fa-trophy': event.type === 'outer-realms',
-                    'fa-shield-alt': event.type === 'beyond-the-horizon'
-                  }"></i>
-                </span>
-              </h5>
-              <span class="event-cta">{{ 'Voir le détail' | translate }}</span>
-            </div>
-          </div>
+          <app-event-card
+            [event]="event"
+            [options]="{ displayMode: 'player-count' }"
+            (onEventClick)="onEventClick($event)"
+          ></app-event-card>
         </div>
+        <ng-container *ngIf="!isInLoading && !currentEvent && events.length > 0">
+          <div class="pagination-modern d-flex justify-content-center align-items-center mt-3 gap-2">
+            <button class="btn btn-sm rounded-circle shadow-sm" (click)="eventsNavigateTo(pagination.current_page - 1)"
+              [disabled]="pagination.current_page <= 1">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <span class="page-indicator">{{ pagination.current_page }} / {{ pagination.total_pages }}</span>
+            <button class="btn btn-sm rounded-circle shadow-sm" (click)="eventsNavigateTo(pagination.current_page + 1)"
+              [disabled]="pagination.current_page >= pagination.total_pages">
+              <i class="fa-solid fa-chevron-right"></i>
+            </button>
+          </div>
+        </ng-container>
       </div>
       <div *ngIf="currentEvent" class="events">
-        <app-events-header [eventName]="getEventName(eventType!)" [from]="generateFromDate(currentEvent.collect_date)"
+        <app-events-header [eventName]="getEventName(eventType!)" [from]="utilitiesService.generateOuterRealmsEventFromDate(currentEvent.collect_date)"
           [to]="createDate(currentEvent.collect_date)" [nbPlayers]="nbPlayers"
           [eventType]="eventType!"></app-events-header>
         <div class="row g-2 mb-3" [ngClass]="{'table-loading': tableLoading}">

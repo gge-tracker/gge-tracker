@@ -28,7 +28,7 @@ export abstract class ApiPlayers implements ApiHelper {
    *
    * Query Parameters:
    * - `page`: The page number for pagination (default: 1)
-   * - `orderBy`: The field to order by (default: "player_name"). Allowed values: "player_name", "loot_current", "loot_all_time", "might_current", "might_all_time", "honor", "level", "highest_fame", "current_fame", "remaining_relocation_time", "distance"
+   * - `orderBy`: The field to order by (default: "player_name"). Allowed values: "player_name", "loot_current", "loot_all_time", "might_current", "might_all_time", "honor", "level", "highest_fame", "current_fame", "remaining_relocation_time", "distance", "remaining_peace_time"
    * - `orderType`: The order direction, either "ASC" or "DESC" (default: "ASC")
    * - `alliance`: Filter by alliance name
    * - `minHonor`, `maxHonor`: Minimum and maximum honor values
@@ -65,6 +65,7 @@ export abstract class ApiPlayers implements ApiHelper {
         'current_fame',
         'remaining_relocation_time',
         'distance',
+        'remaining_peace_time',
       ];
       const parsedQuery = parseQuery(
         request.query,
@@ -93,6 +94,7 @@ export abstract class ApiPlayers implements ApiHelper {
         banFilter,
         inactiveFilter,
         allianceRankFilter,
+        kingdomFilter,
         playerNameForDistance,
         orderBy,
         orderType,
@@ -127,6 +129,7 @@ export abstract class ApiPlayers implements ApiHelper {
           protectionFilter,
           banFilter,
           inactiveFilter,
+          kingdomFilter: Array.isArray(kingdomFilter) ? kingdomFilter.join('-') : undefined,
           playerNameForDistance,
           allianceRankFilter: Array.isArray(allianceRankFilter) ? allianceRankFilter.join('-') : undefined,
         })
@@ -223,6 +226,7 @@ export abstract class ApiPlayers implements ApiHelper {
         .legendaryLevel(minLevel[1], maxLevel[1])
         .fame(minFame, maxFame)
         .allianceStatus(allianceFilter)
+        .kingdom(kingdomFilter)
         .activity(inactiveFilter);
 
       qb.castle().count(castleCountMin, castleCountMax);
@@ -232,7 +236,6 @@ export abstract class ApiPlayers implements ApiHelper {
       const { where, values } = qb.build();
       parameterIndex = qb.getLastParameterIndex();
       const parameters: any[] = [...values, ApiHelper.PAGINATION_LIMIT, (page - 1) * ApiHelper.PAGINATION_LIMIT];
-
       /* ---------------------------------
        * Execute count query (pagination)
        * --------------------------------- */
@@ -280,6 +283,7 @@ export abstract class ApiPlayers implements ApiHelper {
         query += `ORDER BY ${orderBy} ${orderType}`;
         if (orderBy === 'level') query += `, legendary_level ${orderType}`;
       }
+      query += `, player_id ASC`; // Always have a deterministic order
       query += ` LIMIT $${parameterIndex++} OFFSET $${parameterIndex++}`;
       // Performance issue
       const sqlDuration = Date.now();
@@ -314,7 +318,7 @@ export abstract class ApiPlayers implements ApiHelper {
       /* ---------------------------------
        * Execute final query
        * --------------------------------- */
-      (request['pg_pool'] as pg.Pool).query(query, parameters, (error, results) => {
+      (request['pg_pool'] as pg.Pool).query(query, parameters, async (error, results) => {
         if (error) {
           response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
         } else {
@@ -326,6 +330,38 @@ export abstract class ApiPlayers implements ApiHelper {
           };
           const sqlDurationEnd = Date.now();
           const durationMs = sqlDurationEnd - sqlDuration;
+
+          /* ---------------------------------
+           * Retrieve player alliance history
+           * --------------------------------- */
+          const ids = results.rows.map((row: any) => row.player_id);
+          const allianceQuery = `
+            SELECT player_id, old_alliance_id, new_alliance_id, created_at
+            FROM player_alliance_update
+            WHERE player_id = ANY($1::bigint[])
+          `;
+          const allianceHistoryMap: Record<string, any[]> = {};
+          const [allianceError, allianceResults] = await new Promise<[null, pg.QueryResult]>((resolve, reject) => {
+            (request['pg_pool'] as pg.Pool).query(allianceQuery, [ids], (allianceError, allianceResults) => {
+              if (allianceError) {
+                reject(allianceError);
+              } else {
+                resolve([null, allianceResults]);
+              }
+            });
+          });
+          if (!allianceError) {
+            allianceResults.rows.forEach((row: any) => {
+              if (!allianceHistoryMap[row.player_id]) {
+                allianceHistoryMap[row.player_id] = [];
+              }
+              allianceHistoryMap[row.player_id].push({
+                old_alliance_id: ApiHelper.addCountryCode(row.old_alliance_id, request['code']),
+                new_alliance_id: ApiHelper.addCountryCode(row.new_alliance_id, request['code']),
+                date: new Date(row.created_at).toISOString(),
+              });
+            });
+          }
 
           /* ---------------------------------
            * Format results
@@ -358,6 +394,7 @@ export abstract class ApiPlayers implements ApiHelper {
                   result.calculated_distance === undefined
                     ? null
                     : Number.parseFloat(Math.sqrt(result.calculated_distance).toFixed(1)),
+                alliance_history: allianceHistoryMap[result.player_id] || [],
               };
             }),
           };
@@ -469,6 +506,34 @@ export abstract class ApiPlayers implements ApiHelper {
           }
 
           /* ---------------------------------
+           * Retrieve player alliance history
+           * --------------------------------- */
+          const playerId = results.rows[0].player_id;
+          const allianceHistoryQuery = `
+            SELECT old_alliance_id, new_alliance_id, created_at
+            FROM player_alliance_update
+            WHERE player_id = $1::bigint
+          `;
+          const allianceHistoryResults: any[] = await new Promise((resolve, reject) => {
+            (request['pg_pool'] as pg.Pool).query(
+              allianceHistoryQuery,
+              [playerId],
+              (allianceError, allianceResults) => {
+                if (allianceError) {
+                  reject(allianceError);
+                } else {
+                  resolve(allianceResults.rows);
+                }
+              },
+            );
+          });
+          const allianceHistory = allianceHistoryResults.map((row: any) => ({
+            old_alliance_id: ApiHelper.addCountryCode(row.old_alliance_id, request['code']),
+            new_alliance_id: ApiHelper.addCountryCode(row.new_alliance_id, request['code']),
+            date: new Date(row.created_at).toISOString(),
+          }));
+
+          /* ---------------------------------
            * Format results
            * --------------------------------- */
           const result = results.rows[0] ?? {};
@@ -490,6 +555,7 @@ export abstract class ApiPlayers implements ApiHelper {
             legendary_level: result.legendary_level,
             highest_fame: result.highest_fame,
             current_fame: result.current_fame,
+            alliance_history: allianceHistory,
           };
 
           /* ---------------------------------

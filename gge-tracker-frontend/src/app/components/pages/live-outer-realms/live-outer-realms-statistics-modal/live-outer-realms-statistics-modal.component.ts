@@ -19,7 +19,6 @@ export class LiveOuterRealmsStatisticsModalComponent {
   public readonly isBrowser = globalThis.window !== undefined;
 
   public get chartsArray(): string[] {
-    console.log(this.charts);
     return Object.keys(this.charts());
   }
 }

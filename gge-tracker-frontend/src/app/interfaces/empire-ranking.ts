@@ -142,6 +142,7 @@ export interface Player {
   level: number | null;
   distance?: number;
   legendaryLevel: number | null;
+  allianceHistory?: ApiBasicAllianceUpdates[];
 }
 
 export interface Alliance {
@@ -149,6 +150,7 @@ export interface Alliance {
   rank: number;
   name: string;
   playerCount: number;
+  activePlayerCount: number;
   mightCurrent: number;
   mightAllTime: number;
   lootCurrent: number;
@@ -166,7 +168,9 @@ export interface AlliancesUpdates {
   id: number | null;
   date: string | null;
   alliance: string | null;
+  original_new_alliance_name: string | null;
   duration: string;
+  durationValue: number;
 }
 
 export interface PlayersUpdates {
@@ -298,6 +302,12 @@ export interface ApiDungeonsResource {
   distance?: number;
 }
 
+export interface ApiBasicAllianceUpdates {
+  date: string;
+  old_alliance_id: number | null;
+  new_alliance_id: number | null;
+}
+
 export interface ApiPlayerSearchResponse {
   player_id: number;
   player_name: string;
@@ -319,6 +329,7 @@ export interface ApiPlayerSearchResponse {
   remaining_relocation_time: number | null;
   max_fame: number;
   updated_at: string;
+  alliance_history: ApiBasicAllianceUpdates[];
 }
 
 export interface PlayerLiveRankingExtended extends PlayerLiveRanking {
@@ -347,8 +358,11 @@ export interface ApiLiveRankingSpecificPlayerData {
   timestamp: string;
 }
 
+export type IOuterRealmEvent = 'might' | 'collector' | 'rankSwap' | null;
+
 export interface ApiLiveRankingResponse {
   players: ApiLiveRanking[];
+  current_event: IOuterRealmEvent;
   pagination: ApiPagination;
 }
 
@@ -375,6 +389,7 @@ export interface ApiAllianceSearchResponse {
   loot_all_time: number;
   current_fame: number;
   highest_fame: number;
+  active_player_count: number;
 }
 
 export interface ApiAlliancePlayersSearchResponse {
@@ -553,6 +568,7 @@ export interface ApiEventlist {
     player_count: number;
     type: 'outer_realms' | 'beyond_the_horizon';
   }[];
+  pagination: ApiPagination;
 }
 export interface ApiOuterRealmPlayer {
   player_id: number;
@@ -692,6 +708,29 @@ export interface ApiGrandTournamenAllianceAnalysisResponse {
   analysis: ApiAllianceAnalysis[];
 }
 
+export interface ApiEventsByPlayerIdResponse {
+  events: ApiSpecificEventByPlayerIdResponse[];
+}
+
+export enum EventType {
+  OUTER_REALM = 'outer-realms',
+  BEYOND_THE_HORIZON = 'beyond-the-horizon',
+}
+
+export interface ApiSpecificEventByPlayerIdResponse {
+  type: EventType;
+  event_num: number;
+  collect_date: string;
+  rank: number;
+  point: string;
+  server: string;
+}
+
+export interface OuterEventData extends ApiSpecificEventByPlayerIdResponse {
+  from: Date;
+  to: Date;
+}
+
 export interface ApiGrandTournamentAlliancesSearchResponse {
   alliances: ApiGrandTournamentSearchAlliances[];
   pagination: {
@@ -719,7 +758,14 @@ export interface ApiPlayerCastleNameResponse {
   isAvailable: boolean;
 }
 
+export interface KingdomRealm {
+  key: string;
+  label: string;
+}
+
 export interface ApiRankingStatsPlayer {
+  player_name: string;
+  alliance_name: string | null;
   player_id: number;
   server: string;
   might_current: number;
@@ -801,6 +847,8 @@ export interface ApiAllianceUpdates {
   old_alliance_name: string | null;
   new_alliance_id: number | null;
   new_alliance_name: string | null;
+  original_new_alliance_name: string | null;
+  original_old_alliance_name: string | null;
 }
 
 export interface ApiPlayerUpdates {
@@ -863,4 +911,39 @@ export interface ApiCartoAlliance {
 export interface ApiCartoMap extends ApiCartoAlliance {
   alliance_name: string;
   alliance_id: number;
+}
+
+export interface IRankingStatsPlayer {
+  playerId: number;
+  server: string;
+  mightCurrent: number;
+  mightAllTime: number;
+  currentFame: number;
+  highestFame: number;
+  playerCurrentFameRank: number;
+  updatedAt: Date;
+  peaceDisabledAt: Date | null;
+  lootCurrent: number;
+  lootAllTime: number;
+  level: number;
+  legendaryLevel: number;
+  honor: number;
+  maxHonor: number;
+  serverRank: number;
+  globalRank: number;
+  totalLevel: number;
+  castles: number[][];
+  totalCastles: number;
+}
+
+export type PlayerStatsTabs = 'overview' | 'loot' | 'alliances' | 'castles' | 'glory' | 'events';
+
+export interface RankingFameTitle {
+  decay?: number;
+  displayType: string;
+  topX?: number;
+  mightValue: string;
+  threshold?: number;
+  titleID: string;
+  type: string;
 }

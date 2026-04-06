@@ -1,6 +1,8 @@
 import {
   AfterViewInit,
   ApplicationRef,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   ComponentFactoryResolver,
   ElementRef,
@@ -25,6 +27,7 @@ import { OverlayModule } from '@angular/cdk/overlay';
 @Component({
   selector: 'app-top-bar',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [IconComponent, NgFor, NgIf, FormsModule, TranslateModule, RouterModule, OverlayModule],
   templateUrl: './top-bar.component.html',
   styleUrls: ['./top-bar.component.css'],
@@ -44,6 +47,7 @@ export class TopBarComponent implements AfterViewInit {
   private appRef = inject(ApplicationRef);
   private componentFactoryResolver = inject(ComponentFactoryResolver);
   private listener?: (event: PointerEvent) => void;
+  private cdr = inject(ChangeDetectorRef);
 
   constructor() {
     this.utilitiesService.data$.subscribe((data) => {
@@ -61,20 +65,24 @@ export class TopBarComponent implements AfterViewInit {
     this.topBarService.registerOutlet(outlet);
     this.listener = this.handlePointerDown.bind(this);
     document.addEventListener('pointerdown', this.listener, { capture: true });
+    this.cdr.markForCheck();
   }
 
   public toggleSidebar(): void {
     this.sidebarService.toggleSidebar();
+    this.cdr.markForCheck();
   }
   public isServerMenuOpen(): boolean {
     return this.sidebarService.isServerMenuOpen();
   }
   public toggleServerMenu(): void {
     this.sidebarService.toggleServerMenu();
+    this.cdr.markForCheck();
   }
 
   public selectServer(server: string): void {
     this.serverService.changeServer(server);
+    this.cdr.markForCheck();
   }
   public onSearchChange(): void {
     this.sidebarService.setSearchQuery(this.searchQuery);
@@ -82,6 +90,7 @@ export class TopBarComponent implements AfterViewInit {
 
   public toggleLanguageMenu(): void {
     this.sidebarService.toggleLanguageMenu();
+    this.cdr.markForCheck();
   }
 
   public isLanguageMenuOpen(): boolean {
@@ -105,9 +114,11 @@ export class TopBarComponent implements AfterViewInit {
     const serverMenu = document.querySelector('#server-menu');
     if (languageMenu && !languageMenu.contains(target) && !target.classList.contains('language-menu-toggle')) {
       this.sidebarService.closeLanguageMenu();
+      this.cdr.markForCheck();
     }
     if (serverMenu && !serverMenu.contains(target) && !target.classList.contains('server-menu-toggle')) {
       this.sidebarService.closeServerMenu();
+      this.cdr.markForCheck();
     }
   }
 }

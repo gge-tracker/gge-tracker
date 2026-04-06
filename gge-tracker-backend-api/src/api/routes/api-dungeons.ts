@@ -28,10 +28,6 @@ export abstract class ApiDungeons implements ApiHelper {
    */
   public static async getDungeons(request: express.Request, response: express.Response): Promise<void> {
     try {
-      // List of banned player IDs. Populate as needed
-      // This is to prevent certain players from being included in the results
-      // This is not used for now, but kept in case we need it in the future
-      const bannedPlayersId = [];
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
@@ -179,10 +175,7 @@ export abstract class ApiDungeons implements ApiHelper {
           conditions.push('1 = 0');
         } else {
           playerId = playerResults[0].id;
-          if (
-            playerId &&
-            bannedPlayersId.includes(Number(ApiHelper.addCountryCode(String(playerId), request['code'])))
-          ) {
+          if (playerId) {
             response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
             return;
           }

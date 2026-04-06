@@ -1,6 +1,6 @@
 button.btn.btn-primary.btn-sm.active {
-  background-size: 28px;
   background: url(/assets/light-background-hover.png), #29746e;
+  background-size: 28px;
 }
 i.fas.fa-spinner.fa-spin {
   color: #00000045;

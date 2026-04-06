@@ -131,6 +131,10 @@ export const routes: Routes = [
         },
       },
       {
+        path: 'renames',
+        redirectTo: 'renames/players',
+      },
+      {
         path: 'renames/:type',
         component: RenamesComponent,
         resolve: { titleResolver },

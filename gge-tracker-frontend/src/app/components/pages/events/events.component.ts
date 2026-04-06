@@ -12,6 +12,7 @@ import {
   ApiOuterRealmPlayer,
   ChartAdvancedOptions,
   ErrorType,
+  EventType,
 } from '@ggetracker-interfaces/empire-ranking';
 import { ChartsWrapperComponent } from '@ggetracker-modules/charts-client/charts-wrapper.component';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
@@ -22,11 +23,7 @@ import { CalendarCheck, LucideAngularModule, SquareUser } from 'lucide-angular';
 import { ApexAxisChartSeries, ApexChart, ApexNonAxisChartSeries, ApexOptions, ApexPlotOptions } from 'ng-apexcharts';
 import { firstValueFrom } from 'rxjs';
 import { EventsHeaderComponent } from './events-header/events-header.component';
-
-export enum EventType {
-  OUTER_REALM = 'outer-realms',
-  BEYOND_THE_HORIZON = 'beyond-the-horizon',
-}
+import { EventCardComponent } from './event-card/event-card.component';
 
 interface GenericChartConfig {
   type: ApexChart['type'];
@@ -63,6 +60,7 @@ export interface EventList {
     EventsHeaderComponent,
     ChartsWrapperComponent,
     IconComponent,
+    EventCardComponent,
   ],
   templateUrl: './events.component.html',
   styleUrl: './events.component.css',
@@ -77,6 +75,12 @@ export class EventsComponent extends GenericComponent {
   public serverService = inject(ServerService);
   public tableLoading = false;
   public page = 1;
+  public pagination = {
+    current_page: 1,
+    total_pages: 1,
+    current_items_count: 0,
+    total_items_count: 0,
+  };
   public maxPage = 1;
   public playerNameFilter = '';
   public players: ApiOuterRealmPlayer[] = [];
@@ -98,13 +102,13 @@ export class EventsComponent extends GenericComponent {
 
   constructor() {
     super();
+    this.onInit();
+  }
+
+  public onInit(): void {
     void this.generateTranslations().then(() => {
       void this.init();
     });
-  }
-
-  private static serverSort(a: string, b: string): number {
-    return a.localeCompare(b);
   }
 
   public onEventClick(event: EventList): void {
@@ -112,6 +116,29 @@ export class EventsComponent extends GenericComponent {
       void this.router.navigate(['/events', 'outer-realms', event.id]);
     } else if (event.type === EventType.BEYOND_THE_HORIZON) {
       void this.router.navigate(['/events', 'beyond-the-horizon', event.id]);
+    }
+  }
+
+  public eventsNavigateTo(page: number): void {
+    if (this.isInLoading) return;
+    this.isInLoading = true;
+    this.page = page;
+    void this.initEventList(this.page, this.eventType ?? undefined).then(() => {
+      this.isInLoading = false;
+      void this.updatePageInUrl(this.page);
+      this.cdr.detectChanges();
+    });
+  }
+
+  public eventsPreviousPage(): void {
+    if (this.pagination.current_page > 1) {
+      void this.initEventList(this.pagination.current_page - 1, this.eventType ?? undefined);
+    }
+  }
+
+  public eventsNextPage(): void {
+    if (this.pagination.current_page < this.pagination.total_pages) {
+      void this.initEventList(this.pagination.current_page + 1, this.eventType ?? undefined);
     }
   }
 
@@ -185,13 +212,6 @@ export class EventsComponent extends GenericComponent {
       });
   }
 
-  public generateFromDate(date: string): Date {
-    const d = new Date(date);
-    // Event always begin 4 days before the collection date
-    d.setDate(d.getDate() - 4);
-    return d;
-  }
-
   public createDate(date: string): Date {
     return new Date(date);
   }
@@ -259,8 +279,13 @@ export class EventsComponent extends GenericComponent {
     this.translations = translations;
   }
 
-  private async getEventList(): Promise<{ data: ApiEventlist; response: number }> {
-    return await this.apiRestService.getGenericData(this.apiRestService.getEventList.bind(this.apiRestService));
+  private async getEventList(
+    page: number = 1,
+    filterByEventType?: string,
+  ): Promise<{ data: ApiEventlist; response: number }> {
+    return await this.apiRestService.getGenericData(
+      this.apiRestService.getEventList.bind(this.apiRestService, page, filterByEventType),
+    );
   }
 
   private async getEventPlayersById(): Promise<{
@@ -283,23 +308,27 @@ export class EventsComponent extends GenericComponent {
     );
   }
 
+  private async initEventList(page: number, eventType?: EventType): Promise<void> {
+    const events = await this.getEventList(page, eventType);
+    this.responseTime = events.response;
+    this.events = events.data.events.map((event) => ({
+      type: event.type === 'outer_realms' ? EventType.OUTER_REALM : EventType.BEYOND_THE_HORIZON,
+      id: event.event_num,
+      from: this.utilitiesService.generateOuterRealmsEventFromDate(event.collect_date),
+      to: new Date(event.collect_date),
+      playerCount: event.player_count,
+    }));
+    this.pagination = events.data.pagination;
+  }
+
   private async init(): Promise<void> {
     try {
       this.route.params.subscribe(async (parameters) => {
         if (Object.keys(parameters).length === 0 || Number.isNaN(Number.parseInt(parameters['eventId']))) {
           const targetedEvent = parameters['eventType'];
-          const events = await this.getEventList();
-          this.responseTime = events.response;
-          this.events = events.data.events.map((event) => ({
-            type: event.type === 'outer_realms' ? EventType.OUTER_REALM : EventType.BEYOND_THE_HORIZON,
-            id: event.event_num,
-            from: this.generateFromDate(event.collect_date),
-            to: new Date(event.collect_date),
-            playerCount: event.player_count,
-          }));
-          if (targetedEvent !== undefined) {
-            this.events = this.events.filter((event) => event.type === targetedEvent);
-          }
+          const page = this.route.snapshot.queryParams['page'] ? Number(this.route.snapshot.queryParams['page']) : 1;
+          this.page = page;
+          await this.initEventList(this.page, targetedEvent);
         } else if (parameters['eventId'] !== undefined && !Number.isNaN(Number.parseInt(parameters['eventId']))) {
           if (
             parameters['eventType'] !== EventType.OUTER_REALM &&

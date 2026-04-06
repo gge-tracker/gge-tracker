@@ -37,6 +37,7 @@ import {
   ApiGrandTournamenAllianceAnalysisResponse,
   ApiLiveRankingResponse,
   ApiLiveRankingSpecificPlayerResponse,
+  ApiEventsByPlayerIdResponse,
 } from '@ggetracker-interfaces/empire-ranking';
 
 @Injectable({
@@ -493,8 +494,10 @@ export class ApiRestService {
    * Get the outer realms list from the API
    * @returns A promise that resolves to the outer realms list data
    */
-  public async getEventList(): Promise<ApiResponse<ApiEventlist>> {
-    const response = await this.apiFetch<ApiEventlist>(`${ApiRestService.apiUrl}events/list`);
+  public async getEventList(page: number, filterByEventType?: string): Promise<ApiResponse<ApiEventlist>> {
+    const response = await this.apiFetch<ApiEventlist>(
+      `${ApiRestService.apiUrl}events/list?page=${page}${filterByEventType ? `&type=${filterByEventType}` : ''}`,
+    );
     if (!response.success) return response;
     return { success: true, data: response.data };
   }
@@ -618,6 +621,23 @@ export class ApiRestService {
   ): Promise<ApiResponse<ApiGrandTournamenAllianceAnalysisResponse>> {
     const response = await this.apiFetch<ApiGrandTournamenAllianceAnalysisResponse>(
       `${ApiRestService.apiUrl}grand-tournament/alliance/${allianceId}/${eventId}`,
+    );
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  /**
+   * Get the events for a player by their ID, filtered by event type
+   * @param playerId The ID of the player to retrieve events for
+   * @param event Optional parameter to filter events by type (e.g., 'outer-realms', 'beyond-the-horizon', 'all')
+   * @returns A promise that resolves to the events data for the specified player and event type
+   */
+  public async getEventsByPlayerId(
+    playerId: number,
+    event?: 'outer-realms' | 'beyond-the-horizon' | 'all',
+  ): Promise<ApiResponse<ApiEventsByPlayerIdResponse>> {
+    const response = await this.apiFetch<ApiEventsByPlayerIdResponse>(
+      `${ApiRestService.apiUrl}events/player/${playerId}` + (event ? `?event=${event}` : ''),
     );
     if (!response.success) return response;
     return { success: true, data: response.data };

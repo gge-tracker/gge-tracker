@@ -8,7 +8,6 @@ import {
   inject,
   OnInit,
   QueryList,
-  ViewChild,
   ViewChildren,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -27,8 +26,13 @@ import {
   ChartOptions,
   ErrorType,
   EventGenericVariation,
+  EventType,
+  IRankingStatsPlayer,
   Monument,
+  OuterEventData,
+  PlayerStatsTabs,
   PlayersUpdates,
+  RankingFameTitle,
   Top3EventPlayers,
 } from '@ggetracker-interfaces/empire-ranking';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
@@ -39,42 +43,9 @@ import { TranslateModule } from '@ngx-translate/core';
 import Gradient from 'javascript-color-gradient';
 import { ApexAxisChartSeries } from 'ng-apexcharts';
 import { PlayerStatsCardComponent } from './player-stats-card/player-stats-card.component';
-import { firstValueFrom } from 'rxjs';
-
-export interface IRankingStatsPlayer {
-  playerId: number;
-  server: string;
-  mightCurrent: number;
-  mightAllTime: number;
-  currentFame: number;
-  highestFame: number;
-  playerCurrentFameRank: number;
-  updatedAt: Date;
-  peaceDisabledAt: Date | null;
-  lootCurrent: number;
-  lootAllTime: number;
-  level: number;
-  legendaryLevel: number;
-  honor: number;
-  maxHonor: number;
-  serverRank: number;
-  globalRank: number;
-  totalLevel: number;
-  castles: number[][];
-  totalCastles: number;
-}
-
-type Tabs = 'overview' | 'loot' | 'alliances' | 'castles' | 'glory';
-
-interface RankingFameTitle {
-  decay?: number;
-  displayType: string;
-  topX?: number;
-  mightValue: string;
-  threshold?: number;
-  titleID: string;
-  type: string;
-}
+import { combineLatest, firstValueFrom } from 'rxjs';
+import { CalendarCheck, LucideAngularModule, SquareUser } from 'lucide-angular';
+import { EventCardComponent } from '@ggetracker-pages/events/event-card/event-card.component';
 
 @Component({
   selector: 'app-player-stats',
@@ -89,19 +60,24 @@ interface RankingFameTitle {
     DatePipe,
     TranslateModule,
     FormatNumberPipe,
+    LucideAngularModule,
     LevelPipe,
     FormsModule,
     NgTemplateOutlet,
     NgStyle,
+    EventCardComponent,
   ],
   templateUrl: './player-stats.component.html',
   styleUrl: './player-stats.component.css',
 })
 export class PlayerStatsComponent extends GenericComponent implements OnInit, AfterViewInit {
   public charts: Record<string, ChartOptions> = {};
+  public readonly CalendarCheck = CalendarCheck;
+  public readonly SquareUser = SquareUser;
   public radialCharts: Record<string, ChartOptions> = {};
   public eventDataSegments: Record<string, ApiGenericData[][]> = {};
   public playerId?: number;
+  public outerEvents: OuterEventData[] = [];
   public currentPlayerTitle: RankingFameTitle | null = null;
   public currentTopXFameTitle: RankingFameTitle | null = null;
   public nextFameTitle: RankingFameTitle | null = null;
@@ -110,10 +86,13 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   public timezoneOffset: number | null = null;
   public allianceName?: string;
   public allianceId?: number;
+  public fillDataState: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
+  public fillPlayerHistoryState: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
   public favories: Record<number, string> = {};
   public activeOptionButton = '';
   public currentSemaine?: string;
   public isAtRisk = false;
+  public maxDuration = 0;
   public data: Record<ApiPlayerStatsType, EventGenericVariation[]> = {
     player_event_berimond_invasion_history: [],
     player_event_berimond_kingdom_history: [],
@@ -142,21 +121,22 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     patriarch: 0,
   };
   public monumentsList: Monument[] = [];
-  public pageSize = 10;
+  public readonly pageSize = 10;
   public readonly currentI18nTitleKey = 'titles.playerTitle_';
   public currentPage = 1;
   public totalPages = 1;
   public searchTerm = '';
   public sortColumn: keyof Monument | null = null;
   public sortAsc = true;
-  public tabs: { key: Tabs; label: string; assetIcon?: string }[] = [
+  public tabs: { key: PlayerStatsTabs; label: string; assetIcon?: string }[] = [
     { key: 'overview', label: "Vue d'ensemble", assetIcon: 'players.png' },
     { key: 'loot', label: 'Points de pillage hebdomadaire', assetIcon: 'loot.png' },
     { key: 'alliances', label: 'Alliances', assetIcon: 'alliance.png' },
     { key: 'castles', label: 'Châteaux', assetIcon: 'tools/castles.webp' },
     { key: 'glory', label: 'Points de gloire', assetIcon: 'glory.png' },
+    { key: 'events', label: 'Événements', assetIcon: 'tools/events.webp' },
   ];
-  public currentTab: Tabs = 'overview';
+  public currentTab: PlayerStatsTabs = 'overview';
   public maxLootPointsByWeek: { week: string; points: number }[] = [];
   public fameTitles: RankingFameTitle[] = [];
   public fameTitlesTopX: RankingFameTitle[] = [];
@@ -229,7 +209,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     return null;
   }
 
-  public updateTab(key: Tabs): void {
+  public updateTab(key: PlayerStatsTabs): void {
     this.currentTab = key;
     void this.router.navigate([], {
       fragment: this.currentTab,
@@ -274,19 +254,33 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     ) as Record<ApiPlayerStatsType, EventGenericVariation[]>;
   }
 
+  public navigateToEvent(event: OuterEventData): void {
+    if (event.type === EventType.OUTER_REALM) {
+      void this.router.navigate(['/events', 'outer-realms', event.event_num]);
+    } else if (event.type === EventType.BEYOND_THE_HORIZON) {
+      void this.router.navigate(['/events', 'beyond-the-horizon', event.event_num]);
+    }
+  }
+
   public async ngOnInit(): Promise<void> {
     const selectedTab = await firstValueFrom(this.route.fragment);
     if (selectedTab && this.tabs.some((tab) => tab.key === selectedTab)) {
-      this.currentTab = selectedTab as Tabs;
+      this.currentTab = selectedTab as PlayerStatsTabs;
     }
-    this.route.params.subscribe(async (parameters) => {
-      this.isInLoading = true;
-      this.cdr.detectChanges();
-      const playerId = parameters['playerId'];
-      if (playerId && !Number.isNaN(playerId) && playerId > 0) {
-        try {
-          const response: ApiResponse<ApiPlayerStatsByPlayerId> = this.route.snapshot.data['stats'];
-          if (response.success === false) throw new Error('API Error');
+    combineLatest([this.route.params, this.route.fragment]).subscribe(async ([parameters, fragment]) => {
+      try {
+        const playerId = parameters['playerId'];
+        this.playerId = playerId;
+        if (this.data.player_might_history.length === 0) {
+          this.isInLoading = true;
+          this.cdr.detectChanges();
+          const response: ApiResponse<ApiPlayerStatsByPlayerId> =
+            await this.apiRestService.getPlayerStatsByPlayerId(playerId);
+          if (!response || response.success === false || !playerId || Number.isNaN(playerId) || playerId <= 0) {
+            throw new Error('Invalid player ID or unable to load player data');
+          } else if (!response.data.points || Object.keys(response.data.points).length === 0) {
+            throw new Error('No points data available for this player');
+          }
           const data = response.data;
           this.playerName = data.player_name;
           this.timezoneOffset = data.timezone_offset;
@@ -299,31 +293,50 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
                 ? data.points.player_might_history.at(-1)!.point
                 : 0,
           });
-          if (!data.points || Object.keys(data.points).length === 0) {
-            this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
-            void this.router.navigate(['/']);
-            return;
-          }
           this.initDataSegments(data.points);
-          this.observeCharts();
           this.allianceName = data.alliance_name;
           this.allianceId = data.alliance_id;
           this.top100Glory = data.glory_points_100;
-          this.playerId = playerId;
-          this.fillData();
-          void this.initPlayerData(playerId).then(() => {
-            this.isInLoading = false;
-            this.cdr.detectChanges();
-          });
-        } catch {
-          this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
-          void this.router.navigate(['/']);
         }
-      } else {
+        const formattedFragment = this.formatFragment(fragment);
+        if (formattedFragment !== 'overview') {
+          this.clearChartsObservers();
+        }
+        void this.fillData(formattedFragment);
+        void this.initPlayerData(playerId);
+      } catch {
+        this.isInLoading = false;
         this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
+        this.cdr.detectChanges();
         void this.router.navigate(['/']);
       }
     });
+  }
+
+  public formatFragment(fragment: string | null): PlayerStatsTabs {
+    if (fragment && this.tabs.some((tab) => tab.key === fragment)) {
+      return fragment as PlayerStatsTabs;
+    }
+    return 'overview';
+  }
+
+  public getCurrentFameTitle(): RankingFameTitle {
+    try {
+      return this.fameTitles
+        .filter((title) => title.threshold && Number(title.threshold) < this.stats!.currentFame)
+        .reduce((max, t) => (Number(t.threshold) > Number(max.threshold) ? t : max));
+    } catch {
+      return (
+        this.fameTitles.at(-1) || {
+          titleID: 'unknown',
+          type: 'FAME',
+          displayType: 'DEFAULT',
+          mightValue: '0',
+          decay: 0,
+          threshold: 0,
+        }
+      );
+    }
   }
 
   public async getPlayerGloryTitle(): Promise<[RankingFameTitle | null, RankingFameTitle | null]> {
@@ -348,12 +361,11 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
         }
       });
       this.fameTitles = fameTitles.filter((title) => title.topX === undefined);
-      const currentFameTitle = this.fameTitles
-        .filter((title) => title.threshold && Number(title.threshold) < this.stats!.currentFame)
-        .reduce((max, t) => (Number(t.threshold) > Number(max.threshold) ? t : max));
+      const currentFameTitle = this.getCurrentFameTitle();
       const currentFameTopXTitle = this.fameTitlesTopX.find(
         (title) => title.topX && this.stats!.playerCurrentFameRank <= title.topX!,
       );
+
       if (currentFameTopXTitle) {
         this.nextFameTitle =
           this.fameTitlesTopX.find((title) => title.topX && title.topX < currentFameTopXTitle.topX!) || null;
@@ -495,7 +507,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     return new Date(b.date).getTime() - new Date(a.date).getTime();
   }
 
-  public getDateDiff(date1: string, date2: string): string {
+  public getDateDiff(date1: string, date2: string): { value: string; durationValue: number } {
     const diff = new Date(date2).getTime() - new Date(date1).getTime();
     const months = Math.floor(diff / (1000 * 60 * 60 * 24 * 30));
     const days = Math.floor((diff % (1000 * 60 * 60 * 24 * 30)) / (1000 * 60 * 60 * 24));
@@ -513,7 +525,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       result += `${hours} ${this.translateService.instant('heure' + (hours > 1 ? 's' : ''))}`;
     }
 
-    return result || this.translateService.instant("moins d'une heure");
+    return { value: result || this.translateService.instant("moins d'une heure"), durationValue: diff };
   }
 
   public addPlayerToFavorites(): void {
@@ -907,11 +919,13 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
 
   private async initPlayerStats(): Promise<void> {
     if (!this.playerId) return;
-    let stats = await this.apiRestService.getRankingStatsByPlayerId(this.playerId);
+    let stats = await this.route.snapshot.data['stats'];
     if (stats.success === false) {
       stats = {
         data: {
           player_id: this.playerId,
+          alliance_name: null,
+          player_name: '',
           server: '',
           might_current: -1,
           might_all_time: -1,
@@ -935,9 +949,6 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       };
     }
     this.stats = this.mapStatsFromData(stats.data);
-    const [currentFameTitle, currentTopXFame] = await this.getPlayerGloryTitle();
-    this.currentPlayerTitle = currentFameTitle;
-    this.currentTopXFameTitle = currentTopXFame;
     this.fillQuantity();
     this.setMonuments();
     for (const key of Object.keys(this.stats)) {
@@ -1165,7 +1176,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     const dow = firstMonday.getUTCDay();
     firstMonday.setUTCDate(firstMonday.getUTCDate() - (dow === 0 ? 6 : dow - 1));
 
-    firstMonday.setUTCHours(1 + RESET_OFFSET, 0, 0, 0);
+    firstMonday.setUTCHours(-1 + RESET_OFFSET, 0, 0, 0);
     const currentMonday = new Date(firstMonday);
     const currentDate = new Date();
     const allWeeksHours: string[][] = [];
@@ -1174,7 +1185,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       const weekEnd = new Date(currentMonday);
       weekEnd.setUTCDate(weekEnd.getUTCDate() + 7);
       weekEnd.setUTCHours(RESET_OFFSET, 0, 0, 0);
-      weekEnd.setUTCHours(weekEnd.getUTCHours() - 1);
+      weekEnd.setUTCHours(weekEnd.getUTCHours() - 2);
 
       allWeeksHours.push(this.generateWeekHours(currentMonday, weekEnd));
       currentMonday.setUTCDate(currentMonday.getUTCDate() + 7);
@@ -1520,23 +1531,59 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     return { dates, points };
   }
 
-  private fillData(): void {
+  private async fillData(fragment: PlayerStatsTabs): Promise<void> {
     this.setDefaultAlliance();
-    void this.initPlayerStats();
-    this.cdr.detectChanges();
-    setTimeout(() => {
-      this.initMightHistoryData();
-      this.initLootHistoryData();
-    }, 500);
-    setTimeout(() => {
-      this.initWarRealmsData();
-      this.initNomadHistoryData();
-      this.initBerimondKingdomData();
-      this.initBerimondInvasionData();
-      this.initSamuraiHistoryData();
-      this.initBloodcrowHistoryData();
+    if (!this.stats) {
+      await this.initPlayerStats();
       this.cdr.detectChanges();
-    }, 1000);
+    }
+    if (fragment === 'glory' && this.currentPlayerTitle === null) {
+      void this.getPlayerGloryTitle().then((titles) => {
+        this.currentPlayerTitle = titles[0];
+        this.currentTopXFameTitle = titles[1];
+        this.cdr.detectChanges();
+      });
+    } else if (fragment === 'events') {
+      if (!this.playerId) return;
+      void this.apiRestService.getEventsByPlayerId(this.playerId).then((response) => {
+        if (response.success) {
+          this.outerEvents = response.data.events.map((event) => ({
+            ...event,
+            from: this.utilitiesService.generateOuterRealmsEventFromDate(event.collect_date),
+            to: new Date(event.collect_date),
+          }));
+          this.cdr.detectChanges();
+        }
+      });
+    }
+    if (['overview', 'loot'].includes(fragment) && this.fillDataState === 'idle') {
+      this.fillDataState = 'loading';
+      setTimeout(() => {
+        this.initMightHistoryData();
+        this.initLootHistoryData();
+      }, 500);
+      setTimeout(() => {
+        try {
+          this.initWarRealmsData();
+          this.initNomadHistoryData();
+          this.initBerimondKingdomData();
+          this.initBerimondInvasionData();
+          this.initSamuraiHistoryData();
+          this.initBloodcrowHistoryData();
+          this.fillDataState = 'loaded';
+          this.isInLoading = false;
+          this.cdr.detectChanges();
+        } catch (error) {
+          console.error('Error filling data for overview:', error);
+          this.fillDataState = 'error';
+          this.isInLoading = false;
+          this.cdr.detectChanges();
+        }
+      }, 1000);
+    } else {
+      this.isInLoading = false;
+      this.cdr.detectChanges();
+    }
   }
 
   private buildHeatmapRanges(maxValue: number): any[] {
@@ -1607,6 +1654,10 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   }
 
   private async initPlayerData(playerId: number): Promise<void> {
+    if (this.fillPlayerHistoryState !== 'idle') return;
+    this.fillPlayerHistoryState = 'loading';
+    this.isInLoading = true;
+    this.cdr.detectChanges();
     const [allianceUpdatesResponse, playerUpdatesResponse] = await Promise.all([
       this.apiRestService.getAllianceUpdatesByPlayerId(playerId),
       this.apiRestService.getPlayerUpdatesByPlayerId(playerId),
@@ -1620,16 +1671,20 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
         this.allianceUpdates = [];
         const firstAlliance = data.updates.at(-1);
         for (let index = 0; index < data.updates.length; index++) {
+          const { value, durationValue } =
+            index > 0
+              ? this.getDateDiff(data.updates[index]['date'], data.updates[index - 1]['date'])
+              : this.getDateDiff(data.updates[index]['date'], new Date().toISOString());
           this.allianceUpdates[index] = {
             id: data.updates[index]['new_alliance_id'],
             date: data.updates[index]['date'],
             alliance: data.updates[index]['new_alliance_name'],
-            duration:
-              index > 0
-                ? this.getDateDiff(data.updates[index]['date'], data.updates[index - 1]['date'])
-                : this.translateService.instant('depuis') +
-                  ' ' +
-                  this.getDateDiff(data.updates[index]['date'], new Date().toISOString()),
+            original_new_alliance_name:
+              data.updates[index]['original_new_alliance_name'] === data.updates[index]['new_alliance_name']
+                ? null
+                : data.updates[index]['original_new_alliance_name'],
+            duration: index > 0 ? value : this.translateService.instant('depuis') + ' ' + value,
+            durationValue: durationValue,
           };
         }
         if (firstAlliance) {
@@ -1637,12 +1692,18 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
             id: firstAlliance['old_alliance_id'],
             date: null,
             alliance: firstAlliance['old_alliance_name'],
+            original_new_alliance_name:
+              firstAlliance['original_old_alliance_name'] === firstAlliance['old_alliance_name']
+                ? null
+                : firstAlliance['original_old_alliance_name'],
             duration: '-',
+            durationValue: 0,
           });
         }
       } else {
         this.setDefaultAlliance();
       }
+      this.maxDuration = Math.max(...this.allianceUpdates!.map((a) => a.durationValue));
     }
     if (playerUpdatesResponse.success === false) {
       this.playerUpdates = null;
@@ -1658,10 +1719,10 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
             player: data.updates[index]['new_player_name'],
             duration:
               index > 0
-                ? this.getDateDiff(data.updates[index]['date'], data.updates[index - 1]['date'])
+                ? this.getDateDiff(data.updates[index]['date'], data.updates[index - 1]['date']).value
                 : this.translateService.instant('depuis') +
                   ' ' +
-                  this.getDateDiff(data.updates[index]['date'], new Date().toISOString()),
+                  this.getDateDiff(data.updates[index]['date'], new Date().toISOString()).value,
           };
         }
         if (firstPlayer) {
@@ -1673,6 +1734,9 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
         }
       }
     }
+    this.fillPlayerHistoryState = 'loaded';
+    this.isInLoading = false;
+    this.cdr.detectChanges();
   }
 
   private fillQuantity(): void {
@@ -1730,9 +1794,12 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
         id: this.allianceId ?? null,
         date: null,
         alliance: this.allianceName ?? null,
+        original_new_alliance_name: this.allianceName ?? null,
         duration: '-',
+        durationValue: 0,
       },
     ];
+    this.cdr.detectChanges();
   }
 
   private observeCharts(): void {
@@ -1743,6 +1810,14 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
         element.dataset['observed'] = 'true';
         this.observer.observe(element);
       }
+    });
+  }
+
+  private clearChartsObservers(): void {
+    this.observer.disconnect();
+    this.chartContainers.forEach((chart) => {
+      const element = chart.nativeElement as HTMLElement;
+      delete element.dataset['observed'];
     });
   }
 }

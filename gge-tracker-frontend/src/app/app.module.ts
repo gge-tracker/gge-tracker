@@ -13,7 +13,6 @@ import { AppComponent } from './app.component';
 import { routes } from './app.routes';
 import { FooterComponent } from '@ggetracker-components/footer/footer.component';
 import { LoadingComponent } from '@ggetracker-components/loading/loading.component';
-import { NavbarComponent } from '@ggetracker-components/navbar/navbar.component';
 import { SkeletonComponent } from '@ggetracker-components/skeleton/skeleton.component';
 import { LocalStorageTranslateLoader } from './local-storage-loader';
 import { SidebarComponent } from '@ggetracker-components/sidebar/sidebar.component';
@@ -55,7 +54,6 @@ export function DynamicTranslateLoaderFactory(http: HttpClient): TranslateLoader
     CommonModule,
     NgSelectModule,
     LucideAngularModule.pick({ Spline }),
-    NavbarComponent,
     FooterComponent,
     RouterModule.forRoot(routes),
     LoadingComponent,

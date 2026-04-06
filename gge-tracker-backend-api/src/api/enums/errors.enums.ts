@@ -37,4 +37,5 @@ export enum RouteErrorMessagesEnum {
   RouteMustBeNonEmpty = 'Route must be a non-empty string',
   UnavailableForSpecialServers = 'This feature is unavailable for this server',
   EventNotActive = 'The event is not active',
+  PageOutOfRange = 'Page number is out of range',
 }

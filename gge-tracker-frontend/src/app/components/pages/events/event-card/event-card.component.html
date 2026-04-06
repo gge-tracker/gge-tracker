@@ -1,0 +1,36 @@
+<div [title]="'Voir le détail' | translate" (click)="onEventClick.emit(this.event())"
+  (keyup.enter)="onEventClick.emit(this.event())" (keydown.space)="onEventClick.emit(this.event())" class="event-card"
+  [ngStyle]="{'background-image': 'url(/assets/' + event().type + '.png)'}">
+  <div class="event-overlay">
+    <div class="event-header">
+      <div class="event-badge">
+        <lucide-icon class="icons calendar-check" [img]="CalendarCheck"></lucide-icon>
+        &nbsp;
+        {{ 'Événement du 0 au 0' | translate: { start: (event().from | date: ('Date_7' | translate)), end:
+        (event().to | date: ('Date_7' | translate)) } }}
+      </div>
+      <div class="event-players">
+        <ng-container *ngIf="options().displayMode === 'player-count'; else rankingContent">
+          <lucide-icon class="icons square-user" [img]="SquareUser"></lucide-icon>
+          &nbsp;
+          {{ (playerCount() || 0) | formatNumber }} {{ 'Joueurs' | translate | lowercase }}
+        </ng-container>
+        <ng-template #rankingContent>
+          <lucide-icon class="icons trophy" [img]="Trophy"></lucide-icon>
+          &nbsp;
+          #{{( rank() || 0) | formatNumber }}
+        </ng-template>
+      </div>
+    </div>
+    <h5 class="event-title">
+      {{ (event().type === 'outer-realms' ? 'Royaume extérieur' : 'Lacis') | translate | titlecase }}
+      <span class="event-icon">
+        <i class="fa-solid" [ngClass]="{
+          'fa-trophy': event().type === 'outer-realms',
+          'fa-shield-alt': event().type === 'beyond-the-horizon'
+        }"></i>
+      </span>
+    </h5>
+    <span class="event-cta">{{ 'Voir le détail' | translate }}</span>
+  </div>
+</div>

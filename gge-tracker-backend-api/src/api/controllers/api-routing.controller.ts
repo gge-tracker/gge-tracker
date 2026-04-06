@@ -156,6 +156,10 @@ export class ApiRoutingController {
     void ApiEvents.getLiveOuterRealmsRankingSpecificPlayer(request, response);
   }
 
+  public getEventByPlayerId(request: express.Request, response: express.Response): void {
+    void ApiEvents.getEventByPlayerId(request, response);
+  }
+
   public getEventPlayers(request: express.Request, response: express.Response): void {
     // Events are stored only on FR1 database (centralized database)
     void ApiEvents.getEventPlayers(

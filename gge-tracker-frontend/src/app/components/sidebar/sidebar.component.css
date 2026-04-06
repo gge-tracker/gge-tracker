@@ -108,7 +108,7 @@ img,
   position: sticky;
   top: 0;
   transform: translateX(0);
-  transition: all 0.25s ease;
+  transition: transform 0.25s ease;
   z-index: 50;
   width: max-content;
 }

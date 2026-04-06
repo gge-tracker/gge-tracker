@@ -7,7 +7,7 @@
   </span>
   <div class="stats-grid">
     <div class="stat-card pointer" *ngFor="let card of cards">
-      <div class="stat-card-content" tabindex="0">
+      <div class="stat-card-content">
         <img [src]="card.logo" class="icon" [alt]="card.label | translate">
         <div class="value">{{ card.value }}</div>
         <div class="change" [ngClass]="{
@@ -173,27 +173,29 @@
         <em>{{ 'Aucun départ ou arrivée en 0' | translate: { time: (getMonthNameByDate(actualMonth) | lowercase) }
           }}</em>
       </div>
-      <div *ngFor="let group of groupedUpdatedByMonths[actualMonth]" class="timeline-day mb-4">
-        <div class="day-title text-light bg-custom p-2 rounded">{{ group.date | date:'fullDate':'':langageService.getCurrentLocale() | titlecase }} <small>({{
-            group.updates.length }})</small></div>
-        <div *ngFor="let update of group.updates" class="timeline-event d-flex align-items-center my-2 p-2">
-          <div class="event-icon rounded-circle text-center text-light me-2"
-            [ngClass]="{ 'bg-success': update.action === 'joined', 'bg-danger': update.action === 'left' }">
-            <i [ngClass]="update.action === 'joined' ? 'fas fa-door-open' : 'fas fa-door-closed'"></i>
-          </div>
+      <div class="timeline-day-container">
+        <div *ngFor="let group of groupedUpdatedByMonths[actualMonth]" class="timeline-day mb-4">
+          <div class="day-title text-light bg-custom p-2 rounded">{{ group.date | date:'fullDate':'':langageService.getCurrentLocale() | titlecase }} <small>({{
+              group.updates.length }})</small></div>
+          <div *ngFor="let update of group.updates" class="timeline-event d-flex align-items-center my-2 p-2">
+            <div class="event-icon rounded-circle text-center text-light me-2"
+              [ngClass]="{ 'bg-success': update.action === 'joined', 'bg-danger': update.action === 'left' }">
+              <i [ngClass]="update.action === 'joined' ? 'fas fa-door-open' : 'fas fa-door-closed'"></i>
+            </div>
 
-          <div class="event-details w-100 d-flex justify-content-between">
-            <span>
-              <strong class="text-dark">{{ update.player_name }}</strong>&nbsp;<small>({{ update.level }})</small>
-            </span>
-            <span [ngClass]="{ 'text-success': update.action === 'joined', 'text-danger': update.action === 'left' }">
-              <i class="far fa-clock"></i>&nbsp;{{ update.created_at | date: 'shortTime' }} •
-              <ng-container *ngIf="update.action === 'joined'">{{ 'A rejoint l\'alliance' | translate
-                }}&nbsp;</ng-container>
-              <ng-container *ngIf="update.action === 'left'">{{ 'A quitté l\'alliance' | translate
-                }}&nbsp;</ng-container>
-              <strong>{{ update.might_change }}</strong>
-            </span>
+            <div class="event-details w-100 d-flex justify-content-between">
+              <span>
+                <strong class="text-dark">{{ update.player_name }}</strong>&nbsp;<small>({{ update.level }})</small>
+              </span>
+              <span [ngClass]="{ 'text-success': update.action === 'joined', 'text-danger': update.action === 'left' }">
+                <i class="far fa-clock"></i>&nbsp;{{ update.created_at | date: 'shortTime' }} •
+                <ng-container *ngIf="update.action === 'joined'">{{ 'A rejoint l\'alliance' | translate
+                  }}&nbsp;</ng-container>
+                <ng-container *ngIf="update.action === 'left'">{{ 'A quitté l\'alliance' | translate
+                  }}&nbsp;</ng-container>
+                <strong>{{ update.might_change }}</strong>
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -223,14 +225,16 @@
           (changeTabOutput)="changeTabGraph(config.chartKey, $event)">
           <div before class="previous-graph" *ngIf="!config.singleChart">
             <span (click)="previousGraph(ApiPlayerStatsType[config.chartKey])"
-              (keyup.enter)="previousGraph(ApiPlayerStatsType[config.chartKey])" tabindex="0"
+              (keyup.enter)="previousGraph(ApiPlayerStatsType[config.chartKey])"
+              (keypress)="$event.key === 'Enter' ? previousGraph(ApiPlayerStatsType[config.chartKey]) : null"
               [title]="'Graphique précédent' | translate">
               <i class="fas fa-chevron-left"></i>
             </span>
           </div>
           <div after class="next-graph" *ngIf="!config.singleChart">
             <span (click)="nextGraph(ApiPlayerStatsType[config.chartKey])"
-              (keyup.enter)="nextGraph(ApiPlayerStatsType[config.chartKey])" tabindex="0"
+              (keyup.enter)="nextGraph(ApiPlayerStatsType[config.chartKey])"
+              (keypress)="$event.key === 'Enter' ? nextGraph(ApiPlayerStatsType[config.chartKey]) : null"
               [title]="'Graphique suivant' | translate">
               <i class="fas fa-chevron-right"></i>
             </span>
@@ -366,7 +370,7 @@
           [dataName]="'Puissance' | translate" [backgroundIconImage]="'/assets/banner-pp.png'"
           [backgroundColour]="'rgb(255 230 35)'">
            <div after class="info-icon">
-            <i class="fas fa-info-circle" [title]="'Informations' | translate" data-bs-toggle="modal" data-bs-target="#infoDesc1Modal" (click)="openModal1()" (keydown.enter)="openModal1()" tabindex="0"></i>
+            <i class="fas fa-info-circle" [title]="'Informations' | translate" data-bs-toggle="modal" data-bs-target="#infoDesc1Modal" (click)="openModal1()" (keydown.enter)="openModal1()"></i>
            </div>
         </app-player-stats-card>
       </div>
@@ -378,7 +382,7 @@
           [dataName]="'Puissance' | translate" [backgroundIconImage]="'/assets/banner-pp.png'"
           [backgroundColour]="'rgb(255 230 35)'">
           <div after class="info-icon">
-            <i class="fas fa-info-circle" [title]="'Informations' | translate" data-bs-toggle="modal" data-bs-target="#infoDesc2Modal" (click)="openModal2()" (keydown.enter)="openModal2()" tabindex="0"></i>
+            <i class="fas fa-info-circle" [title]="'Informations' | translate" data-bs-toggle="modal" data-bs-target="#infoDesc2Modal" (click)="openModal2()" (keydown.enter)="openModal2()"></i>
            </div>
         </app-player-stats-card>
       </div>

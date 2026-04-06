@@ -168,6 +168,12 @@ div[data-chart] {
   border: 2px solid black;
   color: black;
 }
+.badge-alliance-name-history {
+  font-size: 0.8rem;
+  background: #0f35b65e;
+  color: white;
+  border-radius: 20px;
+}
 .btn-exit.left {
   left: 0;
 }
@@ -184,8 +190,8 @@ div[data-chart] {
   text-align: center;
 }
 .event-card {
-  background-size: 45px;
   background: rgb(18 25 0 / 50%) url(/assets/light-background-hover.png);
+  background-size: 45px;
   border-radius: 15px;
   border: 2px solid #00000069;
   color: #fff;
@@ -291,7 +297,6 @@ img::selection {
   background-position-y: -173px;
   background-image: url(/assets/background-castle.png);
   background-repeat: no-repeat;
-  background-position-x: center;
   bottom: 0;
   content: "";
   left: 0;
@@ -655,4 +660,206 @@ img::selection {
     border-color: rgba(231, 76, 60, 0.2);
     box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.2);
   }
+}
+
+.ggetracker-hist-flow.compact {
+  gap: 6px;
+}
+
+.ggetracker-hist-event {
+  grid-template-columns: 32px 1fr;
+  gap: 8px;
+}
+
+.ggetracker-hist-type {
+  font-size: 14px;
+  border-radius: 8px;
+}
+
+.ggetracker-hist-block {
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+.ggetracker-hist-header {
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+.ggetracker-hist-flowline {
+  font-size: 11px;
+  color: #e2e8f0;
+}
+
+.ggetracker-hist-duration-text {
+  color: #d1d1d1;
+  font-size: 10px;
+}
+
+.ggetracker-hist-flowline {
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.ggetracker-hist-bar-wrapper {
+  height: 4px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.ggetracker-hist-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #3b82f6, #38bdf8);
+  width: 0;
+  animation: ggetracker-grow 0.8s ease forwards;
+}
+
+.ggetracker-hist-event.is-empty .ggetracker-hist-bar {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+.ggetracker-hist-event.is-rename .ggetracker-hist-bar {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+
+@keyframes ggetracker-grow {
+  from {
+    width: 0;
+    opacity: 0.3;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.ggetracker-hist-event:hover .ggetracker-hist-bar {
+  filter: brightness(1.2);
+  transform: scaleY(1.4);
+}
+
+.ggetracker-hist-date i,
+.ggetracker-hist-flowline i {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.ggetracker-hist-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ggetracker-hist-event {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.ggetracker-hist-type {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #94a3b8;
+}
+
+.ggetracker-hist-event.is-empty .ggetracker-hist-type {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.ggetracker-hist-event.is-rename .ggetracker-hist-type {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.ggetracker-hist-event:not(.is-empty):not(.is-rename) .ggetracker-hist-type {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.12);
+}
+
+.ggetracker-hist-block {
+  background: #0f172a;
+  border-radius: 10px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+}
+
+.ggetracker-hist-event:hover .ggetracker-hist-block {
+  transform: translateX(4px);
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.ggetracker-hist-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.ggetracker-hist-flowline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.ggetracker-hist-from {
+  color: #f59e0b;
+  opacity: 0.8;
+}
+
+.ggetracker-hist-to {
+  color: #e2e8f0;
+}
+
+.ggetracker-hist-arrow {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.ggetracker-hist-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.ggetracker-hist-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #3b82f6;
+  color: white;
+  transition: all 0.15s;
+}
+
+.ggetracker-hist-btn:hover {
+  transform: scale(1.1);
+}
+
+.ggetracker-hist-btn.ghost {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ggetracker-hist-empty {
+  color: #64748b;
+}
+
+.to.original {
+  background: #3a99f76b;
+  border-radius: 20px;
+  padding: 0 10px;
+  font-size: 0.65rem;
 }

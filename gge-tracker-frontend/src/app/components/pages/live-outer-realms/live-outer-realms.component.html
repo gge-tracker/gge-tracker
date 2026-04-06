@@ -1,6 +1,26 @@
 <div class="container my-3 live-outer-realms">
   <div class="row" *ngIf="!eventNotActive; else eventNotActiveTemplate">
     <div *ngIf="viewType === 'all'; else viewTypeSpecificPlayerTemplate">
+      <div class="event-header-container">
+        <div *ngIf="currentEvent" class="col-12 my-4 d-flex align-items-center event-header">
+          <div class="p-3 event-image">
+            <img src="/assets/live/{{currentEvent}}.png" alt="{{currentEvent}}">
+          </div>
+          <div>
+            <h2 class="event-name">
+              <div class="event-status-container">
+                  <div class="event-status-dot"></div>
+              </div>
+              {{ ('outer.dialog_tempServer_scoring_header_' + currentEvent) | translate }}</h2>
+            <h5 class="event-desc">{{ ('outer.dialog_tempServer_scoring_desc_' + currentEvent) | translate }}</h5>
+            <p>
+              <a href="https://goodgameempire.fandom.com/wiki/The_Outer_Realms" target="_blank" rel="noopener noreferrer">
+                {{ 'En savoir plus sur l\'événement' | translate }}
+              </a>
+            </p>
+          </div>
+        </div>
+      </div>
       <div class="col-12" *ngIf="!isInLoading">
         <app-search-form #searchForm [formFilters]="null" [isInLoading]="isInLoading"
           [inputTip]="'Rechercher un joueur' | translate" [defaultSearch]="search" [searchTypes]="{

@@ -6,6 +6,7 @@ import { EventTypes } from '../enums/event-types.enums';
 import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { ApiInvalidInputType } from '../types/parameter.types';
+import { TEMP_SERVER_SETTINGS } from '../interfaces/temporary-server-events.config';
 
 /**
  * Abstract class providing API endpoints for event-related data (BTH, OR, GT, ...)
@@ -35,13 +36,60 @@ export abstract class ApiEvents implements ApiHelper {
     eventPgDbpool: pg.Pool,
   ): Promise<void> {
     try {
+      const itemsPerPage = 8;
+      /* ---------------------------------
+       * Validate request
+       * --------------------------------- */
+      const eventType = String(request.query.type || '').toLowerCase();
+      if (eventType && !Object.values(EventTypes).includes(eventType as EventTypes)) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventType });
+        return;
+      }
+      const page = ApiHelper.validatePageNumber(request.query.page);
       /* ---------------------------------
        * Cache check
        * --------------------------------- */
-      const cachedKey = `events:list`;
+      const cachedKey = `events:list:${eventType || 'all'}:page:${page}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        return;
+      }
+
+      /* ---------------------------------
+       * Construct Count SQL Query
+       * --------------------------------- */
+      let whereClause = '';
+      if (eventType === EventTypes.OUTER_REALMS) {
+        whereClause = `WHERE type = 'outer_realms'`;
+      } else if (eventType === EventTypes.BEYOND_THE_HORIZON) {
+        whereClause = `WHERE type = 'beyond_the_horizon'`;
+      } else {
+        whereClause = '';
+      }
+
+      const countQuery = `
+        SELECT COUNT(*) AS total_count FROM (
+          SELECT DISTINCT event_num,
+          'outer_realms' AS type
+          FROM outer_realms_event
+          UNION ALL
+          SELECT event_num,
+          'beyond_the_horizon' AS type
+          FROM beyond_the_horizon_event
+        ) AS combined_events
+        ${whereClause}
+      `;
+      const countResult = await eventPgDbpool.query(countQuery);
+      const totalCount = Number(countResult.rows[0]?.total_count || 0);
+      if (totalCount === 0) {
+        response.status(ApiHelper.HTTP_OK).send({
+          events: [],
+          pagination: { current_page: page, total_pages: 0, current_items_count: 0, total_items_count: 0 },
+        });
+        return;
+      } else if (totalCount < (page - 1) * itemsPerPage) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.PageOutOfRange });
         return;
       }
 
@@ -68,7 +116,9 @@ export abstract class ApiEvents implements ApiHelper {
         INNER JOIN beyond_the_horizon_ranking r
           ON e.event_num = r.event_num
         GROUP BY e.event_num, e.collect_date
-        ORDER BY collect_date DESC;
+        ${whereClause}
+        ORDER BY collect_date DESC
+        LIMIT ${itemsPerPage} OFFSET ${(page - 1) * itemsPerPage};
       `;
 
       /* ---------------------------------
@@ -88,11 +138,18 @@ export abstract class ApiEvents implements ApiHelper {
             type: result.type,
             collect_date: new Date(result.collect_date).toISOString(),
           }));
+          const pagination = {
+            current_page: page,
+            total_pages: Math.ceil(totalCount / itemsPerPage),
+            current_items_count: events.length,
+            total_items_count: totalCount,
+          };
+
           /* ---------------------------------
            * Update cache and send response
            * --------------------------------- */
-          void ApiHelper.updateCache(cachedKey, { events }, 3600 * 3);
-          response.status(ApiHelper.HTTP_OK).send({ events });
+          void ApiHelper.updateCache(cachedKey, { events, pagination }, 3600 * 3);
+          response.status(ApiHelper.HTTP_OK).send({ events, pagination });
         }
       });
     } catch (error) {
@@ -585,6 +642,69 @@ export abstract class ApiEvents implements ApiHelper {
     }
   }
 
+  public static async getEventByPlayerId(request: express.Request, response: express.Response): Promise<void> {
+    try {
+      const playerId = ApiHelper.verifyIdWithCountryCode(String(request.params.playerId));
+      let eventType = String(request.params.eventType).toLowerCase();
+      if (eventType !== EventTypes.OUTER_REALMS && eventType !== EventTypes.BEYOND_THE_HORIZON && eventType !== 'all') {
+        eventType = 'all';
+      }
+      if (!playerId) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
+        return;
+      }
+      const realPlayerId = ApiHelper.removeCountryCode(playerId);
+      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPoolFromRequestId(playerId);
+      let query: string;
+      if (eventType === 'all') {
+        query = `
+          SELECT O.event_num, O.collect_date, R.rank, R.point, R.server, '${EventTypes.OUTER_REALMS}' AS type
+          FROM outer_realms_event O
+          INNER JOIN outer_realms_ranking R
+            ON O.event_num = R.event_num
+          WHERE R.player_id = $1
+          UNION ALL
+          SELECT O.event_num, O.collect_date, R.rank, R.point, R.server, '${EventTypes.BEYOND_THE_HORIZON}' AS type
+          FROM beyond_the_horizon_event O
+          INNER JOIN beyond_the_horizon_ranking R
+            ON O.event_num = R.event_num
+          WHERE R.player_id = $1
+          ORDER BY collect_date DESC
+        `;
+      } else {
+        query = `
+          SELECT O.event_num, O.collect_date, R.rank, R.point, R.server
+          FROM ${eventType.trim().replaceAll('-', '_')}_event O
+          INNER JOIN ${eventType.trim().replaceAll('-', '_')}_ranking R
+            ON O.event_num = R.event_num
+          WHERE R.player_id = $1
+          ORDER BY O.collect_date DESC
+        `;
+      }
+      pgPool.query(query, [realPlayerId], (error, results) => {
+        if (error) {
+          response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+          return;
+        } else {
+          const events = results.rows.map((result: any) => ({
+            type: result.type || eventType,
+            event_num: result.event_num,
+            collect_date: new Date(result.collect_date).toISOString(),
+            rank: result.rank,
+            point: result.point,
+            server: result.server,
+          }));
+          response.status(ApiHelper.HTTP_OK).send({ events });
+        }
+      });
+    } catch (error) {
+      const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
+      response.status(code).send({ error: message });
+      ApiHelper.logError(error, 'getEventByPlayerId', request);
+      return;
+    }
+  }
+
   /**
    * Retrieves a paginated list of players for a specific event, with optional filtering by player name and server
    *
@@ -1069,7 +1189,9 @@ export abstract class ApiEvents implements ApiHelper {
       /* ---------------------------------
        * Update cache and send response
        * --------------------------------- */
-      const responseData = { player: finalEntry };
+
+      const currentOuterRealmsEvent = await this.getCurrentOuterRealmsEvent();
+      const responseData = { player: finalEntry, current_event: currentOuterRealmsEvent };
       response.status(ApiHelper.HTTP_OK).send(responseData);
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
@@ -1195,9 +1317,11 @@ export abstract class ApiEvents implements ApiHelper {
       const jsonTotal = (await rawTotalResult.json()) as { data: Array<{ total: number }> };
       const total_items = Number(jsonTotal.data[0]?.total || 0);
       const total_pages = Math.ceil(total_items / sizePerPage);
+      const currentOuterRealmsEvent = await this.getCurrentOuterRealmsEvent();
 
       const responseData = {
         players,
+        current_event: currentOuterRealmsEvent,
         pagination: {
           current_page: page,
           total_pages,
@@ -1232,5 +1356,26 @@ export abstract class ApiEvents implements ApiHelper {
       return false;
     }
     return true;
+  }
+
+  /**
+   * Retrieves the current active Outer Realms event's scoring system from Redis
+   *
+   * @returns The scoring system of the current active Outer Realms event, or null if not found or in case of an error
+   */
+  private static async getCurrentOuterRealmsEvent(): Promise<string | null> {
+    try {
+      const temporaryServerData = await ApiHelper.redisClient.get('temporaryServerData');
+      const temporaryServerSetting = TEMP_SERVER_SETTINGS.find(
+        (element) => element.settingID && Number(element.settingID) === Number(temporaryServerData),
+      );
+      if (temporaryServerSetting) {
+        return temporaryServerSetting?.scoringSystem;
+      }
+      throw new Error('No temporary server data found in Redis');
+    } catch (error) {
+      ApiHelper.logError(error, 'getCurrentOuterRealmsEvent', null);
+      return null;
+    }
   }
 }

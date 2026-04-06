@@ -1047,6 +1047,11 @@ publicRoutes.get('/events/:eventType/:id/data', routingInstance.getDataEventType
 /**
  * @todo Swagger documentation
  */
+publicRoutes.get('/events/player/:playerId', routingInstance.getEventByPlayerId.bind(routingInstance));
+
+/**
+ * @todo Swagger documentation
+ */
 protectedRoutes.get('/offers', routingInstance.getOffers.bind(routingInstance));
 
 /**

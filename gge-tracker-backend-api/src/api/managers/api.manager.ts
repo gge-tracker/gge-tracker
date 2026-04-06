@@ -130,9 +130,14 @@ export class ApiGgeTrackerManager extends DatabaseManager {
       zone: 'EmpireEx_6',
     },
     [GgeTrackerServersEnum.INT2]: {
+      databases: {
+        sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-int2',
+        olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_int2',
+      },
       outer_name: 'INT2',
+      timezoneOffset: -1,
+      code: '072',
       zone: 'EmpireEx_7',
-      disabled: true,
     },
     [GgeTrackerServersEnum.ES1]: {
       databases: {

@@ -69,11 +69,15 @@
             {{ 'Sous-division' | translate }}
             <em>{{ alliance.subdivision }}</em>
             <ng-container *ngIf="!isSubDivisionFilterActivated; else subDivisionResetFilter">
-              <i class="fa-solid fa-filter subdivision-indicator ms-2 pointer" (click)="isWithDivision(alliance) ? filterBySubDivision(alliance.division, alliance.subdivision) : filterBySubDivision(division.current_division, alliance.subdivision)"
-              title="{{ 'Filtrer' | translate }} ({{ 'Sous-division' | translate }} {{ alliance.subdivision }})"></i>
+              <i class="fa-solid fa-filter subdivision-indicator ms-2 pointer"
+                (click)="isWithDivision(alliance) ? filterBySubDivision(alliance.division, alliance.subdivision) : filterBySubDivision(division.current_division, alliance.subdivision)"
+                (keypress)="$event.key === 'Enter' ? (isWithDivision(alliance) ? filterBySubDivision(alliance.division, alliance.subdivision) : filterBySubDivision(division.current_division, alliance.subdivision)) : null"
+                title="{{ 'Filtrer' | translate }} ({{ 'Sous-division' | translate }} {{ alliance.subdivision }})"></i>
             </ng-container>
             <ng-template #subDivisionResetFilter>
-              <i class="fa-solid fa-filter-circle-xmark subdivision-indicator ms-2 pointer" (click)="clearSubDivisionFilter()"></i>
+              <i class="fa-solid fa-filter-circle-xmark subdivision-indicator ms-2 pointer"
+                (click)="clearSubDivisionFilter()"
+                (keypress)="$event.key === 'Enter' ? clearSubDivisionFilter() : null"></i>
             </ng-template>
           </td>
           <td>

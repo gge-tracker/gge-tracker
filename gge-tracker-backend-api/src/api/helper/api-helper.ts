@@ -207,9 +207,11 @@ export abstract class ApiHelper {
    */
   public static async updateCache(key: string, data: any, cacheTTL = 3600, noJsonMode = false): Promise<void> {
     try {
-      await (noJsonMode
-        ? this.redisClient.setEx(key, cacheTTL, data)
-        : this.redisClient.setEx(key, cacheTTL, JSON.stringify(data)));
+      if (noJsonMode) {
+        await this.redisClient.setEx(key, cacheTTL, data);
+      } else {
+        await this.redisClient.setEx(key, cacheTTL, JSON.stringify(data));
+      }
     } catch (error) {
       const date = new Date().toISOString();
       console.error('[%s] Redis cache update error for key %s: %s', date, key, error);

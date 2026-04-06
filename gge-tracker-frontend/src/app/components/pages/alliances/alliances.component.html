@@ -29,6 +29,7 @@
             ['might_current', 'Puissance de l\'alliance', '/assets/pp1.png'],
             ['loot_current', 'Points de pillage hebdomadaire', '/assets/loot.png'],
             ['current_fame', 'Points de gloire', '/assets/glory.png'],
+            ['active_player_count', 'Nombre de joueurs actifs', '/assets/member-list-activity.png'],
             ['', '', undefined, true]
           ]"
           (sortOutput)="sortAlliances($event)"
@@ -102,6 +103,21 @@
                 <div class="metric-bar-bg">
                   <div class="metric-bar bar-blue"
                     [style.width.%]="(alliance.currentFame / alliance.highestFame) * 100"></div>
+                </div>
+              </div>
+            </td>
+
+            <!-- Active Player Count -->
+            <td class="col-metric px-2" [title]="alliance.activePlayerCount + ' / ' + alliance.playerCount + ' (' + ((alliance.activePlayerCount / alliance.playerCount) * 100 | number:'1.0-2') + '%)'">
+              <div class="metric">
+                <div class="metric-header">
+                  <span class="metric-current"><span class="mobile-only">{{ 'Joueurs actifs' | translate }}:&nbsp;</span>{{ alliance.activePlayerCount }} / {{ alliance.playerCount }}</span>
+                  <span class="metric-max">
+                    {{ (alliance.activePlayerCount / alliance.playerCount) * 100 | number:'1.0-2' }}%
+                  </span>
+                </div>
+                <div class="metric-bar-bg">
+                  <div class="metric-bar bar-green" [style.width.%]="(alliance.activePlayerCount / alliance.playerCount) * 100"></div>
                 </div>
               </div>
             </td>

@@ -457,6 +457,10 @@ div[after] {
   padding-left: 1rem;
 }
 
+.timeline-day-container {
+  min-height: 300px;
+}
+
 .timeline-event {
   border-bottom: 1px solid #ddd;
   transition: all 0.1s;

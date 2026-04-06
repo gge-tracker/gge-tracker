@@ -980,8 +980,8 @@
 }
 
 .visualize-img {
-  background-size: 24px;
   background: url(/assets/light-background-hover.png), #ffffff14;
+  background-size: 24px;
   border-radius: 12px;
   border: 1px #3f3f3f solid;
   height: 100%;
