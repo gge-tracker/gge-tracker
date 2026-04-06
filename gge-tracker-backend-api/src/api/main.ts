@@ -115,7 +115,10 @@ app.use(async (request, response, next) =>
 setInterval(() => void ggeTrackerApiGuardActivity.flushLogs(), ggeTrackerApiGuardActivity.getLogFlushInterval());
 
 app.use(
-  morgan((tokens, request, response) => ggeTrackerApiGuardActivity.recordMorganRequest(tokens, request, response)),
+  morgan((tokens, request, response) => {
+    ggeTrackerApiGuardActivity.recordMorganRequest(tokens, request, response);
+    return '';
+  }),
 );
 
 const routingInstance = new ApiRoutingController(managerInstance, redisClient as any);
