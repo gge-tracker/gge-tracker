@@ -8,6 +8,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { IconComponent } from '@ggetracker-components/icon/icon.component';
+import { ErrorType } from '@ggetracker-interfaces/empire-ranking';
 
 interface DailyTarget {
   id: string;
@@ -76,6 +77,7 @@ export class GuessDailyPlayerComponent extends GenericComponent implements OnIni
 
   public async ngOnInit(): Promise<void> {
     try {
+      this.isInLoading = true;
       this.searchSubject
         .pipe(
           debounceTime(400),
@@ -97,6 +99,10 @@ export class GuessDailyPlayerComponent extends GenericComponent implements OnIni
         this.dailyTarget = dailyResponse.data as DailyTarget;
         this.todayGameDate = this.dailyTarget.game_date.split('T')[0];
         this.isInLoading = false;
+      } else {
+        this.toastService.add(ErrorType.ERROR_OCCURRED);
+        this.isInLoading = false;
+        return;
       }
       const savedGuesses = localStorage.getItem('miniGameGuesses');
       if (savedGuesses) {

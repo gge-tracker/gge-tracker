@@ -41,7 +41,12 @@ export class SidebarComponent {
     {
       title: 'Scores et classements',
       items: [
-        { label: 'Outer Realms', id: 'live/outer-realms', iconUrl: '/assets/tools/or.webp', frequency: 'Temps réel' },
+        {
+          label: 'temp_server_name_tooltip',
+          id: 'live/outer-realms',
+          iconUrl: '/assets/tools/or.webp',
+          frequency: 'Temps réel',
+        },
         { label: 'Le Grand Tournoi', id: 'grand-tournament', iconUrl: '/assets/tools/gt.webp', frequency: 'Par heure' },
         { label: 'Scores finaux', id: 'events', iconUrl: '/assets/tools/events.webp' },
       ],
