@@ -13,11 +13,10 @@ import { UtilitiesService } from '@ggetracker-services/utilities.service';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
-  selector: 'app-generic',
-  standalone: true,
-  imports: [],
-  templateUrl: './generic.component.html',
-  styleUrl: './generic.component.css',
+    selector: 'app-generic',
+    imports: [],
+    templateUrl: './generic.component.html',
+    styleUrl: './generic.component.css'
 })
 export class GenericComponent {
   public isBrowser = false;

@@ -7,11 +7,10 @@ import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
-  selector: 'app-player-table-content',
-  standalone: true,
-  imports: [NgClass, NgIf, TranslateModule, DatePipe, FormatNumberPipe, RouterLink, NgFor, NgTemplateOutlet],
-  templateUrl: './player-table-content.component.html',
-  styleUrls: ['./player-table-content.component.css'],
+    selector: 'app-player-table-content',
+    imports: [NgClass, NgIf, TranslateModule, DatePipe, FormatNumberPipe, RouterLink, NgFor, NgTemplateOutlet],
+    templateUrl: './player-table-content.component.html',
+    styleUrls: ['./player-table-content.component.css']
 })
 export class PlayerTableContentComponent extends GenericComponent {
   public readonly players = input.required<Player[]>();

@@ -12,11 +12,10 @@ export interface Contributor {
 }
 
 @Component({
-  selector: 'app-about',
-  standalone: true,
-  imports: [NgTemplateOutlet, NgFor, TranslatePipe],
-  templateUrl: './about.component.html',
-  styleUrl: './about.component.css',
+    selector: 'app-about',
+    imports: [NgTemplateOutlet, NgFor, TranslatePipe],
+    templateUrl: './about.component.html',
+    styleUrl: './about.component.css'
 })
 export class AboutComponent extends GenericComponent implements OnInit {
   public version = '';

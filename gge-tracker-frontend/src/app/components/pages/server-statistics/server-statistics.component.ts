@@ -17,12 +17,11 @@ import { TranslateModule } from '@ngx-translate/core';
 import { XAxisAnnotations } from 'ng-apexcharts';
 
 @Component({
-  selector: 'app-server-statistics',
-  standalone: true,
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ChartsWrapperComponent, NgIf, FormsModule, NgForOf, NgClass, TranslateModule],
-  templateUrl: './server-statistics.component.html',
-  styleUrl: './server-statistics.component.css',
+    selector: 'app-server-statistics',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    imports: [ChartsWrapperComponent, NgIf, FormsModule, NgForOf, NgClass, TranslateModule],
+    templateUrl: './server-statistics.component.html',
+    styleUrl: './server-statistics.component.css'
 })
 export class ServerStatisticsComponent extends GenericComponent implements OnInit {
   public charts: Record<string, ChartOptions> = {};

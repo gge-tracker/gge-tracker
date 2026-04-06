@@ -44,11 +44,10 @@ interface GuessResult {
 }
 
 @Component({
-  selector: 'app-guess-daily-player',
-  standalone: true,
-  imports: [NgIf, NgFor, NgClass, FormsModule, TranslatePipe, DecimalPipe, FormatNumberPipe, IconComponent],
-  templateUrl: './guess-daily-player.component.html',
-  styleUrls: ['./guess-daily-player.component.css'],
+    selector: 'app-guess-daily-player',
+    imports: [NgIf, NgFor, NgClass, FormsModule, TranslatePipe, DecimalPipe, FormatNumberPipe, IconComponent],
+    templateUrl: './guess-daily-player.component.html',
+    styleUrls: ['./guess-daily-player.component.css']
 })
 export class GuessDailyPlayerComponent extends GenericComponent implements OnInit {
   public dailyTarget: DailyTarget | null = null;

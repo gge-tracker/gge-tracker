@@ -8,11 +8,10 @@ import { Download, Eraser, Filter, HardDrive, LucideAngularModule, Search } from
 import { FilterComponent } from '../filter/filter.component';
 
 @Component({
-  selector: 'app-search-form',
-  standalone: true,
-  imports: [NgIf, FormsModule, TranslateModule, LucideAngularModule, NgFor, FilterComponent],
-  templateUrl: './search-form.component.html',
-  styleUrl: './search-form.component.css',
+    selector: 'app-search-form',
+    imports: [NgIf, FormsModule, TranslateModule, LucideAngularModule, NgFor, FilterComponent],
+    templateUrl: './search-form.component.html',
+    styleUrl: './search-form.component.css'
 })
 export class SearchFormComponent implements OnChanges, OnInit {
   public searchType: SearchType = 'player';

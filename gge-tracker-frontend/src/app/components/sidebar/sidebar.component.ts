@@ -7,11 +7,10 @@ import { ApiRestService } from '@ggetracker-services/api-rest.service';
 import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
-  selector: 'app-sidebar',
-  standalone: true,
-  imports: [NgFor, RouterLink, NgIf, TranslateModule, NgClass],
-  templateUrl: './sidebar.component.html',
-  styleUrls: ['./sidebar.component.css'],
+    selector: 'app-sidebar',
+    imports: [NgFor, RouterLink, NgIf, TranslateModule, NgClass],
+    templateUrl: './sidebar.component.html',
+    styleUrls: ['./sidebar.component.css']
 })
 export class SidebarComponent {
   public sidebarService = inject(SidebarService);

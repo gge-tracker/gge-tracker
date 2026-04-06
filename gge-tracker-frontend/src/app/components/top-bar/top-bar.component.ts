@@ -25,12 +25,11 @@ import { TopBarService } from '@ggetracker-services/topbar.service';
 import { OverlayModule } from '@angular/cdk/overlay';
 
 @Component({
-  selector: 'app-top-bar',
-  standalone: true,
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, NgFor, NgIf, FormsModule, TranslateModule, RouterModule, OverlayModule],
-  templateUrl: './top-bar.component.html',
-  styleUrls: ['./top-bar.component.css'],
+    selector: 'app-top-bar',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    imports: [IconComponent, NgFor, NgIf, FormsModule, TranslateModule, RouterModule, OverlayModule],
+    templateUrl: './top-bar.component.html',
+    styleUrls: ['./top-bar.component.css']
 })
 export class TopBarComponent implements AfterViewInit {
   @ViewChild('topbarHost', { read: ElementRef }) public host!: ElementRef;

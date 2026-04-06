@@ -38,10 +38,9 @@ export const myIcons: Pick<
  * Usage: <app-icon name="Search" size="32"></app-icon>
  */
 @Component({
-  selector: 'app-icon',
-  standalone: true,
-  imports: [CommonModule, LucideAngularModule],
-  template: ` <lucide-icon [name]="name" [size]="size" class="lucide d-flex"> </lucide-icon> `,
+    selector: 'app-icon',
+    imports: [CommonModule, LucideAngularModule],
+    template: ` <lucide-icon [name]="name" [size]="size" class="lucide d-flex"> </lucide-icon> `
 })
 export class IconComponent {
   @Input() public name: keyof typeof myIcons = 'Info';

@@ -48,27 +48,26 @@ import { CalendarCheck, LucideAngularModule, SquareUser } from 'lucide-angular';
 import { EventCardComponent } from '@ggetracker-pages/events/event-card/event-card.component';
 
 @Component({
-  selector: 'app-player-stats',
-  standalone: true,
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    NgIf,
-    NgClass,
-    RouterLink,
-    PlayerStatsCardComponent,
-    NgForOf,
-    DatePipe,
-    TranslateModule,
-    FormatNumberPipe,
-    LucideAngularModule,
-    LevelPipe,
-    FormsModule,
-    NgTemplateOutlet,
-    NgStyle,
-    EventCardComponent,
-  ],
-  templateUrl: './player-stats.component.html',
-  styleUrl: './player-stats.component.css',
+    selector: 'app-player-stats',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    imports: [
+        NgIf,
+        NgClass,
+        RouterLink,
+        PlayerStatsCardComponent,
+        NgForOf,
+        DatePipe,
+        TranslateModule,
+        FormatNumberPipe,
+        LucideAngularModule,
+        LevelPipe,
+        FormsModule,
+        NgTemplateOutlet,
+        NgStyle,
+        EventCardComponent,
+    ],
+    templateUrl: './player-stats.component.html',
+    styleUrl: './player-stats.component.css'
 })
 export class PlayerStatsComponent extends GenericComponent implements OnInit, AfterViewInit {
   public charts: Record<string, ChartOptions> = {};

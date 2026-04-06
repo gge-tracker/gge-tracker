@@ -73,28 +73,27 @@ interface CardConfig {
   eventTitleKey: keyof typeof ApiPlayerStatsType;
 }
 @Component({
-  selector: 'app-alliance-stats',
-  standalone: true,
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    NgFor,
-    NgClass,
-    NgIf,
-    DatePipe,
-    TitleCasePipe,
-    TranslateModule,
-    PlayerStatsCardComponent,
-    LowerCasePipe,
-    FormsModule,
-    LucideAngularModule,
-    TableComponent,
-    PlayerTableContentComponent,
-    FormatNumberPipe,
-    StatsCardContentComponent,
-    TranslateModule,
-  ],
-  templateUrl: './alliance-stats.component.html',
-  styleUrl: './alliance-stats.component.css',
+    selector: 'app-alliance-stats',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    imports: [
+        NgFor,
+        NgClass,
+        NgIf,
+        DatePipe,
+        TitleCasePipe,
+        TranslateModule,
+        PlayerStatsCardComponent,
+        LowerCasePipe,
+        FormsModule,
+        LucideAngularModule,
+        TableComponent,
+        PlayerTableContentComponent,
+        FormatNumberPipe,
+        StatsCardContentComponent,
+        TranslateModule,
+    ],
+    templateUrl: './alliance-stats.component.html',
+    styleUrl: './alliance-stats.component.css'
 })
 export class AllianceStatsComponent extends GenericComponent implements OnInit, OnDestroy {
   public players: Player[] = [];

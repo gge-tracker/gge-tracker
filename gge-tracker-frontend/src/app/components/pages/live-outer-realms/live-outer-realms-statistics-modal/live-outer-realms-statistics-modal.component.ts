@@ -5,12 +5,11 @@ import { ChartsWrapperComponent } from '@ggetracker-modules/charts-client/charts
 import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
-  selector: 'app-live-outer-realms-statistics-modal',
-  standalone: true,
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslateModule, NgFor, NgIf, ChartsWrapperComponent],
-  templateUrl: './live-outer-realms-statistics-modal.component.html',
-  styleUrls: ['./live-outer-realms-statistics-modal.component.css'],
+    selector: 'app-live-outer-realms-statistics-modal',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    imports: [TranslateModule, NgFor, NgIf, ChartsWrapperComponent],
+    templateUrl: './live-outer-realms-statistics-modal.component.html',
+    styleUrls: ['./live-outer-realms-statistics-modal.component.css']
 })
 export class LiveOuterRealmsStatisticsModalComponent {
   public readonly goBack = output<void>();

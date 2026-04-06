@@ -29,23 +29,22 @@ import { TranslateModule } from '@ngx-translate/core';
 import { ChartComponent } from 'ng-apexcharts';
 
 @Component({
-  selector: 'app-player-stats-card',
-  standalone: true,
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    NgClass,
-    ChartsWrapperComponent,
-    NgFor,
-    DatePipe,
-    FormatNumberPipe,
-    NgIf,
-    KeyValuePipe,
-    TranslateModule,
-    NgTemplateOutlet,
-    NgStyle,
-  ],
-  templateUrl: './player-stats-card.component.html',
-  styleUrl: './player-stats-card.component.css',
+    selector: 'app-player-stats-card',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    imports: [
+        NgClass,
+        ChartsWrapperComponent,
+        NgFor,
+        DatePipe,
+        FormatNumberPipe,
+        NgIf,
+        KeyValuePipe,
+        TranslateModule,
+        NgTemplateOutlet,
+        NgStyle,
+    ],
+    templateUrl: './player-stats-card.component.html',
+    styleUrl: './player-stats-card.component.css'
 })
 export class PlayerStatsCardComponent implements AfterViewInit, OnInit {
   @ViewChildren('chartComp') public chartComps!: QueryList<ChartsWrapperComponent>;

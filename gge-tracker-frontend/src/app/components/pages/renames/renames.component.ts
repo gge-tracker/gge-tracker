@@ -19,12 +19,11 @@ import { RenamesSwitcherComponent } from './renames-switcher/renames-switcher.co
 import { CURRENT } from './rename.token';
 
 @Component({
-  selector: 'app-renames',
-  standalone: true,
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgClass, SearchFormComponent, TableComponent, NgIf, FormatNumberPipe, DatePipe, NgFor, TranslateModule],
-  templateUrl: './renames.component.html',
-  styleUrl: './renames.component.css',
+    selector: 'app-renames',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    imports: [NgClass, SearchFormComponent, TableComponent, NgIf, FormatNumberPipe, DatePipe, NgFor, TranslateModule],
+    templateUrl: './renames.component.html',
+    styleUrl: './renames.component.css'
 })
 export class RenamesComponent extends GenericComponent implements AfterViewInit, OnDestroy {
   public search = '';

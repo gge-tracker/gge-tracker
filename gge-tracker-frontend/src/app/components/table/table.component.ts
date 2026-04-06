@@ -4,11 +4,10 @@ import { TranslateModule } from '@ngx-translate/core';
 import { ChevronsDown, ChevronsUp, ChevronsUpDown, LucideAngularModule } from 'lucide-angular';
 
 @Component({
-  selector: 'app-table',
-  standalone: true,
-  imports: [NgIf, NgForOf, NgTemplateOutlet, NgClass, TranslateModule, LucideAngularModule],
-  templateUrl: './table.component.html',
-  styleUrl: './table.component.css',
+    selector: 'app-table',
+    imports: [NgIf, NgForOf, NgTemplateOutlet, NgClass, TranslateModule, LucideAngularModule],
+    templateUrl: './table.component.html',
+    styleUrl: './table.component.css'
 })
 export class TableComponent {
   public sort = input.required<string>();

@@ -48,26 +48,25 @@ interface FormFilters {
 }
 
 @Component({
-  selector: 'app-players',
-  standalone: true,
-  providers: [FormatNumberPipe],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    NgClass,
-    FormsModule,
-    NgFor,
-    NgIf,
-    TableComponent,
-    SearchFormComponent,
-    TranslateModule,
-    PlayerTableContentComponent,
-    LucideAngularModule,
-    IconComponent,
-    IconToggleComponent,
-    NgSelectModule,
-  ],
-  templateUrl: './players.component.html',
-  styleUrl: './players.component.css',
+    selector: 'app-players',
+    providers: [FormatNumberPipe],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    imports: [
+        NgClass,
+        FormsModule,
+        NgFor,
+        NgIf,
+        TableComponent,
+        SearchFormComponent,
+        TranslateModule,
+        PlayerTableContentComponent,
+        LucideAngularModule,
+        IconComponent,
+        IconToggleComponent,
+        NgSelectModule,
+    ],
+    templateUrl: './players.component.html',
+    styleUrl: './players.component.css'
 })
 export class PlayersComponent extends GenericComponent implements OnInit {
   @ViewChild('searchForm') public searchForm!: SearchFormComponent;

@@ -5,11 +5,10 @@ import { ApiPlayerStatsType } from '@ggetracker-interfaces/empire-ranking';
 import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
-  selector: 'app-stats-card-content',
-  standalone: true,
-  imports: [NgIf, FormsModule, TranslateModule],
-  templateUrl: './stats-card-content.component.html',
-  styleUrl: './stats-card-content.component.css',
+    selector: 'app-stats-card-content',
+    imports: [NgIf, FormsModule, TranslateModule],
+    templateUrl: './stats-card-content.component.html',
+    styleUrl: './stats-card-content.component.css'
 })
 export class StatsCardContentComponent {
   public previousGraphOutput = output<ApiPlayerStatsType>();

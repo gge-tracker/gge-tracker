@@ -5,17 +5,18 @@ import { GenericComponent } from '@ggetracker-components/generic/generic.compone
 import { SidebarService } from '@ggetracker-services/sidebar.service';
 
 @Component({
-  selector: 'app-skeleton',
-  templateUrl: './skeleton.component.html',
-  styleUrls: ['./skeleton.component.css'],
-  animations: [
-    trigger('fadeIn', [
-      transition(':enter', [
-        style({ opacity: 0, transform: 'translateY(10px)' }),
-        animate('600ms ease-out', style({ opacity: 1, transform: 'none' })),
-      ]),
-    ]),
-  ],
+    selector: 'app-skeleton',
+    templateUrl: './skeleton.component.html',
+    styleUrls: ['./skeleton.component.css'],
+    animations: [
+        trigger('fadeIn', [
+            transition(':enter', [
+                style({ opacity: 0, transform: 'translateY(10px)' }),
+                animate('600ms ease-out', style({ opacity: 1, transform: 'none' })),
+            ]),
+        ]),
+    ],
+    standalone: false
 })
 export class SkeletonComponent extends GenericComponent {
   public sidebarService = inject(SidebarService);

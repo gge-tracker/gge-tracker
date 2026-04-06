@@ -28,25 +28,24 @@ interface FormFilters {
 }
 
 @Component({
-  selector: 'app-alliances',
-  standalone: true,
-  providers: [FormatNumberPipe],
-  imports: [
-    NgFor,
-    NgIf,
-    LucideAngularModule,
-    NgClass,
-    RouterLink,
-    IconComponent,
-    FormsModule,
-    FormatNumberPipe,
-    TableComponent,
-    SearchFormComponent,
-    TranslateModule,
-    DecimalPipe,
-  ],
-  templateUrl: './alliances.component.html',
-  styleUrl: './alliances.component.css',
+    selector: 'app-alliances',
+    providers: [FormatNumberPipe],
+    imports: [
+        NgFor,
+        NgIf,
+        LucideAngularModule,
+        NgClass,
+        RouterLink,
+        IconComponent,
+        FormsModule,
+        FormatNumberPipe,
+        TableComponent,
+        SearchFormComponent,
+        TranslateModule,
+        DecimalPipe,
+    ],
+    templateUrl: './alliances.component.html',
+    styleUrl: './alliances.component.css'
 })
 export class AlliancesComponent extends GenericComponent implements OnInit {
   public alliances: Alliance[] = [];

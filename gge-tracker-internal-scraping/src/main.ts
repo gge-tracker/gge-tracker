@@ -54,17 +54,17 @@ export class GenericFetchAndSaveBackend {
     alliancesUpdated: 0,
     criticalErrors: 0,
   };
-  public connection: mysql.Pool;
-  public pgSqlConnection: pg.Pool;
+  public connection!: mysql.Pool;
+  public pgSqlConnection!: pg.Pool;
   public allianceUpdated: { [key: string]: boolean } = {};
   private readonly WEBHOOK_URL: string = process.env.WEBHOOK_URL || '';
   private readonly CURRENT_ENV: string = process.env.ENVIRONMENT || 'development';
   private readonly MAP_SIZE = 1286;
-  private BASE_API_URL: string;
-  private DATABASE_CONFIG: mysql.PoolOptions | null;
-  private CLICKHOUSE_CONFIG: { [key: string]: string | number | undefined } | undefined;
-  private PGSQL_CONFIG: pg.PoolConfig;
-  private server: string;
+  private readonly BASE_API_URL: string;
+  private readonly DATABASE_CONFIG: mysql.PoolOptions | null;
+  private readonly CLICKHOUSE_CONFIG: { [key: string]: string | number | undefined } | undefined;
+  private readonly PGSQL_CONFIG: pg.PoolConfig;
+  private readonly server: string;
   private playerLootAndMightPointHistoryList: { [key: string]: any[] } = {};
   private playerEventPointHistoryList: { [key: string]: { [key: string]: number | null } } = {};
   private customPlayersAttributesList: { [key: string]: any } = {};
@@ -202,7 +202,7 @@ export class GenericFetchAndSaveBackend {
       const maxResult = 1000;
       const levelCategory = 1;
       const maxLevelCategory = 5;
-      const alliances = {};
+      const alliances: { [key: string]: any } = {};
       const dateStr = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
       for (let lc = levelCategory; lc <= maxLevelCategory; lc++) {
         Utils.logMessage(' Processing level category:', lc);
@@ -233,7 +233,7 @@ export class GenericFetchAndSaveBackend {
                 }
               }
             }
-            const data = response.data;
+            const data = response?.data;
             if (data.content && data.content.L) {
               const results = data.content.L || [];
               for (const result of results) {
@@ -261,7 +261,7 @@ export class GenericFetchAndSaveBackend {
             subDivisionCount++;
           } catch (error) {
             console.error('=====================================');
-            console.error('[Error] ', error.message);
+            console.error('[Error] ', error);
             console.error('=====================================');
             hasMore = false;
           }
@@ -451,17 +451,15 @@ export class GenericFetchAndSaveBackend {
     minY = Math.floor(minY / zone) * zone;
     maxX = Math.ceil(maxX / zone) * zone;
     maxY = Math.ceil(maxY / zone) * zone;
-
     const totalRequests = Math.ceil((maxX - minX) / zone) * Math.ceil((maxY - minY) / zone);
-
     const confirmationMessage = `About to retrieve dungeons for world ${worldNumber} with the following parameters:
-- minX: ${minX}
-- minY: ${minY}
-- maxX: ${maxX}
-- maxY: ${maxY}
-- step: ${step}
-- zone: ${zone}
-This will result in approximately ${totalRequests} API requests, which may take around ${Math.ceil(totalRequests / 120 + 3)} minutes to complete. Do you want to proceed? (yes/no)`;
+      - minX: ${minX}
+      - minY: ${minY}
+      - maxX: ${maxX}
+      - maxY: ${maxY}
+      - step: ${step}
+      - zone: ${zone}
+      This will result in approximately ${totalRequests} API requests, which may take around ${Math.ceil(totalRequests / 120 + 3)} minutes to complete. Do you want to proceed? (yes/no)`;
     const userInput = await this.askConfirmation(confirmationMessage);
     if (!userInput) {
       Utils.logMessage('Dungeon retrieval aborted by user.');
@@ -525,7 +523,7 @@ This will result in approximately ${totalRequests} API requests, which may take 
             }
           }
         } catch (err) {
-          console.error('Error on URL:', url, err.code);
+          console.error('Error on URL:', url, err);
           this.DB_UPDATES.criticalErrors++;
           if (this.DB_UPDATES.criticalErrors >= 10) {
             console.error('Too many errors encountered. Aborting dungeon retrieval.');
@@ -637,7 +635,7 @@ This will result in approximately ${totalRequests} API requests, which may take 
         Utils.logMessage(' [error] MariaDB database connection failed');
       }
       try {
-        const clickhouse = new ClickHouse(this.CLICKHOUSE_CONFIG);
+        const clickhouse = new ClickHouse(this.CLICKHOUSE_CONFIG as any);
         await clickhouse.query('SELECT 1').toPromise();
         Utils.logMessage(' [info] ClickHouse database connection is operational');
       } catch {
@@ -829,7 +827,7 @@ This will result in approximately ${totalRequests} API requests, which may take 
                     `SELECT player_id FROM dungeons WHERE kid = ? AND position_x = ? AND position_y = ?`,
                     [kid, coordinates[0], coordinates[1]],
                   );
-                  const oldPlayerId = rows[0]?.player_id;
+                  const oldPlayerId = (rows as any[])[0]?.player_id;
                   if (oldPlayerId !== playerId) {
                     await this.connection.execute(
                       `INSERT INTO dungeon_player_state (kid, position_x, position_y, player_id, last_attack_at)
@@ -877,8 +875,8 @@ This will result in approximately ${totalRequests} API requests, which may take 
             process.stdout.cursorTo(0);
             process.stdout.write(bar);
           }
-        } catch (err) {
-          const code = err.code;
+        } catch (err: any) {
+          const code = err?.code;
           if (code !== 'ERR_BAD_REQUEST' && code !== 'ECONNRESET') {
             console.error('Unexpected error code on URL:', url, err);
           } else {
@@ -1073,7 +1071,7 @@ This will result in approximately ${totalRequests} API requests, which may take 
         item += increment;
       }
       Utils.logMessage(' Total unique player entries fetched:', playerEntries.size);
-      const clickhouseBaseUrl = (this.CLICKHOUSE_CONFIG.url as string) + ':' + this.CLICKHOUSE_CONFIG.port;
+      const clickhouseBaseUrl = (this.CLICKHOUSE_CONFIG!.url as string) + ':' + this.CLICKHOUSE_CONFIG!.port;
       try {
         const batchSize = 5000;
         const insertSQL = 'INSERT INTO outer_realms_ranking FORMAT JSONEachRow';
@@ -1082,12 +1080,12 @@ This will result in approximately ${totalRequests} API requests, which may take 
           '/?query=' +
           encodeURIComponent(insertSQL) +
           '&database=' +
-          encodeURIComponent(this.CLICKHOUSE_CONFIG.database as string);
+          encodeURIComponent(this.CLICKHOUSE_CONFIG!.database as string);
         const fetchDate = new Date();
         const playerArray = Array.from(playerEntries.values());
         const clickhouseAuth = {
-          username: this.CLICKHOUSE_CONFIG.user as string,
-          password: this.CLICKHOUSE_CONFIG.password as string,
+          username: this.CLICKHOUSE_CONFIG!.user as string,
+          password: this.CLICKHOUSE_CONFIG!.password as string,
         };
 
         const fetchDateStr = new Date(fetchDate).toISOString().slice(0, 19).replace('T', ' ');
@@ -1136,7 +1134,7 @@ This will result in approximately ${totalRequests} API requests, which may take 
             '/?query=' +
             encodeURIComponent(updateLatestFetchSQL) +
             '&database=' +
-            encodeURIComponent(this.CLICKHOUSE_CONFIG.database as string),
+            encodeURIComponent(this.CLICKHOUSE_CONFIG!.database as string),
           '',
           {
             auth: clickhouseAuth,
@@ -1227,7 +1225,7 @@ This will result in approximately ${totalRequests} API requests, which may take 
       const response = await this.genericFetchData(type, { LT: Number(lt), LID: Number(lid), SV: String(sv) });
       const data = response.data;
       return data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('=====================================');
       console.error('[Error] ', error.message);
       console.error('=====================================');
@@ -1284,7 +1282,7 @@ This will result in approximately ${totalRequests} API requests, which may take 
             let k = 0;
             while (k < tentatives && (!data || data['return_code'] != '0')) {
               await new Promise((resolve) => setTimeout(resolve, 3000));
-              data = await this.fetchDataAndReturn(lt, levelCategory, i);
+              data = await this.fetchDataAndReturn(lt, levelCategory, 1);
               k++;
             }
           }
@@ -1530,10 +1528,12 @@ This will result in approximately ${totalRequests} API requests, which may take 
                     this.playerLootAndMightPointHistoryList[uid.toString()][2] = infos['AID'];
                     this.playerLootAndMightPointHistoryList[uid.toString()][3] = infos['AN'];
                     if (AP && AP.length > 0) {
-                      const AP = infos['AP'].filter((ap) => ap[0] === 0).map((ap) => [ap[2], ap[3], ap[4]]);
+                      const AP = infos['AP']
+                        .filter((ap: number[]) => ap[0] === 0)
+                        .map((ap: any[]) => [ap[2], ap[3], ap[4]]);
                       const APRealms = infos['AP']
-                        .filter((ap) => [1, 2, 3, 4].includes(ap[0]))
-                        .map((ap) => [ap[0], ap[2], ap[3], ap[4]]);
+                        .filter((ap: number[]) => [1, 2, 3, 4].includes(ap[0]))
+                        .map((ap: any[]) => [ap[0], ap[2], ap[3], ap[4]]);
                       this.playerLootAndMightPointHistoryList[uid.toString()][4] = AP
                         ? JSON.parse(JSON.stringify(AP))
                         : [];
@@ -1753,10 +1753,12 @@ This will result in approximately ${totalRequests} API requests, which may take 
                     this.playerLootAndMightPointHistoryList[uid.toString()][2] = infos['AID'];
                     this.playerLootAndMightPointHistoryList[uid.toString()][3] = infos['AN'];
                     if (AP && AP.length > 0) {
-                      const AP = infos['AP'].filter((ap) => ap[0] === 0).map((ap) => [ap[2], ap[3], ap[4]]);
+                      const AP = infos['AP']
+                        .filter((ap: number[]) => ap[0] === 0)
+                        .map((ap: any[]) => [ap[2], ap[3], ap[4]]);
                       const APRealms = infos['AP']
-                        .filter((ap) => [1, 2, 3, 4].includes(ap[0]))
-                        .map((ap) => [ap[0], ap[2], ap[3], ap[4]]);
+                        .filter((ap: number[]) => [1, 2, 3, 4].includes(ap[0]))
+                        .map((ap: any[]) => [ap[0], ap[2], ap[3], ap[4]]);
                       this.playerLootAndMightPointHistoryList[uid.toString()][4] = AP
                         ? JSON.parse(JSON.stringify(AP))
                         : [];
@@ -1890,10 +1892,12 @@ This will result in approximately ${totalRequests} API requests, which may take 
                         this.playerLootAndMightPointHistoryList[uid.toString()][2] = infos['AID'];
                         this.playerLootAndMightPointHistoryList[uid.toString()][3] = infos['AN'];
                         if (AP && AP.length > 0) {
-                          const AP = infos['AP'].filter((ap) => ap[0] === 0).map((ap) => [ap[2], ap[3], ap[4]]);
+                          const AP = infos['AP']
+                            .filter((ap: number[]) => ap[0] === 0)
+                            .map((ap: any[]) => [ap[2], ap[3], ap[4]]);
                           const APRealms = infos['AP']
-                            .filter((ap) => [1, 2, 3, 4].includes(ap[0]))
-                            .map((ap) => [ap[0], ap[2], ap[3], ap[4]]);
+                            .filter((ap: number[]) => [1, 2, 3, 4].includes(ap[0]))
+                            .map((ap: any[]) => [ap[0], ap[2], ap[3], ap[4]]);
                           this.playerLootAndMightPointHistoryList[uid.toString()][4] = AP
                             ? JSON.parse(JSON.stringify(AP))
                             : [];
@@ -2095,7 +2099,7 @@ This will result in approximately ${totalRequests} API requests, which may take 
           loot_all_time,
         ]);
         this.DB_UPDATES.playersCreated++;
-      } catch (error) {
+      } catch (error: any) {
         if (error.code == '23503') {
           try {
             await this.addAllianceInDatabase(allianceId, allianceName);
@@ -2204,7 +2208,7 @@ This will result in approximately ${totalRequests} API requests, which may take 
             allianceId,
           );
           await this.updatePlayerAlliance(playerId, allianceId, currentAllianceId, allianceName, currentAllianceName);
-        } catch (error) {
+        } catch (error: any) {
           if (error.code === 'ER_NO_REFERENCED_ROW_2' || error.code == '23503') {
             try {
               await this.addAllianceInDatabase(allianceId, allianceName);
@@ -2215,7 +2219,7 @@ This will result in approximately ${totalRequests} API requests, which may take 
                 allianceName,
                 currentAllianceName,
               );
-            } catch (error) {
+            } catch (error: any) {
               if (error.code !== 'ER_NO_REFERENCED_ROW_2' && error.code !== '23503') {
                 // Do nothing
               } else {
@@ -2281,11 +2285,11 @@ This will result in approximately ${totalRequests} API requests, which may take 
     }
   }
 
-  private async addAllianceInDatabase(allianceId, allianceName): Promise<void> {
+  private async addAllianceInDatabase(allianceId: any, allianceName: any): Promise<void> {
     const pgSqlQueryAlliance = 'INSERT INTO alliances (id, name) VALUES ($1, $2)';
     try {
       await Promise.all([this.pgSqlQuery(pgSqlQueryAlliance, [allianceId, allianceName])]);
-    } catch (error) {
+    } catch (error: any) {
       if (error.code != '23505') {
         this.DB_UPDATES.criticalErrors++;
         Utils.logMessage(' [KO] Error while inserting alliance', allianceId, '(name :', allianceName, ')');
@@ -2704,7 +2708,7 @@ This will result in approximately ${totalRequests} API requests, which may take 
       `;
       const result = await this.pgSqlQuery(pgSqlQuery);
       //const ids = rows.map((row) => row.id);
-      const ids = result.rows.map((row) => row.id);
+      const ids = result.rows.map((row: { id: any }) => row.id);
       Utils.logMessage('Number of inactive players to update:', ids.length);
       for (const id of ids) {
         try {
@@ -2728,7 +2732,7 @@ This will result in approximately ${totalRequests} API requests, which may take 
               const targetDateISO = targetDate.toISOString();
               let ap = player['O']['AP'] || null;
               if (ap && ap.length > 0) {
-                ap = player['O']['AP'].filter((ap) => ap[0] === 0).map((ap) => [ap[2], ap[3], ap[4]]);
+                ap = player['O']['AP'].filter((ap: number[]) => ap[0] === 0).map((ap: any[]) => [ap[2], ap[3], ap[4]]);
               }
               if (!ap) ap = null;
               const pgQuery = `
@@ -3178,7 +3182,7 @@ This will result in approximately ${totalRequests} API requests, which may take 
     `;
     const result = await this.pgSqlQuery(pgQuery);
     const rows = result.rows;
-    return rows.map((row) => {
+    return rows.map((row: { player_id: any; alliance_id: any; player_name: any; alliance_name: any; castles: any }) => {
       const playerId = row.player_id;
       const allianceId = row.alliance_id;
       const playerName = row.player_name;
@@ -3387,7 +3391,7 @@ This will result in approximately ${totalRequests} API requests, which may take 
               Utils.logMessage(' [info] Connected to database for server:', server);
             }
             // Retrieve all real player_ids at once
-            const names = entitiesForServer.map((e) => e.playerName);
+            const names = entitiesForServer.map((e: { playerName: any }) => e.playerName);
             Utils.logMessage(' [info] Count: ' + names.length + ' players to process for server ' + server);
             const res = await dbConn.query(
               `SELECT n AS name, MIN(p.id) AS id FROM unnest($1::text[]) n LEFT JOIN players p ON p.name = n GROUP BY n;`,
@@ -3488,7 +3492,7 @@ This will result in approximately ${totalRequests} API requests, which may take 
         this.createNewPool();
       }
       return await this.pgSqlConnection.query(query, params);
-    } catch (error) {
+    } catch (error: any) {
       const message = error?.message || '';
       if (
         message.includes('Connection terminated unexpectedly') ||
@@ -3540,7 +3544,7 @@ This will result in approximately ${totalRequests} API requests, which may take 
     try {
       const LOKI_URL = 'http://loki:3100/loki/api/v1/push';
       await axios.post(LOKI_URL, payload);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error sending log to Loki:', err.message);
     }
   }

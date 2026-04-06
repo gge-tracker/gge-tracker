@@ -46,24 +46,23 @@ export interface EventList {
 }
 
 @Component({
-  selector: 'app-events',
-  standalone: true,
-  imports: [
-    CommonModule,
-    TranslatePipe,
-    FormatNumberPipe,
-    TableComponent,
-    RouterLink,
-    SearchFormComponent,
-    FormsModule,
-    LucideAngularModule,
-    EventsHeaderComponent,
-    ChartsWrapperComponent,
-    IconComponent,
-    EventCardComponent,
-  ],
-  templateUrl: './events.component.html',
-  styleUrl: './events.component.css',
+    selector: 'app-events',
+    imports: [
+        CommonModule,
+        TranslatePipe,
+        FormatNumberPipe,
+        TableComponent,
+        RouterLink,
+        SearchFormComponent,
+        FormsModule,
+        LucideAngularModule,
+        EventsHeaderComponent,
+        ChartsWrapperComponent,
+        IconComponent,
+        EventCardComponent,
+    ],
+    templateUrl: './events.component.html',
+    styleUrl: './events.component.css'
 })
 export class EventsComponent extends GenericComponent {
   public CalendarCheck = CalendarCheck;

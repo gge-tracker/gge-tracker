@@ -25,21 +25,20 @@ interface IGrandTournamentSearchAlliances extends ApiGrandTournamentSearchAllian
 }
 
 @Component({
-  selector: 'app-grand-tournament',
-  standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    LucideAngularModule,
-    RouterModule,
-    SearchFormComponent,
-    TranslateModule,
-    TableComponent,
-    NgFor,
-    GrandTournamentAnalyzeComponent,
-  ],
-  templateUrl: './grand-tournament.component.html',
-  styleUrl: './grand-tournament.component.css',
+    selector: 'app-grand-tournament',
+    imports: [
+        CommonModule,
+        FormsModule,
+        LucideAngularModule,
+        RouterModule,
+        SearchFormComponent,
+        TranslateModule,
+        TableComponent,
+        NgFor,
+        GrandTournamentAnalyzeComponent,
+    ],
+    templateUrl: './grand-tournament.component.html',
+    styleUrl: './grand-tournament.component.css'
 })
 export class GrandTournamentComponent extends GenericComponent implements OnInit {
   public isDataLoading = false;

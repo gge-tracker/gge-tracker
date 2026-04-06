@@ -14,23 +14,22 @@ import { TranslateModule } from '@ngx-translate/core';
 import { LucideAngularModule, MessageCircleQuestion, Search, X } from 'lucide-angular';
 
 @Component({
-  selector: 'app-tracker',
-  standalone: true,
-  imports: [
-    NgClass,
-    TableComponent,
-    LucideAngularModule,
-    SearchbarComponent,
-    SelectComponent,
-    NgIf,
-    NgFor,
-    TranslateModule,
-    CooldownPipe,
-    FormsModule,
-    NgSelectModule,
-  ],
-  templateUrl: './tracker.component.html',
-  styleUrl: './tracker.component.css',
+    selector: 'app-tracker',
+    imports: [
+        NgClass,
+        TableComponent,
+        LucideAngularModule,
+        SearchbarComponent,
+        SelectComponent,
+        NgIf,
+        NgFor,
+        TranslateModule,
+        CooldownPipe,
+        FormsModule,
+        NgSelectModule,
+    ],
+    templateUrl: './tracker.component.html',
+    styleUrl: './tracker.component.css'
 })
 export class TrackerComponent extends GenericComponent {
   public realms: KingdomRealm[] = [

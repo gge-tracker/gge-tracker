@@ -14,10 +14,9 @@ interface Troop {
 }
 
 @Component({
-  selector: 'app-troops-animation',
-  standalone: true,
-  imports: [NgFor],
-  template: `
+    selector: 'app-troops-animation',
+    imports: [NgFor],
+    template: `
     <div #container class="troops-container position-relative overflow-hidden">
       <img
         *ngFor="let troop of troops"
@@ -34,8 +33,8 @@ interface Troop {
       />
     </div>
   `,
-  styles: [
-    `
+    styles: [
+        `
       .troops-container {
         width: 100%;
         height: 100%;
@@ -43,7 +42,7 @@ interface Troop {
         user-select: none;
       }
     `,
-  ],
+    ]
 })
 export class TroopsAnimationComponent implements OnInit, OnDestroy {
   @ViewChild('container', { static: true })

@@ -8,22 +8,21 @@ import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { OuterEventData } from '@ggetracker-interfaces/empire-ranking';
 
 @Component({
-  selector: 'app-event-card',
-  standalone: true,
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    TranslatePipe,
-    NgStyle,
-    LucideAngularModule,
-    DatePipe,
-    LowerCasePipe,
-    FormatNumberPipe,
-    TitleCasePipe,
-    NgClass,
-    NgIf,
-  ],
-  templateUrl: './event-card.component.html',
-  styleUrls: ['./event-card.component.css'],
+    selector: 'app-event-card',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    imports: [
+        TranslatePipe,
+        NgStyle,
+        LucideAngularModule,
+        DatePipe,
+        LowerCasePipe,
+        FormatNumberPipe,
+        TitleCasePipe,
+        NgClass,
+        NgIf,
+    ],
+    templateUrl: './event-card.component.html',
+    styleUrls: ['./event-card.component.css']
 })
 export class EventCardComponent<T extends EventList | OuterEventData> {
   public readonly CalendarCheck = CalendarCheck;

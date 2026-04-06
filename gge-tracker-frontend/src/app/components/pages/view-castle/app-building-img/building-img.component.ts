@@ -2,11 +2,10 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
-  selector: 'app-building-img',
-  standalone: true,
-  imports: [CommonModule],
-  templateUrl: './building-img.component.html',
-  styleUrls: ['./building-img.component.css'],
+    selector: 'app-building-img',
+    imports: [CommonModule],
+    templateUrl: './building-img.component.html',
+    styleUrls: ['./building-img.component.css']
 })
 export class BuildingImgComponent {
   @Input() public src!: string;

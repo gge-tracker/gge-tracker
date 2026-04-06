@@ -5,12 +5,11 @@ import { Subject } from 'rxjs';
 import { CURRENT } from '../rename.token';
 
 @Component({
-  standalone: true,
-  imports: [TranslateModule],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  selector: 'app-renames-switcher',
-  templateUrl: './renames-switcher.component.html',
-  styleUrls: ['./renames-switcher.component.css'],
+    imports: [TranslateModule],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'app-renames-switcher',
+    templateUrl: './renames-switcher.component.html',
+    styleUrls: ['./renames-switcher.component.css']
 })
 export class RenamesSwitcherComponent implements AfterViewInit, OnDestroy {
   public current = inject(CURRENT, { optional: true });

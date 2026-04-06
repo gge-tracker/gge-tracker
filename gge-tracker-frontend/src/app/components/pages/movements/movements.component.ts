@@ -37,24 +37,23 @@ interface FormFilters {
 }
 
 @Component({
-  selector: 'app-movements',
-  standalone: true,
-  imports: [
-    NgFor,
-    NgIf,
-    NgClass,
-    FormsModule,
-    FormatNumberPipe,
-    TableComponent,
-    DatePipe,
-    SearchFormComponent,
-    RouterLink,
-    LucideAngularModule,
-    TranslateModule,
-  ],
-  providers: [FormatNumberPipe],
-  templateUrl: './movements.component.html',
-  styleUrl: './movements.component.css',
+    selector: 'app-movements',
+    imports: [
+        NgFor,
+        NgIf,
+        NgClass,
+        FormsModule,
+        FormatNumberPipe,
+        TableComponent,
+        DatePipe,
+        SearchFormComponent,
+        RouterLink,
+        LucideAngularModule,
+        TranslateModule,
+    ],
+    providers: [FormatNumberPipe],
+    templateUrl: './movements.component.html',
+    styleUrl: './movements.component.css'
 })
 export class MovementsComponent extends GenericComponent {
   @ViewChild('searchForm') public searchForm!: SearchFormComponent;

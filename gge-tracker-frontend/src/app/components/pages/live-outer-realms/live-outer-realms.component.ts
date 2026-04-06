@@ -29,22 +29,21 @@ interface GenericChartConfig {
 }
 
 @Component({
-  selector: 'app-live-outer-realms',
-  standalone: true,
-  imports: [
-    NgClass,
-    SearchFormComponent,
-    TranslateModule,
-    TableComponent,
-    NgFor,
-    NgIf,
-    FormatNumberPipe,
-    RouterModule,
-    NgFor,
-    LiveOuterRealmsStatisticsModalComponent,
-  ],
-  templateUrl: './live-outer-realms.component.html',
-  styleUrls: ['./live-outer-realms.component.css'],
+    selector: 'app-live-outer-realms',
+    imports: [
+        NgClass,
+        SearchFormComponent,
+        TranslateModule,
+        TableComponent,
+        NgFor,
+        NgIf,
+        FormatNumberPipe,
+        RouterModule,
+        NgFor,
+        LiveOuterRealmsStatisticsModalComponent,
+    ],
+    templateUrl: './live-outer-realms.component.html',
+    styleUrls: ['./live-outer-realms.component.css']
 })
 export class LiveOuterRealmsComponent extends GenericComponent {
   public players: ApiLiveRanking[] = [];
