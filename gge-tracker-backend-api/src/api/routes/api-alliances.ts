@@ -225,8 +225,10 @@ export abstract class ApiAlliances implements ApiHelper {
           players P ON A.id = P.alliance_id
         WHERE
           LOWER(A.name) = LOWER($${parameterIndex++})
+          AND P.castles IS NOT NULL AND jsonb_array_length(P.castles) > 0
         GROUP BY
           A.id
+        ORDER BY player_count DESC
         LIMIT 1;
         `;
       /* ---------------------------------
