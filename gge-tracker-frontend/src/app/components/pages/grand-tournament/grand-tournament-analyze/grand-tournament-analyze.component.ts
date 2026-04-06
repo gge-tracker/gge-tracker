@@ -21,8 +21,8 @@ interface GenericChartConfig {
 }
 
 @Component({
-  selector: 'app-grand-tournament-analyze',
   standalone: true,
+  selector: 'app-grand-tournament-analyze',
   imports: [CommonModule, TranslateModule, LucideAngularModule, ChartsWrapperComponent],
   templateUrl: './grand-tournament-analyze.component.html',
   styleUrls: ['./grand-tournament-analyze.component.css'],

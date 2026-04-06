@@ -16,6 +16,7 @@ import { SidebarService } from '@ggetracker-services/sidebar.service';
       ]),
     ]),
   ],
+  standalone: false,
 })
 export class SkeletonComponent extends GenericComponent {
   public sidebarService = inject(SidebarService);

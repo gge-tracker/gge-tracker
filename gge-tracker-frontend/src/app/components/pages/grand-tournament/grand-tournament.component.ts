@@ -1,4 +1,4 @@
-import { CommonModule, NgFor } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -35,7 +35,6 @@ interface IGrandTournamentSearchAlliances extends ApiGrandTournamentSearchAllian
     SearchFormComponent,
     TranslateModule,
     TableComponent,
-    NgFor,
     GrandTournamentAnalyzeComponent,
   ],
   templateUrl: './grand-tournament.component.html',

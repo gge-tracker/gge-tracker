@@ -41,6 +41,7 @@ export abstract class ApiAlliances implements ApiHelper {
       }
       let playerNameForDistance = ApiHelper.validateSearchAndSanitize(request.query.playerNameForDistance, {
         maxLength: 40,
+        toLowerCase: false,
       });
       if (playerNameForDistance === ApiInvalidInputType) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
@@ -81,7 +82,7 @@ export abstract class ApiAlliances implements ApiHelper {
       if (ApiHelper.isValidInput(playerNameForDistance)) {
         // If player name is provided, get player's main castle coordinates
         let parameterIndex = 1;
-        const playerQuery = `SELECT castles FROM players WHERE LOWER(name) = $${parameterIndex++} LIMIT 1`;
+        const playerQuery = `SELECT castles FROM players WHERE LOWER(name) = LOWER($${parameterIndex++}) LIMIT 1`;
         const playerResults: any[] = await new Promise((resolve, reject) => {
           pool.query(playerQuery, [playerNameForDistance], (error, results) => {
             if (error) {
@@ -187,7 +188,7 @@ export abstract class ApiAlliances implements ApiHelper {
       /* ---------------------------------
        * Validate and normalize alliance name
        * --------------------------------- */
-      const allianceName = ApiHelper.validateSearchAndSanitize(request.params.allianceName);
+      const allianceName = ApiHelper.validateSearchAndSanitize(request.params.allianceName, { toLowerCase: false });
       if (ApiHelper.isInvalidInput(allianceName)) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceName });
         return;
@@ -223,9 +224,11 @@ export abstract class ApiAlliances implements ApiHelper {
         LEFT JOIN
           players P ON A.id = P.alliance_id
         WHERE
-          LOWER(A.name) = $${parameterIndex++}
+          LOWER(A.name) = LOWER($${parameterIndex++})
+          AND P.castles IS NOT NULL AND jsonb_array_length(P.castles) > 0
         GROUP BY
           A.id
+        ORDER BY player_count DESC
         LIMIT 1;
         `;
       /* ---------------------------------
@@ -282,6 +285,7 @@ export abstract class ApiAlliances implements ApiHelper {
         'player_count',
         'current_fame',
         'highest_fame',
+        'active_player_count',
       ];
       const parsedQuery = parseQuery(
         request.query,
@@ -302,6 +306,8 @@ export abstract class ApiAlliances implements ApiHelper {
         maxFame,
         minPlayerCount,
         maxPlayerCount,
+        minActivePlayerCount,
+        maxActivePlayerCount,
       } = parsedQuery;
       let { page } = parsedQuery;
       /* ---------------------------------
@@ -348,6 +354,8 @@ export abstract class ApiAlliances implements ApiHelper {
           ${maxFame === undefined ? '' : `AND SUM(P.current_fame) <= $${parameterIndex++}`}
           ${minPlayerCount === undefined ? '' : `AND COUNT(P.id) >= $${parameterIndex++}`}
           ${maxPlayerCount === undefined ? '' : `AND COUNT(P.id) <= $${parameterIndex++}`}
+          ${minActivePlayerCount === undefined ? '' : `AND COUNT(P.id) FILTER (WHERE P.loot_current > 0) >= $${parameterIndex++}`}
+          ${maxActivePlayerCount === undefined ? '' : `AND COUNT(P.id) FILTER (WHERE P.loot_current > 0) <= $${parameterIndex++}`}
       `;
       let v = [...values];
       if (minMight !== undefined) v.push(minMight);
@@ -369,7 +377,8 @@ export abstract class ApiAlliances implements ApiHelper {
           SUM(P.loot_all_time) AS loot_all_time,
           SUM(P.current_fame) AS current_fame,
           SUM(P.highest_fame) AS highest_fame,
-          COUNT(P.id) AS player_count
+          COUNT(P.id) AS player_count,
+          COUNT(P.id) FILTER (WHERE P.loot_current > 0) AS active_player_count
         FROM
           alliances A
         LEFT JOIN
@@ -421,6 +430,7 @@ export abstract class ApiAlliances implements ApiHelper {
         });
       });
       await promiseCountQuery;
+
       /* ---------------------------------
        * Fetch paginated alliance data
        * --------------------------------- */
@@ -454,6 +464,7 @@ export abstract class ApiAlliances implements ApiHelper {
                 current_fame: result.current_fame,
                 highest_fame: result.highest_fame,
                 player_count: result.player_count,
+                active_player_count: result.active_player_count,
               };
             }),
           };

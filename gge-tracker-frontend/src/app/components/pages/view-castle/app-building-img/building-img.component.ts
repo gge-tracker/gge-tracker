@@ -3,8 +3,8 @@ import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-building-img',
-  standalone: true,
   imports: [CommonModule],
+  standalone: true,
   templateUrl: './building-img.component.html',
   styleUrls: ['./building-img.component.css'],
 })

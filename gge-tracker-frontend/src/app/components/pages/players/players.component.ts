@@ -1,4 +1,4 @@
-import { NgClass, NgFor, NgIf } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
@@ -9,6 +9,7 @@ import {
   ApiPlayersResponse,
   ErrorType,
   FavoritePlayer,
+  KingdomRealm,
   Player,
   SearchType,
 } from '@ggetracker-interfaces/empire-ranking';
@@ -19,6 +20,8 @@ import { ArrowBigRightDash, LucideAngularModule } from 'lucide-angular';
 import { PlayerTableContentComponent } from './player-table-content/player-table-content.component';
 import { IconComponent } from '@ggetracker-components/icon/icon.component';
 import { BoundType, FilterKeyMap } from '@ggetracker-interfaces/filter';
+import { IconToggleComponent } from './icon-toggle/icon-toggle.component';
+import { NgSelectModule } from '@ng-select/ng-select';
 
 type FilterField = 'honor' | 'loot' | 'level' | 'might' | 'fame' | 'castleCount';
 
@@ -41,6 +44,7 @@ interface FormFilters {
   isFiltered: boolean;
   inactiveFilter: string;
   playerCastleDistance: string;
+  allianceRankFilter: string[];
 }
 
 @Component({
@@ -51,14 +55,14 @@ interface FormFilters {
   imports: [
     NgClass,
     FormsModule,
-    NgFor,
-    NgIf,
     TableComponent,
     SearchFormComponent,
     TranslateModule,
     PlayerTableContentComponent,
     LucideAngularModule,
     IconComponent,
+    IconToggleComponent,
+    NgSelectModule,
   ],
   templateUrl: './players.component.html',
   styleUrl: './players.component.css',
@@ -76,6 +80,14 @@ export class PlayersComponent extends GenericComponent implements OnInit {
   public reverse = true;
   public sort = 'might_current';
   public favoriePlayers: FavoritePlayer[] = [];
+  public popupIsInLoading: boolean = false;
+  public realms: KingdomRealm[] = [
+    { key: '2', label: 'Le Glacier éternel' },
+    { key: '1', label: 'Les Sables brûlants' },
+    { key: '3', label: 'Les Pics du feu' },
+    { key: '999', label: 'Pas de filtre' },
+  ];
+  public validated: { [key: string]: boolean } = {};
   public playersTableHeader: [string, string, (string | undefined)?, (boolean | undefined)?][] = [
     ['player_name', 'Pseudonyme'],
     ['level', 'Niveau', '/assets/lvl.png'],
@@ -97,6 +109,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     { value: 'highest_fame', label: 'Gloire maximale atteinte' },
     { value: 'honor', label: 'Honneur' },
     { value: 'alliance_name', label: 'Alliance' },
+    { value: 'remaining_peace_time', label: 'Protection' },
   ];
   public defaultPlayersTableHeaderSize = this.playersTableHeader.length;
   public formFilters = {
@@ -119,7 +132,9 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     inactiveFilter: '1',
     playerCastleDistance: '',
     allianceRankFilter: ['0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'],
+    kingdomFilter: ['999'],
   };
+  public defaultFormFilters!: FormFilters;
   public readonly ArrowBigRightDash = ArrowBigRightDash;
   public displayFormValues = {
     might: { min: '', max: '' },
@@ -179,6 +194,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     } else {
       void this.init(this.page);
     }
+    this.defaultFormFilters = structuredClone(this.formFilters);
   }
 
   public onGenericFocus(type: BoundType, field: FilterField): void {
@@ -280,6 +296,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     }
     this.isInLoading = true;
     try {
+      this.page = 1;
       const data = await this.getGenericData();
       this.responseTime = data.response;
       const players = data.data;
@@ -291,6 +308,15 @@ export class PlayersComponent extends GenericComponent implements OnInit {
       this.isInLoading = false;
       this.toastService.add(ErrorType.NO_ALLIANCE_FOUND, 5000);
       this.cdr.detectChanges();
+    }
+  }
+
+  public onRealmChange(realmId: { key: string; label: string }[]): void {
+    if (realmId.length === 0) return;
+    if (realmId[0].key === '999' && realmId.length > 1) {
+      this.formFilters.kingdomFilter = realmId.filter((r) => r.key !== '999').map((r) => r.key);
+    } else if (realmId[0].key !== '999' && realmId.length > 1 && realmId.some((r) => r.key === '999')) {
+      this.formFilters.kingdomFilter = ['999'];
     }
   }
 
@@ -360,22 +386,98 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     this.formFilters.allianceRankFilter[index] = this.formFilters.allianceRankFilter[index] === '0' ? '1' : '0';
   }
 
+  public areFiltersChanged(): boolean {
+    return JSON.stringify(this.formFilters) !== JSON.stringify(this.defaultFormFilters);
+  }
+
   public async applyFilters(): Promise<void> {
+    this.popupIsInLoading = true;
     this.isInLoading = true;
     this.page = 1;
+    this.cdr.detectChanges();
     if (this.formFilters.playerCastleDistance === '') {
-      void this.resetDistanceColumn();
+      this.resetDistanceColumn();
     } else {
-      void this.onAddDistanceColumn();
+      await this.onAddDistanceColumn();
     }
     await this.init();
     this.searchForm.updateNbFilterActivated();
+    this.popupIsInLoading = false;
+  }
+
+  public async saveFilters(): Promise<void> {
+    this.validateFilters('saveFilters');
+    const filtersToSave = {
+      ...this.formFilters,
+      playerCastleDistance: this.formFilters.playerCastleDistance,
+    };
+    this.localStorage.setItem(
+      'playersFilters_' + this.apiRestService.serverService.currentServer?.name,
+      JSON.stringify(filtersToSave),
+    );
+  }
+
+  public updateDisplayFormValues(): void {
+    this.displayFormValues = {
+      might: { min: this.formFilters.minMight, max: this.formFilters.maxMight },
+      loot: { min: this.formFilters.minLoot, max: this.formFilters.maxLoot },
+      honor: { min: this.formFilters.minHonor, max: this.formFilters.maxHonor },
+      level: { min: this.formFilters.minLevel, max: this.formFilters.maxLevel },
+      fame: { min: (this.formFilters as any).minFame, max: (this.formFilters as any).maxFame },
+      castleCount: { min: this.formFilters.castleCountMin, max: this.formFilters.castleCountMax },
+    };
+  }
+
+  public getDungeonImage(kid: number): string {
+    switch (kid) {
+      case 1: {
+        return 'assets/dungeon1.png';
+      }
+      case 2: {
+        return 'assets/dungeon2.png';
+      }
+      case 3: {
+        return 'assets/dungeon3.png';
+      }
+      default: {
+        return 'assets/dungeon_default.png';
+      }
+    }
+  }
+
+  public async resetFilters(): Promise<void> {
+    this.validateFilters('resetFilters');
+    Object.assign(this.formFilters, this.defaultFormFilters);
+    this.updateDisplayFormValues();
+  }
+
+  public async loadFiltersFromLocalStorage(): Promise<void> {
+    this.validateFilters('loadFilters');
+    const savedFiltersString = this.localStorage.getItem(
+      'playersFilters_' + this.apiRestService.serverService.currentServer?.name,
+    );
+    if (!savedFiltersString) return;
+    let savedFilters = JSON.parse(savedFiltersString) as FormFilters;
+    if (this.formFilters.playerCastleDistance === '') {
+      this.resetDistanceColumn();
+    } else {
+      await this.onAddDistanceColumn();
+    }
+    Object.assign(this.formFilters, savedFilters);
+    this.updateDisplayFormValues();
+    this.cdr.detectChanges();
+  }
+
+  public validateFilters(action: 'saveFilters' | 'loadFilters' | 'resetFilters'): void {
+    this.validated[action] = true;
+    setTimeout(() => {
+      this.validated[action] = false;
+      this.cdr.detectChanges();
+    }, 2000);
   }
 
   public async onAddDistanceColumn(): Promise<void> {
-    console.log('onAddDistanceColumn called');
     if (!this.formFilters.playerCastleDistance?.trim()) return;
-    console.log('Player castle distance filter is set:', this.formFilters.playerCastleDistance);
     this.isInLoading = true;
     this.cdr.detectChanges();
     this.localStorage.setItem(
@@ -392,7 +494,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
-  public async resetDistanceColumn(): Promise<void> {
+  public resetDistanceColumn(): void {
     this.formFilters.playerCastleDistance = '';
     if (this.sort === 'distance') {
       this.sort = 'might_current';
@@ -406,6 +508,12 @@ export class PlayersComponent extends GenericComponent implements OnInit {
       this.playersTableHeader.splice(-3, 1);
       this.cdr.detectChanges();
     }
+  }
+
+  public get areFiltersSavedInLocalStorage(): boolean {
+    return (
+      this.localStorage.getItem('playersFilters_' + this.apiRestService.serverService.currentServer?.name) !== null
+    );
   }
 
   public async sortPlayers(sort: string): Promise<void> {
@@ -558,6 +666,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
         highestFame: player.highest_fame,
         distance: player.calculated_distance,
         remainingRelocationTime: player.remaining_relocation_time,
+        allianceHistory: player.alliance_history,
       };
     });
   }
@@ -587,6 +696,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
         .filter((value) => value !== null)
         .join(',');
     }
+    if (this.formFilters.kingdomFilter.length > 0) filters['kingdomFilter'] = this.formFilters.kingdomFilter.join(',');
     this.formFilters.isFiltered = Object.keys(filters).length > 0;
     return filters;
   }
@@ -624,6 +734,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
 
   private async init(page = 1): Promise<void> {
     try {
+      this.defaultFormFilters = structuredClone(this.formFilters);
       this.page = page;
       const players = await this.getGenericData();
       this.structuredPlayersData(players.data.players);
@@ -642,7 +753,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
         this.localStorage.removeItem(
           'allianceDistancePlayerName_' + this.apiRestService.serverService.currentServer?.name,
         );
-        void this.resetDistanceColumn();
+        this.resetDistanceColumn();
       }
       this.cdr.detectChanges();
     }

@@ -1,4 +1,4 @@
-import { DecimalPipe, NgClass, NgFor, NgIf, NgStyle } from '@angular/common';
+import { DecimalPipe, NgClass, NgStyle } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -38,12 +38,9 @@ import { BuildingImgComponent } from './app-building-img/building-img.component'
 
 @Component({
   selector: 'app-view-castle',
-  standalone: true,
   imports: [
-    NgIf,
     SearchFormComponent,
     TranslatePipe,
-    NgFor,
     NgClass,
     DecimalPipe,
     LucideAngularModule,
@@ -57,6 +54,7 @@ import { BuildingImgComponent } from './app-building-img/building-img.component'
     SearchbarComponent,
     SearchbarComponent,
   ],
+  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './view-castle.component.html',
   styleUrl: './view-castle.component.css',

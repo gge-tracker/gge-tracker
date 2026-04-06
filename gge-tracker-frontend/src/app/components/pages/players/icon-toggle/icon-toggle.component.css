@@ -1,0 +1,44 @@
+.icon-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+}
+
+.icon {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transition: all 0.25s ease;
+}
+
+.base {
+  opacity: 1;
+  transform: scale(1) rotate(0);
+}
+
+.check {
+  opacity: 0;
+  transform: scale(0.5) rotate(-90deg);
+  color: #ffffff;
+}
+
+.icon-wrapper.validated .base {
+  opacity: 0;
+  transform: scale(0.5) rotate(90deg);
+}
+
+.icon-wrapper.validated .check {
+  opacity: 1;
+  transform: scale(1) rotate(0);
+}
+
+.icon-wrapper.validated .check {
+  animation: pop 0.3s ease;
+}
+
+@keyframes pop {
+  0% { transform: scale(0.6); }
+  70% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}

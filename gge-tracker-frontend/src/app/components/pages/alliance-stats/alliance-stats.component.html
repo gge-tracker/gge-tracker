@@ -1,63 +1,70 @@
-<div *ngIf="!isInLoading" class="container-fluid container-xxl alliance-stats-container mb-5 mb-lg-3">
-  <h2 class="title">{{ allianceName }}</h2>
-  <span class="badge bg-custom-font mt-3" [ngClass]="{ 'd-none': !lastUpdate }">
-    <i class="fas fa-sync-alt"></i>
-    <em class="ms-1">{{ 'Données récupérées le' | translate: { date: (lastUpdate | date: ('Date_5' | translate)) }
+@if (!isInLoading) {
+  <div class="container-fluid container-xxl alliance-stats-container mb-5 mb-lg-3">
+    <h2 class="title">{{ allianceName }}</h2>
+    <span class="badge bg-custom-font mt-3" [ngClass]="{ 'd-none': !lastUpdate }">
+      <i class="fas fa-sync-alt"></i>
+      <em class="ms-1">{{ 'Données récupérées le' | translate: { date: (lastUpdate | date: ('Date_5' | translate)) }
       }}</em>
-  </span>
-  <div class="stats-grid">
-    <div class="stat-card pointer" *ngFor="let card of cards">
-      <div class="stat-card-content" tabindex="0">
-        <img [src]="card.logo" class="icon" [alt]="card.label | translate">
-        <div class="value">{{ card.value }}</div>
+    </span>
+    <div class="stats-grid">
+      @for (card of cards; track card) {
+        <div class="stat-card pointer">
+          <div class="stat-card-content">
+            <img [src]="card.logo" class="icon" [alt]="card.label | translate">
+            <div class="value">{{ card.value }}</div>
         <div class="change" [ngClass]="{
       'text-success': card.valueCompare > 0,
       'text-danger': card.valueCompare < 0
       }">{{ card.avg }}</div>
-        <div class="label">{{ card.label | translate }}</div>
-      </div>
+            <div class="label">{{ card.label | translate }}</div>
+          </div>
+        </div>
+      }
     </div>
   </div>
-</div>
+}
 
 
-<ul class="nav nav-tabs pt-3 ps-3 mt-5" *ngIf="!isInLoading">
-  <li class="nav-item">
-    <button class="nav-link" (click)="changeTab('members')" [ngClass]="selectedTab === 'members' ? 'active' : ''" title="{{ 'Membres' | translate }}">
-      <lucide-icon class="users" [img]="Users"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Membres' | translate }}</span>
-    </button>
-  </li>
-  <li class="nav-item">
-    <button class="nav-link" (click)="changeTab('movement')" [ngClass]="selectedTab === 'movement' ? 'active' : ''" title="{{ 'Arrivées et départs' | translate }}">
-      <lucide-icon class="briefcaseConveyorBelt" [img]="BriefcaseConveyorBelt"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Arrivées et départs' | translate }}</span>
-    </button>
-  </li>
-  <li class="nav-item">
-    <button class="nav-link" (click)="changeTab('stats')" [ngClass]="selectedTab === 'stats' ? 'active' : ''" title="{{ 'Statistiques des joueurs' | translate }}">
-      <lucide-icon class="chartSpline" [img]="ChartSpline"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Statistiques des joueurs' | translate }}</span>
-    </button>
-  </li>
-  <li class="nav-item">
-    <button class="nav-link" (click)="changeTab('health')" [ngClass]="selectedTab === 'health' ? 'active' : ''" title="{{ 'Rythme de l\'alliance' | translate }}">
-      <lucide-icon class="activity" [img]="Activity"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Rythme de l\'alliance' | translate }}</span>
-    </button>
-  </li>
-  <li class="nav-item">
-    <button class="nav-link" (click)="changeTab('movements')" [ngClass]="selectedTab === 'movements' ? 'active' : ''" title="{{ 'Mouvements' | translate }}">
-      <lucide-icon class="flag" [img]="Flag"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Mouvements' | translate }}</span>
-    </button>
-  </li>
-  <li class="nav-item">
-    <a class="nav-link" [href]="'/map/' + allianceId" target="_blank" title="{{ 'Carte' | translate }}">
-      <lucide-icon class="earth" [img]="Earth"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Carte' | translate}} <small><sup><i  class="fa-solid fa-external-link"></i></sup></small></span>
-    </a>
-  </li>
-</ul>
+@if (!isInLoading) {
+  <ul class="nav nav-tabs pt-3 ps-3 mt-5">
+    <li class="nav-item">
+      <button class="nav-link" (click)="changeTab('members')" [ngClass]="selectedTab === 'members' ? 'active' : ''" title="{{ 'Membres' | translate }}">
+        <lucide-icon class="users" [img]="Users"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Membres' | translate }}</span>
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" (click)="changeTab('movement')" [ngClass]="selectedTab === 'movement' ? 'active' : ''" title="{{ 'Arrivées et départs' | translate }}">
+        <lucide-icon class="briefcaseConveyorBelt" [img]="BriefcaseConveyorBelt"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Arrivées et départs' | translate }}</span>
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" (click)="changeTab('stats')" [ngClass]="selectedTab === 'stats' ? 'active' : ''" title="{{ 'Statistiques des joueurs' | translate }}">
+        <lucide-icon class="chartSpline" [img]="ChartSpline"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Statistiques des joueurs' | translate }}</span>
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" (click)="changeTab('health')" [ngClass]="selectedTab === 'health' ? 'active' : ''" title="{{ 'Rythme de l\'alliance' | translate }}">
+        <lucide-icon class="activity" [img]="Activity"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Rythme de l\'alliance' | translate }}</span>
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" (click)="changeTab('movements')" [ngClass]="selectedTab === 'movements' ? 'active' : ''" title="{{ 'Mouvements' | translate }}">
+        <lucide-icon class="flag" [img]="Flag"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Mouvements' | translate }}</span>
+      </button>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" [href]="'/map/' + allianceId" target="_blank" title="{{ 'Carte' | translate }}">
+        <lucide-icon class="earth" [img]="Earth"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Carte' | translate}} <small><sup><i  class="fa-solid fa-external-link"></i></sup></small></span>
+      </a>
+    </li>
+  </ul>
+}
 
-<div [ngClass]="selectedTab === 'movements' ? 'd-block' : 'd-none'" class="alliances-stats-content pb-3 pt-3"
-  *ngIf="!isInLoading">
-  <div class="container movements">
-    <app-table [sort]="''" [reverse]="false" [isInLoading]="isInMovementLoading" [maxPage]="maxPage!" [page]="page"
+@if (!isInLoading) {
+  <div [ngClass]="selectedTab === 'movements' ? 'd-block' : 'd-none'" class="alliances-stats-content pb-3 pt-3"
+    >
+    <div class="container movements">
+      <app-table [sort]="''" [reverse]="false" [isInLoading]="isInMovementLoading" [maxPage]="maxPage!" [page]="page"
       [search]="search" [headers]="[
       ['playerName', 'Pseudonyme' | translate, '', true],
       ['allianceName', 'Alliance' | translate, '/assets/min-alliance.png', true],
@@ -67,146 +74,170 @@
       ['positionOld', 'Description' | translate, '', true],
       ['date', 'Date' | translate, '', true],
     ]" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
-      <tr *ngIf="movements.length === 0 && !isInMovementLoading">
-        <td colspan="10">
-          <span class="text-muted">{{ 'Aucun mouvement trouvé' | translate }}</span>
-        </td>
-      </tr>
-      <tr *ngFor="let movement of movements">
-        <td>{{ movement.rank }}</td>
-        <td>{{ movement.player }}</td>
-        <td>{{ movement.alliance ?? '-' }}</td>
-        <td>{{ (movement.might ? movement.might : 0) | formatNumber }}</td>
-        <td><img [src]="'/assets/castle' + movement.type + '.png'" [title]="getCastleType(movement.type) | translate"
+        @if (movements.length === 0 && !isInMovementLoading) {
+          <tr>
+            <td colspan="10">
+              <span class="text-muted">{{ 'Aucun mouvement trouvé' | translate }}</span>
+            </td>
+          </tr>
+        }
+        @for (movement of movements; track movement) {
+          <tr>
+            <td>{{ movement.rank }}</td>
+            <td>{{ movement.player }}</td>
+            <td>{{ movement.alliance ?? '-' }}</td>
+            <td>{{ (movement.might ? movement.might : 0) | formatNumber }}</td>
+            <td><img [src]="'/assets/castle' + movement.type + '.png'" [title]="getCastleType(movement.type) | translate"
             [alt]="getCastleType(movement.type) | translate"></td>
-        <td [innerHTML]="getDescription(movement.type, movement.positionOld, movement.positionNew).image"></td>
-        <td>{{ getDescription(movement.type, movement.positionOld, movement.positionNew).keyword | translate }} {{
-          getDescription(movement.type, movement.positionOld, movement.positionNew).description }}</td>
-        <td>{{ movement.date | date: ('Date_1' | translate) }}</td>
-      </tr>
-    </app-table>
+            <td [innerHTML]="getDescription(movement.type, movement.positionOld, movement.positionNew).image"></td>
+            <td>{{ getDescription(movement.type, movement.positionOld, movement.positionNew).keyword | translate }} {{
+            getDescription(movement.type, movement.positionOld, movement.positionNew).description }}</td>
+            <td>{{ movement.date | date: ('Date_1' | translate) }}</td>
+          </tr>
+        }
+      </app-table>
+    </div>
   </div>
-</div>
+}
 
-<div [ngClass]="selectedTab === 'members' ? 'd-block' : 'd-none'" class="alliances-stats-content pb-3 pt-3"
-  *ngIf="!isInLoading">
-  <div class="container">
-    <div class="row align-items-center justify-content-end">
-      <div class="col-6 col-lg-4">
-        <input
-          type="text"
-          class="form-control form-control-sm"
-          [placeholder]="'Pseudonyme du joueur (château principal)' | translate"
-          [(ngModel)]="playerNameForDistance">
-      </div>
-      <div class="col-auto">
-        <div class="btn-group" role="group" aria-label="Distance buttons">
-          <button class="btn btn-primary btn-sm"
-            (click)="onAddDistanceColumn()"
-            [disabled]="!playerNameForDistance.trim()">
-            <div *ngIf="!isDistanceIsInLoading; else isDistanceIsInLoadingTmplate">
-              <img src="/assets/players.png" height="24" [title]="'Filtrer par distance depuis le château principal d\'un joueur' | translate" [attr.alt]="'Filtrer par distance depuis le château principal d\'un joueur' | translate">
-              {{ 'Afficher la distance' | translate }}
-            </div>
-            <ng-template #isDistanceIsInLoadingTmplate>
-              <i class="fas fa-spinner fa-spin me-1"></i>
-            </ng-template>
-          </button>
+@if (!isInLoading) {
+  <div [ngClass]="selectedTab === 'members' ? 'd-block' : 'd-none'" class="alliances-stats-content pb-3 pt-3"
+    >
+    <div class="container">
+      <div class="row align-items-center justify-content-end">
+        <div class="col-6 col-lg-4">
+          <input
+            type="text"
+            class="form-control form-control-sm"
+            [placeholder]="'Pseudonyme du joueur (château principal)' | translate"
+            [(ngModel)]="playerNameForDistance">
+        </div>
+        <div class="col-auto">
+          <div class="btn-group" role="group" aria-label="Distance buttons">
+            <button class="btn btn-primary btn-sm"
+              (click)="onAddDistanceColumn()"
+              [disabled]="!playerNameForDistance.trim()">
+              @if (!isDistanceIsInLoading) {
+                <div>
+                  <img src="/assets/players.png" height="24" [title]="'Filtrer par distance depuis le château principal d\'un joueur' | translate" [attr.alt]="'Filtrer par distance depuis le château principal d\'un joueur' | translate">
+                  {{ 'Afficher la distance' | translate }}
+                </div>
+              } @else {
+                <i class="fas fa-spinner fa-spin me-1"></i>
+              }
+            </button>
             <button class="btn btn-secondary btn-cancel btn-sm"
               (click)="resetDistanceColumn()"
               [title]="'Réinitialiser' | translate"
               [disabled]="!playerNameForDistance.trim()">
               <i class="fas fa-times"></i>
             </button>
+          </div>
         </div>
+        <div class="col-auto">
+          <button class="btn-filter btn btn-light btn-sm" (click)="exportData()" [title]="'Exporter les données' | translate">
+            <lucide-icon class="lucide lucide-download" [img]="Download"></lucide-icon>
+          </button>
+        </div>
+        <div class="form-text text-muted small mb-3 text-end" [innerHTML]="'Distance-text' | translate"></div>
       </div>
-      <div class="col-auto">
-        <button class="btn-filter btn btn-light btn-sm" (click)="exportData()" [title]="'Exporter les données' | translate">
-          <lucide-icon class="lucide lucide-download" [img]="Download"></lucide-icon>
-        </button>
-      </div>
-      <div class="form-text text-muted small mb-3 text-end" [innerHTML]="'Distance-text' | translate"></div>
-    </div>
-
-    <div class="players-container">
-      <app-table [sort]="sort" [reverse]="reverse" [isInLoading]="isInLoading" [maxPage]="maxPage!" [page]="page"
-        [search]="search" (sortOutput)="sortPlayers($event)" [headers]="membersTableHeader">
-        <app-player-table-content
-          [players]="players"
-          [distanceEnabled]="membersTableHeader.length > defaultMembersTableHeaderSize"
-          [playersTableHeader]="membersTableHeader"
+      <div class="players-container">
+        <app-table [sort]="sort" [reverse]="reverse" [isInLoading]="isInLoading" [maxPage]="maxPage!" [page]="page"
+          [search]="search" (sortOutput)="sortPlayers($event)" [headers]="membersTableHeader">
+          <app-player-table-content
+            [players]="players"
+            [distanceEnabled]="membersTableHeader.length > defaultMembersTableHeaderSize"
+            [playersTableHeader]="membersTableHeader"
           ></app-player-table-content>
-      </app-table>
-    </div>
-  </div>
-</div>
-
-<div [ngClass]="selectedTab === 'movement' ? 'd-block' : 'd-none'" class="alliances-stats-content pb-3 pt-3"
-  *ngIf="!isInLoading">
-  <div class="timeline-section container pt-3">
-    <div class="timeline-header text-center mb-3">
-      <div class="row">
-        <div class="col text-start">
-          <button class="btn" (click)="previousMonth();" [title]="'Aller au mois précédent' | translate">
-            <i class="fas fa-chevron-left"></i>
-          </button>
-        </div>
-        <div class="col text-center">
-          <h3>{{ getMonthNameByDate(actualMonth) }}</h3>
-          <h5>{{ allianceName }}</h5>
-        </div>
-        <div class="col text-end">
-          <button class="btn" (click)="nextMonth()" [title]="'Aller au mois suivant' | translate">
-            <i class="fas fa-chevron-right"></i>
-          </button>
-        </div>
-        <p class="text-muted" *ngIf="nbMovementsByMonth[actualMonth]">{{ 'Arrivées et départs' | translate }} ({{
-          nbMovementsByMonth[actualMonth].movements}},
-          {{ 'dont 0 arrivées et 0 départs' | translate: { arrivals: nbMovementsByMonth[actualMonth].joins, departures:
-          nbMovementsByMonth[actualMonth].leaves } }}
-
-        </p>
-      </div>
-
-      <div *ngIf="!groupedUpdatedByMonths[actualMonth] || groupedUpdatedByMonths[actualMonth].length === 0"
-        class="text-center">
-        <em>{{ 'Aucun départ ou arrivée en 0' | translate: { time: (getMonthNameByDate(actualMonth) | lowercase) }
-          }}</em>
-      </div>
-      <div *ngFor="let group of groupedUpdatedByMonths[actualMonth]" class="timeline-day mb-4">
-        <div class="day-title text-light bg-custom p-2 rounded">{{ group.date | date:'fullDate':'':langageService.getCurrentLocale() | titlecase }} <small>({{
-            group.updates.length }})</small></div>
-        <div *ngFor="let update of group.updates" class="timeline-event d-flex align-items-center my-2 p-2">
-          <div class="event-icon rounded-circle text-center text-light me-2"
-            [ngClass]="{ 'bg-success': update.action === 'joined', 'bg-danger': update.action === 'left' }">
-            <i [ngClass]="update.action === 'joined' ? 'fas fa-door-open' : 'fas fa-door-closed'"></i>
-          </div>
-
-          <div class="event-details w-100 d-flex justify-content-between">
-            <span>
-              <strong class="text-dark">{{ update.player_name }}</strong>&nbsp;<small>({{ update.level }})</small>
-            </span>
-            <span [ngClass]="{ 'text-success': update.action === 'joined', 'text-danger': update.action === 'left' }">
-              <i class="far fa-clock"></i>&nbsp;{{ update.created_at | date: 'shortTime' }} •
-              <ng-container *ngIf="update.action === 'joined'">{{ 'A rejoint l\'alliance' | translate
-                }}&nbsp;</ng-container>
-              <ng-container *ngIf="update.action === 'left'">{{ 'A quitté l\'alliance' | translate
-                }}&nbsp;</ng-container>
-              <strong>{{ update.might_change }}</strong>
-            </span>
-          </div>
-        </div>
+        </app-table>
       </div>
     </div>
   </div>
-</div>
+}
 
-<div [ngClass]="selectedTab === 'stats' ? 'd-block' : 'd-none'" class="alliances-stats-content" *ngIf="!isInLoading && isBrowser">
-  <div class="container-fluid pt-3 pb-3" style="margin-bottom: 70px;"
-    *ngIf="countQueryFinished === totalQuery && charts['might']; else loadingCardDetails">
-    <div class="row">
-      <div class="col-12 col-lg-6 mt-4" *ngFor="let config of statsCardConfigs">
-        <app-player-stats-card *ngIf="charts[config.chartKey]" [charts]="config.chartKey === 'might' ?
+@if (!isInLoading) {
+  <div [ngClass]="selectedTab === 'movement' ? 'd-block' : 'd-none'" class="alliances-stats-content pb-3 pt-3"
+    >
+    <div class="timeline-section container pt-3">
+      <div class="timeline-header text-center mb-3">
+        <div class="row">
+          <div class="col text-start">
+            <button class="btn" (click)="previousMonth();" [title]="'Aller au mois précédent' | translate">
+              <i class="fas fa-chevron-left"></i>
+            </button>
+          </div>
+          <div class="col text-center">
+            <h3>{{ getMonthNameByDate(actualMonth) }}</h3>
+            <h5>{{ allianceName }}</h5>
+          </div>
+          <div class="col text-end">
+            <button class="btn" (click)="nextMonth()" [title]="'Aller au mois suivant' | translate">
+              <i class="fas fa-chevron-right"></i>
+            </button>
+          </div>
+          @if (nbMovementsByMonth[actualMonth]) {
+            <p class="text-muted">{{ 'Arrivées et départs' | translate }} ({{
+              nbMovementsByMonth[actualMonth].movements}},
+              {{ 'dont 0 arrivées et 0 départs' | translate: { arrivals: nbMovementsByMonth[actualMonth].joins, departures:
+              nbMovementsByMonth[actualMonth].leaves } }}
+            </p>
+          }
+        </div>
+        @if (!groupedUpdatedByMonths[actualMonth] || groupedUpdatedByMonths[actualMonth].length === 0) {
+          <div
+            class="text-center">
+            <em>{{ 'Aucun départ ou arrivée en 0' | translate: { time: (getMonthNameByDate(actualMonth) | lowercase) }
+            }}</em>
+          </div>
+        }
+        <div class="timeline-day-container">
+          @for (group of groupedUpdatedByMonths[actualMonth]; track group) {
+            <div class="timeline-day mb-4">
+              <div class="day-title text-light bg-custom p-2 rounded">{{ group.date | date:'fullDate':'':langageService.getCurrentLocale() | titlecase }} <small>({{
+              group.updates.length }})</small></div>
+              @for (update of group.updates; track update) {
+                <div class="timeline-event d-flex align-items-center my-2 p-2">
+                  <div class="event-icon rounded-circle text-center text-light me-2"
+                    [ngClass]="{ 'bg-success': update.action === 'joined', 'bg-danger': update.action === 'left' }">
+                    <i [ngClass]="update.action === 'joined' ? 'fas fa-door-open' : 'fas fa-door-closed'"></i>
+                  </div>
+                  <div class="event-details w-100 d-flex justify-content-between">
+                    <span>
+                      <strong class="text-dark">{{ update.player_name }}</strong>&nbsp;<small>({{ update.level }})</small>
+                    </span>
+                    <span [ngClass]="{ 'text-success': update.action === 'joined', 'text-danger': update.action === 'left' }">
+                      <i class="far fa-clock"></i>&nbsp;{{ update.created_at | date: 'shortTime' }} •
+                      @if (update.action === 'joined') {
+                        {{ 'A rejoint l\'alliance' | translate
+                        }}&nbsp;
+                      }
+                      @if (update.action === 'left') {
+                        {{ 'A quitté l\'alliance' | translate
+                        }}&nbsp;
+                      }
+                      <strong>{{ update.might_change }}</strong>
+                    </span>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+@if (!isInLoading && isBrowser) {
+  <div [ngClass]="selectedTab === 'stats' ? 'd-block' : 'd-none'" class="alliances-stats-content">
+    @if (countQueryFinished === totalQuery && charts['might']) {
+      <div class="container-fluid pt-3 pb-3" style="margin-bottom: 70px;"
+        >
+        <div class="row">
+          @for (config of statsCardConfigs; track config) {
+            <div class="col-12 col-lg-6 mt-4">
+              @if (charts[config.chartKey]) {
+<app-player-stats-card [charts]="config.chartKey === 'might' ?
             {
               'Evolution': charts[config.chartKey]!,
               'Données': null,
@@ -216,215 +247,253 @@
               'Données':  null,
             }
           " [subtitle]="eventTitles[config.chartKey]"
-          [ngClass]="fullScreenModalKey === config.chartKey ? 'fullscreen' : ''" [data]="config.data" [playerId]="allianceId"
-          [onePlayerOnly]="false"
-          [eventName]="config.eventTitleKey" [title]="config.title | translate" [dataName]="config.dataName"
-          [backgroundIconImage]="config.backgroundIconImage" [backgroundColour]="config.backgroundColour"
-          (changeTabOutput)="changeTabGraph(config.chartKey, $event)">
-          <div before class="previous-graph" *ngIf="!config.singleChart">
-            <span (click)="previousGraph(ApiPlayerStatsType[config.chartKey])"
-              (keyup.enter)="previousGraph(ApiPlayerStatsType[config.chartKey])" tabindex="0"
-              [title]="'Graphique précédent' | translate">
-              <i class="fas fa-chevron-left"></i>
-            </span>
+                [ngClass]="fullScreenModalKey === config.chartKey ? 'fullscreen' : ''" [data]="config.data" [playerId]="allianceId"
+                [onePlayerOnly]="false"
+                [eventName]="config.eventTitleKey" [title]="config.title | translate" [dataName]="config.dataName"
+                [backgroundIconImage]="config.backgroundIconImage" [backgroundColour]="config.backgroundColour"
+                (changeTabOutput)="changeTabGraph(config.chartKey, $event)">
+                @if (!config.singleChart) {
+                  <div before class="previous-graph">
+                    <span (click)="previousGraph(ApiPlayerStatsType[config.chartKey])"
+                      (keyup.enter)="previousGraph(ApiPlayerStatsType[config.chartKey])"
+                      (keypress)="$event.key === 'Enter' ? previousGraph(ApiPlayerStatsType[config.chartKey]) : null"
+                      [title]="'Graphique précédent' | translate">
+                      <i class="fas fa-chevron-left"></i>
+                    </span>
+                  </div>
+                }
+                @if (!config.singleChart) {
+                  <div after class="next-graph">
+                    <span (click)="nextGraph(ApiPlayerStatsType[config.chartKey])"
+                      (keyup.enter)="nextGraph(ApiPlayerStatsType[config.chartKey])"
+                      (keypress)="$event.key === 'Enter' ? nextGraph(ApiPlayerStatsType[config.chartKey]) : null"
+                      [title]="'Graphique suivant' | translate">
+                      <i class="fas fa-chevron-right"></i>
+                    </span>
+                  </div>
+                }
+                <div class="flex-auto">
+                  <app-stats-card-content [statsType]="ApiPlayerStatsType[config.chartKey]" [keyStatsType]="config.chartKey"
+                    [cumulSeries]="cumulSeries" [seriesLabels]="seriesLabels" [fullScreenModalKey]="fullScreenModalKey"
+                    [currentTab]="chartsTabs[config.chartKey]" (nextGraphOutput)="nextGraph($event)"
+                    (previousGraphOutput)="previousGraph($event)" (toggleSeriesLabelsOutput)="toggleSeriesLabels($event)"
+                    (cumulSeriesLabelsOutput)="cumulSeriesLabels($event)" (openFullscreen)="openFullscreen($event)"
+                  (closeFullscreen)="closeFullscreen()"></app-stats-card-content>
+                </div>
+              </app-player-stats-card>
+            }
           </div>
-          <div after class="next-graph" *ngIf="!config.singleChart">
-            <span (click)="nextGraph(ApiPlayerStatsType[config.chartKey])"
-              (keyup.enter)="nextGraph(ApiPlayerStatsType[config.chartKey])" tabindex="0"
-              [title]="'Graphique suivant' | translate">
-              <i class="fas fa-chevron-right"></i>
-            </span>
-          </div>
-          <div class="flex-auto">
-            <app-stats-card-content [statsType]="ApiPlayerStatsType[config.chartKey]" [keyStatsType]="config.chartKey"
-              [cumulSeries]="cumulSeries" [seriesLabels]="seriesLabels" [fullScreenModalKey]="fullScreenModalKey"
-              [currentTab]="chartsTabs[config.chartKey]" (nextGraphOutput)="nextGraph($event)"
-              (previousGraphOutput)="previousGraph($event)" (toggleSeriesLabelsOutput)="toggleSeriesLabels($event)"
-              (cumulSeriesLabelsOutput)="cumulSeriesLabels($event)" (openFullscreen)="openFullscreen($event)"
-              (closeFullscreen)="closeFullscreen()"></app-stats-card-content>
-          </div>
-        </app-player-stats-card>
+        }
       </div>
     </div>
-  </div>
-</div>
-
-<div [ngClass]="selectedTab === 'health' ? 'd-block' : 'd-none'" class="alliances-stats-content" *ngIf="!isInLoading">
-  <div class="container-fluid pt-3 pb-3" style="margin-bottom: 70px;" *ngIf="isPulseChartReady">
-    <div class="row">
-      <div class="col-6 mt-4" *ngIf="topMightGain24h && topMightGain24h.length > 0">
-        <h2 class="text-center subtitle">{{ 'Progressions de puissance depuis 24 heures' | translate }}</h2>
-        <app-table [sort]="''" [headers]="[
-            ['playerName', 'Nom du joueur' | translate, '', true],
-            ['current', 'Puissance' | translate, '/assets/pp1.png', true],
-            ['diff', 'Variations' | translate, '', true],
-          ]" [isInLoading]="false" [reverse]="false" [search]="''" [maxPage]="1" [page]="1">
-          <tr *ngFor="let player of topMightGain24h; let i = index">
-            <td>{{ i + 1 }}</td>
-            <td>{{ player.playerName }}</td>
-            <td [title]="player.current">{{ player.current | formatNumber }}</td>
-            <td [ngClass]="{
-                'text-success': player.diff > 0,
-                'text-danger': player.diff < 0
-              }">{{ player.diff > 0 ? '+' : '' }}{{ player.diff | formatNumber }}</td>
-          </tr>
-        </app-table>
-      </div>
-      <div class="col-6 mt-4" *ngIf="topMightGain7d && topMightGain7d.length > 0">
-        <h2 class="text-center subtitle">{{ 'Progressions de puissance depuis 7 jours' | translate }}</h2>
-        <app-table [sort]="''" [headers]="[
-            ['playerName', 'Nom du joueur' | translate, '', true],
-            ['current', 'Puissance' | translate, '/assets/pp1.png', true],
-            ['diff', 'Variations' | translate, '', true],
-          ]" [isInLoading]="false" [reverse]="false" [search]="''" [maxPage]="1" [page]="1">
-          <tr *ngFor="let player of topMightGain7d; let i = index">
-            <td>{{ i + 1 }}</td>
-            <td>{{ player.playerName }}</td>
-            <td>{{ player.current | formatNumber }}</td>
-            <td [ngClass]="{
-                'text-success': player.diff > 0,
-                'text-danger': player.diff < 0
-              }">{{ player.diff > 0 ? '+' : '' }}{{ player.diff | formatNumber }}</td>
-          </tr>
-        </app-table>
-      </div>
-      <div class="col-6 mt-4" *ngIf="topMightLoss24h && topMightLoss24h.length > 0">
-        <h2 class="text-center subtitle">{{ 'Baisses de puissance depuis 24 heures' | translate }}</h2>
-        <app-table [sort]="''" [headers]="[
-            ['playerName', 'Nom du joueur' | translate, '', true],
-            ['current', 'Puissance' | translate, '/assets/pp1.png', true],
-            ['diff', 'Variations' | translate, '', true],
-          ]" [isInLoading]="false" [reverse]="false" [search]="''" [maxPage]="1" [page]="1">
-          <tr *ngFor="let player of topMightLoss24h; let i = index">
-            <td>{{ i + 1 }}</td>
-            <td>{{ player.playerName }}</td>
-            <td>{{ player.current | formatNumber }}</td>
-            <td [ngClass]="{
-                'text-success': player.diff > 0,
-                'text-danger': player.diff < 0
-              }">{{ player.diff > 0 ? '+' : '' }}{{ player.diff | formatNumber }}</td>
-          </tr>
-        </app-table>
-      </div>
-      <div class="col-6 mt-4" *ngIf="topMightLoss7d && topMightLoss7d.length > 0">
-        <h2 class="text-center subtitle">{{ 'Baisses de puissance depuis 7 jours' | translate }}</h2>
-        <app-table [sort]="''" [headers]="[
-            ['playerName', 'Nom du joueur' | translate, '', true],
-            ['current', 'Puissance' | translate, '/assets/pp1.png', true],
-            ['diff', 'Variations' | translate, '', true],
-          ]" [isInLoading]="false" [reverse]="false" [search]="''" [maxPage]="1" [page]="1">
-          <tr *ngFor="let player of topMightLoss7d; let i = index">
-            <td>{{ i + 1 }}</td>
-            <td>{{ player.playerName }}</td>
-            <td>{{ player.current | formatNumber }}</td>
-            <td [ngClass]="{
-                'text-success': player.diff > 0,
-                'text-danger': player.diff < 0
-              }">{{ player.diff > 0 ? '+' : '' }}{{ player.diff | formatNumber }}</td>
-          </tr>
-        </app-table>
-      </div>
-    </div>
-    <div class="row mt-3">
-      <div class="col-12">
-        <app-player-stats-card *ngIf="mightPerHourChart" [charts]="{
-                'Graphique': mightPerHourChart,
-                'Données': null
-              }
-            " [subtitle]="('Progression de la puissance totale de l\'alliance par heure' | translate) + ' (' + this.allianceName + ')'" [data]="mightPerHourTable"
-          [playerId]="undefined" [eventName]="''" [title]="'Puissance par heure' | translate"
-          [dataName]="'Puissance' | translate" [backgroundIconImage]="'/assets/banner-pp.png'"
-          [backgroundColour]="'rgb(255 230 35)'">
-          <hr>
-          <div class="chart-legend">
-            <div class="legend-item">
-              <span class="legend-color morning"></span>
-              <span>{{ 'Matinée (06h - 12h)' | translate }}</span>
-            </div>
-            <div class="legend-item">
-              <span class="legend-color afternoon"></span>
-              <span>{{ 'Après-midi (12h - 18h)' | translate }}</span>
-            </div>
-            <div class="legend-item">
-              <span class="legend-color evening"></span>
-              <span>{{ 'Soirée (18h - 00h)' | translate }}</span>
-            </div>
-            <div class="legend-item">
-              <span class="legend-color night"></span>
-              <span>{{ 'Nuit (00h - 06h)' | translate }}</span>
-            </div>
-          </div>
-        </app-player-stats-card>
-      </div>
-    </div>
-    <div class="row mt-3">
-      <div class="col-6">
-        <app-player-stats-card *ngIf="dailyAvgMightChangeChart" [charts]="{
-            'Graphique': dailyAvgMightChangeChart
-          }" [subtitle]="('Moyenne des variations de puissance par jour' | translate) + ' (' + this.allianceName + ')'" [data]="[]"
-          [playerId]="allianceId" [eventName]="''" [title]="'Moyenne des variations' | translate"
-          [dataName]="'Puissance' | translate" [backgroundIconImage]="'/assets/banner-pp.png'"
-          [backgroundColour]="'rgb(255 230 35)'">
-           <div after class="info-icon">
-            <i class="fas fa-info-circle" [title]="'Informations' | translate" data-bs-toggle="modal" data-bs-target="#infoDesc1Modal" (click)="openModal1()" (keydown.enter)="openModal1()" tabindex="0"></i>
-           </div>
-        </app-player-stats-card>
-      </div>
-      <div class="col-6">
-        <app-player-stats-card *ngIf="mightIntraVariationChart" [charts]="{
-            'Graphique': mightIntraVariationChart
-          }" [subtitle]="('Variation brute (amplitude) de la puissance par jour' | translate) + ' (' + this.allianceName + ')'" [data]="[]"
-          [playerId]="allianceId" [eventName]="''" [title]="'Activité journalière' | translate"
-          [dataName]="'Puissance' | translate" [backgroundIconImage]="'/assets/banner-pp.png'"
-          [backgroundColour]="'rgb(255 230 35)'">
-          <div after class="info-icon">
-            <i class="fas fa-info-circle" [title]="'Informations' | translate" data-bs-toggle="modal" data-bs-target="#infoDesc2Modal" (click)="openModal2()" (keydown.enter)="openModal2()" tabindex="0"></i>
-           </div>
-        </app-player-stats-card>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-
-
-  <ng-template #loadingCardDetails>
+  } @else {
     <div class="container pt-3">
       <div class="progress">
         <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" [ngClass]="{
         'bg-success': countQueryFinished === totalQuery,
         'bg-warning': countQueryFinished !== totalQuery
         }" [style.width.%]="(countQueryFinished / totalQuery) * 100">
-          <div *ngIf="countQueryFinished === totalQuery" class="text-center">
-            <em>{{ 'Affichage des statistiques' | translate }}</em>
+          @if (countQueryFinished === totalQuery) {
+            <div class="text-center">
+              <em>{{ 'Affichage des statistiques' | translate }}</em>
+            </div>
+          }
+        </div>
+      </div>
+      @if (countQueryFinished !== totalQuery) {
+        <div class="text-center mt-2">
+          <i class="fas fa-spinner fa-spin"></i>
+          &nbsp;
+          <em>{{ message | translate }}</em>
+        </div>
+      }
+    </div>
+  }
+</div>
+}
+
+@if (!isInLoading) {
+  <div [ngClass]="selectedTab === 'health' ? 'd-block' : 'd-none'" class="alliances-stats-content">
+    @if (isPulseChartReady) {
+      <div class="container-fluid pt-3 pb-3" style="margin-bottom: 70px;">
+        <div class="row">
+          @if (topMightGain24h && topMightGain24h.length > 0) {
+            <div class="col-6 mt-4">
+              <h2 class="text-center subtitle">{{ 'Progressions de puissance depuis 24 heures' | translate }}</h2>
+        <app-table [sort]="''" [headers]="[
+            ['playerName', 'Nom du joueur' | translate, '', true],
+            ['current', 'Puissance' | translate, '/assets/pp1.png', true],
+            ['diff', 'Variations' | translate, '', true],
+          ]" [isInLoading]="false" [reverse]="false" [search]="''" [maxPage]="1" [page]="1">
+                @for (player of topMightGain24h; track player; let i = $index) {
+                  <tr>
+                    <td>{{ i + 1 }}</td>
+                    <td>{{ player.playerName }}</td>
+                    <td [title]="player.current">{{ player.current | formatNumber }}</td>
+            <td [ngClass]="{
+                'text-success': player.diff > 0,
+                'text-danger': player.diff < 0
+              }">{{ player.diff > 0 ? '+' : '' }}{{ player.diff | formatNumber }}</td>
+                  </tr>
+                }
+              </app-table>
+            </div>
+          }
+          @if (topMightGain7d && topMightGain7d.length > 0) {
+            <div class="col-6 mt-4">
+              <h2 class="text-center subtitle">{{ 'Progressions de puissance depuis 7 jours' | translate }}</h2>
+        <app-table [sort]="''" [headers]="[
+            ['playerName', 'Nom du joueur' | translate, '', true],
+            ['current', 'Puissance' | translate, '/assets/pp1.png', true],
+            ['diff', 'Variations' | translate, '', true],
+          ]" [isInLoading]="false" [reverse]="false" [search]="''" [maxPage]="1" [page]="1">
+                @for (player of topMightGain7d; track player; let i = $index) {
+                  <tr>
+                    <td>{{ i + 1 }}</td>
+                    <td>{{ player.playerName }}</td>
+                    <td>{{ player.current | formatNumber }}</td>
+            <td [ngClass]="{
+                'text-success': player.diff > 0,
+                'text-danger': player.diff < 0
+              }">{{ player.diff > 0 ? '+' : '' }}{{ player.diff | formatNumber }}</td>
+                  </tr>
+                }
+              </app-table>
+            </div>
+          }
+          @if (topMightLoss24h && topMightLoss24h.length > 0) {
+            <div class="col-6 mt-4">
+              <h2 class="text-center subtitle">{{ 'Baisses de puissance depuis 24 heures' | translate }}</h2>
+        <app-table [sort]="''" [headers]="[
+            ['playerName', 'Nom du joueur' | translate, '', true],
+            ['current', 'Puissance' | translate, '/assets/pp1.png', true],
+            ['diff', 'Variations' | translate, '', true],
+          ]" [isInLoading]="false" [reverse]="false" [search]="''" [maxPage]="1" [page]="1">
+                @for (player of topMightLoss24h; track player; let i = $index) {
+                  <tr>
+                    <td>{{ i + 1 }}</td>
+                    <td>{{ player.playerName }}</td>
+                    <td>{{ player.current | formatNumber }}</td>
+            <td [ngClass]="{
+                'text-success': player.diff > 0,
+                'text-danger': player.diff < 0
+              }">{{ player.diff > 0 ? '+' : '' }}{{ player.diff | formatNumber }}</td>
+                  </tr>
+                }
+              </app-table>
+            </div>
+          }
+          @if (topMightLoss7d && topMightLoss7d.length > 0) {
+            <div class="col-6 mt-4">
+              <h2 class="text-center subtitle">{{ 'Baisses de puissance depuis 7 jours' | translate }}</h2>
+        <app-table [sort]="''" [headers]="[
+            ['playerName', 'Nom du joueur' | translate, '', true],
+            ['current', 'Puissance' | translate, '/assets/pp1.png', true],
+            ['diff', 'Variations' | translate, '', true],
+          ]" [isInLoading]="false" [reverse]="false" [search]="''" [maxPage]="1" [page]="1">
+                @for (player of topMightLoss7d; track player; let i = $index) {
+                  <tr>
+                    <td>{{ i + 1 }}</td>
+                    <td>{{ player.playerName }}</td>
+                    <td>{{ player.current | formatNumber }}</td>
+            <td [ngClass]="{
+                'text-success': player.diff > 0,
+                'text-danger': player.diff < 0
+              }">{{ player.diff > 0 ? '+' : '' }}{{ player.diff | formatNumber }}</td>
+                  </tr>
+                }
+              </app-table>
+            </div>
+          }
+        </div>
+        <div class="row mt-3">
+          <div class="col-12">
+            @if (mightPerHourChart) {
+<app-player-stats-card [charts]="{
+                'Graphique': mightPerHourChart,
+                'Données': null
+              }
+            " [subtitle]="('Progression de la puissance totale de l\'alliance par heure' | translate) + ' (' + this.allianceName + ')'" [data]="mightPerHourTable"
+              [playerId]="undefined" [eventName]="''" [title]="'Puissance par heure' | translate"
+              [dataName]="'Puissance' | translate" [backgroundIconImage]="'/assets/banner-pp.png'"
+              [backgroundColour]="'rgb(255 230 35)'">
+              <hr>
+                <div class="chart-legend">
+                  <div class="legend-item">
+                    <span class="legend-color morning"></span>
+                    <span>{{ 'Matinée (06h - 12h)' | translate }}</span>
+                  </div>
+                  <div class="legend-item">
+                    <span class="legend-color afternoon"></span>
+                    <span>{{ 'Après-midi (12h - 18h)' | translate }}</span>
+                  </div>
+                  <div class="legend-item">
+                    <span class="legend-color evening"></span>
+                    <span>{{ 'Soirée (18h - 00h)' | translate }}</span>
+                  </div>
+                  <div class="legend-item">
+                    <span class="legend-color night"></span>
+                    <span>{{ 'Nuit (00h - 06h)' | translate }}</span>
+                  </div>
+                </div>
+              </app-player-stats-card>
+            }
+          </div>
+        </div>
+        <div class="row mt-3">
+          <div class="col-6">
+            @if (dailyAvgMightChangeChart) {
+<app-player-stats-card [charts]="{
+            'Graphique': dailyAvgMightChangeChart
+          }" [subtitle]="('Moyenne des variations de puissance par jour' | translate) + ' (' + this.allianceName + ')'" [data]="[]"
+                [playerId]="allianceId" [eventName]="''" [title]="'Moyenne des variations' | translate"
+                [dataName]="'Puissance' | translate" [backgroundIconImage]="'/assets/banner-pp.png'"
+                [backgroundColour]="'rgb(255 230 35)'">
+                <div after class="info-icon">
+                  <i class="fas fa-info-circle" [title]="'Informations' | translate" data-bs-toggle="modal" data-bs-target="#infoDesc1Modal" (click)="openModal1()" (keydown.enter)="openModal1()"></i>
+                </div>
+              </app-player-stats-card>
+            }
+          </div>
+          <div class="col-6">
+            @if (mightIntraVariationChart) {
+<app-player-stats-card [charts]="{
+            'Graphique': mightIntraVariationChart
+          }" [subtitle]="('Variation brute (amplitude) de la puissance par jour' | translate) + ' (' + this.allianceName + ')'" [data]="[]"
+                [playerId]="allianceId" [eventName]="''" [title]="'Activité journalière' | translate"
+                [dataName]="'Puissance' | translate" [backgroundIconImage]="'/assets/banner-pp.png'"
+                [backgroundColour]="'rgb(255 230 35)'">
+                <div after class="info-icon">
+                  <i class="fas fa-info-circle" [title]="'Informations' | translate" data-bs-toggle="modal" data-bs-target="#infoDesc2Modal" (click)="openModal2()" (keydown.enter)="openModal2()"></i>
+                </div>
+              </app-player-stats-card>
+            }
           </div>
         </div>
       </div>
-      <div *ngIf="countQueryFinished !== totalQuery" class="text-center mt-2">
-        <i class="fas fa-spinner fa-spin"></i>
-        &nbsp;
-        <em>{{ message | translate }}</em>
+    }
+  </div>
+}
+
+
+
+
+
+
+
+<div class="modal fade" id="infoDesc1Modal" tabindex="-1" aria-labelledby="infoDesc1ModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="infoDesc1ModalLabel" translate>Explication</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" [attr.aria-label]="'Fermer' | translate"></button>
       </div>
-
-    </div>
-  </ng-template>
-
-
-
-  <div class="modal fade" id="infoDesc1Modal" tabindex="-1" aria-labelledby="infoDesc1ModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="infoDesc1ModalLabel" translate>Explication</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" [attr.aria-label]="'Fermer' | translate"></button>
-        </div>
-        <div class="modal-body">
-          <div class="row">
-            <div class="container">
-              <div class="explanation">
-                <p>{{ 'Moyenne des variations - Explication' | translate }}</p>
-                <hr>
+      <div class="modal-body">
+        <div class="row">
+          <div class="container">
+            <div class="explanation">
+              <p>{{ 'Moyenne des variations - Explication' | translate }}</p>
+              <hr>
                 <div class="katex-target"></div>
               </div>
             </div>
@@ -452,14 +521,14 @@
               <div class="explanation">
                 <p>{{ 'Activité journalière - Explication' | translate }}</p>
                 <hr>
-                <div class="katex-target-var"></div>
+                  <div class="katex-target-var"></div>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" translate>Fermer</button>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" translate>Fermer</button>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>

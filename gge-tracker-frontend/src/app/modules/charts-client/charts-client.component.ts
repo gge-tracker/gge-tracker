@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, input, output, QueryList, ViewChildren } from '@angular/core';
 import {
   ApexAnnotations,
@@ -23,7 +22,7 @@ import {
 @Component({
   selector: 'app-chart-client',
   standalone: true,
-  imports: [CommonModule, NgApexchartsModule],
+  imports: [NgApexchartsModule],
   template: `
     <apx-chart
       #componentRef

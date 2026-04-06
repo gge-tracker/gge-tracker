@@ -145,11 +145,7 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
    * @param response - The Express response object for the corresponding response.
    * @returns A string (always null) to satisfy morgan's expected return type.
    */
-  public recordMorganRequest(
-    tokens: morgan.TokenIndexer,
-    request: express.Request,
-    response: express.Response,
-  ): string {
+  public recordMorganRequest(tokens: morgan.TokenIndexer, request: express.Request, response: express.Response): void {
     try {
       const now = Date.now();
       const server = (request.headers['gge-server'] as string) || 'none';
@@ -172,10 +168,8 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
         ip,
       };
       this.pushToBuffer({ labels, line, timestamp: now });
-      return null;
     } catch (error) {
       console.error('Error recording morgan request:', error);
-      return null;
     }
   }
 

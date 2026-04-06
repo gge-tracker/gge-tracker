@@ -3,9 +3,9 @@ import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-loading',
-  standalone: true,
   imports: [TranslateModule],
   templateUrl: './loading.component.html',
   styleUrl: './loading.component.css',
+  standalone: true,
 })
 export class LoadingComponent {}

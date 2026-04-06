@@ -1,4 +1,4 @@
-import { NgClass, NgFor, NgIf } from '@angular/common';
+import { DecimalPipe, NgClass } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -29,11 +29,8 @@ interface FormFilters {
 
 @Component({
   selector: 'app-alliances',
-  standalone: true,
   providers: [FormatNumberPipe],
   imports: [
-    NgFor,
-    NgIf,
     LucideAngularModule,
     NgClass,
     RouterLink,
@@ -43,7 +40,9 @@ interface FormFilters {
     TableComponent,
     SearchFormComponent,
     TranslateModule,
+    DecimalPipe,
   ],
+  standalone: true,
   templateUrl: './alliances.component.html',
   styleUrl: './alliances.component.css',
 })
@@ -78,11 +77,12 @@ export class AlliancesComponent extends GenericComponent implements OnInit {
   public sortByOptions: { value: string; label: string }[] = [
     { value: 'might_current', label: 'Points de puissance' },
     { value: 'might_all_time', label: 'Puissance maximale atteinte' },
-    { value: 'loot_current', label: 'Points de butin' },
-    { value: 'loot_all_time', label: 'Butin maximal atteint' },
+    { value: 'loot_current', label: 'Points de pillage' },
+    { value: 'loot_all_time', label: 'Pillage maximal atteint' },
     { value: 'current_fame', label: 'Points de gloire' },
     { value: 'highest_fame', label: 'Gloire maximale atteinte' },
     { value: 'player_count', label: 'Nombre de joueurs' },
+    { value: 'active_player_count', label: 'Nombre de joueurs actifs' },
   ];
   public ArrowBigRightDash = ArrowBigRightDash;
   private readonly FILTER_KEYS: FilterKeyMap<FormFilters, FilterField> = {
@@ -415,6 +415,7 @@ export class AlliancesComponent extends GenericComponent implements OnInit {
         lootAllTime: alliance.loot_all_time ?? 0,
         currentFame: alliance.current_fame ?? 0,
         highestFame: alliance.highest_fame ?? 0,
+        activePlayerCount: alliance.active_player_count ?? 0,
       };
     });
   }

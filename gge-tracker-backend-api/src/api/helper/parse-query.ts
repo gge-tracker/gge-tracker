@@ -75,6 +75,18 @@ export const qNumberArray = (): QueryField<number[] | undefined> => ({
   },
 });
 
+export const qKingdomArray = (): QueryField<number[] | undefined> => ({
+  parse: (value): number[] | undefined => {
+    if (!value) return;
+    const authorizedKingdoms = new Set([1, 2, 3, 999]);
+    const array = String(value)
+      .split(',')
+      .map((v) => Number.parseInt(v, 10))
+      .filter((v) => !Number.isNaN(v) && authorizedKingdoms.has(v));
+    return array.length > 0 ? array : undefined;
+  },
+});
+
 export const qOrderBy = (allowedValues: string[], defaultValue?: string): QueryField<string | undefined> => ({
   parse: (value): string | undefined => {
     if (typeof value !== 'string') return defaultValue;
@@ -121,6 +133,9 @@ export interface QuerySchema {
   allianceId: QueryField<number | undefined>;
   minPlayerCount: QueryField<number | undefined>;
   maxPlayerCount: QueryField<number | undefined>;
+  minActivePlayerCount: QueryField<number | undefined>;
+  maxActivePlayerCount: QueryField<number | undefined>;
+  kingdomFilter: QueryField<number[] | undefined>;
 }
 
 export const querySchema = (limits: {
@@ -148,6 +163,7 @@ export const querySchema = (limits: {
   protectionFilter: qFlag(),
   banFilter: qFlag(),
   inactiveFilter: qFlag(),
+  kingdomFilter: qKingdomArray(),
   playerNameForDistance: qLowerString(),
   allianceRankFilter: qNumberArray(),
   orderType: qOrderType(),
@@ -156,6 +172,8 @@ export const querySchema = (limits: {
   searchType: qSearchType(),
   minPlayerCount: qNumber({ min: 0, max: 65 }),
   maxPlayerCount: qNumber({ min: 0, max: 65 }),
+  minActivePlayerCount: qNumber({ min: 0, max: 65 }),
+  maxActivePlayerCount: qNumber({ min: 0, max: 65 }),
   search: qString({ max: 40 }),
 });
 

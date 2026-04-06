@@ -5,8 +5,8 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { CalendarDays, LucideAngularModule, Users } from 'lucide-angular';
 
 @Component({
-  selector: 'app-events-header',
   standalone: true,
+  selector: 'app-events-header',
   imports: [TranslatePipe, DatePipe, TitleCasePipe, FormatNumberPipe, LowerCasePipe, LucideAngularModule],
   templateUrl: './events-header.component.html',
   styleUrl: './events-header.component.css',

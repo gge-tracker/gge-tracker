@@ -1,4 +1,3 @@
-import { formatInTimeZone, toDate } from 'date-fns-tz';
 import * as express from 'express';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
@@ -73,6 +72,8 @@ export abstract class ApiUpdates implements ApiHelper {
           P.legendary_level,
           U.old_alliance_id,
           U.new_alliance_id,
+          U.old_alliance_name,
+          U.new_alliance_name,
           U.created_at
         FROM
           player_alliance_update U
@@ -109,6 +110,8 @@ export abstract class ApiUpdates implements ApiHelper {
                 legendary_level: result.legendary_level,
                 old_alliance_id: result.old_alliance_id ? ApiHelper.addCountryCode(result.old_alliance_id, code) : null,
                 new_alliance_id: result.new_alliance_id ? ApiHelper.addCountryCode(result.new_alliance_id, code) : null,
+                old_alliance_name: result.old_alliance_name,
+                new_alliance_name: result.new_alliance_name,
                 created_at: new Date(result.created_at).toISOString(),
               };
             });
@@ -263,6 +266,7 @@ export abstract class ApiUpdates implements ApiHelper {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
         return;
       }
+      const code = ApiHelper.getCountryCode(String(playerId));
 
       /* ---------------------------------
        * Build SQL Query
@@ -270,6 +274,8 @@ export abstract class ApiUpdates implements ApiHelper {
       const query = `
         SELECT
           P.created_at,
+          P.old_alliance_name AS original_old_alliance_name,
+          P.new_alliance_name AS original_new_alliance_name,
           A1.name AS old_alliance_name,
           A1.id AS old_alliance_id,
           A2.name AS new_alliance_name,
@@ -305,9 +311,11 @@ export abstract class ApiUpdates implements ApiHelper {
             return {
               date: new Date(result.created_at).toISOString(),
               old_alliance_name: result.old_alliance_name,
-              old_alliance_id: ApiHelper.addCountryCode(result.old_alliance_id, request['code']),
               new_alliance_name: result.new_alliance_name,
-              new_alliance_id: ApiHelper.addCountryCode(result.new_alliance_id, request['code']),
+              old_alliance_id: result.old_alliance_id ? ApiHelper.addCountryCode(result.old_alliance_id, code) : null,
+              new_alliance_id: result.new_alliance_id ? ApiHelper.addCountryCode(result.new_alliance_id, code) : null,
+              original_old_alliance_name: result.original_old_alliance_name,
+              original_new_alliance_name: result.original_new_alliance_name,
             };
           });
 

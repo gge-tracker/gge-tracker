@@ -3,29 +3,39 @@
     <table class="table-custom position-relative">
       <ng-template #sortTemplate let-currentSort="sort" let-currentReverse="reverse">
         <span class="sort d-md-inline-block d-block">
-          <lucide-icon *ngIf="sort() === currentSort && !reverse()" class="ms-1 lucide-icon"
+          @if (sort() === currentSort && !reverse()) {
+            <lucide-icon class="ms-1 lucide-icon"
             [img]="ChevronsUp"></lucide-icon>
-          <lucide-icon *ngIf="sort() === currentSort && reverse()" class="ms-1 lucide-icon" [img]="ChevronsDown"
+          }
+          @if (sort() === currentSort && reverse()) {
+            <lucide-icon class="ms-1 lucide-icon" [img]="ChevronsDown"
             [class.reverse]="true"></lucide-icon>
-          <lucide-icon *ngIf="sort() !== currentSort" class="ms-1 lucide-icon" [img]="ChevronsUpDown"></lucide-icon>
+          }
+          @if (sort() !== currentSort) {
+            <lucide-icon class="ms-1 lucide-icon" [img]="ChevronsUpDown"></lucide-icon>
+          }
         </span>
       </ng-template>
 
       <thead>
         <tr>
           <th>#</th>
-          <th *ngFor="let header of headers()" (click)="header[3] ?? sortAlliances(header[0])"
-            [ngClass]="{ 'pointer': !header[3] }">
-            <ng-container *ngIf="header[1] && !header[2]">
-              <span>{{ header[1] | translate }}</span>
-            </ng-container>
-            <img *ngIf="header[2]" [src]="header[2]" [title]="header[1] | translate" [alt]="header[1] | translate"
-              height="41" />
-            <ng-container *ngIf="!header[3]">
-              <ng-container
+          @for (header of headers(); track header) {
+            <th (click)="header[3] ?? sortAlliances(header[0])"
+              [ngClass]="{ 'pointer': !header[3] }">
+              @if (header[1] && !header[2]) {
+                <span>{{ header[1] | translate }}</span>
+              }
+              @if (header[2]) {
+                <img [src]="header[2]" [title]="header[1] | translate" [alt]="header[1] | translate"
+                  height="41" />
+              }
+              @if (!header[3]) {
+                <ng-container
                 *ngTemplateOutlet="sortTemplate; context: { sort: header[0], reverse: reverse }"></ng-container>
-            </ng-container>
-          </th>
+              }
+            </th>
+          }
         </tr>
       </thead>
       <tbody>
@@ -35,47 +45,59 @@
 
   </div>
 </div>
-<ul *ngIf="maxPage() > 1" class="mt-2">
-  <li *ngIf="page() > 1" class="page-item previous">
-    <a (click)="previousPage.emit()" (keydown.enter)="previousPage.emit()" (keydown.space)="previousPage.emit()"
-      [class.loading]="isInLoading()" tabindex="0" translate>Précédent</a>
-  </li>
-
-  <ng-container *ngIf="maxPage() && maxPage() < 6; else advancedPagination">
-    <li *ngFor="let p of allPages()" [class.active]="page() === p">
-      <a (click)="navigateToPage.emit(p)" (keydown.enter)="navigateToPage.emit(p)"
-        (keydown.space)="navigateToPage.emit(p)" [class.loading]="isInLoading()" tabindex="0">{{ p }}</a>
-    </li>
-  </ng-container>
-
-  <ng-template #advancedPagination>
-    <li *ngIf="page() > 2" class="page-item">
-      <a (click)="navigateToPage.emit(1)" (keydown.enter)="navigateToPage.emit(1)"
-        (keydown.space)="navigateToPage.emit(1)" [class.loading]="isInLoading()" tabindex="0">1</a>
-    </li>
-    <li *ngIf="page() > 3" class="out-of-range">
-      <a (click)="navigateToPage.emit(page() - 2)" (keydown.enter)="navigateToPage.emit(page() - 2)"
-        (keydown.space)="navigateToPage.emit(page() - 2)" [class.loading]="isInLoading()" tabindex="0">...</a>
-    </li>
-
-    <li *ngFor="let p of visiblePages()" [class.active]="page() === p">
-      <a (click)="navigateToPage.emit(p)" (keydown.enter)="navigateToPage.emit(p)"
-        (keydown.space)="navigateToPage.emit(p)" [class.loading]="isInLoading()" tabindex="0">{{ p }}</a>
-    </li>
-
-    <li *ngIf="page() < (maxPage() - 2)" class="out-of-range">
-      <a (click)="navigateToPage.emit(page() + 2)" (keydown.enter)="navigateToPage.emit(page() + 2)"
-        (keydown.space)="navigateToPage.emit(page() + 2)" [class.loading]="isInLoading()" tabindex="0">...</a>
-    </li>
-    <li *ngIf="page() < (maxPage() - 1)" class="page-item">
-      <a (click)="navigateToPage.emit(maxPage())" (keydown.enter)="navigateToPage.emit(maxPage())"
-        (keydown.space)="navigateToPage.emit(maxPage())" [class.loading]="isInLoading()" tabindex="0">{{ maxPage()
-        }}</a>
-    </li>
-  </ng-template>
-
-  <li *ngIf="maxPage() && page() < maxPage()" class="page-item next">
-    <a (click)="nextPage.emit()" (keydown.enter)="nextPage.emit()" (keydown.space)="nextPage.emit()"
-      [class.loading]="isInLoading()" tabindex="0" translate>Suivant</a>
-  </li>
-</ul>
+@if (maxPage() > 1) {
+  <ul class="mt-2">
+    @if (page() > 1) {
+      <li class="page-item previous">
+        <a (click)="previousPage.emit()" (keydown.enter)="previousPage.emit()" (keydown.space)="previousPage.emit()"
+        [class.loading]="isInLoading()" tabindex="0" translate>Précédent</a>
+      </li>
+    }
+    @if (maxPage() && maxPage() < 6) {
+      @for (p of allPages(); track p) {
+        <li [class.active]="page() === p">
+          <a (click)="navigateToPage.emit(p)" (keydown.enter)="navigateToPage.emit(p)"
+          (keydown.space)="navigateToPage.emit(p)" [class.loading]="isInLoading()" tabindex="0">{{ p }}</a>
+        </li>
+      }
+    } @else {
+      @if (page() > 2) {
+        <li class="page-item">
+          <a (click)="navigateToPage.emit(1)" (keydown.enter)="navigateToPage.emit(1)"
+          (keydown.space)="navigateToPage.emit(1)" [class.loading]="isInLoading()" tabindex="0">1</a>
+        </li>
+      }
+      @if (page() > 3) {
+        <li class="out-of-range">
+          <a (click)="navigateToPage.emit(page() - 2)" (keydown.enter)="navigateToPage.emit(page() - 2)"
+          (keydown.space)="navigateToPage.emit(page() - 2)" [class.loading]="isInLoading()" tabindex="0">...</a>
+        </li>
+      }
+      @for (p of visiblePages(); track p) {
+        <li [class.active]="page() === p">
+          <a (click)="navigateToPage.emit(p)" (keydown.enter)="navigateToPage.emit(p)"
+          (keydown.space)="navigateToPage.emit(p)" [class.loading]="isInLoading()" tabindex="0">{{ p }}</a>
+        </li>
+      }
+      @if (page() < (maxPage() - 2)) {
+        <li class="out-of-range">
+          <a (click)="navigateToPage.emit(page() + 2)" (keydown.enter)="navigateToPage.emit(page() + 2)"
+          (keydown.space)="navigateToPage.emit(page() + 2)" [class.loading]="isInLoading()" tabindex="0">...</a>
+        </li>
+      }
+      @if (page() < (maxPage() - 1)) {
+        <li class="page-item">
+          <a (click)="navigateToPage.emit(maxPage())" (keydown.enter)="navigateToPage.emit(maxPage())"
+            (keydown.space)="navigateToPage.emit(maxPage())" [class.loading]="isInLoading()" tabindex="0">{{ maxPage()
+          }}</a>
+        </li>
+      }
+    }
+    @if (maxPage() && page() < maxPage()) {
+      <li class="page-item next">
+        <a (click)="nextPage.emit()" (keydown.enter)="nextPage.emit()" (keydown.space)="nextPage.emit()"
+        [class.loading]="isInLoading()" tabindex="0" translate>Suivant</a>
+      </li>
+    }
+  </ul>
+}

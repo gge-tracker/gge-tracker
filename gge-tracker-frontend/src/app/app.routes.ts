@@ -131,6 +131,10 @@ export const routes: Routes = [
         },
       },
       {
+        path: 'renames',
+        redirectTo: 'renames/players',
+      },
+      {
         path: 'renames/:type',
         component: RenamesComponent,
         resolve: { titleResolver },
@@ -209,7 +213,7 @@ export const routes: Routes = [
         resolve: { titleResolver },
         data: {
           description: 'Real-time tracking of Outer Realms rankings and player activities in Goodgame Empire.',
-          titleKey: 'Événements',
+          titleKey: 'Royaume extérieur',
         },
       },
       {
@@ -218,7 +222,7 @@ export const routes: Routes = [
         resolve: { titleResolver },
         data: {
           description: 'Real-time tracking of Outer Realms rankings and player activities in Goodgame Empire.',
-          titleKey: 'Événements',
+          titleKey: 'Royaume extérieur',
         },
       },
       {

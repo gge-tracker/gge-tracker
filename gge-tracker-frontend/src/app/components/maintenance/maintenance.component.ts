@@ -5,10 +5,10 @@ import { ApiRestService } from '@ggetracker-services/api-rest.service';
 
 @Component({
   selector: 'app-maintenance',
-  standalone: true,
   imports: [TroopsAnimationComponent],
   templateUrl: './maintenance.component.html',
   styleUrl: './maintenance.component.css',
+  standalone: true,
 })
 export class MaintenanceComponent {
   private apiRest = inject(ApiRestService);

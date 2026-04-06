@@ -9,8 +9,8 @@ export enum EnumTypeReleaseNote {
 
 @Component({
   selector: 'app-release-notes',
-  standalone: true,
   imports: [CommonModule],
+  standalone: true,
   templateUrl: './release-notes.component.html',
   styleUrl: './release-notes.component.css',
 })

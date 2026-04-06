@@ -18,8 +18,8 @@ import { XAxisAnnotations } from 'ng-apexcharts';
 
 @Component({
   selector: 'app-server-statistics',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  standalone: true,
   imports: [ChartsWrapperComponent, NgIf, FormsModule, NgForOf, NgClass, TranslateModule],
   templateUrl: './server-statistics.component.html',
   styleUrl: './server-statistics.component.css',
@@ -780,7 +780,6 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
       },
     };
     if (this.charts[name].chart.zoom) {
-      // @ts-expect-error: allowMouseWheelZoom is not a recognized property but is used for configuration
       this.charts[name].chart.zoom.allowMouseWheelZoom = false;
     }
   }

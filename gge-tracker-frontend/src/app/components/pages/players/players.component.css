@@ -1,0 +1,66 @@
+:host ::ng-deep .ng-dropdown-panel {
+  border-radius: 12px;
+  border: none;
+  font-size: 1rem;
+}
+
+:host ::ng-deep .ng-option {
+  background: transparent !important;
+  transition: 0.3s;
+}
+
+:host ::ng-deep .ng-option:hover {
+  background: rgba(255,255,255,0.25) !important;
+  transform: scale(1.02);
+}
+
+:host ::ng-deep .ng-select .ng-arrow-wrapper .ng-arrow {
+  border-color: #616161 transparent transparent;
+}
+
+:host ::ng-deep .ng-select .ng-clear-wrapper {
+  color: #616161;
+}
+
+:host ::ng-deep .ng-select .ng-select-container {
+  border: 0;
+  background: transparent;
+}
+
+:host ::ng-deep .ng-select .ng-select-container:hover {
+  box-shadow: none;
+}
+
+:host ::ng-deep .ng-dropdown-panel .scroll-host {
+  border: 1px #cfcfcf solid;
+  background: #e1e1e1;
+  border-radius: 0 0 10px 10px;
+  width: 99%;
+}
+
+:host ::ng-deep .ng-select.ng-select-multiple .ng-select-container .ng-value-container .ng-value {
+  background: #61616129;
+  border-radius: 12px;
+  color: #1e1e1e;
+  font-size: 0.9rem;
+  padding: 0 9px;
+  border: 1px #c8c8c8 solid;
+}
+
+:host ::ng-deep .ng-option[aria-selected="true"] {
+  opacity: 0.6;
+}
+
+:host ::ng-deep .ng-select, .input-group-text {
+  background: #ececec;
+  border-radius: 12px;
+  border: none;
+  color: #fff;
+  font-size: 1rem;
+  transition: 0.3s;
+}
+
+
+:host ::ng-deep .ng-select.ng-select-opened > .ng-select-container .ng-arrow {
+  border-color: transparent transparent #616161 !important;
+}

@@ -19,6 +19,8 @@ export class SidebarService {
     if (this.isMobileView) {
       this._isSidebarOpen.next(false);
     }
+    this.handleResize = this.handleResize.bind(this);
+    window.addEventListener('resize', this.handleResize);
   }
 
   public setSearchQuery(query: string): void {
@@ -34,7 +36,7 @@ export class SidebarService {
   }
 
   public toggleSidebar(): void {
-    this._isSidebarOpen.next(!this._isSidebarOpen.value);
+    this.updateSidebarState(!this._isSidebarOpen.value);
     document.body.classList.toggle('no-scroll', this._isSidebarOpen.value && this.isMobileView);
   }
 
@@ -43,7 +45,7 @@ export class SidebarService {
   }
 
   public closeSidebar(): void {
-    this._isSidebarOpen.next(false);
+    this.updateSidebarState(false);
     document.body.classList.remove('no-scroll');
   }
 
@@ -61,5 +63,31 @@ export class SidebarService {
 
   public isServerMenuOpen(): boolean {
     return this._isServerMenuOpen.value;
+  }
+
+  private updateSidebarState(state: boolean): void {
+    if (this.isSidebarOpen()) {
+      globalThis.removeEventListener('click', this.onGlobalClick);
+    } else {
+      setTimeout(() => {
+        globalThis.addEventListener('click', this.onGlobalClick, { once: true });
+      }, 100);
+    }
+    this._isSidebarOpen.next(state);
+  }
+
+  private readonly onGlobalClick = (): void => {
+    if (this.isSidebarOpen() && this.isMobileView) {
+      this.closeSidebar();
+    }
+  };
+
+  private handleResize(): void {
+    const wasMobileView = this.isMobileView;
+    this.isMobileView = window.innerWidth < 768;
+    if (this.isMobileView && !wasMobileView) {
+      this.closeSidebar();
+      globalThis.removeEventListener('click', this.onGlobalClick);
+    }
   }
 }

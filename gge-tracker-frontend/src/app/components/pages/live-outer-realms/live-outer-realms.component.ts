@@ -1,10 +1,15 @@
-import { NgClass, NgFor, NgIf } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
-import { ApiLiveRanking, ChartAdvancedOptions, PlayerLiveRankingExtended } from '@ggetracker-interfaces/empire-ranking';
+import {
+  ApiLiveRanking,
+  ChartAdvancedOptions,
+  IOuterRealmEvent,
+  PlayerLiveRankingExtended,
+} from '@ggetracker-interfaces/empire-ranking';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { ServerService } from '@ggetracker-services/server.service';
 import { TranslateModule } from '@ngx-translate/core';
@@ -31,11 +36,8 @@ interface GenericChartConfig {
     SearchFormComponent,
     TranslateModule,
     TableComponent,
-    NgFor,
-    NgIf,
     FormatNumberPipe,
     RouterModule,
-    NgFor,
     LiveOuterRealmsStatisticsModalComponent,
   ],
   templateUrl: './live-outer-realms.component.html',
@@ -45,6 +47,7 @@ export class LiveOuterRealmsComponent extends GenericComponent {
   public players: ApiLiveRanking[] = [];
   public eventNotActive = false;
   public charts: Record<string, ChartAdvancedOptions | any> = {};
+  public currentEvent: IOuterRealmEvent | null = null;
   public player: PlayerLiveRankingExtended | null = null;
   public isDataLoading = false;
   public requestCounter = 0;
@@ -177,6 +180,7 @@ export class LiveOuterRealmsComponent extends GenericComponent {
     }
     this.players = response.data.players;
     this.pagination = response.data.pagination;
+    this.currentEvent = response.data.current_event;
     this.isDataLoading = false;
     this.refreshTimer = setTimeout(() => {
       void this.loadData(page, playerName);
@@ -242,7 +246,6 @@ export class LiveOuterRealmsComponent extends GenericComponent {
         background: 'transparent',
         animations: {
           enabled: true,
-          easing: 'easeinout',
           speed: 350,
         },
         locales: this.rankingService.CHART_LOCALES,
@@ -304,10 +307,7 @@ export class LiveOuterRealmsComponent extends GenericComponent {
         horizontalAlign: 'right',
         offsetY: -8,
         markers: {
-          width: 10,
-          height: 10,
           strokeWidth: 0,
-          radius: 12,
         },
         labels: {
           colors: 'rgba(255,255,255,0.7)',

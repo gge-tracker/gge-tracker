@@ -28,10 +28,6 @@ export abstract class ApiDungeons implements ApiHelper {
    */
   public static async getDungeons(request: express.Request, response: express.Response): Promise<void> {
     try {
-      // List of banned player IDs. Populate as needed
-      // This is to prevent certain players from being included in the results
-      // This is not used for now, but kept in case we need it in the future
-      const bannedPlayersId = [];
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
@@ -164,29 +160,22 @@ export abstract class ApiDungeons implements ApiHelper {
       let playerId: number | null = null;
       let realCooldownExpr = `TIMESTAMPADD(SECOND, D.attack_cooldown, D.updated_at)`;
       if (filterByPlayerName) {
-        const playerQuery = `SELECT id FROM players WHERE LOWER(name) = $1 LIMIT 1`;
+        const playerQuery = `SELECT id FROM players WHERE LOWER(name) = LOWER($1) LIMIT 1`;
         const playerResults: any[] = await new Promise((resolve, reject) => {
-          (request['pg_pool'] as pg.Pool).query(
-            playerQuery,
-            [filterByPlayerName.trim().toLowerCase()],
-            (error, results) => {
-              if (error) {
-                ApiHelper.logError(error, 'getDungeons_countQuery', request);
-                reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
-              } else {
-                resolve(results.rows);
-              }
-            },
-          );
+          (request['pg_pool'] as pg.Pool).query(playerQuery, [filterByPlayerName.trim()], (error, results) => {
+            if (error) {
+              ApiHelper.logError(error, 'getDungeons_countQuery', request);
+              reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
+            } else {
+              resolve(results.rows);
+            }
+          });
         });
         if (playerResults.length === 0) {
           conditions.push('1 = 0');
         } else {
           playerId = playerResults[0].id;
-          if (
-            playerId &&
-            bannedPlayersId.includes(Number(ApiHelper.addCountryCode(String(playerId), request['code'])))
-          ) {
+          if (playerId) {
             response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
             return;
           }

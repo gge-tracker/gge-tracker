@@ -1,8 +1,9 @@
 import {
   AfterViewInit,
   ApplicationRef,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
-  ComponentFactoryResolver,
   ElementRef,
   inject,
   Injector,
@@ -12,7 +13,7 @@ import {
 import { ServerService } from '@ggetracker-services/server.service';
 import { SidebarService } from '@ggetracker-services/sidebar.service';
 import { IconComponent } from '@ggetracker-components/icon/icon.component';
-import { NgFor, NgIf } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import { UtilitiesService } from '@ggetracker-services/utilities.service';
@@ -24,8 +25,9 @@ import { OverlayModule } from '@angular/cdk/overlay';
 
 @Component({
   selector: 'app-top-bar',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
-  imports: [IconComponent, NgFor, NgIf, FormsModule, TranslateModule, RouterModule, OverlayModule],
+  imports: [IconComponent, FormsModule, TranslateModule, RouterModule, OverlayModule],
   templateUrl: './top-bar.component.html',
   styleUrls: ['./top-bar.component.css'],
 })
@@ -42,8 +44,8 @@ export class TopBarComponent implements AfterViewInit {
   private topBarService = inject(TopBarService);
   private injector = inject(Injector);
   private appRef = inject(ApplicationRef);
-  private componentFactoryResolver = inject(ComponentFactoryResolver);
   private listener?: (event: PointerEvent) => void;
+  private cdr = inject(ChangeDetectorRef);
 
   constructor() {
     this.utilitiesService.data$.subscribe((data) => {
@@ -52,29 +54,28 @@ export class TopBarComponent implements AfterViewInit {
   }
 
   public ngAfterViewInit(): void {
-    const outlet = new DomPortalOutlet(
-      this.host.nativeElement,
-      this.componentFactoryResolver,
-      this.appRef,
-      this.injector,
-    );
+    const outlet = new DomPortalOutlet(this.host.nativeElement, this.appRef, this.injector);
     this.topBarService.registerOutlet(outlet);
     this.listener = this.handlePointerDown.bind(this);
     document.addEventListener('pointerdown', this.listener, { capture: true });
+    this.cdr.markForCheck();
   }
 
   public toggleSidebar(): void {
     this.sidebarService.toggleSidebar();
+    this.cdr.markForCheck();
   }
   public isServerMenuOpen(): boolean {
     return this.sidebarService.isServerMenuOpen();
   }
   public toggleServerMenu(): void {
     this.sidebarService.toggleServerMenu();
+    this.cdr.markForCheck();
   }
 
   public selectServer(server: string): void {
     this.serverService.changeServer(server);
+    this.cdr.markForCheck();
   }
   public onSearchChange(): void {
     this.sidebarService.setSearchQuery(this.searchQuery);
@@ -82,6 +83,7 @@ export class TopBarComponent implements AfterViewInit {
 
   public toggleLanguageMenu(): void {
     this.sidebarService.toggleLanguageMenu();
+    this.cdr.markForCheck();
   }
 
   public isLanguageMenuOpen(): boolean {
@@ -105,9 +107,11 @@ export class TopBarComponent implements AfterViewInit {
     const serverMenu = document.querySelector('#server-menu');
     if (languageMenu && !languageMenu.contains(target) && !target.classList.contains('language-menu-toggle')) {
       this.sidebarService.closeLanguageMenu();
+      this.cdr.markForCheck();
     }
     if (serverMenu && !serverMenu.contains(target) && !target.classList.contains('server-menu-toggle')) {
       this.sidebarService.closeServerMenu();
+      this.cdr.markForCheck();
     }
   }
 }

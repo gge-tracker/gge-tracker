@@ -1,11 +1,17 @@
-const angular = require("@angular-eslint/eslint-plugin");
-const angularTemplate = require("@angular-eslint/eslint-plugin-template");
-const tseslint = require("@typescript-eslint/eslint-plugin");
-const prettierPlugin = require("eslint-plugin-prettier");
-const eslintPluginUnicorn = require("eslint-plugin-unicorn");
-const globals = require("globals");
+import angular from "@angular-eslint/eslint-plugin";
+import angularTemplate from "@angular-eslint/eslint-plugin-template";
+import tseslint from "@typescript-eslint/eslint-plugin";
+import prettierPlugin from "eslint-plugin-prettier";
+import eslintPluginUnicorn from "eslint-plugin-unicorn";
+import angularTemplateParser from "@angular-eslint/template-parser";
+import tsParser from "@typescript-eslint/parser";
+import { fileURLToPath } from "url";
+import path from "path";
 
-module.exports = [
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export default [
   {
     ignores: ["**/dist"],
   },
@@ -25,10 +31,12 @@ module.exports = [
 
   {
     languageOptions: {
-      globals: globals.builtin,
+      globals: {
+        ng: "readonly",
+      },
     },
     plugins: {
-      unicorn: eslintPluginUnicorn.default,
+      unicorn: eslintPluginUnicorn,
     },
     rules: {
       "unicorn/better-regex": "error",
@@ -164,7 +172,7 @@ module.exports = [
   {
     files: ["**/*.html"],
     languageOptions: {
-      parser: require("@angular-eslint/template-parser"),
+      parser: angularTemplateParser,
     },
     plugins: {
       "@angular-eslint/template": angularTemplate,
@@ -177,7 +185,7 @@ module.exports = [
   {
     files: ["**/*.ts"],
     languageOptions: {
-      parser: require("@typescript-eslint/parser"),
+      parser: tsParser,
       parserOptions: {
         project: "./tsconfig.json",
         tsconfigRootDir: __dirname,

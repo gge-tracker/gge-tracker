@@ -26,7 +26,7 @@ class BaseSocket extends Log {
   protected nbReconnects: number;
   protected onSend: (data: string) => void;
   protected onOpen: (ws: WebSocket) => void;
-  protected onMessage: (message: string) => void;
+  protected onMessage: (message: string, parsedMessage: { type: string; payload: any }) => Promise<void> | void;
   protected onError: (error: unknown) => void;
   protected onClose: (code: number, reason: Buffer) => void;
 
@@ -64,11 +64,11 @@ class BaseSocket extends Log {
     }
   }
 
-  public async restart(): Promise<void> {
+  public async restart(instant = false): Promise<void> {
     const nbReconnects = this.nbReconnects++;
     const randomDelay = Math.floor(Math.random() * 30);
     let defaultDelay = 120;
-    if (nbReconnects > 0) {
+    if (!instant && nbReconnects > 0) {
       if (nbReconnects < 5) {
         const incrementalDelay = [0, 3, 5, 20, 30][Math.min(nbReconnects, 4)];
         this.log(`🔄 [restart] Incremental delay: ${incrementalDelay} minutes`);
@@ -78,7 +78,7 @@ class BaseSocket extends Log {
         defaultDelay = 60 * 60;
       }
     }
-    const finalDelay = defaultDelay + randomDelay;
+    const finalDelay = instant ? 0 : defaultDelay + randomDelay;
     this.log(`🔄 [restart] Restarting socket connection in ${finalDelay} seconds... (Total retries: ${nbReconnects})`);
     this.disconnect(false);
     setTimeout(async () => {
@@ -98,7 +98,7 @@ class BaseSocket extends Log {
       this.log('⚠️ [checkConnection] Socket is not connected, skipping connection check.');
       setTimeout(
         () => {
-          if (!this.connected.isSet) {
+          if (!this.connected.isSet && this.reconnect) {
             void this.restart();
           }
         },
@@ -114,7 +114,7 @@ class BaseSocket extends Log {
       this.log('❌ [checkConnection] Connection check failed, restarting socket in 10 seconds...');
       this.log('Error details:', error);
       setTimeout(() => {
-        if (this.connected.isSet) {
+        if (this.connected.isSet && this.reconnect) {
           void this.restart();
         } else {
           this.log('⚠️ [checkConnection] Socket is not connected, not restarting.');
@@ -140,14 +140,14 @@ class BaseSocket extends Log {
     void this.restart();
   }
 
-  public handleCloseState(code: number, reason: Buffer): void {
+  public handleCloseState(code: number, reason: Buffer, reconnect: boolean = true): void {
     this.log(
       '⚡ [onClose] Socket closed with code:',
       code,
       'and reason:',
       reason ? reason.toString() : 'No reason provided',
     );
-    this.disconnect(true);
+    this.disconnect(reconnect);
   }
 
   public init(): void {
@@ -160,7 +160,7 @@ class BaseSocket extends Log {
   }
 
   public close(): void {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
       this.ws.close();
     }
   }
@@ -192,7 +192,7 @@ class BaseSocket extends Log {
     }
     const response = this.parseResponse(message);
     this._processResponse(response);
-    if (this.onMessage) this.onMessage(message);
+    if (this.onMessage) void this.onMessage(message, response);
   }
 
   protected send(data: string): void {
@@ -239,7 +239,7 @@ class BaseSocket extends Log {
     return message.response;
   }
 
-  private parseResponse(response: string): any {
+  private parseResponse(response: string): { type: string; payload: any } {
     if (response.startsWith('<')) {
       const parsed = BaseSocket.XML_REGEX.exec(response);
       return {

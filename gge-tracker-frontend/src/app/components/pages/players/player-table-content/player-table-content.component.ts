@@ -1,4 +1,4 @@
-import { DatePipe, NgClass, NgFor, NgIf } from '@angular/common';
+import { DatePipe, NgClass, NgTemplateOutlet } from '@angular/common';
 import { Component, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
@@ -9,7 +9,7 @@ import { TranslateModule } from '@ngx-translate/core';
 @Component({
   selector: 'app-player-table-content',
   standalone: true,
-  imports: [NgClass, NgIf, TranslateModule, DatePipe, FormatNumberPipe, RouterLink, NgFor],
+  imports: [NgClass, TranslateModule, DatePipe, FormatNumberPipe, RouterLink, NgTemplateOutlet],
   templateUrl: './player-table-content.component.html',
   styleUrls: ['./player-table-content.component.css'],
 })

@@ -462,6 +462,8 @@ export abstract class ApiStatistics implements ApiHelper {
           WHERE castles <> '[]'
         )
         SELECT
+          players.name AS player_name,
+          alliances.name AS alliance_name,
           players.id AS player_id,
           players.might_current,
           players.might_all_time,
@@ -544,6 +546,8 @@ export abstract class ApiStatistics implements ApiHelper {
        * --------------------------------- */
       const data = {
         player_id: ApiHelper.addCountryCode(serverData['player_id'], code),
+        player_name: serverData['player_name'],
+        alliance_name: serverData['alliance_name'],
         server,
         might_current: serverData['might_current'],
         might_all_time: serverData['might_all_time'],
@@ -628,58 +632,54 @@ export abstract class ApiStatistics implements ApiHelper {
        * Event statistics retrieval
        * --------------------------------- */
       const clickhouseClient: NodeClickHouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
-      const queries = ApiHelper.ggeTrackerManager.getOlapEventTables().map((table) => {
-        return new Promise(async (resolve, reject) => {
-          try {
-            const database = ApiHelper.ggeTrackerManager.getOlapDatabaseFromRequestId(allianceId);
-            if (!database) {
-              reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
-              return;
-            }
-            dates_start[table] = new Date();
-
-            /* ---------------------------------
-             * Build and execute query
-             * --------------------------------- */
-            let limit = 0;
-            switch (table) {
-              case 'player_might_history': {
-                limit = 10;
-                break;
-              }
-              case 'player_loot_history': {
-                limit = 21;
-                break;
-              }
-              default: {
-                limit = 30;
-              }
-            }
-            const query = `
-              SELECT
-              player_id,
-              created_at AS first_entry,
-              point
-              FROM ${database}.${table}
-              WHERE player_id IN (${ids.map((id) => `'${id}'`).join(',')})
-              AND created_at >= now() - INTERVAL ${limit} DAY
-              ORDER BY created_at DESC
-            `;
-            const clickhouseResult = await clickhouseClient.query({ query });
-            const result = await clickhouseResult.json();
-            points[table] = result.data.map((row: any) => {
-              return {
-                player_id: ApiHelper.addCountryCode(row.player_id, code),
-                date: new Date(row.first_entry).toISOString(),
-                point: row.point,
-              };
-            });
-            dates_stop[table] = new Date();
-            resolve(null);
-          } catch (error) {
-            reject(new Error(error.message));
+      const queries = ApiHelper.ggeTrackerManager.getOlapEventTables().map(async (table) => {
+        try {
+          const database = ApiHelper.ggeTrackerManager.getOlapDatabaseFromRequestId(allianceId);
+          if (!database) {
+            throw new Error(RouteErrorMessagesEnum.GenericInternalServerError);
           }
-        });
+          dates_start[table] = new Date();
+
+          /* ---------------------------------
+           * Build and execute query
+           * --------------------------------- */
+          let limit = 0;
+          switch (table) {
+            case 'player_might_history': {
+              limit = 10;
+              break;
+            }
+            case 'player_loot_history': {
+              limit = 21;
+              break;
+            }
+            default: {
+              limit = 30;
+            }
+          }
+          const query = `
+            SELECT
+            player_id,
+            created_at AS first_entry,
+            point
+            FROM ${database}.${table}
+            WHERE player_id IN (${ids.map((id) => `'${id}'`).join(',')})
+            AND created_at >= now() - INTERVAL ${limit} DAY
+            ORDER BY created_at DESC
+          `;
+          const clickhouseResult = await clickhouseClient.query({ query });
+          const result = await clickhouseResult.json();
+          points[table] = result.data.map((row: any) => {
+            return {
+              player_id: ApiHelper.addCountryCode(row.player_id, code),
+              date: new Date(row.first_entry).toISOString(),
+              point: row.point,
+            };
+          });
+          dates_stop[table] = new Date();
+        } catch (error) {
+          throw new Error(error.message);
+        }
       });
 
       /* ---------------------------------
@@ -987,68 +987,72 @@ export abstract class ApiStatistics implements ApiHelper {
        * Execute queries for each event table
        * --------------------------------- */
       const clickhouseClient: NodeClickHouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
-      const queries = eventTables.map((table) => {
-        return new Promise(async (resolve, reject) => {
-          dates_start[table] = new Date();
-          try {
-            const database = olapDatabase;
-            if (!database) {
-              reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
-              return;
-            }
-            dates_start[table] = new Date();
-            if (table === 'player_might_history' || table === 'player_loot_history') {
-              // Special handling for tables without event_dates. They will return only actual entries
-              const query = `
-                SELECT
-                  created_at,
-                  point
-                FROM ${database}.${table}
-                WHERE player_id = ${ApiHelper.removeCountryCode(playerId)}
-                ${createdAtDiffLimitQueryOlap}
-                ORDER BY created_at ASC
-              `;
-              const clickhouseQuery = await clickhouseClient.query({ query });
-              const result = await clickhouseQuery.json();
-              points[table] = result.data.map((row: any) => {
-                return {
-                  date: new Date(row.created_at).toISOString(),
-                  point: row.point,
-                };
-              });
-            } else {
-              // Standard handling for tables with event_dates
-              const query = `
-                SELECT
-                  ed.created_at,
-                  COALESCE(pe.point, 0) AS point
-                FROM
-                  ${database}.event_dates AS ed
-                LEFT JOIN ${database}.${table} AS pe
-                  ON ed.created_at = pe.created_at AND pe.player_id = ${ApiHelper.removeCountryCode(playerId)}
-                WHERE
-                  ed.table_name = '${table}'
-                ${createdAtDiffLimitQueryOlap}
-                ORDER BY
-                  ed.created_at
-              `;
-              const clickhouseQuery = await clickhouseClient.query({ query });
-              const result = await clickhouseQuery.json();
-              points[table] = result.data.map((row: any) => {
-                return {
-                  date: new Date(row.created_at).toISOString(),
-                  point: row.point,
-                };
-              });
-            }
-            dates_stop[table] = new Date();
-            resolve(null);
-          } catch (error) {
-            reject(new Error(error.message));
+      const queries = eventTables.map(async (table) => {
+        dates_start[table] = new Date();
+        try {
+          const database = olapDatabase;
+          if (!database) {
+            throw new Error(RouteErrorMessagesEnum.GenericInternalServerError);
           }
-        });
+          if (table === 'player_might_history' || table === 'player_loot_history') {
+            // Special handling for tables without event_dates. They will return only actual entries
+            const query = `
+              SELECT
+                created_at,
+                point
+              FROM ${database}.${table}
+              WHERE player_id = {playerId:UInt32}
+              ${createdAtDiffLimitQueryOlap}
+              ORDER BY created_at ASC
+            `;
+            const clickhouseQuery = await clickhouseClient.query({
+              query,
+              query_params: {
+                playerId: ApiHelper.removeCountryCode(playerId),
+              },
+            });
+            const result = await clickhouseQuery.json();
+            points[table] = result.data.map((row: any) => {
+              return {
+                date: new Date(row.created_at).toISOString(),
+                point: row.point,
+              };
+            });
+          } else {
+            // Standard handling for tables with event_dates
+            const query = `
+              SELECT
+                ed.created_at,
+                COALESCE(pe.point, 0) AS point
+              FROM
+                ${database}.event_dates AS ed
+              LEFT JOIN ${database}.${table} AS pe
+                ON ed.created_at = pe.created_at AND pe.player_id = {playerId:UInt32}
+              WHERE
+                ed.table_name = '${table}'
+              ${createdAtDiffLimitQueryOlap}
+              ORDER BY
+                ed.created_at
+            `;
+            const clickhouseQuery = await clickhouseClient.query({
+              query,
+              query_params: {
+                playerId: ApiHelper.removeCountryCode(playerId),
+              },
+            });
+            const result = await clickhouseQuery.json();
+            points[table] = result.data.map((row: any) => {
+              return {
+                date: new Date(row.created_at).toISOString(),
+                point: row.point,
+              };
+            });
+          }
+          dates_stop[table] = new Date();
+        } catch (error) {
+          throw new Error(error?.message || String(error));
+        }
       });
-
       /* ---------------------------------
        * Await all queries and calculate execution times
        * --------------------------------- */
@@ -1060,7 +1064,7 @@ export abstract class ApiStatistics implements ApiHelper {
       }
       return { diffs, points };
     } catch (error) {
-      return { error: error.message };
+      return { error: error?.message || String(error) };
     }
   }
 

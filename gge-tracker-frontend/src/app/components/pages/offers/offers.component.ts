@@ -4,8 +4,8 @@ import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-offers',
-  standalone: true,
   imports: [CommonModule],
+  standalone: true,
   templateUrl: './offers.component.html',
   styleUrl: './offers.component.css',
 })

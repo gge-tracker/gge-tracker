@@ -1,4 +1,4 @@
-import { NgClass, NgIf } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { Component, input, OnChanges, OnInit, output, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -8,8 +8,8 @@ import { RouterModule } from '@angular/router';
  */
 @Component({
   selector: 'app-search-bar',
+  imports: [FormsModule, RouterModule, NgClass],
   standalone: true,
-  imports: [FormsModule, RouterModule, NgIf, NgClass],
   templateUrl: './searchbar.component.html',
   styleUrls: ['./searchbar.component.css'],
 })

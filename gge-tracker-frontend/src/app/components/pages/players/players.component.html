@@ -6,7 +6,7 @@
           player: true,
           alliance: true
         }" (searchAlliance)="searchAlliance($event)" (searchPlayer)="searchPlayer($event)" [exportDataEnabled]="true"
-        (exportData)="exportData()"></app-search-form>
+      (exportData)="exportData()"></app-search-form>
 
       <div class="flex flex-col justify-between gap-6 mt-2">
         <app-table #table [sort]="sort" [reverse]="reverse" [isInLoading]="isInLoading" [maxPage]="maxPage!"
@@ -15,8 +15,7 @@
           <app-player-table-content [players]="players" [playersTableHeader]="playersTableHeader"
             [distanceEnabled]="playersTableHeader.length > defaultPlayersTableHeaderSize"
             (clickOnAlliance)="searchAlliance($event)"
-            (toggleFavorite)="toggleFavorite($event)"></app-player-table-content>
-
+          (toggleFavorite)="toggleFavorite($event)"></app-player-table-content>
         </app-table>
       </div>
     </div>
@@ -29,7 +28,7 @@
             <i class="fa-solid fa-filter"></i>&nbsp;{{ 'Filtrer les résultats' | translate }}
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"
-            [attr.aria-label]="'Fermer' | translate"></button>
+          [attr.aria-label]="'Fermer' | translate"></button>
         </div>
         <div class="modal-body">
           <div class="filters-container">
@@ -41,14 +40,14 @@
                     <img src="/assets/honor.png" [alt]="'Honneur' | translate"
                       [title]="'Filtrer par point d\'honneur' | translate" height="24">
                   </span>
-                  <input type="text" class="form-control ggetracker-input" id="honorMin"
+                  <input type="text" class="form-control ggetracker-input" id="honorMin" name="honorMin"
                     [value]="displayFormValues.honor.min" (focus)="onGenericFocus('min', 'honor')"
                     (blur)="onGenericBlur('min', 'honor')" (input)="onGenericInput('min', 'honor', $event)"
                     [title]="formFilters.minHonor" [placeholder]="'Honneur min.' | translate">
                   <div class="input-arrow">
                     <lucide-icon [img]="ArrowBigRightDash" [size]="20" class="m-auto"></lucide-icon>
                   </div>
-                  <input type="text" class="form-control ggetracker-input" id="honorMax"
+                  <input type="text" class="form-control ggetracker-input" id="honorMax" name="honorMax"
                     [value]="displayFormValues.honor.max" (focus)="onGenericFocus('max', 'honor')"
                     (blur)="onGenericBlur('max', 'honor')" (input)="onGenericInput('max', 'honor', $event)"
                     [title]="formFilters.maxHonor" [placeholder]="'Honneur max.' | translate">
@@ -61,14 +60,14 @@
                     <img src="/assets/pp1.png" [alt]="'Puissance' | translate"
                       [title]="'Filtrer par point de puissance' | translate" height="24">
                   </span>
-                  <input type="text" class="form-control ggetracker-input" id="mightMin"
+                  <input type="text" class="form-control ggetracker-input" id="mightMin" name="mightMin"
                     [value]="displayFormValues.might.min" (focus)="onGenericFocus('min', 'might')"
                     (blur)="onGenericBlur('min', 'might')" (input)="onGenericInput('min', 'might', $event)"
                     [title]="formFilters.minMight" [placeholder]="'Puissance min.' | translate">
                   <div class="input-arrow">
                     <lucide-icon [img]="ArrowBigRightDash" [size]="20" class="m-auto"></lucide-icon>
                   </div>
-                  <input type="text" class="form-control ggetracker-input" id="mightMax"
+                  <input type="text" class="form-control ggetracker-input" id="mightMax" name="mightMax"
                     [value]="displayFormValues.might.max" (focus)="onGenericFocus('max', 'might')"
                     (blur)="onGenericBlur('max', 'might')" (input)="onGenericInput('max', 'might', $event)"
                     [title]="formFilters.maxMight" [placeholder]="'Puissance max.' | translate">
@@ -83,14 +82,14 @@
                     <img src="/assets/loot.png" [alt]="'Pillage' | translate"
                       [title]="'Filtrer par point de pillage' | translate" height="24">
                   </span>
-                  <input type="text" class="form-control ggetracker-input" id="lootMin"
+                  <input type="text" class="form-control ggetracker-input" id="lootMin" name="lootMin"
                     [value]="displayFormValues.loot.min" (focus)="onGenericFocus('min', 'loot')"
                     (blur)="onGenericBlur('min', 'loot')" (input)="onGenericInput('min', 'loot', $event)"
                     [title]="formFilters.minLoot" [placeholder]="'Pillage min.' | translate">
                   <div class="input-arrow">
                     <lucide-icon [img]="ArrowBigRightDash" [size]="20" class="m-auto"></lucide-icon>
                   </div>
-                  <input type="text" class="form-control ggetracker-input" id="lootMax"
+                  <input type="text" class="form-control ggetracker-input" id="lootMax" name="lootMax"
                     [value]="displayFormValues.loot.max" (focus)="onGenericFocus('max', 'loot')"
                     (blur)="onGenericBlur('max', 'loot')" (input)="onGenericInput('max', 'loot', $event)"
                     [title]="formFilters.maxLoot" [placeholder]="'Pillage max.' | translate">
@@ -103,13 +102,13 @@
                     <img src="/assets/lvl.png" [alt]="'Niveau' | translate" [title]="'Filtrer par niveau' | translate"
                       height="24">
                   </span>
-                  <input type="text" class="form-control ggetracker-input" id="levelMin"
+                  <input type="text" class="form-control ggetracker-input" id="levelMin" name="levelMin"
                     [(ngModel)]="formFilters.minLevel" [title]="formFilters.minLevel"
                     [placeholder]="'Niveau min.' | translate">
                   <div class="input-arrow">
                     <lucide-icon [img]="ArrowBigRightDash" [size]="20" class="m-auto"></lucide-icon>
                   </div>
-                  <input type="text" class="form-control ggetracker-input" id="levelMax"
+                  <input type="text" class="form-control ggetracker-input" id="levelMax" name="levelMax"
                     [(ngModel)]="formFilters.maxLevel" [title]="formFilters.maxLevel"
                     [placeholder]="'Niveau max.' | translate">
                 </div>
@@ -123,14 +122,14 @@
                     <img src="/assets/glory.png" [alt]="'Gloire' | translate" [title]="'Filtrer par gloire' | translate"
                       height="24">
                   </span>
-                  <input type="text" class="form-control ggetracker-input" id="fameMin"
+                  <input type="text" class="form-control ggetracker-input" id="fameMin" name="fameMin"
                     [value]="displayFormValues.fame.min" (focus)="onGenericFocus('min', 'fame')"
                     (blur)="onGenericBlur('min', 'fame')" (input)="onGenericInput('min', 'fame', $event)"
                     [title]="formFilters.minFame" [placeholder]="'Gloire min.' | translate">
                   <div class="input-arrow">
                     <lucide-icon [img]="ArrowBigRightDash" [size]="20" class="m-auto"></lucide-icon>
                   </div>
-                  <input type="text" class="form-control ggetracker-input" id="fameMax"
+                  <input type="text" class="form-control ggetracker-input" id="fameMax" name="fameMax"
                     [value]="displayFormValues.fame.max" (focus)="onGenericFocus('max', 'fame')"
                     (blur)="onGenericBlur('max', 'fame')" (input)="onGenericInput('max', 'fame', $event)"
                     [title]="formFilters.maxFame" [placeholder]="'Gloire max.' | translate">
@@ -143,18 +142,43 @@
                     <img src="/assets/castle4.png" [alt]="'Châteaux' | translate"
                       [title]="'Filtrer par nombre de châteaux' | translate" height="24">
                   </span>
-                  <input type="text" class="form-control ggetracker-input" id="castleCountMin"
+                  <input type="text" class="form-control ggetracker-input" id="castleCountMin" name="castleCountMin"
                     [value]="displayFormValues.castleCount.min" (focus)="onGenericFocus('min', 'castleCount')"
                     (blur)="onGenericBlur('min', 'castleCount')" (input)="onGenericInput('min', 'castleCount', $event)"
                     [title]="formFilters.castleCountMin" [placeholder]="'Châteaux min.' | translate">
                   <div class="input-arrow">
                     <lucide-icon [img]="ArrowBigRightDash" [size]="20" class="m-auto"></lucide-icon>
                   </div>
-                  <input type="text" class="form-control ggetracker-input" id="castleCountMax"
+                  <input type="text" class="form-control ggetracker-input" id="castleCountMax" name="castleCountMax"
                     [value]="displayFormValues.castleCount.max" (focus)="onGenericFocus('max', 'castleCount')"
                     (blur)="onGenericBlur('max', 'castleCount')" (input)="onGenericInput('max', 'castleCount', $event)"
                     [title]="formFilters.castleCountMax" [placeholder]="'Châteaux max.' | translate">
                 </div>
+              </div>
+            </div>
+            <div class="row mt-1">
+              <div class="input-group">
+                <span class="input-group-text">
+                  <img src="/assets/map.png" width="20" alt="Map Icon" />
+                  &nbsp;
+                  <span>{{ 'Royaume' | translate }}</span>
+                </span>
+                <ng-select [items]="realms" bindLabel="label" bindValue="key" [(ngModel)]="formFilters.kingdomFilter"
+                  (change)="onRealmChange($event)"
+                  [multiple]="true" [closeOnSelect]="false" class="form-control">
+                  <ng-template ng-option-tmp let-item="item">
+                    @if (item.key !== '999') {
+                      <img [src]="'assets/dungeon' + item.key + '.png'" width="20" class="ms-2" />
+                    }
+                    {{ item.label | translate }}
+                  </ng-template>
+                  <ng-template ng-label-tmp let-item="item">
+                    @if (item.key !== '999') {
+                      <img [src]="'assets/dungeon' + item.key + '.png'" width="20" class="ms-2" />
+                    }
+                    {{ item.label | translate }}
+                  </ng-template>
+                </ng-select>
               </div>
             </div>
             <div class="row mt-1">
@@ -166,7 +190,7 @@
                       [title]="'Filtrer par distance depuis le château principal d\'un joueur' | translate"
                       [attr.alt]="'Filtrer par distance depuis le château principal d\'un joueur' | translate">
                   </span>
-                  <input type="text" class="form-control" id="playerCastleDistance"
+                  <input type="text" class="form-control" id="playerCastleDistance" name="playerCastleDistance"
                     [placeholder]="'Pseudonyme du joueur (château principal)' | translate"
                     [(ngModel)]="formFilters.playerCastleDistance">
                 </div>
@@ -183,7 +207,7 @@
                     <div class="col-4 text-center">
                       <label for="alliance1" translate>Avec alliance</label>
                       <div>
-                        <input type="radio" class="form-check-input" id="alliance1" value="1"
+                        <input type="radio" class="form-check-input" id="alliance1" value="1" name="alliance"
                           [(ngModel)]="formFilters.allianceFilter">
                       </div>
                     </div>
@@ -205,25 +229,30 @@
                 </div>
                 <!-- Filter player rank -->
                 <div class="col-12">
-                  <div class="d-flex  filter-rank-container" *ngIf="formFilters.allianceFilter !== '0'">
-                    <div class="col text-center checkbox-wrapper-15" *ngFor="let rank of [0,1,2,3,4,5,6,7,8,9]">
-                      <input class="inp-cbx d-none" type="checkbox" [id]="'allianceRank' + rank"
-                        [value]="formFilters.allianceRankFilter[rank]"
-                        [checked]="formFilters.allianceRankFilter[rank] === '0'"
-                        (change)="onAllianceRankFilterChanged(rank)">
-                      <label for="allianceRank{{ rank }}" class="cbx">
-                        <span>
-                          <svg width="12px" height="9px" viewbox="0 0 12 9">
-                            <polyline points="1 5 4 8 11 1"></polyline>
-                          </svg>
-                        </span>
-                        <div>
-                          <img src="/assets/alliance_ranks/{{ rank }}.png" class="alliance-rank-icon-filter mb-2"
-                            [alt]="'Rank ' + rank">
+                  @if (formFilters.allianceFilter !== '0') {
+                    <div class="d-flex  filter-rank-container">
+                      @for (rank of [0,1,2,3,4,5,6,7,8,9]; track rank) {
+                        <div class="col text-center checkbox-wrapper-15">
+                          <input class="inp-cbx d-none" type="checkbox" [id]="'allianceRank' + rank"
+                            name="allianceRankFilter"
+                            [value]="formFilters.allianceRankFilter[rank]"
+                            [checked]="formFilters.allianceRankFilter[rank] === '0'"
+                            (change)="onAllianceRankFilterChanged(rank)">
+                          <label for="allianceRank{{ rank }}" class="cbx">
+                            <span>
+                              <svg width="12px" height="9px" viewbox="0 0 12 9">
+                                <polyline points="1 5 4 8 11 1"></polyline>
+                              </svg>
+                            </span>
+                            <div>
+                              <img src="/assets/alliance_ranks/{{ rank }}.png" class="alliance-rank-icon-filter mb-2"
+                                [alt]="'Rank ' + rank">
+                            </div>
+                          </label>
                         </div>
-                      </label>
+                      }
                     </div>
-                  </div>
+                  }
                 </div>
                 <!-- Protection -->
                 <div class="col-12">
@@ -326,14 +355,20 @@
                   </div>
                   <div class="input-group align-items-center justify-content-center gge-tracker-select-container">
                     <select class="form-select w-auto mt-2" [(ngModel)]="sort">
-                      <option *ngFor="let option of sortByOptions" [value]="option.value">{{ option.label | translate}}
-                      </option>
+                      @for (option of sortByOptions; track option) {
+                        <option [value]="option.value">{{ option.label | translate}}
+                        </option>
+                      }
                     </select>
                     <button class="gge-btn reset sort mt-2" (click)="sort = sort; reverse = !reverse">
                       <i class="fa-solid" [ngClass]="{'fa-arrow-down-long': !reverse, 'fa-arrow-up-long': reverse}"></i>
                       &nbsp;
-                      <span *ngIf="!reverse">{{ 'Descendant' | translate }}</span>
-                      <span *ngIf="reverse">{{ 'Ascendant' | translate }}</span>
+                      @if (!reverse) {
+                        <span>{{ 'Descendant' | translate }}</span>
+                      }
+                      @if (reverse) {
+                        <span>{{ 'Ascendant' | translate }}</span>
+                      }
                     </button>
                   </div>
                 </div>
@@ -341,11 +376,43 @@
               <hr class="my-4">
               <div class="row">
                 <div class="col text-center">
-                  <button class="gge-btn search" (click)="applyFilters()" data-bs-dismiss="modal">
-                    <i class="fa-solid fa-check"></i>
-                    &nbsp;
-                    <span>{{ 'Appliquer les filtres' | translate }}</span>
-                  </button>
+                  <div class="btn-group" role="group">
+                    <button class="gge-btn success" (click)="applyFilters()" data-bs-dismiss="modal">
+                      <i class="fa-solid fa-check"></i>
+                      &nbsp;
+                      <span>{{ 'Appliquer les filtres' | translate }}</span>
+                    </button>
+                    <button
+                      appIconToggle
+                      baseIcon="fa-floppy-disk"
+                      [validated]="validated['saveFilters']"
+                      [disabled]="!areFiltersChanged()"
+                      class="gge-btn search"
+                      (click)="saveFilters()"
+                      >
+                      {{ 'Enregistrer les filtres' | translate }}
+                    </button>
+                    <button
+                      appIconToggle
+                      baseIcon="fa-folder-open"
+                      [validated]="validated['loadFilters']"
+                      [disabled]="!areFiltersSavedInLocalStorage"
+                      class="gge-btn search"
+                      (click)="loadFiltersFromLocalStorage()"
+                      >
+                      {{ 'Charger les filtres' | translate }}
+                    </button>
+                    <button
+                      appIconToggle
+                      baseIcon="fa-rotate-left"
+                      [validated]="validated['resetFilters']"
+                      [disabled]="!areFiltersChanged()"
+                      class="gge-btn reset"
+                      (click)="resetFilters()"
+                      >
+                      {{ 'Réinitialiser les filtres' | translate }}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -355,3 +422,7 @@
     </div>
   </div>
 </div>
+
+<ng-template #validatedIcon>
+  <i class="fa-solid fa-check" style="color: #198754"></i>
+</ng-template>

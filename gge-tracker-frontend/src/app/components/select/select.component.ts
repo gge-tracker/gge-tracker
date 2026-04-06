@@ -1,4 +1,3 @@
-import { NgFor } from '@angular/common';
 import { Component, input, OnInit, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
@@ -12,8 +11,8 @@ export interface ISelectItem {
  */
 @Component({
   selector: 'app-select',
+  imports: [FormsModule],
   standalone: true,
-  imports: [FormsModule, NgFor],
   templateUrl: './select.component.html',
   styleUrls: ['./select.component.css'],
 })

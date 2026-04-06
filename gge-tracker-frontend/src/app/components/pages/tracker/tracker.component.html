@@ -46,8 +46,10 @@
             </div>
           </div>
           <div class="col-auto">
-            <app-select *ngIf="displayedStates && displayedStates.length > 0" [items]="displayedStates"
+            @if (displayedStates && displayedStates.length > 0) {
+              <app-select [items]="displayedStates"
               [name]="'dungeon-state'" [selectedItem]="'0'" (selectEmitter)="changeState($event)"></app-select>
+            }
           </div>
           <div class="col-auto">
             <div class="btn-group">
@@ -67,44 +69,56 @@
             </button>
           </div>
         </div>
-        <div class="row my-2 special-bg" *ngIf="serverService.currentServer && !allowedServers.includes(serverService.currentServer.name)">
-          <div class="col-12">
-            <i class="fa-solid fa-info-circle text-muted me-1"></i>
-            <span class="text-black">
-              <em>{{ 'server-not-available' | translate: { server: (serverService.currentServer.name) } }}</em>
-            </span>
+        @if (serverService.currentServer && !allowedServers.includes(serverService.currentServer.name)) {
+          <div class="row my-2 special-bg">
+            <div class="col-12">
+              <i class="fa-solid fa-info-circle text-muted me-1"></i>
+              <span class="text-black">
+                <em>{{ 'server-not-available' | translate: { server: (serverService.currentServer.name) } }}</em>
+              </span>
+            </div>
           </div>
-        </div>
+        }
         <div class="flex flex-col justify-between gap-6 mt-2">
           <app-table [sort]="''" [reverse]="false" [isInLoading]="isInLoading" [maxPage]="maxPage!" [page]="page"
             [search]="''" [headers]="headers" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()"
             (nextPage)="nextPage()">
-            <tr *ngIf="dungeons.length === 0 && !isInLoading">
-              <td colspan="10" class="no-data">{{ 'Aucun résultat' | translate }}</td>
-            </tr>
-            <tr *ngFor="let dungeon of dungeons" [ngClass]="{'table-custom': isInCooldown(dungeon)}">
-              <td class="col-rank">
-                <span class="mobile-only">#</span>
-                {{ dungeon.rank }}
-              </td>
-              <td>
-                <div class="d-flex justify-content-center">
-                  <div>
-                    <img [src]="dungeon.image" alt="{{ dungeon.kid }}" class="img-fluid" width="30">
+            @if (dungeons.length === 0 && !isInLoading) {
+              <tr>
+                <td colspan="10" class="no-data">{{ 'Aucun résultat' | translate }}</td>
+              </tr>
+            }
+            @for (dungeon of dungeons; track dungeon) {
+              <tr [ngClass]="{'table-custom': isInCooldown(dungeon)}">
+                <td class="col-rank">
+                  <span class="mobile-only">#</span>
+                  {{ dungeon.rank }}
+                </td>
+                <td>
+                  <div class="d-flex justify-content-center">
+                    <div>
+                      <img [src]="dungeon.image" alt="{{ dungeon.kid }}" class="img-fluid" width="30">
+                    </div>
+                    <span class="ms-2 dungeon-{{ dungeon.kid }}">{{ getRealmName(dungeon.kid) | translate }}</span>
                   </div>
-                  <span class="ms-2 dungeon-{{ dungeon.kid }}">{{ getRealmName(dungeon.kid) | translate }}</span>
-                </div>
-              </td>
-              <td><span class="mobile-only">{{ 'Position' | translate }}:&nbsp;</span> {{ dungeon.position }}</td>
-              <td *ngIf="headers.length === 5">
-                {{ dungeon.distance ? dungeon.distance + 'm' : '?' }}
-              </td>
-              <td>
-                <i class="fa-solid fa-dungeon special-fa" *ngIf="!isInCooldown(dungeon)"></i>
-                {{ dungeon.effectiveCooldownUntil | cooldown: dungeon.lastAttackAt }}
-              </td>
-              <td><span *ngIf="isInCooldown(dungeon)">{{ dungeon.playerName }}</span></td>
-            </tr>
+                </td>
+                <td><span class="mobile-only">{{ 'Position' | translate }}:&nbsp;</span> {{ dungeon.position }}</td>
+                @if (headers.length === 5) {
+                  <td>
+                    {{ dungeon.distance ? dungeon.distance + 'm' : '?' }}
+                  </td>
+                }
+                <td>
+                  @if (!isInCooldown(dungeon)) {
+                    <i class="fa-solid fa-dungeon special-fa"></i>
+                  }
+                  {{ dungeon.effectiveCooldownUntil | cooldown: dungeon.lastAttackAt }}
+                </td>
+                <td>@if (isInCooldown(dungeon)) {
+                  <span>{{ dungeon.playerName }}</span>
+                }</td>
+              </tr>
+            }
           </app-table>
         </div>
       </div>
@@ -119,7 +133,7 @@
               <i class="fa-solid fa-arrow-down-short-wide"></i>&nbsp;{{ 'Trier les résultats' | translate }}
             </h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal"
-              [attr.aria-label]="'Fermer' | translate"></button>
+            [attr.aria-label]="'Fermer' | translate"></button>
           </div>
           <div class="modal-body">
             <div class="row">
@@ -137,24 +151,25 @@
                   <input type="number" class="form-control" [(ngModel)]="positionY"
                     placeholder="{{ 'Position Y' | translate }}">
                   <button class="gge-btn search" data-bs-dismiss="modal"
-                    (click)="onPositionChange(positionX, positionY)">{{ 'Rechercher' | translate }}</button>
+                  (click)="onPositionChange(positionX, positionY)">{{ 'Rechercher' | translate }}</button>
                   <button class="gge-btn reset" data-bs-dismiss="modal" (click)="resetPosition()">{{ 'Réinitialiser'
-                    | translate }}</button>
+                  | translate }}</button>
                 </div>
               </div>
               <hr>
-              <div class="col-12">
-                <span>{{ 'Plus proche d\'un joueur' | translate }}</span>
-                <div class="input-group mb-3">
-                  <span class="input-group-text">
-                    <span>{{ 'Joueur' | translate }}</span>
-                  </span>
-                  <input type="text" class="form-control" [(ngModel)]="nearPlayerName"
-                    placeholder="{{ 'Nom du joueur' | translate }}">
-                  <button class="gge-btn search" data-bs-dismiss="modal"
+                <div class="col-12">
+                  <span>{{ 'Plus proche d\'un joueur' | translate }}</span>
+                  <div class="input-group mb-3">
+                    <span class="input-group-text">
+                      <span>{{ 'Joueur' | translate }}</span>
+                    </span>
+                    <input type="text" class="form-control" [(ngModel)]="nearPlayerName"
+                      placeholder="{{ 'Nom du joueur' | translate }}">
+                    <button class="gge-btn search" data-bs-dismiss="modal"
                     (click)="onPositionChangePlayerName(nearPlayerName)">{{ 'Rechercher' | translate }}</button>
-                  <button class="gge-btn reset" data-bs-dismiss="modal" (click)="resetPositionPlayerName()">{{
+                    <button class="gge-btn reset" data-bs-dismiss="modal" (click)="resetPositionPlayerName()">{{
                     'Réinitialiser' | translate }}</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -162,70 +177,69 @@
         </div>
       </div>
     </div>
-  </div>
 
 
-  <div class="modal fade" id="pagingModal" tabindex="-1" aria-labelledby="pagingModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="pagingModalLabel">
-            <i class="fa-solid fa-list-ol"></i>&nbsp;{{ 'Pagination' | translate }}
-          </h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"
+    <div class="modal fade" id="pagingModal" tabindex="-1" aria-labelledby="pagingModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="pagingModalLabel">
+              <i class="fa-solid fa-list-ol"></i>&nbsp;{{ 'Pagination' | translate }}
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"
             [attr.aria-label]="'Fermer' | translate"></button>
-        </div>
-        <div class="modal-body">
-          <div class="row">
-            <div class="col-12">
-              <span>{{ 'Nombre de résultats par page' | translate }}</span>
-              <div class="input-group mb-3">
-                <input type="number" class="form-control" [(ngModel)]="pageSize"
-                  placeholder="{{ 'Nombre de résultats' | translate }}" min="0">
-                <button class="btn btn-primary" data-bs-dismiss="modal" (click)="onPageSizeChange(pageSize)">{{
+          </div>
+          <div class="modal-body">
+            <div class="row">
+              <div class="col-12">
+                <span>{{ 'Nombre de résultats par page' | translate }}</span>
+                <div class="input-group mb-3">
+                  <input type="number" class="form-control" [(ngModel)]="pageSize"
+                    placeholder="{{ 'Nombre de résultats' | translate }}" min="0">
+                  <button class="btn btn-primary" data-bs-dismiss="modal" (click)="onPageSizeChange(pageSize)">{{
                   'Rechercher' | translate }}</button>
-                <button class="btn btn-secondary" data-bs-dismiss="modal" (click)="resetPageSize()">{{ 'Réinitialiser' |
+                  <button class="btn btn-secondary" data-bs-dismiss="modal" (click)="resetPageSize()">{{ 'Réinitialiser' |
                   translate }}</button>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
 
 
-  <div class="modal fade" id="rankingModal" tabindex="-1" aria-labelledby="rankingModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="rankingModalLabel">
-            <i class="fa-solid fa-filter"></i>&nbsp;{{ 'Filtrer les résultats' | translate }}
-          </h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"
+    <div class="modal fade" id="rankingModal" tabindex="-1" aria-labelledby="rankingModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="rankingModalLabel">
+              <i class="fa-solid fa-filter"></i>&nbsp;{{ 'Filtrer les résultats' | translate }}
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"
             [attr.aria-label]="'Fermer' | translate"></button>
-        </div>
-        <div class="modal-body">
-          <div class="row">
+          </div>
+          <div class="modal-body">
+            <div class="row">
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <div class="modal fade" id="questionModal" tabindex="-1" aria-labelledby="questionModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="questionModalLabel">
-            <i class="fa-solid fa-question"></i>&nbsp;{{ 'Aide' | translate }}
-          </h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"
+    <div class="modal fade" id="questionModal" tabindex="-1" aria-labelledby="questionModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="questionModalLabel">
+              <i class="fa-solid fa-question"></i>&nbsp;{{ 'Aide' | translate }}
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"
             [attr.aria-label]="'Fermer' | translate"></button>
-        </div>
-        <div class="modal-body">
-          {{ 'help-dungeon' | translate }}
+          </div>
+          <div class="modal-body">
+            {{ 'help-dungeon' | translate }}
+          </div>
         </div>
       </div>
     </div>
-  </div>

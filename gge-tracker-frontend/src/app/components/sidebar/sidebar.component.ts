@@ -1,4 +1,4 @@
-import { NgClass, NgFor, NgIf } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import package_ from '../../../../package.json';
@@ -8,8 +8,8 @@ import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-sidebar',
+  imports: [RouterLink, TranslateModule, NgClass],
   standalone: true,
-  imports: [NgFor, RouterLink, NgIf, TranslateModule, NgClass],
   templateUrl: './sidebar.component.html',
   styleUrls: ['./sidebar.component.css'],
 })
@@ -26,7 +26,7 @@ export class SidebarComponent {
       items: [
         { label: 'Joueurs', id: 'players', iconUrl: '/assets/tools/players.webp' },
         { label: 'Alliances', id: 'alliances', iconUrl: '/assets/tools/alliances.webp' },
-        { label: 'Changements de nom', id: 'renames/players', iconUrl: '/assets/tools/renames.webp' },
+        { label: 'Changements de nom', id: 'renames', iconUrl: '/assets/tools/renames.webp' },
         { label: 'Mouvements', id: 'movements', iconUrl: '/assets/tools/movements.webp' },
       ],
     },
@@ -41,7 +41,12 @@ export class SidebarComponent {
     {
       title: 'Scores et classements',
       items: [
-        { label: 'Outer Realms', id: 'live/outer-realms', iconUrl: '/assets/tools/or.webp', frequency: 'Temps réel' },
+        {
+          label: 'temp_server_name_tooltip',
+          id: 'live/outer-realms',
+          iconUrl: '/assets/tools/or.webp',
+          frequency: 'Temps réel',
+        },
         { label: 'Le Grand Tournoi', id: 'grand-tournament', iconUrl: '/assets/tools/gt.webp', frequency: 'Par heure' },
         { label: 'Scores finaux', id: 'events', iconUrl: '/assets/tools/events.webp' },
       ],
@@ -71,11 +76,17 @@ export class SidebarComponent {
   public isActive(route: string | string[]): boolean {
     if (Array.isArray(route)) {
       return route.some((r) => this.router.url.startsWith('/' + r) || this.router.url.startsWith(r));
+    } else if (route.includes('/')) {
+      return this.router.url.startsWith('/' + route) || this.router.url.startsWith(route);
     }
     return this.router.url.startsWith('/' + route) || this.router.url.startsWith(route);
   }
 
   public isSidebarOpen(): boolean {
     return this.sidebarService.isSidebarOpen();
+  }
+
+  public closeSidebar(): void {
+    this.sidebarService.closeSidebar();
   }
 }

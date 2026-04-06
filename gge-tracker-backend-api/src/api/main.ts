@@ -115,7 +115,10 @@ app.use(async (request, response, next) =>
 setInterval(() => void ggeTrackerApiGuardActivity.flushLogs(), ggeTrackerApiGuardActivity.getLogFlushInterval());
 
 app.use(
-  morgan((tokens, request, response) => ggeTrackerApiGuardActivity.recordMorganRequest(tokens, request, response)),
+  morgan((tokens, request, response) => {
+    ggeTrackerApiGuardActivity.recordMorganRequest(tokens, request, response);
+    return '';
+  }),
 );
 
 const routingInstance = new ApiRoutingController(managerInstance, redisClient as any);
@@ -1043,6 +1046,11 @@ publicRoutes.get('/events/:eventType/:id/players', routingInstance.getEventPlaye
  *                   example: "Unable to fetch event statistics"
  */
 publicRoutes.get('/events/:eventType/:id/data', routingInstance.getDataEventType.bind(routingInstance));
+
+/**
+ * @todo Swagger documentation
+ */
+publicRoutes.get('/events/player/:playerId', routingInstance.getEventByPlayerId.bind(routingInstance));
 
 /**
  * @todo Swagger documentation

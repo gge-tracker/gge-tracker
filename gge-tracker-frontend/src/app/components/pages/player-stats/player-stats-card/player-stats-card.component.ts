@@ -1,13 +1,4 @@
-import {
-  DatePipe,
-  isPlatformBrowser,
-  KeyValuePipe,
-  NgClass,
-  NgFor,
-  NgIf,
-  NgTemplateOutlet,
-  NgStyle,
-} from '@angular/common';
+import { DatePipe, isPlatformBrowser, KeyValuePipe, NgClass, NgTemplateOutlet, NgStyle } from '@angular/common';
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -35,10 +26,8 @@ import { ChartComponent } from 'ng-apexcharts';
   imports: [
     NgClass,
     ChartsWrapperComponent,
-    NgFor,
     DatePipe,
     FormatNumberPipe,
-    NgIf,
     KeyValuePipe,
     TranslateModule,
     NgTemplateOutlet,

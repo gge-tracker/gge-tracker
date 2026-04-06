@@ -1,11 +1,11 @@
-import { NgClass, NgFor, NgIf } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { SearchbarComponent } from '@ggetracker-components/searchbar/searchbar.component';
 import { SelectComponent } from '@ggetracker-components/select/select.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
-import { ApiDungeonsResponse, Dungeon, ErrorType } from '@ggetracker-interfaces/empire-ranking';
+import { ApiDungeonsResponse, Dungeon, ErrorType, KingdomRealm } from '@ggetracker-interfaces/empire-ranking';
 import { CooldownPipe } from '@ggetracker-pipes/cooldown.pipe';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
 import { ServerService } from '@ggetracker-services/server.service';
@@ -13,31 +13,29 @@ import { NgSelectModule } from '@ng-select/ng-select';
 import { TranslateModule } from '@ngx-translate/core';
 import { LucideAngularModule, MessageCircleQuestion, Search, X } from 'lucide-angular';
 
-interface Realm {
-  key: number;
-  label: string;
-}
-
 @Component({
   selector: 'app-tracker',
-  standalone: true,
   imports: [
     NgClass,
     TableComponent,
     LucideAngularModule,
     SearchbarComponent,
     SelectComponent,
-    NgIf,
-    NgFor,
     TranslateModule,
     CooldownPipe,
     FormsModule,
     NgSelectModule,
   ],
+  standalone: true,
   templateUrl: './tracker.component.html',
   styleUrl: './tracker.component.css',
 })
 export class TrackerComponent extends GenericComponent {
+  public realms: KingdomRealm[] = [
+    { key: '2', label: 'Le Glacier éternel' },
+    { key: '1', label: 'Les Sables brûlants' },
+    { key: '3', label: 'Les Pics du feu' },
+  ];
   public serverService = inject(ServerService);
   public readonly Search = Search;
   public readonly X = X;
@@ -64,13 +62,8 @@ export class TrackerComponent extends GenericComponent {
     'Bientôt attaquable (< 1h)': 3,
   };
   public displayedStates: { label: string; value: string }[] = [];
-  public realms: Realm[] = [
-    { key: 2, label: 'Le Glacier éternel' },
-    { key: 1, label: 'Les Sables brûlants' },
-    { key: 3, label: 'Les Pics du feu' },
-  ];
-  public selectedRealm: number[] = [2];
-  public filterByKid: number[] = [2];
+  public selectedRealm: string[] = ['2'];
+  public filterByKid: string[] = ['2'];
   private localStorage = inject(LocalStorageService);
 
   constructor() {
@@ -203,7 +196,7 @@ export class TrackerComponent extends GenericComponent {
     void this.getData();
   }
 
-  public onRealmChange(realmId: { key: number; label: string }[]): void {
+  public onRealmChange(realmId: { key: string; label: string }[]): void {
     this.selectedRealm = realmId.map((r) => r.key);
     this.filterByKid = this.selectedRealm;
     this.localStorage.setItem('selectedRealm', JSON.stringify(this.selectedRealm));
@@ -232,7 +225,7 @@ export class TrackerComponent extends GenericComponent {
   }
 
   public getRealmName(kid: number): string {
-    const realm = this.realms.find((r) => r.key === kid);
+    const realm = this.realms.find((r) => Number(r.key) === kid);
     return realm ? realm.label : 'Inconnu';
   }
 
@@ -255,6 +248,14 @@ export class TrackerComponent extends GenericComponent {
   private async getData(): Promise<void> {
     if (this.serverService.currentServer && !this.allowedServers.includes(this.serverService.currentServer.name)) {
       this.isInLoading = false;
+      return;
+    } else if (this.filterByKid.length === 0) {
+      this.responseTime = 0;
+      this.resultsCount = 0;
+      this.maxPage = 0;
+      this.dungeons = [];
+      this.isInLoading = false;
+      this.refreshDataAnimationSpinner = false;
       return;
     }
     this.getGenericData()
@@ -288,12 +289,18 @@ export class TrackerComponent extends GenericComponent {
       const realm = this.localStorage.getItem('selectedRealm');
       if (realm) {
         try {
-          this.selectedRealm = JSON.parse(realm) as number[];
+          this.selectedRealm = JSON.parse(realm) as string[];
           if (!Array.isArray(this.selectedRealm) || this.selectedRealm.length === 0) {
-            this.selectedRealm = [2];
+            this.selectedRealm = ['2'];
           }
+          this.selectedRealm.forEach((r) => {
+            if (!this.realms.some((realm) => realm.key === r)) {
+              throw new Error('Invalid realm key');
+            }
+          });
+          this.selectedRealm = this.selectedRealm.map(String);
         } catch {
-          this.selectedRealm = [2];
+          this.selectedRealm = ['2'];
         }
       }
       if (this.localStorage.getItem('selectedState')) {

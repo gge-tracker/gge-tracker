@@ -1,5 +1,13 @@
-import { DatePipe, NgClass, NgFor, NgIf } from '@angular/common';
-import { AfterViewInit, Component, inject, Injector, OnDestroy } from '@angular/core';
+import { DatePipe, NgClass } from '@angular/common';
+import {
+  AfterViewInit,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  inject,
+  Injector,
+  OnDestroy,
+} from '@angular/core';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
@@ -8,17 +16,20 @@ import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { TopBarService } from '@ggetracker-services/topbar.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { RenamesSwitcherComponent } from './renames-switcher/renames-switcher.component';
+import { CURRENT } from './rename.token';
 
 @Component({
   selector: 'app-renames',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [NgClass, SearchFormComponent, TableComponent, FormatNumberPipe, DatePipe, TranslateModule],
   standalone: true,
-  imports: [NgClass, SearchFormComponent, TableComponent, NgIf, FormatNumberPipe, DatePipe, NgFor, TranslateModule],
   templateUrl: './renames.component.html',
   styleUrl: './renames.component.css',
 })
 export class RenamesComponent extends GenericComponent implements AfterViewInit, OnDestroy {
   public search = '';
   public currentViewType: 'players' | 'alliances' | undefined = undefined;
+  public current = inject(CURRENT, { optional: true });
   public pageSize = 15;
   public searchType: SearchType = 'player';
   public responseTime = 0;
@@ -32,11 +43,13 @@ export class RenamesComponent extends GenericComponent implements AfterViewInit,
     isFiltered: false,
   };
   private topBarService = inject(TopBarService);
+  private cdr = inject(ChangeDetectorRef);
 
-  constructor() {
+  constructor(private injector: Injector) {
     super();
     this.isInLoading = true;
     this.route.paramMap.subscribe((parameters) => {
+      this.isInLoading = true;
       this.currentViewType = (parameters.get('type') as 'players' | 'alliances') || 'players';
       if (this.currentViewType === 'alliances') {
         this.headers = [
@@ -60,7 +73,8 @@ export class RenamesComponent extends GenericComponent implements AfterViewInit,
   public ngAfterViewInit(): void {
     const viewType = this.currentViewType || 'players';
     const injector = Injector.create({
-      providers: [{ provide: 'current', useValue: viewType }],
+      providers: [{ provide: CURRENT, useValue: viewType }],
+      parent: this.injector,
     });
     this.topBarService.attach(RenamesSwitcherComponent, injector);
   }
@@ -82,7 +96,7 @@ export class RenamesComponent extends GenericComponent implements AfterViewInit,
     this.responseTime = data.response;
     const renames = data.data;
     this.renames = this.mapMovementsFromApi(renames, (index: number) => (this.page - 1) * this.pageSize + index + 1);
-    this.isInLoading = false;
+    this.updateViewStatus(false);
   }
 
   public async previousPage(): Promise<void> {
@@ -93,7 +107,7 @@ export class RenamesComponent extends GenericComponent implements AfterViewInit,
     this.responseTime = data.response;
     const renames = data.data;
     this.renames = this.mapMovementsFromApi(renames, (index: number) => (this.page - 1) * this.pageSize + index + 1);
-    this.isInLoading = false;
+    this.updateViewStatus(false);
   }
 
   public async clickOnAlliance(allianceName: string | null): Promise<void> {
@@ -123,10 +137,10 @@ export class RenamesComponent extends GenericComponent implements AfterViewInit,
       this.responseTime = data.response;
       const renames = data.data;
       this.renames = this.mapMovementsFromApi(renames, (index: number) => index + 1);
-      this.isInLoading = false;
+      this.updateViewStatus(false);
     } catch {
-      this.isInLoading = false;
       this.toastService.add(ErrorType.NO_ALLIANCE_FOUND, 5000);
+      this.updateViewStatus(false);
     }
   }
 
@@ -136,16 +150,15 @@ export class RenamesComponent extends GenericComponent implements AfterViewInit,
     this.searchType = 'player';
     if (this.search === '') {
       void this.navigateTo(1);
+      this.updateViewStatus(false);
       return;
     }
-    this.isInLoading = true;
     this.init();
-    this.isInLoading = false;
   }
 
   public async navigateTo(page: number): Promise<void> {
     if (this.isInLoading) return;
-    this.isInLoading = true;
+    this.updateViewStatus(true);
     this.page = page;
     const renames = await this.getGenericData();
     this.responseTime = renames.response;
@@ -153,7 +166,7 @@ export class RenamesComponent extends GenericComponent implements AfterViewInit,
       renames.data,
       (index: number) => (this.page - 1) * this.pageSize + index + 1,
     );
-    this.isInLoading = false;
+    this.updateViewStatus(false);
   }
 
   public visiblePages(): number[] {
@@ -190,6 +203,11 @@ export class RenamesComponent extends GenericComponent implements AfterViewInit,
     });
   }
 
+  private updateViewStatus(state: boolean): void {
+    this.isInLoading = state;
+    this.cdr.markForCheck();
+  }
+
   private async getGenericData(): Promise<{ data: ApiRenamesResponse; response: number }> {
     return await this.apiRestService.getGenericData(
       this.apiRestService.getRenames.bind(this.apiRestService),
@@ -202,16 +220,17 @@ export class RenamesComponent extends GenericComponent implements AfterViewInit,
 
   private init(): void {
     try {
+      this.updateViewStatus(true);
       this.page = 1;
       void this.getGenericData().then((renames) => {
         this.responseTime = renames.response;
         this.maxPage = renames.data.pagination.total_pages;
         this.renames = this.mapMovementsFromApi(renames.data, (index: number) => index + 1);
-        this.isInLoading = false;
+        this.updateViewStatus(false);
       });
     } catch {
-      this.isInLoading = false;
       this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
+      this.updateViewStatus(false);
     }
   }
 }

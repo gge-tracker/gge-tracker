@@ -1,4 +1,4 @@
-import { NgFor, NgTemplateOutlet } from '@angular/common';
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
@@ -13,15 +13,16 @@ export interface Contributor {
 
 @Component({
   selector: 'app-about',
-  standalone: true,
-  imports: [NgTemplateOutlet, NgFor, TranslatePipe],
+  imports: [NgTemplateOutlet, TranslatePipe],
   templateUrl: './about.component.html',
+  standalone: true,
   styleUrl: './about.component.css',
 })
 export class AboutComponent extends GenericComponent implements OnInit {
   public version = '';
   public shortVersion = '';
   public dateVersion = '';
+  public currentYear = new Date().getFullYear();
   public safeTranslatedIntro1!: SafeHtml;
   public sanitizer = inject(DomSanitizer);
   private contribs: { name: string; server: string }[] = [];
@@ -31,18 +32,18 @@ export class AboutComponent extends GenericComponent implements OnInit {
     this.isInLoading = false;
     this.constructDateVersion(package_.version);
     this.constructVersion(package_.version);
-    const url = environment.i18nBaseUrl + 'contributors.xml';
-    fetch(url)
-      .then((response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.text();
-      })
-      .then((xml) => {
-        this.contribs = this.parseContributors(xml);
-      })
-      .catch((error) => {
-        console.error('Failed to load contributors.xml', error);
-      });
+    void this.fetchContributors(environment.i18nBaseUrl + 'contributors.xml');
+  }
+
+  public async fetchContributors(url: string): Promise<void> {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const xml = await response.text();
+      this.contribs = this.parseContributors(xml);
+    } catch (error) {
+      console.error('Failed to load contributors.xml', error);
+    }
   }
 
   public ngOnInit(): void {

@@ -1,4 +1,3 @@
-import { NgFor, NgIf } from '@angular/common';
 import { ChangeDetectorRef, Component, inject, input, OnChanges, OnInit, output, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SearchType } from '@ggetracker-interfaces/empire-ranking';
@@ -10,7 +9,7 @@ import { FilterComponent } from '../filter/filter.component';
 @Component({
   selector: 'app-search-form',
   standalone: true,
-  imports: [NgIf, FormsModule, TranslateModule, LucideAngularModule, NgFor, FilterComponent],
+  imports: [FormsModule, TranslateModule, LucideAngularModule, FilterComponent],
   templateUrl: './search-form.component.html',
   styleUrl: './search-form.component.css',
 })

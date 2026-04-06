@@ -11,24 +11,26 @@
 </div>
 <div class="row graphic table-wrapper modern-panel rounded-4 mt-3 mb-5 pb-2 dense">
   <div class="apx-chart">
-    <app-charts-wrapper *ngIf="charts['scoreOverTime'] && isBrowser"
-      [series]="charts['scoreOverTime'].series"
-      [annotations]="charts['scoreOverTime'].annotations || {}"
-      [chart]="charts['scoreOverTime'].chart"
-      [xaxis]="charts['scoreOverTime'].xaxis"
-      [yaxis]="charts['scoreOverTime'].yaxis"
-      [dataLabels]="charts['scoreOverTime'].dataLabels"
-      [plotOptions]="charts['scoreOverTime'].plotOptions"
-      [labels]="charts['scoreOverTime'].labels || []"
-      [grid]="charts['scoreOverTime'].grid"
-      [colors]="charts['scoreOverTime'].colors"
-      [markers]="charts['scoreOverTime'].markers || {}"
-      [fill]="charts['scoreOverTime'].fill"
-      [stroke]="charts['scoreOverTime'].stroke"
-      [title]="charts['scoreOverTime'].title"
-      [tooltip]="charts['scoreOverTime'].tooltip"
-      [legend]="charts['scoreOverTime'].legend"
+    @if (charts['scoreOverTime'] && isBrowser) {
+      <app-charts-wrapper
+        [series]="charts['scoreOverTime'].series"
+        [annotations]="charts['scoreOverTime'].annotations || {}"
+        [chart]="charts['scoreOverTime'].chart"
+        [xaxis]="charts['scoreOverTime'].xaxis"
+        [yaxis]="charts['scoreOverTime'].yaxis"
+        [dataLabels]="charts['scoreOverTime'].dataLabels"
+        [plotOptions]="charts['scoreOverTime'].plotOptions"
+        [labels]="charts['scoreOverTime'].labels || []"
+        [grid]="charts['scoreOverTime'].grid"
+        [colors]="charts['scoreOverTime'].colors"
+        [markers]="charts['scoreOverTime'].markers || {}"
+        [fill]="charts['scoreOverTime'].fill"
+        [stroke]="charts['scoreOverTime'].stroke"
+        [title]="charts['scoreOverTime'].title"
+        [tooltip]="charts['scoreOverTime'].tooltip"
+        [legend]="charts['scoreOverTime'].legend"
       ></app-charts-wrapper>
+    }
   </div>
 </div>
 <div class="row table-wrapper modern-panel rounded-4 mt-3 mb-5 pb-2 dense">
@@ -44,17 +46,19 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let entry of entriesWithDifference">
-          <td>{{ entry.date }}</td>
-          <td>
-            <img src="/assets/gt/division{{ entry.division }}.png" [width]="32"
-              [title]="('Division' | translate) + ' ' + (divisionNames()[entry.division-1] | translate)"
-              [alt]="('Division' | translate) + ' ' + (divisionNames()[entry.division-1] | translate)" />
-          </td>
-          <td>{{ 'Sous-division' | translate }} <em>{{ entry.subdivision }}</em></td>
-          <td>{{ entry.rank }}</td>
-          <td>{{ entry.score | number }} <span [innerHTML]="entry.scoreDifference"></span></td>
-        </tr>
+        @for (entry of entriesWithDifference; track entry) {
+          <tr>
+            <td>{{ entry.date }}</td>
+            <td>
+              <img src="/assets/gt/division{{ entry.division }}.png" [width]="32"
+                [title]="('Division' | translate) + ' ' + (divisionNames()[entry.division-1] | translate)"
+                [alt]="('Division' | translate) + ' ' + (divisionNames()[entry.division-1] | translate)" />
+            </td>
+            <td>{{ 'Sous-division' | translate }} <em>{{ entry.subdivision }}</em></td>
+            <td>{{ entry.rank }}</td>
+            <td>{{ entry.score | number }} <span [innerHTML]="entry.scoreDifference"></span></td>
+          </tr>
+        }
       </tbody>
     </table>
   </div>

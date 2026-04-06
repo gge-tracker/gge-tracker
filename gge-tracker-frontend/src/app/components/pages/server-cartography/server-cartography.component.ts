@@ -1,4 +1,4 @@
-import { NgClass, NgFor, NgIf, NgTemplateOutlet } from '@angular/common';
+import { NgClass, NgTemplateOutlet } from '@angular/common';
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -37,17 +37,8 @@ interface ILegend {
 
 @Component({
   selector: 'app-server-cartography',
+  imports: [NgClass, FormatNumberPipe, NgTemplateOutlet, FormsModule, TranslateModule, SearchFormComponent],
   standalone: true,
-  imports: [
-    NgFor,
-    NgClass,
-    NgIf,
-    FormatNumberPipe,
-    NgTemplateOutlet,
-    FormsModule,
-    TranslateModule,
-    SearchFormComponent,
-  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './server-cartography.component.html',
   styleUrl: './server-cartography.component.css',

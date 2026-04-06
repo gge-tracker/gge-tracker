@@ -1,4 +1,4 @@
-import { DecimalPipe, NgClass, NgFor, NgIf } from '@angular/common';
+import { DecimalPipe, NgClass } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
@@ -8,6 +8,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { IconComponent } from '@ggetracker-components/icon/icon.component';
+import { ErrorType } from '@ggetracker-interfaces/empire-ranking';
 
 interface DailyTarget {
   id: string;
@@ -45,8 +46,8 @@ interface GuessResult {
 
 @Component({
   selector: 'app-guess-daily-player',
+  imports: [NgClass, FormsModule, TranslatePipe, DecimalPipe, FormatNumberPipe, IconComponent],
   standalone: true,
-  imports: [NgIf, NgFor, NgClass, FormsModule, TranslatePipe, DecimalPipe, FormatNumberPipe, IconComponent],
   templateUrl: './guess-daily-player.component.html',
   styleUrls: ['./guess-daily-player.component.css'],
 })
@@ -76,6 +77,7 @@ export class GuessDailyPlayerComponent extends GenericComponent implements OnIni
 
   public async ngOnInit(): Promise<void> {
     try {
+      this.isInLoading = true;
       this.searchSubject
         .pipe(
           debounceTime(400),
@@ -97,6 +99,10 @@ export class GuessDailyPlayerComponent extends GenericComponent implements OnIni
         this.dailyTarget = dailyResponse.data as DailyTarget;
         this.todayGameDate = this.dailyTarget.game_date.split('T')[0];
         this.isInLoading = false;
+      } else {
+        this.toastService.add(ErrorType.ERROR_OCCURRED);
+        this.isInLoading = false;
+        return;
       }
       const savedGuesses = localStorage.getItem('miniGameGuesses');
       if (savedGuesses) {

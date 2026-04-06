@@ -6,8 +6,8 @@ import { FormsModule } from '@angular/forms';
  */
 @Component({
   selector: 'app-switch',
-  standalone: true,
   imports: [FormsModule],
+  standalone: true,
   templateUrl: './switch.component.html',
   styleUrls: ['./switch.component.css'],
 })

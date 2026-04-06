@@ -1,4 +1,4 @@
-import { DatePipe, NgClass, NgFor, NgIf } from '@angular/common';
+import { DatePipe, NgClass } from '@angular/common';
 import { Component, inject, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -38,10 +38,7 @@ interface FormFilters {
 
 @Component({
   selector: 'app-movements',
-  standalone: true,
   imports: [
-    NgFor,
-    NgIf,
     NgClass,
     FormsModule,
     FormatNumberPipe,
@@ -52,6 +49,7 @@ interface FormFilters {
     LucideAngularModule,
     TranslateModule,
   ],
+  standalone: true,
   providers: [FormatNumberPipe],
   templateUrl: './movements.component.html',
   styleUrl: './movements.component.css',
@@ -110,7 +108,7 @@ export class MovementsComponent extends GenericComponent {
   constructor() {
     super();
     this.isInLoading = true;
-    void this.init();
+    this.init().catch(console.error);
   }
 
   public async nextPage(): Promise<void> {

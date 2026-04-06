@@ -60,6 +60,13 @@ export class UtilitiesService {
     return formatNumberPipe.transform(value);
   }
 
+  public generateOuterRealmsEventFromDate(date: string): Date {
+    const d = new Date(date);
+    // Event always begin 4 days before the collection date
+    d.setDate(d.getDate() - 4);
+    return d;
+  }
+
   public async exportDataXlsx(
     worksheetName: string,
     headers: string[],

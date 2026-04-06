@@ -1,4 +1,4 @@
-import { DatePipe, LowerCasePipe, NgClass, NgFor, NgIf, TitleCasePipe } from '@angular/common';
+import { DatePipe, LowerCasePipe, NgClass, TitleCasePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -74,12 +74,9 @@ interface CardConfig {
 }
 @Component({
   selector: 'app-alliance-stats',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    NgFor,
     NgClass,
-    NgIf,
     DatePipe,
     TitleCasePipe,
     TranslateModule,
@@ -93,6 +90,7 @@ interface CardConfig {
     StatsCardContentComponent,
     TranslateModule,
   ],
+  standalone: true,
   templateUrl: './alliance-stats.component.html',
   styleUrl: './alliance-stats.component.css',
 })
@@ -669,7 +667,9 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   public nextMonth(): void {
     const [year, month] = this.actualMonth.split('-');
     const nextMonth = Number(month) + 1;
-    if (nextMonth > 12) {
+    if (new Date(Number(year), nextMonth - 1) > new Date()) {
+      return;
+    } else if (nextMonth > 12) {
       this.actualMonth = `${Number(year) + 1}-01`;
     } else {
       this.actualMonth = `${year}-${nextMonth.toString().padStart(2, '0')}`;
@@ -715,8 +715,6 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     const chart = this.charts[chartName];
     if (!chart) return;
     const currentToggleType = this.toggleCharts[chartName];
-
-    // @ts-expect-error: Property 'hidden' does not exist on type 'SeriesOptionsType'
     chart.series.forEach((serie) => (serie['hidden'] = !currentToggleType));
     this.toggleCharts[chartName] = !currentToggleType;
     this.initChartOption(chartName, chart.series, chart.colors);
