@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { HttpClient, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { APP_INITIALIZER, LOCALE_ID, NgModule, isDevMode } from '@angular/core';
 import { BrowserModule, provideClientHydration } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
@@ -47,9 +47,9 @@ export function DynamicTranslateLoaderFactory(http: HttpClient): TranslateLoader
 
 @NgModule({
   declarations: [AppComponent, SkeletonComponent],
+  bootstrap: [AppComponent],
   imports: [
     BrowserModule,
-    HttpClientModule,
     BrowserAnimationsModule,
     CommonModule,
     NgSelectModule,
@@ -72,7 +72,6 @@ export function DynamicTranslateLoaderFactory(http: HttpClient): TranslateLoader
       registrationStrategy: 'registerWhenStable:30000',
     }),
   ],
-  bootstrap: [AppComponent],
   providers: [
     provideClientHydration(),
     { provide: LUCIDE_ICONS, multi: true, useValue: new LucideIconProvider(myIcons) },
@@ -83,6 +82,7 @@ export function DynamicTranslateLoaderFactory(http: HttpClient): TranslateLoader
       multi: true,
     },
     { provide: LOCALE_ID, useValue: 'en-GB' },
+    provideHttpClient(withInterceptorsFromDi()),
   ],
 })
 export class AppRoutingModule {}
