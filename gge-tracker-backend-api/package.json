@@ -25,7 +25,7 @@
     "date-fns-tz": "^3.2.0",
     "discord.js": "^14.19.3",
     "dotenv": "^16.5.0",
-    "express": "^4.21.2",
+    "express": "^4.22.1",
     "maxrects-packer": "^2.7.3",
     "morgan": "^1.10.0",
     "mysql": "^2.18.1",
