@@ -654,7 +654,7 @@ export abstract class ApiEvents implements ApiHelper {
         return;
       }
       const realPlayerId = ApiHelper.removeCountryCode(playerId);
-      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPoolFromRequestId(playerId);
+      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServersEnum.FR1);
       let query: string;
       if (eventType === 'all') {
         query = `

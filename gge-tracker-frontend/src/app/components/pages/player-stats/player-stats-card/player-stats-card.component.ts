@@ -75,7 +75,7 @@ export class PlayerStatsCardComponent implements AfterViewInit, OnInit {
       setTimeout(() => {
         this.isReady = true;
         this.cdr.detectChanges();
-      }, 200);
+      }, 1500);
     }
   }
 

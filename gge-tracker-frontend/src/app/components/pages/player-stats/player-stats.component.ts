@@ -59,6 +59,7 @@ import { EventCardComponent } from '@ggetracker-pages/events/event-card/event-ca
     FormatNumberPipe,
     LucideAngularModule,
     LevelPipe,
+    NgTemplateOutlet,
     FormsModule,
     NgTemplateOutlet,
     NgStyle,

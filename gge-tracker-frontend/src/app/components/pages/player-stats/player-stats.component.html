@@ -509,13 +509,17 @@
             </div>
           </div>
         }
-        @if (currentTab === 'events') {
+        @if (currentTab === 'events' && outerEvents && outerEvents.length > 0) {
           <div class="tab-content">
             <div class="container-fluid row mt-3 row-gap-3">
               @for (event of outerEvents; track event) {
                 <div class="col-12 col-lg-6">
-                  <app-event-card [event]="event" [options]="{ displayMode: 'ranking' }"
-                  (click)="navigateToEvent(event)"></app-event-card>
+                  <app-event-card
+                    [event]="event"
+                    [options]="{ displayMode: 'ranking' }"
+                    (keydown.enter)="navigateToEvent(event)"
+                    (click)="navigateToEvent(event)"
+                  ></app-event-card>
                 </div>
               }
             </div>
