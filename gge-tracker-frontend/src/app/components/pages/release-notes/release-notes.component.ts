@@ -27,7 +27,6 @@ export class ReleaseNotesComponent {
         '🛠️ [Player List] Added kingdom filter',
         '🛠️ [Player List] Filters are now saved automatically',
         '🛠️ [Alliance] Added active players count in alliance tab',
-        '🛠️ [Alliance] Added advanced alliance analysis generation with private message delivery to alliance owner',
         '🛠️ [Outer Realms] Now displays current active event in live rankings',
         '⚡ [API] Added remaining construction time in api-castle endpoint',
         '⚡ [Performance] Graphs are now lazily loaded (rendered only when visible) to improve performance',
