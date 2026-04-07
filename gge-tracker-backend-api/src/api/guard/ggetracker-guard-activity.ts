@@ -26,7 +26,6 @@ interface LogEntryRow {
   user_agent: any;
   ip: any;
 }
-[];
 
 /**
  * Centralized singleton for request guarding, lightweight abuse detection, and

@@ -142,7 +142,7 @@
     } @else {
       @for (i of [1,2,3,4]; track i) {
         <td class="col-inactive">
-          <img src="/assets/error.png" class="error-icon">
+          <img src="/assets/error.png" class="error-icon" [alt]="'Joueur inactif' | translate">
         </td>
       }
       <td class="col-alliance">

@@ -192,7 +192,7 @@ export abstract class ApiHelper {
   }
 
   public static async getCacheVersion(redis: RedisClientType<any>, language: string): Promise<string> {
-    return cacheVersion.getCacheVersion(redis, language) || '1';
+    return (await cacheVersion.getCacheVersion(redis, language)) || '1';
   }
 
   /**
