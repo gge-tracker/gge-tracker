@@ -17,6 +17,28 @@ export enum EnumTypeReleaseNote {
 export class ReleaseNotesComponent {
   public readonly releaseNotes = [
     {
+      version: 'v26-04-07',
+      type: EnumTypeReleaseNote.MAJOR,
+      date: '2026-04-07',
+      items: [
+        '📦 [Server] Added new server: EP-INT2',
+        '📦 [Server] Added EP-IN1, E4K-INT2, EP-WORLD2, E4K-DE1 to advanced tools (realtime fortress tracker + castle visualizer across kingdoms)',
+        '🛠️ [Player List] Added alliance count for each player',
+        '🛠️ [Player List] Added kingdom filter',
+        '🛠️ [Player List] Filters are now saved automatically',
+        '🛠️ [Alliance] Added active players count in alliance tab',
+        '🛠️ [Alliance] Added advanced alliance analysis generation with private message delivery to alliance owner',
+        '🛠️ [Outer Realms] Now displays current active event in live rankings',
+        '⚡ [API] Added remaining construction time in api-castle endpoint',
+        '⚡ [Performance] Graphs are now lazily loaded (rendered only when visible) to improve performance',
+        '🐞 [Bugfix] Fixed alliance filter issues',
+        '🐞 [Bugfix] Fixed player name search issues',
+        '🐞 [Bugfix] Fixed translation issues in "Who is it" mini-game',
+        '🐞 [Bugfix] Fixed sidebar issues after window resize',
+        '🐞 [Bugfix] Player alliance history now shows both old and current alliance names if renamed',
+      ],
+    },
+    {
       version: 'v26-02-15',
       type: EnumTypeReleaseNote.MAJOR,
       date: '2026-02-15',

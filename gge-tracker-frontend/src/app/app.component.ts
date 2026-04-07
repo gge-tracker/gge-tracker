@@ -1,10 +1,11 @@
 import { AfterViewInit, Component } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
-  standalone: false,
+  imports: [RouterOutlet],
 })
 export class AppComponent implements AfterViewInit {
   public ngAfterViewInit(): void {

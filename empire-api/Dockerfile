@@ -37,7 +37,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 
 ARG API_TYPE
-RUN if [ $API_TYPE = "realtime" ]; then \
+RUN if [ "$API_TYPE" = "realtime" ]; then \
     cp dist/config/credentials_gbl.json dist/config/credentials.json && \
     cp dist/config/instances_gbl.json dist/config/instances.json; \
 fi

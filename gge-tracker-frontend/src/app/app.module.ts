@@ -1,33 +1,15 @@
-import { CommonModule } from '@angular/common';
-import { HttpClient, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
-import { APP_INITIALIZER, LOCALE_ID, NgModule, isDevMode } from '@angular/core';
-import { BrowserModule, provideClientHydration } from '@angular/platform-browser';
-import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { RouterModule } from '@angular/router';
-import { NgSelectModule } from '@ng-select/ng-select';
-import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
-import { LUCIDE_ICONS, LucideAngularModule, LucideIconProvider, Spline } from 'lucide-angular';
-
-import { AppComponent } from './app.component';
-import { routes } from './app.routes';
-import { FooterComponent } from '@ggetracker-components/footer/footer.component';
-import { LoadingComponent } from '@ggetracker-components/loading/loading.component';
-import { SkeletonComponent } from '@ggetracker-components/skeleton/skeleton.component';
-import { LocalStorageTranslateLoader } from './local-storage-loader';
-import { SidebarComponent } from '@ggetracker-components/sidebar/sidebar.component';
-import { TopBarComponent } from '@ggetracker-components/top-bar/top-bar.component';
-import { myIcons } from '@ggetracker-components/icon/icon.component';
-import { ServerService } from '@ggetracker-services/server.service';
-import { environment } from 'environments/environment';
 import { registerLocaleData } from '@angular/common';
-import localeFr from '@angular/common/locales/fr';
+import { HttpClient } from '@angular/common/http';
+import localeDe from '@angular/common/locales/de';
 import localeEnGb from '@angular/common/locales/en-GB';
+import localeFr from '@angular/common/locales/fr';
 import localeNl from '@angular/common/locales/nl';
 import localePl from '@angular/common/locales/pl';
 import localeRo from '@angular/common/locales/ro';
-import localeDe from '@angular/common/locales/de';
-import { ServiceWorkerModule } from '@angular/service-worker';
+import { TranslateLoader } from '@ngx-translate/core';
+import { environment } from 'environments/environment';
 import { Observable } from 'rxjs/internal/Observable';
+import { LocalStorageTranslateLoader } from './local-storage-loader';
 
 registerLocaleData(localeFr, 'fr-FR');
 registerLocaleData(localeEnGb, 'en-GB');
@@ -61,45 +43,3 @@ export function DynamicTranslateLoaderFactory(http: HttpClient): TranslateLoader
     return new CustomHttpLoader(http);
   }
 }
-
-@NgModule({
-  declarations: [AppComponent, SkeletonComponent],
-  bootstrap: [AppComponent],
-  imports: [
-    BrowserModule,
-    BrowserAnimationsModule,
-    CommonModule,
-    NgSelectModule,
-    LucideAngularModule.pick({ Spline }),
-    FooterComponent,
-    RouterModule.forRoot(routes),
-    LoadingComponent,
-    TranslateModule.forRoot({
-      loader: {
-        provide: TranslateLoader,
-        useFactory: DynamicTranslateLoaderFactory,
-        deps: [HttpClient],
-      },
-      defaultLanguage: 'en',
-    }),
-    SidebarComponent,
-    TopBarComponent,
-    ServiceWorkerModule.register('ngsw-worker.js', {
-      enabled: !isDevMode(),
-      registrationStrategy: 'registerWhenStable:30000',
-    }),
-  ],
-  providers: [
-    provideClientHydration(),
-    { provide: LUCIDE_ICONS, multi: true, useValue: new LucideIconProvider(myIcons) },
-    {
-      provide: APP_INITIALIZER,
-      useFactory: (serverService: ServerService) => (): Promise<void> => serverService.init(),
-      deps: [ServerService],
-      multi: true,
-    },
-    { provide: LOCALE_ID, useValue: 'en-GB' },
-    provideHttpClient(withInterceptorsFromDi()),
-  ],
-})
-export class AppRoutingModule {}

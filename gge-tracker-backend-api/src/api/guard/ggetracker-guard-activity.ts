@@ -14,6 +14,20 @@ interface LogEntry {
   timestamp: number;
 }
 
+interface LogEntryRow {
+  timestamp: string;
+  job: string;
+  server: string;
+  method: string;
+  status: string;
+  route: string;
+  url: any;
+  response_time: any;
+  user_agent: any;
+  ip: any;
+}
+[];
+
 /**
  * Centralized singleton for request guarding, lightweight abuse detection, and
  * buffered logging to a Loki-compatible endpoint.
@@ -216,69 +230,137 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
   }
 
   /**
-   * Flushes buffered log entries to ClickHouse.
-   * @param toSend - Array of log entries to send.
-   * @returns A promise that resolves when the flush completes.
+   * Transforms a LogEntry into a flat object suitable for insertion into ClickHouse, extracting and normalizing relevant fields.
+   * @param logEntry - The structured log entry containing labels and line data.
+   * @returns A flat object with normalized fields for ClickHouse insertion.
+   */
+  private generateRowsFromLogEntry(logEntry: LogEntry): LogEntryRow {
+    return {
+      timestamp: new Date(logEntry.timestamp).toISOString().slice(0, 19).replace('T', ' ') || null,
+      job: logEntry.labels.job ?? null,
+      server: logEntry.labels.server ?? null,
+      method: logEntry.labels.method ?? null,
+      status: logEntry.labels.status ?? null,
+      route: logEntry.labels.route ?? null,
+      url: logEntry.line.url ?? null,
+      response_time: logEntry.line.response_time ?? null,
+      user_agent: logEntry.line.user_agent ?? null,
+      ip: logEntry.line.ip ?? null,
+    };
+  }
+
+  /**
+   * Flushes an array of log entries to ClickHouse by converting them into the appropriate format, batching them, and sending them with retry logic.
+   * @param toSend - An array of LogEntry objects to be sent to ClickHouse.
+   * @returns A promise that resolves when the flush operation is complete.
    */
   private async flushToClickhouse(toSend: LogEntry[]): Promise<void> {
-    const logDatabaseName = 'logs';
-    const logTableName = 'logs';
-    const rows = toSend.map((logEntry) => {
-      return {
-        timestamp: new Date(logEntry.timestamp).toISOString().slice(0, 19).replace('T', ' ') || null,
-        job: logEntry.labels.job ?? null,
-        server: logEntry.labels.server ?? null,
-        method: logEntry.labels.method ?? null,
-        status: logEntry.labels.status ?? null,
-        route: logEntry.labels.route ?? null,
-        url: logEntry.line.url ?? null,
-        response_time: logEntry.line.response_time ?? null,
-        user_agent: logEntry.line.user_agent ?? null,
-        ip: logEntry.line.ip ?? null,
-      };
-    });
-    const batchSize = 3000;
-    const maxRetries = 3;
-    const baseDelayMs = 200;
-    const sql = `INSERT INTO ${logDatabaseName}.${logTableName} FORMAT JSONEachRow`;
-    const baseUrl = this.managerInstance.getClickHouseUrl() + `/?query=${encodeURIComponent(sql)}`;
-
-    for (let index = 0; index < rows.length; index += batchSize) {
-      const batch = rows.slice(index, index + batchSize);
-
-      const payload = batch.map((r) => JSON.stringify(r)).join('\n');
-      let attempt = 0;
-      let lastError: any = null;
-      while (attempt < maxRetries) {
-        attempt++;
-        try {
-          const response = await axios.post(baseUrl, payload, {
-            headers: {
-              'Content-Type': 'text/plain',
-              Accept: 'text/plain, */*',
-              'Accept-Encoding': 'gzip,deflate',
-            },
-            auth: this.managerInstance.getClickHouseCredentials(),
-            timeout: 30_000,
-          });
-          if (response.status >= 200 && response.status < 300) {
-            lastError = null;
-            break;
-          } else {
-            const txt = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
-            throw new Error(`ClickHouse returned ${response.status}: ${txt}`);
-          }
-        } catch (error: any) {
-          lastError = error;
-          const message = error?.response?.data ?? error?.message ?? String(error);
-          console.warn(`Attempt ${attempt} failed for batch ${Math.floor(index / batchSize) + 1}:`, message);
-          await new Promise((r) => setTimeout(r, baseDelayMs * Math.pow(2, attempt - 1)));
-        }
-      }
-      if (lastError) {
-        console.error('Failed to insert batch into ClickHouse after retries:', lastError?.message ?? lastError);
+    const rows = this.buildRows(toSend);
+    const batches = this.chunkRows(rows, 3000);
+    const baseUrl = this.buildClickhouseUrl();
+    for (const [index, batch] of batches.entries()) {
+      const payload = this.buildPayload(batch);
+      const error = await this.sendWithRetry(payload, baseUrl, index);
+      if (error) {
+        console.error('Failed to insert batch into ClickHouse after retries:', error?.message ?? error);
       }
     }
+  }
+
+  /**
+   * Converts an array of LogEntry objects into a format suitable for ClickHouse insertion by generating rows and batching them.
+   * @param toSend - An array of LogEntry objects to be transformed into ClickHouse rows.
+   * @returns An array of objects representing rows to be inserted into ClickHouse, with fields extracted and normalized from the original LogEntry structure.
+   */
+  private buildRows(toSend: LogEntry[]): LogEntryRow[] {
+    return toSend.map((logEntry) => this.generateRowsFromLogEntry(logEntry));
+  }
+
+  /**
+   * Splits an array of log entry rows into smaller batches of a specified size for processing or transmission.
+   * @param rows - The array of log entry rows to be divided into batches.
+   * @param batchSize - The maximum number of log entry rows to include in each batch.
+   * @returns An array of batches, where each batch is an array of log entry rows with a length up to batchSize.
+   */
+  private chunkRows(rows: any[], batchSize: number): any[][] {
+    const batches: any[][] = [];
+    for (let index = 0; index < rows.length; index += batchSize) {
+      batches.push(rows.slice(index, index + batchSize));
+    }
+    return batches;
+  }
+
+  /**
+   * Converts an array of log entry objects into a newline-delimited string format suitable for ClickHouse's JSONEachRow input.
+   * @param batch - An array of log entry objects to be stringified and concatenated.
+   * @returns A single string where each log entry is JSON-stringified and separated by a newline character, ready for ClickHouse ingestion.
+   */
+  private buildPayload(batch: any[]): string {
+    return batch.map((r) => JSON.stringify(r)).join('\n');
+  }
+
+  /**
+   * Constructs the ClickHouse HTTP endpoint URL for log insertion, including the SQL query as a URL parameter.
+   * @returns The full URL to which log data should be POSTed for ClickHouse insertion.
+   */
+  private buildClickhouseUrl(): string {
+    const sql = `INSERT INTO logs.logs FORMAT JSONEachRow`;
+    return this.managerInstance.getClickHouseUrl() + `/?query=${encodeURIComponent(sql)}`;
+  }
+
+  /**
+   * Attempts to send a batch of log entries to ClickHouse with retry logic and exponential backoff.
+   * @param payload - The stringified log batch to send in the POST request body.
+   * @param baseUrl - The ClickHouse endpoint URL to which the payload should be sent.
+   * @param batchIndex - The index of the current batch (used for logging purposes).
+   * @returns A promise that resolves to null on success or an error object if all retry attempts fail.
+   */
+  private async sendWithRetry(payload: string, baseUrl: string, batchIndex: number): Promise<any | null> {
+    const maxRetries = 3;
+    const baseDelayMs = 200;
+    let lastError: any = null;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await this.sendRequest(payload, baseUrl);
+        return null;
+      } catch (error: any) {
+        lastError = error;
+        const message = error?.response?.data ?? error?.message ?? String(error);
+        console.warn(`Attempt ${attempt} failed for batch ${batchIndex + 1}:`, message);
+        await this.delay(baseDelayMs * Math.pow(2, attempt - 1));
+      }
+    }
+    return lastError;
+  }
+
+  /**
+   * Sends a POST request to the specified ClickHouse endpoint with the given payload, including necessary headers and authentication.
+   * @param payload - The stringified log data to be sent in the request body.
+   * @param baseUrl - The ClickHouse endpoint URL to which the request should be sent.
+   */
+  private async sendRequest(payload: string, baseUrl: string): Promise<void> {
+    const response = await axios.post(baseUrl, payload, {
+      headers: {
+        'Content-Type': 'text/plain',
+        Accept: 'text/plain, */*',
+        'Accept-Encoding': 'gzip,deflate',
+      },
+      auth: this.managerInstance.getClickHouseCredentials(),
+      timeout: 30_000,
+    });
+    if (response.status < 200 || response.status >= 300) {
+      const txt = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+      throw new Error(`ClickHouse returned ${response.status}: ${txt}`);
+    }
+  }
+
+  /**
+   * Utility function to create a delay for a specified number of milliseconds, used for implementing backoff between retry attempts.
+   * @param ms - The number of milliseconds to wait before resolving the returned promise.
+   * @returns A promise that resolves after the specified delay.
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
