@@ -529,6 +529,17 @@ export abstract class ApiDungeons implements ApiHelper {
     size: string | null;
   } {
     const filtersKids = JSON.parse(filterByKid);
+    for (let index = 0; index < filtersKids.length; index++) {
+      if (Number.isNaN(Number(filtersKids[index]))) {
+        filtersKids.splice(index, 1);
+        index--;
+      } else if (Number(filtersKids[index]) < 0 || Number(filtersKids[index]) > 9) {
+        filtersKids.splice(index, 1);
+        index--;
+      } else {
+        filtersKids[index] = Number(filtersKids[index]);
+      }
+    }
     const filterByAttackCooldown = request.query.filterByAttackCooldown
       ? String(request.query.filterByAttackCooldown)
       : null;
