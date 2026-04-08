@@ -175,10 +175,6 @@ export abstract class ApiDungeons implements ApiHelper {
           conditions.push('1 = 0');
         } else {
           playerId = playerResults[0].id;
-          if (playerId) {
-            response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
-            return;
-          }
           realCooldownExpr = `
             CASE
               WHEN DPS.last_attack_at IS NOT NULL

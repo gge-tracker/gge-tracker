@@ -2,6 +2,10 @@
   flex: auto;
 }
 
+input:-webkit-autofill {
+  -webkit-box-shadow: none !important;
+}
+
 :host ::ng-deep img {
   height: 29px;
 }
