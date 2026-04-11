@@ -7,7 +7,7 @@
 //
 //  Copyrights (c) 2025-2026 - gge-tracker.com & gge-tracker contributors
 //
-import axios, { AxiosResponse } from 'axios';
+import axios, { AxiosError, AxiosResponse } from 'axios';
 import { ClickHouse } from 'clickhouse';
 import { format } from 'date-fns';
 import * as mysql from 'mysql2/promise';
@@ -875,13 +875,12 @@ export class GenericFetchAndSaveBackend {
             process.stdout.cursorTo(0);
             process.stdout.write(bar);
           }
-        } catch (err: any) {
-          const code = err?.code;
-          if (code !== 'ERR_BAD_REQUEST' && code !== 'ECONNRESET') {
-            console.error('Unexpected error code on URL:', url, err);
-          } else {
-            console.error('Error on URL:', url);
+        } catch (err: AxiosError | any) {
+          if (err instanceof AxiosError) {
+            console.error('Axios error on URL:', url, err.message);
+            throw new Error(`Fetch error: ${err.message}`);
           }
+          console.error('Error on URL:', url);
           throw new Error('Terminating due to error while fetching dungeon data.');
         }
       }
