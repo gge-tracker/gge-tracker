@@ -68,9 +68,9 @@ class BaseSocket extends Log {
     this.success('[pingAndCheck] Login successful, checking connection...');
     this.connected.set();
     this.socketState = SocketState.CONNECTED;
-    // Send initial ping immediately after connection
-    // Ping will be sent every 60 seconds after that in the ping() method
-    this.ping();
+    // Send initial ping after 5 seconds to allow the connection to stabilize.
+    // Subsequent pings will be sent every 60 seconds in the ping() method.
+    setTimeout(() => this.ping(), 5000);
     if (this.hasGbl) {
       clearTimeout(this.sendGblTimeout);
       this.sendGblTimeout = setTimeout(() => {
@@ -157,7 +157,7 @@ class BaseSocket extends Log {
       this.restartTimeout = setTimeout(
         () => {
           if (this.reconnect && this.socketState !== SocketState.KILLED) {
-            void this.restart();
+            void this.restart(true);
           } else {
             this.warn('[checkConnection] Reconnect is disabled or socket is killed. No restart will be performed.');
           }
@@ -174,7 +174,7 @@ class BaseSocket extends Log {
       this.muted('[checkConnection] Connection check successful. Next check in 15 minutes.');
     } catch (error) {
       this.error(`[checkConnection] Connection check failed, restarting socket in 10 seconds...`);
-      this.error('Error details:', error);
+      this.error('Error details:', error instanceof Error ? error.message : error);
       clearTimeout(this.restartTimeout);
       this.restartTimeout = setTimeout(() => {
         if (this.reconnect && this.socketState !== SocketState.KILLED) {
@@ -200,7 +200,7 @@ class BaseSocket extends Log {
   }
 
   public handleErrorState(error: unknown): void {
-    this.error('[onError] Error occurred in socket', error);
+    this.error('[onError] Error occurred in socket', error instanceof Error ? error.message : error);
     switch (this.socketState) {
       case SocketState.KILLED: {
         this.warn('[onError] Error occurred but socket is killed. No action will be taken.');
@@ -284,13 +284,25 @@ class BaseSocket extends Log {
   }
 
   private ping(): void {
+    if (this.socketState === SocketState.KILLED) {
+      this.warn('[ping] Socket is killed. No ping will be sent.');
+      return;
+    }
     if (
       !this.connected.isSet ||
       this.socketState !== SocketState.CONNECTED ||
       !this.ws ||
       this.ws.readyState !== WebSocket.OPEN
     ) {
-      this.warn('[ping] Cannot send ping, socket is not connected.');
+      this.warn(
+        '[ping] Cannot send ping, socket is not connected :',
+        'connected:',
+        this.connected.isSet,
+        'socketState:',
+        this.socketState,
+        'wsReadyState:',
+        this.ws ? this.ws.readyState : 'ws not initialized',
+      );
       return;
     }
     this.sendRawCommand('pin', ['<RoundHouseKick>']);
