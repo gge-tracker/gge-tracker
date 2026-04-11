@@ -1,14 +1,4 @@
 {
-  "__inputs": [
-    {
-      "name": "DS_GRAFANA-CLICKHOUSE-DATASOURCE",
-      "label": "grafana-clickhouse-datasource",
-      "description": "",
-      "type": "datasource",
-      "pluginId": "grafana-clickhouse-datasource",
-      "pluginName": "ClickHouse"
-    }
-  ],
   "__elements": {},
   "__requires": [
     {
@@ -127,7 +117,7 @@
     {
       "datasource": {
         "type": "grafana-clickhouse-datasource",
-        "uid": "${DS_GRAFANA-CLICKHOUSE-DATASOURCE}"
+        "uid": "clickhouse"
       },
       "fieldConfig": {
         "defaults": {
@@ -179,7 +169,7 @@
         {
           "datasource": {
             "type": "grafana-clickhouse-datasource",
-            "uid": "${DS_GRAFANA-CLICKHOUSE-DATASOURCE}"
+            "uid": "clickhouse"
           },
           "editorType": "sql",
           "format": 1,
@@ -206,7 +196,7 @@
     {
       "datasource": {
         "type": "grafana-clickhouse-datasource",
-        "uid": "${DS_GRAFANA-CLICKHOUSE-DATASOURCE}"
+        "uid": "clickhouse"
       },
       "fieldConfig": {
         "defaults": {
@@ -267,7 +257,7 @@
         {
           "datasource": {
             "type": "grafana-clickhouse-datasource",
-            "uid": "${DS_GRAFANA-CLICKHOUSE-DATASOURCE}"
+            "uid": "clickhouse"
           },
           "editorType": "sql",
           "format": 1,
@@ -307,7 +297,7 @@
     {
       "datasource": {
         "type": "grafana-clickhouse-datasource",
-        "uid": "${DS_GRAFANA-CLICKHOUSE-DATASOURCE}"
+        "uid": "clickhouse"
       },
       "fieldConfig": {
         "defaults": {
@@ -379,7 +369,7 @@
         {
           "datasource": {
             "type": "grafana-clickhouse-datasource",
-            "uid": "${DS_GRAFANA-CLICKHOUSE-DATASOURCE}"
+            "uid": "clickhouse"
           },
           "editorType": "sql",
           "format": 1,
@@ -405,7 +395,7 @@
     {
       "datasource": {
         "type": "grafana-clickhouse-datasource",
-        "uid": "${DS_GRAFANA-CLICKHOUSE-DATASOURCE}"
+        "uid": "clickhouse"
       },
       "description": "",
       "fieldConfig": {
@@ -467,7 +457,7 @@
         {
           "datasource": {
             "type": "grafana-clickhouse-datasource",
-            "uid": "${DS_GRAFANA-CLICKHOUSE-DATASOURCE}"
+            "uid": "clickhouse"
           },
           "editorType": "sql",
           "format": 1,
@@ -493,7 +483,7 @@
     {
       "datasource": {
         "type": "grafana-clickhouse-datasource",
-        "uid": "${DS_GRAFANA-CLICKHOUSE-DATASOURCE}"
+        "uid": "clickhouse"
       },
       "fieldConfig": {
         "defaults": {
@@ -574,7 +564,7 @@
         {
           "datasource": {
             "type": "grafana-clickhouse-datasource",
-            "uid": "${DS_GRAFANA-CLICKHOUSE-DATASOURCE}"
+            "uid": "clickhouse"
           },
           "editorType": "sql",
           "format": 1,
@@ -601,7 +591,7 @@
     {
       "datasource": {
         "type": "grafana-clickhouse-datasource",
-        "uid": "${DS_GRAFANA-CLICKHOUSE-DATASOURCE}"
+        "uid": "clickhouse"
       },
       "fieldConfig": {
         "defaults": {
@@ -693,7 +683,7 @@
         {
           "datasource": {
             "type": "grafana-clickhouse-datasource",
-            "uid": "${DS_GRAFANA-CLICKHOUSE-DATASOURCE}"
+            "uid": "clickhouse"
           },
           "editorType": "sql",
           "format": 1,
@@ -728,7 +718,7 @@
     {
       "datasource": {
         "type": "grafana-clickhouse-datasource",
-        "uid": "${DS_GRAFANA-CLICKHOUSE-DATASOURCE}"
+        "uid": "clickhouse"
       },
       "fieldConfig": {
         "defaults": {
@@ -818,7 +808,7 @@
         {
           "datasource": {
             "type": "grafana-clickhouse-datasource",
-            "uid": "${DS_GRAFANA-CLICKHOUSE-DATASOURCE}"
+            "uid": "clickhouse"
           },
           "editorType": "sql",
           "format": 1,
@@ -845,7 +835,7 @@
     {
       "datasource": {
         "type": "grafana-clickhouse-datasource",
-        "uid": "${DS_GRAFANA-CLICKHOUSE-DATASOURCE}"
+        "uid": "clickhouse"
       },
       "fieldConfig": {
         "defaults": {
@@ -936,7 +926,7 @@
         {
           "datasource": {
             "type": "grafana-clickhouse-datasource",
-            "uid": "${DS_GRAFANA-CLICKHOUSE-DATASOURCE}"
+            "uid": "clickhouse"
           },
           "editorType": "sql",
           "format": 1,
@@ -975,7 +965,7 @@
     {
       "datasource": {
         "type": "grafana-clickhouse-datasource",
-        "uid": "${DS_GRAFANA-CLICKHOUSE-DATASOURCE}"
+        "uid": "clickhouse"
       },
       "fieldConfig": {
         "defaults": {
@@ -1034,7 +1024,7 @@
         {
           "datasource": {
             "type": "grafana-clickhouse-datasource",
-            "uid": "${DS_GRAFANA-CLICKHOUSE-DATASOURCE}"
+            "uid": "clickhouse"
           },
           "editorType": "sql",
           "format": 1,
@@ -1061,7 +1051,7 @@
     {
       "datasource": {
         "type": "grafana-clickhouse-datasource",
-        "uid": "${DS_GRAFANA-CLICKHOUSE-DATASOURCE}"
+        "uid": "clickhouse"
       },
       "fieldConfig": {
         "defaults": {
@@ -1120,7 +1110,7 @@
         {
           "datasource": {
             "type": "grafana-clickhouse-datasource",
-            "uid": "${DS_GRAFANA-CLICKHOUSE-DATASOURCE}"
+            "uid": "clickhouse"
           },
           "editorType": "sql",
           "format": 1,
