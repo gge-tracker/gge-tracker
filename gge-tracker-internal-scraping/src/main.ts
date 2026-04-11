@@ -113,14 +113,14 @@ export class GenericFetchAndSaveBackend {
     Utils.logMessage('Try getting TLT token for Outer Realms...');
     let response = await this.genericFetchData('glt', { GST: 2 });
     if (!response.data.content) {
-      await this.genericFetchData('qsc', { QID: 3490 });
-      await this.genericFetchData('dcl', { CD: 1 });
       const responseTsh = await this.genericFetchData('tsh', null);
       if (!responseTsh.data.content) {
         Utils.logMessage(' No content received from tsh endpoint. Aborting Outer Realms entry.');
         Utils.logMessage('Content received:', JSON.stringify(responseTsh.data));
         return null;
       }
+      await this.genericFetchData('qsc', { QID: 3490 });
+      await this.genericFetchData('dcl', { CD: 1 });
       await this.sleep(500);
       Utils.logMessage('Selecting free castle in Outer Realms...');
       await this.genericFetchData('tsc', { ID: 31, OC2: 1, PWR: 0, GST: 2 });
@@ -168,6 +168,15 @@ export class GenericFetchAndSaveBackend {
     const value = await redisClient.get(key);
     await redisClient.quit();
     return value;
+  }
+
+  public async setRedisValue(key: string, value: string): Promise<void> {
+    const redisClient = createClient({
+      url: 'redis://redis-server:6379',
+    });
+    await redisClient.connect();
+    await redisClient.set(key, value);
+    await redisClient.quit();
   }
 
   public async fillGrandTournamentResults(): Promise<void> {

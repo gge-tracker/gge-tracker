@@ -106,7 +106,7 @@ async function createOuterRealmsInstance(): Promise<void> {
       DATABASE_CONFIG,
       CLICKHOUSE_CONFIG,
       postgresConfig,
-      logSuffix,
+      logSuffix || 'Outer Realms Token Scraper',
     );
 
     console.log('Checking Empire API Realtime status for Outer Realms server...');
@@ -114,6 +114,13 @@ async function createOuterRealmsInstance(): Promise<void> {
     const realtimeRedisStatus = await generic.getRedisValue('outerRealmsDataFetchError');
 
     if (!statusResponse.data || statusResponse.data['EmpireEx_42'] !== true || realtimeRedisStatus) {
+      const lastCheckTime = await generic.getRedisValue('outerRealmsLastCheckTime');
+      const now = Date.now();
+      if (lastCheckTime && now - Number(lastCheckTime) < 10 * 60 * 1000) {
+        console.error('Outer Realms server is not ready yet. Last check was less than 10 minutes ago. Exiting.');
+        return;
+      }
+      await generic.setRedisValue('outerRealmsLastCheckTime', now.toString());
       console.log('Deleting existing Outer Realms server configuration if any...');
       try {
         await generic.fetchUrl(serverUrl + '/' + TARGET_ID_SERVER, 'DELETE', null);
@@ -153,7 +160,7 @@ async function createOuterRealmsInstance(): Promise<void> {
       TARGET_DATABASE_CONFIG,
       TARGET_CLICKHOUSE_CONFIG,
       TARGET_postgresConfig,
-      TARGET_LOG_SUFFIX,
+      TARGET_LOG_SUFFIX || 'Outer Realms Token Scraper',
     );
     await target.startOuterRealmsDataFetch();
   } catch (error) {
