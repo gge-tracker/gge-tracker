@@ -18,7 +18,7 @@ class GgeLiveTemporaryServerSocket extends BaseSocket implements GgeEmpireSocket
   public async connect(): Promise<void> {
     try {
       this.init();
-      this.onClose = (code, reason): void => this.handleCloseState(code, reason, false);
+      this.onClose = (code, reason): void => this.handleCloseState(code, reason);
       if (!(await this.opened.wait(60_000))) throw new Error('Socket not connected');
       this.log('⌛ [connect] Socket connected, sending login commands...');
       this.sendXmlMessage('sys', 'verChk', '0', "<ver v='166' />");

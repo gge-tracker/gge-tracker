@@ -37,8 +37,8 @@ class GgeEmpire4KingdomsTcp extends BaseSocket implements GgeEmpireSocketImpl {
         this.opened.set();
       });
 
-      this.socket.on('error', (error): void => this.handleErrorState(error));
-      this.socket.on('close', (hadError): void => this.handleCloseState(hadError ? 1006 : 1000, Buffer.from('')));
+      this.onError = (error): void => this.handleErrorState(error);
+      this.onClose = (code, reason): void => this.handleCloseState(code, Buffer.from(reason));
       this.socket.on('data', (data: Buffer): void => this.handleTcpData(data));
 
       if (!(await this.opened.wait(60_000))) throw new Error('Socket not connected');

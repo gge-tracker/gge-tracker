@@ -40,9 +40,12 @@ export default function createApp(sockets: {
       }
       if (server in sockets) {
         try {
-          sockets[server].close();
-        } catch {}
-        delete sockets[server];
+          sockets[server].kill();
+        } catch {
+          // Silently ignore errors during kill
+        } finally {
+          delete sockets[server];
+        }
         response.status(200).json({ message: 'Server deleted' });
       } else {
         response.status(404).json({ error: 'Server not found' });
@@ -86,9 +89,12 @@ export default function createApp(sockets: {
       }
       if (server in sockets) {
         try {
-          sockets[server].close();
-        } catch {}
-        delete sockets[server];
+          sockets[server].kill();
+        } catch {
+          // Silently ignore errors during kill
+        } finally {
+          delete sockets[server];
+        }
       }
       const regex = /^[\dA-Za-z-]+\.goodgamestudios\.com$/;
       if (!regex.test(socket_url)) {
