@@ -1,4 +1,4 @@
-import { BaseSocket, GgeServerType } from './base-socket.js';
+import { BaseSocket, GgeServerType, SocketState } from './base-socket.js';
 import { GgeEmpireSocketImpl } from './gge-socket-impl.js';
 
 class GgeEmpireSocket extends BaseSocket implements GgeEmpireSocketImpl {
@@ -14,13 +14,13 @@ class GgeEmpireSocket extends BaseSocket implements GgeEmpireSocketImpl {
 
   public async connect(): Promise<void> {
     try {
-      console.log('🔌 [connect] Connecting to EP socket server:', this.url);
+      this.log('[connect] Connecting to EP socket server:', this.url, '...');
       this.init();
       this.onError = (error): void => this.handleErrorState(error);
       this.onClose = (code, reason): void => this.handleCloseState(code, reason);
 
       if (!(await this.opened.wait(60_000))) throw new Error('Socket not connected');
-      this.log('⌛ [connect] Socket connected, sending login commands...');
+      this.log('[connect] Socket connected, sending login commands...');
       this.sendXmlMessage('sys', 'verChk', '0', "<ver v='166' />");
       await this.waitForXmlResponse('sys', 'apiOK', '0');
       const responseAsync = this.waitForJsonResponse('nfo');
@@ -37,25 +37,28 @@ class GgeEmpireSocket extends BaseSocket implements GgeEmpireSocketImpl {
       this.sendXmlMessage('sys', 'roundTrip', '1', '');
       await this.waitForXmlResponse('sys', 'roundTripRes', '1');
       this.sendLoginMessage();
-      this.log('⌛ [connect] Sent login command to socket with username:', this.username);
+      this.log('[connect] Sent login command to socket with username:', this.username);
       const lliResponse = await this.waitForJsonResponse('lli');
       if (lliResponse.payload.status === 0) {
         void this.pingAndCheck();
         await this.checkConnection();
       } else {
         if (lliResponse.payload.status === 21) {
-          this.log('❌ [connect] Login failed: Invalid credentials. Please check your USERNAME and PASSWORD.');
+          this.kill();
+          this.error('[connect] Login failed: Invalid credentials. Please check your USERNAME and PASSWORD.');
           return;
         } else if (lliResponse.payload.status === 27) {
+          this.kill();
           const banDurationinSeconds = lliResponse.payload.data?.RS ? Number(lliResponse.payload.data.RS) : -1;
           const banDurationMessage =
             banDurationinSeconds > 0
               ? `Account is banned for another ${Math.ceil(banDurationinSeconds / 60)} minutes.`
               : 'Account is permanently banned.';
-          this.log(`❌ [connect] Login failed: Account is banned. ${banDurationMessage}`);
+          this.error(`[connect] Login failed: Account is banned. ${banDurationMessage}`);
           setTimeout(
             () => {
               this.log('Retrying connection after ban duration...');
+              this.socketState = SocketState.CONNECTING;
               void this.restart();
             },
             banDurationinSeconds > 0 ? banDurationinSeconds * 1000 : 60 * 60 * 1000,
