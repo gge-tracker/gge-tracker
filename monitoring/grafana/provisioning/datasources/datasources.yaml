@@ -13,3 +13,12 @@ datasources:
     access: proxy
     uid: loki
     url: http://loki:3100
+
+  - name: ClickHouse
+    type: grafana-clickhouse-datasource
+    jsonData:
+      defaultDatabase: database
+      port: 9000
+      host: clickhouse
+      username: default
+      tlsSkipVerify: false
