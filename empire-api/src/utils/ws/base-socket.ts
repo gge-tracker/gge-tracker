@@ -62,7 +62,7 @@ class BaseSocket extends Log {
 
   public async pingAndCheck(): Promise<void> {
     if (this.socketState === SocketState.KILLED) {
-      this.log('⚠️ [pingAndCheck] Socket is killed. No ping or connection check will be performed.');
+      this.warn('[pingAndCheck] Socket is killed. No ping or connection check will be performed.');
       return;
     }
     this.log('✅ [connect] Login successful, checking connection...');
@@ -85,12 +85,12 @@ class BaseSocket extends Log {
   }
 
   public async restart(instant = false): Promise<void> {
-    this.log('🔄 [restart] Restarting socket connection...');
+    this.log('[restart] Restarting socket connection...');
     this.connected.clear();
     this.closed.clear();
     this.opened.clear();
     if (this.socketState === SocketState.KILLED) {
-      this.log('⚠️ [restart] Socket is killed. Restart will not be performed.');
+      this.warn('[restart] Socket is killed. Restart will not be performed.');
       return;
     }
     this.socketState = SocketState.DISCONNECTED;
@@ -100,15 +100,15 @@ class BaseSocket extends Log {
     if (!instant && nbReconnects > 0) {
       if (nbReconnects < 5) {
         const incrementalDelay = [0, 3, 5, 20, 30][Math.min(nbReconnects, 4)];
-        this.log(`🔄 [restart] Incremental delay: ${incrementalDelay} minutes`);
+        this.log(`[restart] Incremental delay: ${incrementalDelay} minutes`);
         defaultDelay += incrementalDelay * 60;
       } else {
-        this.log(`🔄 [restart] Max incremental delay reached. Keeping at 60 minutes.`);
+        this.log(`[restart] Max incremental delay reached. Keeping at 60 minutes.`);
         defaultDelay = 60 * 60;
       }
     }
     const finalDelay = instant ? 0 : defaultDelay + randomDelay;
-    this.log(`🔄 [restart] Restarting socket connection in ${finalDelay} seconds... (Total retries: ${nbReconnects})`);
+    this.log(`[restart] Restarting socket connection in ${finalDelay} seconds... (Total retries: ${nbReconnects})`);
     this.disconnect();
     clearTimeout(this.restartTimeout);
     this.restartTimeout = setTimeout(async () => {
@@ -117,7 +117,7 @@ class BaseSocket extends Log {
   }
 
   public disconnect(): void {
-    this.log(this.url, '🧹 [disconnect] Disconnecting from socket. Cleaning up resources...');
+    this.log(this.url, '[disconnect] Disconnecting from socket. Cleaning up resources...');
     this.connected.clear();
     this.closed.clear();
     this.opened.clear();
@@ -128,15 +128,18 @@ class BaseSocket extends Log {
 
   public async checkConnection(): Promise<void> {
     if (this.socketState === SocketState.KILLED) {
-      this.log('⚠️ [checkConnection] Socket is killed. No connection check will be performed.');
+      this.warn('[checkConnection] Socket is killed. No connection check will be performed.');
       this.connected.clear();
       this.closed.set();
       this.clearTimeouts();
       return;
+    } else if (!this.reconnect) {
+      this.warn('[checkConnection] Reconnect is disabled. No connection check will be performed.');
+      return;
     }
     if (!this.connected.isSet || this.socketState !== SocketState.CONNECTED) {
-      this.log(
-        '⚠️ [checkConnection] Socket is not connected (connected:',
+      this.warn(
+        '[checkConnection] Socket is not connected (connected:',
         this.connected.isSet,
         'socketState:',
         this.socketState,
@@ -150,7 +153,7 @@ class BaseSocket extends Log {
           if (this.reconnect && this.socketState !== SocketState.KILLED) {
             void this.restart();
           } else {
-            this.log('⚠️ [checkConnection] Reconnect is disabled or socket is killed. No restart will be performed.');
+            this.warn('[checkConnection] Reconnect is disabled or socket is killed. No restart will be performed.');
           }
         },
         10 * 60 * 1000,
@@ -160,16 +163,19 @@ class BaseSocket extends Log {
     try {
       this.sendJsonCommand('gpi', {});
       await this.waitForJsonResponse('gpi');
-      this.pingTimeout = setTimeout(() => this.checkConnection(), 15 * 60 * 1000);
+      clearTimeout(this.checkConnectionTimeout);
+      this.checkConnectionTimeout = setTimeout(() => this.checkConnection(), 15 * 60 * 1000);
+      this.muted('[checkConnection] Connection check successful. Next check in 15 minutes.');
     } catch (error) {
-      this.log('❌ [checkConnection] Connection check failed, restarting socket in 10 seconds...');
-      this.log('Error details:', error);
+      this.error(`[checkConnection] Connection check failed, restarting socket in 10 seconds...`);
+      this.error('Error details:', error);
       clearTimeout(this.restartTimeout);
       this.restartTimeout = setTimeout(() => {
         if (this.reconnect && this.socketState !== SocketState.KILLED) {
+          this.warn('[checkConnection] Connection check failed. Restarting socket now.');
           void this.restart();
         } else {
-          this.log('⚠️ [checkConnection] Reconnect is disabled or socket is killed. No restart will be performed.');
+          this.warn('[checkConnection] Reconnect is disabled or socket is killed. No restart will be performed.');
         }
       }, 10 * 1000);
     }
@@ -188,14 +194,14 @@ class BaseSocket extends Log {
   }
 
   public handleErrorState(error: unknown): void {
-    this.log('❌ [onError] Error occurred in socket', error);
+    this.error('[onError] Error occurred in socket', error);
     switch (this.socketState) {
       case SocketState.KILLED: {
-        this.log('⚠️ [onError] Error occurred but socket is killed. No action will be taken.');
+        this.warn('[onError] Error occurred but socket is killed. No action will be taken.');
         break;
       }
       default: {
-        this.log('⚠️ [onError] Unknown socket state. Attempting to restart the connection as a precaution.');
+        this.warn('[onError] Unknown socket state. Attempting to restart the connection as a precaution.');
         void this.restart();
       }
     }
@@ -203,7 +209,7 @@ class BaseSocket extends Log {
 
   public handleCloseState(code: number, reason: Buffer): void {
     if (this.socketState === SocketState.KILLED) {
-      this.log('⚠️ [onClose] Socket is killed. No action will be taken on close event.');
+      this.warn('[onClose] Socket is killed. No action will be taken on close event.');
       return;
     }
     this.disconnect();
@@ -236,7 +242,7 @@ class BaseSocket extends Log {
   }
 
   public handleErrorResponse(message: string, timeout: number = 5 * 60 * 1000): void {
-    this.log('❌ [connect]', message);
+    this.error('[connect]', message);
     clearTimeout(this.restartTimeout);
     this.restartTimeout = setTimeout(() => {
       void this.restart();
@@ -278,11 +284,11 @@ class BaseSocket extends Log {
       !this.ws ||
       this.ws.readyState !== WebSocket.OPEN
     ) {
-      this.log('⚠️ [ping] Cannot send ping, socket is not connected.');
+      this.warn('[ping] Cannot send ping, socket is not connected.');
       return;
     }
     this.sendRawCommand('pin', ['<RoundHouseKick>']);
-    clearInterval(this.pingTimeout);
+    clearTimeout(this.pingTimeout);
     this.pingTimeout = setTimeout(() => this.ping(), 60 * 1000);
   }
 

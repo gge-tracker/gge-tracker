@@ -15,6 +15,22 @@ export class Log {
     this._serverType = serverType;
   }
 
+  public error(message: string, ...arguments_: any[]): void {
+    this.log(this.color(31)(message), ...arguments_);
+  }
+
+  public warn(message: string, ...arguments_: any[]): void {
+    this.log(this.color(33)(message), ...arguments_);
+  }
+
+  public success(message: string, ...arguments_: any[]): void {
+    this.log(this.color(32)(message), ...arguments_);
+  }
+
+  public muted(message: string, ...arguments_: any[]): void {
+    this.log(this.gray(message), ...arguments_);
+  }
+
   public log(message: string, ...arguments_: any[]): void {
     const now = new Date();
     const timestamp = this.formatDate(now);
