@@ -258,7 +258,11 @@ services:
       - GF_SECURITY_ADMIN_USER=${GF_USERNAME}
       - GF_SECURITY_ADMIN_PASSWORD=${GF_PASSWORD}
       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+      - GF_PLUGINS_PREINSTALL=grafana-clickhouse-datasource
       - GF_LOG_LEVEL=${GF_LOG_LEVEL}
+      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
     restart: "no"
 
   prometheus:

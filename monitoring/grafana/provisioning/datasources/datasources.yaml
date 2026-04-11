@@ -17,5 +17,9 @@ datasources:
   - name: ClickHouse
     type: grafana-clickhouse-datasource
     jsonData:
-      host: clickhouse
-      username: default
+      port: 8123
+      host: $CLICKHOUSE_HOST
+      username: $CLICKHOUSE_USER
+      protocol: http
+    secureJsonData:
+      password: $CLICKHOUSE_PASSWORD
