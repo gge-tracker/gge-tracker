@@ -46,8 +46,25 @@ class GgeEmpireSocket extends BaseSocket implements GgeEmpireSocketImpl {
         if (lliResponse.payload.status === 21) {
           this.log('❌ [connect] Login failed: Invalid credentials. Please check your USERNAME and PASSWORD.');
           return;
+        } else if (lliResponse.payload.status === 27) {
+          const banDurationinSeconds = lliResponse.payload.data?.RS ? Number(lliResponse.payload.data.RS) : -1;
+          const banDurationMessage =
+            banDurationinSeconds > 0
+              ? `Account is banned for another ${Math.ceil(banDurationinSeconds / 60)} minutes.`
+              : 'Account is permanently banned.';
+          this.log(`❌ [connect] Login failed: Account is banned. ${banDurationMessage}`);
+          setTimeout(
+            () => {
+              this.log('Retrying connection after ban duration...');
+              void this.restart();
+            },
+            banDurationinSeconds > 0 ? banDurationinSeconds * 1000 : 60 * 60 * 1000,
+          );
+        } else {
+          this.handleErrorResponse(
+            `Login failed with status: ${lliResponse.payload.status} 🔄 Retrying in 5 minutes...`,
+          );
         }
-        this.handleErrorResponse(`Login failed with status: ${lliResponse.payload.status} 🔄 Retrying in 5 minutes...`);
       }
     } catch (error) {
       this.handleErrorResponse(error.message + ' 🔄 Retrying connection in 5 minutes...');

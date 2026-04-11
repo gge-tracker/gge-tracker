@@ -65,7 +65,7 @@ class BaseSocket extends Log {
       this.warn('[pingAndCheck] Socket is killed. No ping or connection check will be performed.');
       return;
     }
-    this.log('✅ [connect] Login successful, checking connection...');
+    this.success('[pingAndCheck] Login successful, checking connection...');
     this.connected.set();
     this.socketState = SocketState.CONNECTED;
     // Send initial ping immediately after connection
@@ -75,7 +75,7 @@ class BaseSocket extends Log {
       clearTimeout(this.sendGblTimeout);
       this.sendGblTimeout = setTimeout(() => {
         this.sendJsonCommand('gbl', {});
-        this.log('⌛ [connect] Sent gbl command to socket');
+        this.log('[pingAndCheck] Sent gbl command to socket');
       }, 1000);
     }
     this.nbReconnects = 0;
@@ -111,9 +111,15 @@ class BaseSocket extends Log {
     this.log(`[restart] Restarting socket connection in ${finalDelay} seconds... (Total retries: ${nbReconnects})`);
     this.disconnect();
     clearTimeout(this.restartTimeout);
+    await this.sleep(3000);
+    clearTimeout(this.restartTimeout);
     this.restartTimeout = setTimeout(async () => {
       await this.connectMethod();
     }, finalDelay * 1000);
+  }
+
+  public async sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   public disconnect(): void {
@@ -309,7 +315,6 @@ class BaseSocket extends Log {
     this.connected.clear();
     this.closed.set();
     this.socketState = SocketState.DISCONNECTED;
-    this.clearTimeouts();
     if (this.onError) this.onError(error);
   }
 
@@ -318,7 +323,6 @@ class BaseSocket extends Log {
     this.connected.clear();
     this.closed.set();
     this.socketState = SocketState.DISCONNECTED;
-    this.clearTimeouts();
     if (this.onClose) this.onClose(code, reason);
   }
 
