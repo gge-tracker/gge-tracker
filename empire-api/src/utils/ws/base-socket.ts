@@ -123,13 +123,21 @@ class BaseSocket extends Log {
   }
 
   public disconnect(): void {
-    this.log(this.url, '[disconnect] Disconnecting from socket. Cleaning up resources...');
-    this.connected.clear();
-    this.closed.clear();
-    this.opened.clear();
-    this.socketState = SocketState.DISCONNECTED;
-    this.clearTimeouts();
-    this.ws.close();
+    try {
+      this.log(this.url, '[disconnect] Disconnecting from socket. Cleaning up resources...');
+      this.connected.clear();
+      this.closed.clear();
+      this.opened.clear();
+      this.socketState = SocketState.DISCONNECTED;
+      this.clearTimeouts();
+      this.ws.close();
+    } catch (error) {
+      this.error(
+        this.url,
+        '[disconnect] Error while disconnecting socket:',
+        error instanceof Error ? error.message : error,
+      );
+    }
   }
 
   public async checkConnection(): Promise<void> {
