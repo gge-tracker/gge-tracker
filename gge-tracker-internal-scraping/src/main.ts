@@ -3648,21 +3648,18 @@ export class GenericFetchAndSaveBackend {
     allianceCount?: number;
   }): Promise<void> {
     const durationMs = endTime.getTime() - startTime.getTime();
-    const row = {
-      server,
-      timestamp: endTime.toISOString(),
-      durationMs,
-      playersCreated,
-      alliancesCreated,
-      playersAllianceUpdated,
-      alliancesUpdated,
-      criticalErrors,
-      playerCount,
-      allianceCount,
-    };
     try {
       const clickhouse = new ClickHouse(this.CLICKHOUSE_CONFIG as any);
-      await clickhouse.insert(`INSERT INTO logs.scrapes FORMAT JSONEachRow`, [row]).toPromise();
+      await clickhouse
+        .query(
+          `
+        INSERT INTO logs.scrapes
+        (server, timestamp, durationMs, playersCreated, alliancesCreated, playersAllianceUpdated, alliancesUpdated, criticalErrors, playerCount, allianceCount)
+        VALUES
+        ('${server}', '${Math.floor(endTime.getTime() / 1000)}', ${durationMs}, ${playersCreated}, ${alliancesCreated}, ${playersAllianceUpdated}, ${alliancesUpdated}, ${criticalErrors}, ${playerCount}, ${allianceCount})
+      `,
+        )
+        .toPromise();
       console.log('Logged scrape to ClickHouse:');
     } catch (err: any) {
       console.error('ClickHouse insert error:', err.message);
