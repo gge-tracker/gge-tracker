@@ -783,20 +783,17 @@ export class GenericFetchAndSaveBackend {
     } finally {
       const end = new Date();
       try {
-        await this.logToTempo({
-          name: 'generic-fill-process',
+        await this.logToClickHouse({
           server: this.server,
-          startTime: start.getTime(),
-          endTime: end.getTime(),
-          attributes: {
-            alliancesCreated: this.DB_UPDATES.alliancesCreated,
-            playersCreated: this.DB_UPDATES.playersCreated,
-            playersAllianceUpdated: this.DB_UPDATES.playersAllianceUpdated,
-            alliancesUpdated: this.DB_UPDATES.alliancesUpdated,
-            criticalErrors: this.DB_UPDATES.criticalErrors,
-            playerCount: Object.keys(this.playerLootAndMightPointHistoryList).length || 0,
-            allianceCount: this.customPlayersAttributesList['alliances_count'] || 0,
-          },
+          startTime: new Date(start),
+          endTime: new Date(end),
+          alliancesCreated: this.DB_UPDATES.alliancesCreated,
+          playersCreated: this.DB_UPDATES.playersCreated,
+          playersAllianceUpdated: this.DB_UPDATES.playersAllianceUpdated,
+          alliancesUpdated: this.DB_UPDATES.alliancesUpdated,
+          criticalErrors: this.DB_UPDATES.criticalErrors,
+          playerCount: Object.keys(this.playerLootAndMightPointHistoryList).length || 0,
+          allianceCount: this.customPlayersAttributesList['alliances_count'] || 0,
         });
       } catch {}
       const criticalErrors = this.DB_UPDATES.criticalErrors;
@@ -3627,6 +3624,51 @@ export class GenericFetchAndSaveBackend {
     return { stringValue: String(value) };
   }
 
+  private async logToClickHouse({
+    server,
+    startTime,
+    endTime,
+    playersCreated = 0,
+    alliancesCreated = 0,
+    playersAllianceUpdated = 0,
+    alliancesUpdated = 0,
+    criticalErrors = 0,
+    playerCount = 0,
+    allianceCount = 0,
+  }: {
+    server: string;
+    startTime: Date;
+    endTime: Date;
+    playersCreated?: number;
+    alliancesCreated?: number;
+    playersAllianceUpdated?: number;
+    alliancesUpdated?: number;
+    criticalErrors?: number;
+    playerCount?: number;
+    allianceCount?: number;
+  }): Promise<void> {
+    const durationMs = endTime.getTime() - startTime.getTime();
+    const row = {
+      server,
+      timestamp: endTime.toISOString(),
+      durationMs,
+      playersCreated,
+      alliancesCreated,
+      playersAllianceUpdated,
+      alliancesUpdated,
+      criticalErrors,
+      playerCount,
+      allianceCount,
+    };
+    try {
+      const clickhouse = new ClickHouse(this.CLICKHOUSE_CONFIG as any);
+      await clickhouse.insert(`INSERT INTO logs.scrapes FORMAT JSONEachRow`, [row]).toPromise();
+      console.log('Logged scrape to ClickHouse:');
+    } catch (err: any) {
+      console.error('ClickHouse insert error:', err.message);
+    }
+  }
+
   private async logToTempo({
     name = 'scrape',
     server,
@@ -3646,6 +3688,7 @@ export class GenericFetchAndSaveBackend {
     try {
       traceId = this.generateTraceId();
       spanId = this.generateSpanId();
+
       payload = {
         resourceSpans: [
           {

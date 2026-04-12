@@ -24,3 +24,10 @@ datasources:
       protocol: http
     secureJsonData:
       password: $CLICKHOUSE_PASSWORD
+
+  - name: Tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    basicAuth: false
+    uid: tempo
