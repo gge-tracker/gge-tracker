@@ -14,7 +14,6 @@ import * as mysql from 'mysql2/promise';
 import { RowDataPacket } from 'mysql2/promise';
 import pLimit from 'p-limit';
 import * as pg from 'pg';
-import { exit } from 'process';
 import * as readline from 'readline';
 import { createClient } from 'redis';
 import { HIGHSCORES_CONFIG } from './definitions/highest_scores.config';
@@ -356,6 +355,17 @@ export class GenericFetchAndSaveBackend {
     }
     await this.pgSqlConnection.end();
     Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, this.server);
+
+    await this.logToLoki({
+      job: 'grand-tournament',
+      data: {
+        server: this.server,
+        grandTournamentRecordsInserted:
+          Object.keys(this.DB_UPDATES).length > 0 ? Object.values(this.DB_UPDATES).length : 0,
+        criticalErrors: this.DB_UPDATES.criticalErrors,
+        durationMs: new Date().getTime() - start.getTime(),
+      },
+    });
   }
 
   /**
@@ -390,6 +400,14 @@ export class GenericFetchAndSaveBackend {
     }
     await this.pgSqlConnection.end();
     Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, this.server);
+    await this.logToLoki({
+      job: 'global-rankings-refresh',
+      data: {
+        server: this.server,
+        criticalErrors: this.DB_UPDATES.criticalErrors,
+        durationMs: new Date().getTime() - start.getTime(),
+      },
+    });
   }
 
   /**
@@ -625,6 +643,14 @@ export class GenericFetchAndSaveBackend {
       this.DB_UPDATES.criticalErrors++;
     } finally {
       await this.pgSqlConnection.end();
+      await this.logToLoki({
+        job: 'outer-realms-and-beyond-the-horizon-event-history',
+        data: {
+          server: this.server,
+          criticalErrors: this.DB_UPDATES.criticalErrors,
+          durationMs: new Date().getTime() - start.getTime(),
+        },
+      });
       Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, 'OUTER_REALMS_AND_BEYOND_THE_HORIZON_EVENT_HISTORY');
     }
   }
@@ -669,15 +695,6 @@ export class GenericFetchAndSaveBackend {
   public async executeFillInOrder(): Promise<void> {
     const start = new Date();
     try {
-      await this.logToLoki(
-        JSON.stringify({
-          message: 'Starting fill process',
-          server: this.server,
-          step: 'start',
-          timestamp: start.toISOString(),
-        }),
-        { server: this.server, step: 'start' },
-      );
       Utils.logMessage('=====================================');
       Utils.logMessage(' [info] Starting fill process');
       Utils.logMessage(' [info] Current environment:', this.CURRENT_ENV);
@@ -766,21 +783,18 @@ export class GenericFetchAndSaveBackend {
     } finally {
       const end = new Date();
       const durationMs = end.getTime() - start.getTime();
-      await this.logToLoki(
-        JSON.stringify({
-          message: 'End of data filling',
+      await this.logToLoki({
+        job: 'generic-fill-process',
+        data: {
           server: this.server,
-          step: 'end',
-          criticalErrors: this.DB_UPDATES.criticalErrors,
           alliancesCreated: this.DB_UPDATES.alliancesCreated,
           playersCreated: this.DB_UPDATES.playersCreated,
           playersAllianceUpdated: this.DB_UPDATES.playersAllianceUpdated,
           alliancesUpdated: this.DB_UPDATES.alliancesUpdated,
+          criticalErrors: this.DB_UPDATES.criticalErrors,
           durationMs,
-          timestamp: end.toISOString(),
-        }),
-        { server: this.server, step: 'end' },
-      );
+        },
+      });
       const criticalErrors = this.DB_UPDATES.criticalErrors;
       this.DB_UPDATES.alliancesCreated = 0;
       this.DB_UPDATES.playersCreated = 0;
@@ -799,114 +813,137 @@ export class GenericFetchAndSaveBackend {
   public async updateDungeonsList(): Promise<void> {
     const squares: { [key: string]: { AX1: number; AY1: number; AX2: number; AY2: number } } = {};
     const mapSize = this.MAP_SIZE;
-    let done = 0;
-    console.log('Connection to the database successful');
-    const [rows] = await this.connection.query<RowDataPacket[]>(`
-      SELECT kid, position_x, position_y
-      FROM dungeons
-      WHERE attack_cooldown = 0
-      OR TIMESTAMPADD(SECOND, attack_cooldown, updated_at) <= NOW()`);
     const start = new Date();
-    const totalRequests = rows.length;
-    for (const row of rows) {
-      const { kid, position_x, position_y } = row;
-      const square = await this.getCorrespondingSquare(position_x, position_y, mapSize);
-      if (square) {
-        squares[`${kid}-${position_x}-${position_y}`] = square;
-        const { AX1, AY1, AX2, AY2 } = square;
-        const json = `"KID":${kid},"AX1":${AX1},"AY1":${AY1},"AX2":${AX2},"AY2":${AY2}`;
-        const url: string = encodeURI(this.BASE_API_URL + 'gaa/' + json);
-        try {
-          const response = await axios.get(url);
-          const data = response.data;
-          if (data && data['return_code'] == '0') {
-            const dungeons = data.content?.AI ?? [];
-            for (const dungeon of dungeons) {
-              if (dungeon[0] == '11') {
-                const coordinates = [dungeon[1], dungeon[2]];
-                const time = dungeon[5];
-                // We calculate the time since the last attack
-                const attackedTimeInSeconds = 24 * 60 * 60 - time;
-                // We calculate the date of the last attack
-                const lastAttackDate = new Date(Date.now() - attackedTimeInSeconds * 1000);
-                const playerId = dungeon[6];
-                try {
-                  // We retrieve the old player_id
-                  const [rows] = await this.connection.execute(
-                    `SELECT player_id FROM dungeons WHERE kid = ? AND position_x = ? AND position_y = ?`,
-                    [kid, coordinates[0], coordinates[1]],
-                  );
-                  const oldPlayerId = (rows as any[])[0]?.player_id;
-                  if (oldPlayerId !== playerId) {
+    let done = 0;
+    try {
+      console.log('Connection to the database successful');
+      const [rows] = await this.connection.query<RowDataPacket[]>(`
+        SELECT kid, position_x, position_y
+        FROM dungeons
+        WHERE attack_cooldown = 0
+        OR TIMESTAMPADD(SECOND, attack_cooldown, updated_at) <= NOW()`);
+      const totalRequests = rows.length;
+      for (const row of rows) {
+        const { kid, position_x, position_y } = row;
+        const square = await this.getCorrespondingSquare(position_x, position_y, mapSize);
+        if (square) {
+          squares[`${kid}-${position_x}-${position_y}`] = square;
+          const { AX1, AY1, AX2, AY2 } = square;
+          const json = `"KID":${kid},"AX1":${AX1},"AY1":${AY1},"AX2":${AX2},"AY2":${AY2}`;
+          const url: string = encodeURI(this.BASE_API_URL + 'gaa/' + json);
+          try {
+            const response = await axios.get(url);
+            const data = response.data;
+            if (data && data['return_code'] == '0') {
+              const dungeons = data.content?.AI ?? [];
+              for (const dungeon of dungeons) {
+                if (dungeon[0] == '11') {
+                  const coordinates = [dungeon[1], dungeon[2]];
+                  const time = dungeon[5];
+                  // We calculate the time since the last attack
+                  const attackedTimeInSeconds = 24 * 60 * 60 - time;
+                  // We calculate the date of the last attack
+                  const lastAttackDate = new Date(Date.now() - attackedTimeInSeconds * 1000);
+                  const playerId = dungeon[6];
+                  try {
+                    // We retrieve the old player_id
+                    const [rows] = await this.connection.execute(
+                      `SELECT player_id FROM dungeons WHERE kid = ? AND position_x = ? AND position_y = ?`,
+                      [kid, coordinates[0], coordinates[1]],
+                    );
+                    const oldPlayerId = (rows as any[])[0]?.player_id;
+                    if (oldPlayerId !== playerId) {
+                      await this.connection.execute(
+                        `INSERT INTO dungeon_player_state (kid, position_x, position_y, player_id, last_attack_at)
+                        VALUES (?, ?, ?, ?, ?)`,
+                        [kid, coordinates[0], coordinates[1], playerId, lastAttackDate],
+                      );
+                    }
                     await this.connection.execute(
-                      `INSERT INTO dungeon_player_state (kid, position_x, position_y, player_id, last_attack_at)
-                      VALUES (?, ?, ?, ?, ?)`,
-                      [kid, coordinates[0], coordinates[1], playerId, lastAttackDate],
+                      `UPDATE dungeons
+                      SET attack_cooldown = ?, player_id = ?, updated_at = NOW()
+                      WHERE kid = ? AND position_x = ? AND position_y = ?`,
+                      [time, playerId, kid, coordinates[0], coordinates[1]],
+                    );
+                    this.DB_UPDATES.playersCreated++;
+                  } catch (error) {
+                    console.log(error);
+                    throw new Error(
+                      'Error while updating dungeon data in the database: ' +
+                        (error instanceof Error ? error.message : String(error)),
                     );
                   }
-                  await this.connection.execute(
-                    `UPDATE dungeons
-                    SET attack_cooldown = ?, player_id = ?, updated_at = NOW()
-                    WHERE kid = ? AND position_x = ? AND position_y = ?`,
-                    [time, playerId, kid, coordinates[0], coordinates[1]],
-                  );
-                } catch (error) {
-                  console.log(error);
-                  exit(1);
                 }
               }
+            } else if (!data['return_code'] || data['return_code'] === '-1') {
+              if (this.WEBHOOK_URL) {
+                const message = {
+                  content: 'An error occurred: ' + JSON.stringify(row),
+                  username: 'Dungeon Fetcher',
+                };
+                await axios.post(this.WEBHOOK_URL, message);
+                console.log('Message sent to Discord webhook');
+                return;
+              }
+              this.DB_UPDATES.criticalErrors++;
+              console.error('Invalid response for URL:', url, data);
             }
-          } else if (!data['return_code'] || data['return_code'] === '-1') {
-            if (this.WEBHOOK_URL) {
-              const message = {
-                content: 'An error occurred: ' + JSON.stringify(row),
-                username: 'Dungeon Fetcher',
-              };
-              await axios.post(this.WEBHOOK_URL, message);
-              console.log('Message sent to Discord webhook');
-              exit();
+            if (done % 20 === 0) {
+              await new Promise((resolve) => setTimeout(resolve, 30));
             }
+            done++;
+            if (process.stdout.isTTY) {
+              const percent = (done / totalRequests) * 100;
+              const barWidth = 40;
+              const filled = Math.round(barWidth * (done / totalRequests));
+              const bar =
+                '[' +
+                '█'.repeat(filled) +
+                '-'.repeat(barWidth - filled) +
+                `] ${percent.toFixed(1)}% (${done}/${totalRequests})`;
+              process.stdout.clearLine(0);
+              process.stdout.cursorTo(0);
+              process.stdout.write(bar);
+            }
+          } catch (err: AxiosError | any) {
+            if (err instanceof AxiosError) {
+              console.error('Axios error on URL:', url, err.message);
+              throw new Error(`Fetch error: ${err.message}`);
+            }
+            console.error('Error on URL:', url);
+            throw new Error('Terminating due to error while fetching dungeon data.');
           }
-          if (done % 20 === 0) {
-            await new Promise((resolve) => setTimeout(resolve, 30));
-          }
-          done++;
-          if (process.stdout.isTTY) {
-            const percent = (done / totalRequests) * 100;
-            const barWidth = 40;
-            const filled = Math.round(barWidth * (done / totalRequests));
-            const bar =
-              '[' +
-              '█'.repeat(filled) +
-              '-'.repeat(barWidth - filled) +
-              `] ${percent.toFixed(1)}% (${done}/${totalRequests})`;
-            process.stdout.clearLine(0);
-            process.stdout.cursorTo(0);
-            process.stdout.write(bar);
-          }
-        } catch (err: AxiosError | any) {
-          if (err instanceof AxiosError) {
-            console.error('Axios error on URL:', url, err.message);
-            throw new Error(`Fetch error: ${err.message}`);
-          }
-          console.error('Error on URL:', url);
-          throw new Error('Terminating due to error while fetching dungeon data.');
         }
       }
+    } catch (error) {
+      console.error('Error while updating dungeons list:', error);
+      this.DB_UPDATES.criticalErrors++;
+    } finally {
+      const end = new Date();
+      const elapsedTime = end.getTime() - start.getTime();
+      const elapsedTimeInSeconds = Math.floor(elapsedTime / 1000);
+      const elapsedTimeInMinutes = Math.floor(elapsedTimeInSeconds / 60);
+      console.log(
+        'Time taken to retrieve dungeons:',
+        elapsedTimeInSeconds,
+        'seconds (',
+        elapsedTimeInMinutes,
+        'minutes)',
+      );
+      console.log('Dungeons list updated successfully');
+      console.log('Squares count:', Object.keys(squares).length);
+      await this.logToLoki({
+        job: 'update-dungeons-list',
+        data: {
+          server: this.server,
+          criticalErrors: this.DB_UPDATES.criticalErrors,
+          durationMs: elapsedTime,
+          squaresCount: Object.keys(squares).length,
+          dungeonsUpdated: this.DB_UPDATES.playersCreated,
+        },
+      });
+      await this.connection.end();
     }
-    const end = new Date();
-    const elapsedTime = end.getTime() - start.getTime();
-    const elapsedTimeInSeconds = Math.floor(elapsedTime / 1000);
-    const elapsedTimeInMinutes = Math.floor(elapsedTimeInSeconds / 60);
-    console.log(
-      'Time taken to retrieve dungeons:',
-      elapsedTimeInSeconds,
-      'seconds (',
-      elapsedTimeInMinutes,
-      'minutes)',
-    );
-    console.log('Dungeons list updated successfully');
-    console.log('Squares count:', Object.keys(squares).length);
   }
 
   public getCorrespondigLtByOuterRealmsType(type: string): string | null {
@@ -926,12 +963,12 @@ export class GenericFetchAndSaveBackend {
     const start = new Date();
     const type = 'hgh';
     const LID = 1;
+    let LT: number | null = null;
     try {
       Utils.logMessage('=====================================');
       Utils.logMessage(' Starting Outer Realms data fetch');
       Utils.logMessage(' Current environment:', this.CURRENT_ENV);
       Utils.logMessage('=====================================');
-      let LT: number | null = null;
       let initialResponse: AxiosResponse<any>;
       const redisClient = createClient({
         url: 'redis://redis-server:6379',
@@ -1096,6 +1133,8 @@ export class GenericFetchAndSaveBackend {
           password: this.CLICKHOUSE_CONFIG!.password as string,
         };
 
+        this.DB_UPDATES.playersCreated = playerArray.length;
+
         const fetchDateStr = new Date(fetchDate).toISOString().slice(0, 19).replace('T', ' ');
         for (let i = 0; i < playerArray.length; i += batchSize) {
           const batch = playerArray.slice(i, i + batchSize);
@@ -1165,6 +1204,16 @@ export class GenericFetchAndSaveBackend {
         Utils.logMessage('.');
       }
       Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, this.server);
+      await this.logToLoki({
+        job: 'outer-realms-data-fetch',
+        data: {
+          server: this.server,
+          criticalErrors: this.DB_UPDATES.criticalErrors,
+          playersCreated: this.DB_UPDATES.playersCreated,
+          LT,
+          durationMs: duration,
+        },
+      });
     }
   }
 
@@ -3234,9 +3283,10 @@ export class GenericFetchAndSaveBackend {
     lt: number,
     increment: number = 10,
     levelCategory: number = 6,
-  ): Promise<void> {
+  ): Promise<number> {
     try {
       Utils.logMessage(' Executing custom event history for', eventName);
+      const start = Date.now();
       const pgQuery = `
         SELECT event_num, player_name, level, point, rank
         FROM ${tableEventHistoryName}
@@ -3256,8 +3306,8 @@ export class GenericFetchAndSaveBackend {
       let data = await this.fetchDataAndReturn(lt, levelCategory, i);
       if (!data || data['return_code'] != '0') {
         if (i < 10) {
-          Utils.logMessage(' [info] Invalid event (0)');
-          return;
+          Utils.logMessage(' [info] Invalid event');
+          return -1;
         } else {
           const tentatives = 3;
           let k = 0;
@@ -3269,8 +3319,8 @@ export class GenericFetchAndSaveBackend {
         }
       }
       if (!data || data['return_code'] != '0' || !data?.content?.LR) {
-        Utils.logMessage(' [info] Invalid event (1)');
-        return;
+        Utils.logMessage(' [info] Invalid event');
+        return -1;
       }
       const max = data?.content?.LR ?? 50000;
       if (max && Number(max) >= 0) {
@@ -3280,7 +3330,7 @@ export class GenericFetchAndSaveBackend {
           const content = data.content.L;
           if (await this.checkEventAlreadyExists(content, result.rows, 'trace')) {
             Utils.logMessage(' [info] No new event to fill');
-            return;
+            return -1;
           }
           // Insert the new event
           Utils.logMessage(' [info] New event to fill');
@@ -3317,7 +3367,7 @@ export class GenericFetchAndSaveBackend {
               Utils.logMessage('p:', JSON.stringify(p));
               Utils.logMessage('=========== END STACK TRACE =============');
               this.DB_UPDATES.criticalErrors++;
-              return;
+              return -1;
             } else {
               const ids: number[] = [];
               for (const singleData of fetchData) {
@@ -3414,6 +3464,7 @@ export class GenericFetchAndSaveBackend {
             }
           }
           Utils.logMessage(' [info] Insertion of players into the database for event ' + eventName);
+          let invalidPlayerIdCount = 0;
           // Adding players
           for (let i = 0; i < entries.length; i += batchSize) {
             const chunk = entries.slice(i, i + batchSize);
@@ -3424,6 +3475,7 @@ export class GenericFetchAndSaveBackend {
               const playerIdNum = Number(playerId);
               if (Number.isNaN(playerIdNum)) {
                 Utils.logMessage(' [info] Invalid player ID:', playerId);
+                invalidPlayerIdCount++;
                 continue;
               }
               const { server, level, legendaryLevel, point, rank, realPlayerId, playerName } = entity;
@@ -3448,13 +3500,25 @@ export class GenericFetchAndSaveBackend {
             }
           }
           Utils.logMessage(' [info] Insertion of event data for ' + eventName + ' completed successfully');
+          await this.logToLoki({
+            job: 'event-history-scraper-' + eventName.toLowerCase().replace(/\s/g, '-'),
+            level: 'info',
+            data: {
+              playersAdded: entries.length,
+              invalidPlayerIds: invalidPlayerIdCount,
+              eventNum: lastEventNum + 1,
+              durationMs: Date.now() - start,
+            },
+          });
+
+          return 0;
         } else {
           Utils.logMessage(' [info] No data found for event ' + eventName);
-          return;
+          return -1;
         }
       } else {
         Utils.logMessage(' [info] No data found for event ' + eventName);
-        return;
+        return -1;
       }
     } catch (error) {
       Utils.logMessage('Error while filling event history for ' + eventName);
@@ -3463,6 +3527,7 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage(error);
       Utils.logMessage('=========== END STACK TRACE =============');
       this.DB_UPDATES.criticalErrors++;
+      return -1;
     }
   }
 
@@ -3531,27 +3596,32 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
-  private async logToLoki(message: string, labels = {}, level = 'info'): Promise<void> {
+  private async logToLoki({
+    data,
+    level = 'info',
+    job = 'cron-scraper',
+  }: {
+    data: Record<string, any>;
+    level?: 'debug' | 'info' | 'warn' | 'error';
+    job?: string;
+  }): Promise<void> {
     const logEntry = {
-      message,
-      timestamp: new Date().toISOString(),
-      ...labels,
+      ...data,
+      ts: new Date().toISOString(),
     };
     const payload = {
       streams: [
         {
           stream: {
-            job: 'cron-scraper',
+            job,
             level,
-            ...labels,
           },
           values: [[`${Date.now()}000000`, JSON.stringify(logEntry)]],
         },
       ],
     };
     try {
-      const LOKI_URL = 'http://loki:3100/loki/api/v1/push';
-      await axios.post(LOKI_URL, payload);
+      await axios.post('http://loki:3100/loki/api/v1/push', payload);
     } catch (err: any) {
       console.error('Error sending log to Loki:', err.message);
     }
