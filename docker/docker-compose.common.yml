@@ -266,7 +266,7 @@ services:
     restart: "no"
 
   tempo:
-    image: grafana/tempo:main-36d0aae
+    image: grafana/tempo:2.8.0
     mem_limit: 500m
     cpu_quota: 50000
     cpu_period: 100000

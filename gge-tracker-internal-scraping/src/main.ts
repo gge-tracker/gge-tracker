@@ -3601,11 +3601,12 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
-  private generateId(length: number): string {
-    return crypto
-      .randomUUID()
-      .replace(/-/g, '')
-      .slice(0, length / 2);
+  private generateTraceId(): string {
+    return crypto.randomUUID().replace(/-/g, '');
+  }
+
+  private generateSpanId(): string {
+    return crypto.randomUUID().replace(/-/g, '').slice(0, 16);
   }
 
   private formatAttribute(value: any): {
@@ -3639,11 +3640,13 @@ export class GenericFetchAndSaveBackend {
     endTime: number;
     attributes?: Record<string, any>;
   }): Promise<void> {
+    let traceId: string;
+    let spanId: string;
+    let payload: any;
     try {
-      const traceId = this.generateId(32);
-      const spanId = this.generateId(16);
-
-      const payload = {
+      traceId = this.generateTraceId();
+      spanId = this.generateSpanId();
+      payload = {
         resourceSpans: [
           {
             resource: {
@@ -3679,6 +3682,7 @@ export class GenericFetchAndSaveBackend {
       await axios.post('http://tempo:4318/v1/traces', payload);
     } catch (err: any) {
       console.error('Error sending trace to Tempo:', err.message);
+      console.error('Payload was:', JSON.stringify(payload));
     }
   }
 
