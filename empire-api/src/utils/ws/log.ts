@@ -74,7 +74,8 @@ export class Log {
       33, 39, 45, 51, 75, 81, 87, 112, 118, 154, 178, 184, 220, 202, 208, 214, 196, 197, 203, 165, 171, 177, 129, 135,
       141,
     ];
-    const code = colors[hash % colors.length];
+    const index = Math.floor((hash / 2 ** 32) * colors.length);
+    const code = colors[index % colors.length];
     return this.color(code);
   }
 
@@ -89,9 +90,9 @@ export class Log {
   }
 
   private hashString(string_: string): number {
-    let hash = 0;
+    let hash = 5381;
     for (let index = 0; index < string_.length; index++) {
-      hash = string_.codePointAt(index) + ((hash << 5) - hash);
+      hash = (hash * 33) ^ string_.codePointAt(index);
     }
     return Math.abs(hash);
   }
