@@ -793,6 +793,8 @@ export class GenericFetchAndSaveBackend {
           alliancesUpdated: this.DB_UPDATES.alliancesUpdated,
           criticalErrors: this.DB_UPDATES.criticalErrors,
           durationMs,
+          startTime: start.toISOString(),
+          endTime: end.toISOString(),
         },
       });
       const criticalErrors = this.DB_UPDATES.criticalErrors;
