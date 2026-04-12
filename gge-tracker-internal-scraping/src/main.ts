@@ -792,6 +792,8 @@ export class GenericFetchAndSaveBackend {
           playersAllianceUpdated: this.DB_UPDATES.playersAllianceUpdated,
           alliancesUpdated: this.DB_UPDATES.alliancesUpdated,
           criticalErrors: this.DB_UPDATES.criticalErrors,
+          playerCount: Object.keys(this.playerLootAndMightPointHistoryList).length || 0,
+          allianceCount: this.customPlayersAttributesList['alliances_count'] || 0,
           durationMs,
           startTime: start.toISOString(),
           endTime: end.toISOString(),
@@ -2922,6 +2924,7 @@ export class GenericFetchAndSaveBackend {
       const alliancesCount = new Set(
         playerLootMightEntries.map(([, val]) => val[2]).filter((id) => id !== undefined && id !== -1),
       ).size;
+      this.customPlayersAttributesList['alliances_count'] = alliancesCount;
       // We get the number of players who are in protection and who are not new players (level >= 30)
       const playersInPeace = playerLootMightEntries.filter(
         ([, val]) => val[6] && val[6] > 0 && val[6] < 60 * 60 * 24 * 63 && val[8] && val[8] >= 30,
