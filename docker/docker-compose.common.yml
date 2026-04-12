@@ -265,6 +265,19 @@ services:
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
     restart: "no"
 
+  tempo:
+    image: grafana/tempo:main-36d0aae
+    mem_limit: 500m
+    cpu_quota: 50000
+    cpu_period: 100000
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./../monitoring/tempo.yaml:/etc/tempo.yaml
+    container_name: tempo
+    networks:
+      - backend
+    restart: always
+
   prometheus:
     image: prom/prometheus:v3.6.0
     mem_limit: 300m

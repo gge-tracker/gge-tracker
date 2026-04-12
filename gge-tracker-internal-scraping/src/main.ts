@@ -782,23 +782,23 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('=========== END STACK TRACE =============');
     } finally {
       const end = new Date();
-      const durationMs = end.getTime() - start.getTime();
-      await this.logToLoki({
-        job: 'generic-fill-process',
-        data: {
+      try {
+        await this.logToTempo({
+          name: 'generic-fill-process',
           server: this.server,
-          alliancesCreated: this.DB_UPDATES.alliancesCreated,
-          playersCreated: this.DB_UPDATES.playersCreated,
-          playersAllianceUpdated: this.DB_UPDATES.playersAllianceUpdated,
-          alliancesUpdated: this.DB_UPDATES.alliancesUpdated,
-          criticalErrors: this.DB_UPDATES.criticalErrors,
-          playerCount: Object.keys(this.playerLootAndMightPointHistoryList).length || 0,
-          allianceCount: this.customPlayersAttributesList['alliances_count'] || 0,
-          durationMs,
-          startTime: start.toISOString(),
-          endTime: end.toISOString(),
-        },
-      });
+          startTime: start.getTime(),
+          endTime: end.getTime(),
+          attributes: {
+            alliancesCreated: this.DB_UPDATES.alliancesCreated,
+            playersCreated: this.DB_UPDATES.playersCreated,
+            playersAllianceUpdated: this.DB_UPDATES.playersAllianceUpdated,
+            alliancesUpdated: this.DB_UPDATES.alliancesUpdated,
+            criticalErrors: this.DB_UPDATES.criticalErrors,
+            playerCount: Object.keys(this.playerLootAndMightPointHistoryList).length || 0,
+            allianceCount: this.customPlayersAttributesList['alliances_count'] || 0,
+          },
+        });
+      } catch {}
       const criticalErrors = this.DB_UPDATES.criticalErrors;
       this.DB_UPDATES.alliancesCreated = 0;
       this.DB_UPDATES.playersCreated = 0;
@@ -3598,6 +3598,87 @@ export class GenericFetchAndSaveBackend {
       } else {
         throw error;
       }
+    }
+  }
+
+  private generateId(length: number): string {
+    return crypto
+      .randomUUID()
+      .replace(/-/g, '')
+      .slice(0, length / 2);
+  }
+
+  private formatAttribute(value: any): {
+    stringValue?: string;
+    intValue?: number;
+    doubleValue?: number;
+    boolValue?: boolean;
+  } {
+    if (typeof value === 'number') {
+      if (Number.isInteger(value)) {
+        return { intValue: value };
+      }
+      return { doubleValue: value };
+    }
+    if (typeof value === 'boolean') {
+      return { boolValue: value };
+    }
+    return { stringValue: String(value) };
+  }
+
+  private async logToTempo({
+    name = 'scrape',
+    server,
+    startTime,
+    endTime,
+    attributes = {},
+  }: {
+    name?: string;
+    server: string;
+    startTime: number;
+    endTime: number;
+    attributes?: Record<string, any>;
+  }): Promise<void> {
+    try {
+      const traceId = this.generateId(32);
+      const spanId = this.generateId(16);
+
+      const payload = {
+        resourceSpans: [
+          {
+            resource: {
+              attributes: [{ key: 'service.name', value: { stringValue: 'scraper' } }],
+            },
+            scopeSpans: [
+              {
+                scope: {
+                  name: 'custom-scraper',
+                },
+                spans: [
+                  {
+                    traceId,
+                    spanId,
+                    name,
+                    kind: 1,
+                    startTimeUnixNano: `${startTime * 1_000_000}`,
+                    endTimeUnixNano: `${endTime * 1_000_000}`,
+                    attributes: [
+                      { key: 'server', value: { stringValue: server } },
+                      ...Object.entries(attributes).map(([key, value]) => ({
+                        key,
+                        value: this.formatAttribute(value),
+                      })),
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+      await axios.post('http://tempo:4318/v1/traces', payload);
+    } catch (err: any) {
+      console.error('Error sending trace to Tempo:', err.message);
     }
   }
 
