@@ -2,6 +2,7 @@ import WebSocket from 'ws';
 import { AsyncEvent } from '../event.js';
 import { HeadersUtilities } from '../nested-headers.js';
 import { Log } from './log.js';
+import * as net from 'node:net';
 
 export enum GgeServerType {
   E4K = 'E4K',
@@ -30,6 +31,7 @@ class BaseSocket extends Log {
   protected url: string;
   protected serverHeader: string;
   protected messages: any[];
+  protected socket: net.Socket;
   protected ws: WebSocket;
   protected username: string;
   protected password: string;
@@ -67,10 +69,14 @@ class BaseSocket extends Log {
     }
     this.success('[pingAndCheck] Login successful, checking connection...');
     this.connected.set();
-    this.socketState = SocketState.CONNECTED;
-    // Send initial ping after 5 seconds to allow the connection to stabilize.
-    // Subsequent pings will be sent every 60 seconds in the ping() method.
-    setTimeout(() => this.ping(), 5000);
+    this.setSocketState(SocketState.CONNECTED);
+    if (this.ws) {
+      // Send initial ping after 5 seconds to allow the connection to stabilize.
+      // Subsequent pings will be sent every 60 seconds in the ping() method.
+      setTimeout(() => this.ping(), 5000);
+    } else {
+      this.muted('[pingAndCheck] No WebSocket instance available. Ping will not be sent');
+    }
     if (this.hasGbl) {
       clearTimeout(this.sendGblTimeout);
       this.sendGblTimeout = setTimeout(() => {
@@ -85,15 +91,13 @@ class BaseSocket extends Log {
   }
 
   public async restart(instant = false): Promise<void> {
-    this.log('[restart] Restarting socket connection...');
-    this.connected.clear();
-    this.closed.clear();
-    this.opened.clear();
+    clearTimeout(this.restartTimeout);
     if (this.socketState === SocketState.KILLED) {
       this.warn('[restart] Socket is killed. Restart will not be performed.');
       return;
     }
-    this.socketState = SocketState.DISCONNECTED;
+    this.log('[restart] Disconnecting and restarting socket connection.');
+    this.disconnect();
     const nbReconnects = this.nbReconnects++;
     const randomDelay = Math.floor(Math.random() * 30);
     let defaultDelay = 120;
@@ -108,11 +112,9 @@ class BaseSocket extends Log {
       }
     }
     const finalDelay = instant ? 0 : defaultDelay + randomDelay;
-    this.log(`[restart] Restarting socket connection in ${finalDelay} seconds... (Total retries: ${nbReconnects})`);
-    this.disconnect();
-    clearTimeout(this.restartTimeout);
     await this.sleep(3000);
     clearTimeout(this.restartTimeout);
+    this.log(`[restart] Attempting to restart socket connection in ${finalDelay} seconds...`);
     this.restartTimeout = setTimeout(async () => {
       await this.connectMethod();
     }, finalDelay * 1000);
@@ -124,13 +126,22 @@ class BaseSocket extends Log {
 
   public disconnect(): void {
     try {
-      this.log(this.url, '[disconnect] Disconnecting from socket. Cleaning up resources...');
+      if (this.socketState === SocketState.DISCONNECTED) {
+        this.muted('[disconnect] Socket is already disconnected. No action will be taken.');
+        return;
+      } else if (this.socketState !== SocketState.KILLED) {
+        this.setSocketState(SocketState.DISCONNECTED);
+      }
+      this.log(this.url, '[disconnect] Disconnecting from socket (state:', this.socketState, ')...');
       this.connected.clear();
       this.closed.clear();
       this.opened.clear();
-      this.socketState = SocketState.DISCONNECTED;
       this.clearTimeouts();
-      this.ws.close();
+      if (this.ws) this.ws.close();
+      if (this.socket) this.socket.destroy();
+      if (this.socketState === SocketState.KILLED) {
+        this.muted('[disconnect] Socket is killed. No further action will be taken after disconnecting.');
+      }
     } catch (error) {
       this.error(
         this.url,
@@ -179,11 +190,12 @@ class BaseSocket extends Log {
       await this.waitForJsonResponse('gpi');
       clearTimeout(this.checkConnectionTimeout);
       this.checkConnectionTimeout = setTimeout(() => this.checkConnection(), 15 * 60 * 1000);
-      this.muted('[checkConnection] Connection check successful. Next check in 15 minutes.');
+      // this.muted('[checkConnection] Connection check successful. Next check in 15 minutes.');
     } catch (error) {
       this.error(`[checkConnection] Connection check failed, restarting socket in 10 seconds...`);
       this.error('Error details:', error instanceof Error ? error.message : error);
-      clearTimeout(this.restartTimeout);
+      this.log('Disconnecting and attempting to restart socket connection due to failed connection check.');
+      this.disconnect();
       this.restartTimeout = setTimeout(() => {
         if (this.reconnect && this.socketState !== SocketState.KILLED) {
           this.warn('[checkConnection] Connection check failed. Restarting socket now.');
@@ -239,7 +251,7 @@ class BaseSocket extends Log {
     this.opened.clear();
     this.closed.clear();
     this.connected.clear();
-    this.socketState = SocketState.CONNECTING;
+    this.setSocketState(SocketState.CONNECTING);
     this.ws = new WebSocket(this.url);
     this.nbReconnects = 0;
     this.ws.on('open', () => this._onOpen());
@@ -248,10 +260,18 @@ class BaseSocket extends Log {
     this.ws.on('close', (code, reason) => this._onClose(code, reason));
   }
 
+  public setSocketState(state: SocketState): void {
+    if (this.socketState === SocketState.KILLED) {
+      this.warn('[setSocketState] Socket is killed. Socket state will not be changed from KILLED to', state);
+      return;
+    }
+    this.socketState = state;
+  }
+
   public kill(): void {
     this.log('💀 [kill] Killing socket connection. This action is irreversible.');
     this.reconnect = false;
-    this.socketState = SocketState.KILLED;
+    this.setSocketState(SocketState.KILLED);
     this.disconnect();
   }
 
@@ -331,18 +351,12 @@ class BaseSocket extends Log {
   }
 
   private _onError(error: unknown): void {
-    this.opened.clear();
-    this.connected.clear();
-    this.closed.set();
-    this.socketState = SocketState.DISCONNECTED;
+    this.disconnect();
     if (this.onError) this.onError(error);
   }
 
   private _onClose(code: number, reason: Buffer<ArrayBufferLike>): void {
-    this.opened.clear();
-    this.connected.clear();
-    this.closed.set();
-    this.socketState = SocketState.DISCONNECTED;
+    this.disconnect();
     if (this.onClose) this.onClose(code, reason);
   }
 

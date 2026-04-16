@@ -8,7 +8,6 @@ const E4kEnumLoginStatus = {
 };
 
 class GgeEmpire4KingdomsTcp extends BaseSocket implements GgeEmpireSocketImpl {
-  private socket: net.Socket;
   private _buffer = Buffer.alloc(0);
   constructor(url: string, serverHeader: string, username: string, password: string, autoReconnect = true) {
     super(url, serverHeader, GgeServerType.E4K, autoReconnect);
@@ -32,13 +31,18 @@ class GgeEmpire4KingdomsTcp extends BaseSocket implements GgeEmpireSocketImpl {
     try {
       console.log('🔌 [connect] Connecting to Empire4Kingdoms TCP socket server:', this.url);
       const { host, port } = await this.getHostAndPort();
-      this.socket = net.createConnection(port, host, () => {
-        this.log('✅ [connect] TCP socket connected to', this.url);
-        this.opened.set();
-      });
 
       this.onError = (error): void => this.handleErrorState(error);
       this.onClose = (code, reason): void => this.handleCloseState(code, Buffer.from(reason));
+
+      this.socket = net
+        .createConnection(port, host, () => {
+          this.log('✅ [connect] TCP socket connected to', this.url);
+          this.opened.set();
+        })
+        .on('close', (code, reason) => this.handleCloseState(code, Buffer.from(reason)))
+        .on('error', (error) => this.handleErrorState(error))
+        .on('data', (data) => this.handleTcpData(data));
       this.socket.on('data', (data: Buffer): void => this.handleTcpData(data));
 
       if (!(await this.opened.wait(60_000))) throw new Error('Socket not connected');
