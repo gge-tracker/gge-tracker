@@ -81,9 +81,12 @@ export abstract class SocketService {
     };
   }
 
-  public static connectSockets(sockets: { [key: string]: GgeEmpireSocket | GgeEmpire4KingdomsTcp }): void {
+  public static async connectSockets(sockets: {
+    [key: string]: GgeEmpireSocket | GgeEmpire4KingdomsTcp;
+  }): Promise<void> {
     for (const socket of Object.values(sockets)) {
       void socket.connect();
+      await SocketService.sleep(100);
     }
   }
 
@@ -124,5 +127,9 @@ export abstract class SocketService {
         10 * 60 * 1000,
       );
     }
+  }
+
+  private static sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
