@@ -3660,7 +3660,6 @@ export class GenericFetchAndSaveBackend {
       `,
         )
         .toPromise();
-      console.log('Logged scrape to ClickHouse:');
     } catch (err: any) {
       console.error('ClickHouse insert error:', err.message);
     }

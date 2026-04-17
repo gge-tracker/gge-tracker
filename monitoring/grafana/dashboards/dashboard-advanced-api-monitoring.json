@@ -1646,7 +1646,7 @@
     ]
   },
   "timezone": "",
-  "title": "[gge-tracker] full api monitoring",
+  "title": "[gge-tracker] API monitoring",
   "uid": "dashboard-log-backend-clickhouse",
   "version": 41,
   "weekStart": "",

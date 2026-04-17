@@ -1179,7 +1179,7 @@
     ]
   },
   "timezone": "",
-  "title": "[gge-tracker] basic api monitoring",
+  "title": "[gge-tracker] API monitoring - Basic",
   "uid": "dashboard-log-backend-clickhouse-basic",
   "version": 2,
   "weekStart": ""

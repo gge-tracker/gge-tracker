@@ -685,7 +685,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "[gge-tracker] Containers Monitoring",
+  "title": "[gge-tracker] Docker Containers Monitoring",
   "uid": "deksb4lti6whsd",
   "version": 1
 }
