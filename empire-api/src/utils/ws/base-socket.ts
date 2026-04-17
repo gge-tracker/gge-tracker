@@ -38,6 +38,7 @@ class BaseSocket extends Log {
   protected reconnect: boolean;
   protected hasGbl: boolean;
   protected nbReconnects: number;
+  protected serverType: GgeServerType;
   protected onSend: (data: string) => void;
   protected onOpen: (ws: WebSocket) => void;
   protected onMessage: (message: string, parsedMessage: { type: string; payload: any }) => Promise<void> | void;
@@ -47,6 +48,7 @@ class BaseSocket extends Log {
   constructor(url: string, serverHeader: string, serverType: GgeServerType, autoReconnect = true) {
     super(serverHeader, serverType);
     this.url = url;
+    this.serverType = serverType;
     this.serverHeader = serverHeader;
     this.onSend = null;
     this.onOpen = null;
@@ -70,13 +72,8 @@ class BaseSocket extends Log {
     this.success('[pingAndCheck] Login successful, checking connection...');
     this.connected.set();
     this.setSocketState(SocketState.CONNECTED);
-    if (this.ws) {
-      // Send initial ping after 5 seconds to allow the connection to stabilize.
-      // Subsequent pings will be sent every 60 seconds in the ping() method.
-      setTimeout(() => this.ping(), 5000);
-    } else {
-      this.muted('[pingAndCheck] No WebSocket instance available. Ping will not be sent');
-    }
+    setTimeout(() => this.ping(), 5000);
+
     if (this.hasGbl) {
       clearTimeout(this.sendGblTimeout);
       this.sendGblTimeout = setTimeout(() => {
@@ -320,8 +317,8 @@ class BaseSocket extends Log {
     if (
       !this.connected.isSet ||
       this.socketState !== SocketState.CONNECTED ||
-      !this.ws ||
-      this.ws.readyState !== WebSocket.OPEN
+      (!this.socket && (!this.ws || this.ws.readyState !== WebSocket.OPEN)) ||
+      (this.socket && this.socket.destroyed)
     ) {
       this.warn(
         '[ping] Cannot send ping, socket is not connected :',
@@ -336,7 +333,8 @@ class BaseSocket extends Log {
     }
     this.sendRawCommand('pin', ['<RoundHouseKick>']);
     clearTimeout(this.pingTimeout);
-    this.pingTimeout = setTimeout(() => this.ping(), 60 * 1000);
+    const timeout = this.serverType === GgeServerType.E4K ? 30 : 60;
+    this.pingTimeout = setTimeout(() => this.ping(), timeout * 1000);
   }
 
   private _onOpen(): void {
