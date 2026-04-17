@@ -245,6 +245,7 @@ class BaseSocket extends Log {
       'and reason:',
       reason ? reason.toString() : 'No reason provided',
     );
+    void this.restart();
   }
 
   public init(): void {
