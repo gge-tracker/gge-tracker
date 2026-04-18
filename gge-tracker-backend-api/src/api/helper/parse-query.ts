@@ -136,6 +136,7 @@ export interface QuerySchema {
   minActivePlayerCount: QueryField<number | undefined>;
   maxActivePlayerCount: QueryField<number | undefined>;
   kingdomFilter: QueryField<number[] | undefined>;
+  stormyIslandsFilter: QueryField<number | undefined>;
 }
 
 export const querySchema = (limits: {
@@ -163,6 +164,7 @@ export const querySchema = (limits: {
   protectionFilter: qFlag(),
   banFilter: qFlag(),
   inactiveFilter: qFlag(),
+  stormyIslandsFilter: qNumber({ min: -1, max: 1 }),
   kingdomFilter: qKingdomArray(),
   playerNameForDistance: qLowerString(),
   allianceRankFilter: qNumberArray(),

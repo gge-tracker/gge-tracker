@@ -761,6 +761,9 @@ export interface ApiPlayerCastleNameResponse {
 export interface KingdomRealm {
   key: string;
   label: string;
+  image?: string;
+  branch?: string;
+  level?: number;
 }
 
 export interface ApiRankingStatsPlayer {

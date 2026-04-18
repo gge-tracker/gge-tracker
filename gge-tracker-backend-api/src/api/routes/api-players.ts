@@ -91,6 +91,7 @@ export abstract class ApiPlayers implements ApiHelper {
         alliance,
         allianceFilter,
         protectionFilter,
+        stormyIslandsFilter,
         banFilter,
         inactiveFilter,
         allianceRankFilter,
@@ -125,6 +126,7 @@ export abstract class ApiPlayers implements ApiHelper {
           maxFame,
           castleCountMin,
           castleCountMax,
+          stormyIslandsFilter,
           allianceFilter,
           protectionFilter,
           banFilter,
@@ -226,6 +228,7 @@ export abstract class ApiPlayers implements ApiHelper {
         .legendaryLevel(minLevel[1], maxLevel[1])
         .fame(minFame, maxFame)
         .allianceStatus(allianceFilter)
+        .stormyIslandsFilter(stormyIslandsFilter)
         .kingdom(kingdomFilter)
         .activity(inactiveFilter);
 

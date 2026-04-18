@@ -69,6 +69,7 @@ interface FormFilters {
 })
 export class PlayersComponent extends GenericComponent implements OnInit {
   @ViewChild('searchForm') public searchForm!: SearchFormComponent;
+  public readonly REALM_ORDER = ['0', '2', '1', '3'];
   public players: Player[] = [];
   public page = 1;
   public maxPage?: number;
@@ -82,10 +83,11 @@ export class PlayersComponent extends GenericComponent implements OnInit {
   public favoriePlayers: FavoritePlayer[] = [];
   public popupIsInLoading: boolean = false;
   public realms: KingdomRealm[] = [
-    { key: '2', label: 'Le Glacier éternel' },
-    { key: '1', label: 'Les Sables brûlants' },
-    { key: '3', label: 'Les Pics du feu' },
     { key: '999', label: 'Pas de filtre' },
+    { key: '0', label: 'Le Grand Empire', image: 'assets/dungeon0.png' },
+    { key: '2', label: 'Le Glacier éternel', image: 'assets/dungeon2.png' },
+    { key: '1', label: 'Les Sables brûlants', image: 'assets/dungeon1.png' },
+    { key: '3', label: 'Les Pics du feu', image: 'assets/dungeon3.png' },
   ];
   public validated: { [key: string]: boolean } = {};
   public playersTableHeader: [string, string, (string | undefined)?, (boolean | undefined)?][] = [
@@ -133,6 +135,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     playerCastleDistance: '',
     allianceRankFilter: ['0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'],
     kingdomFilter: ['999'],
+    stormyIslandsFilter: '-1',
   };
   public defaultFormFilters!: FormFilters;
   public readonly ArrowBigRightDash = ArrowBigRightDash;
@@ -311,13 +314,28 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     }
   }
 
-  public onRealmChange(realmId: { key: string; label: string }[]): void {
-    if (realmId.length === 0) return;
-    if (realmId[0].key === '999' && realmId.length > 1) {
-      this.formFilters.kingdomFilter = realmId.filter((r) => r.key !== '999').map((r) => r.key);
-    } else if (realmId[0].key !== '999' && realmId.length > 1 && realmId.some((r) => r.key === '999')) {
+  public onRealmChange(selectedItems: KingdomRealm[]): void {
+    if (!selectedItems || selectedItems.length === 0) {
       this.formFilters.kingdomFilter = ['999'];
+      return;
     }
+    const REALM_ORDER = this.REALM_ORDER;
+    const lastSelected = selectedItems.at(-1);
+    if (lastSelected && lastSelected.key === '999') {
+      this.formFilters.kingdomFilter = ['999'];
+      return;
+    }
+    let currentKeys = selectedItems.map((index) => index.key).filter((k) => k !== '999');
+    let finalKeysSet = new Set<string>();
+    currentKeys.forEach((key) => {
+      const index = REALM_ORDER.indexOf(key);
+      if (index !== -1) {
+        for (let index_ = 0; index_ <= index; index_++) {
+          finalKeysSet.add(REALM_ORDER[index_]);
+        }
+      }
+    });
+    this.formFilters.kingdomFilter = [...finalKeysSet].sort((a, b) => REALM_ORDER.indexOf(a) - REALM_ORDER.indexOf(b));
   }
 
   public async searchPlayer(playerName: string): Promise<void> {
@@ -683,6 +701,8 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     if (this.formFilters.maxLevel) filters['maxLevel'] = this.formFilters.maxLevel;
     if (this.formFilters.allianceFilter !== '-1') filters['allianceFilter'] = this.formFilters.allianceFilter;
     if (this.formFilters.protectionFilter !== '-1') filters['protectionFilter'] = this.formFilters.protectionFilter;
+    if (this.formFilters.stormyIslandsFilter !== '-1')
+      filters['stormyIslandsFilter'] = this.formFilters.stormyIslandsFilter;
     if (this.formFilters.banFilter !== '-1') filters['banFilter'] = this.formFilters.banFilter;
     if (this.formFilters.inactiveFilter !== '-1') filters['inactiveFilter'] = this.formFilters.inactiveFilter;
     if (this.formFilters.playerCastleDistance) filters['playerNameForDistance'] = this.formFilters.playerCastleDistance;

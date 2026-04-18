@@ -92,6 +92,22 @@ html:has(.fullscreen) {
   z-index: 0;
 }
 
+.modal-body .stormy-island-icon img {
+  position: relative;
+  z-index: 1;
+}
+
+.modal-body .stormy-island-icon::after {
+  background: #0d9c8e;
+  content: "";
+  height: 3px;
+  left: 45px;
+  margin-top: 14px;
+  position: absolute;
+  right: 45px;
+  z-index: 0;
+}
+
 .form-control input {
   color: #000000;
 }

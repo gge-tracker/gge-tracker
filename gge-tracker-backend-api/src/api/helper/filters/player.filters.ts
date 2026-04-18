@@ -63,6 +63,31 @@ export class PlayerFilters extends AbstractFilterBuilder<PlayerFilters> {
     return this.self();
   }
 
+  public stormyIslandsFilter(stormyIslandsFilter?: number): PlayerFilters {
+    if (stormyIslandsFilter === 1) {
+      this.add(
+        this.raw(`
+        EXISTS (
+          SELECT 1
+          FROM jsonb_array_elements(P.castles_realm) elem
+          WHERE (elem->>0)::int = 4
+        )
+      `),
+      );
+    } else if (stormyIslandsFilter === 0) {
+      this.add(
+        this.raw(`
+        NOT EXISTS (
+          SELECT 1
+          FROM jsonb_array_elements(P.castles_realm) elem
+          WHERE (elem->>0)::int = 4
+        )
+      `),
+      );
+    }
+    return this.self();
+  }
+
   public kingdom(kingdomIds?: number[]): PlayerFilters {
     const ids = kingdomIds || [];
     const allIds = [1, 2, 3];
