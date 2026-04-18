@@ -1138,7 +1138,8 @@
   "refresh": false,
   "schemaVersion": 42,
   "tags": [
-    "Backend API"
+    "API",
+    "Mod"
   ],
   "templating": {
     "list": [
@@ -1162,7 +1163,7 @@
     ]
   },
   "time": {
-    "from": "now-30m",
+    "from": "now-7d",
     "to": "now"
   },
   "timepicker": {

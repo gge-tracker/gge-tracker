@@ -924,6 +924,7 @@
           "refId": "A"
         }
       ],
+      "timeFrom": "2h",
       "title": "Activated Scraping Services over time",
       "transparent": true,
       "type": "timeseries"
@@ -1147,7 +1148,10 @@
   ],
   "preload": false,
   "schemaVersion": 42,
-  "tags": [],
+  "tags": [
+    "Scraping",
+    "Mod"
+  ],
   "templating": {
     "list": []
   },
@@ -1157,7 +1161,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "[gge-tracker] Scraping KPI (dev)",
+  "title": "[gge-tracker] Scraping monitoring",
   "uid": "ggq7gwj2",
   "version": 54
 }

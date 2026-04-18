@@ -17160,7 +17160,8 @@
   "refresh": "1m",
   "schemaVersion": 41,
   "tags": [
-    "linux"
+    "Infrastructure",
+    "Admin"
   ],
   "templating": {
     "list": [

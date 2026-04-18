@@ -674,7 +674,8 @@
   "refresh": "10s",
   "schemaVersion": 42,
   "tags": [
-    "docker"
+    "Infrastructure",
+    "Admin"
   ],
   "templating": {
     "list": []
