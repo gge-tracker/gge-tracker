@@ -93,7 +93,17 @@ export class PlayerFilters extends AbstractFilterBuilder<PlayerFilters> {
     const allIds = [1, 2, 3];
 
     if (ids.length === 0) {
-      this.add(this.raw(`(P.castles_realm IS NULL OR jsonb_array_length(P.castles_realm) = 0)`));
+      this.add(
+        this.raw(`(
+        P.castles_realm IS NULL
+        OR jsonb_array_length(P.castles_realm) = 0
+        OR NOT EXISTS (
+          SELECT 1
+          FROM jsonb_array_elements(P.castles_realm) elem
+          WHERE (elem->>0)::int != 4
+        )
+      )`),
+      );
       return this.self();
     } else if (ids.includes(999)) {
       // No filter, include all kingdoms
