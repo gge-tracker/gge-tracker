@@ -87,9 +87,7 @@ class GgeEmpireSocket extends BaseSocket implements GgeEmpireSocketImpl {
             break;
           }
           default: {
-            this.handleErrorResponse(
-              `Login failed with status: ${lliResponse.payload.status} 🔄 Retrying in 1 minute...`,
-            );
+            this.error(`Login failed with status: ${lliResponse.payload.status} 🔄 Retrying in 1 minute...`);
             this.kill();
             setTimeout(() => {
               this.log('Retrying connection after login failure...');
