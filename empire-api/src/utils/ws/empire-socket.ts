@@ -71,12 +71,12 @@ class GgeEmpireSocket extends BaseSocket implements GgeEmpireSocketImpl {
           }
           case 453: {
             const timeoutDurationInSeconds = lliResponse.payload.data?.CD ? Number(lliResponse.payload.data.CD) : 300;
-            this.kill();
             this.error(
               '[connect] Login failed: Too many login attempts. Retrying in ' +
                 Math.ceil(timeoutDurationInSeconds / 60) +
                 ' minutes...',
             );
+            this.kill();
             setTimeout(() => {
               this.log('Retrying connection after too many login attempts...');
               this.socketState = SocketState.CONNECTING;
@@ -99,8 +99,17 @@ class GgeEmpireSocket extends BaseSocket implements GgeEmpireSocketImpl {
         }
       }
     } catch (error) {
-      this.handleErrorResponse(error.message + ' 🔄 Retrying connection in 5 minutes...');
+      this.error('[connect] Error during connection process:', error instanceof Error ? error.message : error);
       this.kill();
+      setTimeout(
+        () => {
+          this.log('Retrying connection after login failure...');
+          this.socketState = SocketState.CONNECTING;
+          this.reconnect = true;
+          void this.connect();
+        },
+        60 * 2 * 1000,
+      );
     }
   }
 
