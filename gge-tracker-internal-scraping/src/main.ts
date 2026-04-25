@@ -479,6 +479,19 @@ export class GenericFetchAndSaveBackend {
     maxX = Math.ceil(maxX / zone) * zone;
     maxY = Math.ceil(maxY / zone) * zone;
     const totalRequests = Math.ceil((maxX - minX) / zone) * Math.ceil((maxY - minY) / zone);
+
+    const delay = (ms: number): Promise<void> => new Promise((res) => setTimeout(res, ms));
+    const minValue = 100;
+    const maxValue = 1100;
+    let randoms: number[] = [];
+    for (let i = 0; i < totalRequests; i++) {
+      const random = Math.floor(Math.random() * (maxValue - minValue + 1)) + minValue;
+      randoms.push(random);
+    }
+    // We shuffle the list to avoid having patterns in the requests
+    randoms = randoms.sort(() => Math.random() - 0.5);
+    const minuteToRetrieve = Math.ceil((totalRequests * (minValue + maxValue)) / 2 / 60000);
+
     const confirmationMessage = `About to retrieve dungeons for world ${worldNumber} with the following parameters:
       - minX: ${minX}
       - minY: ${minY}
@@ -486,7 +499,7 @@ export class GenericFetchAndSaveBackend {
       - maxY: ${maxY}
       - step: ${step}
       - zone: ${zone}
-      This will result in approximately ${totalRequests} API requests, which may take around ${Math.ceil(totalRequests / 120 + 3)} minutes to complete. Do you want to proceed? (yes/no)`;
+      This will result in approximately ${totalRequests} API requests, which may take around ${minuteToRetrieve} minutes to complete. Do you want to proceed? (yes/no)`;
     const userInput = await this.askConfirmation(confirmationMessage);
     if (!userInput) {
       Utils.logMessage('Dungeon retrieval aborted by user.');
@@ -558,11 +571,7 @@ export class GenericFetchAndSaveBackend {
           }
         }
         // Throttle management
-        const delay = (ms: number): Promise<void> => new Promise((res) => setTimeout(res, ms));
-        const minValue = 500;
-        const maxValue = 1500;
-        const random = Math.floor(Math.random() * (maxValue - minValue + 1)) + minValue;
-        await delay(random);
+        await delay(randoms[rowIndex % randoms.length]);
         done++;
         const percent = (done / totalRequests) * 100;
         const barWidth = 40;
@@ -2501,7 +2510,7 @@ export class GenericFetchAndSaveBackend {
     return new Promise((resolve) => {
       rl.question(question, (answer) => {
         rl.close();
-        resolve(answer.trim().toLowerCase() === 'y');
+        resolve(answer.trim().toLowerCase() === 'y' || answer.trim().toLowerCase() === 'yes');
       });
     });
   }
