@@ -2059,7 +2059,17 @@ export class GenericFetchAndSaveBackend {
   }
 
   private async removePlayerFromDatabase(playerId: number): Promise<void> {
-    const pgSqlQuery = "UPDATE players SET castles = '[]'::jsonb, alliance_id = NULL WHERE id = $1";
+    const pgSqlQuery = `
+      UPDATE players SET
+        castles = '[]'::jsonb,
+        castles_realm = '[]'::jsonb,
+        alliance_id = NULL,
+        might_current = 0,
+        loot_current = 0,
+        alliance_rank = NULL,
+        honor = 0,
+        current_fame = 0
+      WHERE id = $1`;
     Utils.logMessage(' [Info] Deleting player', playerId);
     try {
       await this.pgSqlQuery(pgSqlQuery, [playerId]);
@@ -2083,9 +2093,9 @@ export class GenericFetchAndSaveBackend {
     const pgSqlQueryUpdateAllianceName = 'UPDATE alliances SET name = $1 WHERE id = $2';
     await Promise.all([this.pgSqlQuery(pgSqlQueryUpdateAllianceName, [allianceName, allianceId])]);
     const pgSqlQueryInsertAllianceUpdateHistory = `
-            INSERT INTO alliance_update_history (alliance_id, old_name, new_name)
-            VALUES ($1, $2, $3)
-        `;
+      INSERT INTO alliance_update_history (alliance_id, old_name, new_name)
+      VALUES ($1, $2, $3)
+    `;
     await Promise.all([
       this.pgSqlQuery(pgSqlQueryInsertAllianceUpdateHistory, [allianceId, currentAllianceName, allianceName]),
     ]);
@@ -2905,7 +2915,9 @@ export class GenericFetchAndSaveBackend {
       const result = await this.pgSqlQuery(query);
       const lastStats = result.rows[0];
       const playerLootAndMightPointHistoryListWithMoreThanOneCastle = Object.fromEntries(
-        Object.entries(this.playerLootAndMightPointHistoryList).filter(([, val]) => val[4] && val[4].length > 1),
+        Object.entries(this.playerLootAndMightPointHistoryList).filter(
+          ([, val]) => val[4] && val[4].length > 0 && (!val[6] || val[6] < 60 * 60 * 24 * 63),
+        ),
       );
       const playersCount = Object.keys(playerLootAndMightPointHistoryListWithMoreThanOneCastle).length;
       const playerLootMightEntries: [number, any[]][] = Object.entries(
@@ -2931,9 +2943,9 @@ export class GenericFetchAndSaveBackend {
         playerLootMightEntries.map(([, val]) => val[2]).filter((id) => id !== undefined && id !== -1),
       ).size;
       this.customPlayersAttributesList['alliances_count'] = alliancesCount;
-      // We get the number of players who are in protection and who are not new players (level >= 30)
+      // We get the number of players who are in protection and who are not new players (level >= 11)
       const playersInPeace = playerLootMightEntries.filter(
-        ([, val]) => val[6] && val[6] > 0 && val[6] < 60 * 60 * 24 * 63 && val[8] && val[8] >= 30,
+        ([, val]) => val[6] && val[6] > 0 && val[6] < 60 * 60 * 24 * 63 && val[8] && val[8] >= 11,
       ).length;
       const playersWhoChangedAlliance = this.customPlayersAttributesList['player_alliance_update_count'] || 0;
       const playersWhoChangedName = this.customPlayersAttributesList['player_name_update_count'] || 0;
@@ -2961,7 +2973,6 @@ export class GenericFetchAndSaveBackend {
           [number, any[]]
         >((maxEntry, currentEntry) => (Number(currentEntry[1][0]) > Number(maxEntry[1][0]) ? currentEntry : maxEntry), [0, [0,
               0]]);
-
       const maxLoot = Number(maxLootEntry[1][0]);
       const maxLootPlayerId = maxLootEntry[0] || null;
       const variationMight = totalMight - (lastStats ? lastStats.total_might : 0);
