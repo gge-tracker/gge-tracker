@@ -5,7 +5,7 @@
   "description": "",
   "scripts": {
     "start": "node dist/api/main.js",
-    "build": "npx tsc && npx swagger-jsdoc -d ./dist/api/documentation.js",
+    "build": "npx tsc && npx swagger-jsdoc -d ./dist/documentation.js",
     "lint": "eslint .",
     "lint-fix": "eslint . --fix",
     "dev": "nodemon"

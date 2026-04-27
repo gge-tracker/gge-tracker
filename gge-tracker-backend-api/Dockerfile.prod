@@ -21,7 +21,7 @@ RUN npm ci
 COPY . .
 
 RUN npx tsc \
-    && npx swagger-jsdoc -d ./src/documentation.js
+    && npx swagger-jsdoc -d ./dist/documentation.js
 
 FROM node:20-slim AS build
 WORKDIR /app
