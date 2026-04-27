@@ -392,9 +392,9 @@ export abstract class ApiAssets implements ApiHelper {
       const w = Math.max(...frames.map((frame) => frame[2] - frame[0]));
       const h = Math.max(...frames.map((frame) => frame[3] - frame[1]));
       page = await puppeteerManagerInstance.createPage();
-      await page.addScriptTag({ url: 'https://code.createjs.com/1.0.0/createjs.min.js' });
-      await page.addScriptTag({ url: 'https://code.createjs.com/1.0.0/easeljs.min.js' });
-      await page.addScriptTag({ url: 'https://code.createjs.com/1.0.0/tweenjs.min.js' });
+      await page.addScriptTag({ path: path.join(__dirname, './../lib/createjs/createjs.min.js') });
+      await page.addScriptTag({ path: path.join(__dirname, './../lib/createjs/easeljs.min.js') });
+      await page.addScriptTag({ path: path.join(__dirname, './../lib/createjs/tweenjs.min.js') });
       await page.addScriptTag({ url: currentDomainUri + `/api/v1/assets/common/${asset}.js` });
       const name = await page.evaluate(() => {
         if (!globalThis.Library) return;
@@ -582,10 +582,14 @@ export abstract class ApiAssets implements ApiHelper {
       const cleanName = cleanNameRaw.toLowerCase().replaceAll(/[^\da-z]/g, '');
       imageUrlMap[cleanName] = `${itemsAssetsUri}${path}.webp`;
     }
-    console.log(`${Object.keys(imageUrlMap).length} assets found.`);
+    ApiHelper.logInfo('updateGameAssets', `Updating assets mapping with ${Object.keys(imageUrlMap).length} entries`);
     await fs.promises.writeFile(
       path.join(__dirname, './../assets/assets.json'),
       JSON.stringify(imageUrlMap, undefined, 2),
+    );
+    await fs.promises.writeFile(
+      path.join(__dirname, './../assets/VERSION'),
+      `Last update: ${new Date().toISOString()}`,
     );
   }
 
