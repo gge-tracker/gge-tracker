@@ -824,6 +824,7 @@ export class GenericFetchAndSaveBackend {
     const squares: { [key: string]: { AX1: number; AY1: number; AX2: number; AY2: number } } = {};
     const mapSize = this.MAP_SIZE;
     const start = new Date();
+    const pgPool = new pg.Pool(this.PGSQL_CONFIG);
     let done = 0;
     try {
       console.log('Connection to the database successful');
@@ -883,6 +884,61 @@ export class GenericFetchAndSaveBackend {
                         (error instanceof Error ? error.message : String(error)),
                     );
                   }
+                  try {
+                    await pgPool.query('BEGIN');
+                    // Postgres version (migration in progress, we keep the MariaDB version for now)
+                    const timeInSecondsBeforeAvailable = dungeon[5];
+                    // Global cooldown of 24h and player cooldown of 5 days, we calculate the available_at date for both
+                    const globalCooldown = Math.max(0, 24 * 60 * 60 - timeInSecondsBeforeAvailable);
+                    const playerCooldown = Math.max(0, 5 * 24 * 60 * 60 - timeInSecondsBeforeAvailable);
+                    const values = [
+                      new Date(Date.now() + globalCooldown * 1000),
+                      kid,
+                      coordinates[0],
+                      coordinates[1],
+                      playerId,
+                      new Date(Date.now() + playerCooldown * 1000),
+                    ];
+
+                    await pgPool.query(
+                      `
+                        UPDATE dungeons
+                        SET global_available_at = $1
+                        WHERE kid = $2 AND position_x = $3 AND position_y = $4
+                        `,
+                      values.slice(0, 4),
+                    );
+
+                    await pgPool.query(
+                      `
+                        INSERT INTO dungeon_player_cooldowns (
+                          kid, position_x, position_y, player_id, available_at
+                        )
+                        VALUES ($1, $2, $3, $4, $5)
+                        ON CONFLICT (kid, position_x, position_y, player_id)
+                        DO UPDATE SET available_at = EXCLUDED.available_at
+                        `,
+                      [values[1], values[2], values[3], values[4], values[5]],
+                    );
+
+                    await pgPool.query(
+                      `
+                        INSERT INTO dungeons_history (
+                          kid, position_x, position_y, player_id
+                        )
+                        VALUES ($1, $2, $3, $4)
+                        `,
+                      [values[1], values[2], values[3], values[4]],
+                    );
+                    await pgPool.query('COMMIT');
+                  } catch (error) {
+                    await pgPool.query('ROLLBACK');
+                    console.log(error);
+                    throw new Error(
+                      'Error while updating dungeon data in the PostgreSQL database: ' +
+                        (error instanceof Error ? error.message : String(error)),
+                    );
+                  }
                 }
               }
             } else if (!data['return_code'] || data['return_code'] === '-1') {
@@ -929,6 +985,7 @@ export class GenericFetchAndSaveBackend {
       console.error('Error while updating dungeons list:', error);
       this.DB_UPDATES.criticalErrors++;
     } finally {
+      await pgPool.end();
       const end = new Date();
       const elapsedTime = end.getTime() - start.getTime();
       const elapsedTimeInSeconds = Math.floor(elapsedTime / 1000);
