@@ -1324,7 +1324,10 @@ export class GenericFetchAndSaveBackend {
             }
             fetchedEntries += content.length;
             Utils.logMessage(`Fetched ${fetchedEntries}/${totalEntries} entries...`);
-            SV += entriesPerPage;
+            SV += Math.ceil(entriesPerPage / 2);
+            if (SV > totalEntries + entriesPerPage) {
+              hasMore = false;
+            }
           } else {
             hasMore = false;
           }
