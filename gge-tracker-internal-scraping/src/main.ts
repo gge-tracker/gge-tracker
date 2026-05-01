@@ -62,7 +62,7 @@ export class GenericFetchAndSaveBackend {
   private readonly BASE_API_URL: string;
   private readonly DATABASE_CONFIG: mysql.PoolOptions | null;
   private readonly CLICKHOUSE_CONFIG: { [key: string]: string | number | undefined } | undefined;
-  private readonly PGSQL_CONFIG: pg.PoolConfig;
+  private readonly PGSQL_CONFIG: pg.PoolConfig | undefined;
   private readonly server: string;
   private playerLootAndMightPointHistoryList: { [key: string]: any[] } = {};
   private playerEventPointHistoryList: { [key: string]: { [key: string]: number | null } } = {};
@@ -84,16 +84,20 @@ export class GenericFetchAndSaveBackend {
     BASE_API_URL: string,
     DATABASE_CONFIG: mysql.PoolOptions | null,
     CLICKHOUSE_CONFIG: { [key: string]: string | number | undefined } | null,
-    PGSQL_CONFIG: pg.PoolConfig,
-    server: string,
+    PGSQL_CONFIG: pg.PoolConfig | null,
+    server: string | undefined,
   ) {
     this.BASE_API_URL = BASE_API_URL;
     this.DATABASE_CONFIG = DATABASE_CONFIG;
     this.CLICKHOUSE_CONFIG = CLICKHOUSE_CONFIG ? CLICKHOUSE_CONFIG : undefined;
-    this.PGSQL_CONFIG = PGSQL_CONFIG;
-    this.server = server;
+    if (PGSQL_CONFIG) {
+      this.PGSQL_CONFIG = PGSQL_CONFIG;
+    }
+    this.server = server ? server : 'unknown';
     this.isE4KServer = String(server).toLowerCase().startsWith('e4k');
-    this.createNewPool();
+    if (DATABASE_CONFIG || PGSQL_CONFIG) {
+      this.createNewPool();
+    }
   }
 
   public async sleep(numberMs: number = 1500): Promise<void> {
@@ -1278,6 +1282,120 @@ export class GenericFetchAndSaveBackend {
           durationMs: duration,
         },
       });
+    }
+  }
+
+  /**
+   * This method fetches data for the "Wheel of Unimaginable Affluence"
+   *  event (LT: 72) and inserts it into the ClickHouse database.
+   */
+  public async insertWheelOfUnimaginableAffluanceData(): Promise<void> {
+    const LT = 72;
+    const LID = 1;
+    Utils.logMessage('Start fetching Wheel of Unimaginable Affluence data with LT =', LT);
+    try {
+      const response = await this.genericFetchData('hgh', { LT, LID, SV: '1' });
+      if (response.data.return_code === '0' && response.data.content?.L?.length > 0) {
+        Utils.logMessage('Wheel of Unimaginable Affluence event is active. Start fetching data...');
+        const entriesPerPage = response.data.content.L.length;
+        const totalEntries = response.data.content.LR || 0;
+        let fetchedEntries = 0;
+        let hasMore = true;
+        let SV = Math.ceil(entriesPerPage / 2);
+        const wheelData: {
+          playerId: number;
+          points: number;
+        }[] = [];
+        while (hasMore) {
+          const pageResponse = await this.genericFetchData('hgh', { LT, LID, SV: String(SV) });
+          if (pageResponse.data.return_code === '0' && pageResponse.data.content?.L?.length > 0) {
+            const content = pageResponse.data.content.L;
+            for (const entry of content) {
+              const playerData = entry[2];
+              const OID = Number(playerData.OID);
+              if (!wheelData.some((e) => e.playerId === OID)) {
+                wheelData.push({
+                  playerId: OID,
+                  points: Number(entry[1]),
+                });
+              } else {
+                Utils.logMessage(`Duplicate entry found for player ID ${OID} at SV=${SV}. Skipping.`);
+              }
+            }
+            fetchedEntries += content.length;
+            Utils.logMessage(`Fetched ${fetchedEntries}/${totalEntries} entries...`);
+            SV += entriesPerPage;
+          } else {
+            hasMore = false;
+          }
+        }
+        const now = new Date();
+        Utils.logMessage(
+          'Finished fetching Wheel of Unimaginable Affluence data. Total entries:',
+          wheelData.length,
+          ', at time:',
+          now.toISOString(),
+        );
+        const clickhouseBaseUrl = (this.CLICKHOUSE_CONFIG!.url as string) + ':' + this.CLICKHOUSE_CONFIG!.port;
+        try {
+          const insertSQL = `INSERT INTO wheel_unimaginable_affluance FORMAT JSONEachRow`;
+          const clickhouseUrl =
+            clickhouseBaseUrl +
+            '/?query=' +
+            encodeURIComponent(insertSQL) +
+            '&database=' +
+            encodeURIComponent(this.CLICKHOUSE_CONFIG!.database as string);
+          const fetchDateStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
+          const clickhouseAuth = {
+            username: this.CLICKHOUSE_CONFIG!.user as string,
+            password: this.CLICKHOUSE_CONFIG!.password as string,
+          };
+          const batchSize = 100;
+          for (let i = 0; i < wheelData.length; i += batchSize) {
+            const batch = wheelData.slice(i, i + batchSize);
+            const payload = batch
+              .map((entry) =>
+                JSON.stringify({
+                  player_id: entry.playerId,
+                  point: entry.points,
+                  created_at: fetchDateStr,
+                }),
+              )
+              .join('\n');
+            try {
+              await axios.post(clickhouseUrl, payload, {
+                headers: {
+                  'Content-Type': 'text/plain',
+                },
+                auth: clickhouseAuth,
+              });
+              Utils.logMessage(`Inserted ${batch.length} entries into ClickHouse`);
+            } catch (error) {
+              Utils.logMessage('Error inserting batch into ClickHouse:', error);
+              Utils.logMessage('Payload:', payload);
+              this.DB_UPDATES.criticalErrors++;
+            }
+          }
+        } catch (error) {
+          Utils.logMessage('Error executing query:', error);
+          this.DB_UPDATES.criticalErrors++;
+        }
+        // Here you can add code to insert the fetched data into your database
+      } else {
+        Utils.logMessage('Wheel of Unimaginable Affluence event is not active. No data to fetch.');
+      }
+    } catch (error) {
+      Utils.logMessage('Error fetching Wheel of Unimaginable Affluence data:', error);
+      this.DB_UPDATES.criticalErrors++;
+    } finally {
+      Utils.logMessage('Finished processing Wheel of Unimaginable Affluence data.');
+      if (this.DB_UPDATES.criticalErrors > 0) {
+        Utils.logMessage(
+          'Number of critical errors during Wheel of Unimaginable Affluence data fetch:',
+          this.DB_UPDATES.criticalErrors,
+        );
+      }
+      Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, this.server);
     }
   }
 
@@ -3362,6 +3480,10 @@ export class GenericFetchAndSaveBackend {
   ): Promise<number> {
     try {
       Utils.logMessage(' Executing custom event history for', eventName);
+      if (!this.PGSQL_CONFIG) {
+        Utils.logMessage(' [KO] No database connection, stopping the process executeCustomEventHistory');
+        return -1;
+      }
       const start = Date.now();
       const pgQuery = `
         SELECT event_num, player_name, level, point, rank
