@@ -30,7 +30,7 @@ LOG_SUFFIX=$SERVER
 CONNECTION_LIMIT=$(get_conf_value "$SERVER" "limit")
 
 docker run --rm --network backend --env-file=$BASE_SCRIPT_DIR/.env \
-    --name ic-fetch-wheel-of-unimaginable-affluence \
+    --name ic-fetch-wheel-of-unimaginable-affluence-$SERVER \
     -e ID_SERVER=$ID_SERVER \
     -e PG_DB=$PG_DB \
     -e CLICKHOUSE_DB=$CLICKHOUSE_DB \

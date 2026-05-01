@@ -1318,13 +1318,13 @@ export class GenericFetchAndSaveBackend {
                   playerId: OID,
                   points: Number(entry[1]),
                 });
+                fetchedEntries++;
               } else {
                 Utils.logMessage(`Duplicate entry found for player ID ${OID} at SV=${SV}. Skipping.`);
               }
             }
-            fetchedEntries += content.length;
             Utils.logMessage(`Fetched ${fetchedEntries}/${totalEntries} entries...`);
-            SV += Math.ceil(entriesPerPage / 2);
+            SV += entriesPerPage;
             if (SV > totalEntries + entriesPerPage) {
               hasMore = false;
             }
