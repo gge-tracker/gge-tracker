@@ -844,6 +844,7 @@ export class GenericFetchAndSaveBackend {
           const url: string = encodeURI(this.BASE_API_URL + 'gaa/' + json);
           try {
             const response = await axios.get(url);
+            const currentTime = new Date();
             const data = response.data;
             if (data && data['return_code'] == '0') {
               const dungeons = data.content?.AI ?? [];
@@ -885,20 +886,16 @@ export class GenericFetchAndSaveBackend {
                     );
                   }
                   try {
-                    await pgPool.query('BEGIN');
                     // Postgres version (migration in progress, we keep the MariaDB version for now)
-                    const timeInSecondsBeforeAvailable = dungeon[5];
-                    // Global cooldown of 24h and player cooldown of 5 days, we calculate the available_at date for both
-                    const globalCooldown = Math.max(0, 24 * 60 * 60 - timeInSecondsBeforeAvailable);
-                    const playerCooldown = Math.max(0, 5 * 24 * 60 * 60 - timeInSecondsBeforeAvailable);
-                    const values = [
-                      new Date(Date.now() + globalCooldown * 1000),
-                      kid,
-                      coordinates[0],
-                      coordinates[1],
-                      playerId,
-                      new Date(Date.now() + playerCooldown * 1000),
-                    ];
+                    await pgPool.query('BEGIN');
+                    // We assume a global cooldown of 24h and a player cooldown of 4 days
+                    const PLAYER_COOLDOWN_SECONDS = 4 * 24 * 60 * 60;
+
+                    const remainingCooldown24h = dungeon[5];
+
+                    const globalAvailableDate = currentTime.getTime() + remainingCooldown24h * 1000;
+                    const playerAvailableDate =
+                      currentTime.getTime() + (remainingCooldown24h + PLAYER_COOLDOWN_SECONDS) * 1000;
 
                     await pgPool.query(
                       `
@@ -906,7 +903,7 @@ export class GenericFetchAndSaveBackend {
                         SET global_available_at = $1
                         WHERE kid = $2 AND position_x = $3 AND position_y = $4
                         `,
-                      values.slice(0, 4),
+                      [globalAvailableDate, kid, coordinates[0], coordinates[1]],
                     );
 
                     await pgPool.query(
@@ -918,7 +915,7 @@ export class GenericFetchAndSaveBackend {
                         ON CONFLICT (kid, position_x, position_y, player_id)
                         DO UPDATE SET available_at = EXCLUDED.available_at
                         `,
-                      [values[1], values[2], values[3], values[4], values[5]],
+                      [kid, coordinates[0], coordinates[1], playerId, playerAvailableDate],
                     );
 
                     await pgPool.query(
@@ -928,7 +925,7 @@ export class GenericFetchAndSaveBackend {
                         )
                         VALUES ($1, $2, $3, $4)
                         `,
-                      [values[1], values[2], values[3], values[4]],
+                      [kid, coordinates[0], coordinates[1], playerId],
                     );
                     await pgPool.query('COMMIT');
                   } catch (error) {
