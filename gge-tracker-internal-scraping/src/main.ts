@@ -1295,7 +1295,7 @@ export class GenericFetchAndSaveBackend {
     Utils.logMessage('Start fetching Wheel of Unimaginable Affluence data with LT =', LT);
     try {
       const response = await this.genericFetchData('hgh', { LT, LID, SV: '1' });
-      if (response.data.return_code === '0' && response.data.content?.L?.length > 0) {
+      if (response.data.return_code == '0' && response.data.content?.L?.length > 0) {
         Utils.logMessage('Wheel of Unimaginable Affluence event is active. Start fetching data...');
         const entriesPerPage = response.data.content.L.length;
         const totalEntries = response.data.content.LR || 0;
@@ -1308,7 +1308,7 @@ export class GenericFetchAndSaveBackend {
         }[] = [];
         while (hasMore) {
           const pageResponse = await this.genericFetchData('hgh', { LT, LID, SV: String(SV) });
-          if (pageResponse.data.return_code === '0' && pageResponse.data.content?.L?.length > 0) {
+          if (pageResponse.data.return_code == '0' && pageResponse.data.content?.L?.length > 0) {
             const content = pageResponse.data.content.L;
             for (const entry of content) {
               const playerData = entry[2];
