@@ -3624,18 +3624,26 @@ export class GenericFetchAndSaveBackend {
             serverEntities.get(entity.server).push(entity);
           }
           for (const [server, entitiesForServer] of serverEntities.entries()) {
-            let dbConn;
-            let dbName;
+            let dbConn: pg.Pool | null = null;
+            let dbName = '';
             Utils.logMessage(' [info] Processing server:', server);
-            if (server === 'FR1') {
-              dbConn = this.pgSqlConnection;
-            } else {
-              dbName =
-                server === 'LIVE'
-                  ? 'empire-ranking-world1'
-                  : server === 'HANT'
-                    ? 'empire-ranking-hant1'
-                    : `empire-ranking-${server.toLowerCase()}`;
+            switch (server) {
+              case 'FR1':
+                dbConn = this.pgSqlConnection;
+                break;
+              case 'LIVE':
+                dbName = 'empire-ranking-world1';
+                break;
+              case 'LIVE2':
+                dbName = 'empire-ranking-world2';
+                break;
+              case 'HANT':
+                dbName = 'empire-ranking-hant1';
+                break;
+              default:
+                dbName = `empire-ranking-${server.toLowerCase()}`;
+            }
+            if (!dbConn) {
               const exists = await this.pgSqlQuery('SELECT 1 FROM pg_database WHERE datname=$1', [dbName]);
               if (!exists.rowCount) continue; // skip if nonexistent
               // Create a temporary connection (or use a global pool if already created)
