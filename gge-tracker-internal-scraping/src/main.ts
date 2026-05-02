@@ -1289,7 +1289,7 @@ export class GenericFetchAndSaveBackend {
    * This method fetches data for the "Wheel of Unimaginable Affluence"
    *  event (LT: 72) and inserts it into the ClickHouse database.
    */
-  public async insertWheelOfUnimaginableAffluanceData(): Promise<void> {
+  public async insertWheelOfUnimaginableAffluenceData(): Promise<void> {
     const LT = 72;
     const LID = 1;
     Utils.logMessage('Start fetching Wheel of Unimaginable Affluence data with LT =', LT);
@@ -1341,7 +1341,7 @@ export class GenericFetchAndSaveBackend {
         );
         const clickhouseBaseUrl = (this.CLICKHOUSE_CONFIG!.url as string) + ':' + this.CLICKHOUSE_CONFIG!.port;
         try {
-          const insertSQL = `INSERT INTO wheel_unimaginable_affluance FORMAT JSONEachRow`;
+          const insertSQL = `INSERT INTO wheel_unimaginable_affluence FORMAT JSONEachRow`;
           const clickhouseUrl =
             clickhouseBaseUrl +
             '/?query=' +
