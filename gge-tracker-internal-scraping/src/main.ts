@@ -897,10 +897,10 @@ export class GenericFetchAndSaveBackend {
 
                     const remainingCooldown24h = dungeon[5];
 
-                    const globalAvailableDate = currentTime.getTime() + remainingCooldown24h * 1000;
-                    const playerAvailableDate =
-                      currentTime.getTime() + (remainingCooldown24h + PLAYER_COOLDOWN_SECONDS) * 1000;
-
+                    const globalAvailableDate = new Date(currentTime.getTime() + remainingCooldown24h * 1000);
+                    const playerAvailableDate = new Date(
+                      currentTime.getTime() + (remainingCooldown24h + PLAYER_COOLDOWN_SECONDS) * 1000,
+                    );
                     await pgPool.query(
                       `
                         UPDATE dungeons
