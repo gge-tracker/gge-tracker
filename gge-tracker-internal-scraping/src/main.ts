@@ -891,12 +891,14 @@ export class GenericFetchAndSaveBackend {
                   }
                   try {
                     // Postgres version (migration in progress, we keep the MariaDB version for now)
-                    await pgPool.query('BEGIN');
                     // We assume a global cooldown of 24h and a player cooldown of 4 days
                     const PLAYER_COOLDOWN_SECONDS = 4 * 24 * 60 * 60;
-
                     const remainingCooldown24h = dungeon[5];
-
+                    if (remainingCooldown24h <= 0) {
+                      // Skipping cooldown update if the dungeon is already available
+                      continue;
+                    }
+                    await pgPool.query('BEGIN');
                     const globalAvailableDate = new Date(currentTime.getTime() + remainingCooldown24h * 1000);
                     const playerAvailableDate = new Date(
                       currentTime.getTime() + (remainingCooldown24h + PLAYER_COOLDOWN_SECONDS) * 1000,
@@ -1289,7 +1291,7 @@ export class GenericFetchAndSaveBackend {
    * This method fetches data for the "Wheel of Unimaginable Affluence"
    *  event (LT: 72) and inserts it into the ClickHouse database.
    */
-  public async insertWheelOfUnimaginableAffluenceData(): Promise<void> {
+  public async insertWheelOfUnimaginableAffluenceData(retry = 0): Promise<void> {
     const LT = 72;
     const LID = 1;
     Utils.logMessage('Start fetching Wheel of Unimaginable Affluence data with LT =', LT);
@@ -1320,6 +1322,7 @@ export class GenericFetchAndSaveBackend {
                 });
                 fetchedEntries++;
               } else {
+                // This is unexpected but we log it just in case
                 Utils.logMessage(`Duplicate entry found for player ID ${OID} at SV=${SV}. Skipping.`);
               }
             }
@@ -1383,11 +1386,16 @@ export class GenericFetchAndSaveBackend {
           Utils.logMessage('Error executing query:', error);
           this.DB_UPDATES.criticalErrors++;
         }
-        // Here you can add code to insert the fetched data into your database
       } else {
         Utils.logMessage('Wheel of Unimaginable Affluence event is not active. No data to fetch.');
       }
     } catch (error) {
+      if (retry < 3) {
+        Utils.logMessage(`Error fetching Wheel of Unimaginable Affluence data. Retrying... (Attempt ${retry + 1}/3)`);
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        await this.insertWheelOfUnimaginableAffluenceData(retry + 1);
+        return;
+      }
       Utils.logMessage('Error fetching Wheel of Unimaginable Affluence data:', error);
       this.DB_UPDATES.criticalErrors++;
     } finally {
