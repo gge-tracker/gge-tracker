@@ -336,6 +336,8 @@ export class GenericFetchAndSaveBackend {
         });
         await redisClient.connect();
         await redisClient.incr(`grand-tournament:event-dates:version`);
+        const refreshQuery = 'REFRESH MATERIALIZED VIEW CONCURRENTLY grand_tournament_hours_mv';
+        await this.pgSqlQuery(refreshQuery);
       }
       const end = new Date();
       const duration = end.getTime() - start.getTime();
@@ -3639,9 +3641,11 @@ export class GenericFetchAndSaveBackend {
               case 'FR1':
                 dbConn = this.pgSqlConnection;
                 break;
+              case 'WLD1':
               case 'LIVE':
                 dbName = 'empire-ranking-world1';
                 break;
+              case 'WLD2':
               case 'LIVE2':
                 dbName = 'empire-ranking-world2';
                 break;
