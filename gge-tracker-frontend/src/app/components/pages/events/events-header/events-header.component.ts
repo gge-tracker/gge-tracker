@@ -15,6 +15,7 @@ export class EventsHeaderComponent {
   public eventName = input.required<string>();
   public from = input.required<Date>();
   public to = input.required<Date>();
+  public dateFormat = input<string>('Date_7');
   public nbPlayers = input.required<number>();
   public eventType = input.required<string>();
 

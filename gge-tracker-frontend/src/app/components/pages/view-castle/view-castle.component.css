@@ -273,7 +273,7 @@
 }
 
 .castle-img-4 {
-  width: 35px;
+  aspect-ratio: 1;
 }
 
 .castle-info {

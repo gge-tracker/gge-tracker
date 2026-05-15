@@ -19,6 +19,10 @@ import * as cacheVersion from './cache/cache-version';
  * @abstract
  */
 export abstract class ApiHelper {
+  public static readonly ALPHABET: string = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  // eslint-disable-next-line prettier/prettier
+  public static readonly API_PUBLIC_TOKEN = 0x5F_37_59_DFn;
+  public static readonly PRIME = 11_400_714_819_323_198_485n;
   public static readonly PAGINATION_LIMIT = 15;
   public static readonly REDIS_KEY_GGE_VERSION = 'gge_build_version';
   public static readonly MAX_RESULT_PAGE = 999_999_999;
@@ -385,6 +389,41 @@ export abstract class ApiHelper {
     if (angle >= -112.5 && angle < -67.5) return 'S';
     if (angle >= -67.5 && angle < -22.5) return 'SE';
     return '';
+  }
+
+  public static encodeBase62(value: bigint): string {
+    if (value === 0n) {
+      return '0';
+    }
+    let result = '';
+    let current = value;
+    while (current > 0n) {
+      const remainder = Number(current % 62n);
+      result = this.ALPHABET[remainder] + result;
+      current = current / 62n;
+    }
+
+    return result;
+  }
+
+  public static decodeBase62(value: string): bigint {
+    let result = 0n;
+    for (const char of value) {
+      result = result * 62n + BigInt(this.ALPHABET.indexOf(char));
+    }
+    return result;
+  }
+
+  public static encodeDate(date: string): string {
+    const timestamp = BigInt(Date.parse(date));
+    const obfuscated = (timestamp ^ this.API_PUBLIC_TOKEN) * this.PRIME;
+    return this.encodeBase62(obfuscated);
+  }
+
+  public static decodeDate(id: string): Date {
+    const obfuscated = this.decodeBase62(id);
+    const timestamp = (obfuscated / this.PRIME) ^ this.API_PUBLIC_TOKEN;
+    return new Date(Number(timestamp));
   }
 
   /**

@@ -818,6 +818,19 @@ export class ApiGgeTrackerManager extends DatabaseManager {
   }
 
   /**
+   * Retrieves the OLAP database name associated with a given server code
+   *
+   * This method searches through the available servers to find the one whose code matches the provided code
+   *
+   * @param code - The unique code identifying the server
+   * @returns The name of the OLAP database if a matching server is found; otherwise, `null`
+   */
+  public getOlapDatabaseFromCode(code: string): string | null {
+    const server = this.getServerByCode(code);
+    return server ? server.databases.olap : null;
+  }
+
+  /**
    * Retrieves the SQL database name associated with the specified server
    *
    * @param serverName - The name of the server to look up

@@ -46,7 +46,7 @@
         </tr>
       </thead>
       <tbody>
-        @for (entry of entriesWithDifference; track entry) {
+        @for (entry of entriesWithDifference; track entry.id) {
           <tr>
             <td>{{ entry.date }}</td>
             <td>

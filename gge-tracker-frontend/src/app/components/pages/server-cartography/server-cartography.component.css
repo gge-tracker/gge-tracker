@@ -19,19 +19,6 @@ h5 {
   display: flex;
 }
 
-input:checked + .slider {
-  background: linear-gradient(135deg, #0d6efd, #00cfff);
-}
-
-input:checked + .slider {
-  box-shadow: 0 0 10px rgba(0, 207, 255, 0.5);
-}
-
-input:checked + .slider:before {
-  background-color: #fff;
-  transform: translateX(20px);
-}
-
 #heatmap-container {
   align-items: center;
   display: flex;
@@ -204,52 +191,6 @@ input:checked + .slider:before {
   width: 12px;
 }
 
-.filter-card {
-  align-items: center;
-  backdrop-filter: blur(8px);
-  background: linear-gradient(45deg, #163d51c4, #163d51);
-  border-radius: 16px;
-  box-shadow:
-    inset 0 0 10px rgba(255, 255, 255, 0.05),
-    0 4px 12px rgba(0, 0, 0, 0.4);
-  display: flex;
-  padding: 0.75rem 1rem;
-  transition:
-    background 0.2s ease,
-    transform 0.2s ease;
-}
-
-.filter-card:hover {
-  transform: translateY(-2px);
-}
-
-.filter-img {
-  align-items: center;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 50%;
-  display: flex;
-  justify-content: center;
-  padding: 6px;
-}
-
-.filter-img img {
-  height: 32px;
-  width: 32px;
-}
-
-.filter-label {
-  color: #eee;
-  font-size: 0.95rem;
-  white-space: nowrap;
-}
-
-.filter-toggle {
-  align-items: center;
-  display: flex;
-  justify-content: space-between;
-  margin-left: 1rem;
-  width: 100%;
-}
 
 .form-label {
   color: #dcdcdc;
@@ -505,10 +446,6 @@ input:checked + .slider:before {
   opacity: 0.92;
 }
 
-.modal-body-filter {
-  backdrop-filter: blur(8px);
-  color: #eee;
-}
 
 .modern-table {
   border-collapse: collapse;
@@ -662,29 +599,6 @@ input:checked + .slider:before {
   width: 100%;
 }
 
-.slider {
-  backdrop-filter: blur(4px);
-  background: rgba(100, 100, 100, 0.4);
-  border-radius: 34px;
-  box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.4);
-  cursor: pointer;
-  inset: 0;
-  position: absolute;
-  transition: 0.3s;
-}
-
-.slider:before {
-  background-color: #ddd;
-  border-radius: 50%;
-  bottom: 3px;
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
-  content: "";
-  height: 18px;
-  left: 3px;
-  position: absolute;
-  transition: 0.3s;
-  width: 18px;
-}
 
 .square-indicator {
   background-color: white;
@@ -701,18 +615,6 @@ input:checked + .slider:before {
   gap: 0.4rem;
 }
 
-.switch {
-  display: inline-block;
-  height: 24px;
-  position: relative;
-  width: 44px;
-}
-
-.switch input {
-  height: 0;
-  opacity: 0;
-  width: 0;
-}
 
 .table-wrapper {
   background: #fff;

@@ -2,6 +2,7 @@ import { NgClass } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { ModalFormGroupComponent } from '@ggetracker-components/modal-form-group/modal-form-group.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
 import {
@@ -63,6 +64,7 @@ interface FormFilters {
     IconComponent,
     IconToggleComponent,
     NgSelectModule,
+    ModalFormGroupComponent,
   ],
   templateUrl: './players.component.html',
   styleUrl: './players.component.css',

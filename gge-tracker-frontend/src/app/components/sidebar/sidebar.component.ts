@@ -49,6 +49,16 @@ export class SidebarComponent {
         },
         { label: 'Le Grand Tournoi', id: 'grand-tournament', iconUrl: '/assets/tools/gt.webp', frequency: 'Par heure' },
         { label: 'Scores finaux', id: 'events', iconUrl: '/assets/tools/events.webp' },
+        {
+          label: 'Roue des richesses inimaginables',
+          id: 'woa',
+          iconUrl: '/assets/tools/woa.webp',
+        },
+        {
+          label: 'Îles orageuses',
+          id: 'stormy-isles',
+          iconUrl: '/assets/tools/aquamarine.webp',
+        },
       ],
     },
     {

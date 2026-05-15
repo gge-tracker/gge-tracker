@@ -1,8 +1,9 @@
 <div class="modern-search d-flex flex-wrap align-items-stretch justify-content-center gap-2 row">
   <div class="search-container row">
     <div class="search-input-wrapper col-12 col-lg">
-      <input [attr.list]="searchTypes()['player'] && searchTypes()['alliance'] ? 'search-list' : searchTypes()['player'] ? 'player-list' : 'alliance-list'"
-        #searchInput
+      <input
+        [attr.list]="listId()"
+        (keydown.enter)="onEnterSearch()"
         type="text"
         class="search-input"
         [placeholder]="inputTip()"
@@ -27,24 +28,24 @@
         <lucide-icon
           [title]="'Réinitialiser' | translate"
           class="reset-icon" [img]="Reset"
-        (click)="searchInput.value = ''; search = ''; searchFixed = ''; searchPlayer.emit(''); searchAlliance.emit('')"></lucide-icon>
+          (click)="onReset()"></lucide-icon>
       }
     </div>
     @if (searchTypes()['player']) {
       <div class="col-auto">
-        <button class="btn-modern btn-player" (click)="searchFixed = search; searchPlayer.emit(searchFixed); saveResultForHistory('player', searchFixed)">
+        <button class="btn-modern btn-player" (click)="onPlayerSearch()">
           <lucide-icon class="lucide lucide-search" [img]="Search"></lucide-icon> {{ 'Rechercher le joueur' | translate }}
         </button>
       </div>
     }
     @if (searchTypes()['alliance']) {
       <div class="col-auto">
-        <button class="btn-modern btn-alliance" (click)="searchFixed = search; searchAlliance.emit(searchFixed); saveResultForHistory('alliance', searchFixed)">
+        <button class="btn-modern btn-alliance" (click)="onAllianceSearch()">
           <lucide-icon class="lucide lucide-search" [img]="Search"></lucide-icon> {{ !alliancePlaceholder() ? ('Rechercher l\'alliance' | translate) : alliancePlaceholder() }}
         </button>
       </div>
     }
-    @if (getFormsFilter() !== null && (searchType !== 'player' || searchFixed === '')) {
+    @if (formFilters() !== null && searchFixed === '') {
       <div class="col-auto">
         <app-filter
           [countFilterActivated]="countFilterActivated"

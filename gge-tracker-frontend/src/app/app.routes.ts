@@ -21,6 +21,8 @@ import { ViewCastleComponent } from '@ggetracker-pages/view-castle/view-castle.c
 import { GrandTournamentComponent } from '@ggetracker-pages/grand-tournament/grand-tournament.component';
 import { LiveOuterRealmsComponent } from '@ggetracker-pages/live-outer-realms/live-outer-realms.component';
 import { GuessDailyPlayerComponent } from '@ggetracker-pages/guess-daily-player/guess-daily-player.component';
+import { WoaComponent } from '@ggetracker-pages/events/woa/woa.component';
+import { StormyIslesComponent } from '@ggetracker-pages/stormy-isles/stormy-isles.component';
 
 export const routes: Routes = [
   {
@@ -169,6 +171,33 @@ export const routes: Routes = [
         data: {
           description: 'Analyze the events of Goodgame Empire: Grand Tournament',
           titleKey: 'Le Grand Tournoi',
+        },
+      },
+      {
+        path: 'stormy-isles',
+        component: StormyIslesComponent,
+        resolve: { titleResolver },
+        data: {
+          description: 'Browse the Stormy Isles leaderboard on Goodgame Empire, with aquamarine metrics.',
+          titleKey: 'Îles orageuses',
+        },
+      },
+      {
+        path: 'woa',
+        component: WoaComponent,
+        resolve: { titleResolver },
+        data: {
+          description: 'Discover the latest Wheel of Unimaginable Affluence ranking and events in Goodgame Empire.',
+          titleKey: 'Roue des richesses inimaginables',
+        },
+      },
+      {
+        path: 'woa/:id',
+        component: WoaComponent,
+        resolve: { titleResolver },
+        data: {
+          description: 'Discover the latest Wheel of Unimaginable Affluence ranking and events in Goodgame Empire.',
+          titleKey: 'Roue des richesses inimaginables',
         },
       },
       {

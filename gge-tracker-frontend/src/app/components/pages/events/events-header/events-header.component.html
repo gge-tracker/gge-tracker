@@ -10,7 +10,7 @@
     <div class="event-info-item">
       <lucide-icon [img]="CalendarDays" class="lucide-icon"></lucide-icon>
       <span>
-        {{ 'Événement du 0 au 0' | translate: { start: (from() | date: ('Date_7' | translate)), end: (to() | date: ('Date_7' | translate)) } }}
+        {{ 'Événement du 0 au 0' | translate: { start: (from() | date: (dateFormat() | translate)), end: (to() | date: (dateFormat() | translate)) } }}
       </span>
     </div>
 

@@ -27,6 +27,7 @@ export enum RouteErrorMessagesEnum {
   InvalidKingdomId = 'Invalid kingdom ID',
   InvalidLanguage = 'Invalid language parameter',
   InvalidPlayerId = 'Invalid player ID',
+  InvalidLastDaysParameter = 'Invalid lastDays parameter. It must be between 1 and 365.',
   InvalidPlayerName = 'Invalid player name',
   InvalidPosition = 'Invalid position',
   InvalidServer = 'Invalid server',

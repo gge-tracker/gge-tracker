@@ -2,30 +2,31 @@
   <div class="row g-4">
     <div class="col-12" [ngClass]="{'loading': isInLoading}">
       @if (!currentEvent) {
-        <div class="container-fluid row mt-3 row-gap-3">
+        <div class="row mt-3 row-gap-3">
           @for (event of events; track event; let i = $index) {
             <div class="col-12 col-lg-6">
               <app-event-card
                 [event]="event"
                 [options]="{ displayMode: 'player-count' }"
+                [loading]="cardLoading"
                 (onEventClick)="onEventClick($event)"
               ></app-event-card>
             </div>
           }
-          @if (!isInLoading && !currentEvent && events.length > 0) {
-            <div class="pagination-modern d-flex justify-content-center align-items-center mt-3 gap-2">
-              <button class="btn btn-sm rounded-circle shadow-sm" (click)="eventsNavigateTo(pagination.current_page - 1)"
-                [disabled]="pagination.current_page <= 1">
-                <i class="fa-solid fa-chevron-left"></i>
-              </button>
-              <span class="page-indicator">{{ pagination.current_page }} / {{ pagination.total_pages }}</span>
-              <button class="btn btn-sm rounded-circle shadow-sm" (click)="eventsNavigateTo(pagination.current_page + 1)"
-                [disabled]="pagination.current_page >= pagination.total_pages">
-                <i class="fa-solid fa-chevron-right"></i>
-              </button>
-            </div>
-          }
         </div>
+        @if (!isInLoading && !currentEvent && events.length > 0) {
+          <div class="pagination-modern">
+            <button class="btn btn-sm rounded-circle shadow-sm" (click)="eventsNavigateTo(pagination.current_page - 1)"
+              [disabled]="pagination.current_page <= 1">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <span class="page-indicator">{{ pagination.current_page }} / {{ pagination.total_pages }}</span>
+            <button class="btn btn-sm rounded-circle shadow-sm" (click)="eventsNavigateTo(pagination.current_page + 1)"
+              [disabled]="pagination.current_page >= pagination.total_pages">
+              <i class="fa-solid fa-chevron-right"></i>
+            </button>
+          </div>
+        }
       }
       @if (currentEvent) {
         <div class="events">
@@ -186,27 +187,27 @@
       </div>
       <div class="modal-body">
         <div class="row g-4">
-          <div class="col">
-            <label for="serverType" class="form-label" translate>{{ 'Serveur' | translate }} :</label>
-            <div class="input-group">
-              <span class="input-group-text p-1">
-                @if (formFilters.server && formFilters.server !== 'null') {
-                  <img [src]="serverService.getFlagUrl(formFilters.server)" [alt]="'Serveur' | translate"
-                    [title]="'Serveur' | translate" height="30">
-                } @else {
-                  <app-icon [name]="'Globe'"></app-icon>
-                }
-              </span>
-              <select class="form-select" [(ngModel)]="formFilters.server">
-                <option selected value="">{{'Tous' | translate}}</option>
-                @for (server of serverService.ggeEmpireActiveServerPrefixes; track server) {
-                  <option [value]="server">
-                    <img [src]="serverService.getFlagUrl(server)" [alt]="server" [title]="server" height="20">
-                    {{ server }}
-                  </option>
-                }
-              </select>
-            </div>
+          <div class="col-12">
+            <app-modal-form-group [label]="'Serveur' | translate">
+              <ng-select
+                field
+                [items]="serverService.ggeEmpireActiveServerPrefixes"
+                [(ngModel)]="formFilters.server"
+                [placeholder]="'Tous les serveurs' | translate"
+                [clearable]="true"
+                [searchable]="true"
+                [groupBy]="serverGroupFn"
+              >
+                <ng-template ng-label-tmp let-item="item">
+                  <img [src]="serverService.getFlagUrl(item)" [alt]="item" height="14" class="me-1">
+                  {{ item }}
+                </ng-template>
+                <ng-template ng-option-tmp let-item="item">
+                  <img [src]="serverService.getFlagUrl(item)" [alt]="item" height="14" class="me-1">
+                  {{ item }}
+                </ng-template>
+              </ng-select>
+            </app-modal-form-group>
           </div>
           <div class="row g-4 mt-3">
             <div class="col text-center">

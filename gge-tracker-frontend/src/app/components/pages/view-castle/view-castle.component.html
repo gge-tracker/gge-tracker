@@ -26,7 +26,7 @@
               <div class="position-absolute top-0 end-0 pe-2 ext-indicator"><i class="fa-solid fa-square-up-right"></i></div>
               <div class="castle-header text-center">
                 <div class="castle-image">
-                  <img [src]="getSearchCastleImg(castle)" alt="{{ castle.name }}" class="castle-img-{{castle.type}}">
+                  <img [src]="getSearchCastleImg(castle, true)" alt="{{ castle.name }}" class="castle-img-{{castle.type}}">
                 </div>
                 <div class="castle-info row justify-content-center">
                   <div class="col-12">
@@ -157,7 +157,7 @@
                     </div>
                     <div class="legend-block progress-block" style="grid-column: 1 / -1;">
                       <div class="d-flex justify-content-between align-items-center mb-1">
-                        <div class="small label">{{ 'Extensions' | translate }}</div>
+                        <div class="small label">{{ 'Extensions du château' | translate }}</div>
                         <div class="small fw-bold">{{ data.nbFloors }}/{{data.maxFloors}}</div>
                       </div>
                       <div class="progress-rail alt">
@@ -289,7 +289,7 @@
                           </td>
                           <td class="d-none d-sm-table-cell">{{ building.data['level'] }}
                             @if (!building.data['upgradeWodID']) {
-                              <span [title]="'Niveau max.' | translate">
+                              <span [title]="'Niveau max' | translate">
                                 <i class="maxed fa-solid fa-star"></i>
                               </span>
                             }
@@ -579,57 +579,57 @@
                 </div>
               </div>
               <div class="col-12 col-md-6">
-                <label class="filter-label">{{ 'Niveau min.' | translate }}</label>
+                <label class="filter-label">{{ 'Niveau min' | translate }}</label>
                 <app-search-bar [attrListInput]="[]" [searchInput]="filters.minLevel"
                   (searchEmitter)="filters.minLevel = $event; updateFilters()" [inputType]="'number'" [name]="'level-min'" [min]="0"
-                  [placeholderInput]="'0'" [hasContent]="true"><img src="/assets/upgrade2.png" alt="{{ 'Niveau min.' | translate }}"></app-search-bar>
+                  [placeholderInput]="'0'" [hasContent]="true"><img src="/assets/upgrade2.png" alt="{{ 'Niveau min' | translate }}"></app-search-bar>
                 </div>
                 <div class="col-12 col-md-6">
-                  <label class="filter-label">{{ 'Niveau max.' | translate }}</label>
+                  <label class="filter-label">{{ 'Niveau max' | translate }}</label>
                   <app-search-bar [attrListInput]="[]" [searchInput]="filters.maxLevel"
                     (searchEmitter)="filters.maxLevel = $event; updateFilters()" [inputType]="'number'" [name]="'level-max'" [min]="0"
-                    [placeholderInput]="'∞'" [hasContent]="true"><img src="/assets/upgrade2.png" alt="{{ 'Niveau max.' | translate }}"></app-search-bar>
+                    [placeholderInput]="'∞'" [hasContent]="true"><img src="/assets/upgrade2.png" alt="{{ 'Niveau max' | translate }}"></app-search-bar>
                   </div>
 
                   <div class="col-12 col-md-6">
-                    <label class="filter-label">{{ 'Prix de revente min.' | translate }}</label>
+                    <label class="filter-label">{{ 'Prix de revente min' | translate }}</label>
                     <app-search-bar [attrListInput]="[]" [searchInput]="filters.sellPriceMin"
                       (searchEmitter)="filters.sellPriceMin = $event; updateFilters()" [inputType]="'number'" [name]="'sell-price-min'" [min]="0"
-                      [placeholderInput]="'0'" [hasContent]="true"><img src="/assets/gold.png" alt="{{ 'Prix de revente min.' | translate }}"></app-search-bar>
+                      [placeholderInput]="'0'" [hasContent]="true"><img src="/assets/gold.png" alt="{{ 'Prix de revente min' | translate }}"></app-search-bar>
                     </div>
 
                     <div class="col-12 col-md-6">
-                      <label class="filter-label">{{ 'Prix de revente max.' | translate }}</label>
+                      <label class="filter-label">{{ 'Prix de revente max' | translate }}</label>
                       <app-search-bar [attrListInput]="[]" [searchInput]="filters.sellPriceMax"
                         (searchEmitter)="filters.sellPriceMax = $event; updateFilters()" [inputType]="'number'" [name]="'sell-price-max'" [min]="0"
-                        [placeholderInput]="'∞'" [hasContent]="true"><img src="/assets/gold.png" alt="{{ 'Prix de revente max.' | translate }}"></app-search-bar>
+                        [placeholderInput]="'∞'" [hasContent]="true"><img src="/assets/gold.png" alt="{{ 'Prix de revente max' | translate }}"></app-search-bar>
                       </div>
 
                       <div class="col-12 col-md-6">
-                        <label class="filter-label">{{ 'Puissance min.' | translate }}</label>
+                        <label class="filter-label">{{ 'Puissance min' | translate }}</label>
                         <app-search-bar [attrListInput]="[]" [searchInput]="filters.mightMin"
                           (searchEmitter)="filters.mightMin = $event; updateFilters()" [inputType]="'number'" [name]="'might-min'" [min]="0"
-                          [placeholderInput]="'0'" [hasContent]="true"><img src="/assets/might.png" alt="{{ 'Puissance min.' | translate }}"></app-search-bar>
+                          [placeholderInput]="'0'" [hasContent]="true"><img src="/assets/might.png" alt="{{ 'Puissance min' | translate }}"></app-search-bar>
                         </div>
 
                         <div class="col-12 col-md-6">
-                          <label class="filter-label">{{ 'Puissance max.' | translate }}</label>
+                          <label class="filter-label">{{ 'Puissance max' | translate }}</label>
                           <app-search-bar [attrListInput]="[]" [searchInput]="filters.mightMax"
                             (searchEmitter)="filters.mightMax = $event; updateFilters()" [inputType]="'number'" [name]="'might-max'" [min]="0"
-                            [placeholderInput]="'∞'" [hasContent]="true"><img src="/assets/might.png" alt="{{ 'Puissance max.' | translate }}"></app-search-bar>
+                            [placeholderInput]="'∞'" [hasContent]="true"><img src="/assets/might.png" alt="{{ 'Puissance max' | translate }}"></app-search-bar>
                           </div>
 
                           <div class="col-12 col-md-6">
-                            <label class="filter-label">{{ 'Dégâts min. (feu)' | translate }}</label>
+                            <label class="filter-label">{{ 'Dégâts min (feu)' | translate }}</label>
                             <app-search-bar [attrListInput]="[]" [searchInput]="filters.fireDamageMin"
                               (searchEmitter)="filters.fireDamageMin = $event; updateFilters()" [inputType]="'number'" [name]="'fire-damage-min'"
-                              [min]="0" [placeholderInput]="'0'" [hasContent]="true"><img src="/assets/fire2.png" alt="{{ 'Dégâts min. (feu)' | translate }}"></app-search-bar>
+                              [min]="0" [placeholderInput]="'0'" [hasContent]="true"><img src="/assets/fire2.png" alt="{{ 'Dégâts min (feu)' | translate }}"></app-search-bar>
                             </div>
                             <div class="col-12 col-md-6">
-                              <label class="filter-label">{{ 'Dégâts max. (feu)' | translate }}</label>
+                              <label class="filter-label">{{ 'Dégâts max (feu)' | translate }}</label>
                               <app-search-bar [attrListInput]="[]" [searchInput]="filters.fireDamageMax"
                                 (searchEmitter)="filters.fireDamageMax = $event; updateFilters()" [inputType]="'number'" [name]="'fire-damage-max'"
-                                [min]="0" [placeholderInput]="'∞'" [hasContent]="true"><img src="/assets/fire2.png" alt="{{ 'Dégâts max. (feu)' | translate }}"></app-search-bar>
+                                [min]="0" [placeholderInput]="'∞'" [hasContent]="true"><img src="/assets/fire2.png" alt="{{ 'Dégâts max (feu)' | translate }}"></app-search-bar>
                               </div>
 
                               <div class="col-12 col-md-6">

@@ -171,6 +171,7 @@ img,
 .sidebar-scroll {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 1.5rem 0.75rem;
   padding-top: 5px;
 }

@@ -1,4 +1,15 @@
-import { ChangeDetectorRef, Component, inject, input, OnChanges, OnInit, output, SimpleChanges } from '@angular/core';
+/* eslint-disable unicorn/consistent-function-scoping */
+import {
+  ChangeDetectorRef,
+  Component,
+  computed,
+  inject,
+  input,
+  OnChanges,
+  OnInit,
+  output,
+  SimpleChanges,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SearchType } from '@ggetracker-interfaces/empire-ranking';
 import { UtilitiesService } from '@ggetracker-services/utilities.service';
@@ -14,7 +25,6 @@ import { FilterComponent } from '../filter/filter.component';
   styleUrl: './search-form.component.css',
 })
 export class SearchFormComponent implements OnChanges, OnInit {
-  public searchType: SearchType = 'player';
   public searchFixed = '';
   public search = '';
   public readonly HardDrive = HardDrive;
@@ -36,6 +46,18 @@ export class SearchFormComponent implements OnChanges, OnInit {
   public alliancePlaceholder = input<string>();
   public countFilterActivated = 0;
 
+  public searchType = computed(() => {
+    const types = this.searchTypes();
+    return (Object.keys(types) as SearchType[]).find((key) => types[key]);
+  });
+
+  public listId = computed(() => {
+    const types = this.searchTypes();
+    if (types['player'] && types['alliance']) return 'search-list';
+    if (types['player']) return 'player-list';
+    return 'alliance-list';
+  });
+
   private cdr = inject(ChangeDetectorRef);
 
   public ngOnInit(): void {
@@ -52,8 +74,35 @@ export class SearchFormComponent implements OnChanges, OnInit {
     this.updateNbFilterActivated();
   }
 
-  public getFormsFilter(): Record<string, string | boolean | number | null | undefined | string[]> | null {
-    return this.formFilters();
+  public onEnterSearch(): void {
+    const type = this.searchType();
+    this.searchFixed = this.search;
+    if (type === 'player') {
+      this.searchPlayer.emit(this.searchFixed);
+      this.saveResultForHistory('player', this.searchFixed);
+    } else if (type === 'alliance') {
+      this.searchAlliance.emit(this.searchFixed);
+      this.saveResultForHistory('alliance', this.searchFixed);
+    }
+  }
+
+  public onPlayerSearch(): void {
+    this.searchFixed = this.search;
+    this.searchPlayer.emit(this.searchFixed);
+    this.saveResultForHistory('player', this.searchFixed);
+  }
+
+  public onAllianceSearch(): void {
+    this.searchFixed = this.search;
+    this.searchAlliance.emit(this.searchFixed);
+    this.saveResultForHistory('alliance', this.searchFixed);
+  }
+
+  public onReset(): void {
+    this.search = '';
+    this.searchFixed = '';
+    this.searchPlayer.emit('');
+    this.searchAlliance.emit('');
   }
 
   public getLocalStorageSearchHistory(): Record<string, string[]> {
@@ -94,12 +143,13 @@ export class SearchFormComponent implements OnChanges, OnInit {
   public getSearchHistory(category: SearchType | 'all'): string[] {
     try {
       if (globalThis.window === undefined) return [];
-      if (category === 'all') {
-        const history = this.getLocalStorageSearchHistory();
-        return Object.values(history).flat() as string[];
-      }
       const history = this.getLocalStorageSearchHistory();
-      return history[category] || [];
+      if (category === 'all') {
+        return [...new Set(Object.values(history).flat())]
+          .filter((_, index) => index % 2 === 0)
+          .slice(0, 5) as string[];
+      }
+      return [...new Set(history[category] || [])];
     } catch (error) {
       console.error('Error retrieving search history from localStorage', error);
     }

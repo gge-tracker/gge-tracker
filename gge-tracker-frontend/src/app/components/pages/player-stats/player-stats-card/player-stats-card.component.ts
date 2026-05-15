@@ -18,6 +18,7 @@ import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { ApiRestService } from '@ggetracker-services/api-rest.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { ChartComponent } from 'ng-apexcharts';
+import { ApexXAxis } from 'ng-apexcharts';
 
 @Component({
   selector: 'app-player-stats-card',
@@ -148,7 +149,8 @@ export class PlayerStatsCardComponent implements AfterViewInit, OnInit {
     if (!this.chartComps) return;
     this.period = period;
     this.chartComps.toArray().forEach((chart) => {
-      const categories = chart.xaxis()?.categories as string[];
+      const xaxis: ApexXAxis | ApexXAxis[] | undefined = chart.xaxis();
+      const categories = (Array.isArray(xaxis) ? xaxis[0]?.categories : xaxis?.categories) as string[];
       const targetChart = chart.component;
       if (!targetChart) return;
       switch (period) {

@@ -72,7 +72,7 @@
                           <span class="level-main">{{player.level}}</span>
                           @if (player.legendary_level) {
                             <div class="level-separator"></div>
-                            <span class="level-legendary">
+                            <span class="level-legendary" [attr.data-level]="player.legendary_level">
                               {{ player.legendary_level }}
                             </span>
                           }
@@ -125,7 +125,7 @@
           <div class="ei-content text-light">
             <h2 id="ei-title" class="ei-title">{{ 'Événement indisponible' | translate }}</h2>
             <p id="ei-desc" class="ei-sub">
-              {{ "Cet événement n'est pas actif actuellement. Revenez plus tard lorsque l'évènement sera actif sur le jeu" | translate }}
+              {{ "offline-event" | translate }}
             </p>
           </div>
           <div class="ei-footer" aria-hidden="true">

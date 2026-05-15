@@ -38,6 +38,12 @@ import {
   ApiLiveRankingResponse,
   ApiLiveRankingSpecificPlayerResponse,
   ApiEventsByPlayerIdResponse,
+  ApiWoaEventListResponse,
+  ApiWoaEventDataResponse,
+  ApiWoaEventPlayerDataResponse,
+  ApiDungeonsByPlayerIdResponse,
+  ApiAquamarinePlayerResponse,
+  ApiStormyIslesLeaderboardResponse,
 } from '@ggetracker-interfaces/empire-ranking';
 
 @Injectable({
@@ -142,6 +148,14 @@ export class ApiRestService {
   public async getOffers(): Promise<any> {
     const response = await fetch('/assets/offers.json');
     return response.json();
+  }
+
+  public async getDungeonsByPlayerId(playerId: number): Promise<ApiResponse<ApiDungeonsByPlayerIdResponse>> {
+    const response = await this.apiFetch<ApiDungeonsByPlayerIdResponse>(
+      `${ApiRestService.apiUrl}dungeons/player/${playerId}`,
+    );
+    if (!response.success) return response;
+    return { success: true, data: response.data };
   }
 
   /**
@@ -654,11 +668,13 @@ export class ApiRestService {
     eventName: string,
     id: number,
     page: number,
-    playerNameFilter: string,
-    serverFilter: string | undefined,
+    playerNameFilter?: string | null,
+    serverFilter?: string | null,
   ): Promise<ApiResponse<ApiOuterRealmPlayers>> {
     const response = await this.apiFetch<ApiOuterRealmPlayers>(
-      `${ApiRestService.apiUrl}events/${eventName}/${id}/players?page=${page}&player_name=${playerNameFilter}&server=${serverFilter}`,
+      `${ApiRestService.apiUrl}events/${eventName}/${id}/players?page=${page}` +
+        (playerNameFilter ? `&player_name=${playerNameFilter}` : '') +
+        (serverFilter ? `&server=${serverFilter}` : ''),
     );
     if (!response.success) return response;
     return { success: true, data: response.data };
@@ -682,6 +698,75 @@ export class ApiRestService {
       ? `${ApiRestService.apiUrl}live-ranking/outer-realms?page=${page}&player_name=${playerName}`
       : `${ApiRestService.apiUrl}live-ranking/outer-realms?page=${page}`;
     const response = await this.apiFetch<ApiLiveRankingResponse>(constructUrl);
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  public async getWoaEventList(page: number): Promise<ApiResponse<ApiWoaEventListResponse>> {
+    const response = await this.apiFetch<ApiWoaEventListResponse>(`${ApiRestService.apiUrl}woa/events?page=${page}`);
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  public async getWoaEventDataById(
+    eventId: string,
+    page: number,
+    player_name?: string,
+    alliance_name?: string,
+  ): Promise<ApiResponse<ApiWoaEventDataResponse>> {
+    const response = await this.apiFetch<ApiWoaEventDataResponse>(
+      `${ApiRestService.apiUrl}woa/events/id/${eventId}?page=${page}` +
+        (player_name ? `&player_name=${player_name}` : '') +
+        (alliance_name ? `&alliance_name=${alliance_name}` : ''),
+    );
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  public async getWoaEventDataByDate(
+    eventDate: string,
+    page: number,
+    player_name?: string,
+    alliance_name?: string,
+  ): Promise<ApiResponse<ApiWoaEventDataResponse>> {
+    const response = await this.apiFetch<ApiWoaEventDataResponse>(
+      `${ApiRestService.apiUrl}woa/events/date/${eventDate}?page=${page}` +
+        (player_name ? `&player_name=${player_name}` : '') +
+        (alliance_name ? `&alliance_name=${alliance_name}` : ''),
+    );
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  public async getWoaEventDataByPlayerId(playerId: number): Promise<ApiResponse<ApiWoaEventPlayerDataResponse>> {
+    const response = await this.apiFetch<ApiWoaEventPlayerDataResponse>(
+      `${ApiRestService.apiUrl}woa/events/player/${playerId}`,
+    );
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  public async getStormyIslesLeaderboard(
+    page: number,
+    orderBy?: number,
+    orderDir?: string,
+    playerName?: string,
+    allianceName?: string,
+  ): Promise<ApiResponse<ApiStormyIslesLeaderboardResponse>> {
+    let request = `${ApiRestService.apiUrl}stormy-isles?page=${page}`;
+    if (orderBy !== undefined) request += `&order_by=${orderBy}`;
+    if (orderDir) request += `&order_dir=${orderDir}`;
+    if (playerName) request += `&player_name=${encodeURIComponent(playerName)}`;
+    if (allianceName) request += `&alliance_name=${encodeURIComponent(allianceName)}`;
+    const response = await this.apiFetch<ApiStormyIslesLeaderboardResponse>(request);
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  public async getAquamarinePointsByPlayerId(playerId: number): Promise<ApiResponse<ApiAquamarinePlayerResponse>> {
+    const response = await this.apiFetch<ApiAquamarinePlayerResponse>(
+      `${ApiRestService.apiUrl}aquamarine/player/${playerId}`,
+    );
     if (!response.success) return response;
     return { success: true, data: response.data };
   }

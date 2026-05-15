@@ -3,7 +3,7 @@ import { ChangeDetectorRef, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
-import { IconComponent } from '@ggetracker-components/icon/icon.component';
+import { ModalFormGroupComponent } from '@ggetracker-components/modal-form-group/modal-form-group.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
 import {
@@ -20,6 +20,7 @@ import { LanguageService } from '@ggetracker-services/language.service';
 import { ServerService } from '@ggetracker-services/server.service';
 import { TranslatePipe } from '@ngx-translate/core';
 import { CalendarCheck, LucideAngularModule, SquareUser } from 'lucide-angular';
+import { NgSelectComponent } from '@ng-select/ng-select';
 import { ApexAxisChartSeries, ApexChart, ApexNonAxisChartSeries, ApexOptions, ApexPlotOptions } from 'ng-apexcharts';
 import { firstValueFrom } from 'rxjs';
 import { EventsHeaderComponent } from './events-header/events-header.component';
@@ -59,8 +60,9 @@ export interface EventList {
     LucideAngularModule,
     EventsHeaderComponent,
     ChartsWrapperComponent,
-    IconComponent,
     EventCardComponent,
+    ModalFormGroupComponent,
+    NgSelectComponent,
   ],
   templateUrl: './events.component.html',
   styleUrl: './events.component.css',
@@ -82,20 +84,20 @@ export class EventsComponent extends GenericComponent {
     total_items_count: 0,
   };
   public maxPage = 1;
+  public cardLoading = false;
   public playerNameFilter = '';
   public players: ApiOuterRealmPlayer[] = [];
   public nbPlayers = 0;
   public charts: Record<string, ChartAdvancedOptions> = {};
   public currentEvent: ApiOuterRealmEvent | null = null;
   public formFilters: {
-    server: string | undefined;
+    server: string | null | undefined;
     isFiltered: boolean;
   } = {
-    server: '',
+    server: null,
     isFiltered: false,
   };
   public translations: Record<string, string> = {};
-
   private eventId: number | null = null;
   private languageService = inject(LanguageService);
   private cdr = inject(ChangeDetectorRef);
@@ -104,6 +106,7 @@ export class EventsComponent extends GenericComponent {
     super();
     this.onInit();
   }
+  public serverGroupFn = (server: string): string => server.replaceAll(/\d+$/g, '').toUpperCase();
 
   public onInit(): void {
     void this.generateTranslations().then(() => {
@@ -119,27 +122,15 @@ export class EventsComponent extends GenericComponent {
     }
   }
 
-  public eventsNavigateTo(page: number): void {
-    if (this.isInLoading) return;
-    this.isInLoading = true;
+  public async eventsNavigateTo(page: number): Promise<void> {
+    if (this.cardLoading) return;
+    this.cardLoading = true;
     this.page = page;
-    void this.initEventList(this.page, this.eventType ?? undefined).then(() => {
-      this.isInLoading = false;
-      void this.updatePageInUrl(this.page);
-      this.cdr.detectChanges();
+    await this.initEventList(this.page, this.eventType ?? undefined).then(async () => {
+      await this.updatePageInUrl(this.page);
     });
-  }
-
-  public eventsPreviousPage(): void {
-    if (this.pagination.current_page > 1) {
-      void this.initEventList(this.pagination.current_page - 1, this.eventType ?? undefined);
-    }
-  }
-
-  public eventsNextPage(): void {
-    if (this.pagination.current_page < this.pagination.total_pages) {
-      void this.initEventList(this.pagination.current_page + 1, this.eventType ?? undefined);
-    }
+    this.cardLoading = false;
+    this.cdr.detectChanges();
   }
 
   public getEventName(type: string): string {
@@ -195,6 +186,7 @@ export class EventsComponent extends GenericComponent {
   }
 
   public applyFilters(): void {
+    this.formFilters.isFiltered = !!this.formFilters.server;
     this.isInLoading = true;
     this.page = 1;
     this.getEventPlayersById()

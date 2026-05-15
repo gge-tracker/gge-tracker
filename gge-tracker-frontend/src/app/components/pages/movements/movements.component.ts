@@ -3,6 +3,7 @@ import { Component, inject, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { ModalFormGroupComponent } from '@ggetracker-components/modal-form-group/modal-form-group.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
 import { ApiMovementsResponse, ErrorType, Movement, SearchType } from '@ggetracker-interfaces/empire-ranking';
@@ -48,6 +49,7 @@ interface FormFilters {
     RouterLink,
     LucideAngularModule,
     TranslateModule,
+    ModalFormGroupComponent,
   ],
   standalone: true,
   providers: [FormatNumberPipe],

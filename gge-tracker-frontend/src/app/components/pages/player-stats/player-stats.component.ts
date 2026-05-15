@@ -15,6 +15,8 @@ import { RouterLink } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import {
   AlliancesUpdates,
+  ApiAquamarineMetric,
+  ApiAquamarineSnapshot,
   ApiGenericData,
   ApiPlayerStats,
   ApiPlayerStatsByPlayerId,
@@ -34,6 +36,7 @@ import {
   PlayersUpdates,
   RankingFameTitle,
   Top3EventPlayers,
+  WoaEventList,
 } from '@ggetracker-interfaces/empire-ranking';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { LevelPipe } from '@ggetracker-pipes/level.pipe';
@@ -42,6 +45,7 @@ import { LocalStorageService } from '@ggetracker-services/local-storage.service'
 import { TranslateModule } from '@ngx-translate/core';
 import Gradient from 'javascript-color-gradient';
 import { ApexAxisChartSeries } from 'ng-apexcharts';
+import { ModalTableComponent } from '@ggetracker-components/modal-table/modal-table.component';
 import { PlayerStatsCardComponent } from './player-stats-card/player-stats-card.component';
 import { combineLatest, firstValueFrom } from 'rxjs';
 import { CalendarCheck, LucideAngularModule, SquareUser } from 'lucide-angular';
@@ -64,12 +68,42 @@ import { EventCardComponent } from '@ggetracker-pages/events/event-card/event-ca
     NgTemplateOutlet,
     NgStyle,
     EventCardComponent,
+    ModalTableComponent,
   ],
   standalone: true,
   templateUrl: './player-stats.component.html',
   styleUrl: './player-stats.component.css',
 })
 export class PlayerStatsComponent extends GenericComponent implements OnInit, AfterViewInit {
+  public readonly AQUAMARINE_METRIC_LABELS: Record<number, string> = {
+    100: 'Points de cargo',
+    15: "Total d'aigues-marines collectées",
+    16: 'Aigues-marines collectées dans les îles aux ressources',
+    17: 'Aigues-marines collectées dans les forts orageux',
+    18: 'Aigues-marines collectées dans les combats JcJ',
+    19: 'Aigues-marines dépensées pour des points de cargo',
+    20: 'Aigues-marines perdues en combats JcJ',
+  };
+  public readonly AQUAMARINE_ALLOWED = [15, 16, 17, 18, 19, 20, 100];
+  public readonly AQUAMARINE_METRIC_ICONS: Record<number, string> = {
+    15: 'fas fa-gem',
+    16: 'fas fa-water',
+    17: 'fas fa-bolt',
+    18: 'fas fa-shield-alt',
+    19: 'fas fa-coins',
+    20: 'fas fa-skull',
+    100: 'fas fa-trophy',
+  };
+  public readonly AQUAMARINE_METRIC_COLORS: Record<number, string> = {
+    15: '#00e5ff',
+    16: '#4caf50',
+    17: '#ff9800',
+    18: '#42a5f5',
+    19: '#ce93d8',
+    20: '#ef5350',
+    100: '#ffd700',
+  };
+  public aquamarineSnapshotsLastUpdated?: Date;
   public charts: Record<string, ChartOptions> = {};
   public readonly CalendarCheck = CalendarCheck;
   public readonly SquareUser = SquareUser;
@@ -119,14 +153,11 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     city: 0,
     patriarch: 0,
   };
+  public woaHistory: WoaEventList[] = [];
   public monumentsList: Monument[] = [];
-  public readonly pageSize = 10;
+  public aquamarineSnapshots: ApiAquamarineSnapshot[] = [];
+  public aquamarineLoadState: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
   public readonly currentI18nTitleKey = 'titles.playerTitle_';
-  public currentPage = 1;
-  public totalPages = 1;
-  public searchTerm = '';
-  public sortColumn: keyof Monument | null = null;
-  public sortAsc = true;
   public tabs: { key: PlayerStatsTabs; label: string; assetIcon?: string }[] = [
     { key: 'overview', label: "Vue d'ensemble", assetIcon: 'players.png' },
     { key: 'loot', label: 'Points de pillage hebdomadaire', assetIcon: 'loot.png' },
@@ -134,6 +165,8 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     { key: 'castles', label: 'Châteaux', assetIcon: 'tools/castles.webp' },
     { key: 'glory', label: 'Points de gloire', assetIcon: 'glory.png' },
     { key: 'events', label: 'Événements', assetIcon: 'tools/events.webp' },
+    { key: 'woa', label: 'Roue des richesses inimaginables', assetIcon: 'tools/woa.webp' },
+    { key: 'aquamarine', label: 'Îles orageuses', assetIcon: 'tools/aquamarine.webp' },
   ];
   public currentTab: PlayerStatsTabs = 'overview';
   public maxLootPointsByWeek: { week: string; points: number }[] = [];
@@ -149,7 +182,21 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     berimondKingdom: false,
     nomad: false,
     samurai: false,
+    aquamarine: false,
   };
+
+  public get aquamarineHeroMetric(): ApiAquamarineMetric | undefined {
+    return this.aquamarineSnapshots[0]?.metrics.find((m) => m.metric_id === 15);
+  }
+
+  public get aquamarineSecondaryMetrics(): ApiAquamarineMetric[] {
+    const snapshot = this.aquamarineSnapshots[0];
+    if (!snapshot) return [];
+    const order = [100, 16, 17, 18, 19, 20];
+    return order
+      .map((id) => snapshot.metrics.find((m) => m.metric_id === id))
+      .filter((m): m is ApiAquamarineMetric => m !== undefined);
+  }
 
   private animationFrames: Partial<Record<keyof IRankingStatsPlayer, number>> = {};
   private localStorage = inject(LocalStorageService);
@@ -253,11 +300,19 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     ) as Record<ApiPlayerStatsType, EventGenericVariation[]>;
   }
 
-  public navigateToEvent(event: OuterEventData): void {
-    if (event.type === EventType.OUTER_REALM) {
-      void this.router.navigate(['/events', 'outer-realms', event.event_num]);
-    } else if (event.type === EventType.BEYOND_THE_HORIZON) {
-      void this.router.navigate(['/events', 'beyond-the-horizon', event.event_num]);
+  public navigateToEvent(event: OuterEventData | WoaEventList): void {
+    if ('event_num' in event) {
+      if (event.type === EventType.OUTER_REALM) {
+        void this.router.navigate(['/events', 'outer-realms', event.event_num]);
+      } else if (event.type === EventType.BEYOND_THE_HORIZON) {
+        void this.router.navigate(['/events', 'beyond-the-horizon', event.event_num]);
+      }
+    } else {
+      const resultByPage = 15;
+      const calculatedPage = Math.ceil((event.rank ?? 1) / resultByPage);
+      void this.router.navigate([event.type], {
+        queryParams: { date: event.date.toISOString(), page: calculatedPage },
+      });
     }
   }
 
@@ -424,52 +479,14 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     }
   }
 
-  public changePage(delta: number): void {
-    this.currentPage = Math.min(this.totalPages, Math.max(1, this.currentPage + delta));
-  }
-
-  public onSearchChange(): void {
-    this.currentPage = 1;
-  }
-
-  public get paginatedMonuments(): Monument[] {
-    let filtered = this.monumentsList;
-    if (this.searchTerm.trim()) {
-      const lower = this.searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (m) =>
-          m.type.toLowerCase().includes(lower) ||
-          m.position.toLowerCase().includes(lower) ||
-          m.kingdom?.toString().includes(lower) ||
-          m.owner.toLowerCase().includes(lower),
-      );
-    }
-    const sortColum = this.sortColumn;
-    if (sortColum) {
-      filtered = [...filtered].sort((a, b) => {
-        const aValue = a[sortColum] ?? '';
-        const bValue = b[sortColum] ?? '';
-        return (
-          ('' + aValue).localeCompare('' + bValue, undefined, {
-            sensitivity: 'base',
-          }) * (this.sortAsc ? 1 : -1)
-        );
-      });
-    }
-
-    this.totalPages = Math.max(1, Math.ceil(filtered.length / this.pageSize));
-    const start = (this.currentPage - 1) * this.pageSize;
-    return filtered.slice(start, start + this.pageSize);
-  }
-
-  public sortBy(column: keyof Monument): void {
-    if (this.sortColumn === column) {
-      this.sortAsc = !this.sortAsc;
-    } else {
-      this.sortColumn = column;
-      this.sortAsc = true;
-    }
-  }
+  public readonly monumentsSearchFilter = (item: Monument, term: string): boolean => {
+    return (
+      item.type.toLowerCase().includes(term) ||
+      item.position.toLowerCase().includes(term) ||
+      item.kingdom?.toString().includes(term) ||
+      item.owner.toLowerCase().includes(term)
+    );
+  };
 
   public getRealmName(realmName?: number): string {
     if (realmName === undefined) return 'Unknown';
@@ -1111,6 +1128,37 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     this.initChartOption('bloodcrow', series, colors.getColors());
   }
 
+  private initAquamarineCharts(): void {
+    if (this.aquamarineSnapshots.length === 0) return;
+
+    // Build one time-series per metric_id across all snapshots.
+    const metricSeries = new Map<number, Array<[number, number]>>();
+    for (const snapshot of this.aquamarineSnapshots) {
+      const ts = new Date(snapshot.collected_at).getTime();
+      for (const metric of snapshot.metrics) {
+        if (this.AQUAMARINE_ALLOWED.includes(metric.metric_id)) {
+          if (!metricSeries.has(metric.metric_id)) {
+            metricSeries.set(metric.metric_id, []);
+          }
+          metricSeries.get(metric.metric_id)!.push([ts, metric.value]);
+        }
+      }
+    }
+
+    // Sort each series chronologically.
+    for (const points of metricSeries.values()) {
+      points.sort(([a], [b]) => a - b);
+    }
+
+    const series: ApexAxisChartSeries = [...metricSeries.entries()].map(([metricId, points]) => ({
+      name: this.AQUAMARINE_METRIC_LABELS[metricId] ?? `${metricId}`,
+      data: points,
+    }));
+
+    const colors = [...metricSeries.keys()].map((id) => this.AQUAMARINE_METRIC_COLORS[id] ?? '#00bcd4');
+    this.initChartOption('aquamarine', series, colors);
+  }
+
   private generateWeekHours(start: Date, end: Date): string[] {
     const hours: string[] = [];
     const current = new Date(start);
@@ -1548,6 +1596,40 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
           this.cdr.detectChanges();
         }
       });
+    } else if (fragment === 'woa') {
+      if (!this.playerId) return;
+      void this.apiRestService.getWoaEventDataByPlayerId(this.playerId).then((response) => {
+        if (response.success) {
+          const data = response.data;
+          this.woaHistory = data.events.map((event) => ({
+            date: new Date(event.date),
+            point: event.point,
+            rank: event.rank,
+            type: 'woa',
+            from: this.utilitiesService.calculateWoaEventBeginTime(new Date(event.date)),
+            to: this.utilitiesService.calculateWoaEventEndTime(new Date(event.date)),
+          }));
+          this.cdr.detectChanges();
+        }
+      });
+    } else if (fragment === 'aquamarine' && this.aquamarineLoadState === 'idle') {
+      if (!this.playerId) return;
+      this.aquamarineLoadState = 'loading';
+      this.cdr.detectChanges();
+      void this.apiRestService.getAquamarinePointsByPlayerId(this.playerId).then((response) => {
+        if (response.success) {
+          this.aquamarineSnapshots = response.data.snapshots;
+          const timestamp: number | undefined = response.data.snapshots
+            .at(-1)
+            ?.metrics.find((m) => m.metric_id === 21)?.value;
+          this.aquamarineSnapshotsLastUpdated = new Date(timestamp ? timestamp * 1000 : Date.now());
+          this.initAquamarineCharts();
+          this.aquamarineLoadState = 'loaded';
+        } else {
+          this.aquamarineLoadState = 'error';
+        }
+        this.cdr.detectChanges();
+      });
     }
     if (['overview', 'loot'].includes(fragment) && this.fillDataState === 'idle') {
       this.fillDataState = 'loading';
@@ -1738,14 +1820,17 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       switch (target) {
         case CastleType.CASTLE: {
           this.quantity.castle++;
+          this.quantity.patriarch++;
           break;
         }
         case CastleType.REALM_CASTLE: {
           this.quantity.castle++;
+          this.quantity.patriarch++;
           break;
         }
         case CastleType.OUTPOST: {
           this.quantity.outpost++;
+          this.quantity.patriarch++;
           break;
         }
         case CastleType.MONUMENT: {

@@ -1,0 +1,13 @@
+<div class="mfg-wrapper">
+  @if (label()) {
+    <p class="mfg-label">{{ label() }}</p>
+  }
+  <div class="mfg-row">
+    <div class="mfg-fields">
+      <ng-content select="[field]" />
+    </div>
+    <div class="mfg-actions">
+      <ng-content select="[action]" />
+    </div>
+  </div>
+</div>

@@ -1,17 +1,33 @@
-import { NgClass } from '@angular/common';
+import { DatePipe, NgClass } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { SearchbarComponent } from '@ggetracker-components/searchbar/searchbar.component';
 import { SelectComponent } from '@ggetracker-components/select/select.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
-import { ApiDungeonsResponse, Dungeon, ErrorType, KingdomRealm } from '@ggetracker-interfaces/empire-ranking';
+import { ModalFormGroupComponent } from '@ggetracker-components/modal-form-group/modal-form-group.component';
+import { ModalTableComponent } from '@ggetracker-components/modal-table/modal-table.component';
+import { ChartsWrapperComponent } from '@ggetracker-modules/charts-client/charts-wrapper.component';
+import {
+  ApiDungeonsAttackHistory,
+  ApiDungeonsResponse,
+  ChartAdvancedOptions,
+  Dungeon,
+  ErrorType,
+  KingdomRealm,
+} from '@ggetracker-interfaces/empire-ranking';
 import { CooldownPipe } from '@ggetracker-pipes/cooldown.pipe';
+import { DurationPipe } from '@ggetracker-pipes/duration.pipe';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
 import { ServerService } from '@ggetracker-services/server.service';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { TranslateModule } from '@ngx-translate/core';
 import { LucideAngularModule, MessageCircleQuestion, Search, X } from 'lucide-angular';
+
+interface DungeonAttackHistory extends ApiDungeonsAttackHistory {
+  image: string;
+  id: string;
+}
 
 @Component({
   selector: 'app-tracker',
@@ -23,8 +39,13 @@ import { LucideAngularModule, MessageCircleQuestion, Search, X } from 'lucide-an
     SelectComponent,
     TranslateModule,
     CooldownPipe,
+    DurationPipe,
     FormsModule,
     NgSelectModule,
+    DatePipe,
+    ModalTableComponent,
+    ModalFormGroupComponent,
+    ChartsWrapperComponent,
   ],
   standalone: true,
   templateUrl: './tracker.component.html',
@@ -32,11 +53,17 @@ import { LucideAngularModule, MessageCircleQuestion, Search, X } from 'lucide-an
 })
 export class TrackerComponent extends GenericComponent {
   public realms: KingdomRealm[] = [
-    { key: '2', label: 'Le Glacier éternel' },
-    { key: '1', label: 'Les Sables brûlants' },
-    { key: '3', label: 'Les Pics du feu' },
+    { key: '2', label: 'Le Glacier éternel', translated: '' },
+    { key: '1', label: 'Les Sables brûlants', translated: '' },
+    { key: '3', label: 'Les Pics du feu', translated: '' },
   ];
   public serverService = inject(ServerService);
+  public playerDungeonAttackHistory: DungeonAttackHistory[] = [];
+  public selectedPlayerName: string | null = null;
+  public activeTab: 'list' | 'graph' = 'list';
+  public attackChart: ChartAdvancedOptions | null = null;
+  public attacksPerDayChart: ChartAdvancedOptions | null = null;
+  public attackStats: { last24h: number; last7d: number; last30d: number } = { last24h: 0, last7d: 0, last30d: 0 };
   public readonly Search = Search;
   public readonly X = X;
   public readonly MessageCircleQuestionMark = MessageCircleQuestion;
@@ -55,6 +82,8 @@ export class TrackerComponent extends GenericComponent {
   public positionX: number | null = null;
   public positionY: number | null = null;
   public nearPlayerName: string | null = null;
+  public currentPage = 1;
+  public totalPages = 1;
   public states = {
     Tous: 0,
     Attaquable: 1,
@@ -71,6 +100,35 @@ export class TrackerComponent extends GenericComponent {
     this.isInLoading = true;
     this.resetHeaders();
     this.init();
+  }
+
+  public async getDungeonsByPlayerId(dungeon: Dungeon): Promise<void> {
+    const playerId = dungeon.playerId;
+    if (playerId === undefined) return;
+    this.isInLoading = true;
+    this.activeTab = 'list';
+    this.selectedPlayerName = dungeon.playerName ?? '?';
+    await this.apiRestService.getDungeonsByPlayerId(playerId).then((response) => {
+      if (!response.success) {
+        this.isInLoading = false;
+        this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
+        return;
+      }
+      this.playerDungeonAttackHistory = response.data.dungeons.map((dungeon) => ({
+        ...dungeon,
+        image: this.getDungeonImage(dungeon.kid),
+        id:
+          dungeon.kid.toString() +
+          '_' +
+          dungeon.position_x.toString() +
+          '_' +
+          dungeon.position_y.toString() +
+          '_' +
+          dungeon.attacked_at,
+      }));
+      this.buildAttackChart(this.playerDungeonAttackHistory);
+      this.isInLoading = false;
+    });
   }
 
   public get allowedServers(): string[] {
@@ -143,7 +201,7 @@ export class TrackerComponent extends GenericComponent {
     this.nearPlayerName = playerName;
     this.localStorage.setItem('nearPlayerName', playerName);
     this.activeSortCount = 1;
-    if (this.headers.length === 4) {
+    if (this.headers.length === 5) {
       this.headers.splice(2, 0, ['distance', 'Distance', '', true]);
     }
     this.page = 1;
@@ -174,7 +232,7 @@ export class TrackerComponent extends GenericComponent {
     this.localStorage.setItem('positionX', positionX.toString());
     this.localStorage.setItem('positionY', positionY.toString());
     this.activeSortCount = 1;
-    if (this.headers.length === 4) {
+    if (this.headers.length === 5) {
       this.headers.splice(2, 0, ['distance', 'Distance', '', true]);
     }
     this.page = 1;
@@ -230,12 +288,19 @@ export class TrackerComponent extends GenericComponent {
   }
 
   public isInCooldown(dungeon: Dungeon): boolean {
-    if (dungeon.cooldown === 0) return false;
-    const updatedDate = new Date(dungeon.updatedAt);
-    const endTime = new Date(updatedDate.getTime() + dungeon.cooldown * 1000);
+    if (!dungeon.effectiveCooldownUntil) return false;
     const now = new Date();
-    return endTime.getTime() > now.getTime();
+    const availableAt = new Date(dungeon.effectiveCooldownUntil);
+    return availableAt > now;
   }
+
+  public readonly dungeonHistorySearchFilter = (item: DungeonAttackHistory, term: string): boolean => {
+    return (
+      this.translateService.instant(this.getRealmName(item.kid)).toLowerCase().includes(term) ||
+      `${item.position_x}:${item.position_y}`.includes(term) ||
+      item.attacked_at.toLowerCase().includes(term)
+    );
+  };
 
   public onStateChange(state: keyof typeof this.states): void {
     this.selectedState = state;
@@ -280,6 +345,9 @@ export class TrackerComponent extends GenericComponent {
 
   private init(): void {
     try {
+      this.realms.forEach((realm) => {
+        realm.translated = this.translateService.instant(realm.label);
+      });
       this.displayedStates = Object.entries(this.states).map(this.mapStateEntry);
       this.displayedStates.forEach((state) => {
         state.label = this.translateService.instant(state.label);
@@ -305,6 +373,7 @@ export class TrackerComponent extends GenericComponent {
       }
       if (this.localStorage.getItem('selectedState')) {
         this.selectedState = this.localStorage.getItem('selectedState') as keyof typeof this.states;
+        this.filterByAttackCooldown = this.states[this.selectedState];
       }
       if (this.localStorage.getItem('playerName')) {
         this.filterByPlayerName = this.localStorage.getItem('playerName');
@@ -368,21 +437,102 @@ export class TrackerComponent extends GenericComponent {
       this.maxPage = 1;
     }
     return dungeons.dungeons.map((dungeon, index) => {
+      const effectiveCooldownUntil = dungeon.effective_cooldown_until;
+      const availableDurationSeconds = dungeon.available_duration_seconds;
+      const now = Date.now();
+      const cooldownEnd = effectiveCooldownUntil ? new Date(effectiveCooldownUntil).getTime() : null;
+      const isAttackable = cooldownEnd !== null && cooldownEnd <= now;
+      let availabilityAnimDelay: string | undefined;
+      let availabilityExceeded: boolean | undefined;
+      if (isAttackable && availableDurationSeconds && cooldownEnd !== null) {
+        const rawElapsed = (now - cooldownEnd) / 1000;
+        availabilityExceeded = rawElapsed >= availableDurationSeconds;
+        const elapsed = Math.min(availableDurationSeconds, rawElapsed);
+        availabilityAnimDelay = `-${elapsed}s`;
+      }
       return {
         rank: rankFunction(index),
-        playerName: dungeon.player_name,
         playerId: dungeon.player_id,
-        cooldown: dungeon.attack_cooldown,
+        playerName: dungeon.player_name,
         image: this.getDungeonImage(dungeon.kid),
+        lastAttackDate: dungeon.last_attack,
         kid: dungeon.kid,
         position: `[${dungeon.position_x}, ${dungeon.position_y}]`,
-        totalAttackCount: dungeon.total_attack_count,
-        updatedAt: dungeon.updated_at,
-        effectiveCooldownUntil: dungeon.effective_cooldown_until,
-        lastAttackAt: dungeon.last_attack,
+        globalAvailableAt: dungeon.global_available_at,
+        effectiveCooldownUntil,
+        availableDurationSeconds,
         distance: dungeon.distance,
+        availabilityAnimDelay,
+        availabilityExceeded,
       };
     });
+  }
+
+  private buildAttackChart(history: DungeonAttackHistory[]): void {
+    if (history.length === 0) {
+      this.attackChart = null;
+      this.attacksPerDayChart = null;
+      this.attackStats = { last24h: 0, last7d: 0, last30d: 0 };
+      return;
+    }
+
+    const now = Date.now();
+    const MS_24H = 24 * 3600 * 1000;
+    const MS_7D = 7 * 24 * 3600 * 1000;
+    const MS_30D = 30 * 24 * 3600 * 1000;
+    this.attackStats = {
+      last24h: history.filter((a) => now - new Date(a.attacked_at).getTime() <= MS_24H).length,
+      last7d: history.filter((a) => now - new Date(a.attacked_at).getTime() <= MS_7D).length,
+      last30d: history.filter((a) => now - new Date(a.attacked_at).getTime() <= MS_30D).length,
+    };
+
+    const sorted = [...history].sort((a, b) => new Date(a.attacked_at).getTime() - new Date(b.attacked_at).getTime());
+    this.attackChart = {
+      series: [
+        {
+          name: this.translateService.instant('Attaques cumulées'),
+          data: sorted.map((attack, index) => ({ x: new Date(attack.attacked_at).getTime(), y: index + 1 })),
+        },
+      ],
+      chart: {
+        type: 'line',
+        height: 260,
+        animations: { enabled: false },
+        toolbar: { show: false },
+        zoom: { type: 'x', enabled: true },
+      },
+      stroke: { curve: 'stepline', width: 2 },
+      xaxis: { type: 'datetime' },
+      yaxis: { min: 0, forceNiceScale: true, labels: { formatter: (v: number): string => Math.round(v).toString() } },
+      colors: ['#0891b2'],
+      markers: { size: 4 },
+      tooltip: { x: { format: 'dd/MM/yy HH:mm:ss' } },
+      grid: { borderColor: '#e2e8f0' },
+    };
+
+    const dayMap = new Map<string, number>();
+    for (const attack of history) {
+      const d = new Date(attack.attacked_at);
+      const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      dayMap.set(day, (dayMap.get(day) ?? 0) + 1);
+    }
+    const days = [...dayMap.entries()].sort(([a], [b]) => a.localeCompare(b));
+    this.attacksPerDayChart = {
+      series: [
+        {
+          name: this.translateService.instant('Attaques par jour'),
+          data: days.map(([day, count]) => ({ x: new Date(`${day}T12:00:00`).getTime(), y: count })),
+        },
+      ],
+      chart: { type: 'bar', height: 220, animations: { enabled: false }, toolbar: { show: false } },
+      xaxis: { type: 'datetime', labels: { format: 'dd/MM' } },
+      yaxis: { min: 0, forceNiceScale: true, labels: { formatter: (v: number): string => Math.round(v).toString() } },
+      plotOptions: { bar: { columnWidth: '60%', borderRadius: 3 } },
+      colors: ['#059669'],
+      dataLabels: { enabled: false },
+      tooltip: { x: { format: 'dd/MM/yyyy' } },
+      grid: { borderColor: '#e2e8f0' },
+    };
   }
 
   private getDungeonImage(kid: number): string {
@@ -408,6 +558,7 @@ export class TrackerComponent extends GenericComponent {
       ['position', 'Position', '', true],
       ['state', 'Etat', '', true],
       ['playerName', 'Attaqué par', '', true],
+      ['availableDurationSeconds', 'Durée de disponibilité', '', true],
     ];
   }
 }

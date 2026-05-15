@@ -30,32 +30,32 @@ const options = {
     ],
     components: {
       parameters: {
-        AllianceId: {
-          required: true,
-          description: 'The unique ID of the alliance to retrieve information for.',
-          schema: {
-            type: 'string',
-          },
-          name: 'allianceId',
-          in: 'query',
-        },
-        PlayerId: {
-          required: true,
-          description: 'The unique ID of the player to retrieve information for.',
-          schema: {
-            type: 'string',
-          },
-          name: 'playerId',
-          in: 'query',
-        },
         GgeServerHeader: {
           name: 'gge-server',
           in: 'header',
-          description: 'Specifies the server (database) to use for the request.',
+          description: 'Specifies the GGE server (database) to query.',
           required: true,
           schema: {
             type: 'string',
             example: 'DE1',
+          },
+        },
+        PlayerId: {
+          name: 'playerId',
+          in: 'path',
+          required: true,
+          description: 'The unique ID of the player.',
+          schema: {
+            type: 'string',
+          },
+        },
+        AllianceId: {
+          name: 'allianceId',
+          in: 'path',
+          required: true,
+          description: 'The unique ID of the alliance.',
+          schema: {
+            type: 'string',
           },
         },
       },
@@ -65,7 +65,7 @@ const options = {
           properties: {
             current_page: {
               type: 'integer',
-              description: 'The current page number being returned.',
+              description: 'The current page number.',
               example: 1,
             },
             total_pages: {
@@ -75,13 +75,54 @@ const options = {
             },
             current_items_count: {
               type: 'integer',
-              description: 'The number of items returned in the current page.',
+              description: 'The number of items on the current page.',
               example: 20,
             },
             total_items_count: {
               type: 'integer',
-              description: 'The total number of items available across all pages.',
+              description: 'The total number of items across all pages.',
               example: 200,
+            },
+          },
+        },
+      },
+      responses: {
+        BadRequest: {
+          description: 'Bad request — invalid or missing parameters.',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  error: { type: 'string', example: 'Invalid request parameters.' },
+                },
+              },
+            },
+          },
+        },
+        NotFound: {
+          description: 'Not found — the requested resource does not exist.',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  error: { type: 'string', example: 'Resource not found.' },
+                },
+              },
+            },
+          },
+        },
+        InternalServerError: {
+          description: 'Internal server error.',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  error: { type: 'string', example: 'An error occurred during the request.' },
+                },
+              },
             },
           },
         },

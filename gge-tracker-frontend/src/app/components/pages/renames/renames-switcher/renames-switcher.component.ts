@@ -3,9 +3,10 @@ import { Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { Subject } from 'rxjs';
 import { CURRENT } from '../rename.token';
+import { TitleCasePipe } from '@angular/common';
 
 @Component({
-  imports: [TranslateModule],
+  imports: [TranslateModule, TitleCasePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
   selector: 'app-renames-switcher',
@@ -23,7 +24,7 @@ export class RenamesSwitcherComponent implements AfterViewInit, OnDestroy {
   public ngAfterViewInit(): void {
     const inValue = this.current;
     this.currentViewType = inValue as 'players' | 'alliances';
-    this.cdr.markForCheck();
+    this.cdr.detectChanges();
   }
 
   public ngOnDestroy(): void {

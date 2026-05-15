@@ -235,8 +235,13 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   }
 
   public async searchPlayer(playerName: string): Promise<void> {
-    if (!playerName) return;
     this.clearAllParameters();
+    if (!playerName) {
+      // Reset state if search is empty
+      await this.router.navigate([], { queryParams: { search: null } });
+      this.cdr.detectChanges();
+      return;
+    }
     this.loadItemPlaceholder = true;
     await this.router.navigate([], { queryParams: { search: playerName } });
     this.search = playerName;
@@ -333,7 +338,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     }
     if (displayEquipment && castle.equipment) {
       const cleanName = castle.equipment?.name.toLowerCase().trim().replaceAll('\-_', '');
-      const suffix = cleanName === 'sand' ? 'sand802icon' : cleanName;
+      const suffix = castle.type === CastleType.OUTPOST && cleanName === 'sand' ? 'sand802icon' : cleanName;
       return `${basePath}${eqName ?? path}special${suffix}.png`;
     }
     return `${basePath}${path}${level ? `level${level}.png` : 'basic.png'}`;

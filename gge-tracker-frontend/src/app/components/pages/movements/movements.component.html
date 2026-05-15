@@ -41,12 +41,11 @@
                 {{ movement.alliance ?? '-' }}
               </td>
               <td class="col-level">
-                <span class="mobile-only">{{ 'Niveau' | translate }}:&nbsp;</span>
                 <div class="level-box" [ngClass]="{ 'level-legendary': movement.legendaryLevel }">
                   <span class="level-main">{{movement.level}}</span>
                   @if (movement.legendaryLevel) {
                     <div class="level-separator"></div>
-                    <span class="level-legendary">
+                    <span class="level-legendary" [attr.data-level]="movement.legendaryLevel">
                       {{ movement.legendaryLevel }}
                     </span>
                   }
@@ -94,174 +93,174 @@
           [attr.aria-label]="'Fermer' | translate"></button>
         </div>
         <div class="modal-body">
-          <div class="row">
-            <div class="col">
-              <label for="castleType" class="form-label" translate>{{ 'Type de position' | translate }} :</label>
-              <div class="input-group">
-                <span class="input-group-text p-1">
-                  <img [src]="'/assets/castle' + formFilters.castleType + '.png'"
-                    [alt]="'Chateau principal' | translate" [title]="'Type de position' | translate" height="40">
-                </span>
-                <select class="form-select" [(ngModel)]="formFilters.castleType">
-                  <option value="null" selected>{{ 'Tous'| translate }}</option>
-                  <option value="1">{{ 'Chateau principal' | translate}}</option>
-                  <option value="3">{{ 'Capitale' | translate}}</option>
-                  <option value="4">{{ 'Avant-poste' | translate}}</option>
-                  <option value="22">{{ 'Cité marchande' | translate}}</option>
-                  <option value="23">{{ 'Tour royale' | translate}}</option>
-                  <option value="26">{{ 'Monument' | translate}}</option>
-                  <option value="28">{{ 'Laboratoire' | translate}}</option>
-                </select>
+          <div class="filters-container">
+            <div class="row">
+              <!-- Castle type -->
+              <div class="col-12 col-sm my-1">
+                <app-modal-form-group [label]="'Type de position' | translate">
+                  <span field prefix>
+                    <img [src]="'/assets/castle' + formFilters.castleType + '.png'"
+                      [attr.alt]="'Type de position' | translate" [title]="'Type de position' | translate">
+                  </span>
+                  <select field [(ngModel)]="formFilters.castleType">
+                    <option value="null">{{ 'Tous' | translate }}</option>
+                    <option value="1">{{ 'Chateau principal' | translate }}</option>
+                    <option value="3">{{ 'Capitale' | translate }}</option>
+                    <option value="4">{{ 'Avant-poste' | translate }}</option>
+                    <option value="22">{{ 'Cité marchande' | translate }}</option>
+                    <option value="23">{{ 'Tour royale' | translate }}</option>
+                    <option value="26">{{ 'Monument' | translate }}</option>
+                    <option value="28">{{ 'Laboratoire' | translate }}</option>
+                  </select>
+                </app-modal-form-group>
+              </div>
+              <!-- Movement type -->
+              <div class="col-12 col-sm my-1">
+                <app-modal-form-group [label]="'Type de mouvement' | translate">
+                  <span field prefix>
+                    <img [src]="
+                      formFilters.movementType === null ? '/assets/castlenull.png' :
+                      formFilters.movementType === '1' ? '/assets/new-castle.png' :
+                      formFilters.movementType === '2' ? '/assets/ruins.png' :
+                      '/assets/moving.png'"
+                      [attr.alt]="'Type de mouvement' | translate" [title]="'Type de mouvement' | translate">
+                  </span>
+                  <select field [(ngModel)]="formFilters.movementType">
+                    <option value="null">{{ 'Tous' | translate }}</option>
+                    <option value="1">{{ 'Apparition' | translate }}</option>
+                    <option value="2">{{ 'Disparition' | translate }}</option>
+                    <option value="3">{{ 'Déménagement' | translate }}</option>
+                  </select>
+                </app-modal-form-group>
               </div>
             </div>
-            <div class="col">
-              <label for="movementType" class="form-label">{{ 'Type de mouvement' | translate }} :</label>
-              <div class="input-group">
-                <span class="input-group-text p-1">
-                  <img [src]="
-                    formFilters.movementType === null ? '/assets/castlenull.png' :
-                    formFilters.movementType === '1' ? '/assets/new-castle.png' :
-                    formFilters.movementType === '2' ? '/assets/ruins.png' :
-                    '/assets/moving.png'" [alt]="'Type de mouvement' | translate"
-                    [title]="'Type de mouvement' | translate" height="40">
-                </span>
-                <select class="form-select" [(ngModel)]="formFilters.movementType">
-                  <option value="null" selected>{{ 'Tous' | translate }}</option>
-                  <option value="1">{{ 'Apparition' | translate }}</option>
-                  <option value="2">{{ 'Disparition' | translate }}</option>
-                  <option value="3">{{ 'Déménagement' | translate }}</option>
-                </select>
+            <hr>
+            <div class="row">
+              <!-- Honor -->
+              <div class="col-12 col-sm my-1">
+                <app-modal-form-group class="compact">
+                  <span field prefix>
+                    <img src="/assets/honor.png" [attr.alt]="'Honneur' | translate"
+                      [title]="'Filtrer par point d\'honneur' | translate">
+                  </span>
+                  <input field type="text" id="honorMin"
+                    [value]="displayFormValues.honor.min" (focus)="onGenericFocus('min', 'honor')"
+                    (blur)="onGenericBlur('min', 'honor')" (input)="onGenericInput('min', 'honor', $event)"
+                    [title]="formFilters.minHonor" [placeholder]="'Honneur min.' | translate">
+                  <span field separator>
+                    <lucide-icon [img]="ArrowBigRightDash" [size]="16"></lucide-icon>
+                  </span>
+                  <input field type="text" id="honorMax"
+                    [value]="displayFormValues.honor.max" (focus)="onGenericFocus('max', 'honor')"
+                    (blur)="onGenericBlur('max', 'honor')" (input)="onGenericInput('max', 'honor', $event)"
+                    [title]="formFilters.maxHonor" [placeholder]="'Honneur max.' | translate">
+                </app-modal-form-group>
+              </div>
+              <!-- Might -->
+              <div class="col-12 col-sm my-1">
+                <app-modal-form-group class="compact">
+                  <span field prefix>
+                    <img src="/assets/pp1.png" [attr.alt]="'Puissance' | translate"
+                      [title]="'Filtrer par point de puissance' | translate">
+                  </span>
+                  <input field type="text" id="mightMin"
+                    [value]="displayFormValues.might.min" (focus)="onGenericFocus('min', 'might')"
+                    (blur)="onGenericBlur('min', 'might')" (input)="onGenericInput('min', 'might', $event)"
+                    [title]="formFilters.minMight" [placeholder]="'Puissance min' | translate">
+                  <span field separator>
+                    <lucide-icon [img]="ArrowBigRightDash" [size]="16"></lucide-icon>
+                  </span>
+                  <input field type="text" id="mightMax"
+                    [value]="displayFormValues.might.max" (focus)="onGenericFocus('max', 'might')"
+                    (blur)="onGenericBlur('max', 'might')" (input)="onGenericInput('max', 'might', $event)"
+                    [title]="formFilters.maxMight" [placeholder]="'Puissance max' | translate">
+                </app-modal-form-group>
               </div>
             </div>
-          </div>
-          <hr>
-            <div class="filters-container">
-              <div class="row">
-                <!-- Honor -->
-                <div class="col-12 col-sm my-1">
-                  <div class="input-group">
-                    <span class="input-group-text">
-                      <img src="/assets/honor.png" [alt]="'Honneur' | translate"
-                        [title]="'Filtrer par point d\'honneur' | translate" height="24">
-                    </span>
-                    <input type="text" class="form-control ggetracker-input" id="honorMin"
-                      [value]="displayFormValues.honor.min" (focus)="onGenericFocus('min', 'honor')"
-                      (blur)="onGenericBlur('min', 'honor')" (input)="onGenericInput('min', 'honor', $event)"
-                      [title]="formFilters.minHonor" [placeholder]="'Honneur min.' | translate">
-                    <div class="input-arrow">
-                      <lucide-icon [img]="ArrowBigRightDash" [size]="20" class="m-auto"></lucide-icon>
-                    </div>
-                    <input type="text" class="form-control ggetracker-input" id="honorMax"
-                      [value]="displayFormValues.honor.max" (focus)="onGenericFocus('max', 'honor')"
-                      (blur)="onGenericBlur('max', 'honor')" (input)="onGenericInput('max', 'honor', $event)"
-                      [title]="formFilters.maxHonor" [placeholder]="'Honneur max.' | translate">
-                  </div>
-                </div>
-                <!-- Might -->
-                <div class="col-12 col-sm my-1">
-                  <div class="input-group">
-                    <span class="input-group-text">
-                      <img src="/assets/pp1.png" [alt]="'Puissance' | translate"
-                        [title]="'Filtrer par point de puissance' | translate" height="24">
-                    </span>
-                    <input type="text" class="form-control ggetracker-input" id="mightMin"
-                      [value]="displayFormValues.might.min" (focus)="onGenericFocus('min', 'might')"
-                      (blur)="onGenericBlur('min', 'might')" (input)="onGenericInput('min', 'might', $event)"
-                      [title]="formFilters.minMight" [placeholder]="'Puissance min.' | translate">
-                    <div class="input-arrow">
-                      <lucide-icon [img]="ArrowBigRightDash" [size]="20" class="m-auto"></lucide-icon>
-                    </div>
-                    <input type="text" class="form-control ggetracker-input" id="mightMax"
-                      [value]="displayFormValues.might.max" (focus)="onGenericFocus('max', 'might')"
-                      (blur)="onGenericBlur('max', 'might')" (input)="onGenericInput('max', 'might', $event)"
-                      [title]="formFilters.maxMight" [placeholder]="'Puissance max.' | translate">
-                  </div>
-                </div>
+            <div class="row mt-1">
+              <!-- Loot -->
+              <div class="col-12 col-sm my-1">
+                <app-modal-form-group class="compact">
+                  <span field prefix>
+                    <img src="/assets/loot.png" [attr.alt]="'Pillage' | translate"
+                      [title]="'Filtrer par point de pillage' | translate">
+                  </span>
+                  <input field type="text" id="lootMin"
+                    [value]="displayFormValues.loot.min" (focus)="onGenericFocus('min', 'loot')"
+                    (blur)="onGenericBlur('min', 'loot')" (input)="onGenericInput('min', 'loot', $event)"
+                    [title]="formFilters.minLoot" [placeholder]="'Pillage min.' | translate">
+                  <span field separator>
+                    <lucide-icon [img]="ArrowBigRightDash" [size]="16"></lucide-icon>
+                  </span>
+                  <input field type="text" id="lootMax"
+                    [value]="displayFormValues.loot.max" (focus)="onGenericFocus('max', 'loot')"
+                    (blur)="onGenericBlur('max', 'loot')" (input)="onGenericInput('max', 'loot', $event)"
+                    [title]="formFilters.maxLoot" [placeholder]="'Pillage max.' | translate">
+                </app-modal-form-group>
               </div>
-              <div class="row mt-1">
-                <!-- Loot -->
-                <div class="col-12 col-sm my-1">
-                  <div class="input-group">
-                    <span class="input-group-text">
-                      <img src="/assets/loot.png" [alt]="'Pillage' | translate"
-                        [title]="'Filtrer par point de pillage' | translate" height="24">
-                    </span>
-                    <input type="text" class="form-control ggetracker-input" id="lootMin"
-                      [value]="displayFormValues.loot.min" (focus)="onGenericFocus('min', 'loot')"
-                      (blur)="onGenericBlur('min', 'loot')" (input)="onGenericInput('min', 'loot', $event)"
-                      [title]="formFilters.minLoot" [placeholder]="'Pillage min.' | translate">
-                    <div class="input-arrow">
-                      <lucide-icon [img]="ArrowBigRightDash" [size]="20" class="m-auto"></lucide-icon>
-                    </div>
-                    <input type="text" class="form-control ggetracker-input" id="lootMax"
-                      [value]="displayFormValues.loot.max" (focus)="onGenericFocus('max', 'loot')"
-                      (blur)="onGenericBlur('max', 'loot')" (input)="onGenericInput('max', 'loot', $event)"
-                      [title]="formFilters.maxLoot" [placeholder]="'Pillage max.' | translate">
-                  </div>
-                </div>
-                <!-- Level -->
-                <div class="col-12 col-sm my-1">
-                  <div class="input-group">
-                    <span class="input-group-text">
-                      <img src="/assets/lvl.png" [alt]="'Niveau' | translate" [title]="'Filtrer par niveau' | translate"
-                        height="24">
-                    </span>
-                    <input type="text" class="form-control ggetracker-input" id="levelMin"
-                      [(ngModel)]="formFilters.minLevel" [title]="formFilters.minLevel"
-                      [placeholder]="'Niveau min.' | translate">
-                    <div class="input-arrow">
-                      <lucide-icon [img]="ArrowBigRightDash" [size]="20" class="m-auto"></lucide-icon>
-                    </div>
-                    <input type="text" class="form-control ggetracker-input" id="levelMax"
-                      [(ngModel)]="formFilters.maxLevel" [title]="formFilters.maxLevel"
-                      [placeholder]="'Niveau max.' | translate">
-                  </div>
-                </div>
+              <!-- Level -->
+              <div class="col-12 col-sm my-1">
+                <app-modal-form-group class="compact">
+                  <span field prefix>
+                    <img src="/assets/lvl.png" [attr.alt]="'Niveau' | translate"
+                      [title]="'Filtrer par niveau' | translate">
+                  </span>
+                  <input field type="text" id="levelMin"
+                    [(ngModel)]="formFilters.minLevel" [title]="formFilters.minLevel"
+                    [placeholder]="'Niveau min.' | translate">
+                  <span field separator>
+                    <lucide-icon [img]="ArrowBigRightDash" [size]="16"></lucide-icon>
+                  </span>
+                  <input field type="text" id="levelMax"
+                    [(ngModel)]="formFilters.maxLevel" [title]="formFilters.maxLevel"
+                    [placeholder]="'Niveau max.' | translate">
+                </app-modal-form-group>
               </div>
-              <div class="row mt-1">
-                <!-- Fame (glory) -->
-                <div class="col-12 col-sm my-1">
-                  <div class="input-group">
-                    <span class="input-group-text">
-                      <img src="/assets/glory.png" [alt]="'Gloire' | translate" [title]="'Filtrer par gloire' | translate"
-                        height="24">
-                    </span>
-                    <input type="text" class="form-control ggetracker-input" id="fameMin"
-                      [value]="displayFormValues.fame.min" (focus)="onGenericFocus('min', 'fame')"
-                      (blur)="onGenericBlur('min', 'fame')" (input)="onGenericInput('min', 'fame', $event)"
-                      [title]="formFilters.minFame" [placeholder]="'Gloire min.' | translate">
-                    <div class="input-arrow">
-                      <lucide-icon [img]="ArrowBigRightDash" [size]="20" class="m-auto"></lucide-icon>
-                    </div>
-                    <input type="text" class="form-control ggetracker-input" id="fameMax"
-                      [value]="displayFormValues.fame.max" (focus)="onGenericFocus('max', 'fame')"
-                      (blur)="onGenericBlur('max', 'fame')" (input)="onGenericInput('max', 'fame', $event)"
-                      [title]="formFilters.maxFame" [placeholder]="'Gloire max.' | translate">
-                  </div>
-                </div>
-                <!-- Castle count -->
-                <div class="col-12 col-sm my-1">
-                  <div class="input-group">
-                    <span class="input-group-text">
-                      <img src="/assets/castle4.png" [alt]="'Châteaux' | translate"
-                        [title]="'Filtrer par nombre de châteaux' | translate" height="24">
-                    </span>
-                    <input type="text" class="form-control ggetracker-input" id="castleCountMin"
-                      [value]="displayFormValues.castleCount.min" (focus)="onGenericFocus('min', 'castleCount')"
-                      (blur)="onGenericBlur('min', 'castleCount')" (input)="onGenericInput('min', 'castleCount', $event)"
-                      [title]="formFilters.castleCountMin" [placeholder]="'Châteaux min.' | translate">
-                    <div class="input-arrow">
-                      <lucide-icon [img]="ArrowBigRightDash" [size]="20" class="m-auto"></lucide-icon>
-                    </div>
-                    <input type="text" class="form-control ggetracker-input" id="castleCountMax"
-                      [value]="displayFormValues.castleCount.max" (focus)="onGenericFocus('max', 'castleCount')"
-                      (blur)="onGenericBlur('max', 'castleCount')" (input)="onGenericInput('max', 'castleCount', $event)"
-                      [title]="formFilters.castleCountMax" [placeholder]="'Châteaux max.' | translate">
-                  </div>
-                </div>
+            </div>
+            <div class="row mt-1">
+              <!-- Fame (glory) -->
+              <div class="col-12 col-sm my-1">
+                <app-modal-form-group class="compact">
+                  <span field prefix>
+                    <img src="/assets/glory.png" [attr.alt]="'Gloire' | translate"
+                      [title]="'Filtrer par gloire' | translate">
+                  </span>
+                  <input field type="text" id="fameMin"
+                    [value]="displayFormValues.fame.min" (focus)="onGenericFocus('min', 'fame')"
+                    (blur)="onGenericBlur('min', 'fame')" (input)="onGenericInput('min', 'fame', $event)"
+                    [title]="formFilters.minFame" [placeholder]="'Gloire min.' | translate">
+                  <span field separator>
+                    <lucide-icon [img]="ArrowBigRightDash" [size]="16"></lucide-icon>
+                  </span>
+                  <input field type="text" id="fameMax"
+                    [value]="displayFormValues.fame.max" (focus)="onGenericFocus('max', 'fame')"
+                    (blur)="onGenericBlur('max', 'fame')" (input)="onGenericInput('max', 'fame', $event)"
+                    [title]="formFilters.maxFame" [placeholder]="'Gloire max.' | translate">
+                </app-modal-form-group>
               </div>
+              <!-- Castle count -->
+              <div class="col-12 col-sm my-1">
+                <app-modal-form-group class="compact">
+                  <span field prefix>
+                    <img src="/assets/castle4.png" [attr.alt]="'Châteaux' | translate"
+                      [title]="'Filtrer par nombre de châteaux' | translate">
+                  </span>
+                  <input field type="text" id="castleCountMin"
+                    [value]="displayFormValues.castleCount.min" (focus)="onGenericFocus('min', 'castleCount')"
+                    (blur)="onGenericBlur('min', 'castleCount')" (input)="onGenericInput('min', 'castleCount', $event)"
+                    [title]="formFilters.castleCountMin" [placeholder]="'Châteaux min.' | translate">
+                  <span field separator>
+                    <lucide-icon [img]="ArrowBigRightDash" [size]="16"></lucide-icon>
+                  </span>
+                  <input field type="text" id="castleCountMax"
+                    [value]="displayFormValues.castleCount.max" (focus)="onGenericFocus('max', 'castleCount')"
+                    (blur)="onGenericBlur('max', 'castleCount')" (input)="onGenericInput('max', 'castleCount', $event)"
+                    [title]="formFilters.castleCountMax" [placeholder]="'Châteaux max.' | translate">
+                </app-modal-form-group>
+              </div>
+            </div>
               <div class="row mt-1">
-                <div class="row">
+                <div class="container-fluid">
                   <!-- Filter by alliance -->
                   <div class="col-12">
                     <div class="text-center mt-1 alliance-icon">

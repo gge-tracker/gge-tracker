@@ -1,5 +1,4 @@
 import * as express from 'express';
-import * as mysql from 'mysql';
 import * as pg from 'pg';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { AuthorizedSpecialServersEnum } from '../enums/gge-tracker-special-servers.enums';
@@ -29,380 +28,604 @@ export abstract class ApiDungeons implements ApiHelper {
   public static async getDungeons(request: express.Request, response: express.Response): Promise<void> {
     try {
       /* ---------------------------------
-       * Validate parameters
+       * Parse and validate input parameters
        * --------------------------------- */
       const page = ApiHelper.validatePageNumber(request.query.page);
       const filterByKid = ApiHelper.getParsedString(request.query.filterByKid, '[2]');
       if (!this.validateRequest(request, response, filterByKid)) return;
-      const dungeonParameters = this.constructDungeonsInitialParameters(filterByKid, request);
-      let { filtersKids, sortByPositionX, sortByPositionY } = dungeonParameters;
-      const { filterByAttackCooldown, filterByPlayerName, nearPlayerName, size } = dungeonParameters;
-      filtersKids.forEach((kid: any) => {
-        if (Number(kid) < 0 || Number(kid) > 9) {
-          response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidKingdomId });
-          return;
-        }
-      });
-      if (filtersKids.length === 0) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send(this.defaultResponseContent([], 1, 1, 0, 0));
+
+      const parameters_ = this.constructDungeonsInitialParameters(filterByKid, request);
+      let { filtersKids, sortByPositionX, sortByPositionY } = parameters_;
+      const { filterByAttackCooldown, filterByPlayerName, nearPlayerName, size } = parameters_;
+
+      if (!this.validateDungeonQueryParams(response, filtersKids, filterByAttackCooldown, filterByPlayerName, size))
         return;
-      }
-      if (
-        (filterByAttackCooldown && Number(filterByAttackCooldown) < 0) ||
-        Number(filterByAttackCooldown) > 99_999_999
-      ) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAttackCooldown });
-        return;
-      }
-      if (filterByPlayerName && ApiHelper.isInvalidInput(ApiHelper.validateSearchAndSanitize(filterByPlayerName))) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
-        return;
-      }
-      if ((size && size.length > 30) || size.length < 0) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidInput });
-        return;
-      }
+
       /* ---------------------------------
-       * Prepare SQL query parts
+       * Resolve nearPlayerName to castle
+       * sort coordinates and filter kids
        * --------------------------------- */
-      let sortPositionKid1: number[] | null = null;
-      let sortPositionKid2: number[] | null = null;
-      let sortPositionKid3: number[] | null = null;
-      let customSql = '';
-      let customParameterValues = [];
-      /* ---------------------------------
-       * If sorting by nearPlayerName, get their castle position
-       * --------------------------------- */
+      let customParameterValues: number[] = [];
       if (nearPlayerName) {
-        if (nearPlayerName.length > 60) {
-          response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
-          return;
-        }
-        const playerQuery = `SELECT castles_realm FROM players WHERE LOWER(name) = $1 LIMIT 1`;
-        const playerResults: any[] = await new Promise((resolve, reject) => {
-          (request['pg_pool'] as pg.Pool).query(
-            playerQuery,
-            [nearPlayerName.trim().toLowerCase()],
-            (error, results) => {
-              if (error) {
-                ApiHelper.logError(error, 'getDungeons_nearPlayerName', request);
-                reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
-              } else {
-                resolve(results.rows);
-              }
-            },
-          );
-        });
-        if (playerResults.length === 0) {
-          response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
-          return;
-        }
-        const target: { castles_realm: number[][] } = playerResults[0];
-        if (!target.castles_realm || target.castles_realm.length === 0) {
-          response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.PlayerNotFound });
-          return;
-        }
-        const sortJsonPositionKid1 = target.castles_realm.find((kid: number[]) => kid[3] === 12 && kid[0] === 1);
-        const sortJsonPositionKid2 = target.castles_realm.find((kid: number[]) => kid[3] === 12 && kid[0] === 2);
-        const sortJsonPositionKid3 = target.castles_realm.find((kid: number[]) => kid[3] === 12 && kid[0] === 3);
-        sortPositionKid1 =
-          sortJsonPositionKid1 && sortJsonPositionKid1.length === 4
-            ? [sortJsonPositionKid1[1], sortJsonPositionKid1[2]]
-            : null;
-        sortPositionKid2 =
-          sortJsonPositionKid2 && sortJsonPositionKid2.length === 4
-            ? [sortJsonPositionKid2[1], sortJsonPositionKid2[2]]
-            : null;
-        sortPositionKid3 =
-          sortJsonPositionKid3 && sortJsonPositionKid3.length === 4
-            ? [sortJsonPositionKid3[1], sortJsonPositionKid3[2]]
-            : null;
-        sortByPositionX = sortPositionKid1 ? String(sortPositionKid1[0]) : null;
-        sortByPositionY = sortPositionKid1 ? String(sortPositionKid1[1]) : null;
-        filtersKids = filtersKids.filter((kid: number) => {
-          return target.castles_realm.some((castle: number[]) => castle[0] === kid && castle[3] === 12);
-        });
-        customSql = this.getCalculatedDistanceSql();
-        // Parameters for the three possible castle positions (kid 1, 2, 3)
-        const s1 = sortPositionKid1 || [0, 0];
-        const s2 = sortPositionKid2 || [0, 0];
-        const s3 = sortPositionKid3 || [0, 0];
-        customParameterValues.push(s1[0], s1[0], s1[1], s2[0], s2[0], s2[1], s3[0], s3[0], s3[1]);
+        const sortResult = await this.resolveNearPlayerSortPosition(request, response, nearPlayerName, filtersKids);
+        if (sortResult === null) return;
+        ({ sortByPositionX, sortByPositionY, filtersKids, customParameterValues } = sortResult);
       }
       if (filtersKids.length === 0) {
-        // If no valid kids remain after filtering, return empty result
         response.status(ApiHelper.HTTP_OK).send(this.defaultResponseContent([], 1, 1, 0, 0));
         return;
       }
-      let isSorted = false;
-      if (sortByPositionX !== null || sortByPositionY !== null) {
-        if (
-          Number.isNaN(Number.parseInt(sortByPositionX)) ||
-          Number.isNaN(Number.parseInt(sortByPositionY)) ||
-          Number.parseInt(sortByPositionX) < 0 ||
-          Number.parseInt(sortByPositionY) < 0 ||
-          Number.parseInt(sortByPositionX) > 1286 ||
-          Number.parseInt(sortByPositionY) > 1286
-        ) {
-          response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPosition });
-          return;
-        } else {
-          isSorted = true;
-        }
-      }
+
+      /* ---------------------------------
+       * Validate sort coordinates
+       * --------------------------------- */
+      const isSorted = this.resolveSortState(response, sortByPositionX, sortByPositionY);
+      if (isSorted === null) return;
+
       const MAX_NUMBER = 4000;
       const viewPerPage = size === '0' ? MAX_NUMBER : size === null ? 15 : Number.parseInt(size);
-      const conditions: string[] = [];
-      const queryValues: any[] = [];
-      const countValues: any[] = [];
-      conditions.push(`D.kid IN (${filtersKids.map(() => '?').join(', ')})`);
-      countValues.push(...filtersKids);
-      let playerId: number | null = null;
-      let realCooldownExpr = `TIMESTAMPADD(SECOND, D.attack_cooldown, D.updated_at)`;
-      if (filterByPlayerName) {
-        const playerQuery = `SELECT id FROM players WHERE LOWER(name) = LOWER($1) LIMIT 1`;
-        const playerResults: any[] = await new Promise((resolve, reject) => {
-          (request['pg_pool'] as pg.Pool).query(playerQuery, [filterByPlayerName.trim()], (error, results) => {
-            if (error) {
-              ApiHelper.logError(error, 'getDungeons_countQuery', request);
-              reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
-            } else {
-              resolve(results.rows);
-            }
-          });
-        });
-        if (playerResults.length === 0) {
-          conditions.push('1 = 0');
-        } else {
-          playerId = playerResults[0].id;
-          realCooldownExpr = `
-            CASE
-              WHEN DPS.last_attack_at IS NOT NULL
-              THEN GREATEST(
-                TIMESTAMPADD(SECOND, D.attack_cooldown, D.updated_at),
-                TIMESTAMPADD(SECOND, 432000, DPS.last_attack_at)
-              )
-              ELSE TIMESTAMPADD(SECOND, D.attack_cooldown, D.updated_at)
-            END
-        `;
-        }
-      }
-      /* ---------------------------------
-       * If filtering by attack cooldown, build conditions
-       * --------------------------------- */
-      if (filterByAttackCooldown) {
-        // The attack cooldown filter works as follows:
-        // 1: Dungeons that can be attacked now (cooldown expired)
-        // 2: Dungeons that will be attackable within the next 5 minutes
-        // 3: Dungeons that will be attackable within the next 60 minutes
-        switch (filterByAttackCooldown) {
-          case '1': {
-            conditions.push(`(${realCooldownExpr} <= NOW())`);
-            break;
-          }
-          case '2': {
-            conditions.push(
-              `(${realCooldownExpr} > NOW())`,
-              `TIMESTAMPDIFF(SECOND, NOW(), ${realCooldownExpr}) <= 300`,
-            );
-            break;
-          }
-          case '3': {
-            conditions.push(
-              `(${realCooldownExpr} > NOW())`,
-              `TIMESTAMPDIFF(SECOND, NOW(), ${realCooldownExpr}) <= 3600`,
-            );
-            break;
-          }
-        }
-      }
-      /* ---------------------------------
-       * Build and execute count query (pagination)
-       * --------------------------------- */
-      let dungeonsCount = 0;
-      let countQuery = `
-          SELECT COUNT(*) AS dungeons_count
-          FROM dungeons D
-      `;
 
-      let query = `
-        SELECT
-          D.kid,
-          D.position_x,
-          D.position_y,
-          D.attack_cooldown,
-          D.total_attack_count,
-          D.updated_at,
-          D.player_id,
-          ${realCooldownExpr} AS effective_cooldown_until,
-          (
-            SELECT MAX(DPSt.last_attack_at)
-            FROM dungeon_player_state DPSt
-            WHERE DPSt.kid = D.kid
-              AND DPSt.position_x = D.position_x
-              AND DPSt.position_y = D.position_y
-              AND DPSt.player_id = D.player_id
-          ) AS last_attack
-      `;
       /* ---------------------------------
-       * In count query and if sorted, calculate distance for sorting
+       * Resolve filterByPlayerName to a
+       * player ID for personalised cooldown
        * --------------------------------- */
-      if (isSorted) {
-        if (nearPlayerName) {
-          query += `, ${customSql}`;
-        } else {
-          // /!\ Improvement note: This calculation might be improved in the future
-          query += `,(
-            POWER(LEAST(ABS(CAST(D.position_x AS SIGNED) - ?), 1287 - ABS(CAST(D.position_x AS SIGNED) - ?)), 2) +
-            POWER(ABS(CAST(D.position_y AS SIGNED) - ?), 2)
-        ) AS calculated_distance`;
-        }
-      }
-      query += `
-        FROM dungeons D
-      `;
+      const { playerId, notFound: playerNotFound } = filterByPlayerName
+        ? await this.resolvePlayerIdByName(request['pg_pool'] as pg.Pool, filterByPlayerName, request)
+        : { playerId: null, notFound: false };
+
       /* ---------------------------------
-       * Player join if filtering by player name
+       * Count matching dungeons for pagination
        * --------------------------------- */
-      if (playerId !== null) {
-        const playerIdCondString = `
-          LEFT JOIN (
-          SELECT kid, position_x, position_y, player_id, MAX(last_attack_at) AS last_attack_at
-          FROM dungeon_player_state
-          WHERE player_id = ${mysql.escape(playerId)}
-          GROUP BY kid, position_x, position_y, player_id
-          ) DPS ON D.kid = DPS.kid AND D.position_x = DPS.position_x AND D.position_y = DPS.position_y AND DPS.player_id = ${mysql.escape(playerId)}
-        `;
-        query += playerIdCondString;
-        countQuery += playerIdCondString;
-      }
-      if (conditions.length > 0) {
-        countQuery += ` WHERE ` + conditions.join(' AND ');
-      }
-      /* ---------------------------------
-       * Execute count query for pagination
-       * --------------------------------- */
-      await new Promise((resolve, reject) => {
-        (request['mysql_pool'] as mysql.Pool).query(countQuery, countValues, (error, results) => {
-          if (error) {
-            ApiHelper.logError(error, 'getDungeons_countQuery', request);
-            reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
-          } else {
-            dungeonsCount = results[0]['dungeons_count'];
-            resolve(null);
-          }
-        });
-      });
+      const dungeonsCount = await this.countDungeons(
+        request['pg_pool'] as pg.Pool,
+        filtersKids,
+        playerId,
+        playerNotFound,
+        filterByAttackCooldown,
+        request,
+      );
       const totalPages = Math.ceil(dungeonsCount / viewPerPage);
-      // If the requested page exceeds total pages, return empty result
       if (page > totalPages) {
         response.status(ApiHelper.HTTP_OK).send(this.defaultResponseContent([], page, totalPages, dungeonsCount, 0));
         return;
       }
-      if (conditions.length > 0) {
-        query += ` WHERE ` + conditions.join(' AND ');
-      }
-      if (isSorted) {
-        query += ` ORDER BY calculated_distance ASC`;
-        if (nearPlayerName) {
-          // Otherwise, add the custom parameters for sorting by nearPlayerName
-          queryValues.push(...customParameterValues);
-        } else {
-          // Parameters for sorting by given position
-          // Added again here for the main query
-          queryValues.push(
-            Number.parseInt(sortByPositionX),
-            Number.parseInt(sortByPositionX),
-            Number.parseInt(sortByPositionY),
-          );
-        }
-      } else {
-        // Default sorting: Dungeons that can be attacked now first, then by shortest cooldown
-        // and finally by oldest updated dungeons
-        // Dungeons that can be attacked now have last_attack < NOW()
-        // If last_attack is NULL, it means the dungeon has never been attacked,
-        // so we treat it as the highest priority (can be attacked now)
-        query += `
-          ORDER BY
-          CASE
-            WHEN last_attack < NOW() THEN last_attack
-            ELSE NULL
-          END ASC,
-          effective_cooldown_until ASC`;
-      }
+
       /* ---------------------------------
-       * Finalize query with pagination
+       * Fetch the dungeons page
        * --------------------------------- */
-      query += ` LIMIT ? OFFSET ?;`;
-      queryValues.push(...filtersKids, viewPerPage, (page - 1) * viewPerPage);
-      (request['mysql_pool'] as mysql.Pool).query(query, queryValues, (error, results) => {
-        if (error) {
-          response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
-          return;
-        } else {
-          /* ---------------------------------
-           * Fetch player details for the resulting dungeons
-           * --------------------------------- */
-          const playerIds: (number | null | undefined)[] = results.map((result: any) => result.player_id);
-          const playerQuery = `
-            SELECT id, name, might_current AS player_might, level AS player_level, legendary_level AS player_legendary_level
-            FROM players
-            WHERE id IN (${playerIds.map((_, index) => `$${index + 1}`).join(', ')})
-          `;
-          (request['pg_pool'] as pg.Pool).query(playerQuery, playerIds, (error, playerResults) => {
-            if (error) {
-              response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
-              return;
-            }
-            /* ---------------------------------
-             * Map player details to dungeons
-             * --------------------------------- */
-            const playerMap: Map<number, any> = new Map(playerResults.rows.map((row: any) => [row.id, row]));
-            results = results.map((result: any) => {
-              const player = playerMap.get(result.player_id);
-              return {
-                ...result,
-                player_name: player ? player.name : 'Unknown',
-                player_might: player ? player.player_might : 0,
-                player_level: player ? player.player_level : 0,
-                player_legendary_level: player ? player.player_legendary_level : 0,
-              };
-            });
-            const dungeons = results.map((result: any) => {
-              return {
-                kid: result.kid,
-                position_x: result.position_x,
-                position_y: result.position_y,
-                attack_cooldown: result.attack_cooldown,
-                player_name: result.player_name,
-                player_might: result.player_might,
-                player_level: result.player_level,
-                player_legendary_level: result.player_legendary_level,
-                total_attack_count: result.total_attack_count,
-                updated_at: result.updated_at,
-                effective_cooldown_until: result.effective_cooldown_until,
-                last_attack: result.last_attack,
-                distance:
-                  result.calculated_distance === undefined
-                    ? null
-                    : Number.parseFloat(Math.sqrt(result.calculated_distance).toFixed(1)),
-              };
-            });
-            response
-              .status(ApiHelper.HTTP_OK)
-              .send(this.defaultResponseContent(dungeons, page, totalPages, dungeonsCount, dungeons.length));
-            // There is no need to cache this data because it changes frequently
-            // and users expect always fresh data
-            return;
-          });
-        }
+      const { query, parameters } = this.buildDungeonsMainQuery({
+        filtersKids,
+        playerId,
+        isSorted,
+        nearPlayerName,
+        sortByPositionX,
+        sortByPositionY,
+        customParameterValues,
+        filterByAttackCooldown,
+        viewPerPage,
+        page,
       });
+      const dungeonRows = await this.executePgQuery(
+        request['pg_pool'] as pg.Pool,
+        query,
+        parameters,
+        'getDungeons_mainQuery',
+        request,
+      );
+
+      /* ---------------------------------
+       * Map rows to response shape
+       * --------------------------------- */
+      const dungeons = this.mapDungeonRows(dungeonRows, request['code']);
+      response
+        .status(ApiHelper.HTTP_OK)
+        .send(this.defaultResponseContent(dungeons, page, totalPages, dungeonsCount, dungeons.length));
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getDungeons', request);
-      return;
     }
+  }
+
+  public static async getDungeonsByPlayer(request: express.Request, response: express.Response): Promise<void> {
+    try {
+      /* ---------------------------------
+       * Validate parameters
+       * --------------------------------- */
+      const playerId = ApiHelper.verifyIdWithCountryCode(String(request.params.playerId));
+      const lastDays = ApiHelper.validatePageNumber(request.query.lastDays, 30);
+      if (!playerId) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
+        return;
+      } else if (lastDays < 1 || lastDays > 365) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidLastDaysParameter });
+        return;
+      }
+
+      /* ---------------------------------
+       * Cache validation
+       * --------------------------------- */
+      const cacheKey = `dungeons:player:${playerId}:lastDays:${lastDays}`;
+      const cachedData = await ApiHelper.redisClient.get(cacheKey);
+      if (cachedData) {
+        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        return;
+      }
+
+      /* ---------------------------------
+       * Build and execute query
+       * --------------------------------- */
+      const pool = ApiHelper.ggeTrackerManager.getPgSqlPoolFromRequestId(playerId);
+      const code = ApiHelper.getCountryCode(String(playerId));
+      if (!pool || !code) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
+        return;
+      }
+      const query = `
+        SELECT
+          D.kid,
+          D.position_x,
+          D.position_y,
+          DH.attacked_at
+        FROM dungeons_history DH
+        JOIN dungeons D
+          ON D.kid = DH.kid
+          AND D.position_x = DH.position_x
+          AND D.position_y = DH.position_y
+        WHERE DH.player_id = $1
+          AND DH.attacked_at >= NOW() - INTERVAL '${lastDays} days'
+        ORDER BY DH.attacked_at DESC
+      `;
+
+      const dungeonRows = await this.executePgQuery(
+        pool,
+        query,
+        [ApiHelper.removeCountryCode(playerId)],
+        'getDungeonsByPlayer',
+        request,
+      );
+
+      const dungeons = dungeonRows.map((result: any) => ({
+        kid: result.kid,
+        position_x: result.position_x,
+        position_y: result.position_y,
+        attacked_at: result.attacked_at,
+      }));
+      await ApiHelper.updateCache(cacheKey, { dungeons }, 3600);
+      response.status(ApiHelper.HTTP_OK).send({ dungeons });
+    } catch (error) {
+      const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
+      response.status(code).send({ error: message });
+      ApiHelper.logError(error, 'getDungeonsByPlayer', request);
+    }
+  }
+
+  /**
+   * Validates inline constraints on dungeon query parameters after initial parsing
+   * Sends the appropriate error response and returns false on the first failing check
+   */
+  private static validateDungeonQueryParams(
+    response: express.Response,
+    filtersKids: number[],
+    filterByAttackCooldown: string | null,
+    filterByPlayerName: string | null,
+    size: string | null,
+  ): boolean {
+    for (const kid of filtersKids) {
+      if (Number(kid) < 0 || Number(kid) > 9) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidKingdomId });
+        return false;
+      }
+    }
+    if (filtersKids.length === 0) {
+      response.status(ApiHelper.HTTP_BAD_REQUEST).send(this.defaultResponseContent([], 1, 1, 0, 0));
+      return false;
+    }
+    if ((filterByAttackCooldown && Number(filterByAttackCooldown) < 0) || Number(filterByAttackCooldown) > 99_999_999) {
+      response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAttackCooldown });
+      return false;
+    }
+    if (filterByPlayerName && ApiHelper.isInvalidInput(ApiHelper.validateSearchAndSanitize(filterByPlayerName))) {
+      response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
+      return false;
+    }
+    if (size !== null && size.length > 30) {
+      response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidInput });
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Looks up the castle sort position for a given player name
+   * Sets `sortByPositionX/Y` to the kid-1 castle coords and narrows `filtersKids`
+   * to only kingdoms where the player has a main castle
+   *
+   * Returns `null` and sends an error response if the player is not found or has no castles
+   */
+  private static async resolveNearPlayerSortPosition(
+    request: express.Request,
+    response: express.Response,
+    nearPlayerName: string,
+    filtersKids: number[],
+  ): Promise<{
+    sortByPositionX: string | null;
+    sortByPositionY: string | null;
+    filtersKids: number[];
+    customParameterValues: number[];
+  } | null> {
+    if (nearPlayerName.length > 60) {
+      response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
+      return null;
+    }
+
+    const playerRows = await this.executePgQuery(
+      request['pg_pool'] as pg.Pool,
+      `SELECT castles_realm FROM players WHERE LOWER(name) = $1 LIMIT 1`,
+      [nearPlayerName.trim().toLowerCase()],
+      'getDungeons_nearPlayerName',
+      request,
+    );
+
+    if (playerRows.length === 0) {
+      response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
+      return null;
+    }
+
+    const target: { castles_realm: number[][] } = playerRows[0];
+    if (!target.castles_realm || target.castles_realm.length === 0) {
+      response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.PlayerNotFound });
+      return null;
+    }
+
+    const sortJsonPositionKid1 = target.castles_realm.find((c) => c[3] === 12 && c[0] === 1);
+    const sortJsonPositionKid2 = target.castles_realm.find((c) => c[3] === 12 && c[0] === 2);
+    const sortJsonPositionKid3 = target.castles_realm.find((c) => c[3] === 12 && c[0] === 3);
+
+    const sortPositionKid1 =
+      sortJsonPositionKid1?.length === 4 ? [sortJsonPositionKid1[1], sortJsonPositionKid1[2]] : null;
+    const sortPositionKid2 =
+      sortJsonPositionKid2?.length === 4 ? [sortJsonPositionKid2[1], sortJsonPositionKid2[2]] : null;
+    const sortPositionKid3 =
+      sortJsonPositionKid3?.length === 4 ? [sortJsonPositionKid3[1], sortJsonPositionKid3[2]] : null;
+
+    const resolvedKids = filtersKids.filter((kid) =>
+      target.castles_realm.some((castle) => castle[0] === kid && castle[3] === 12),
+    );
+
+    // Parameters for distance calculation across the three possible kingdoms (kid 1, 2, 3)
+    const s1 = sortPositionKid1 ?? [0, 0];
+    const s2 = sortPositionKid2 ?? [0, 0];
+    const s3 = sortPositionKid3 ?? [0, 0];
+
+    return {
+      sortByPositionX: sortPositionKid1 ? String(sortPositionKid1[0]) : null,
+      sortByPositionY: sortPositionKid1 ? String(sortPositionKid1[1]) : null,
+      filtersKids: resolvedKids,
+      customParameterValues: [s1[0], s1[0], s1[1], s2[0], s2[0], s2[1], s3[0], s3[0], s3[1]],
+    };
+  }
+
+  /**
+   * Validates sort coordinates and determines whether results should be distance-sorted
+   *
+   * @returns `true` if sorting is active, `false` if no sort coordinates were provided,
+   *          or `null` if the coordinates are invalid (error response already sent)
+   */
+  private static resolveSortState(
+    response: express.Response,
+    sortByPositionX: string | null,
+    sortByPositionY: string | null,
+  ): boolean | null {
+    if (sortByPositionX === null && sortByPositionY === null) return false;
+    if (
+      Number.isNaN(Number.parseInt(sortByPositionX)) ||
+      Number.isNaN(Number.parseInt(sortByPositionY)) ||
+      Number.parseInt(sortByPositionX) < 0 ||
+      Number.parseInt(sortByPositionY) < 0 ||
+      Number.parseInt(sortByPositionX) > 1286 ||
+      Number.parseInt(sortByPositionY) > 1286
+    ) {
+      response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPosition });
+      return null;
+    }
+    return true;
+  }
+
+  /**
+   * Looks up a player's numeric ID by name
+   * The ID is used to personalise the effective cooldown expression via `dungeon_player_cooldowns`,
+   * not to filter dungeons by owner
+   */
+  private static async resolvePlayerIdByName(
+    pool: pg.Pool,
+    playerName: string,
+    request: express.Request,
+  ): Promise<{ playerId: number | null; notFound: boolean }> {
+    const rows = await this.executePgQuery(
+      pool,
+      `SELECT id FROM players WHERE LOWER(name) = LOWER($1) LIMIT 1`,
+      [playerName.trim()],
+      'getDungeons_resolvePlayerByName',
+      request,
+    );
+    if (rows.length === 0) return { playerId: null, notFound: true };
+    return { playerId: rows[0].id, notFound: false };
+  }
+
+  /**
+   * Builds the WHERE conditions for the attack cooldown filter
+   *
+   * filterByAttackCooldown values:
+   *   1 = dungeons attackable now (cooldown expired)
+   *   2 = attackable within the next 5 minutes
+   *   3 = attackable within the next 60 minutes
+   */
+  private static buildCooldownConditions(cooldownExpr: string, filterByAttackCooldown: string | null): string[] {
+    if (!filterByAttackCooldown) return [];
+    switch (filterByAttackCooldown) {
+      case '1': {
+        return [`(${cooldownExpr} <= NOW())`];
+      }
+      case '2': {
+        return [`(${cooldownExpr} > NOW())`, `EXTRACT(EPOCH FROM (${cooldownExpr} - NOW())) <= 300`];
+      }
+      case '3': {
+        return [`(${cooldownExpr} > NOW())`, `EXTRACT(EPOCH FROM (${cooldownExpr} - NOW())) <= 3600`];
+      }
+      default: {
+        return [];
+      }
+    }
+  }
+
+  /**
+   * Builds and executes the COUNT query used for pagination
+   * When `playerNotFound` is true, forces an empty result
+   */
+  private static async countDungeons(
+    pool: pg.Pool,
+    filtersKids: number[],
+    playerId: number | null,
+    playerNotFound: boolean,
+    filterByAttackCooldown: string | null,
+    request: express.Request,
+  ): Promise<number> {
+    const parameters: any[] = [];
+    const parameter = (v: any): string => {
+      parameters.push(v);
+      return `$${parameters.length}`;
+    };
+
+    let cooldownExpr = `D.global_available_at`;
+    let playerJoinSql = '';
+    if (playerId !== null) {
+      const playerIdPlaceholder = parameter(playerId);
+      playerJoinSql = `
+        LEFT JOIN dungeon_player_cooldowns DPC
+          ON D.kid = DPC.kid
+          AND D.position_x = DPC.position_x
+          AND D.position_y = DPC.position_y
+          AND DPC.player_id = ${playerIdPlaceholder}
+      `;
+      // When a player context is provided, the effective cooldown is the greater of
+      // the global dungeon cooldown and the player-specific available_at
+      cooldownExpr = `GREATEST(D.global_available_at, DPC.available_at)`;
+    }
+
+    const conditions: string[] = [`D.kid IN (${filtersKids.map((k) => parameter(k)).join(', ')})`];
+    if (playerNotFound) {
+      // Player name was provided but not found: force empty result
+      conditions.push('1 = 0');
+    }
+    conditions.push(...this.buildCooldownConditions(cooldownExpr, filterByAttackCooldown));
+
+    let query = `SELECT COUNT(*) AS dungeons_count FROM dungeons D${playerJoinSql}`;
+    if (conditions.length > 0) {
+      query += ` WHERE ` + conditions.join(' AND ');
+    }
+
+    const rows = await this.executePgQuery(pool, query, parameters, 'getDungeons_countQuery', request);
+    return Number.parseInt(rows[0]['dungeons_count'], 10);
+  }
+
+  /**
+   * Builds the main SELECT query for fetching a page of dungeons
+   *
+   * Distance params must be declared first in the parameter list because they appear
+   * in SELECT, which determines the $N offset for all subsequent params
+   */
+  private static buildDungeonsMainQuery(options: {
+    filtersKids: number[];
+    playerId: number | null;
+    isSorted: boolean;
+    nearPlayerName: string | null;
+    sortByPositionX: string | null;
+    sortByPositionY: string | null;
+    customParameterValues: number[];
+    filterByAttackCooldown: string | null;
+    viewPerPage: number;
+    page: number;
+  }): { query: string; parameters: any[] } {
+    const {
+      filtersKids,
+      playerId,
+      isSorted,
+      nearPlayerName,
+      sortByPositionX,
+      sortByPositionY,
+      customParameterValues,
+      filterByAttackCooldown,
+      viewPerPage,
+      page,
+    } = options;
+
+    const parameters: any[] = [];
+    const parameter = (v: any): string => {
+      parameters.push(v);
+      return `$${parameters.length}`;
+    };
+
+    /* ---------------------------------
+     * Distance SELECT expression
+     * --------------------------------- */
+    let distanceSelectSql = '';
+    if (isSorted) {
+      if (nearPlayerName) {
+        const startIndex = parameters.length + 1;
+        const { sql } = this.getCalculatedDistanceSql(startIndex);
+        distanceSelectSql = `, ${sql}`;
+        customParameterValues.forEach((v) => parameters.push(v));
+      } else {
+        const px = Number.parseInt(sortByPositionX);
+        const py = Number.parseInt(sortByPositionY);
+        const p1 = parameter(px);
+        const p2 = parameter(px);
+        const p3 = parameter(py);
+        distanceSelectSql = `, (
+          POWER(LEAST(ABS(D.position_x::int - ${p1}), 1287 - ABS(D.position_x::int - ${p2})), 2) +
+          POWER(ABS(D.position_y::int - ${p3}), 2)
+        ) AS calculated_distance`;
+      }
+    }
+
+    /* ---------------------------------
+     * Player-specific cooldown
+     * --------------------------------- */
+    let cooldownExpr = `D.global_available_at`;
+    let playerJoinSql = '';
+    if (playerId !== null) {
+      const playerIdPlaceholder = parameter(playerId);
+      playerJoinSql = `
+        LEFT JOIN dungeon_player_cooldowns DPC
+          ON D.kid = DPC.kid
+          AND D.position_x = DPC.position_x
+          AND D.position_y = DPC.position_y
+          AND DPC.player_id = ${playerIdPlaceholder}
+      `;
+      cooldownExpr = `GREATEST(D.global_available_at, DPC.available_at)`;
+    }
+
+    const conditions: string[] = [
+      `D.kid IN (${filtersKids.map((k) => parameter(k)).join(', ')})`,
+      ...this.buildCooldownConditions(cooldownExpr, filterByAttackCooldown),
+    ];
+
+    let query = `
+      SELECT
+        D.kid,
+        D.position_x,
+        D.position_y,
+        D.global_available_at,
+        DH.last_attack,
+        DH.total_attack_count,
+        DH.player_id,
+        DH.seconds_between_last_two_attacks,
+        P.id,
+        P.name,
+        P.might_current AS player_might,
+        P.level AS player_level,
+        P.legendary_level AS player_legendary_level,
+        ${cooldownExpr} AS effective_cooldown_until
+        ${distanceSelectSql}
+      FROM dungeons D
+      LEFT JOIN (
+        SELECT
+          kid,
+          position_x,
+          position_y,
+          MAX(attacked_at) AS last_attack,
+          COUNT(*) AS total_attack_count,
+          (ARRAY_AGG(player_id ORDER BY attacked_at DESC))[1] AS player_id,
+          (
+            ARRAY_AGG(attacked_at ORDER BY attacked_at DESC)
+          )[2] AS previous_attack,
+          EXTRACT(
+            EPOCH FROM (
+              MAX(attacked_at)
+              -
+              (
+                ARRAY_AGG(attacked_at ORDER BY attacked_at DESC)
+              )[2]
+            )
+          ) AS seconds_between_last_two_attacks
+        FROM dungeons_history
+        GROUP BY kid, position_x, position_y
+      ) DH
+      ON
+        DH.kid = D.kid
+        AND DH.position_x = D.position_x
+        AND DH.position_y = D.position_y
+      LEFT JOIN players P
+      ON P.id = DH.player_id
+      ${playerJoinSql}
+    `;
+
+    if (conditions.length > 0) {
+      query += ` WHERE ` + conditions.join(' AND ');
+    }
+
+    if (isSorted) {
+      query += ` ORDER BY calculated_distance ASC`;
+    } else {
+      // Default: attackable now first, then by shortest remaining cooldown
+      query += `
+        ORDER BY
+          ${cooldownExpr} <= NOW() DESC,
+          ${cooldownExpr} ASC
+      `;
+    }
+
+    query += ` LIMIT ${parameter(viewPerPage)} OFFSET ${parameter((page - 1) * viewPerPage)}`;
+    return { query, parameters };
+  }
+
+  private static executePgQuery(
+    pool: pg.Pool,
+    query: string,
+    parameters: any[],
+    context: string,
+    request: express.Request,
+  ): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+      pool.query(query, parameters, (error, results) => {
+        if (error) {
+          ApiHelper.logError(error, context, request);
+          reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
+        } else {
+          resolve(results.rows);
+        }
+      });
+    });
+  }
+
+  private static mapDungeonRows(rows: any[], code: string): any[] {
+    return rows.map((result) => ({
+      kid: result.kid,
+      position_x: result.position_x,
+      position_y: result.position_y,
+      player_id: result.player_id ? ApiHelper.addCountryCode(result.player_id, code) : null,
+      player_name: result.name,
+      player_might: result.player_might,
+      player_level: result.player_level,
+      player_legendary_level: result.player_legendary_level,
+      total_attack_count: result.total_attack_count,
+      available_duration_seconds: this.calculateAvailableDuration(result.seconds_between_last_two_attacks),
+      global_available_at: result.global_available_at,
+      effective_cooldown_until: result.effective_cooldown_until,
+      last_attack: result.last_attack,
+      distance:
+        result.calculated_distance === undefined
+          ? null
+          : Number.parseFloat(Math.sqrt(result.calculated_distance).toFixed(1)),
+    }));
+  }
+
+  private static calculateAvailableDuration(secondsBetweenAttacks: number | null): number {
+    if (secondsBetweenAttacks === null) return 0;
+    const cooldown = 24 * 3600;
+    const availableIn = secondsBetweenAttacks - cooldown;
+    return Math.round(Math.max(availableIn, 0));
   }
 
   /**
@@ -481,23 +704,25 @@ export abstract class ApiDungeons implements ApiHelper {
    * @upgrade Improvement note: This calculation shall be improved in the future
    * @returns The SQL query string
    */
-  private static getCalculatedDistanceSql(): string {
-    return `
+  private static getCalculatedDistanceSql(startIndex: number): { sql: string; paramCount: number } {
+    const index = startIndex;
+    const sql = `
       LEAST(
         CASE WHEN D.kid = 1 THEN
-          POWER(LEAST(ABS(CAST(D.position_x AS SIGNED) - ?), 1287 - ABS(CAST(D.position_x AS SIGNED) - ?)), 2) +
-          POWER(ABS(CAST(D.position_y AS SIGNED) - ?), 2)
+          POWER(LEAST(ABS(D.position_x::int - $${index}),     1287 - ABS(D.position_x::int - $${index + 1})), 2) +
+          POWER(ABS(D.position_y::int - $${index + 2}), 2)
         ELSE 999999 END,
         CASE WHEN D.kid = 2 THEN
-          POWER(LEAST(ABS(CAST(D.position_x AS SIGNED) - ?), 1287 - ABS(CAST(D.position_x AS SIGNED) - ?)), 2) +
-          POWER(ABS(CAST(D.position_y AS SIGNED) - ?), 2)
+          POWER(LEAST(ABS(D.position_x::int - $${index + 3}), 1287 - ABS(D.position_x::int - $${index + 4})), 2) +
+          POWER(ABS(D.position_y::int - $${index + 5}), 2)
         ELSE 999999 END,
         CASE WHEN D.kid = 3 THEN
-          POWER(LEAST(ABS(CAST(D.position_x AS SIGNED) - ?), 1287 - ABS(CAST(D.position_x AS SIGNED) - ?)), 2) +
-          POWER(ABS(CAST(D.position_y AS SIGNED) - ?), 2)
+          POWER(LEAST(ABS(D.position_x::int - $${index + 6}), 1287 - ABS(D.position_x::int - $${index + 7})), 2) +
+          POWER(ABS(D.position_y::int - $${index + 8}), 2)
         ELSE 999999 END
       ) AS calculated_distance
     `;
+    return { sql, paramCount: 9 };
   }
 
   /**

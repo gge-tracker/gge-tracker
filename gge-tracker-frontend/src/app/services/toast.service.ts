@@ -16,6 +16,14 @@ export class ToastService {
     setTimeout(() => this.remove(0), duration);
   }
 
+  public error(message: string, duration = 3000): void {
+    this.add(message, duration, 'error');
+  }
+
+  public info(message: string, duration = 3000): void {
+    this.add(message, duration, 'info');
+  }
+
   public remove(index: number): void {
     this.toasts.splice(index, 1);
   }

@@ -14,3 +14,10 @@
 .new-value {
   background-color: rgba(0, 255, 0, 0.05);
 }
+
+@media (max-width: 900px) {
+  :host ::ng-deep .col-name {
+    width: 100% !important;
+    padding: 2px 0 !important;
+  }
+}
