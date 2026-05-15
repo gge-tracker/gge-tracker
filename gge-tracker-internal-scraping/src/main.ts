@@ -2898,9 +2898,16 @@ export class GenericFetchAndSaveBackend {
       if (allRows.length === 0) return;
 
       const clickhouse = new ClickHouse(this.CLICKHOUSE_CONFIG);
-      const query = `INSERT INTO player_metrics (player_id, metric_id, value, collected_at) VALUES`;
+      let batch: string[] = [];
+      for (const row of allRows) {
+        batch.push(`(${row[0]}, ${row[1]}, ${row[2]}, '${row[3]}')`);
+      }
+      const query = `
+        INSERT INTO player_metrics (player_id, metric_id, value, collected_at)
+        VALUES ${batch.join(', ')}
+      `;
       try {
-        await clickhouse.query(query, allRows).toPromise();
+        await clickhouse.query(query).toPromise();
         Utils.logMessage(`Inserted ${allRows.length} player_metrics rows for ${eligiblePlayerIds.length} players`);
       } catch (error) {
         Utils.logMessage('Error while bulk-inserting player metrics');
