@@ -2852,9 +2852,12 @@ export class GenericFetchAndSaveBackend {
         Utils.logMessage(' [KO] There are critical errors, stopping the process');
         return;
       }
-      if (!this.CLICKHOUSE_CONFIG) throw new Error('ClickHouse configuration is missing.');
 
-      // Only process players that have aquamarine realm AP data (index 4).
+      if (!this.CLICKHOUSE_CONFIG) {
+        throw new Error('ClickHouse configuration is missing.');
+      }
+
+      // Only process players that have aquamarine realm AP data (index 4)
       const eligiblePlayerIds = Object.keys(this.playerLootAndMightPointHistoryList)
         .map(Number)
         .filter((playerId) => {
@@ -2865,49 +2868,83 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('Number of players to update with aquamarine', eligiblePlayerIds.length);
 
       const EID = 102;
-      const collected_at = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
-      const allRows: any[] = [];
 
+      const fetchDate = new Date();
+      const collected_at = new Date(fetchDate).toISOString().slice(0, 19).replace('T', ' ');
+      const allRows: any[] = [];
       const limit = pLimit(5);
+
       await Promise.all(
         eligiblePlayerIds.map((playerId) =>
           limit(async () => {
-            const response = await this.genericFetchData('gpe', { PID: playerId, EID });
+            try {
+              const response = await this.genericFetchData('gpe', {
+                PID: playerId,
+                EID,
+              });
 
-            if (!response.data.content) {
-              Utils.logMessage(' [KO] No data returned for player', playerId);
-              return;
+              if (!response?.data?.content) {
+                Utils.logMessage(' [KO] No data returned for player', playerId);
+                return;
+              }
+              const { PST = [], AMT: cargoAmt = 0, PE = 0 } = response.data.content;
+              if (PE !== 1) {
+                Utils.logMessage(' [KO] Player has not entered', playerId);
+                return;
+              }
+
+              for (const item of PST) {
+                if (!item) continue;
+                allRows.push({
+                  player_id: playerId,
+                  metric_id: Number(item.PSI),
+                  value: Number(item.AMT ?? 0),
+                  collected_at,
+                });
+              }
+
+              // Cargo points
+              allRows.push({
+                player_id: playerId,
+                metric_id: 100,
+                value: Number(cargoAmt ?? 0),
+                collected_at,
+              });
+            } catch (error) {
+              Utils.logMessage(`Error while fetching aquamarine data for player ${playerId}`);
+              console.error(error);
             }
-
-            const { PST = [], AMT: cargoAmt = 0, PE = 0 } = response.data.content;
-
-            if (PE !== 1) {
-              Utils.logMessage(' [KO] Player has not entered', playerId);
-              return;
-            }
-
-            for (const item of PST) {
-              if (!item) continue;
-              allRows.push([playerId, Number(item.PSI), Number(item.AMT ?? 0), collected_at]);
-            }
-            allRows.push([playerId, 100 /* CARGO_POINTS */, cargoAmt, collected_at]);
           }),
         ),
       );
 
-      if (allRows.length === 0) return;
-
-      const clickhouse = new ClickHouse(this.CLICKHOUSE_CONFIG);
-      let batch: string[] = [];
-      for (const row of allRows) {
-        batch.push(`(${row[0]}, ${row[1]}, ${row[2]}, '${row[3]}')`);
+      if (allRows.length === 0) {
+        Utils.logMessage('No player_metrics rows to insert');
+        return;
       }
-      const query = `
-        INSERT INTO player_metrics (player_id, metric_id, value, collected_at)
-        VALUES ${batch.join(', ')}
+      const clickhouseBaseUrl = (this.CLICKHOUSE_CONFIG.url as string) + ':' + this.CLICKHOUSE_CONFIG.port;
+      const insertSQL = `
+        INSERT INTO player_metrics
+        FORMAT JSONEachRow
       `;
+      const clickhouseUrl =
+        clickhouseBaseUrl +
+        '/?query=' +
+        encodeURIComponent(insertSQL) +
+        '&database=' +
+        encodeURIComponent(this.CLICKHOUSE_CONFIG.database as string);
+      const clickhouseAuth = {
+        username: this.CLICKHOUSE_CONFIG.user as string,
+        password: this.CLICKHOUSE_CONFIG.password as string,
+      };
+      const payload = allRows.map((row) => JSON.stringify(row)).join('\n');
       try {
-        await clickhouse.query(query).toPromise();
+        await axios.post(clickhouseUrl, payload, {
+          headers: {
+            'Content-Type': 'text/plain',
+          },
+          auth: clickhouseAuth,
+        });
         Utils.logMessage(`Inserted ${allRows.length} player_metrics rows for ${eligiblePlayerIds.length} players`);
       } catch (error) {
         Utils.logMessage('Error while bulk-inserting player metrics');
@@ -2920,6 +2957,7 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('Identifier: 103');
       Utils.logMessage(error);
       Utils.logMessage('=========== END STACK TRACE =============');
+
       this.DB_UPDATES.criticalErrors++;
     }
   }
