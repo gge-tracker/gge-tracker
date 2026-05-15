@@ -752,6 +752,8 @@ export class GenericFetchAndSaveBackend {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       Utils.logMessage('* Updating player might and loot current/total (9/9)');
       await this.updatePlayersMightAndLoot();
+      Utils.logMessage('* Updating player aquamarine data');
+      await this.fillPlayerAquamarineData();
       Utils.logMessage('* Updating server statistics');
       await this.updateServerStatistics();
       Utils.logMessage('* Updating inactive players');
@@ -2842,6 +2844,77 @@ export class GenericFetchAndSaveBackend {
       FROM tmp_players_update tmp
       WHERE p.id = tmp.id
         `);
+  }
+
+  private async fillPlayerAquamarineData(): Promise<void> {
+    try {
+      if (this.DB_UPDATES.criticalErrors > 0) {
+        Utils.logMessage(' [KO] There are critical errors, stopping the process');
+        return;
+      }
+      if (!this.CLICKHOUSE_CONFIG) throw new Error('ClickHouse configuration is missing.');
+
+      // Only process players that have aquamarine realm AP data (index 4).
+      const eligiblePlayerIds = Object.keys(this.playerLootAndMightPointHistoryList)
+        .map(Number)
+        .filter((playerId) => {
+          const realmAp = this.playerLootAndMightPointHistoryList[playerId][13];
+          return realmAp?.length > 0 && realmAp.some((ap: any[]) => ap[0] === 4);
+        });
+
+      Utils.logMessage('Number of players to update with aquamarine', eligiblePlayerIds.length);
+
+      const EID = 102;
+      const collected_at = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
+      const allRows: any[] = [];
+
+      const limit = pLimit(5);
+      await Promise.all(
+        eligiblePlayerIds.map((playerId) =>
+          limit(async () => {
+            const response = await this.genericFetchData('gpe', { PID: playerId, EID });
+
+            if (!response.data.content) {
+              Utils.logMessage(' [KO] No data returned for player', playerId);
+              return;
+            }
+
+            const { PST = [], AMT: cargoAmt = 0, PE = 0 } = response.data.content;
+
+            if (PE !== 1) {
+              Utils.logMessage(' [KO] Player has not entered', playerId);
+              return;
+            }
+
+            for (const item of PST) {
+              if (!item) continue;
+              allRows.push([playerId, Number(item.PSI), Number(item.AMT ?? 0), collected_at]);
+            }
+            allRows.push([playerId, 100 /* CARGO_POINTS */, cargoAmt, collected_at]);
+          }),
+        ),
+      );
+
+      if (allRows.length === 0) return;
+
+      const clickhouse = new ClickHouse(this.CLICKHOUSE_CONFIG);
+      const query = `INSERT INTO player_metrics (player_id, metric_id, value, collected_at) VALUES`;
+      try {
+        await clickhouse.query(query, allRows).toPromise();
+        Utils.logMessage(`Inserted ${allRows.length} player_metrics rows for ${eligiblePlayerIds.length} players`);
+      } catch (error) {
+        Utils.logMessage('Error while bulk-inserting player metrics');
+        Utils.logMessage(error);
+        this.DB_UPDATES.criticalErrors++;
+      }
+    } catch (error) {
+      Utils.logMessage('Error updating player aquamarine data');
+      Utils.logMessage('========== BEGIN STACK TRACE ============');
+      Utils.logMessage('Identifier: 103');
+      Utils.logMessage(error);
+      Utils.logMessage('=========== END STACK TRACE =============');
+      this.DB_UPDATES.criticalErrors++;
+    }
   }
 
   private async updatePlayersMightAndLoot(): Promise<void> {
