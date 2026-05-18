@@ -116,7 +116,7 @@ async function createOuterRealmsInstance(): Promise<void> {
     console.log('Checking Empire API Realtime status for Outer Realms server...');
     const statusResponse = await generic.fetchUrl(statusUrl, 'GET', null);
     const realtimeRedisStatus = await generic.getRedisValue('outerRealmsDataFetchError');
-    let lastTSIDValue: string | null = null;
+    let lastTSIDValue: string | null = process.env.INITIAL_TSID_VALUE || null;
     if (!statusResponse.data || statusResponse.data['EmpireEx_42'] !== true || realtimeRedisStatus) {
       const lastCheckTime = await generic.getRedisValue('outerRealmsLastCheckTime');
       lastTSIDValue = await generic.getRedisValue('temporaryServerData');
