@@ -11,6 +11,11 @@ export class PlayerFilters extends AbstractFilterBuilder<PlayerFilters> {
     return this.self();
   }
 
+  public mightAllTime(min?: number, max?: number): PlayerFilters {
+    this.addMany([this.min('P.might_all_time', min), this.max('P.might_all_time', max)]);
+    return this.self();
+  }
+
   public allianceId(allianceId?: number): PlayerFilters {
     if (allianceId !== undefined) {
       this.add(this.eq('P.alliance_id', allianceId));

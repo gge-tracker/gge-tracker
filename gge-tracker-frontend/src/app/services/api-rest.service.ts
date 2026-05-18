@@ -553,6 +553,12 @@ export class ApiRestService {
     return { success: true, data: response.data };
   }
 
+  public async getRandomCastles(): Promise<ApiResponse<ApiPlayerCastleNameResponse[]>> {
+    const response = await this.apiFetch<ApiPlayerCastleNameResponse[]>(`${ApiRestService.apiUrl}castle/random`);
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
   /**
    * Get the castle player data by their castle ID
    * @param castleId The ID of the castle to search for
@@ -748,14 +754,14 @@ export class ApiRestService {
 
   public async getStormyIslesLeaderboard(
     page: number,
-    orderBy?: number,
-    orderDir?: string,
+    orderBy?: string,
+    orderDirection?: string,
     playerName?: string,
     allianceName?: string,
   ): Promise<ApiResponse<ApiStormyIslesLeaderboardResponse>> {
     let request = `${ApiRestService.apiUrl}stormy-isles?page=${page}`;
     if (orderBy !== undefined) request += `&order_by=${orderBy}`;
-    if (orderDir) request += `&order_dir=${orderDir}`;
+    if (orderDirection !== undefined) request += `&order_dir=${orderDirection}`;
     if (playerName) request += `&player_name=${encodeURIComponent(playerName)}`;
     if (allianceName) request += `&alliance_name=${encodeURIComponent(allianceName)}`;
     const response = await this.apiFetch<ApiStormyIslesLeaderboardResponse>(request);

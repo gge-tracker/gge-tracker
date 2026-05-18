@@ -1033,11 +1033,12 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
-  public async startOuterRealmsDataFetch(): Promise<void> {
+  public async startOuterRealmsDataFetch(): Promise<'collector' | 'might' | 'rankSwap' | null> {
     const start = new Date();
     const type = 'hgh';
     const LID = 1;
     let LT: number | null = null;
+    let scoringSystemType: 'collector' | 'might' | 'rankSwap' | null = null;
     try {
       Utils.logMessage('=====================================');
       Utils.logMessage(' Starting Outer Realms data fetch');
@@ -1054,8 +1055,8 @@ export class GenericFetchAndSaveBackend {
           (el) => el.settingID && Number(el.settingID) === Number(temporaryServerData),
         );
         if (tempServerSetting) {
-          const scoringSystemType = tempServerSetting.scoringSystem;
-          if (['collector', 'might', 'rankSwap'].includes(scoringSystemType)) {
+          if (['collector', 'might', 'rankSwap'].includes(tempServerSetting.scoringSystem)) {
+            scoringSystemType = tempServerSetting.scoringSystem as 'collector' | 'might' | 'rankSwap';
             const correspondingLt = this.getCorrespondigLtByOuterRealmsType(scoringSystemType);
             if (correspondingLt) {
               LT = Number(correspondingLt);
@@ -1064,7 +1065,9 @@ export class GenericFetchAndSaveBackend {
               );
             }
           } else {
-            throw new Error(`Unrecognized scoring system type '${scoringSystemType}' in temporary server settings.`);
+            throw new Error(
+              `Unrecognized scoring system type '${tempServerSetting.scoringSystem}' in temporary server settings.`,
+            );
           }
         } else {
           throw new Error(
@@ -1080,19 +1083,19 @@ export class GenericFetchAndSaveBackend {
           );
           await redisClient.set(`outerRealmsDataFetchError`, 'No active event found with known LT codes');
           await redisClient.quit();
-          return;
+          throw new Error(`No active Outer Realms event found with last known LT=${LT}`);
         }
       } else {
         Utils.logMessage(' No temporary server setting found in Redis. Exiting temporary server LT check.');
         await redisClient.set(`outerRealmsDataFetchError`, 'No active event found with known LT codes');
         await redisClient.quit();
-        return;
+        throw new Error('No temporary server setting found in Redis');
       }
       if (!LT) {
         Utils.logMessage(' No active Outer Realms event found with any known LT code. Aborting data fetch.');
         await redisClient.set(`outerRealmsDataFetchError`, 'No active event found with known LT codes');
         await redisClient.quit();
-        return;
+        throw new Error('No active Outer Realms event found with known LT codes');
       }
       await redisClient.del(`outerRealmsDataFetchError`);
       await redisClient.quit();
@@ -1288,6 +1291,7 @@ export class GenericFetchAndSaveBackend {
           durationMs: duration,
         },
       });
+      return scoringSystemType || null;
     }
   }
 

@@ -1618,12 +1618,14 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       this.cdr.detectChanges();
       void this.apiRestService.getAquamarinePointsByPlayerId(this.playerId).then((response) => {
         if (response.success) {
-          this.aquamarineSnapshots = response.data.snapshots;
-          const timestamp: number | undefined = response.data.snapshots
-            .at(-1)
-            ?.metrics.find((m) => m.metric_id === 21)?.value;
-          this.aquamarineSnapshotsLastUpdated = new Date(timestamp ? timestamp * 1000 : Date.now());
-          this.initAquamarineCharts();
+          this.aquamarineSnapshots = response.data.snapshots || [];
+          if (this.aquamarineSnapshots.length > 0) {
+            const timestamp: number | undefined = response.data.snapshots
+              .at(-1)
+              ?.metrics.find((m) => m.metric_id === 21)?.value;
+            this.aquamarineSnapshotsLastUpdated = new Date(timestamp ? timestamp * 1000 : Date.now());
+            this.initAquamarineCharts();
+          }
           this.aquamarineLoadState = 'loaded';
         } else {
           this.aquamarineLoadState = 'error';

@@ -32,7 +32,7 @@
     <td class="col-might">
       <div class="metric">
         <div class="metric-header">
-          <span class="metric-current">{{ player.might_current | formatNumber }}</span>
+          <span class="metric-current"><span class="mobile-only">{{ 'Puissance' | translate }}:&nbsp;</span>{{ player.might_current | formatNumber }}</span>
           <span class="metric-max">{{ player.might_all_time | formatNumber }}</span>
         </div>
         <div class="metric-bar-bg">
@@ -59,7 +59,10 @@
     @for (metricId of METRIC_IDS; track metricId) {
       <td class="col-metric" [style.--m-color]="METRIC_COLORS[metricId]">
         @if (player.metrics[metricId] !== undefined) {
-          <span class="metric-val">{{ player.metrics[metricId] | formatNumber }}</span>
+          <span class="metric-val">
+            <span class="mobile-only">{{ METRIC_LABELS[metricId] }}:&nbsp;</span>
+            {{ player.metrics[metricId] | formatNumber }}
+          </span>
         } @else {
           <span class="metric-empty">—</span>
         }

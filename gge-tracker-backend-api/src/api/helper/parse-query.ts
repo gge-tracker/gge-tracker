@@ -109,6 +109,10 @@ export interface QuerySchema {
   maxHonor: QueryField<number | undefined>;
   minMight: QueryField<number | undefined>;
   maxMight: QueryField<number | undefined>;
+  minAllianceMight: QueryField<number | undefined>;
+  maxAllianceMight: QueryField<number | undefined>;
+  minMightAllTime: QueryField<number | undefined>;
+  maxMightAllTime: QueryField<number | undefined>;
   minLoot: QueryField<number | undefined>;
   maxLoot: QueryField<number | undefined>;
   minLevel: QueryField<[number | undefined, number | undefined]>;
@@ -149,6 +153,10 @@ export const querySchema = (limits: {
   maxHonor: qNumber({ max: limits.maxBigValue }),
   minMight: qNumber({ max: limits.maxBigValue }),
   maxMight: qNumber({ max: limits.maxBigValue }),
+  minAllianceMight: qNumber({ max: limits.maxBigValue }),
+  maxAllianceMight: qNumber({ max: limits.maxBigValue }),
+  minMightAllTime: qNumber({ max: limits.maxBigValue }),
+  maxMightAllTime: qNumber({ max: limits.maxBigValue }),
   minLoot: qNumber({ max: limits.maxBigValue }),
   maxLoot: qNumber({ max: limits.maxBigValue }),
   minLevel: qLevelPair({ maxLevel: 70, maxLegendaryLevel: 950 }),

@@ -114,7 +114,7 @@
   display: block;
   height: 20px;
   object-fit: contain;
-  width: auto;
+  width: 30px;
 }
 
 :host ::ng-deep [field][prefix].large img {

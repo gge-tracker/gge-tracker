@@ -24,7 +24,7 @@ import { BoundType, FilterKeyMap } from '@ggetracker-interfaces/filter';
 import { IconToggleComponent } from './icon-toggle/icon-toggle.component';
 import { NgSelectModule } from '@ng-select/ng-select';
 
-type FilterField = 'honor' | 'loot' | 'level' | 'might' | 'fame' | 'castleCount';
+type FilterField = 'honor' | 'loot' | 'level' | 'might' | 'mightAllTime' | 'fame' | 'castleCount' | 'allianceMight';
 
 interface FormFilters {
   minHonor: string;
@@ -35,6 +35,10 @@ interface FormFilters {
   maxLevel: string;
   minMight: string;
   maxMight: string;
+  minAllianceMight: string;
+  maxAllianceMight: string;
+  minMightAllTime: string;
+  maxMightAllTime: string;
   minFame: string;
   maxFame: string;
   castleCountMin: string;
@@ -121,6 +125,10 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     maxHonor: '',
     minMight: '',
     maxMight: '',
+    minAllianceMight: '',
+    maxAllianceMight: '',
+    minMightAllTime: '',
+    maxMightAllTime: '',
     minLoot: '',
     maxLoot: '',
     minLevel: '',
@@ -143,6 +151,8 @@ export class PlayersComponent extends GenericComponent implements OnInit {
   public readonly ArrowBigRightDash = ArrowBigRightDash;
   public displayFormValues = {
     might: { min: '', max: '' },
+    mightAllTime: { min: '', max: '' },
+    allianceMight: { min: '', max: '' },
     loot: { min: '', max: '' },
     honor: { min: '', max: '' },
     level: { min: '', max: '' },
@@ -154,6 +164,8 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     loot: { min: 'minLoot', max: 'maxLoot' },
     level: { min: 'minLevel', max: 'maxLevel' },
     might: { min: 'minMight', max: 'maxMight' },
+    allianceMight: { min: 'minAllianceMight', max: 'maxAllianceMight' },
+    mightAllTime: { min: 'minMightAllTime', max: 'maxMightAllTime' },
     fame: { min: 'minFame', max: 'maxFame' },
     castleCount: { min: 'castleCountMin', max: 'castleCountMax' },
   };
@@ -219,6 +231,14 @@ export class PlayersComponent extends GenericComponent implements OnInit {
       }
       case 'might': {
         targetValue = type === 'min' ? this.formFilters.minMight : this.formFilters.maxMight;
+        break;
+      }
+      case 'allianceMight': {
+        targetValue = type === 'min' ? this.formFilters.minAllianceMight : this.formFilters.maxAllianceMight;
+        break;
+      }
+      case 'mightAllTime': {
+        targetValue = type === 'min' ? this.formFilters.minMightAllTime : this.formFilters.maxMightAllTime;
         break;
       }
       case 'fame': {
@@ -440,6 +460,8 @@ export class PlayersComponent extends GenericComponent implements OnInit {
   public updateDisplayFormValues(): void {
     this.displayFormValues = {
       might: { min: this.formFilters.minMight, max: this.formFilters.maxMight },
+      allianceMight: { min: this.formFilters.minAllianceMight, max: this.formFilters.maxAllianceMight },
+      mightAllTime: { min: this.formFilters.minMightAllTime, max: this.formFilters.maxMightAllTime },
       loot: { min: this.formFilters.minLoot, max: this.formFilters.maxLoot },
       honor: { min: this.formFilters.minHonor, max: this.formFilters.maxHonor },
       level: { min: this.formFilters.minLevel, max: this.formFilters.maxLevel },
@@ -697,6 +719,10 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     if (this.formFilters.maxHonor) filters['maxHonor'] = this.formFilters.maxHonor;
     if (this.formFilters.minMight) filters['minMight'] = this.formFilters.minMight;
     if (this.formFilters.maxMight) filters['maxMight'] = this.formFilters.maxMight;
+    if (this.formFilters.minAllianceMight) filters['minAllianceMight'] = this.formFilters.minAllianceMight;
+    if (this.formFilters.maxAllianceMight) filters['maxAllianceMight'] = this.formFilters.maxAllianceMight;
+    if (this.formFilters.minMightAllTime) filters['minMightAllTime'] = this.formFilters.minMightAllTime;
+    if (this.formFilters.maxMightAllTime) filters['maxMightAllTime'] = this.formFilters.maxMightAllTime;
     if (this.formFilters.minLoot) filters['minLoot'] = this.formFilters.minLoot;
     if (this.formFilters.maxLoot) filters['maxLoot'] = this.formFilters.maxLoot;
     if (this.formFilters.minLevel) filters['minLevel'] = this.formFilters.minLevel;

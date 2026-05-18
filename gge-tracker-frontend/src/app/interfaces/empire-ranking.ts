@@ -816,6 +816,7 @@ export interface ApiGrandTournamentAlliancesSearchResponse {
 
 export interface ApiPlayerCastleNameResponse {
   kingdomId: number;
+  dummy?: boolean;
   id: number;
   positionX: number;
   positionY: number;

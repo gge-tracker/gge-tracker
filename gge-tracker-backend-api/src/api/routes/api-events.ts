@@ -29,6 +29,7 @@ export abstract class ApiEvents implements ApiHelper {
   private static readonly STORMY_ISLES_ITEMS_PER_PAGE = 15;
   private static readonly STORMY_ISLES_CACHE_TTL_LEADERBOARD = 60 * 60;
   private static readonly STORMY_ISLES_ALLOWED_METRIC_IDS = new Set([15, 16, 17, 18, 19, 20, 100]);
+  private static readonly STORMY_ISLES_ALLOWED_SORTABLE_KEYS = new Set(['player_name', 'level', 'might_current']);
 
   /**
    * Retrieves a list of events from the database, combining results from both
@@ -1806,13 +1807,12 @@ export abstract class ApiEvents implements ApiHelper {
       const page = ApiHelper.validatePageNumber(request.query.page);
       const rawOrderDirection = String(request.query.order_dir || 'DESC').toUpperCase();
       const orderDirection = ['ASC', 'DESC'].includes(rawOrderDirection) ? rawOrderDirection : 'DESC';
-      const rawOrderBy = request.query.order_by;
-      let orderMetricId = 100;
-      if (rawOrderBy !== undefined) {
-        const parsed = Number.parseInt(String(rawOrderBy));
-        if (!Number.isNaN(parsed) && ApiEvents.STORMY_ISLES_ALLOWED_METRIC_IDS.has(parsed)) {
-          orderMetricId = parsed;
-        }
+      const rawOrderBy = String(request.query.order_by);
+      let orderMetricId: number | string = 100;
+      if (rawOrderBy !== undefined && ApiEvents.STORMY_ISLES_ALLOWED_METRIC_IDS.has(Number(rawOrderBy))) {
+        orderMetricId = Number(rawOrderBy);
+      } else if (this.STORMY_ISLES_ALLOWED_SORTABLE_KEYS.has(rawOrderBy)) {
+        orderMetricId = rawOrderBy;
       }
       const playerNameRaw = ApiHelper.validateSearchAndSanitize(request.query.player_name, { toLowerCase: false });
       const allianceNameRaw = ApiHelper.validateSearchAndSanitize(request.query.alliance_name, { toLowerCase: false });
@@ -1887,7 +1887,150 @@ export abstract class ApiEvents implements ApiHelper {
       const playerIdClause = pgFilteredIds ? `AND player_id IN (${pgFilteredIds.join(',')})` : '';
 
       /* ---------------------------------
-       * ClickHouse query to get paginated, sorted player metrics
+       * Branch: sort by PostgreSQL player field
+       * (player_name, level, might_current)
+       * --------------------------------- */
+      if (typeof orderMetricId === 'string') {
+        const chIdsResult = await clickhouseClient.query({
+          query: `
+            SELECT DISTINCT player_id
+            FROM ${table}
+            WHERE toDate(collected_at) = {latestDate:String}
+            ${playerIdClause}
+          `,
+          query_params: { latestDate },
+        });
+        const chIdsJson = await chIdsResult.json();
+        const allChPlayerIds = (chIdsJson.data as Array<{ player_id: number }>).map((r) => r.player_id);
+        if (allChPlayerIds.length === 0) {
+          const empty = {
+            players: [],
+            snapshot_date: latestDate,
+            pagination: { current_page: page, total_pages: 0, current_items_count: 0, total_items_count: 0 },
+          };
+          response.status(ApiHelper.HTTP_OK).send(empty);
+          return;
+        }
+
+        const pgSortExpr =
+          orderMetricId === 'player_name'
+            ? 'P.name'
+            : orderMetricId === 'level'
+              ? '(P.level + P.legendary_level)'
+              : 'P.might_current';
+        const [pgCountResult, pgPageResult] = await Promise.all([
+          pgPool.query(`SELECT COUNT(*) AS total FROM players P WHERE P.id = ANY($1)`, [allChPlayerIds]),
+          pgPool.query(
+            `SELECT
+                P.id,
+                P.name         AS player_name,
+                P.alliance_id,
+                A.name         AS alliance_name,
+                P.might_current,
+                P.might_all_time,
+                P.level,
+                P.legendary_level
+              FROM players P
+              LEFT JOIN alliances A ON P.alliance_id = A.id
+              WHERE P.id = ANY($1)
+              ORDER BY ${pgSortExpr} ${orderDirection}
+              LIMIT $2 OFFSET $3`,
+            [allChPlayerIds, limit, offset],
+          ),
+        ]);
+        const pgTotal = Number(pgCountResult.rows[0]?.total ?? 0);
+        if (pgTotal === 0) {
+          const empty = {
+            players: [],
+            snapshot_date: latestDate,
+            pagination: { current_page: page, total_pages: 0, current_items_count: 0, total_items_count: 0 },
+          };
+          response.status(ApiHelper.HTTP_OK).send(empty);
+          return;
+        }
+        const pgRows = pgPageResult.rows as Array<{
+          id: number;
+          player_name: string | null;
+          alliance_id: number | null;
+          alliance_name: string | null;
+          might_current: number;
+          might_all_time: number;
+          level: number;
+          legendary_level: number;
+        }>;
+        const pagePlayerIds = pgRows.map((r) => r.id);
+
+        const metricsByPlayerId = new Map<
+          number,
+          { metric_ids: number[]; metric_values: number[]; latest_collected_at: string }
+        >();
+        if (pagePlayerIds.length > 0) {
+          const chMetricsResult = await clickhouseClient.query({
+            query: `
+              SELECT
+                player_id,
+                groupArray(metric_id)  AS metric_ids,
+                groupArray(value)      AS metric_values,
+                any(collected_at)      AS latest_collected_at
+              FROM ${table}
+              WHERE toDate(collected_at) = {latestDate:String}
+                AND player_id IN (${pagePlayerIds.join(',')})
+              GROUP BY player_id
+            `,
+            query_params: { latestDate },
+          });
+          const chMetricsJson = await chMetricsResult.json();
+          for (const r of chMetricsJson.data as Array<{
+            player_id: number;
+            metric_ids: number[];
+            metric_values: number[];
+            latest_collected_at: string;
+          }>) {
+            metricsByPlayerId.set(Number(r.player_id), r);
+          }
+        }
+
+        const players = pgRows.map((pg, index) => {
+          const chRow = metricsByPlayerId.get(pg.id);
+          const metrics: Record<number, number> = {};
+          if (chRow) {
+            for (let index_ = 0; index_ < chRow.metric_ids.length; index_++) {
+              metrics[Number(chRow.metric_ids[index_])] = Number(chRow.metric_values[index_]);
+            }
+          }
+          return {
+            rank: offset + index + 1,
+            player_id: ApiHelper.addCountryCode(String(pg.id), code),
+            player_name: pg.player_name ?? null,
+            alliance_id: pg.alliance_id ? ApiHelper.addCountryCode(String(pg.alliance_id), code) : null,
+            alliance_name: pg.alliance_name ?? null,
+            might_current: pg.might_current ?? 0,
+            might_all_time: pg.might_all_time ?? 0,
+            level: pg.level ?? 0,
+            legendary_level: pg.legendary_level ?? 0,
+            metrics,
+            collected_at: chRow ? new Date(chRow.latest_collected_at).toISOString() : null,
+          };
+        });
+        const total_pages = Math.ceil(pgTotal / limit);
+        const responseData = {
+          players,
+          snapshot_date: latestDate,
+          pagination: {
+            current_page: page,
+            total_pages,
+            current_items_count: players.length,
+            total_items_count: pgTotal,
+          },
+        };
+        void ApiHelper.updateCache(cachedKey, responseData, ApiEvents.STORMY_ISLES_CACHE_TTL_LEADERBOARD);
+        response.status(ApiHelper.HTTP_OK).send(responseData);
+        return;
+      }
+
+      /* ---------------------------------
+       * ClickHouse query to get paginated, sorted
+       * player metrics (metric_id sort)
        * --------------------------------- */
       const [rawCount, rawData] = await Promise.all([
         clickhouseClient.query({

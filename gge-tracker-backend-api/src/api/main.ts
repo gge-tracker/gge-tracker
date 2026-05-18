@@ -2034,6 +2034,51 @@ protectedRoutes.get('/castle/search/:playerName', routingInstance.getCastleByPla
 
 /**
  * @swagger
+ * /castle/random:
+ *   get:
+ *     summary: Retrieve 12 random level-70 player main castles
+ *     description: Returns up to 12 randomly selected main castles (kingdomId = 0, type = 1) from level-70 players on the requested server
+ *     tags:
+ *       - Castle
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *     responses:
+ *       '200':
+ *         description: Successfully retrieved random castle list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   kingdomId:
+ *                     type: integer
+ *                     description: Always 0 (main kingdom)
+ *                   id:
+ *                     type: integer
+ *                     description: The ID of the castle
+ *                   positionX:
+ *                     type: integer
+ *                   positionY:
+ *                     type: integer
+ *                   keepLevel:
+ *                     type: integer
+ *                   wallLevel:
+ *                     type: integer
+ *                   gateLevel:
+ *                     type: integer
+ *                   towerLevel:
+ *                     type: integer
+ *                   moatLevel:
+ *                     type: integer
+ *                   equipmentUniqueIdSkin:
+ *                     type: integer
+ */
+protectedRoutes.get('/castle/random', routingInstance.getRandomCastle.bind(routingInstance));
+
+/**
+ * @swagger
  * /cartography/id/{allianceId}:
  *   get:
  *     summary: Retrieve cartography information for a specific alliance based on its ID

@@ -5,6 +5,7 @@ import { GenericComponent } from '@ggetracker-components/generic/generic.compone
 import { ApiStormyIslesPlayer } from '@ggetracker-interfaces/empire-ranking';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { TranslateModule } from '@ngx-translate/core';
+import { METRIC_LABELS } from '../stormy-isles.component';
 
 @Component({
   selector: 'app-stormy-isles-table-content',
@@ -15,6 +16,7 @@ import { TranslateModule } from '@ngx-translate/core';
 })
 export class StormyIslesTableContentComponent extends GenericComponent {
   public readonly METRIC_IDS = [100, 15, 16, 17, 19, 20, 18] as const;
+  public readonly METRIC_LABELS = METRIC_LABELS;
   public readonly METRIC_ICONS: Record<number, string> = {
     15: 'fas fa-gem',
     16: 'fas fa-water',

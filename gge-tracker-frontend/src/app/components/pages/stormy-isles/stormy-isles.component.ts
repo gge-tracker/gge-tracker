@@ -12,6 +12,24 @@ import { TranslateModule } from '@ngx-translate/core';
 import { StormyIslesTableContentComponent } from './stormy-isles-table-content/stormy-isles-table-content.component';
 
 const SORTABLE_METRIC_IDS = [100, 15, 16, 17, 18, 19, 20] as const;
+const TABLE_SORTABLE_KEYS = [
+  'player_name',
+  'level',
+  'might_current',
+  'alliance_name',
+  ...SORTABLE_METRIC_IDS.map(String),
+] as const;
+
+export type SortableMetricId = (typeof SORTABLE_METRIC_IDS)[number];
+export const METRIC_LABELS: Record<SortableMetricId, string> = {
+  100: 'Points de cargo',
+  15: "Total d'aigues-marines collectées",
+  16: 'Aigues-marines collectées dans les îles aux ressources',
+  17: 'Aigues-marines collectées dans les forts orageux',
+  18: 'Aigues-marines collectées dans les combats JcJ',
+  19: 'Aigues-marines dépensées pour des points de cargo',
+  20: 'Aigues-marines perdues en combats JcJ',
+};
 
 @Component({
   selector: 'app-stormy-isles',
@@ -22,29 +40,18 @@ const SORTABLE_METRIC_IDS = [100, 15, 16, 17, 18, 19, 20] as const;
   styleUrls: ['./stormy-isles.component.css'],
 })
 export class StormyIslesComponent extends GenericComponent implements OnInit {
-  public readonly METRIC_LABELS: Record<number, string> = {
-    100: 'Points de cargo',
-    15: "Total d'aigues-marines collectées",
-    16: 'Aigues-marines collectées dans les îles aux ressources',
-    17: 'Aigues-marines collectées dans les forts orageux',
-    18: 'Aigues-marines collectées dans les combats JcJ',
-    19: 'Aigues-marines dépensées pour des points de cargo',
-    20: 'Aigues-marines perdues en combats JcJ',
-  };
-
-  /** Table column headers: [sortKey, label, iconUrl?] */
   public readonly tableHeaders: [string, string, string?, boolean?][] = [
     ['player_name', 'Pseudonyme'],
     ['level', 'Niveau', '/assets/lvl.png'],
     ['might_current', 'Points de puissance', '/assets/pp1.png'],
     ['alliance_name', 'Alliance', '/assets/min-alliance.png', true],
-    ['100', this.METRIC_LABELS[100], '/assets/aquamarine_100.webp'],
-    ['15', this.METRIC_LABELS[15], '/assets/aquamarine_15.webp'],
-    ['16', this.METRIC_LABELS[16], '/assets/aquamarine_16.webp'],
-    ['17', this.METRIC_LABELS[17], '/assets/aquamarine_17.webp'],
-    ['19', this.METRIC_LABELS[19], '/assets/aquamarine_19.webp'],
-    ['20', this.METRIC_LABELS[20], '/assets/aquamarine_20.webp'],
-    ['18', this.METRIC_LABELS[18], '/assets/aquamarine_18.webp'],
+    ['100', METRIC_LABELS[100], '/assets/aquamarine_100.webp'],
+    ['15', METRIC_LABELS[15], '/assets/aquamarine_15.webp'],
+    ['16', METRIC_LABELS[16], '/assets/aquamarine_16.webp'],
+    ['17', METRIC_LABELS[17], '/assets/aquamarine_17.webp'],
+    ['19', METRIC_LABELS[19], '/assets/aquamarine_19.webp'],
+    ['20', METRIC_LABELS[20], '/assets/aquamarine_20.webp'],
+    ['18', METRIC_LABELS[18], '/assets/aquamarine_18.webp'],
   ];
 
   public players: ApiStormyIslesPlayer[] = [];
@@ -118,6 +125,10 @@ export class StormyIslesComponent extends GenericComponent implements OnInit {
   }
 
   public onClickAlliance(allianceName: string): void {
+    void this.updateGenericParamsInUrl(
+      { search: allianceName, searchType: 'alliance' },
+      { search: undefined, searchType: undefined },
+    );
     void this.searchAlliance(allianceName);
   }
 
@@ -162,11 +173,10 @@ export class StormyIslesComponent extends GenericComponent implements OnInit {
     }
   }
 
-  private resolveOrderMetricId(): number {
-    const parsed = Number.parseInt(this.sort);
-    if (!Number.isNaN(parsed) && (SORTABLE_METRIC_IDS as readonly number[]).includes(parsed)) {
-      return parsed;
+  private resolveOrderMetricId(): string | undefined {
+    if (TABLE_SORTABLE_KEYS.includes(this.sort as any)) {
+      return this.sort;
     }
-    return 100;
+    return '100'; // Default sorting by cargo points';
   }
 }

@@ -19,6 +19,26 @@ export interface PlayerDatabase {
   castles: Castle[];
 }
 
+export interface DiscordApiMessageBody {
+  channelId: string;
+  embeds: {
+    title: string;
+    color: number;
+    fields: {
+      name: string;
+      value: string;
+      inline: boolean;
+    }[];
+    thumbnail: {
+      url: string;
+    };
+    footer: {
+      text: string;
+    };
+    timestamp: string;
+  }[];
+}
+
 export interface CastleMovement {
   player_id: number;
   castle_type: number;

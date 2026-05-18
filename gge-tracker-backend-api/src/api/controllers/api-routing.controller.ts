@@ -260,6 +260,10 @@ export class ApiRoutingController {
     this.castleQueue.enqueue(request, response, ApiCastle.getCastleByPlayerName);
   }
 
+  public getRandomCastle(request: express.Request, response: express.Response): void {
+    void ApiCastle.getRandomCastle(request, response);
+  }
+
   public getCartographyByAllianceId(request: express.Request, response: express.Response): void {
     void ApiCartography.getCartographyByAllianceId(request, response);
   }

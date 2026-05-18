@@ -34,6 +34,31 @@ export class AllianceFilters extends AbstractFilterBuilder<AllianceFilters> {
     return this.self();
   }
 
+  public mightSubquery(min?: number, max?: number): AllianceFilters {
+    if (min === undefined && max === undefined) return this.self();
+    const havingParts: string[] = ['COUNT(P2.id) > 0'];
+    const values: number[] = [];
+    if (min !== undefined) {
+      havingParts.push('SUM(P2.might_current) >= ?');
+      values.push(min);
+    }
+    if (max !== undefined) {
+      havingParts.push('SUM(P2.might_current) <= ?');
+      values.push(max);
+    }
+    this.add({
+      sql: `P.alliance_id IN (
+        SELECT P2.alliance_id
+        FROM players P2
+        WHERE P2.alliance_id IS NOT NULL
+        GROUP BY P2.alliance_id
+        HAVING ${havingParts.join(' AND ')}
+      )`,
+      value: values,
+    });
+    return this.self();
+  }
+
   public loot(min?: number, max?: number): AllianceFilters {
     this.addMany([this.min('loot_current', min), this.max('loot_current', max)]);
     return this.self();
