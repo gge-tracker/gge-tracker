@@ -169,9 +169,25 @@ async function createOuterRealmsInstance(): Promise<void> {
     );
     const scoringSystemType: 'collector' | 'might' | 'rankSwap' | null = await target.startOuterRealmsDataFetch();
     const currentTSIDValue = await generic.getRedisValue('temporaryServerData');
-    if (lastTSIDValue && currentTSIDValue && lastTSIDValue && lastTSIDValue !== currentTSIDValue && scoringSystemType) {
+    console.log('Current TSID value in Redis:', currentTSIDValue);
+    console.log('Last TSID value in Redis:', lastTSIDValue);
+    console.log('Scoring system type detected:', scoringSystemType);
+    if (
+      lastTSIDValue &&
+      currentTSIDValue &&
+      lastTSIDValue &&
+      lastTSIDValue !== currentTSIDValue &&
+      scoringSystemType &&
+      DISCORD_OR_API_URL &&
+      DISCORD_OR_CHANNEL_ID
+    ) {
       console.log('TSID value has changed since last check. New TSID:', currentTSIDValue);
-      getDiscordApiMessageBody(scoringSystemType);
+      const discordMessageBody = getDiscordApiMessageBody(scoringSystemType);
+      try {
+        await generic.fetchUrl(DISCORD_OR_API_URL!, 'POST', discordMessageBody);
+      } catch (error) {
+        console.error('Error sending Discord notification:', error);
+      }
     }
   } catch (error) {
     console.error('Error fetching Empire API Realtime status:', error);
