@@ -184,7 +184,7 @@ async function createOuterRealmsInstance(): Promise<void> {
       console.log('TSID value has changed since last check. New TSID:', currentTSIDValue);
       const discordMessageBody = getDiscordApiMessageBody(scoringSystemType);
       try {
-        await generic.fetchUrl(DISCORD_OR_API_URL!, 'POST', discordMessageBody);
+        await generic.fetchUrl(DISCORD_OR_API_URL, 'POST', discordMessageBody);
       } catch (error) {
         console.error('Error sending Discord notification:', error);
       }

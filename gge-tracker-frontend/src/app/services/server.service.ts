@@ -85,7 +85,7 @@ export class ServerService {
     'INT3',
     'IT1',
     'JP1',
-    'WLD',
+    'WLD1',
     'WLD2',
     'LT1',
     'NL1',
