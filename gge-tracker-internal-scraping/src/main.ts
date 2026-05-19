@@ -22,6 +22,26 @@ import { TEMP_SERVER_SETTINGS } from './definitions/temp-server-events.config';
 import { Castle, CastleMovement, DungeonMap, HighScoreKey, PlayerDatabase } from './interfaces';
 import Utils from './utils';
 
+export interface DiscordApiMessageBody {
+  channelId: string;
+  embeds: {
+    title: string;
+    color: number;
+    fields: {
+      name: string;
+      value: string;
+      inline: boolean;
+    }[];
+    thumbnail: {
+      url: string;
+    };
+    footer: {
+      text: string;
+    };
+    timestamp: string;
+  }[];
+}
+
 /**
  * This class provides a comprehensive backend service for fetching, processing,
  * and storing game-related data from various APIs and databases. It supports operations for player and alliance
@@ -58,6 +78,8 @@ export class GenericFetchAndSaveBackend {
   public allianceUpdated: { [key: string]: boolean } = {};
   private readonly WEBHOOK_URL: string = process.env.WEBHOOK_URL || '';
   private readonly CURRENT_ENV: string = process.env.ENVIRONMENT || 'development';
+  private readonly DISCORD_OR_CHANNEL_ID: string = process.env.DISCORD_OR_CHANNEL_ID || '';
+  private readonly DISCORD_OR_API_URL: string = process.env.DISCORD_OR_API_URL || '';
   private readonly MAP_SIZE = 1286;
   private readonly BASE_API_URL: string;
   private readonly DATABASE_CONFIG: mysql.PoolOptions | null;
@@ -623,7 +645,7 @@ export class GenericFetchAndSaveBackend {
     console.log('\nDungeons list updated successfully for world', worldNumber, '\n');
   }
 
-  public async fillGenericEventHistory(): Promise<void> {
+  public async fillGenericEventHistory(dryRunInsertBTH = false, dryRunInsertOR = false): Promise<void> {
     const start = new Date();
     Utils.logMessage('Execution of the event history for Outer Realms + BTH');
     try {
@@ -632,12 +654,18 @@ export class GenericFetchAndSaveBackend {
         'outer_realms_event',
         'outer_realms_ranking',
         this.ENV_LT.outerRealms,
+        10,
+        6,
+        dryRunInsertOR,
       );
       await this.executeCustomEventHistory(
         'Beyond the Horizon',
         'beyond_the_horizon_event',
         'beyond_the_horizon_ranking',
         this.ENV_LT.beyondTheHorizon,
+        10,
+        6,
+        dryRunInsertBTH,
       );
       const end = new Date();
       Utils.logMessage('Duration of processing:', Math.floor((end.getTime() - start.getTime()) / 1000), 'seconds');
@@ -657,16 +685,20 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('=========== END STACK TRACE =============');
       this.DB_UPDATES.criticalErrors++;
     } finally {
-      await this.pgSqlConnection.end();
-      await this.logToLoki({
-        job: 'outer-realms-and-beyond-the-horizon-event-history',
-        data: {
-          server: this.server,
-          criticalErrors: this.DB_UPDATES.criticalErrors,
-          durationMs: new Date().getTime() - start.getTime(),
-        },
-      });
-      Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, 'OUTER_REALMS_AND_BEYOND_THE_HORIZON_EVENT_HISTORY');
+      if (!dryRunInsertOR || !dryRunInsertBTH) {
+        await this.pgSqlConnection.end().catch((error) => {
+          Utils.logMessage('Error closing PostgreSQL connection:', error);
+        });
+        await this.logToLoki({
+          job: 'outer-realms-and-beyond-the-horizon-event-history',
+          data: {
+            server: this.server,
+            criticalErrors: this.DB_UPDATES.criticalErrors,
+            durationMs: new Date().getTime() - start.getTime(),
+          },
+        });
+        Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, 'OUTER_REALMS_AND_BEYOND_THE_HORIZON_EVENT_HISTORY');
+      }
     }
   }
 
@@ -1295,6 +1327,70 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
+  public async sendDiscordNotification(messageBody: DiscordApiMessageBody): Promise<void> {
+    if (!this.DISCORD_OR_API_URL) {
+      console.error('Missing Discord API URL or Channel ID environment variables');
+      throw new Error('Missing Discord API URL or Channel ID environment variables');
+    }
+    try {
+      await this.fetchUrl(this.DISCORD_OR_API_URL, 'POST', messageBody);
+      Utils.logMessage(' [info] Discord notification sent successfully');
+    } catch (error) {
+      Utils.logMessage(error);
+    }
+  }
+
+  public getDiscordApiMessageBody(
+    eventType: 'Beyond the Horizon' | 'Outer Realms',
+    playersAdded: number,
+    eventNum: number,
+    players: {
+      server: string;
+      level: number;
+      legendaryLevel: number;
+      point: number;
+      rank: number;
+      realPlayerId: number;
+      playerName: string;
+    }[],
+  ): DiscordApiMessageBody {
+    if (!this.DISCORD_OR_CHANNEL_ID) {
+      console.error('Missing Discord Channel ID environment variable');
+      throw new Error('Missing Discord Channel ID environment variable');
+    }
+    const description = `**Statistics** :\n- Players Added: ${playersAdded}\n\n**Top 10 Players:**\n${players
+      .slice(0, 10)
+      .map(
+        (p, index) =>
+          `**${index + 1}. ${p.playerName}** (Server: ${p.server}, Level: ${p.level}, Legendary Level: ${p.legendaryLevel}, Points: ${p.point}, Rank: ${p.rank})`,
+      )
+      .join('\n')}`;
+    const baseImageUrl = 'https://gge-tracker.com/assets/';
+    return {
+      channelId: this.DISCORD_OR_CHANNEL_ID,
+      embeds: [
+        {
+          title: 'New final ranking Notification',
+          color: 11027200,
+          fields: [
+            {
+              name: `:trophy: The final ranking for ${eventType} event is available!`,
+              value: `${description}\n\n :arrow_right: https://gge-tracker.com/events/${eventType.toLowerCase().replace(/\s/g, '-')}/${eventNum}`,
+              inline: false,
+            },
+          ],
+          thumbnail: {
+            url: baseImageUrl + eventType.toLowerCase().replace(/\s/g, '-') + '-icon.png',
+          },
+          footer: {
+            text: 'gge-tracker.com',
+          },
+          timestamp: new Date().toISOString(),
+        },
+      ],
+    };
+  }
+
   /**
    * This method fetches data for the "Wheel of Unimaginable Affluence"
    *  event (LT: 72) and inserts it into the ClickHouse database.
@@ -1536,9 +1632,9 @@ export class GenericFetchAndSaveBackend {
             Utils.logMessage(' [info] No event active (0)');
             return;
           } else {
-            const tentatives = 3;
+            const attempts = 3;
             let k = 0;
-            while (k < tentatives && (!data || data['return_code'] != '0')) {
+            while (k < attempts && (!data || data['return_code'] != '0')) {
               await new Promise((resolve) => setTimeout(resolve, 3000));
               data = await this.fetchDataAndReturn(lt, levelCategory, 1);
               k++;
@@ -1569,12 +1665,9 @@ export class GenericFetchAndSaveBackend {
             while (c) {
               let p = await this.fetchDataAndReturn(lt, levelCategory, i);
               let fetchData = p?.content?.L ?? [];
-              const tryTentatives = 7;
+              const attempts = 7;
               let currentTry = 0;
-              while (
-                currentTry < tryTentatives &&
-                (!p || p['return_code'] != '0' || !fetchData || fetchData.length === 0)
-              ) {
+              while (currentTry < attempts && (!p || p['return_code'] != '0' || !fetchData || fetchData.length === 0)) {
                 await new Promise((resolve) => setTimeout(resolve, 2000));
                 p = await this.fetchDataAndReturn(lt, levelCategory, i);
                 fetchData = p?.content?.L ?? [];
@@ -1718,9 +1811,9 @@ export class GenericFetchAndSaveBackend {
         i = increment / 2;
         let data = await this.fetchDataAndReturn(6, levelCategory, i);
         if (!data || data['return_code'] != '0') {
-          const tentatives = 10;
+          const attempts = 10;
           let k = 0;
-          while (k < tentatives && (!data || data['return_code'] != '0')) {
+          while (k < attempts && (!data || data['return_code'] != '0')) {
             await new Promise((resolve) => setTimeout(resolve, 10000));
             data = await this.fetchDataAndReturn(6, levelCategory, i);
             k++;
@@ -1742,9 +1835,9 @@ export class GenericFetchAndSaveBackend {
           while (c) {
             let p = await this.fetchDataAndReturn(6, levelCategory, i);
             let players = p?.content?.L ?? [];
-            const tentatives = 10;
+            const attempts = 10;
             let k = 0;
-            while (k < tentatives && (!p || p['return_code'] != '0' || !players || players.length === 0)) {
+            while (k < attempts && (!p || p['return_code'] != '0' || !players || players.length === 0)) {
               await new Promise((resolve) => setTimeout(resolve, 10000));
               p = await this.fetchDataAndReturn(6, levelCategory, i);
               players = p?.content?.L ?? [];
@@ -1955,9 +2048,9 @@ export class GenericFetchAndSaveBackend {
           while (c) {
             let p = await this.fetchDataAndReturn(2, levelCategory, i);
             let players = p?.content?.L ?? [];
-            const tentatives = 10;
+            const attempts = 10;
             let k = 0;
-            while (k < tentatives && (!p || p['return_code'] != '0' || !players || players.length === 0)) {
+            while (k < attempts && (!p || p['return_code'] != '0' || !players || players.length === 0)) {
               if (this.CURRENT_ENV === 'development') Utils.logMessage('Debug:');
               if (this.CURRENT_ENV === 'development')
                 Utils.logMessage('Try n°', k + 1, 'for category', levelCategory, 'with i =', i);
@@ -2073,9 +2166,9 @@ export class GenericFetchAndSaveBackend {
             let data = await this.fetchDataAndReturn(2, levelCategory, 1);
             let maxNegative = data?.content?.LR;
             if (!data || data['return_code'] != '0') {
-              const tentatives = 3;
+              const attempts = 3;
               let k = 0;
-              while (k < tentatives && (!data || data['return_code'] != '0')) {
+              while (k < attempts && (!data || data['return_code'] != '0')) {
                 await new Promise((resolve) => setTimeout(resolve, 3000));
                 data = await this.fetchDataAndReturn(2, levelCategory, 1);
                 k++;
@@ -2098,9 +2191,9 @@ export class GenericFetchAndSaveBackend {
             while (c) {
               let data = await this.fetchDataAndReturn(2, levelCategory, maxNegative);
               let players = data?.content?.L ?? [];
-              const tentatives = 3;
+              const attempts = 3;
               let k = 0;
-              while (k < tentatives && (!data || data['return_code'] != '0' || !players || players.length === 0)) {
+              while (k < attempts && (!data || data['return_code'] != '0' || !players || players.length === 0)) {
                 await new Promise((resolve) => setTimeout(resolve, 3000));
                 data = await this.fetchDataAndReturn(2, levelCategory, maxNegative);
                 players = data?.content?.L ?? [];
@@ -3612,6 +3705,7 @@ export class GenericFetchAndSaveBackend {
     lt: number,
     increment: number = 10,
     levelCategory: number = 6,
+    dryRunInsert: boolean = false,
   ): Promise<number> {
     try {
       Utils.logMessage(' Executing custom event history for', eventName);
@@ -3642,9 +3736,9 @@ export class GenericFetchAndSaveBackend {
           Utils.logMessage(' [info] Invalid event');
           return -1;
         } else {
-          const tentatives = 3;
+          const attempts = 3;
           let k = 0;
-          while (k < tentatives && (!data || data['return_code'] != '0')) {
+          while (k < attempts && (!data || data['return_code'] != '0')) {
             await new Promise((resolve) => setTimeout(resolve, 3000));
             data = await this.fetchDataAndReturn(lt, levelCategory, i);
             k++;
@@ -3661,7 +3755,7 @@ export class GenericFetchAndSaveBackend {
         const igh = data?.content?.IGH;
         if (data?.content?.L) {
           const content = data.content.L;
-          if (await this.checkEventAlreadyExists(content, result.rows, 'trace')) {
+          if ((await this.checkEventAlreadyExists(content, result.rows, 'trace')) && !dryRunInsert) {
             Utils.logMessage(' [info] No new event to fill');
             return -1;
           }
@@ -3670,22 +3764,21 @@ export class GenericFetchAndSaveBackend {
           const firstPlayerId = content[0][2]['OID'];
           const firstPlayerScore = content[0][1];
           const collectDate = new Date();
-          await this.pgSqlQuery(
-            `
-            INSERT INTO ${tableEventName} (event_num, collect_date, fr, igh, top1_player_id, top1_player_score)
-            VALUES ($1, $2, $3, $4, $5, $6)
-          `,
-            [lastEventNum + 1, collectDate, fr, igh, firstPlayerId, firstPlayerScore],
-          );
+          if (!dryRunInsert) {
+            await this.pgSqlQuery(
+              `
+              INSERT INTO ${tableEventName} (event_num, collect_date, fr, igh, top1_player_id, top1_player_score)
+              VALUES ($1, $2, $3, $4, $5, $6)
+            `,
+              [lastEventNum + 1, collectDate, fr, igh, firstPlayerId, firstPlayerScore],
+            );
+          }
           while (c) {
             let p = await this.fetchDataAndReturn(lt, levelCategory, i);
             let fetchData = p?.content?.L ?? [];
-            const tryTentatives = 7;
+            const attempts = 7;
             let currentTry = 0;
-            while (
-              currentTry < tryTentatives &&
-              (!p || p['return_code'] != '0' || !fetchData || fetchData.length === 0)
-            ) {
+            while (currentTry < attempts && (!p || p['return_code'] != '0' || !fetchData || fetchData.length === 0)) {
               await new Promise((resolve) => setTimeout(resolve, 2000));
               p = await this.fetchDataAndReturn(lt, levelCategory, i);
               fetchData = p?.content?.L ?? [];
@@ -3749,61 +3842,63 @@ export class GenericFetchAndSaveBackend {
           const entries = Object.entries(entities);
 
           const serverEntities = new Map();
-          for (const [, entity] of entries) {
-            if (!serverEntities.has(entity.server)) {
-              serverEntities.set(entity.server, []);
+          if (!dryRunInsert) {
+            for (const [, entity] of entries) {
+              if (!serverEntities.has(entity.server)) {
+                serverEntities.set(entity.server, []);
+              }
+              serverEntities.get(entity.server).push(entity);
             }
-            serverEntities.get(entity.server).push(entity);
-          }
-          for (const [server, entitiesForServer] of serverEntities.entries()) {
-            let dbConn: pg.Pool | null = null;
-            let dbName = '';
-            Utils.logMessage(' [info] Processing server:', server);
-            switch (server) {
-              case 'FR1':
-                dbConn = this.pgSqlConnection;
-                break;
-              case 'WLD1':
-              case 'LIVE':
-                dbName = 'empire-ranking-world1';
-                break;
-              case 'WLD2':
-              case 'LIVE2':
-                dbName = 'empire-ranking-world2';
-                break;
-              case 'HANT':
-                dbName = 'empire-ranking-hant1';
-                break;
-              default:
-                dbName = `empire-ranking-${server.toLowerCase()}`;
-            }
-            if (!dbConn) {
-              const exists = await this.pgSqlQuery('SELECT 1 FROM pg_database WHERE datname=$1', [dbName]);
-              if (!exists.rowCount) continue; // skip if nonexistent
-              // Create a temporary connection (or use a global pool if already created)
-              dbConn = new pg.Pool({
-                user: this.PGSQL_CONFIG.user,
-                password: this.PGSQL_CONFIG.password,
-                host: this.PGSQL_CONFIG.host,
-                port: this.PGSQL_CONFIG.port,
-                database: dbName,
-              });
-              await dbConn.connect();
-              Utils.logMessage(' [info] Connected to database for server:', server);
-            }
-            // Retrieve all real player_ids at once
-            const names = entitiesForServer.map((e: { playerName: any }) => e.playerName);
-            Utils.logMessage(' [info] Count: ' + names.length + ' players to process for server ' + server);
-            const res = await dbConn.query(
-              `SELECT n AS name, MIN(p.id) AS id FROM unnest($1::text[]) n LEFT JOIN players p ON p.name = n GROUP BY n;`,
-              [names],
-            );
-            Utils.logMessage(' [info] Retrieval of real player_ids completed');
-            const nameToId = new Map(res.rows.map((r) => [r.name, r.id]));
-            Utils.logMessage(' [info] Number of real player_ids retrieved:', nameToId.size);
-            // Update each entity with the real player_id
-            for (const entity of entitiesForServer) {
-              entity.realPlayerId = nameToId.get(entity.playerName);
+            for (const [server, entitiesForServer] of serverEntities.entries()) {
+              let dbConn: pg.Pool | null = null;
+              let dbName = '';
+              Utils.logMessage(' [info] Processing server:', server);
+              switch (server) {
+                case 'FR1':
+                  dbConn = this.pgSqlConnection;
+                  break;
+                case 'WLD1':
+                case 'LIVE':
+                  dbName = 'empire-ranking-world1';
+                  break;
+                case 'WLD2':
+                case 'LIVE2':
+                  dbName = 'empire-ranking-world2';
+                  break;
+                case 'HANT':
+                  dbName = 'empire-ranking-hant1';
+                  break;
+                default:
+                  dbName = `empire-ranking-${server.toLowerCase()}`;
+              }
+              if (!dbConn) {
+                const exists = await this.pgSqlQuery('SELECT 1 FROM pg_database WHERE datname=$1', [dbName]);
+                if (!exists.rowCount) continue; // skip if nonexistent
+                // Create a temporary connection (or use a global pool if already created)
+                dbConn = new pg.Pool({
+                  user: this.PGSQL_CONFIG.user,
+                  password: this.PGSQL_CONFIG.password,
+                  host: this.PGSQL_CONFIG.host,
+                  port: this.PGSQL_CONFIG.port,
+                  database: dbName,
+                });
+                await dbConn.connect();
+                Utils.logMessage(' [info] Connected to database for server:', server);
+              }
+              // Retrieve all real player_ids at once
+              const names = entitiesForServer.map((e: { playerName: any }) => e.playerName);
+              Utils.logMessage(' [info] Count: ' + names.length + ' players to process for server ' + server);
+              const res = await dbConn.query(
+                `SELECT n AS name, MIN(p.id) AS id FROM unnest($1::text[]) n LEFT JOIN players p ON p.name = n GROUP BY n;`,
+                [names],
+              );
+              Utils.logMessage(' [info] Retrieval of real player_ids completed');
+              const nameToId = new Map(res.rows.map((r) => [r.name, r.id]));
+              Utils.logMessage(' [info] Number of real player_ids retrieved:', nameToId.size);
+              // Update each entity with the real player_id
+              for (const entity of entitiesForServer) {
+                entity.realPlayerId = nameToId.get(entity.playerName);
+              }
             }
           }
           Utils.logMessage(' [info] Insertion of players into the database for event ' + eventName);
@@ -3829,7 +3924,7 @@ export class GenericFetchAndSaveBackend {
               paramIndex += 8;
             }
             // Check if there are values to insert
-            if (insertValues.length > 0) {
+            if (!dryRunInsert && insertValues.length > 0) {
               const insertQuery = `
                 INSERT INTO ${tableEventHistoryName}
                   (event_num, player_id, server, level, legendary_level, point, rank, player_name)
@@ -3842,18 +3937,34 @@ export class GenericFetchAndSaveBackend {
               await this.pgSqlQuery(insertQuery, insertValues);
             }
           }
-          Utils.logMessage(' [info] Insertion of event data for ' + eventName + ' completed successfully');
-          await this.logToLoki({
-            job: 'event-history-scraper-' + eventName.toLowerCase().replace(/\s/g, '-'),
-            level: 'info',
-            data: {
-              playersAdded: entries.length,
-              invalidPlayerIds: invalidPlayerIdCount,
-              eventNum: lastEventNum + 1,
-              durationMs: Date.now() - start,
-            },
-          });
-
+          if (!dryRunInsert) {
+            Utils.logMessage(' [info] Insertion of event data for ' + eventName + ' completed successfully');
+            await this.logToLoki({
+              job: 'event-history-scraper-' + eventName.toLowerCase().replace(/\s/g, '-'),
+              level: 'info',
+              data: {
+                playersAdded: entries.length,
+                invalidPlayerIds: invalidPlayerIdCount,
+                eventNum: lastEventNum + 1,
+                durationMs: Date.now() - start,
+              },
+            });
+          }
+          try {
+            const top10Players = Object.values(entities)
+              .sort((a, b) => b.point - a.point)
+              .slice(0, 10);
+            const discordMessage = this.getDiscordApiMessageBody(
+              eventName,
+              entries.length,
+              lastEventNum + 1,
+              top10Players,
+            );
+            await this.sendDiscordNotification(discordMessage);
+          } catch (error) {
+            Utils.logMessage('Error while sending Discord notification for event ' + eventName);
+            Utils.logMessage(error);
+          }
           return 0;
         } else {
           Utils.logMessage(' [info] No data found for event ' + eventName);
