@@ -32,10 +32,13 @@ export interface DiscordApiMessageBody {
       value: string;
       inline: boolean;
     }[];
-    thumbnail: {
+    thumbnail?: {
       url: string;
     };
-    footer: {
+    image?: {
+      url: string;
+    };
+    footer?: {
       text: string;
     };
     timestamp: string;
@@ -1352,17 +1355,25 @@ export class GenericFetchAndSaveBackend {
       rank: number;
       realPlayerId: number;
       playerName: string;
+      allianceName: string;
     }[],
   ): DiscordApiMessageBody {
     if (!this.DISCORD_OR_CHANNEL_ID) {
       console.error('Missing Discord Channel ID environment variable');
       throw new Error('Missing Discord Channel ID environment variable');
     }
-    const description = `**Statistics** :\n- Players Added: ${playersAdded}\n\n**Top 10 Players:**\n${players
+
+    function formatPoint(point: number): string {
+      const pointStr = point.toString();
+      const regex = /\B(?=(\d{3})+(?!\d))/g;
+      return pointStr.replace(regex, ',');
+    }
+
+    const description = `\n\n**Top 10 Players:** \n${players
       .slice(0, 10)
       .map(
         (p, index) =>
-          `**${index + 1}. ${p.playerName}** (Server: ${p.server}, Level: ${p.level}, Legendary Level: ${p.legendaryLevel}, Points: ${p.point}, Rank: ${p.rank})`,
+          `**${index + 1}. ${p.playerName}** (${p.server}, Level: ${p.legendaryLevel ? p.level + '/' + p.legendaryLevel : p.level}, Alliance: ${p.allianceName || '-'}) - Points: ${formatPoint(p.point)}`,
       )
       .join('\n')}`;
     const baseImageUrl = 'https://gge-tracker.com/assets/';
@@ -1379,8 +1390,8 @@ export class GenericFetchAndSaveBackend {
               inline: false,
             },
           ],
-          thumbnail: {
-            url: baseImageUrl + eventType.toLowerCase().replace(/\s/g, '-') + '-icon.png',
+          image: {
+            url: baseImageUrl + eventType.toLowerCase().replace(/\s/g, '-') + '.png',
           },
           footer: {
             text: 'gge-tracker.com',
@@ -3814,6 +3825,7 @@ export class GenericFetchAndSaveBackend {
                     server: server,
                     level: singleData[2]['L'],
                     legendaryLevel: singleData[2]['LL'],
+                    allianceName: singleData[2]['AN'] || null,
                   };
                 } catch (error) {
                   Utils.logMessage(' [error] Migration error:', JSON.stringify(singleData));
@@ -3916,23 +3928,33 @@ export class GenericFetchAndSaveBackend {
                 invalidPlayerIdCount++;
                 continue;
               }
-              const { server, level, legendaryLevel, point, rank, realPlayerId, playerName } = entity;
+              const { server, level, legendaryLevel, point, rank, realPlayerId, playerName, allianceName } = entity;
               valuesPlaceholders.push(
-                `($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${paramIndex + 7})`,
+                `($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${paramIndex + 7}, $${paramIndex + 8})`,
               );
-              insertValues.push(lastEventNum + 1, realPlayerId, server, level, legendaryLevel, point, rank, playerName);
-              paramIndex += 8;
+              insertValues.push(
+                lastEventNum + 1,
+                realPlayerId,
+                server,
+                level,
+                legendaryLevel,
+                point,
+                rank,
+                playerName,
+                allianceName,
+              );
+              paramIndex += 9;
             }
             // Check if there are values to insert
             if (!dryRunInsert && insertValues.length > 0) {
               const insertQuery = `
                 INSERT INTO ${tableEventHistoryName}
-                  (event_num, player_id, server, level, legendary_level, point, rank, player_name)
+                  (event_num, player_id, server, level, legendary_level, point, rank, player_name, alliance_name)
                 VALUES
                   ${valuesPlaceholders.join(',\n')}
               `;
               Utils.logMessage(
-                ` [info] Insertion of batch of ${insertValues.length / 8} players (batch ${Math.floor(i / batchSize) + 1})`,
+                ` [info] Insertion of batch of ${insertValues.length / 9} players (batch ${Math.floor(i / batchSize) + 1})`,
               );
               await this.pgSqlQuery(insertQuery, insertValues);
             }
