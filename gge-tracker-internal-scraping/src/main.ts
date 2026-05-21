@@ -2007,11 +2007,12 @@ export class GenericFetchAndSaveBackend {
       .toLowerCase()
       .trim()
       .replace(/[0-9]*/g, '');
-    return Utils.getDiscordEmojis().find((emoji) => ':flag_' + server === emoji + ':') || serverName;
+    return Utils.getDiscordEmojis().find((flagName) => flagName === ':flag_' + server + ':') || '(' + serverName + ')';
   }
+
   private formatValueForDiscord(value: string | number): string {
     const strValue = value.toString();
-    return strValue.replace(/[-_*&^%$#@!\/]/g, '').toLowerCase();
+    return strValue.replace(/([\\_*~`>|@\#])/g, '\\$1');
   }
 
   private async fillLootHistory(): Promise<void> {
