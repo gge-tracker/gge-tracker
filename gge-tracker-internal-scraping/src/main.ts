@@ -1362,18 +1362,11 @@ export class GenericFetchAndSaveBackend {
       console.error('Missing Discord Channel ID environment variable');
       throw new Error('Missing Discord Channel ID environment variable');
     }
-
-    function formatPoint(point: number): string {
-      const pointStr = point.toString();
-      const regex = /\B(?=(\d{3})+(?!\d))/g;
-      return pointStr.replace(regex, ',');
-    }
-
-    const description = `\n\n**Top 10 Players:** \n${players
+    const description = `**Top 10 Players: ** \n${players
       .slice(0, 10)
       .map(
         (p, index) =>
-          `**${index + 1}. ${p.playerName}** (${p.server}, Level: ${p.legendaryLevel ? p.level + '/' + p.legendaryLevel : p.level}, Alliance: ${p.allianceName || '-'}) - Points: ${formatPoint(p.point)}`,
+          `**${index + 1}. ${index === 0 ? ':first_place: ' : index === 1 ? ':second_place: ' : index === 2 ? ':third_place: ' : ''}${this.formatValueForDiscord(p.playerName)} ${this.transformServerNameToEmoji(p.server)}** (Level: ${p.legendaryLevel ? p.level + '/' + p.legendaryLevel : p.level}, Alliance: _${this.formatValueForDiscord(p.allianceName) || '-'}_)`,
       )
       .join('\n')}`;
     const baseImageUrl = 'https://gge-tracker.com/assets/';
@@ -1381,12 +1374,12 @@ export class GenericFetchAndSaveBackend {
       channelId: this.DISCORD_OR_CHANNEL_ID,
       embeds: [
         {
-          title: 'New final ranking Notification',
+          title: `${eventType} Leaderboard Update`,
           color: 11027200,
           fields: [
             {
-              name: `:trophy: The final ranking for ${eventType} event is available!`,
-              value: `${description}\n\n :arrow_right: https://gge-tracker.com/events/${eventType.toLowerCase().replace(/\s/g, '-')}/${eventNum}`,
+              name: `:trophy: The final ranking for '${eventType}' event is available!`,
+              value: `\n${description}\n\n :arrow_right: https://gge-tracker.com/events/${eventType.toLowerCase().replace(/\s/g, '-')}/${eventNum}`,
               inline: false,
             },
           ],
@@ -1394,7 +1387,7 @@ export class GenericFetchAndSaveBackend {
             url: baseImageUrl + eventType.toLowerCase().replace(/\s/g, '-') + '.png',
           },
           footer: {
-            text: 'gge-tracker.com',
+            text: 'gge-tracker.com - ' + playersAdded + ' players',
           },
           timestamp: new Date().toISOString(),
         },
@@ -2007,6 +2000,18 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('=========== END STACK TRACE =============');
       this.DB_UPDATES.criticalErrors++;
     }
+  }
+
+  private transformServerNameToEmoji(serverName: string): string {
+    const server = serverName
+      .toLowerCase()
+      .trim()
+      .replace(/[0-9]*/g, '');
+    return Utils.getDiscordEmojis().find((emoji) => ':flag_' + server === emoji + ':') || serverName;
+  }
+  private formatValueForDiscord(value: string | number): string {
+    const strValue = value.toString();
+    return strValue.replace(/[-_*&^%$#@!\/]/g, '').toLowerCase();
   }
 
   private async fillLootHistory(): Promise<void> {
