@@ -335,8 +335,20 @@
         </div>
       </div>
       }
-      @if (currentTab === 'glory' && currentPlayerTitle) {
+      @if (currentTab === 'glory') {
       <div class="tab-content">
+        @if (gloryLoadState === 'loading' || gloryLoadState === 'idle') {
+          <div class="text-center spinner-container mt-4">
+            <i class="fas fa-spinner fa-spin"></i>
+          </div>
+        }
+        @if (gloryLoadState === 'error') {
+          <div class="no-result">
+            <i class="fas fa-search"></i>
+            {{ 'Aucun résultat' | translate }}
+          </div>
+        }
+        @if (gloryLoadState === 'loaded' && currentPlayerTitle) {
         <div class="fame-dashboard-modern">
           <div class="fame-hero-card mb-4">
             <div class="row g-0">
@@ -489,42 +501,59 @@
             }
           </div>
         </div>
+        }
       </div>
       }
-      @if (currentTab === 'events' && outerEvents) {
+      @if (currentTab === 'events') {
       <div class="tab-content">
         <div class="container-fluid row mt-3 row-gap-3">
-          @for (event of outerEvents; track event) {
-          <div class="col-12 col-lg-6">
-            <app-event-card [event]="event" [options]="{ displayMode: 'ranking' }"
-              (keydown.enter)="navigateToEvent(event)" (click)="navigateToEvent(event)"></app-event-card>
-          </div>
-          }
-          @if (outerEvents.length === 0) {
-            <div class="col-12">
-              <div class="alert alert-info text-center w-50 mx-auto" role="alert">
-                {{ 'Aucun résultat' | translate }}
-              </div>
+          @if (eventsLoadState === 'loading' || eventsLoadState === 'idle') {
+            <div class="col-12 text-center spinner-container mt-2">
+              <i class="fas fa-spinner fa-spin"></i>
             </div>
+          }
+          @if (eventsLoadState === 'loaded' || eventsLoadState === 'error') {
+            @for (event of outerEvents; track event) {
+            <div class="col-12 col-lg-6">
+              <app-event-card [event]="event" [options]="{ displayMode: 'ranking' }"
+                (keydown.enter)="navigateToEvent(event)" (click)="navigateToEvent(event)"></app-event-card>
+            </div>
+            }
+            @if (outerEvents.length === 0) {
+              <div class="col-12">
+                <div class="no-result">
+                  <i class="fas fa-search"></i>
+                  {{ 'Aucun résultat' | translate }}
+                </div>
+              </div>
+            }
           }
         </div>
       </div>
       }
-      @if (currentTab === 'woa' && woaHistory) {
+      @if (currentTab === 'woa') {
       <div class="tab-content">
         <div class="container-fluid row mt-3 row-gap-3">
-          @for (woaEvent of woaHistory; track woaEvent) {
-            <div class="col-12 col-lg-6">
-              <app-event-card [event]="woaEvent" [options]="{ displayMode: 'points', dateFormat: 'Date_1' }"
-                (click)="navigateToEvent(woaEvent)"></app-event-card>
+          @if (woaLoadState === 'loading' || woaLoadState === 'idle') {
+            <div class="col-12 text-center spinner-container mt-2">
+              <i class="fas fa-spinner fa-spin"></i>
             </div>
           }
-          @if (woaHistory.length === 0) {
-            <div class="col-12">
-              <div class="alert alert-info text-center w-50 mx-auto" role="alert">
-                {{ 'Aucun résultat' | translate }}
+          @if (woaLoadState === 'loaded' || woaLoadState === 'error') {
+            @for (woaEvent of woaHistory; track woaEvent) {
+              <div class="col-12 col-lg-6">
+                <app-event-card [event]="woaEvent" [options]="{ displayMode: 'points', dateFormat: 'Date_1' }"
+                  (click)="navigateToEvent(woaEvent)"></app-event-card>
               </div>
-            </div>
+            }
+            @if (woaHistory.length === 0) {
+              <div class="col-12">
+                <div class="no-result">
+                  <i class="fas fa-search"></i>
+                  {{ 'Aucun résultat' | translate }}
+                </div>
+              </div>
+            }
           }
         </div>
       </div>
@@ -537,15 +566,15 @@
           </div>
         }
         @if (aquamarineLoadState === 'error' || (aquamarineLoadState === 'loaded' && aquamarineSnapshots.length === 0)) {
-          <div class="col-12 mt-4">
-            <div class="alert alert-info text-center w-50 mx-auto" role="alert">
+          <div class="col-12">
+            <div class="no-result">
+              <i class="fas fa-search"></i>
               {{ 'Aucun résultat' | translate }}
             </div>
           </div>
         }
         @if (aquamarineLoadState === 'loaded' && aquamarineSnapshots.length > 0) {
           <div class="aq-panel">
-            <!-- Header -->
             <div class="aq-panel-header">
               <div class="aq-panel-title">
                 <img src="/assets/tools/aquamarine.webp" alt="" aria-hidden="true">
@@ -556,7 +585,6 @@
                 <span>{{ aquamarineSnapshotsLastUpdated | date:'dd/MM/yyyy HH:mm' }}</span>
               </div>
             </div>
-            <!-- Hero: total collected -->
             @if (aquamarineHeroMetric) {
               <div class="aq-hero">
                 <img src="/assets/aquamarine_15.webp" alt="" class="aq-hero-icon" aria-hidden="true">
@@ -566,7 +594,6 @@
                 </div>
               </div>
             }
-            <!-- Secondary metrics -->
             <div class="aq-metrics-grid">
               @for (metric of aquamarineSecondaryMetrics; track metric.metric_id) {
                 <div class="aq-metric-card" [style.--aq-accent]="AQUAMARINE_METRIC_COLORS[metric.metric_id]">
@@ -577,7 +604,6 @@
               }
             </div>
           </div>
-          <!-- History chart -->
           <div class="row mt-4">
             <div class="col-12" #chartContainer data-chart="aquamarine">
               @if (charts['aquamarine'] && chartVisibles.aquamarine) {
@@ -602,12 +628,11 @@
   }
 </div>
 
-
 <div class="modal fade" id="playerModal" tabindex="-1" aria-labelledby="playerModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="playerModalLabel" translate>Historique des changements de pseudonymes</h5>
+        <h5 class="modal-title" id="playerModalLabel">{{ 'Historique des changements de pseudonymes' | translate }}</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"
           [attr.aria-label]="'Fermer' | translate"></button>
       </div>
@@ -646,7 +671,7 @@
   <div class="modal-dialog modal-xl">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="allianceModalLabel" translate>Historique des changements d'alliances</h5>
+        <h5 class="modal-title" id="allianceModalLabel">{{ 'Historique des changements d\'alliances' | translate }}</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"
           [attr.aria-label]="'Fermer' | translate"></button>
       </div>

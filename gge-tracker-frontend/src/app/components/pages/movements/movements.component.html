@@ -207,13 +207,13 @@
                   </span>
                   <input field type="text" id="levelMin"
                     [(ngModel)]="formFilters.minLevel" [title]="formFilters.minLevel"
-                    [placeholder]="'Niveau min.' | translate">
+                    [placeholder]="'Niveau min' | translate">
                   <span field separator>
                     <lucide-icon [img]="ArrowBigRightDash" [size]="16"></lucide-icon>
                   </span>
                   <input field type="text" id="levelMax"
                     [(ngModel)]="formFilters.maxLevel" [title]="formFilters.maxLevel"
-                    [placeholder]="'Niveau max.' | translate">
+                    [placeholder]="'Niveau max' | translate">
                 </app-modal-form-group>
               </div>
             </div>
@@ -222,7 +222,7 @@
               <div class="col-12 col-sm my-1">
                 <app-modal-form-group class="compact">
                   <span field prefix>
-                    <img src="/assets/glory.png" [attr.alt]="'Gloire' | translate"
+                    <img src="/assets/glory.png" [attr.alt]="'Filtrer par gloire' | translate"
                       [title]="'Filtrer par gloire' | translate">
                   </span>
                   <input field type="text" id="fameMin"
@@ -269,21 +269,21 @@
                     </div>
                     <div class="input-group align-items-center justify-content-center">
                       <div class="col-4 text-center">
-                        <label for="alliance1" translate>Avec alliance</label>
+                        <label for="alliance1">{{ 'Avec alliance' | translate }}</label>
                         <div>
                           <input type="radio" class="form-check-input" id="alliance1" value="1"
                             [(ngModel)]="formFilters.allianceFilter">
                         </div>
                       </div>
                       <div class="col-4 text-center">
-                        <label for="alliance0" translate>Sans alliance</label>
+                        <label for="alliance0">{{ 'Sans alliance' | translate }}</label>
                         <div>
                           <input type="radio" class="form-check-input" id="alliance0" name="alliance" value="0"
                             [(ngModel)]="formFilters.allianceFilter">
                         </div>
                       </div>
                       <div class="col-4 text-center">
-                        <label for="noAlliance" translate>Pas de filtre</label>
+                        <label for="noAlliance">{{ 'Pas de filtre' | translate }}</label>
                         <div>
                           <input type="radio" class="form-check-input" id="noAlliance" name="alliance" value="-1"
                             [(ngModel)]="formFilters.allianceFilter">
@@ -299,21 +299,21 @@
                     </div>
                     <div class="input-group align-items-center justify-content-center">
                       <div class="col-4 text-center">
-                        <label for="peace1" translate>En protection</label>
+                        <label for="peace1">{{ 'En protection' | translate }}</label>
                         <div>
                           <input type="radio" class="form-check-input" id="peace1" name="peace" value="1"
                             [(ngModel)]="formFilters.protectionFilter">
                         </div>
                       </div>
                       <div class="col-4 text-center">
-                        <label for="peace0" translate>Hors protection</label>
+                        <label for="peace0">{{ 'Hors protection' | translate }}</label>
                         <div>
                           <input type="radio" class="form-check-input" id="peace0" name="peace" value="0"
                             [(ngModel)]="formFilters.protectionFilter">
                         </div>
                       </div>
                       <div class="col-4 text-center">
-                        <label for="noPeace" translate>Pas de filtre</label>
+                        <label for="noPeace">{{ 'Pas de filtre' | translate }}</label>
                         <div>
                           <input type="radio" class="form-check-input" id="noPeace" name="peace" value="-1" checked
                             [(ngModel)]="formFilters.protectionFilter">
@@ -329,21 +329,21 @@
                     </div>
                     <div class="input-group align-items-center justify-content-center">
                       <div class="col-4 text-center">
-                        <label for="ban1" translate>Banni</label>
+                        <label for="ban1">{{ 'Banni' | translate }}</label>
                         <div>
                           <input type="radio" class="form-check-input" id="ban1" name="ban" value="1"
                             [(ngModel)]="formFilters.banFilter">
                         </div>
                       </div>
                       <div class="col-4 text-center">
-                        <label for="ban0" translate>Non banni</label>
+                        <label for="ban0">{{ 'Non banni' | translate }}</label>
                         <div>
                           <input type="radio" class="form-check-input" id="ban0" name="ban" value="0"
                             [(ngModel)]="formFilters.banFilter">
                         </div>
                       </div>
                       <div class="col-4 text-center">
-                        <label for="noBan" translate>Pas de filtre</label>
+                        <label for="noBan">{{ 'Pas de filtre' | translate }}</label>
                         <div>
                           <input type="radio" class="form-check-input" id="noBan" name="ban" value="-1" checked
                             [(ngModel)]="formFilters.banFilter">
@@ -359,21 +359,21 @@
                     </div>
                     <div class="input-group align-items-center justify-content-center">
                       <div class="col-4 text-center">
-                        <label for="inactive1" translate>Inactif</label>
+                        <label for="inactive1">{{ 'Inactif' | translate }}</label>
                         <div>
                           <input type="radio" class="form-check-input" id="inactive1" name="inactive" value="0"
                             [(ngModel)]="formFilters.inactiveFilter">
                         </div>
                       </div>
                       <div class="col-4 text-center">
-                        <label for="inactive0" translate>Actif</label>
+                        <label for="inactive0">{{ 'Actif' | translate }}</label>
                         <div>
                           <input type="radio" class="form-check-input" id="inactive0" name="inactive" value="1"
                             [(ngModel)]="formFilters.inactiveFilter">
                         </div>
                       </div>
                       <div class="col-4 text-center">
-                        <label for="noInactive" translate>Pas de filtre</label>
+                        <label for="noInactive">{{ 'Pas de filtre' | translate }}</label>
                         <div>
                           <input type="radio" class="form-check-input" id="noInactive" name="inactive" value="-1" checked
                             [(ngModel)]="formFilters.inactiveFilter">

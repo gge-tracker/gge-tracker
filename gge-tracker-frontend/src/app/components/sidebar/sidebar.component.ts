@@ -25,7 +25,7 @@ export class SidebarComponent {
       title: 'Rechercher et analyser',
       items: [
         { label: 'Joueurs', id: 'players', iconUrl: '/assets/tools/players.webp' },
-        { label: 'Alliances', id: 'alliances', iconUrl: '/assets/tools/alliances.webp' },
+        { label: 'alliances', id: 'alliances', iconUrl: '/assets/tools/alliances.webp' },
         { label: 'Changements de nom', id: 'renames', iconUrl: '/assets/tools/renames.webp' },
         { label: 'Mouvements', id: 'movements', iconUrl: '/assets/tools/movements.webp' },
       ],
@@ -73,7 +73,7 @@ export class SidebarComponent {
       title: 'Autres outils',
       items: [
         {
-          label: 'Empire-Rankings',
+          label: 'empire-rankings.io',
           url: 'https://danadum.github.io/empire-rankings/',
           iconUrl: '/assets/tools/empire-rankings.webp',
         },

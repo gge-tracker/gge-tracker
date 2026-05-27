@@ -489,6 +489,13 @@
   margin-right: 0.5rem;
 }
 
+.filter-icon {
+  height: 72px;
+  max-width: 100%;
+  object-fit: contain;
+  width: auto !important;
+}
+
 .header-actions {
   align-items: center;
   display: flex;
@@ -1509,6 +1516,137 @@
   .panel-title-row {
     padding: 0.7rem 0.9rem 0.6rem;
   }
+}
+
+.filters-modal-body {
+  background: #12141b;
+  border-radius: 0 0 12px 12px;
+  color: #e9edf1;
+  padding: 1.25rem;
+}
+
+.filters-modal-body .filter-label {
+  color: #6b7480;
+  display: block;
+  font-size: 0.73rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.45rem;
+  text-transform: uppercase;
+}
+
+.filters-modal-body .filter-switch-label {
+  color: #9aa3ad;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.filters-modal-body .construction-slots {
+  background: rgba(38,198,218,0.04);
+  border-radius: 12px;
+  border: 1px solid rgba(38,198,218,0.14);
+  padding: 1rem;
+}
+
+.filters-modal-body hr {
+  border-color: rgba(255,255,255,0.07);
+  margin: 0.5rem 0;
+  opacity: 1;
+}
+
+.filter-bool-item {
+  display: flex !important;
+  align-items: stretch !important;
+  gap: 0 !important;
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+}
+
+.filter-bool-item > .row {
+  align-items: center;
+  background: rgba(255,255,255,0.03);
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  flex: 1;
+  margin: 0;
+  padding: 0.9rem 0.75rem 1rem;
+  transition: background 0.18s ease, border-color 0.18s ease;
+  width: 100%;
+}
+
+.filter-bool-item > .row:hover {
+  background: rgba(38,198,218,0.05);
+  border-color: rgba(38,198,218,0.22);
+}
+
+.filter-bool-item .filter-icon {
+  height: 72px;
+  max-width: 100%;
+  object-fit: contain;
+  width: auto !important;
+}
+
+.filters-modal-body ::ng-deep .input-group.modern-search-input-wrapper .input-group-text {
+  box-shadow: -2px 0px 0px #010507;
+  background: rgba(38,198,218,0.08) !important;
+  border-bottom-right-radius: 0 !important;
+  border-color: rgba(38,198,218,0.22) !important;
+  border-right: none !important;
+  border-top-right-radius: 0 !important;
+  border: 1px solid rgba(38,198,218,0.22) !important;
+  color: #26c6da !important;
+}
+
+.filters-modal-body ::ng-deep .input-group.modern-search-input-wrapper .search-input {
+  background: rgba(255,255,255,0.05) !important;
+  border-bottom-left-radius: 0 !important;
+  border-color: rgba(38,198,218,0.22) !important;
+  border-left: none !important;
+  border-top-left-radius: 0 !important;
+  border: 1px solid rgba(38,198,218,0.22) !important;
+  color: #e9edf1 !important;
+}
+
+.filters-modal-body ::ng-deep .input-group.modern-search-input-wrapper .search-input:focus {
+  background: rgba(255,255,255,0.08) !important;
+  border-color: rgba(38,198,218,0.5) !important;
+  box-shadow: 0 0 0 3px rgba(38,198,218,0.11) !important;
+  outline: none !important;
+}
+
+.filters-modal-body ::ng-deep .modern-search-input-wrapper:not(.input-group) .search-input {
+  background: rgba(255,255,255,0.05) !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(255,255,255,0.11) !important;
+  color: #e9edf1 !important;
+}
+
+.filters-modal-body ::ng-deep .modern-search-input-wrapper:not(.input-group) .search-input:focus {
+  background: rgba(255,255,255,0.08) !important;
+  border-color: rgba(38,198,218,0.5) !important;
+  box-shadow: 0 0 0 3px rgba(38,198,218,0.11) !important;
+  outline: none !important;
+}
+
+.filters-modal-body ::ng-deep .modern-select {
+  background: rgba(255,255,255,0.05) !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(255,255,255,0.11) !important;
+  color: #e9edf1 !important;
+}
+
+.filters-modal-body ::ng-deep .modern-select:hover {
+  background: rgba(255,255,255,0.08) !important;
+  border-color: rgba(38,198,218,0.45) !important;
+  box-shadow: 0 0 0 3px rgba(38,198,218,0.11) !important;
+  outline: none !important;
+}
+
+.filters-modal-body ::ng-deep .modern-select:focus {
+  background: rgba(255,255,255,0.08) !important;
+  border-color: rgba(38,198,218,0.5) !important;
+  box-shadow: 0 0 0 3px rgba(38,198,218,0.11) !important;
+  outline: none !important;
 }
 
 @media (max-width: 576px) {

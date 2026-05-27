@@ -198,7 +198,7 @@
               <div class="col-12 col-sm my-1">
                 <app-modal-form-group class="compact">
                   <span field prefix>
-                    <img src="/assets/glory.png" [attr.alt]="'Gloire' | translate"
+                    <img src="/assets/glory.png" [attr.alt]="'Points de gloire' | translate"
                       [title]="'Filtrer par gloire' | translate">
                   </span>
                   <input field type="text" id="fameMin"
@@ -223,13 +223,13 @@
                   </span>
                   <input field type="number" id="playerCountMin"
                     [(ngModel)]="formFilters.minPlayerCount" min="0" max="65" autocomplete="off"
-                    [title]="formFilters.minPlayerCount" [placeholder]="'Membres min.' | translate">
+                    [title]="formFilters.minPlayerCount" [placeholder]="'Nombre de membres min.' | translate">
                   <span field separator>
                     <lucide-icon [img]="ArrowBigRightDash" [size]="16"></lucide-icon>
                   </span>
                   <input field type="number" id="playerCountMax"
                     [(ngModel)]="formFilters.maxPlayerCount" min="0" max="65" autocomplete="off"
-                    [title]="formFilters.maxPlayerCount" [placeholder]="'Membres max.' | translate">
+                    [title]="formFilters.maxPlayerCount" [placeholder]="'Nombre de membres max.' | translate">
                 </app-modal-form-group>
               </div>
             </div>

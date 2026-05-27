@@ -2,6 +2,151 @@
   border-bottom: 2px #000000d4 solid;
 }
 
+.distance-panel {
+  background: rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  margin-bottom: 0.75rem;
+  padding: 0.65rem 0.9rem 0.5rem;
+}
+
+.distance-panel-header {
+  align-items: center;
+  color: #cca300;
+  display: flex;
+  font-size: 0.72rem;
+  font-weight: 700;
+  gap: 0.35rem;
+  letter-spacing: 0.07em;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+.distance-panel-body {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.distance-input {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f0e6c8;
+  font-size: 0.85rem;
+  min-width: 180px;
+  padding: 0.38rem 0.75rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.distance-input::placeholder {
+  color: #c0b9aa;
+}
+
+.distance-input:focus {
+  border-color: rgba(204, 163, 0, 0.5);
+  box-shadow: 0 0 0 2px rgba(204, 163, 0, 0.18);
+  outline: none;
+}
+
+.world-selector-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.world-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #b8a87c;
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0.3rem 0.55rem;
+  transition: all 0.2s;
+}
+
+.world-btn:hover {
+  background: rgba(204, 163, 0, 0.15);
+  border-color: rgba(204, 163, 0, 0.3);
+  color: #f0d060;
+}
+
+.world-btn.active {
+  background: rgba(204, 163, 0, 0.22);
+  border-color: rgba(204, 163, 0, 0.5);
+  color: #ffc107;
+  font-weight: 600;
+}
+
+.distance-actions {
+  display: flex;
+  gap: 0.3rem;
+  margin-left: auto;
+}
+
+.distance-action-btn {
+  align-items: center;
+  border-radius: 7px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  font-size: 0.82rem;
+  gap: 0.35rem;
+  padding: 0.38rem 0.7rem;
+  transition: all 0.2s;
+}
+
+.distance-action-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.distance-action-btn.primary {
+  background: rgba(204, 163, 0, 0.22);
+  border: 1px solid rgba(204, 163, 0, 0.4);
+  color: #ffc107;
+  font-weight: 500;
+}
+
+.distance-action-btn.primary:hover:not(:disabled) {
+  background: rgba(204, 163, 0, 0.32);
+  border-color: rgba(204, 163, 0, 0.6);
+  box-shadow: 0 2px 8px rgba(204, 163, 0, 0.18);
+}
+
+.distance-action-btn.secondary {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  color: #a0a0a0;
+}
+
+.distance-action-btn.secondary:hover:not(:disabled) {
+  background: rgba(220, 50, 50, 0.15);
+  border-color: rgba(220, 50, 50, 0.3);
+  color: #ff8080;
+}
+
+.distance-action-btn.export {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  color: #a0a0a0;
+}
+
+.distance-action-btn.export:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #e0e0e0;
+}
+
+.distance-help-text {
+  color: #cccbc8;
+  font-size: 0.72rem;
+  margin-top: 0.35rem;
+  text-align: right;
+}
+
 ::ng-deep .info-icon {
   cursor: pointer;
 }
@@ -112,9 +257,6 @@ div[after] {
   margin-bottom: 50px;
 }
 
-.btn-cancel {
-  border: 1px #444444 solid;
-}
 
 .alliances-stats-content .subtitle {
   color: white;

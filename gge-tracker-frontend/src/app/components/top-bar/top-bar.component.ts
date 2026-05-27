@@ -90,8 +90,17 @@ export class TopBarComponent implements AfterViewInit {
     return this.sidebarService.isLanguageMenuOpen();
   }
 
+  public isDevMode(): boolean {
+    return !!localStorage.getItem('lang_dev');
+  }
+
   public selectLanguage(lang: string): void {
     this.languageService.setCurrentLang(lang);
+  }
+
+  public disableDevLangOverride(): void {
+    localStorage.removeItem('lang_dev');
+    globalThis.location.reload();
   }
 
   public get servers(): string[] {

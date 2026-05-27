@@ -657,6 +657,10 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
         variation_honor: 0,
         variation_loot: 0,
         variation_might: 0,
+        avg_fame: 0,
+        max_fame: 0,
+        total_fame: 0,
+        players_in_peace: 0,
       };
       return emptyData;
     }

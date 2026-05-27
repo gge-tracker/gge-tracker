@@ -1,6 +1,5 @@
 import { inject, Injectable } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
-
 import { LocalStorageService } from './local-storage.service';
 
 @Injectable({
@@ -15,6 +14,7 @@ export class LanguageService {
     { code: 'pl', label: 'Polski', flagUrl: 'https://flagsapi.com/PL/flat/32.png', locale: 'pl-PL' },
     { code: 'ro', label: 'Română', flagUrl: 'https://flagsapi.com/RO/flat/32.png', locale: 'ro-RO' },
     { code: 'de', label: 'Deutsch', flagUrl: 'https://flagsapi.com/DE/flat/32.png', locale: 'de-DE' },
+    { code: 'ar', label: 'العربية', flagUrl: 'https://flagsapi.com/SA/flat/32.png', locale: 'ar-SA' },
   ];
 
   // @ts-expect-error Property 'userLanguage' does not exist on type 'Navigator'.
@@ -29,6 +29,7 @@ export class LanguageService {
     this.currentLang = this.localStorage.getItem('lang') || this.defaultLang;
     this.translate.setDefaultLang(this.defaultLang);
     this.translate.use(this.currentLang);
+    document.documentElement.lang = this.currentLang;
   }
 
   public getFlagUrlForLang(lang: string): string {

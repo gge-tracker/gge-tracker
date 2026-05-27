@@ -160,7 +160,6 @@
   </div>
 </div>
 
-
 <ng-template #chartTemplate let-chart="chart">
   <div class="apx-chart">
     @if (chart && isBrowser) {
@@ -172,8 +171,6 @@
     }
   </div>
 </ng-template>
-
-
 
 <div class="modal fade" id="filtersModal" tabindex="-1" aria-labelledby="filtersModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
@@ -193,7 +190,7 @@
                 field
                 [items]="serverService.ggeEmpireActiveServerPrefixes"
                 [(ngModel)]="formFilters.server"
-                [placeholder]="'Tous les serveurs' | translate"
+                [placeholder]="'Tous' | translate"
                 [clearable]="true"
                 [searchable]="true"
                 [groupBy]="serverGroupFn"

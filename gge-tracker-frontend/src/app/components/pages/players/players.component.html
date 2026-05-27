@@ -68,46 +68,6 @@
                 </app-modal-form-group>
               </div>
             </div>
-            <div class="row">
-              <!-- Alliance Might -->
-              <div class="col-12 col-sm-6 my-1">
-                <app-modal-form-group class="compact">
-                  <span field prefix>
-                    <img src="/assets/min-alliance.png" [attr.alt]="'Puissance alliance' | translate"
-                      [title]="'Filtrer par puissance totale de l\'alliance' | translate">
-                  </span>
-                  <input field type="text" id="allianceMightMin" name="allianceMightMin"
-                    [value]="displayFormValues.allianceMight.min" (focus)="onGenericFocus('min', 'allianceMight')"
-                    (blur)="onGenericBlur('min', 'allianceMight')"
-                    (input)="onGenericInput('min', 'allianceMight', $event)" [title]="formFilters.minAllianceMight"
-                    [placeholder]="'Puissance alliance min.' | translate">
-                  <input field type="text" id="allianceMightMax" name="allianceMightMax"
-                    [value]="displayFormValues.allianceMight.max" (focus)="onGenericFocus('max', 'allianceMight')"
-                    (blur)="onGenericBlur('max', 'allianceMight')"
-                    (input)="onGenericInput('max', 'allianceMight', $event)" [title]="formFilters.maxAllianceMight"
-                    [placeholder]="'Puissance alliance max.' | translate">
-                </app-modal-form-group>
-              </div>
-              <!-- Peak Might -->
-              <div class="col-12 col-sm-6 my-1">
-                <app-modal-form-group class="compact">
-                  <span field prefix>
-                    <img src="/assets/pp1.png" [attr.alt]="'Puissance maximale' | translate"
-                      [title]="'Filtrer par puissance maximale atteinte' | translate">
-                  </span>
-                  <input field type="text" id="mightAllTimeMin" name="mightAllTimeMin"
-                    [value]="displayFormValues.mightAllTime.min" (focus)="onGenericFocus('min', 'mightAllTime')"
-                    (blur)="onGenericBlur('min', 'mightAllTime')"
-                    (input)="onGenericInput('min', 'mightAllTime', $event)" [title]="formFilters.minMightAllTime"
-                    [placeholder]="'Puissance max. atteinte min.' | translate">
-                  <input field type="text" id="mightAllTimeMax" name="mightAllTimeMax"
-                    [value]="displayFormValues.mightAllTime.max" (focus)="onGenericFocus('max', 'mightAllTime')"
-                    (blur)="onGenericBlur('max', 'mightAllTime')"
-                    (input)="onGenericInput('max', 'mightAllTime', $event)" [title]="formFilters.maxMightAllTime"
-                    [placeholder]="'Puissance max. atteinte max.' | translate">
-                </app-modal-form-group>
-              </div>
-            </div>
           </div>
           <div class="row mt-1">
             <!-- Loot -->
@@ -135,9 +95,9 @@
                     [title]="'Filtrer par niveau' | translate">
                 </span>
                 <input field type="text" id="levelMin" name="levelMin" [(ngModel)]="formFilters.minLevel"
-                  [title]="formFilters.minLevel" [placeholder]="'Niveau min.' | translate">
+                  [title]="formFilters.minLevel" [placeholder]="'Niveau min' | translate">
                 <input field type="text" id="levelMax" name="levelMax" [(ngModel)]="formFilters.maxLevel"
-                  [title]="formFilters.maxLevel" [placeholder]="'Niveau max.' | translate">
+                  [title]="formFilters.maxLevel" [placeholder]="'Niveau max' | translate">
               </app-modal-form-group>
             </div>
           </div>
@@ -146,7 +106,7 @@
             <div class="col-12 col-sm my-1">
               <app-modal-form-group class="compact">
                 <span field prefix>
-                  <img src="/assets/glory.png" [attr.alt]="'Gloire' | translate"
+                  <img src="/assets/glory.png" [attr.alt]="'Points de gloire' | translate"
                     [title]="'Filtrer par gloire' | translate">
                 </span>
                 <input field type="text" id="fameMin" name="fameMin" [value]="displayFormValues.fame.min"
@@ -174,6 +134,27 @@
                   [value]="displayFormValues.castleCount.max" (focus)="onGenericFocus('max', 'castleCount')"
                   (blur)="onGenericBlur('max', 'castleCount')" (input)="onGenericInput('max', 'castleCount', $event)"
                   [title]="formFilters.castleCountMax" [placeholder]="'Châteaux max.' | translate">
+              </app-modal-form-group>
+            </div>
+          </div>
+          <div class="row mt-1">
+            <!-- Alliance Might -->
+            <div class="col-12 col-sm-6 my-1">
+              <app-modal-form-group class="compact">
+                <span field prefix>
+                  <img src="/assets/min-alliance.png" [attr.alt]="'Filtrer par puissance totale de l\'alliance' | translate"
+                    [title]="'Filtrer par puissance totale de l\'alliance' | translate">
+                </span>
+                <input field type="text" id="allianceMightMin" name="allianceMightMin"
+                  [value]="displayFormValues.allianceMight.min" (focus)="onGenericFocus('min', 'allianceMight')"
+                  (blur)="onGenericBlur('min', 'allianceMight')"
+                  (input)="onGenericInput('min', 'allianceMight', $event)" [title]="formFilters.minAllianceMight"
+                  [placeholder]="('Puissance min' | translate) + ' (' + ('Alliance' | translate) + ')'">
+                <input field type="text" id="allianceMightMax" name="allianceMightMax"
+                  [value]="displayFormValues.allianceMight.max" (focus)="onGenericFocus('max', 'allianceMight')"
+                  (blur)="onGenericBlur('max', 'allianceMight')"
+                  (input)="onGenericInput('max', 'allianceMight', $event)" [title]="formFilters.maxAllianceMight"
+                  [placeholder]="('Puissance max' | translate) + ' (' + ('Alliance' | translate) + ')'">
               </app-modal-form-group>
             </div>
           </div>
@@ -224,26 +205,26 @@
             <!-- Filter by stormyIsland -->
             <div class="col-12">
               <div class="text-center mt-1 stormy-island-icon">
-                <img src="assets/dungeon4.png" [alt]="'Île orageuse' | translate"
+                <img src="assets/dungeon4.png" [alt]="'Les Îles orageuses' | translate"
                   [title]="'Les Îles orageuses' | translate" height="32">
               </div>
               <div class="input-group align-items-center justify-content-center">
                 <div class="col-4 text-center">
-                  <label for="yes" translate>Débloqué</label>
+                  <label for="yes">{{ 'Débloqué' | translate }}</label>
                   <div>
                     <input type="radio" class="form-check-input" id="yes" value="1" name="stormyIsland"
                       [(ngModel)]="formFilters.stormyIslandsFilter">
                   </div>
                 </div>
                 <div class="col-4 text-center">
-                  <label for="no" translate>Non débloqué</label>
+                  <label for="no">{{ 'Non débloqué' | translate }}</label>
                   <div>
                     <input type="radio" class="form-check-input" id="no" name="stormyIsland" value="0"
                       [(ngModel)]="formFilters.stormyIslandsFilter">
                   </div>
                 </div>
                 <div class="col-4 text-center">
-                  <label for="noStormyIsland" translate>Pas de filtre</label>
+                  <label for="noStormyIsland">{{ 'Pas de filtre' | translate }}</label>
                   <div>
                     <input type="radio" class="form-check-input" id="noStormyIsland" name="stormyIsland" value="-1"
                       [(ngModel)]="formFilters.stormyIslandsFilter">
@@ -261,21 +242,21 @@
               </div>
               <div class="input-group align-items-center justify-content-center">
                 <div class="col-4 text-center">
-                  <label for="alliance1" translate>Avec alliance</label>
+                  <label for="alliance1">{{ 'Avec alliance' | translate }}</label>
                   <div>
                     <input type="radio" class="form-check-input" id="alliance1" value="1" name="alliance"
                       [(ngModel)]="formFilters.allianceFilter">
                   </div>
                 </div>
                 <div class="col-4 text-center">
-                  <label for="alliance0" translate>Sans alliance</label>
+                  <label for="alliance0">{{ 'Sans alliance' | translate }}</label>
                   <div>
                     <input type="radio" class="form-check-input" id="alliance0" name="alliance" value="0"
                       [(ngModel)]="formFilters.allianceFilter">
                   </div>
                 </div>
                 <div class="col-4 text-center">
-                  <label for="noAlliance" translate>Pas de filtre</label>
+                  <label for="noAlliance">{{ 'Pas de filtre' | translate }}</label>
                   <div>
                     <input type="radio" class="form-check-input" id="noAlliance" name="alliance" value="-1"
                       [(ngModel)]="formFilters.allianceFilter">
@@ -317,21 +298,21 @@
               </div>
               <div class="input-group align-items-center justify-content-center">
                 <div class="col-4 text-center">
-                  <label for="peace1" translate>En protection</label>
+                  <label for="peace1">{{ 'En protection' | translate }}</label>
                   <div>
                     <input type="radio" class="form-check-input" id="peace1" name="peace" value="1"
                       [(ngModel)]="formFilters.protectionFilter">
                   </div>
                 </div>
                 <div class="col-4 text-center">
-                  <label for="peace0" translate>Hors protection</label>
+                  <label for="peace0">{{ 'Hors protection' | translate }}</label>
                   <div>
                     <input type="radio" class="form-check-input" id="peace0" name="peace" value="0"
                       [(ngModel)]="formFilters.protectionFilter">
                   </div>
                 </div>
                 <div class="col-4 text-center">
-                  <label for="noPeace" translate>Pas de filtre</label>
+                  <label for="noPeace">{{ 'Pas de filtre' | translate }}</label>
                   <div>
                     <input type="radio" class="form-check-input" id="noPeace" name="peace" value="-1" checked
                       [(ngModel)]="formFilters.protectionFilter">
@@ -347,21 +328,21 @@
               </div>
               <div class="input-group align-items-center justify-content-center">
                 <div class="col-4 text-center">
-                  <label for="ban1" translate>Banni</label>
+                  <label for="ban1">{{ 'Banni' | translate }}</label>
                   <div>
                     <input type="radio" class="form-check-input" id="ban1" name="ban" value="1"
                       [(ngModel)]="formFilters.banFilter">
                   </div>
                 </div>
                 <div class="col-4 text-center">
-                  <label for="ban0" translate>Non banni</label>
+                  <label for="ban0">{{ 'Non banni' | translate }}</label>
                   <div>
                     <input type="radio" class="form-check-input" id="ban0" name="ban" value="0"
                       [(ngModel)]="formFilters.banFilter">
                   </div>
                 </div>
                 <div class="col-4 text-center">
-                  <label for="noBan" translate>Pas de filtre</label>
+                  <label for="noBan">{{ 'Pas de filtre' | translate }}</label>
                   <div>
                     <input type="radio" class="form-check-input" id="noBan" name="ban" value="-1" checked
                       [(ngModel)]="formFilters.banFilter">
@@ -377,21 +358,21 @@
               </div>
               <div class="input-group align-items-center justify-content-center">
                 <div class="col-4 text-center">
-                  <label for="inactive1" translate>Inactif</label>
+                  <label for="inactive1">{{ 'Inactif' | translate }}</label>
                   <div>
                     <input type="radio" class="form-check-input" id="inactive1" name="inactive" value="0"
                       [(ngModel)]="formFilters.inactiveFilter">
                   </div>
                 </div>
                 <div class="col-4 text-center">
-                  <label for="inactive0" translate>Actif</label>
+                  <label for="inactive0">{{ 'Actif' | translate }}</label>
                   <div>
                     <input type="radio" class="form-check-input" id="inactive0" name="inactive" value="1"
                       [(ngModel)]="formFilters.inactiveFilter">
                   </div>
                 </div>
                 <div class="col-4 text-center">
-                  <label for="noInactive" translate>Pas de filtre</label>
+                  <label for="noInactive">{{ 'Pas de filtre' | translate }}</label>
                   <div>
                     <input type="radio" class="form-check-input" id="noInactive" name="inactive" value="-1" checked
                       [(ngModel)]="formFilters.inactiveFilter">
@@ -400,7 +381,7 @@
               </div>
             </div>
           </div>
-          <div class="row">
+          <div class="row mt-1">
             <div class="col-12">
               <app-modal-form-group [label]="'Trier les résultats' | translate">
                 <select field [(ngModel)]="sort">

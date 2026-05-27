@@ -12,6 +12,15 @@ a:hover {
   cursor: pointer;
 }
 
+.form-check-input:checked {
+  background-color: #3c53c7;
+  border-color: #3c53c7;
+}
+
+.btn-close[data-bs-dismiss]:focus {
+  box-shadow: none;
+}
+
 img.alliance-rank-icon {
   max-height: 19px;
   vertical-align: middle;

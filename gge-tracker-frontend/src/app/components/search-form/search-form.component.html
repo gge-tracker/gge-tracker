@@ -3,10 +3,11 @@
     <div class="search-input-wrapper col-12 col-lg">
       <input
         [attr.list]="listId()"
+        [placeholder]="inputTip()"
+        [title]="title()"
         (keydown.enter)="onEnterSearch()"
         type="text"
         class="search-input"
-        [placeholder]="inputTip()"
         [(ngModel)]="search"
         />
       <datalist id="search-list">

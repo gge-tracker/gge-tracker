@@ -13,7 +13,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { SearchType } from '@ggetracker-interfaces/empire-ranking';
 import { UtilitiesService } from '@ggetracker-services/utilities.service';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { Download, Eraser, Filter, HardDrive, LucideAngularModule, Search } from 'lucide-angular';
 import { FilterComponent } from '../filter/filter.component';
 
@@ -45,6 +45,7 @@ export class SearchFormComponent implements OnChanges, OnInit {
   public defaultSearch = input<string>();
   public alliancePlaceholder = input<string>();
   public countFilterActivated = 0;
+  public translateService = inject(TranslateService);
 
   public searchType = computed(() => {
     const types = this.searchTypes();
@@ -56,6 +57,14 @@ export class SearchFormComponent implements OnChanges, OnInit {
     if (types['player'] && types['alliance']) return 'search-list';
     if (types['player']) return 'player-list';
     return 'alliance-list';
+  });
+
+  public title = computed(() => {
+    const type = this.searchType();
+    if (type === 'alliance') {
+      return this.translateService.instant('dialog_alliance_noName');
+    }
+    return this.inputTip();
   });
 
   private cdr = inject(ChangeDetectorRef);

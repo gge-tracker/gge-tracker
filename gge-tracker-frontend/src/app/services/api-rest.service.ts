@@ -470,9 +470,10 @@ export class ApiRestService {
   public async getAllianceStats(
     allianceId: number,
     playerNameForDistance: string,
+    kingdomId: number = 0,
   ): Promise<ApiResponse<ApiAlliancePlayersSearchResponse>> {
     const response = await this.apiFetch<ApiAlliancePlayersSearchResponse>(
-      `${ApiRestService.apiUrl}alliances/id/${allianceId}?playerNameForDistance=${playerNameForDistance}`,
+      `${ApiRestService.apiUrl}alliances/id/${allianceId}?playerNameForDistance=${playerNameForDistance}&kingdomId=${kingdomId}`,
     );
     if (!response.success) return response;
     return { success: true, data: response.data };

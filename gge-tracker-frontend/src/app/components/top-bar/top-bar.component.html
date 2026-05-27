@@ -94,7 +94,20 @@
           <div class="lang-dropdown">
             @for (lang of languageService.langs; track lang) {
               <button (click)="selectLanguage(lang.code)">
+                <img [src]="languageService.getFlagUrlForLang(lang.code)" width="20" class="me-2" alt="{{ lang.label }}"
+                  title="{{ lang.label }}">
                 {{ lang.label }}
+              </button>
+            }
+            @if (isDevMode()) {
+              <div class="separator"></div>
+              <span class="dev-mode-warning">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                Current language is overridden by <strong>lang_dev</strong> localStorage variable.
+              </span>
+              <button (click)="disableDevLangOverride()" class="language-dev-btn">
+                <i class="fa-solid fa-xmark"></i>
+                Disable
               </button>
             }
           </div>

@@ -39,4 +39,5 @@ export enum RouteErrorMessagesEnum {
   UnavailableForSpecialServers = 'This feature is unavailable for this server',
   EventNotActive = 'The event is not active',
   PageOutOfRange = 'Page number is out of range',
+  PlayerNotInRealm = 'Player not in this realm',
 }

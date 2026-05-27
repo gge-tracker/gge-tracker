@@ -121,9 +121,9 @@
                       [class.active]="activeView === 'grid'"
                       (click)="activeView = 'grid'"
                       [attr.aria-selected]="activeView === 'grid'"
-                      [title]="'Vue bâtiments' | translate">
+                      [title]="'Liste des bâtiments' | translate">
                       <i class="fa-solid fa-border-all"></i>
-                      <span class="d-none d-sm-inline ms-1">{{ 'Bâtiments' | translate }}</span>
+                      <span class="d-none d-sm-inline ms-1">{{ 'Liste des bâtiments' | translate }}</span>
                     </button>
                   </div>
                 </div>
@@ -598,7 +598,7 @@
               </button>
             </div>
           </div>
-          <div class="modal-body modern-modal">
+          <div class="modal-body filters-modal-body">
             <div class="filters-container row g-3">
               <div class="col-12">
                 <div class="construction-slots">
@@ -740,7 +740,7 @@
 
                                   <hr>
 
-                                    <div class="col-12 col-md-3 d-flex gap-3 align-items-center">
+                                    <div class="col-12 col-md-3 filter-bool-item">
                                       <div class="row text-center">
                                         <div class="col-12">
                                           <img src="{{ apiPath }}assets/images/fooddistrictbuildinglevel1.png" alt="{{ 'Uniquement les bâtiments dans un quartier' | translate }}" class="filter-icon"
@@ -755,7 +755,7 @@
                                       </div>
                                     </div>
 
-                                    <div class="col-12 col-md-3 d-flex gap-3 align-items-center">
+                                    <div class="col-12 col-md-3 filter-bool-item">
                                       <div class="row text-center">
                                         <div class="col-12">
                                           <img src="/assets/max-level.png" alt="{{ 'Uniquement des bâtiments de niveau maximal' | translate }}" class="filter-icon" width="128">
@@ -769,7 +769,7 @@
                                       </div>
                                     </div>
 
-                                    <div class="col-12 col-md-3 d-flex gap-3 align-items-center">
+                                    <div class="col-12 col-md-3 filter-bool-item">
                                       <div class="row text-center">
                                         <div class="col-12">
                                           <img src="/assets/upgradable.png" alt="{{ 'Uniquement des bâtiments améliorables' | translate }}" class="filter-icon" width="128">
@@ -783,7 +783,7 @@
                                       </div>
                                     </div>
 
-                                    <div class="col-12 col-md-3 d-flex gap-3 align-items-center">
+                                    <div class="col-12 col-md-3 filter-bool-item">
                                       <div class="row text-center">
                                         <div class="col-12">
                                           <img src="/assets/burnable.png" alt="{{ 'Uniquement des bâtiments brûlables' | translate }}" class="filter-icon" width="128">

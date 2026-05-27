@@ -157,6 +157,9 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   public monumentsList: Monument[] = [];
   public aquamarineSnapshots: ApiAquamarineSnapshot[] = [];
   public aquamarineLoadState: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
+  public eventsLoadState: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
+  public woaLoadState: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
+  public gloryLoadState: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
   public readonly currentI18nTitleKey = 'titles.playerTitle_';
   public tabs: { key: PlayerStatsTabs; label: string; assetIcon?: string }[] = [
     { key: 'overview', label: "Vue d'ensemble", assetIcon: 'players.png' },
@@ -1579,13 +1582,23 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       this.cdr.detectChanges();
     }
     if (fragment === 'glory' && this.currentPlayerTitle === null) {
-      void this.getPlayerGloryTitle().then((titles) => {
-        this.currentPlayerTitle = titles[0];
-        this.currentTopXFameTitle = titles[1];
-        this.cdr.detectChanges();
-      });
+      this.gloryLoadState = 'loading';
+      this.cdr.detectChanges();
+      void this.getPlayerGloryTitle()
+        .then((titles) => {
+          this.currentPlayerTitle = titles[0];
+          this.currentTopXFameTitle = titles[1];
+          this.gloryLoadState = 'loaded';
+          this.cdr.detectChanges();
+        })
+        .catch(() => {
+          this.gloryLoadState = 'error';
+          this.cdr.detectChanges();
+        });
     } else if (fragment === 'events') {
       if (!this.playerId) return;
+      this.eventsLoadState = 'loading';
+      this.cdr.detectChanges();
       void this.apiRestService.getEventsByPlayerId(this.playerId).then((response) => {
         if (response.success) {
           this.outerEvents = response.data.events.map((event) => ({
@@ -1593,11 +1606,16 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
             from: this.utilitiesService.generateOuterRealmsEventFromDate(event.collect_date),
             to: new Date(event.collect_date),
           }));
-          this.cdr.detectChanges();
+          this.eventsLoadState = 'loaded';
+        } else {
+          this.eventsLoadState = 'error';
         }
+        this.cdr.detectChanges();
       });
     } else if (fragment === 'woa') {
       if (!this.playerId) return;
+      this.woaLoadState = 'loading';
+      this.cdr.detectChanges();
       void this.apiRestService.getWoaEventDataByPlayerId(this.playerId).then((response) => {
         if (response.success) {
           const data = response.data;
@@ -1609,8 +1627,11 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
             from: this.utilitiesService.calculateWoaEventBeginTime(new Date(event.date)),
             to: this.utilitiesService.calculateWoaEventEndTime(new Date(event.date)),
           }));
-          this.cdr.detectChanges();
+          this.woaLoadState = 'loaded';
+        } else {
+          this.woaLoadState = 'error';
         }
+        this.cdr.detectChanges();
       });
     } else if (fragment === 'aquamarine' && this.aquamarineLoadState === 'idle') {
       if (!this.playerId) return;
