@@ -36,11 +36,11 @@
                 {{ movement.rank }}
               </td>
               <td>{{ movement.player }}</td>
-              <td>
+              <td class="text-center">
                 <span class="mobile-only">{{ 'Alliance' | translate }}:&nbsp;</span>
                 {{ movement.alliance ?? '-' }}
               </td>
-              <td class="col-level">
+              <td class="col-level text-center">
                 <div class="level-box" [ngClass]="{ 'level-legendary': movement.legendaryLevel }">
                   <span class="level-main">{{movement.level}}</span>
                   @if (movement.legendaryLevel) {
@@ -52,17 +52,17 @@
                 </div>
               </td>
               <td>
-                <span class="mobile-only">{{ 'Puissance' | translate }}:&nbsp;</span>
+                <span class="mobile-only text-center">{{ 'Puissance' | translate }}:&nbsp;</span>
                 {{ (movement.might ? movement.might : 0) | formatNumber }}
               </td>
               <td><img [src]="'/assets/castle' + movement.type + '.png'"
               [title]="getCastleType(movement.type) | translate" [alt]="getCastleType(movement.type)"></td>
-              <td class="mobile-only-reverse"
+              <td class="mobile-only-reverse text-center"
               [innerHTML]="getDescription(movement.type, movement.positionOld, movement.positionNew).image"></td>
               <td>{{ ((getDescription(movement.type, movement.positionOld, movement.positionNew).keyword) | translate) + '
                 '
               + getDescription(movement.type, movement.positionOld, movement.positionNew).description }}</td>
-              <td>{{ movement.date | date: ('Date_1' | translate)}}</td>
+              <td class="text-center">{{ movement.date | date: ('Date_1' | translate)}}</td>
               <td class="text-end">
                 <div class="d-flex justify-content-center">
                   <a [routerLink]="['/', 'players']" [queryParams]="{ player: movement.player}">

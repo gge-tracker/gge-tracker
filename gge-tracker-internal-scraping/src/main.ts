@@ -2010,7 +2010,8 @@ export class GenericFetchAndSaveBackend {
     return Utils.getDiscordEmojis().find((flagName) => flagName === ':flag_' + server + ':') || '(' + serverName + ')';
   }
 
-  private formatValueForDiscord(value: string | number): string {
+  private formatValueForDiscord(value?: string | number): string {
+    if (value === undefined || value === null) return '';
     const strValue = value.toString();
     return strValue.replace(/([\\_*~`>|@\#])/g, '\\$1');
   }

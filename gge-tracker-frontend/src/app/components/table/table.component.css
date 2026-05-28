@@ -241,7 +241,7 @@
 }
 
 ::ng-deep #table-component tbody tr:hover {
-  background: #0e1212cc;
+  background: #0e1212cc !important;
 }
 
 ::ng-deep #table-component tbody tr:nth-child(even) {

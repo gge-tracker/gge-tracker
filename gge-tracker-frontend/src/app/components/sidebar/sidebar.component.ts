@@ -1,4 +1,4 @@
-import { NgClass } from '@angular/common';
+import { NgClass, TitleCasePipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import package_ from '../../../../package.json';
@@ -8,7 +8,7 @@ import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-sidebar',
-  imports: [RouterLink, TranslateModule, NgClass],
+  imports: [RouterLink, TranslateModule, NgClass, TitleCasePipe],
   standalone: true,
   templateUrl: './sidebar.component.html',
   styleUrls: ['./sidebar.component.css'],
@@ -58,6 +58,7 @@ export class SidebarComponent {
           label: 'Îles orageuses',
           id: 'stormy-isles',
           iconUrl: '/assets/tools/aquamarine.webp',
+          frequency: 'Par heure',
         },
       ],
     },
