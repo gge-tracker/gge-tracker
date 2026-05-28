@@ -871,12 +871,15 @@ export class GenericFetchAndSaveBackend {
     let done = 0;
     try {
       console.log('Connection to the database successful');
-      const [rows] = await this.connection.query<RowDataPacket[]>(`
-        SELECT kid, position_x, position_y
+      const { rows } = await pgPool.query(
+        `
+        SELECT kid, position_x, position_y, global_available_at
         FROM dungeons
-        WHERE attack_cooldown = 0
-        OR TIMESTAMPADD(SECOND, attack_cooldown, updated_at) <= NOW()`);
+        WHERE global_available_at <= NOW()
+        `,
+      );
       const totalRequests = rows.length;
+      console.log('Total dungeons to check:', totalRequests);
       for (const row of rows) {
         const { kid, position_x, position_y } = row;
         const square = await this.getCorrespondingSquare(position_x, position_y, mapSize);
