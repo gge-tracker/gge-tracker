@@ -4169,7 +4169,7 @@ async function main(): Promise<void> {
         console.error('Error initializing browser:', error);
         throw new Error('Error initializing browser');
       });
-      printHeader();
+      void printHeader();
     })
     .on('error', (error) => {
       throw new Error(error.message);
@@ -4180,7 +4180,8 @@ async function main(): Promise<void> {
  * Prints a stylized ASCII art header to the console, including the application port
  * The header uses ANSI escape codes for colored output
  */
-function printHeader(): void {
+async function printHeader(): Promise<void> {
+  const itemVersion = await ApiHelper.redisClient.get('ItemsVersion');
   console.log(` \u001B[34m
   \u001B[34m                                              __                        __
   \u001B[34m              ____   ____   ____           _/  |_____________    ____ |  | __ ___________
@@ -4191,6 +4192,7 @@ function printHeader(): void {
   \u001B[34m
   \u001B[32m                            🟢 GGE Tracker API running at PORT: ${APPLICATION_PORT}
   \u001B[32m Application Version: ${ApiHelper.API_VERSION}
+  \u001B[32m Items Version: ${itemVersion || 'unknown'}
 `);
   console.log('\u001B[0m');
 }

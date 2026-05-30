@@ -667,6 +667,7 @@ export abstract class ApiAssets implements ApiHelper {
     if (!itemsVersionResource.ok)
       throw new Error('Failed to fetch ItemsVersion.properties: ' + itemsVersionResource.status);
     const itemsVersionText = await itemsVersionResource.text();
+    void ApiHelper.updateCache('ItemsVersion', itemsVersionText);
     const match = /CastleItemXMLVersion=(\d+\.\d+)/.exec(itemsVersionText);
     const versionNumber = match?.[1];
     const itemsJsonUri = `${ApiHelper.ASSETS_BASE_URL}/items/items_v${versionNumber}.json`;
