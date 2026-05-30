@@ -119,6 +119,12 @@ td, th {
 
 .modal-info {
   color: #8c8c8c;
+  transition: all 0.3s ease;
+}
+
+.modal-info:hover {
+  color: #8c8c8c;
+  filter: brightness(1.2);
 }
 
 .btn-search {

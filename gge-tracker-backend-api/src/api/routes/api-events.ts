@@ -824,7 +824,7 @@ export abstract class ApiEvents implements ApiHelper {
       let parameterIndex = 1;
       const offset = (page - 1) * PAGINATION_LIMIT;
       const query = `
-        SELECT player_id, player_name, rank, point, server
+        SELECT player_id, player_name, rank, point, server, alliance_name
         FROM ${sqlTable}
         WHERE event_num = $${parameterIndex++}
         ${isValidPlayerNameFilter ? `AND LOWER(player_name) LIKE LOWER($${parameterIndex++})` : ''}
@@ -860,6 +860,7 @@ export abstract class ApiEvents implements ApiHelper {
         level: result.level,
         legendary_level: result.legendary_level,
         server: result.server,
+        alliance_name: result.alliance_name,
       }));
       const totalPages = Math.ceil(total / PAGINATION_LIMIT);
       const pagination = {

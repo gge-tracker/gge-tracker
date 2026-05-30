@@ -49,12 +49,7 @@
               </app-search-form>
             </div>
             <app-table [sort]="''" [reverse]="false" [isInLoading]="isInLoading" [maxPage]="maxPage!" [page]="page"
-            [search]="playerNameFilter" [headers]="[
-            ['playerName', 'Pseudonyme' | translate, '', true],
-            ['server', 'Serveur' | translate, '', true],
-            ['points', 'Points' | translate, '', true],
-            ['actions', 'Actions' | translate, '', true]
-          ]" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
+            [search]="playerNameFilter" [headers]="tableHeaders" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
               @if (players.length === 0 && !isInLoading) {
                 <tr>
                   <td colspan="10" class="no-data">{{ 'Aucun joueur trouvé' | translate }}</td>
@@ -69,6 +64,9 @@
                   <td class="col-name">{{ player.player_name }}</td>
                   <td><img [src]="serverService.getFlagUrl(player.server)" alt="Flag icon {{ player.server }}"> {{ player.server }}</td>
                   <td>{{ (player.point) | formatNumber }}</td>
+                  @if (hasAllianceColumn) {
+                    <td>{{ player.alliance_name || '-' }}</td>
+                  }
                   <td class="text-end">
                     @if (player.player_id) {
                       <div class="d-flex justify-content-end">
@@ -90,69 +88,98 @@
               }
             </app-table>
           </div>
-          <div class="row g-2 mb-3">
-            <div class="col-12">
-              @if (charts['nbInTop100']) {
-                <ng-container *ngTemplateOutlet="chartTemplate; context: { chart: charts['nbInTop100'] }"></ng-container>
-              }
+          <div class="event-analytics-divider my-4">
+            <div class="divider-line"></div>
+            <div class="divider-label">
+              <i class="fa-solid fa-chart-line"></i>
+              <span>{{ 'Analyse de l\'événement' | translate }}</span>
             </div>
+            <div class="divider-line"></div>
           </div>
-          <div class="row g-3 mb-4">
-            <div class="col-md-4">
-              <div class="stat-card text-center">
-                <div class="stat-icon">
-                  <img src="/assets/{{ eventType }}-icon.png" alt="{{ eventType }} Icon">
-                </div>
-                <div class="stat-value">{{ (currentEvent.score_stats.max_score | formatNumber) }}</div>
-                <div class="stat-label">{{ 'Score le plus élevé atteint' | translate}}</div>
+
+          <div class="row g-3 mb-5">
+            <div class="col-6 col-md-3">
+              <div class="kpi-card kpi-gold">
+                <lucide-icon [img]="TrophyIcon" class="lucide-icon kpi-icon-el"></lucide-icon>
+                <div class="kpi-value">{{ currentEvent.score_stats.max_score | formatNumber }}</div>
+                <div class="kpi-label">{{ 'Score maximal' | translate }}</div>
               </div>
             </div>
-            <div class="col-md-4">
-              <div class="stat-card text-center">
-                <div class="stat-icon">
-                  <img src="/assets/{{ eventType }}-icon.png" alt="{{ eventType }} Icon">
-                </div>
-                <div class="stat-value">{{ currentEvent.score_stats.avg_score | formatNumber }}</div>
-                <div class="stat-label">{{ 'Score moyen des joueurs' | translate }}</div>
+            <div class="col-6 col-md-3">
+              <div class="kpi-card kpi-teal">
+                <lucide-icon [img]="TrendingUpIcon" class="lucide-icon kpi-icon-el"></lucide-icon>
+                <div class="kpi-value">{{ currentEvent.score_stats.avg_score | formatNumber }}</div>
+                <div class="kpi-label">{{ 'Score moyen' | translate }}</div>
               </div>
             </div>
-            <div class="col-md-4">
-              <div class="stat-card text-center">
-                <div class="stat-icon">
-                  <img src="/assets/{{ eventType }}-icon.png" alt="{{ eventType }} Icon">
-                </div>
-                <div class="stat-value">{{ currentEvent.score_stddev | formatNumber }}</div>
-                <div class="stat-label">{{ 'Écart type des scores (variabilité)' | translate }}</div>
+            <div class="col-6 col-md-3">
+              <div class="kpi-card kpi-blue">
+                <lucide-icon [img]="TargetIcon" class="lucide-icon kpi-icon-el"></lucide-icon>
+                <div class="kpi-value">{{ currentEvent.score_stats.median_score | formatNumber }}</div>
+                <div class="kpi-label">{{ 'Score médian' | translate }}</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="kpi-card kpi-slate">
+                <lucide-icon [img]="ActivityIcon" class="lucide-icon kpi-icon-el"></lucide-icon>
+                <div class="kpi-value">{{ currentEvent.score_stddev | formatNumber }}</div>
+                <div class="kpi-label">{{ 'Variabilité' | translate }}</div>
               </div>
             </div>
           </div>
-          <div class="row g-4 mb-4">
-            <div class="col-md-6">
-              @if (charts['topScores']) {
-                <ng-container *ngTemplateOutlet="chartTemplate; context: { chart: charts['topScores'] }"></ng-container>
-              }
+
+          <div class="analytics-section mb-5">
+            <div class="analytics-section-header">
+              <div class="analytics-section-badge badge-amber">
+                <i class="fa-solid fa-ranking-star"></i>
+              </div>
+              <div class="analytics-section-meta">
+                <h3 class="analytics-section-title">{{ 'Scores de référence' | translate }}</h3>
+                <p class="analytics-section-desc">{{ 'Score minimum requis pour atteindre chaque palier de classement' | translate }}</p>
+              </div>
             </div>
-            <div class="col-md-6">
-              @if (charts['serverAvgScore']) {
-                <ng-container
-                *ngTemplateOutlet="chartTemplate; context: { chart: charts['serverAvgScore'] }"></ng-container>
-              }
+            @if (charts['topScores']) {
+              <ng-container *ngTemplateOutlet="chartTemplate; context: { chart: charts['topScores'] }"></ng-container>
+            }
+          </div>
+
+          <div class="analytics-section mb-5">
+            <div class="analytics-section-header">
+              <div class="analytics-section-badge badge-teal">
+                <i class="fa-solid fa-globe"></i>
+              </div>
+              <div class="analytics-section-meta">
+                <h3 class="analytics-section-title">{{ 'Performance des serveurs' | translate }}</h3>
+                <p class="analytics-section-desc">{{ 'Top 15 des serveurs les plus performants sur cet événement' | translate }}</p>
+              </div>
+            </div>
+            <div class="row g-4">
+              <div class="col-12 col-xl-6">
+                @if (charts['serverAvgScore']) {
+                  <ng-container *ngTemplateOutlet="chartTemplate; context: { chart: charts['serverAvgScore'], subtitle: 'Score moyen par serveur' }"></ng-container>
+                }
+              </div>
+              <div class="col-12 col-xl-6">
+                @if (charts['top100Ratio']) {
+                  <ng-container *ngTemplateOutlet="chartTemplate; context: { chart: charts['top100Ratio'], subtitle: 'Pourcentage dans le top 100' }"></ng-container>
+                }
+              </div>
             </div>
           </div>
-          <div class="row g-4 mb-4">
-            <div class="col-12">
-              @if (charts['top100Ratio']) {
-                <ng-container *ngTemplateOutlet="chartTemplate; context: { chart: charts['top100Ratio'] }"></ng-container>
-              }
+
+          <div class="analytics-section mb-4">
+            <div class="analytics-section-header">
+              <div class="analytics-section-badge badge-purple">
+                <i class="fa-solid fa-layer-group"></i>
+              </div>
+              <div class="analytics-section-meta">
+                <h3 class="analytics-section-title">{{ 'Répartition par niveau' | translate }}</h3>
+                <p class="analytics-section-desc">{{ 'Distribution des joueurs selon leur niveau de château' | translate }}</p>
+              </div>
             </div>
-          </div>
-          <div class="row g-4">
-            <div class="col-12">
-              @if (charts['levelDistribution']) {
-                <ng-container
-                *ngTemplateOutlet="chartTemplate; context: { chart: charts['levelDistribution'] }"></ng-container>
-              }
-            </div>
+            @if (charts['levelDistribution']) {
+              <ng-container *ngTemplateOutlet="chartTemplate; context: { chart: charts['levelDistribution'] }"></ng-container>
+            }
           </div>
         </div>
       }
@@ -160,8 +187,11 @@
   </div>
 </div>
 
-<ng-template #chartTemplate let-chart="chart">
+<ng-template #chartTemplate let-chart="chart" let-subtitle="subtitle">
   <div class="apx-chart">
+    @if (subtitle) {
+      <div class="chart-subtitle">{{ subtitle | translate }}</div>
+    }
     @if (chart && isBrowser) {
       <app-charts-wrapper [series]="chart.series" [annotations]="chart.annotations || {}"
         [chart]="chart.chart" [xaxis]="chart.xaxis" [yaxis]="chart.yaxis" [dataLabels]="chart.dataLabels"

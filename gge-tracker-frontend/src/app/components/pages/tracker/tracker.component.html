@@ -129,7 +129,7 @@
                 @if (isInCooldown(dungeon)) {
                 <span>
                   {{ dungeon.playerName }}
-                  <span class="pointer modal-info">
+                  <span class="pointer modal-info" [title]="'Cliquez pour plus d\'informations' | translate">
                     <i class="fa-solid fa-history ms-1"
                       (click)="getDungeonsByPlayerId(dungeon)"
                       data-bs-toggle="modal"

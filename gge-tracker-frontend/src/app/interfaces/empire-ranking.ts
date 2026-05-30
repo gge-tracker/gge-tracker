@@ -628,6 +628,7 @@ export interface ApiEventlist {
 export interface ApiOuterRealmPlayer {
   player_id: number;
   player_name: string;
+  alliance_name: string | null;
   rank: number;
   point: string;
   server: string;

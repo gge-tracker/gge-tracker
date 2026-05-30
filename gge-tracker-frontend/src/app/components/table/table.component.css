@@ -399,10 +399,13 @@
 .table-custom thead th img {
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
   height: 36px;
-  margin-right: 8px;
   object-fit: contain;
   vertical-align: middle;
   width: auto;
+}
+
+.table-custom thead th:has(.lucide-icon) img {
+  margin-right: 8px;
 }
 
 .table-custom thead th.pointer {
