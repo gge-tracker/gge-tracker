@@ -632,19 +632,30 @@ export class GenericFetchAndSaveBackend {
       'dungeons found.',
     );
     console.log('Database connection successful');
-    const values: any[] = [];
-    for (const dungeon of dungeonMaps) {
-      const coordinates = dungeon.coordinates;
-      const time = dungeon.time;
-      const playerId = dungeon.playerId;
-      const updatedAt = dungeon.updatedAt;
-      values.push(worldNumber, coordinates[0], coordinates[1], time, playerId, 0, updatedAt);
+    const CHUNK_SIZE = 500;
+
+    const chunks = this.chunkArray(dungeonMaps, CHUNK_SIZE);
+    for (const chunk of chunks) {
+      const values: any[] = [];
+      const placeholders = chunk
+        .map((dungeon, i) => {
+          const baseIndex = i * 4;
+          const coordinates = dungeon.coordinates;
+          const time = dungeon.time;
+          const global_available_at = new Date(Date.now() + time * 1000);
+
+          values.push(worldNumber, coordinates[0], coordinates[1], global_available_at);
+
+          return `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4})`;
+        })
+        .join(', ');
+
+      await this.pgSqlConnection.query(
+        `INSERT INTO dungeons (kid, position_x, position_y, global_available_at) VALUES ${placeholders}`,
+        values,
+      );
     }
-    const placeholders = dungeonMaps.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ');
-    await this.connection.execute(
-      `INSERT INTO dungeons (kid, position_x, position_y, attack_cooldown, player_id, total_attack_count, updated_at) VALUES ${placeholders}`,
-      values,
-    );
+
     console.log('\nDungeons list updated successfully for world', worldNumber, '\n');
   }
 
@@ -4207,6 +4218,14 @@ export class GenericFetchAndSaveBackend {
       console.error('Error sending trace to Tempo:', err.message);
       console.error('Payload was:', JSON.stringify(payload));
     }
+  }
+
+  private chunkArray<T>(arr: T[], size: number): T[][] {
+    const result: T[][] = [];
+    for (let i = 0; i < arr.length; i += size) {
+      result.push(arr.slice(i, i + size));
+    }
+    return result;
   }
 
   private async logToLoki({
