@@ -11,7 +11,6 @@ import axios, { AxiosError, AxiosResponse } from 'axios';
 import { ClickHouse } from 'clickhouse';
 import { format } from 'date-fns';
 import * as mysql from 'mysql2/promise';
-import { RowDataPacket } from 'mysql2/promise';
 import pLimit from 'p-limit';
 import * as pg from 'pg';
 import * as readline from 'readline';
@@ -891,6 +890,7 @@ export class GenericFetchAndSaveBackend {
       );
       const totalRequests = rows.length;
       console.log('Total dungeons to check:', totalRequests);
+      const dungeonsToUpdate: { kid: number; position_x: number; position_y: number; global_available_at: Date }[] = [];
       for (const row of rows) {
         const { kid, position_x, position_y } = row;
         const square = await this.getCorrespondingSquare(position_x, position_y, mapSize);
@@ -935,66 +935,20 @@ export class GenericFetchAndSaveBackend {
                       [time, playerId, kid, coordinates[0], coordinates[1]],
                     );
                     this.DB_UPDATES.playersCreated++;
-                  } catch (error) {
-                    console.log(error);
-                    throw new Error(
-                      'Error while updating dungeon data in the database: ' +
-                        (error instanceof Error ? error.message : String(error)),
-                    );
+                  } catch {
+                    console.log('Skipped MariaDB');
                   }
-                  try {
-                    // Postgres version (migration in progress, we keep the MariaDB version for now)
-                    // We assume a global cooldown of 24h and a player cooldown of 4 days
-                    const PLAYER_COOLDOWN_SECONDS = 4 * 24 * 60 * 60;
-                    const remainingCooldown24h = dungeon[5];
-                    if (remainingCooldown24h <= 0) {
-                      // Skipping cooldown update if the dungeon is already available
-                      continue;
-                    }
-                    await pgPool.query('BEGIN');
-                    const globalAvailableDate = new Date(currentTime.getTime() + remainingCooldown24h * 1000);
-                    const playerAvailableDate = new Date(
-                      currentTime.getTime() + (remainingCooldown24h + PLAYER_COOLDOWN_SECONDS) * 1000,
-                    );
-                    await pgPool.query(
-                      `
-                        UPDATE dungeons
-                        SET global_available_at = $1
-                        WHERE kid = $2 AND position_x = $3 AND position_y = $4
-                        `,
-                      [globalAvailableDate, kid, coordinates[0], coordinates[1]],
-                    );
-
-                    await pgPool.query(
-                      `
-                        INSERT INTO dungeon_player_cooldowns (
-                          kid, position_x, position_y, player_id, available_at
-                        )
-                        VALUES ($1, $2, $3, $4, $5)
-                        ON CONFLICT (kid, position_x, position_y, player_id)
-                        DO UPDATE SET available_at = EXCLUDED.available_at
-                        `,
-                      [kid, coordinates[0], coordinates[1], playerId, playerAvailableDate],
-                    );
-
-                    await pgPool.query(
-                      `
-                        INSERT INTO dungeons_history (
-                          kid, position_x, position_y, player_id
-                        )
-                        VALUES ($1, $2, $3, $4)
-                        `,
-                      [kid, coordinates[0], coordinates[1], playerId],
-                    );
-                    await pgPool.query('COMMIT');
-                  } catch (error) {
-                    await pgPool.query('ROLLBACK');
-                    console.log(error);
-                    throw new Error(
-                      'Error while updating dungeon data in the PostgreSQL database: ' +
-                        (error instanceof Error ? error.message : String(error)),
-                    );
+                  const remainingCooldown24h = dungeon[5];
+                  if (remainingCooldown24h <= 0) {
+                    // Skipping cooldown update if the dungeon is already available
+                    continue;
                   }
+                  dungeonsToUpdate.push({
+                    kid,
+                    position_x: coordinates[0],
+                    position_y: coordinates[1],
+                    global_available_at: new Date(currentTime.getTime() + remainingCooldown24h * 1000),
+                  });
                 }
               }
             } else if (!data['return_code'] || data['return_code'] === '-1') {
@@ -1036,6 +990,42 @@ export class GenericFetchAndSaveBackend {
             throw new Error('Terminating due to error while fetching dungeon data.');
           }
         }
+      }
+      // We update the dungeons in batch in PostgreSQL
+
+      try {
+        const values: { global_available_at: Date; kid: number; position_x: number; position_y: number }[] = [];
+        const placeholders: string[] = [];
+        dungeonsToUpdate.forEach((dungeon, index) => {
+          const offset = index * 4;
+          placeholders.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4})`);
+          values.push({
+            global_available_at: dungeon.global_available_at,
+            kid: dungeon.kid,
+            position_x: dungeon.position_x,
+            position_y: dungeon.position_y,
+          });
+        });
+        await pgPool.query(
+          `
+          UPDATE dungeons d
+          SET global_available_at = v.global_available_at
+          FROM (
+            VALUES
+              ${placeholders.join(',')}
+          ) AS v(global_available_at, kid, position_x, position_y)
+          WHERE d.kid = v.kid
+            AND d.position_x = v.position_x
+            AND d.position_y = v.position_y
+          `,
+          values,
+        );
+      } catch (error) {
+        console.log(error);
+        throw new Error(
+          'Error while updating dungeon data in the PostgreSQL database: ' +
+            (error instanceof Error ? error.message : String(error)),
+        );
       }
     } catch (error) {
       console.error('Error while updating dungeons list:', error);
