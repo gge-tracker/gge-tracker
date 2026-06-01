@@ -203,7 +203,8 @@
               [title]="'Points de puissance' | translate" [dataName]="'Points de puissance' | translate"
               [backgroundIconImage]="'/assets/banner-pp.png'" [needSpecialLoader]="true"
               [eventName]="'player_might_history'" [isWeekly]="true" [playerId]="playerId"
-              (updateData)="updateData($event)" [backgroundColour]="'rgb(255 230 35)'"></app-player-stats-card>
+              (updateData)="updateData($event)" (changePeriodOutput)="onMightPeriodChange($event)"
+              [backgroundColour]="'rgb(255 230 35)'"></app-player-stats-card>
             }
           </div>
           <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="loot">
@@ -217,54 +218,64 @@
         </div>
         <div class="row mt-3">
           <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="warRealms">
-            @if (charts['warRealms'] && chartVisibles.warRealms) {
-            <app-player-stats-card [charts]="{ 'Graphique': charts['warRealms'] }" [data]="[]"
+            @if (eventCharts['warRealms'] && chartVisibles.warRealms) {
+            <app-player-stats-card [charts]="eventCharts['warRealms']" [data]="[]"
               [title]="'Guerre des royaumes' | translate" [playerId]="playerId"
               [eventName]="'player_event_war_realms_history'" (updateData)="updateData($event)"
               [dataName]="'Points de guerre des royaumes' | translate"
               [backgroundIconImage]="'/assets/banner-realm.png'"
-              [backgroundColour]="'rgb(216 182 255)'"></app-player-stats-card>
+              [backgroundColour]="'rgb(216 182 255)'"
+              [stats]="eventStats['warRealms']">
+            </app-player-stats-card>
             }
           </div>
           <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="bloodcrow">
-            @if (charts['bloodcrow'] && chartVisibles.bloodcrow) {
-            <app-player-stats-card [charts]="{ 'Graphique': charts['bloodcrow'] }" [data]="[]"
+            @if (eventCharts['bloodcrow'] && chartVisibles.bloodcrow) {
+            <app-player-stats-card [charts]="eventCharts['bloodcrow']" [data]="[]"
               [title]="'Corbeaux de sang' | translate" [playerId]="playerId"
               [eventName]="'player_event_bloodcrow_history'" (updateData)="updateData($event)"
               [dataName]="'Points de corbeaux de sang' | translate"
               [backgroundIconImage]="'/assets/banner-bloodcrow.png'"
-              [backgroundColour]="'rgb(216 182 255)'"></app-player-stats-card>
+              [backgroundColour]="'rgb(216 182 255)'"
+              [stats]="eventStats['bloodcrow']">
+            </app-player-stats-card>
             }
           </div>
         </div>
         <div class="row mt-3">
           <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="berimondKingdom">
-            @if (charts['berimondKingdom'] && chartVisibles.berimondKingdom) {
-            <app-player-stats-card [charts]="{ 'Graphique': charts['berimondKingdom'] }" [data]="[]"
+            @if (eventCharts['berimondKingdom'] && chartVisibles.berimondKingdom) {
+            <app-player-stats-card [charts]="eventCharts['berimondKingdom']" [data]="[]"
               [title]="'Bataille de Berimond' | translate" [playerId]="playerId"
               [eventName]="'player_event_berimond_kingdom_history'" (updateData)="updateData($event)"
               [dataName]="'Points de Berimond' | translate" [backgroundIconImage]="'/assets/banner-berimond.png'"
-              [backgroundColour]="'#00aaff'"></app-player-stats-card>
+              [backgroundColour]="'#00aaff'"
+              [stats]="eventStats['berimondKingdom']">
+            </app-player-stats-card>
             }
           </div>
           <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="nomad">
-            @if (charts['nomad'] && chartVisibles.nomad) {
-            <app-player-stats-card [charts]="{ 'Graphique': charts['nomad'] }" [data]="[]"
+            @if (eventCharts['nomad'] && chartVisibles.nomad) {
+            <app-player-stats-card [charts]="eventCharts['nomad']" [data]="[]"
               [title]="'Nomades' | translate" [dataName]="'Points de nomades' | translate" [playerId]="playerId"
               [eventName]="'player_event_nomad_history'" (updateData)="updateData($event)"
               [backgroundIconImage]="'/assets/banner-nomad.png'"
-              [backgroundColour]="'rgb(255 130 54)'"></app-player-stats-card>
+              [backgroundColour]="'rgb(255 130 54)'"
+              [stats]="eventStats['nomad']">
+            </app-player-stats-card>
             }
           </div>
         </div>
         <div class="row mt-3">
           <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="samurai">
-            @if (charts['samurai'] && chartVisibles.samurai) {
-            <app-player-stats-card [charts]="{ 'Graphique': charts['samurai'] }" [data]="[]"
+            @if (eventCharts['samurai'] && chartVisibles.samurai) {
+            <app-player-stats-card [charts]="eventCharts['samurai']" [data]="[]"
               [title]="'Samouraïs' | translate" [dataName]="'Points de samouraïs' | translate" [playerId]="playerId"
               [eventName]="'player_event_samurai_history'" (updateData)="updateData($event)"
               [backgroundIconImage]="'/assets/banner-samurai.png'"
-              [backgroundColour]="'#58771db5'"></app-player-stats-card>
+              [backgroundColour]="'#58771db5'"
+              [stats]="eventStats['samurai']">
+            </app-player-stats-card>
             }
           </div>
         </div>

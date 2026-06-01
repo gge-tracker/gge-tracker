@@ -37,6 +37,14 @@ export interface ChartAdvancedOptions {
   annotations?: ApexAnnotations;
 }
 
+export interface EventStatsData {
+  averageScore: number;
+  participatingEvents: number;
+  totalCompletedEvents: number;
+  participationRate: number;
+  trendPercent: number | null;
+}
+
 export interface ChartOptions {
   series: ApexAxisChartSeries;
   chart: ApexChart;
@@ -189,6 +197,8 @@ export enum ChartTypes {
   PARTICIPATION_RATE = 'Participation',
   RADAR = 'Classement',
   TABLE = 'Données',
+  SCORES = 'Scores',
+  STATS = 'Stats',
 }
 
 export type Top3EventPlayers = Record<number, Record<number, EventEntry>>;

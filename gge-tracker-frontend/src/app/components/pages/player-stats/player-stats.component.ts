@@ -27,6 +27,7 @@ import {
   CastleType,
   ChartOptions,
   ErrorType,
+  EventStatsData,
   EventGenericVariation,
   EventType,
   IRankingStatsPlayer,
@@ -171,12 +172,6 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     { key: 'woa', label: 'Roue des richesses inimaginables', assetIcon: 'tools/woa.webp' },
     { key: 'aquamarine', label: 'Îles orageuses', assetIcon: 'tools/aquamarine.webp' },
   ];
-  public currentTab: PlayerStatsTabs = 'overview';
-  public maxLootPointsByWeek: { week: string; points: number }[] = [];
-  public fameTitles: RankingFameTitle[] = [];
-  public fameTitlesTopX: RankingFameTitle[] = [];
-  public top100Glory: { top: number; point: number }[] = [];
-  public fameProgressPercentage: number = 0;
   public chartVisibles = {
     might: false,
     loot: false,
@@ -187,6 +182,18 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     samurai: false,
     aquamarine: false,
   };
+  public currentTab: PlayerStatsTabs = 'overview';
+  public maxLootPointsByWeek: { week: string; points: number }[] = [];
+  public fameTitles: RankingFameTitle[] = [];
+  public fameTitlesTopX: RankingFameTitle[] = [];
+  public top100Glory: { top: number; point: number }[] = [];
+  public fameProgressPercentage: number = 0;
+  public mightPeriod: 'day' | 'week' | 'month' | 'year' = 'week';
+  public eventSeriesTotalCount: Record<string, number> = {};
+  public eventSeriesExpanded: Record<string, boolean> = {};
+  public eventCharts: Record<string, Record<string, ChartOptions>> = {};
+  public eventStats: Record<string, EventStatsData> = {};
+  private readonly EVENT_SERIES_DEFAULT_LIMIT = 5;
 
   public get aquamarineHeroMetric(): ApiAquamarineMetric | undefined {
     return this.aquamarineSnapshots[0]?.metrics.find((m) => m.metric_id === 15);
@@ -277,6 +284,11 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   }
 
   public initDataSegments(points: ApiPlayerStats): void {
+    this.mightPeriod = 'week';
+    this.eventSeriesTotalCount = {};
+    this.eventSeriesExpanded = {};
+    this.eventCharts = {};
+    this.eventStats = {};
     this.data = Object.fromEntries(
       Object.entries(points).map(([key, value]) => {
         let filtered = value;
@@ -572,6 +584,55 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     }
   }
 
+  public onMightPeriodChange(period: 'day' | 'week' | 'month' | 'year'): void {
+    this.mightPeriod = period;
+    this.initMightHistoryData();
+    this.cdr.detectChanges();
+  }
+
+  public getHiddenEventCount(chartName: string): number {
+    const total = this.eventSeriesTotalCount[chartName] ?? 0;
+    if (this.eventSeriesExpanded[chartName]) return 0;
+    return Math.max(0, total - this.EVENT_SERIES_DEFAULT_LIMIT);
+  }
+
+  public expandEventSeries(chartName: string): void {
+    this.eventSeriesExpanded[chartName] = true;
+    this.reinitEventChart(chartName);
+    this.cdr.detectChanges();
+  }
+
+  private reinitEventChart(chartName: string): void {
+    switch (chartName) {
+      case 'warRealms': {
+        this.initWarRealmsData();
+        break;
+      }
+      case 'nomad': {
+        this.initNomadHistoryData();
+        break;
+      }
+      case 'berimondKingdom': {
+        this.initBerimondKingdomData();
+        break;
+      }
+      case 'samurai': {
+        this.initSamuraiHistoryData();
+        break;
+      }
+      case 'bloodcrow': {
+        this.initBloodcrowHistoryData();
+        break;
+      }
+    }
+  }
+
+  private applySeriesLimit(chartName: string, series: ApexAxisChartSeries): ApexAxisChartSeries {
+    this.eventSeriesTotalCount[chartName] = series.length;
+    if (this.eventSeriesExpanded[chartName]) return series;
+    return series.slice(-this.EVENT_SERIES_DEFAULT_LIMIT);
+  }
+
   private initRadialChartOption(name: string, data: number[], color: string[]): void {
     this.radialCharts[name] = {
       // @ts-expect-error: ApexAxisChartSeries expects an array of objects with name and data properties
@@ -833,6 +894,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       },
       legend: {
         show: true,
+        showForSingleSeries: true,
         showForZeroSeries: true,
       },
       yaxis: {
@@ -878,60 +940,185 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     this.spinnerLoadingByChart[name] = false;
   }
 
-  private setGenericVariations(
-    data: ApiGenericData[],
-    key: keyof ApiGenericData = 'point',
-    customConditionFunction?: (data: ApiGenericData[], index: number) => boolean,
-  ): void {
-    const dataWithVariation = data as EventGenericVariation[];
-    for (let index = 0; index < data.length; index++) {
-      if (index === 0 || customConditionFunction?.(data, index)) {
-        dataWithVariation[index]['variation'] = 0;
+  private buildFinalScoresSeries(eventData: [number, number][][]): { data: number[]; categories: string[] } {
+    const locale = this.languageService.getCurrentLang();
+    const now = Date.now();
+    const data: number[] = [];
+    const categories: string[] = [];
+    for (const event of eventData) {
+      if (event.length === 0) continue;
+      const lastPoint = event.at(-1)!;
+      const endDate = new Date(lastPoint[0]);
+      const endWithBuffer = new Date(endDate);
+      endWithBuffer.setHours(endWithBuffer.getHours() + 3);
+      // if (endWithBuffer.getTime() >= now) continue;
+      const startLabel = new Date(event[0][0]).toLocaleDateString(locale).slice(0, -5);
+      const endLabel = endDate.toLocaleDateString(locale).slice(0, -5);
+      const score = Number(lastPoint[1]);
+      if (endWithBuffer.getTime() >= now) {
+        categories.push(this.translateService.instant('Événement courant'));
       } else {
-        dataWithVariation[index]['variation'] = Number(data[index][key]) - Number(data[index - 1][key]);
+        categories.push(
+          this.translateService.instant('Événement du 0 au 0', {
+            start: startLabel,
+            end: endLabel,
+          }) + ` (${this.getUnitByValue(score)})`,
+        );
       }
+      data.push(score);
     }
+    const reversedData = [...data].reverse();
+    const reversedCategories = [...categories].reverse();
+    return { data: reversedData, categories: reversedCategories };
   }
 
-  private normalizeSeriesByReferenceDate(
-    seriesList: { name: string; data: [number, number][] }[],
-    referenceDate: Date = new Date(Date.UTC(2023, 0, 1, 0, 0, 0)),
-  ): { name: string; data: [number, number][] }[] {
-    return seriesList.map((serie) => {
-      if (serie.data.length === 0) return { ...serie, data: [] };
-      const originalStart = Math.floor(serie.data[0][0] / 3_600_000) * 3_600_000;
-      const alignedData = serie.data.map(([timestamp, value]) => {
-        const alignedTimestamp = Math.floor(timestamp / 3_600_000) * 3_600_000;
-        const offset = alignedTimestamp - originalStart;
-        const alignedTimestampResult = referenceDate.getTime() + offset;
-        return [alignedTimestampResult, value] as [number, number];
+  private initFinalScoresChartOption(name: string, data: number[], categories: string[], color: string): void {
+    const scoreLabel = this.translateService.instant('Score');
+    const chartHeight = Math.max(350, data.length * 32);
+
+    let barColors: string[];
+    if (data.length > 0) {
+      const gradient = new Gradient();
+      gradient.setColorGradient('#cccccc', color);
+      gradient.setMidpoint(Math.max(data.length, 2));
+      const gradientSteps = gradient.getColors();
+      const ranked = [...data].map((score, index) => ({ score, index })).sort((a, b) => a.score - b.score);
+      barColors = Array.from({ length: data.length }, () => color);
+      ranked.forEach(({ index }, rank) => {
+        barColors[index] = gradientSteps[rank] ?? color;
       });
-      return {
-        ...serie,
-        data: alignedData,
-      };
-    });
+    } else {
+      barColors = [color];
+    }
+
+    this.charts[name] = {
+      series: [{ name: scoreLabel, data }],
+      chart: {
+        type: 'bar',
+        height: chartHeight,
+        animations: { enabled: false },
+        toolbar: {},
+      },
+      plotOptions: {
+        bar: {
+          horizontal: true,
+          barHeight: '65%',
+          borderRadius: 4,
+          distributed: true,
+        },
+      },
+      dataLabels: {
+        enabled: true,
+        formatter: (value): string => this.getUnitByValue(Number(value)),
+        style: { fontSize: '11px', colors: ['#333333'] },
+        offsetX: 8,
+      },
+      colors: barColors,
+      xaxis: {
+        type: 'category',
+        categories,
+        labels: {
+          style: { fontSize: '11px' },
+        },
+      },
+      yaxis: {
+        labels: {
+          style: { fontSize: '11px' },
+          maxWidth: 220,
+        },
+        forceNiceScale: true,
+      },
+      tooltip: {
+        y: {
+          formatter: (value): string => value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ','),
+        },
+      },
+      title: {},
+      grid: {
+        row: {
+          colors: ['#f3f3f3', 'transparent'],
+          opacity: 0.5,
+        },
+      },
+      fill: { opacity: 1 },
+      stroke: { width: 0 },
+      legend: { show: false },
+      markers: {},
+    };
+    this.spinnerLoadingByChart[name] = false;
+  }
+
+  private buildEventCharts(chartName: string, scoresCount: number): void {
+    const scoresLabel = `${this.translateService.instant('Participation')} (${scoresCount})`;
+    this.eventCharts[chartName] = {
+      [this.translateService.instant('Graphique')]: this.charts[chartName],
+      [scoresLabel]: this.charts[`${chartName}-scores`],
+    };
+  }
+
+  private buildEventStats(chartName: string, eventData: [number, number][][]): void {
+    const now = Date.now();
+    const finalScores: number[] = [];
+    for (const event of eventData) {
+      if (event.length === 0) continue;
+      const lastPoint = event.at(-1)!;
+      const endWithBuffer = new Date(lastPoint[0]);
+      endWithBuffer.setHours(endWithBuffer.getHours() + 3);
+      if (endWithBuffer.getTime() >= now) continue;
+      finalScores.push(Number(lastPoint[1]));
+    }
+    if (finalScores.length === 0) {
+      delete this.eventStats[chartName];
+      return;
+    }
+    const participating = finalScores.filter((s) => s > 0);
+    const participatingCount = participating.length;
+    const totalCompleted = finalScores.length;
+    const participationRate = Math.round((participatingCount / totalCompleted) * 100);
+    const avgScore =
+      participatingCount > 0 ? Math.round(participating.reduce((a, b) => a + b, 0) / participatingCount) : 0;
+    let trendPercent: number | null = null;
+    if (participating.length >= 4) {
+      const last3 = participating.slice(-3);
+      const recentAvg = last3.reduce((a, b) => a + b, 0) / last3.length;
+      trendPercent = Math.round((recentAvg / avgScore - 1) * 100);
+    }
+    this.eventStats[chartName] = {
+      averageScore: avgScore,
+      participatingEvents: participatingCount,
+      totalCompletedEvents: totalCompleted,
+      participationRate,
+      trendPercent,
+    };
   }
 
   private initWarRealmsData(): void {
     const warRealms = this.data['player_event_war_realms_history'];
     // this.setGenericVariations(warRealms);
     const eventData = this.groupEventDataByTimeGaps(this.eventDataSegments['warRealms'], warRealms);
-    const series = this.generateEventSeries(eventData);
+    const series = this.applySeriesLimit('warRealms', this.generateEventSeries(eventData));
     series.forEach((serie, index) => (serie['hidden'] = index !== series.length - 1));
     const colors = ['#d2b8f2', '#c4a1f0', '#ae81e6', '#945adb', '#7d37d4'];
     this.initChartOption('warRealms', series, colors);
+    const { data, categories } = this.buildFinalScoresSeries(eventData);
+    this.initFinalScoresChartOption('warRealms-scores', data, categories, '#7d37d4');
+    this.buildEventStats('warRealms', eventData);
+    this.buildEventCharts('warRealms', data.length);
   }
 
   private initNomadHistoryData(): void {
     const nomadPoints = this.data['player_event_nomad_history'];
     // this.setGenericVariations(nomadPoints);
     const eventData = this.groupEventDataByTimeGaps(this.eventDataSegments['nomad'], nomadPoints);
-    const series = this.generateEventSeries(eventData);
+    const series = this.applySeriesLimit('nomad', this.generateEventSeries(eventData));
     series.forEach((serie, index) => (serie['hidden'] = index !== series.length - 1));
     const colors = new Gradient();
     colors.setColorGradient('#ffcc00', '#ff0000');
     this.initChartOption('nomad', series, colors.getColors());
+    const { data, categories } = this.buildFinalScoresSeries(eventData);
+    this.initFinalScoresChartOption('nomad-scores', data, categories, '#ff8800');
+    this.buildEventStats('nomad', eventData);
+    this.buildEventCharts('nomad', data.length);
   }
 
   private async initPlayerStats(): Promise<void> {
@@ -1073,7 +1260,8 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   }
 
   private initMightHistoryData(): void {
-    const mightPoints = this.data['player_might_history'];
+    const allMightPoints = this.data['player_might_history'];
+    const mightPoints = this.filterMightDataByPeriod(allMightPoints);
     // this.setGenericVariations(mightPoints);
     const { dates, points } = this.getPointsAndDates(mightPoints);
     this.translateService.get('Points de puissance').subscribe((translated) => {
@@ -1087,22 +1275,33 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     });
   }
 
+  private filterMightDataByPeriod(data: EventGenericVariation[]): EventGenericVariation[] {
+    if (this.mightPeriod === 'year') return data;
+    const daysMap: Record<string, number> = { day: 1, week: 7, month: 30 };
+    const cutoff = Date.now() - daysMap[this.mightPeriod] * 24 * 60 * 60 * 1000;
+    return data.filter((point) => new Date(point.utcDate || point.date).getTime() >= cutoff);
+  }
+
   private initBerimondKingdomData(): void {
     const berimondPoints = this.data['player_event_berimond_kingdom_history'];
     // this.setGenericVariations(berimondPoints);
     const eventData = this.groupEventDataByTimeGaps(this.eventDataSegments['berimondKingdom'], berimondPoints);
-    const series = this.generateEventSeries(eventData);
+    const series = this.applySeriesLimit('berimondKingdom', this.generateEventSeries(eventData));
     series.forEach((serie, index) => (serie['hidden'] = index !== series.length - 1));
     const colors = new Gradient();
     colors.setColorGradient('#00aaff', '#00aaff');
     this.initChartOption('berimondKingdom', series, colors.getColors());
+    const { data, categories } = this.buildFinalScoresSeries(eventData);
+    this.initFinalScoresChartOption('berimondKingdom-scores', data, categories, '#00aaff');
+    this.buildEventStats('berimondKingdom', eventData);
+    this.buildEventCharts('berimondKingdom', data.length);
   }
 
   private initBerimondInvasionData(): void {
     const berimondPoints = this.data['player_event_berimond_invasion_history'];
     // this.setGenericVariations(berimondPoints);
     const eventData = this.groupEventDataByTimeGaps(this.eventDataSegments['berimondInvasion'], berimondPoints);
-    const series = this.generateEventSeries(eventData);
+    const series = this.applySeriesLimit('berimondInvasion', this.generateEventSeries(eventData));
     series.forEach((serie, index) => (serie['hidden'] = index !== series.length - 1));
     const colors = new Gradient();
     colors.setColorGradient('#00aaff', '#00aaff');
@@ -1113,22 +1312,30 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     const samuraiPoints = this.data['player_event_samurai_history'];
     // this.setGenericVariations(samuraiPoints);
     const eventData = this.groupEventDataByTimeGaps(this.eventDataSegments['samurai'], samuraiPoints);
-    const series = this.generateEventSeries(eventData);
+    const series = this.applySeriesLimit('samurai', this.generateEventSeries(eventData));
     series.forEach((serie, index) => (serie['hidden'] = index !== series.length - 1));
     const colors = new Gradient();
     colors.setColorGradient('#9ED334', '#58771D');
     this.initChartOption('samurai', series, colors.getColors());
+    const { data, categories } = this.buildFinalScoresSeries(eventData);
+    this.initFinalScoresChartOption('samurai-scores', data, categories, '#6a9420');
+    this.buildEventStats('samurai', eventData);
+    this.buildEventCharts('samurai', data.length);
   }
 
   private initBloodcrowHistoryData(): void {
     const bloodcrowPoints = this.data['player_event_bloodcrow_history'];
     // this.setGenericVariations(bloodcrowPoints);
     const eventData = this.groupEventDataByTimeGaps(this.eventDataSegments['bloodcrow'], bloodcrowPoints);
-    const series = this.generateEventSeries(eventData);
+    const series = this.applySeriesLimit('bloodcrow', this.generateEventSeries(eventData));
     series.forEach((serie, index) => (serie['hidden'] = index !== series.length - 1));
     const colors = new Gradient();
     colors.setColorGradient('#8e5da3', '#8e5da3');
     this.initChartOption('bloodcrow', series, colors.getColors());
+    const { data, categories } = this.buildFinalScoresSeries(eventData);
+    this.initFinalScoresChartOption('bloodcrow-scores', data, categories, '#8e5da3');
+    this.buildEventStats('bloodcrow', eventData);
+    this.buildEventCharts('bloodcrow', data.length);
   }
 
   private initAquamarineCharts(): void {
@@ -1477,6 +1684,9 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
    * @returns The converted value with the appropriate unit.
    */
   private getUnitByValue(value: number): string {
+    if (!value || value === 0 || typeof value !== 'number') {
+      return '0';
+    }
     let unit = '';
     if (value >= 1000 && value < 1_000_000) {
       unit = 'k';
