@@ -908,32 +908,8 @@ export class GenericFetchAndSaveBackend {
               for (const dungeon of dungeons) {
                 if (dungeon[0] == '11') {
                   const coordinates = [dungeon[1], dungeon[2]];
-                  const time = dungeon[5];
-                  // We calculate the time since the last attack
-                  const attackedTimeInSeconds = 24 * 60 * 60 - time;
                   // We calculate the date of the last attack
-                  const lastAttackDate = new Date(Date.now() - attackedTimeInSeconds * 1000);
-                  const playerId = dungeon[6];
                   try {
-                    // We retrieve the old player_id
-                    const [rows] = await this.connection.execute(
-                      `SELECT player_id FROM dungeons WHERE kid = ? AND position_x = ? AND position_y = ?`,
-                      [kid, coordinates[0], coordinates[1]],
-                    );
-                    const oldPlayerId = (rows as any[])[0]?.player_id;
-                    if (oldPlayerId !== playerId) {
-                      await this.connection.execute(
-                        `INSERT INTO dungeon_player_state (kid, position_x, position_y, player_id, last_attack_at)
-                        VALUES (?, ?, ?, ?, ?)`,
-                        [kid, coordinates[0], coordinates[1], playerId, lastAttackDate],
-                      );
-                    }
-                    await this.connection.execute(
-                      `UPDATE dungeons
-                      SET attack_cooldown = ?, player_id = ?, updated_at = NOW()
-                      WHERE kid = ? AND position_x = ? AND position_y = ?`,
-                      [time, playerId, kid, coordinates[0], coordinates[1]],
-                    );
                     this.DB_UPDATES.playersCreated++;
                   } catch {
                     console.log('Skipped MariaDB');
@@ -994,18 +970,24 @@ export class GenericFetchAndSaveBackend {
       // We update the dungeons in batch in PostgreSQL
 
       try {
-        const values: { global_available_at: Date; kid: number; position_x: number; position_y: number }[] = [];
+        const values: (Date | number)[] = [];
         const placeholders: string[] = [];
         dungeonsToUpdate.forEach((dungeon, index) => {
           const offset = index * 4;
-          placeholders.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4})`);
-          values.push({
-            global_available_at: dungeon.global_available_at,
-            kid: dungeon.kid,
-            position_x: dungeon.position_x,
-            position_y: dungeon.position_y,
-          });
+          placeholders.push(
+            `(
+              $${offset + 1}::timestamp,
+              $${offset + 2}::smallint,
+              $${offset + 3}::smallint,
+              $${offset + 4}::smallint
+            )`,
+          );
+          values.push(dungeon.global_available_at, dungeon.kid, dungeon.position_x, dungeon.position_y);
         });
+        if (placeholders.length === 0) {
+          console.log('No dungeons to update in PostgreSQL');
+          return;
+        }
         await pgPool.query(
           `
           UPDATE dungeons d
