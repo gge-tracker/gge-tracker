@@ -53,6 +53,8 @@ COPY --from=build /app/dist/ /app/dist/
 COPY --from=build /app/node_modules /app/node_modules
 COPY --from=build /root/.cache/puppeteer /root/.cache/puppeteer
 
+COPY src/api/lib /app/dist/lib
+
 ENV NODE_ENV=production
 ENV REDIS_URL=redis://redis-server:6379
 EXPOSE 3000
