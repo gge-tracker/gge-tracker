@@ -585,51 +585,63 @@
           </div>
         }
         @if (aquamarineLoadState === 'loaded' && aquamarineSnapshots.length > 0) {
-          <div class="aq-panel">
-            <div class="aq-panel-header">
-              <div class="aq-panel-title">
-                <img src="/assets/tools/aquamarine.webp" alt="" aria-hidden="true">
-                <span>{{ 'Îles orageuses' | translate }}</span>
-              </div>
-              <div class="aq-panel-date">
-                <i class="fas fa-clock"></i>
-                <span>{{ aquamarineSnapshotsLastUpdated | date:'dd/MM/yyyy HH:mm' }}</span>
-              </div>
+          <div class="aq-month-nav">
+            <button class="aq-month-btn" (click)="previousAquamarineMonth()" [title]="'Aller au mois précédent' | translate">
+              <i class="fas fa-chevron-left"></i>
+            </button>
+            <span class="aq-month-label">{{ getMonthNameByDate(aquamarineMonth) }}</span>
+            <button class="aq-month-btn" (click)="nextAquamarineMonth()" [disabled]="isCurrentAquamarineMonth" [title]="'Aller au mois suivant' | translate">
+              <i class="fas fa-chevron-right"></i>
+            </button>
+          </div>
+          @if (aquamarineSnapshotsForMonth.length === 0) {
+            <div class="aq-empty-month">
+              <i class="fas fa-calendar"></i>
+              <span>{{ 'Aucun résultat' | translate }}</span>
             </div>
-            @if (aquamarineHeroMetric) {
-              <div class="aq-hero">
-                <img src="/assets/aquamarine_15.webp" alt="" class="aq-hero-icon" aria-hidden="true">
-                <div class="aq-hero-content">
-                  <span class="aq-hero-value">{{ aquamarineHeroMetric.value | formatNumber }}</span>
-                  <span class="aq-hero-label">{{ AQUAMARINE_METRIC_LABELS[15] | translate }}</span>
+          } @else {
+            <div class="aq-panel">
+              <div class="aq-panel-header">
+                <div class="aq-panel-title">
+                  <img src="/assets/tools/aquamarine.webp" alt="" aria-hidden="true">
+                  <span>{{ 'Îles orageuses' | translate }}</span>
                 </div>
               </div>
-            }
-            <div class="aq-metrics-grid">
-              @for (metric of aquamarineSecondaryMetrics; track metric.metric_id) {
-                <div class="aq-metric-card" [style.--aq-accent]="AQUAMARINE_METRIC_COLORS[metric.metric_id]">
-                  <img [src]="'/assets/aquamarine_' + metric.metric_id + '.webp'" alt="" class="aq-metric-img" aria-hidden="true">
-                  <span class="aq-metric-value">{{ metric.value | formatNumber }}</span>
-                  <span class="aq-metric-label">{{ AQUAMARINE_METRIC_LABELS[metric.metric_id] | translate }}</span>
+              @if (aquamarineHeroMetric) {
+                <div class="aq-hero">
+                  <img src="/assets/aquamarine_15.webp" alt="" class="aq-hero-icon" aria-hidden="true">
+                  <div class="aq-hero-content">
+                    <span class="aq-hero-value">{{ aquamarineHeroMetric.value | formatNumber }}</span>
+                    <span class="aq-hero-label">{{ AQUAMARINE_METRIC_LABELS[15] | translate }}</span>
+                  </div>
                 </div>
               }
+              <div class="aq-metrics-grid">
+                @for (metric of aquamarineSecondaryMetrics; track metric.metric_id) {
+                  <div class="aq-metric-card" [style.--aq-accent]="AQUAMARINE_METRIC_COLORS[metric.metric_id]">
+                    <img [src]="'/assets/aquamarine_' + metric.metric_id + '.webp'" alt="" class="aq-metric-img" aria-hidden="true">
+                    <span class="aq-metric-value">{{ metric.value | formatNumber }}</span>
+                    <span class="aq-metric-label">{{ AQUAMARINE_METRIC_LABELS[metric.metric_id] | translate }}</span>
+                  </div>
+                }
+              </div>
             </div>
-          </div>
-          <div class="row mt-4">
-            <div class="col-12" #chartContainer data-chart="aquamarine">
-              @if (charts['aquamarine'] && chartVisibles.aquamarine) {
-                <app-player-stats-card
-                  [charts]="{ 'Graphique': charts['aquamarine'] }"
-                  [data]="[]"
-                  [title]="'Îles orageuses' | translate"
-                  [dataName]="'Points' | translate"
-                  [backgroundIconImage]="'/assets/banner-aquamarine.png'"
-                  [eventName]="'aquamarine'"
-                  [backgroundColour]="'rgb(0 188 212)'">
-                </app-player-stats-card>
-              }
+            <div class="row mt-4">
+              <div class="col-12" #chartContainer data-chart="aquamarine">
+                @if (charts['aquamarine'] && chartVisibles.aquamarine) {
+                  <app-player-stats-card
+                    [charts]="{ 'Graphique': charts['aquamarine'] }"
+                    [data]="[]"
+                    [title]="'Îles orageuses' | translate"
+                    [dataName]="'Points' | translate"
+                    [backgroundIconImage]="'/assets/banner-aquamarine.png'"
+                    [eventName]="'aquamarine'"
+                    [backgroundColour]="'rgb(0 188 212)'">
+                  </app-player-stats-card>
+                }
+              </div>
             </div>
-          </div>
+          }
         }
       </div>
       }

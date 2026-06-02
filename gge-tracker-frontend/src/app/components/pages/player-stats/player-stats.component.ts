@@ -86,6 +86,20 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     20: 'Aigues-marines perdues en combats JcJ',
   };
   public readonly AQUAMARINE_ALLOWED = [15, 16, 17, 18, 19, 20, 100];
+  public readonly monthNames = [
+    'Janvier',
+    'Février',
+    'Mars',
+    'Avril',
+    'Mai',
+    'Juin',
+    'Juillet',
+    'Août',
+    'Septembre',
+    'Octobre',
+    'Novembre',
+    'Décembre',
+  ];
   public readonly AQUAMARINE_METRIC_ICONS: Record<number, string> = {
     15: 'fas fa-gem',
     16: 'fas fa-water',
@@ -158,6 +172,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   public monumentsList: Monument[] = [];
   public aquamarineSnapshots: ApiAquamarineSnapshot[] = [];
   public aquamarineLoadState: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
+  public aquamarineMonth = new Date().toISOString().slice(0, 7);
   public eventsLoadState: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
   public woaLoadState: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
   public gloryLoadState: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
@@ -195,16 +210,34 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   public eventStats: Record<string, EventStatsData> = {};
   private readonly EVENT_SERIES_DEFAULT_LIMIT = 5;
 
+  public get aquamarineSnapshotsForMonth(): ApiAquamarineSnapshot[] {
+    return this.aquamarineSnapshots.filter((s) => s.collected_at.slice(0, 7) === this.aquamarineMonth);
+  }
+
+  public get isCurrentAquamarineMonth(): boolean {
+    return this.aquamarineMonth === new Date().toISOString().slice(0, 7);
+  }
+
   public get aquamarineHeroMetric(): ApiAquamarineMetric | undefined {
-    return this.aquamarineSnapshots[0]?.metrics.find((m) => m.metric_id === 15);
+    const snapshots = this.aquamarineSnapshotsForMonth;
+    if (snapshots.length === 0) return undefined;
+    let latest = snapshots[0];
+    for (const s of snapshots) {
+      if (s.collected_at > latest.collected_at) latest = s;
+    }
+    return latest.metrics.find((m) => m.metric_id === 15);
   }
 
   public get aquamarineSecondaryMetrics(): ApiAquamarineMetric[] {
-    const snapshot = this.aquamarineSnapshots[0];
-    if (!snapshot) return [];
+    const snapshots = this.aquamarineSnapshotsForMonth;
+    if (snapshots.length === 0) return [];
+    let latest = snapshots[0];
+    for (const s of snapshots) {
+      if (s.collected_at > latest.collected_at) latest = s;
+    }
     const order = [100, 16, 17, 18, 19, 20];
     return order
-      .map((id) => snapshot.metrics.find((m) => m.metric_id === id))
+      .map((id) => latest.metrics.find((m) => m.metric_id === id))
       .filter((m): m is ApiAquamarineMetric => m !== undefined);
   }
 
@@ -329,6 +362,37 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
         queryParams: { date: event.date.toISOString(), page: calculatedPage },
       });
     }
+  }
+
+  public getMonthNameByDate(date: string): string {
+    const [year, month] = date.split('-');
+    return this.translateService.instant(this.monthNames[Number(month) - 1]) + ' ' + year;
+  }
+
+  public previousAquamarineMonth(): void {
+    const [year, month] = this.aquamarineMonth.split('-');
+    const previousMonth = Number(month) - 1;
+    if (previousMonth < 1) {
+      this.aquamarineMonth = `${Number(year) - 1}-12`;
+    } else {
+      this.aquamarineMonth = `${year}-${previousMonth.toString().padStart(2, '0')}`;
+    }
+    this.initAquamarineCharts();
+    this.cdr.detectChanges();
+  }
+
+  public nextAquamarineMonth(): void {
+    const [year, month] = this.aquamarineMonth.split('-');
+    const nextMonth = Number(month) + 1;
+    if (new Date(Number(year), nextMonth - 1) > new Date()) {
+      return;
+    } else if (nextMonth > 12) {
+      this.aquamarineMonth = `${Number(year) + 1}-01`;
+    } else {
+      this.aquamarineMonth = `${year}-${nextMonth.toString().padStart(2, '0')}`;
+    }
+    this.initAquamarineCharts();
+    this.cdr.detectChanges();
   }
 
   public async ngOnInit(): Promise<void> {
@@ -1339,11 +1403,23 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   }
 
   private initAquamarineCharts(): void {
-    if (this.aquamarineSnapshots.length === 0) return;
+    const snapshots = this.aquamarineSnapshotsForMonth;
+    if (snapshots.length === 0) {
+      delete this.charts['aquamarine'];
+      return;
+    }
 
-    // Build one time-series per metric_id across all snapshots.
+    // Update last-updated timestamp for the selected month
+    let latestSnapshot = snapshots[0];
+    for (const s of snapshots) {
+      if (s.collected_at > latestSnapshot.collected_at) latestSnapshot = s;
+    }
+    const timestamp = latestSnapshot.metrics.find((m) => m.metric_id === 21)?.value;
+    this.aquamarineSnapshotsLastUpdated = new Date(timestamp ? timestamp * 1000 : Date.now());
+
+    // Build one time-series per metric_id across all snapshots for this month
     const metricSeries = new Map<number, Array<[number, number]>>();
-    for (const snapshot of this.aquamarineSnapshots) {
+    for (const snapshot of snapshots) {
       const ts = new Date(snapshot.collected_at).getTime();
       for (const metric of snapshot.metrics) {
         if (this.AQUAMARINE_ALLOWED.includes(metric.metric_id)) {
@@ -1361,7 +1437,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     }
 
     const series: ApexAxisChartSeries = [...metricSeries.entries()].map(([metricId, points]) => ({
-      name: this.AQUAMARINE_METRIC_LABELS[metricId] ?? `${metricId}`,
+      name: this.translateService.instant(this.AQUAMARINE_METRIC_LABELS[metricId]) ?? `${metricId}`,
       data: points,
     }));
 
@@ -1602,7 +1678,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       }
       return `${dayName} ${hours}h${minutes}`;
     };
-    tooltipX.formatter = function (value, { dataPointIndex }): string {
+    tooltipX.formatter = function (_value, { dataPointIndex }): string {
       const now = new Date();
       const monday = new Date(now);
       const day = monday.getDay() || 7;

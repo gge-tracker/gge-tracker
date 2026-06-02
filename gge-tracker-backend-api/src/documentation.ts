@@ -88,7 +88,7 @@ const options = {
       },
       responses: {
         BadRequest: {
-          description: 'Bad request — invalid or missing parameters.',
+          description: 'Bad request - invalid or missing parameters.',
           content: {
             'application/json': {
               schema: {
@@ -101,7 +101,7 @@ const options = {
           },
         },
         NotFound: {
-          description: 'Not found — the requested resource does not exist.',
+          description: 'Not found - the requested resource does not exist.',
           content: {
             'application/json': {
               schema: {

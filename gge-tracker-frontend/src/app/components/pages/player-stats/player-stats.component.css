@@ -1112,3 +1112,61 @@ img::selection {
   font-size: 2rem;
   opacity: 0.4;
 }
+.aq-month-nav {
+  align-items: center;
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  padding: 12px 0 4px;
+}
+.aq-month-label {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  min-width: 180px;
+  text-align: center;
+}
+.aq-month-btn {
+  align-items: center;
+  background: rgba(0, 229, 255, 0.08);
+  border: 1px solid rgba(0, 229, 255, 0.22);
+  border-radius: 50%;
+  color: rgba(0, 229, 255, 0.75);
+  cursor: pointer;
+  display: flex;
+  font-size: 0.8rem;
+  height: 36px;
+  justify-content: center;
+  padding: 0;
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    color 0.2s,
+    transform 0.15s;
+  width: 36px;
+}
+.aq-month-btn:hover:not(:disabled) {
+  background: rgba(0, 229, 255, 0.18);
+  border-color: rgba(0, 229, 255, 0.5);
+  color: #00e5ff;
+  transform: scale(1.1);
+}
+.aq-month-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.25;
+}
+.aq-empty-month {
+  align-items: center;
+  color: rgba(255, 255, 255, 0.35);
+  display: flex;
+  flex-direction: column;
+  font-size: 0.95rem;
+  gap: 12px;
+  padding: 48px 0 24px;
+  text-align: center;
+}
+.aq-empty-month i {
+  color: rgba(0, 229, 255, 0.3);
+  font-size: 2.2rem;
+}
