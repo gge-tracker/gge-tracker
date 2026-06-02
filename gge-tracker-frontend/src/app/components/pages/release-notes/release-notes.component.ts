@@ -21,7 +21,7 @@ export class ReleaseNotesComponent {
       type: EnumTypeReleaseNote.MAJOR,
       date: '2026-05-27',
       items: [
-        '📦 [Server] Added E4K-DE2 and EP-WORLD1 to advanced tools (realtime fortress tracker + castle visualizer across kingdoms)',
+        '📦 [Server] Added E4K-DE2, EP-WORLD1 and EP-ASIA to advanced tools (realtime fortress tracker + castle visualizer across kingdoms)',
         '🛠️ [Tools] Added new tool: Stormy Isles leaderboard : browse rankings with aquamarine metrics',
         '🛠️ [Tools] Added new tool: Wheel of Unimaginable Affluence (WoA) : browse past event leaderboards',
         '🛠️ [Alliance Analysis] Added new statistics cards: players currently in protection, highest glory holder, and total alliance glory',
@@ -31,6 +31,7 @@ export class ReleaseNotesComponent {
         '🛠️ [Castle View] Displaying castle skins and added new tab: list of buildings (table)',
         '✨ [Player Analysis] Added new "Wheel of Unimaginable Affluence" tab showing the player\'s WoA event history',
         '✨ [Player Analysis] Added new "Stormy Isles" tab showing aquamarine points',
+        '✨ [Player Analysis] Added new event indicators: participation rate, average score and participation trend',
         '✨ [Alliance List] Added advanced filter: alliance might range',
         '✨ [Castle View] UI overhaul and displaying several randomly selected castles',
         '✨ [Events] Displaying player alliances',

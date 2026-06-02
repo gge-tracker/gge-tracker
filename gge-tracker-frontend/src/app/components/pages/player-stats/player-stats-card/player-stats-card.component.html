@@ -146,7 +146,9 @@
         <div class="col-12 col-sm-4">
           <div class="p-3 rounded border h-100 d-flex flex-column align-items-center justify-content-center">
             <i class="fas fa-calendar-check text-primary mb-2 fs-3"></i>
-            @if (stats()!.participationRate < 100) {
+            @if (stats()!.totalCompletedEvents === 0) {
+              <div class="fw-bold fs-4">-</div>
+            } @else {
               <div class="fw-bold fs-4">{{ stats()!.participatingEvents }} / {{ stats()!.totalCompletedEvents }}</div>
               <div class="text-muted small mt-1">{{ 'Participation' | translate }}</div>
               <div class="mt-1" style="font-size:0.72rem">
@@ -155,9 +157,6 @@
                 </span>
                 {{ 'des événements' | translate }}
               </div>
-            } @else {
-              <div class="fw-bold fs-4">{{ stats()!.participatingEvents }}</div>
-              <div class="text-muted small mt-1">{{ 'événements participés' | translate }}</div>
             }
           </div>
         </div>

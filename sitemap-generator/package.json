@@ -1,6 +1,6 @@
 {
   "name": "sitemap-generator",
-  "version": "26.04.07-beta",
+  "version": "26.06.02-beta",
   "private": true,
   "type": "module",
   "dependencies": {
