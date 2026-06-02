@@ -2613,11 +2613,10 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         identifier: 'players_in_peace',
         label: 'En protection',
         logo: 'assets/peace.png',
-        value: playersInPeace.toString(),
+        value:
+          playersInPeace.toString() + ' (' + this.formatAvg((playersInPeace / this.players.length) * 100, 1) + '%)',
         valueCompare: 0,
-        avg:
-          this.formatAvg((playersInPeace / this.players.length) * 100, 1) +
-          this.translateService.instant("% de l'alliance"),
+        avg: '',
       },
       {
         identifier: 'max_fame',

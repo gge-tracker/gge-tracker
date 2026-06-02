@@ -430,9 +430,8 @@ div[after] {
 }
 
 .stat-card .icon {
-  height: 50px;
-  margin-bottom: 0.5rem;
-  width: 50px;
+  max-height: 35px;
+  max-width: 35px;
 }
 
 .stat-card .label {
@@ -665,7 +664,7 @@ div[after] {
   }
 }
 
-@media (max-width: 1400px) {
+@media (max-width: 1494px) {
   .alliance-stats-container {
     max-height: calc(100vh - 85px);
   }
