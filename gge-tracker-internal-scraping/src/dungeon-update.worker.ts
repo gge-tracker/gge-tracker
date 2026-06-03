@@ -114,13 +114,6 @@ async function processServer(server: ServerConfig, index: string, total: number)
 
   const backend = new GenericFetchAndSaveBackend(
     `${BASE_API_HOST}/${server.zone}/`,
-    {
-      host: 'mariadb',
-      user: process.env.SQL_USER!,
-      password: process.env.SQL_PASSWORD!,
-      database: server.sql,
-      connectionLimit: 1,
-    },
     {},
     {
       host: 'postgres',

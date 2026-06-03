@@ -20,13 +20,6 @@ if (!ID_SERVER || !PG_DB || !logSuffix || !CONNECTION_LIMIT) {
 }
 
 const BASE_API_URL: string = `http://empire-api-realtime:3000/${ID_SERVER}/`;
-const DATABASE_CONFIG = {
-  host: 'mariadb',
-  user: process.env.SQL_USER,
-  password: process.env.SQL_PASSWORD,
-  database: PG_DB,
-  connectionLimit: Number(CONNECTION_LIMIT),
-};
 const postgresConfig = {
   host: 'postgres',
   user: process.env.SQL_USER,
@@ -37,7 +30,7 @@ const postgresConfig = {
 };
 
 async function updateDungeonsList(): Promise<void> {
-  const generic = new GenericFetchAndSaveBackend(BASE_API_URL, DATABASE_CONFIG, {}, postgresConfig, logSuffix);
+  const generic = new GenericFetchAndSaveBackend(BASE_API_URL, {}, postgresConfig, logSuffix);
   await generic.updateDungeonsList();
 }
 

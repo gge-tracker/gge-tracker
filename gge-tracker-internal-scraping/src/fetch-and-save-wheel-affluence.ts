@@ -31,7 +31,7 @@ const CLICKHOUSE_CONFIG = {
 };
 
 async function updateWheelAffluence(): Promise<void> {
-  const generic = new GenericFetchAndSaveBackend(BASE_API_URL, null, CLICKHOUSE_CONFIG, null, logSuffix);
+  const generic = new GenericFetchAndSaveBackend(BASE_API_URL, CLICKHOUSE_CONFIG, null, logSuffix);
   await generic.insertWheelOfUnimaginableAffluenceData();
 }
 

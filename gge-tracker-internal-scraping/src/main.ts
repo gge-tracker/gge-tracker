@@ -84,7 +84,6 @@ export class GenericFetchAndSaveBackend {
   private readonly DISCORD_OR_API_URL: string = process.env.DISCORD_OR_API_URL || '';
   private readonly MAP_SIZE = 1286;
   private readonly BASE_API_URL: string;
-  private readonly DATABASE_CONFIG: mysql.PoolOptions | null;
   private readonly CLICKHOUSE_CONFIG: { [key: string]: string | number | undefined } | undefined;
   private readonly PGSQL_CONFIG: pg.PoolConfig | undefined;
   private readonly server: string;
@@ -106,20 +105,18 @@ export class GenericFetchAndSaveBackend {
 
   constructor(
     BASE_API_URL: string,
-    DATABASE_CONFIG: mysql.PoolOptions | null,
     CLICKHOUSE_CONFIG: { [key: string]: string | number | undefined } | null,
     PGSQL_CONFIG: pg.PoolConfig | null,
     server: string | undefined,
   ) {
     this.BASE_API_URL = BASE_API_URL;
-    this.DATABASE_CONFIG = DATABASE_CONFIG;
     this.CLICKHOUSE_CONFIG = CLICKHOUSE_CONFIG ? CLICKHOUSE_CONFIG : undefined;
     if (PGSQL_CONFIG) {
       this.PGSQL_CONFIG = PGSQL_CONFIG;
     }
     this.server = server ? server : 'unknown';
     this.isE4KServer = String(server).toLowerCase().startsWith('e4k');
-    if (DATABASE_CONFIG || PGSQL_CONFIG) {
+    if (PGSQL_CONFIG) {
       this.createNewPool();
     }
   }
@@ -1544,17 +1541,11 @@ export class GenericFetchAndSaveBackend {
   }
 
   private createNewPool(): void {
-    if (this.connection) {
-      this.connection.end().catch((error) => {
-        Utils.logMessage('An error occurred while closing the previous connection:', error);
-      });
-    }
     if (this.pgSqlConnection) {
       this.pgSqlConnection.end().catch((error) => {
         Utils.logMessage('An error occurred while closing the previous PostgreSQL connection:', error);
       });
     }
-    if (this.DATABASE_CONFIG) this.connection = mysql.createPool(this.DATABASE_CONFIG);
     this.pgSqlConnection = new pg.Pool(this.PGSQL_CONFIG);
   }
 
@@ -3112,7 +3103,7 @@ export class GenericFetchAndSaveBackend {
       const keys = Object.keys(this.playerLootAndMightPointHistoryList);
       const length = keys.length;
       let j = 0;
-      const dbConnectionLimit = Number(this.DATABASE_CONFIG?.['connectionLimit']) || 5;
+      const dbConnectionLimit = Number(this.PGSQL_CONFIG?.['max']) || 5;
       let targetLimit: number = 1;
       if (dbConnectionLimit > 20) {
         targetLimit = 20;

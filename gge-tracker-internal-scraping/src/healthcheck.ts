@@ -21,13 +21,6 @@ if (!ID_SERVER || !PG_DB || !CLICKHOUSE_DB || !logSuffix || !CONNECTION_LIMIT) {
 }
 
 const BASE_API_URL: string = `http://empire-api:3000/${ID_SERVER}/`;
-const DATABASE_CONFIG = {
-  host: 'mariadb',
-  user: process.env.SQL_USER,
-  password: process.env.SQL_PASSWORD,
-  database: PG_DB,
-  connectionLimit: Number(CONNECTION_LIMIT),
-};
 const CLICKHOUSE_CONFIG = {
   url: 'http://clickhouse',
   port: 8123,
@@ -46,13 +39,7 @@ const postgresConfig = {
 };
 
 async function executeHealthCheck(): Promise<void> {
-  const generic = new GenericFetchAndSaveBackend(
-    BASE_API_URL,
-    DATABASE_CONFIG,
-    CLICKHOUSE_CONFIG,
-    postgresConfig,
-    logSuffix,
-  );
+  const generic = new GenericFetchAndSaveBackend(BASE_API_URL, CLICKHOUSE_CONFIG, postgresConfig, logSuffix);
   await generic.executeHealthCheck();
   setTimeout(() => {
     console.log('Timeout reached, forcing exit.');

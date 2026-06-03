@@ -12,7 +12,6 @@ import { GenericFetchAndSaveBackend } from './main';
 
 const ID_SERVER = process.env.ID_SERVER;
 const PG_DB = process.env.PG_DB;
-const MYSQL_DB = process.env.MYSQL_DB;
 const CLICKHOUSE_DB = process.env.CLICKHOUSE_DB;
 const logSuffix = process.env.LOG_SUFFIX;
 const CONNECTION_LIMIT = process.env.CONNECTION_LIMIT;
@@ -30,7 +29,6 @@ const DISCORD_OR_CHANNEL_ID = process.env.DISCORD_OR_CHANNEL_ID;
 if (
   !ID_SERVER ||
   !PG_DB ||
-  !MYSQL_DB ||
   !CLICKHOUSE_DB ||
   !logSuffix ||
   !CONNECTION_LIMIT ||
@@ -47,22 +45,6 @@ if (
 const BASE_DOMAIN_URL: string = `http://empire-api-realtime:3000`;
 const BASE_API_URL: string = `${BASE_DOMAIN_URL}/${ID_SERVER}/`;
 const TARGET_BASE_API_URL: string = `${BASE_DOMAIN_URL}/${TARGET_ID_SERVER}/`;
-
-// MariaDB Configuration
-const DATABASE_CONFIG = {
-  host: 'mariadb',
-  user: process.env.SQL_USER,
-  password: process.env.SQL_PASSWORD,
-  database: MYSQL_DB,
-  connectionLimit: Number(CONNECTION_LIMIT),
-};
-const TARGET_DATABASE_CONFIG = {
-  host: 'mariadb',
-  user: process.env.SQL_USER,
-  password: process.env.SQL_PASSWORD,
-  database: TARGET_MYSQL_DB,
-  connectionLimit: Number(TARGET_CONNECTION_LIMIT),
-};
 
 // ClickHouse Configuration
 const CLICKHOUSE_CONFIG = {
@@ -107,7 +89,6 @@ async function createOuterRealmsInstance(): Promise<void> {
   try {
     const generic = new GenericFetchAndSaveBackend(
       BASE_API_URL,
-      DATABASE_CONFIG,
       CLICKHOUSE_CONFIG,
       postgresConfig,
       logSuffix || 'Outer Realms Token Scraper',
@@ -162,7 +143,6 @@ async function createOuterRealmsInstance(): Promise<void> {
     console.log('Starting Outer Realms data fetch process...');
     const target = new GenericFetchAndSaveBackend(
       TARGET_BASE_API_URL,
-      TARGET_DATABASE_CONFIG,
       TARGET_CLICKHOUSE_CONFIG,
       TARGET_postgresConfig,
       TARGET_LOG_SUFFIX || 'Outer Realms Token Scraper',
