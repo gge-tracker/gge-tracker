@@ -890,7 +890,13 @@ export class GenericFetchAndSaveBackend {
       );
       const totalRequests = rows.length;
       console.log('Total dungeons to check:', totalRequests);
-      const dungeonsToUpdate: { kid: number; position_x: number; position_y: number; global_available_at: Date }[] = [];
+      const dungeonsToUpdate: {
+        kid: number;
+        position_x: number;
+        position_y: number;
+        global_available_at: Date;
+        player_id: number;
+      }[] = [];
       for (const row of rows) {
         const { kid, position_x, position_y } = row;
         const square = await this.getCorrespondingSquare(position_x, position_y, mapSize);
@@ -924,6 +930,7 @@ export class GenericFetchAndSaveBackend {
                     position_x: coordinates[0],
                     position_y: coordinates[1],
                     global_available_at: new Date(currentTime.getTime() + remainingCooldown24h * 1000),
+                    player_id: dungeon[6],
                   });
                 }
               }
@@ -967,40 +974,72 @@ export class GenericFetchAndSaveBackend {
           }
         }
       }
-      // We update the dungeons in batch in PostgreSQL
-
       try {
-        const values: (Date | number)[] = [];
-        const placeholders: string[] = [];
+        const updateValues: (Date | number)[] = [];
+        const updatePlaceholders: string[] = [];
+        const historyValues: number[] = [];
+        const historyPlaceholders: string[] = [];
+
         dungeonsToUpdate.forEach((dungeon, index) => {
-          const offset = index * 4;
-          placeholders.push(
+          // UPDATE
+          const updateOffset = index * 4;
+          updatePlaceholders.push(
             `(
-              $${offset + 1}::timestamp,
-              $${offset + 2}::smallint,
-              $${offset + 3}::smallint,
-              $${offset + 4}::smallint
+              $${updateOffset + 1}::timestamp,
+              $${updateOffset + 2}::smallint,
+              $${updateOffset + 3}::smallint,
+              $${updateOffset + 4}::smallint
             )`,
           );
-          values.push(dungeon.global_available_at, dungeon.kid, dungeon.position_x, dungeon.position_y);
+          updateValues.push(dungeon.global_available_at, dungeon.kid, dungeon.position_x, dungeon.position_y);
+
+          // HISTORY
+          const historyOffset = index * 4;
+          historyPlaceholders.push(
+            `(
+              $${historyOffset + 1}::smallint,
+              $${historyOffset + 2}::smallint,
+              $${historyOffset + 3}::smallint,
+              $${historyOffset + 4}::integer
+            )`,
+          );
+
+          historyValues.push(dungeon.kid, dungeon.position_x, dungeon.position_y, dungeon.player_id);
         });
-        if (placeholders.length === 0) {
+
+        if (updatePlaceholders.length === 0) {
           console.log('No dungeons to update in PostgreSQL');
           return;
         }
+        console.log('\nUpdating dungeons...');
         await pgPool.query(
           `
           UPDATE dungeons d
           SET global_available_at = v.global_available_at
           FROM (
             VALUES
-              ${placeholders.join(',')}
+              ${updatePlaceholders.join(',')}
           ) AS v(global_available_at, kid, position_x, position_y)
           WHERE d.kid = v.kid
             AND d.position_x = v.position_x
             AND d.position_y = v.position_y
           `,
-          values,
+          updateValues,
+        );
+
+        console.log('Inserting dungeon history...');
+        await pgPool.query(
+          `
+          INSERT INTO dungeons_history (
+            kid,
+            position_x,
+            position_y,
+            player_id
+          )
+          VALUES
+            ${historyPlaceholders.join(',')}
+          `,
+          historyValues,
         );
       } catch (error) {
         console.log(error);
