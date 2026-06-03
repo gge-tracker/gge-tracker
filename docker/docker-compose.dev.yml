@@ -53,14 +53,6 @@ services:
     ports:
       - "9090:9090"
 
-  # MariaDB database for legacy data storage and compatibility with dungeons tool (removed in future)
-  mariadb:
-    extends:
-      service: mariadb
-      file: docker/docker-compose.common.yml
-    ports:
-      - "3306:3306"
-
   # ClickHouse database for big data analytics and fast querying of large datasets (e.g., events)
   clickhouse:
     extends:
