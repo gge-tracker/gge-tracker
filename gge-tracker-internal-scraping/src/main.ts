@@ -892,6 +892,7 @@ export class GenericFetchAndSaveBackend {
         position_x: number;
         position_y: number;
         global_available_at: Date;
+        player_available_at: Date;
         player_id: number;
       }[] = [];
       for (const row of rows) {
@@ -911,13 +912,14 @@ export class GenericFetchAndSaveBackend {
               for (const dungeon of dungeons) {
                 if (dungeon[0] == '11') {
                   const coordinates = [dungeon[1], dungeon[2]];
+                  const PLAYER_COOLDOWN_SECONDS = 4 * 24 * 60 * 60;
                   // We calculate the date of the last attack
-                  try {
-                    this.DB_UPDATES.playersCreated++;
-                  } catch {
-                    console.log('Skipped MariaDB');
-                  }
+                  this.DB_UPDATES.playersCreated++;
                   const remainingCooldown24h = dungeon[5];
+                  const globalAvailableDate = new Date(currentTime.getTime() + remainingCooldown24h * 1000);
+                  const playerAvailableDate = new Date(
+                    currentTime.getTime() + (remainingCooldown24h + PLAYER_COOLDOWN_SECONDS) * 1000,
+                  );
                   if (remainingCooldown24h <= 0) {
                     // Skipping cooldown update if the dungeon is already available
                     continue;
@@ -926,7 +928,8 @@ export class GenericFetchAndSaveBackend {
                     kid,
                     position_x: coordinates[0],
                     position_y: coordinates[1],
-                    global_available_at: new Date(currentTime.getTime() + remainingCooldown24h * 1000),
+                    global_available_at: globalAvailableDate,
+                    player_available_at: playerAvailableDate,
                     player_id: dungeon[6],
                   });
                 }
@@ -976,6 +979,8 @@ export class GenericFetchAndSaveBackend {
         const updatePlaceholders: string[] = [];
         const historyValues: number[] = [];
         const historyPlaceholders: string[] = [];
+        const cooldownValues: (number | Date)[] = [];
+        const cooldownPlaceholders: string[] = [];
 
         dungeonsToUpdate.forEach((dungeon, index) => {
           // UPDATE
@@ -1000,8 +1005,27 @@ export class GenericFetchAndSaveBackend {
               $${historyOffset + 4}::integer
             )`,
           );
-
           historyValues.push(dungeon.kid, dungeon.position_x, dungeon.position_y, dungeon.player_id);
+
+          // COOLDOWNS
+          const cooldownOffset = index * 5;
+          cooldownPlaceholders.push(
+            `(
+                $${cooldownOffset + 1}::smallint,
+                $${cooldownOffset + 2}::smallint,
+                $${cooldownOffset + 3}::smallint,
+                $${cooldownOffset + 4}::integer,
+                $${cooldownOffset + 5}::timestamp
+              )`,
+          );
+
+          cooldownValues.push(
+            dungeon.kid,
+            dungeon.position_x,
+            dungeon.position_y,
+            dungeon.player_id,
+            dungeon.player_available_at,
+          );
         });
 
         if (updatePlaceholders.length === 0) {
@@ -1038,6 +1062,23 @@ export class GenericFetchAndSaveBackend {
           `,
           historyValues,
         );
+
+        console.log('Updating dungeon cooldowns...');
+        await pgPool.query(
+          `
+          INSERT INTO dungeon_player_cooldowns (
+            kid,
+            position_x,
+            position_y,
+            player_id,
+            available_at
+          )
+          VALUES ${cooldownPlaceholders.join(',')}
+          ON CONFLICT (kid, position_x, position_y, player_id)
+          DO UPDATE SET available_at = EXCLUDED.available_at
+          `,
+          cooldownValues,
+        );
       } catch (error) {
         console.log(error);
         throw new Error(
@@ -1073,7 +1114,6 @@ export class GenericFetchAndSaveBackend {
           dungeonsUpdated: this.DB_UPDATES.playersCreated,
         },
       });
-      await this.connection.end();
     }
   }
 
