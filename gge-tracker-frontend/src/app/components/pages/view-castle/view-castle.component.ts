@@ -751,6 +751,31 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     this.tooltip = null;
     this.canvasReady = false;
     this.cid = null;
+    this.castleObject = null;
+    this.calculatedCastleProperties = {
+      playerName: '',
+      castleName: '',
+      castleType: '',
+      positionX: 0,
+      positionY: 0,
+      level: '',
+      sightRadius: 0,
+      guardSize: 0,
+      publicOrder: {
+        base: 0,
+        effects: 0,
+      },
+      wall: {
+        base: 0,
+        effects: 0,
+      },
+      sumMight: 0,
+      placeOccupied: 0,
+      placeNotOccupied: 0,
+      nbFloors: 0,
+      maxFloors: 20,
+      nbFire: 0,
+    };
     this.cdr.detectChanges();
   }
 
@@ -1021,7 +1046,6 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       });
     }
     this.totalPages = Math.max(1, Math.ceil(filtered.length / this.pageSize));
-    console.log(this._filteredBuildings);
     this._filteredBuildings = filtered;
   }
 
@@ -1116,7 +1140,6 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
         };
       }
     }
-    console.log(this.regroupedEffects);
 
     let mappedConstructionItems: { [key: string]: ConstructionItem[] } = {};
     for (const [oid, elements] of Object.entries(castleData.constructionItems)) {
