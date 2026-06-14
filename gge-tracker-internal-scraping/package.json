@@ -11,7 +11,7 @@
     "axios": "^1.16.0",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
-    "discord.js": "^14.19.3",
+    "discord.js": "^14.26.4",
     "redis": "^4.7.0",
     "dotenv": "^16.5.0",
     "mysql": "^2.18.1",
