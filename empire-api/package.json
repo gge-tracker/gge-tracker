@@ -15,19 +15,19 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "@typescript-eslint/eslint-plugin": "^8.46.4",
+    "@typescript-eslint/eslint-plugin": "^8.61.0",
     "body-parser": "^1.20.5",
     "dotenv": "^16.0.3",
     "eslint": "^9.39.1",
     "eslint-plugin-prettier": "^5.5.4",
     "eslint-plugin-unicorn": "^62.0.0",
-    "express": "^4.22.2",
+    "express": "^5.2.1",
     "fast-xml-parser": "^5.7.0",
-    "puppeteer-core": "^22.13.0",
+    "puppeteer-core": "^22.15.0",
     "redis": "^5.11.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
-    "undici": "^5.27.2",
+    "undici": "^6.24.0",
     "ws": "^8.21.0"
   },
   "devDependencies": {
