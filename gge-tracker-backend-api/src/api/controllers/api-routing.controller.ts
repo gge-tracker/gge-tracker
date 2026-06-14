@@ -32,7 +32,7 @@ import { ApiMiniGame } from '../routes/api-mini-game';
  *
  * @remarks
  * - This class should be instantiated with the required dependencies and used to register route handlers.
- * - Some endpoints are temporarily disabled and will return a 501 status.
+ * - Some endpoints are temporarily disabled and will return a 404 status.
  *
  * @see ApiGgeTrackerManager
  * @see RedisClientType
@@ -282,7 +282,7 @@ export class ApiRoutingController {
 
   public getTopPlayersByPlayerId(request: express.Request, response: express.Response): void {
     // Legacy endpoint, disabled for now. May be re-enabled in the future if needed.
-    response.status(501).send({ error: 'This endpoint is temporarily disabled.' });
+    response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: 'This endpoint is not available.' });
   }
 
   public getPlayers(request: express.Request, response: express.Response): void {

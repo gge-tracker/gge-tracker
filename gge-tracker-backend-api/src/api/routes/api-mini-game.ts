@@ -2,6 +2,7 @@ import * as express from 'express';
 import * as pg from 'pg';
 import { ApiHelper } from '../helper/api-helper';
 import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
+import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 
 export abstract class ApiMiniGame implements ApiHelper {
   public static async getDailyMiniGame(request: express.Request, response: express.Response): Promise<void> {
@@ -55,11 +56,15 @@ export abstract class ApiMiniGame implements ApiHelper {
         response.status(ApiHelper.HTTP_OK).json(miniGameData);
       } catch (error) {
         console.error('Error executing queries:', error);
-        response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+        response
+          .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+          .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
       }
     } catch (error) {
       console.error('Error executing query:', error);
-      response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+      response
+        .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+        .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
     }
   }
 
@@ -83,7 +88,9 @@ export abstract class ApiMiniGame implements ApiHelper {
       response.status(ApiHelper.HTTP_OK).json(result.rows.map((row) => row.name));
     } catch (error) {
       console.error('Error fetching player names:', error);
-      response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+      response
+        .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+        .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
     }
   }
 
@@ -267,7 +274,9 @@ export abstract class ApiMiniGame implements ApiHelper {
       });
     } catch (error) {
       console.error('Error processing guess:', error);
-      response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+      response
+        .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+        .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
     }
   }
 

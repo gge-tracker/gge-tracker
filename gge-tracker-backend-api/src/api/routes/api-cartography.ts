@@ -86,7 +86,9 @@ export abstract class ApiCartography implements ApiHelper {
     `;
       (request['pg_pool'] as pg.Pool).query(query, (error, results) => {
         if (error) {
-          response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+          response
+            .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
         } else {
           const rows = results.rows.map((row: any) => {
             return {
@@ -203,7 +205,9 @@ export abstract class ApiCartography implements ApiHelper {
       const parameters = allianceName === '1' ? [] : [allianceName];
       (request['pg_pool'] as pg.Pool).query(query, parameters, (error, results) => {
         if (error) {
-          response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+          response
+            .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
         } else {
           /* ---------------------------------
            * Format results
@@ -300,7 +304,9 @@ export abstract class ApiCartography implements ApiHelper {
         `;
       pgPool.query(query, [ApiHelper.removeCountryCode(allianceId)], (error, results) => {
         if (error) {
-          response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+          response
+            .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
         } else {
           /* ---------------------------------
            * Format results

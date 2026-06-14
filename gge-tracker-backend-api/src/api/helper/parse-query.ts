@@ -4,15 +4,16 @@ export const qNumber = (
   options: {
     min?: number;
     max?: number;
+    default?: number;
   } = {},
 ): QueryField<number | undefined> => ({
   parse: (value): number | undefined => {
-    if (value === undefined) return;
+    if (value === undefined) return options.default;
 
     const n = Number.parseInt(String(value), 10);
-    if (Number.isNaN(n)) return;
-    if (options.min !== undefined && n < options.min) return;
-    if (options.max !== undefined && n > options.max) return;
+    if (Number.isNaN(n)) return options.default;
+    if (options.min !== undefined && n < options.min) return options.default;
+    if (options.max !== undefined && n > options.max) return options.default;
 
     return n;
   },
@@ -148,7 +149,7 @@ export const querySchema = (limits: {
   orderByValues?: string[];
   orderByDefault?: string;
 }): QuerySchema => ({
-  page: qNumber({ min: 1, max: limits.maxBigValue }),
+  page: qNumber({ min: 1, max: limits.maxBigValue, default: 1 }),
   minHonor: qNumber({ max: limits.maxBigValue }),
   maxHonor: qNumber({ max: limits.maxBigValue }),
   minMight: qNumber({ max: limits.maxBigValue }),

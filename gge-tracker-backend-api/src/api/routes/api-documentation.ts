@@ -28,6 +28,10 @@ export abstract class ApiDocumentation implements ApiHelper {
       response.setHeader('Content-Type', 'application/json');
       response.send(fileContent);
     } catch (error) {
+      if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
+        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: 'Documentation is not available.' });
+        return;
+      }
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getDocumentation', request);

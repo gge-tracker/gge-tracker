@@ -457,7 +457,9 @@ export abstract class ApiAlliances implements ApiHelper {
       const sqlDuration = Date.now();
       (request['pg_pool'] as pg.Pool).query(query, v, (error, results) => {
         if (error) {
-          response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+          response
+            .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
         } else {
           /* ---------------------------------
            * Format and send response

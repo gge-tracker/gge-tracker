@@ -139,7 +139,9 @@ export abstract class ApiEvents implements ApiHelper {
        * --------------------------------- */
       eventPgDbpool.query(query, (error, results) => {
         if (error) {
-          response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+          response
+            .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
           return;
         } else {
           /* ---------------------------------
@@ -371,7 +373,7 @@ export abstract class ApiEvents implements ApiHelper {
    *
    * @param request - express.Request containing query parameters: alliance_name, date, page
    * @param response - express.Response used to send the HTTP response
-   * @returns Promise<void> — sends the HTTP response directly; does not throw for expected validation errors
+   * @returns Promise<void> - sends the HTTP response directly; does not throw for expected validation errors
    */
   public static async searchGrandTournamentDataByAllianceName(
     request: express.Request,
@@ -389,7 +391,7 @@ export abstract class ApiEvents implements ApiHelper {
           .send({ error: 'Invalid date format. Please use YYYY-MM-DDTHH:00:00.000Z.' });
         return;
       }
-      const pagination_page = request.query.page ? Number.parseInt(String(request.query.page)) : 1;
+      const pagination_page = ApiHelper.validatePageNumber(request.query.page);
       const maxAlliancesPerPage = 10;
       const offset = (pagination_page - 1) * maxAlliancesPerPage;
       if (ApiHelper.isInvalidInput(allianceName)) {
@@ -533,7 +535,7 @@ export abstract class ApiEvents implements ApiHelper {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidSubdivisionId });
         return;
       }
-      const pagination_page = request.query.page ? Number.parseInt(String(request.query.page)) : 1;
+      const pagination_page = ApiHelper.validatePageNumber(request.query.page);
 
       /* ---------------------------------
        * Cache check
@@ -691,7 +693,10 @@ export abstract class ApiEvents implements ApiHelper {
       }
       pgPool.query(query, [realPlayerId], (error, results) => {
         if (error) {
-          response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+          response
+            .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
+          ApiHelper.logError(error, 'getEventByPlayerId', request);
           return;
         } else {
           const events = results.rows.map((result: any) => ({
@@ -922,7 +927,7 @@ export abstract class ApiEvents implements ApiHelper {
       // This needs to be upgraded if we add more event types in the future
       const sqlTable = eventType.trim().replaceAll('-', '_') + '_ranking';
       const id = request.params.id;
-      if (!id || Number.isNaN(Number(id))) {
+      if (!/^\d+$/.test(id) || Number(id) <= 0 || Number(id) > 2_147_483_647) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventId });
         return;
       }
@@ -1073,6 +1078,10 @@ export abstract class ApiEvents implements ApiHelper {
         top100Ratio,
         eventInfo,
       ] = results;
+      if (!Array.isArray(eventInfo) || eventInfo.length === 0 || !eventInfo[0]?.collect_date) {
+        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.GenericNotFound });
+        return;
+      }
       const responseData = {
         event_id: id,
         event_type: eventType,

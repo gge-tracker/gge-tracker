@@ -10,6 +10,12 @@ export enum GgeServerType {
   LIVE = 'LIVE',
 }
 
+function readEnvironmentInteger(name: string, fallback: number): number {
+  const raw = process.env[name];
+  const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN;
+  return Number.isNaN(parsed) ? fallback : parsed;
+}
+
 export enum SocketState {
   CONNECTING = 'CONNECTING',
   CONNECTED = 'CONNECTED',
@@ -95,9 +101,10 @@ class BaseSocket extends Log {
     }
     this.log('[restart] Disconnecting and restarting socket connection.');
     this.disconnect();
+    const { baseDelaySeconds, jitterSeconds, preSleepMilliseconds } = this.reconnectTiming();
     const nbReconnects = this.nbReconnects++;
-    const randomDelay = Math.floor(Math.random() * 30);
-    let defaultDelay = 120;
+    const randomDelay = jitterSeconds > 0 ? Math.floor(Math.random() * jitterSeconds) : 0;
+    let defaultDelay = baseDelaySeconds;
     if (!instant && nbReconnects > 0) {
       if (nbReconnects < 5) {
         const incrementalDelay = [0, 3, 5, 20, 30][Math.min(nbReconnects, 4)];
@@ -109,7 +116,7 @@ class BaseSocket extends Log {
       }
     }
     const finalDelay = instant ? 0 : defaultDelay + randomDelay;
-    await this.sleep(3000);
+    await this.sleep(preSleepMilliseconds);
     clearTimeout(this.restartTimeout);
     this.log(`[restart] Attempting to restart socket connection in ${finalDelay} seconds...`);
     this.restartTimeout = setTimeout(async () => {
@@ -307,6 +314,14 @@ class BaseSocket extends Log {
   protected send(data: string): void {
     if (this.onSend) this.onSend(data);
     this.ws.send(data);
+  }
+
+  private reconnectTiming(): { baseDelaySeconds: number; jitterSeconds: number; preSleepMilliseconds: number } {
+    return {
+      baseDelaySeconds: readEnvironmentInteger('EMPIRE_RECONNECT_BASE_DELAY_SEC', 120),
+      jitterSeconds: readEnvironmentInteger('EMPIRE_RECONNECT_JITTER_SEC', 30),
+      preSleepMilliseconds: readEnvironmentInteger('EMPIRE_RECONNECT_PRESLEEP_MS', 3000),
+    };
   }
 
   private ping(): void {

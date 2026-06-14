@@ -252,10 +252,16 @@ export abstract class ApiHelper {
    */
   public static verifyIdWithCountryCode(id: unknown): false | number {
     if (typeof id !== 'string' && typeof id !== 'number') return false;
-    if (Number.isNaN(Number(id)) || Number(id) < 0 || Number(id) > 99_999_999_999 || String(id).length <= 3) {
+    const raw = String(id).trim();
+    // Only plain decimal integers are valid IDs. This rejects hex ("0x1F"), exponential ("1e5"),
+    // floats ("1.5"), signs, and "Infinity"/"NaN" - all of which would otherwise reach the DB and
+    // trigger an integer-cast 5xx (or, after country-code stripping, an empty-string cast error)
+    if (!/^\d+$/.test(raw)) return false;
+    const value = Number(raw);
+    if (!Number.isSafeInteger(value) || value <= 0 || value > 99_999_999_999 || raw.length <= 3) {
       return false;
     }
-    return Number(id);
+    return value;
   }
 
   /**

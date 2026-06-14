@@ -95,7 +95,9 @@ export abstract class ApiUpdates implements ApiHelper {
         [ApiHelper.removeCountryCode(allianceId), ApiHelper.removeCountryCode(allianceId)],
         (error, results) => {
           if (error) {
-            response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+            response
+              .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+              .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
           } else {
             /* ---------------------------------
              *  Process results
@@ -197,7 +199,9 @@ export abstract class ApiUpdates implements ApiHelper {
       }
       pool.query(query, [ApiHelper.removeCountryCode(playerId)], (error, results) => {
         if (error) {
-          response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+          response
+            .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
         } else {
           /* ---------------------------------
            * Map results to updates
@@ -302,7 +306,9 @@ export abstract class ApiUpdates implements ApiHelper {
       }
       pool.query(query, [ApiHelper.removeCountryCode(playerId)], (error, results) => {
         if (error) {
-          response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+          response
+            .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
         } else {
           /* ---------------------------------
            * Map results to updates

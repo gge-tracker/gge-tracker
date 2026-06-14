@@ -6,7 +6,11 @@
   "private": true,
   "scripts": {
     "start": "node /app/server.js",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "node --expose-gc --no-warnings --loader ts-node/esm tests/run.ts",
+    "test:mem": "node --expose-gc --no-warnings --loader ts-node/esm tests/run.ts memory",
+    "test:reconnect": "node --no-warnings --loader ts-node/esm tests/run.ts handshake lifecycle login reconnect",
+    "test:live": "EMPIRE_TEST_LIVE=1 node --expose-gc --no-warnings --loader ts-node/esm tests/run.ts"
   },
   "author": "ggetracker",
   "contributors": [

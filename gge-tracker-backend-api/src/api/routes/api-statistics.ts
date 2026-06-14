@@ -77,11 +77,15 @@ export abstract class ApiStatistics implements ApiHelper {
         response.status(ApiHelper.HTTP_OK).send(data);
       } catch (error) {
         console.error('Error executing queries:', error);
-        response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+        response
+          .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+          .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
       }
     } catch (error) {
       console.error('Error executing query:', error);
-      response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+      response
+        .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+        .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
     }
   }
 
@@ -201,8 +205,10 @@ export abstract class ApiStatistics implements ApiHelper {
         void ApiHelper.updateCache(cacheKey, data);
         response.status(ApiHelper.HTTP_OK).send(data);
         return;
-      } catch (error) {
-        response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+      } catch {
+        response
+          .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+          .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
         return;
       }
     } catch (error) {
@@ -692,8 +698,8 @@ export abstract class ApiStatistics implements ApiHelper {
         diffs[table] = diff / 1000;
       }
       return { diffs, points };
-    } catch (error) {
-      return { error: error.message };
+    } catch {
+      return { error: RouteErrorMessagesEnum.GenericInternalServerError };
     }
   }
 
@@ -939,8 +945,8 @@ export abstract class ApiStatistics implements ApiHelper {
         top_might_loss_24h: topMightLossResul24h,
         top_might_loss_7d: topMightLossResult7d,
       };
-    } catch (error) {
-      return { error: error.message };
+    } catch {
+      return { error: RouteErrorMessagesEnum.GenericInternalServerError };
     }
   }
 
@@ -1063,8 +1069,8 @@ export abstract class ApiStatistics implements ApiHelper {
         diffs[table] = diff / 1000;
       }
       return { diffs, points };
-    } catch (error) {
-      return { error: error?.message || String(error) };
+    } catch {
+      return { error: RouteErrorMessagesEnum.GenericInternalServerError };
     }
   }
 

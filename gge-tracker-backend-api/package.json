@@ -8,7 +8,11 @@
     "build": "npx tsc && npx swagger-jsdoc -d ./dist/documentation.js",
     "lint": "eslint .",
     "lint-fix": "eslint . --fix",
-    "dev": "nodemon"
+    "dev": "nodemon",
+    "test:api": "ts-node --project tests/tsconfig.json tests/run.ts",
+    "test:api:security": "ts-node --project tests/tsconfig.json tests/run.ts security",
+    "test:api:load": "ts-node --project tests/tsconfig.json tests/run.ts timing load",
+    "test:api:full": "ts-node --project tests/tsconfig.json tests/run.ts all"
   },
   "dependencies": {
     "@clickhouse/client": "^1.13.0",

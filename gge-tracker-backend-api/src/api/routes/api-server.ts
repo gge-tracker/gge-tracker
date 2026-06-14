@@ -226,7 +226,9 @@ export abstract class ApiServer implements ApiHelper {
        * --------------------------------- */
       (request['pg_pool'] as pg.Pool).query(query, values, (error, results) => {
         if (error) {
-          response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+          response
+            .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
         } else {
           /* ---------------------------------
            * Process results
@@ -463,7 +465,9 @@ export abstract class ApiServer implements ApiHelper {
        * --------------------------------- */
       (request['pg_pool'] as pg.Pool).query(query, values, (error, results) => {
         if (error) {
-          response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+          response
+            .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
         } else {
           /* ---------------------------------
            * Process results
@@ -546,7 +550,9 @@ export abstract class ApiServer implements ApiHelper {
         `;
       (request['pg_pool'] as pg.Pool).query(query, async (error, results) => {
         if (error) {
-          response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+          response
+            .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
           return;
         } else {
           /* ---------------------------------

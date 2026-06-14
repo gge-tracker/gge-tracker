@@ -144,7 +144,7 @@ module.exports = [
     },
   },
   {
-    ignores: ["**/dist", "**/node_modules", "**/coverage", "**/build", "**/lib"],
+    ignores: ["**/dist", "**/node_modules", "**/coverage", "**/build", "**/lib", "tests"],
   },
   {
     files: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
