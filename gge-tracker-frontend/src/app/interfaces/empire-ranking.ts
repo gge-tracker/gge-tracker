@@ -37,6 +37,14 @@ export interface ChartAdvancedOptions {
   annotations?: ApexAnnotations;
 }
 
+export interface EventStatsData {
+  averageScore: number;
+  participatingEvents: number;
+  totalCompletedEvents: number;
+  participationRate: number;
+  trendPercent: number | null;
+}
+
 export interface ChartOptions {
   series: ApexAxisChartSeries;
   chart: ApexChart;
@@ -87,14 +95,18 @@ export interface Dungeon {
   kid: number;
   image: string;
   position: string;
-  playerName?: string;
   playerId?: number;
-  cooldown: number;
-  totalAttackCount: number;
-  updatedAt: string;
+  playerName?: string;
+  playerMight?: number | null;
+  playerLevel?: number | null;
+  playerLegendaryLevel?: number | null;
+  lastAttackDate: string;
+  availableDurationSeconds?: number;
+  globalAvailableAt: string;
   effectiveCooldownUntil: string;
-  lastAttackAt: string;
-  distance?: number;
+  distance?: number | null;
+  availabilityAnimDelay?: string;
+  availabilityExceeded?: boolean;
 }
 
 export interface Offer {
@@ -185,6 +197,8 @@ export enum ChartTypes {
   PARTICIPATION_RATE = 'Participation',
   RADAR = 'Classement',
   TABLE = 'Données',
+  SCORES = 'Scores',
+  STATS = 'Stats',
 }
 
 export type Top3EventPlayers = Record<number, Record<number, EventEntry>>;
@@ -218,6 +232,7 @@ export enum ErrorType {
   ERROR_OCCURRED = 'Une erreur est survenue',
   NO_ALLIANCE_FOUND = 'Aucune alliance trouvée',
   NO_PLAYER_FOUND = 'Aucun joueur trouvé',
+  PLAYER_NOT_IN_REALM = 'Aucun joueur trouvé',
   ALLIANCE_ADDED = 'Alliance ajoutée',
   ALLIANCE_REMOVED = 'Alliance retirée',
   COPIED_TO_CLIPBOARD = 'Copié dans le presse-papier',
@@ -292,14 +307,16 @@ export interface ApiDungeonsResource {
   kid: number;
   position_x: number;
   position_y: number;
-  attack_cooldown: number;
-  player_id?: number;
+  player_id: number;
   player_name?: string;
-  total_attack_count: number;
-  updated_at: string;
-  effective_cooldown_until: string;
+  player_might?: number | null;
+  player_level?: number | null;
+  player_legendary_level?: number | null;
   last_attack: string;
-  distance?: number;
+  global_available_at: string;
+  available_duration_seconds?: number;
+  effective_cooldown_until: string;
+  distance?: number | null;
 }
 
 export interface ApiBasicAllianceUpdates {
@@ -364,6 +381,44 @@ export interface ApiLiveRankingResponse {
   players: ApiLiveRanking[];
   current_event: IOuterRealmEvent;
   pagination: ApiPagination;
+}
+
+export interface ApiWoaEventListResponse {
+  pagination: ApiPagination;
+  events: {
+    date: string;
+    participants: number;
+    total_tickets: string;
+    id: string;
+  }[];
+}
+
+export interface ApiWoaPlayerDataResponse {
+  player_id: string;
+  player_name: string;
+  alliance_id: string;
+  alliance_name: string;
+  alliance_rank: number | null;
+  player_current_might: number;
+  player_all_time_might: number;
+  player_level: number;
+  player_legendary_level: number;
+  point: number;
+}
+
+export interface ApiWoaEventDataResponse {
+  players: ApiWoaPlayerDataResponse[];
+  event_date: string;
+  pagination: ApiPagination;
+}
+
+export interface ApiWoaEventPlayerData {
+  point: number;
+  date: string;
+  rank: number;
+}
+export interface ApiWoaEventPlayerDataResponse {
+  events: ApiWoaEventPlayerData[];
 }
 
 export interface ApiLiveRanking {
@@ -436,6 +491,16 @@ export interface ApiMovementsResponse extends ApiGenericResponse {
 
 export interface ApiRenamesResponse extends ApiGenericResponse {
   renames: ApiRenames[];
+}
+export interface ApiDungeonsAttackHistory {
+  kid: number;
+  position_x: number;
+  position_y: number;
+  attacked_at: string;
+}
+
+export interface ApiDungeonsByPlayerIdResponse extends ApiGenericResponse {
+  dungeons: ApiDungeonsAttackHistory[];
 }
 
 export interface ApiDungeonsResponse extends ApiGenericResponse {
@@ -573,6 +638,7 @@ export interface ApiEventlist {
 export interface ApiOuterRealmPlayer {
   player_id: number;
   player_name: string;
+  alliance_name: string | null;
   rank: number;
   point: string;
   server: string;
@@ -731,6 +797,25 @@ export interface OuterEventData extends ApiSpecificEventByPlayerIdResponse {
   to: Date;
 }
 
+export interface WoaEvent {
+  playerCount: number;
+  totalTickets: number;
+  id: string;
+  type: string;
+  from: Date;
+  to: Date;
+  date: string;
+}
+
+export interface WoaEventList {
+  point: number;
+  date: Date;
+  type: string;
+  rank: number;
+  from: Date;
+  to: Date;
+}
+
 export interface ApiGrandTournamentAlliancesSearchResponse {
   alliances: ApiGrandTournamentSearchAlliances[];
   pagination: {
@@ -743,6 +828,7 @@ export interface ApiGrandTournamentAlliancesSearchResponse {
 
 export interface ApiPlayerCastleNameResponse {
   kingdomId: number;
+  dummy?: boolean;
   id: number;
   positionX: number;
   positionY: number;
@@ -761,6 +847,8 @@ export interface ApiPlayerCastleNameResponse {
 export interface KingdomRealm {
   key: string;
   label: string;
+  image?: string;
+  translated?: string;
 }
 
 export interface ApiRankingStatsPlayer {
@@ -899,6 +987,10 @@ export interface ApiServerStats {
   event_samurai_players: number | null;
   event_war_realms_players: number | null;
   created_at: string;
+  players_in_peace: number;
+  avg_fame: number;
+  max_fame: number;
+  total_fame: number;
 }
 
 export interface ApiCartoAlliance {
@@ -936,7 +1028,47 @@ export interface IRankingStatsPlayer {
   totalCastles: number;
 }
 
-export type PlayerStatsTabs = 'overview' | 'loot' | 'alliances' | 'castles' | 'glory' | 'events';
+export type PlayerStatsTabs = 'overview' | 'loot' | 'alliances' | 'castles' | 'glory' | 'events' | 'woa' | 'aquamarine';
+
+export interface ApiAquamarineMetric {
+  metric_id: number;
+  value: number;
+}
+
+export interface ApiAquamarineSnapshot {
+  collected_at: string;
+  metrics: ApiAquamarineMetric[];
+}
+
+export interface ApiAquamarinePlayerResponse {
+  player_id: string;
+  snapshots: ApiAquamarineSnapshot[];
+}
+
+export interface ApiStormyIslesPlayer {
+  rank: number;
+  player_id: string | number;
+  player_name: string;
+  alliance_id: string | number | null;
+  alliance_name: string | null;
+  might_current: number;
+  might_all_time: number;
+  level: number;
+  legendary_level: number;
+  metrics: Record<number, number>;
+  collected_at: string;
+}
+
+export interface ApiStormyIslesLeaderboardResponse {
+  players: ApiStormyIslesPlayer[];
+  snapshot_date: string | null;
+  pagination: {
+    current_page: number;
+    total_pages: number;
+    current_items_count: number;
+    total_items_count: number;
+  };
+}
 
 export interface RankingFameTitle {
   decay?: number;

@@ -27,6 +27,7 @@ export enum RouteErrorMessagesEnum {
   InvalidKingdomId = 'Invalid kingdom ID',
   InvalidLanguage = 'Invalid language parameter',
   InvalidPlayerId = 'Invalid player ID',
+  InvalidLastDaysParameter = 'Invalid lastDays parameter. It must be between 1 and 365.',
   InvalidPlayerName = 'Invalid player name',
   InvalidPosition = 'Invalid position',
   InvalidServer = 'Invalid server',
@@ -38,4 +39,5 @@ export enum RouteErrorMessagesEnum {
   UnavailableForSpecialServers = 'This feature is unavailable for this server',
   EventNotActive = 'The event is not active',
   PageOutOfRange = 'Page number is out of range',
+  PlayerNotInRealm = 'Player not in this realm',
 }

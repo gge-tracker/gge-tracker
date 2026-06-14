@@ -1,0 +1,131 @@
+:host {
+  display: contents;
+}
+
+.si-row td {
+  vertical-align: middle;
+}
+
+.col-rank {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.85rem;
+  min-width: 40px;
+  text-align: center;
+}
+
+.col-name {
+  min-width: 120px;
+}
+
+.si-player-link {
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.si-player-link:hover {
+  color: #00e5ff;
+}
+
+.col-level {
+  min-width: 60px;
+  text-align: center;
+}
+.level-box {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  display: inline-flex;
+  font-size: 0.85rem;
+  font-weight: 700;
+  gap: 0;
+  padding: 2px 8px;
+}
+.level-box.level-legendary {
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px solid rgba(255, 215, 0, 0.25);
+}
+.level-separator {
+  background: rgba(255, 255, 255, 0.2);
+  height: 12px;
+  margin: 0 5px;
+  width: 1px;
+}
+.level-main {
+  color: #eaeaea;
+}
+
+.col-might {
+  min-width: 140px;
+}
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.metric-header {
+  align-items: baseline;
+  display: flex;
+  gap: 6px;
+}
+.metric-current {
+  color: #fff;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.metric-max {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+.metric-bar-bg {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  height: 3px;
+  overflow: hidden;
+}
+.metric-bar.bar-yellow {
+  background: linear-gradient(90deg, #f59e0b, #fcd34d);
+  border-radius: 3px;
+  height: 100%;
+}
+
+.si-alliance-btn {
+  background: none;
+  border: none;
+  color: #60a5fa;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0;
+  text-align: left;
+  transition: color 0.15s;
+}
+.si-alliance-btn:hover {
+  color: #93c5fd;
+  text-decoration: underline;
+}
+.no-alliance {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.col-metric {
+  --m-color: #dadada;
+  min-width: 80px;
+  text-align: center;
+}
+.metric-val {
+  color: var(--m-color);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.metric-empty {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.no-data {
+  color: rgba(255, 255, 255, 0.5);
+  padding: 2rem;
+  text-align: center;
+}

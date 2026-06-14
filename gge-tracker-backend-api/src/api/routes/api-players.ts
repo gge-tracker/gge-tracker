@@ -80,6 +80,10 @@ export abstract class ApiPlayers implements ApiHelper {
         maxHonor,
         minMight,
         maxMight,
+        minAllianceMight,
+        maxAllianceMight,
+        minMightAllTime,
+        maxMightAllTime,
         minLoot,
         maxLoot,
         minLevel,
@@ -91,6 +95,7 @@ export abstract class ApiPlayers implements ApiHelper {
         alliance,
         allianceFilter,
         protectionFilter,
+        stormyIslandsFilter,
         banFilter,
         inactiveFilter,
         allianceRankFilter,
@@ -117,6 +122,10 @@ export abstract class ApiPlayers implements ApiHelper {
           maxHonor,
           minMight,
           maxMight,
+          minAllianceMight,
+          maxAllianceMight,
+          minMightAllTime,
+          maxMightAllTime,
           minLoot,
           maxLoot,
           minLevel: minLevel ? minLevel.join('/') : undefined,
@@ -125,6 +134,7 @@ export abstract class ApiPlayers implements ApiHelper {
           maxFame,
           castleCountMin,
           castleCountMax,
+          stormyIslandsFilter,
           allianceFilter,
           protectionFilter,
           banFilter,
@@ -215,17 +225,19 @@ export abstract class ApiPlayers implements ApiHelper {
        * --------------------------------- */
       const qb = new QueryFilterBuilder(parameterIndex + 1);
 
-      qb.alliance().name(alliance).excludeRanks(allianceRankFilter);
+      qb.alliance().name(alliance).excludeRanks(allianceRankFilter).mightSubquery(minAllianceMight, maxAllianceMight);
 
       qb.player()
         .name(alliance)
         .honor(minHonor, maxHonor)
         .might(minMight, maxMight)
+        .mightAllTime(minMightAllTime, maxMightAllTime)
         .loot(minLoot, maxLoot)
         .level(minLevel[0], maxLevel[0])
         .legendaryLevel(minLevel[1], maxLevel[1])
         .fame(minFame, maxFame)
         .allianceStatus(allianceFilter)
+        .stormyIslandsFilter(stormyIslandsFilter)
         .kingdom(kingdomFilter)
         .activity(inactiveFilter);
 

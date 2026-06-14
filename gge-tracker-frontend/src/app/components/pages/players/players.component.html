@@ -6,7 +6,7 @@
           player: true,
           alliance: true
         }" (searchAlliance)="searchAlliance($event)" (searchPlayer)="searchPlayer($event)" [exportDataEnabled]="true"
-      (exportData)="exportData()"></app-search-form>
+        (exportData)="exportData()"></app-search-form>
 
       <div class="flex flex-col justify-between gap-6 mt-2">
         <app-table #table [sort]="sort" [reverse]="reverse" [isInLoading]="isInLoading" [maxPage]="maxPage!"
@@ -15,7 +15,7 @@
           <app-player-table-content [players]="players" [playersTableHeader]="playersTableHeader"
             [distanceEnabled]="playersTableHeader.length > defaultPlayersTableHeaderSize"
             (clickOnAlliance)="searchAlliance($event)"
-          (toggleFavorite)="toggleFavorite($event)"></app-player-table-content>
+            (toggleFavorite)="toggleFavorite($event)"></app-player-table-content>
         </app-table>
       </div>
     </div>
@@ -28,392 +28,397 @@
             <i class="fa-solid fa-filter"></i>&nbsp;{{ 'Filtrer les résultats' | translate }}
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"
-          [attr.aria-label]="'Fermer' | translate"></button>
+            [attr.aria-label]="'Fermer' | translate"></button>
         </div>
         <div class="modal-body">
           <div class="filters-container">
             <div class="row">
               <!-- Honor -->
               <div class="col-12 col-sm my-1">
-                <div class="input-group">
-                  <span class="input-group-text">
-                    <img src="/assets/honor.png" [alt]="'Honneur' | translate"
-                      [title]="'Filtrer par point d\'honneur' | translate" height="24">
+                <app-modal-form-group class="compact">
+                  <span field prefix>
+                    <img src="/assets/honor.png" [attr.alt]="'Honneur' | translate"
+                      [title]="'Filtrer par point d\'honneur' | translate">
                   </span>
-                  <input type="text" class="form-control ggetracker-input" id="honorMin" name="honorMin"
-                    [value]="displayFormValues.honor.min" (focus)="onGenericFocus('min', 'honor')"
-                    (blur)="onGenericBlur('min', 'honor')" (input)="onGenericInput('min', 'honor', $event)"
-                    [title]="formFilters.minHonor" [placeholder]="'Honneur min.' | translate">
-                  <div class="input-arrow">
-                    <lucide-icon [img]="ArrowBigRightDash" [size]="20" class="m-auto"></lucide-icon>
-                  </div>
-                  <input type="text" class="form-control ggetracker-input" id="honorMax" name="honorMax"
-                    [value]="displayFormValues.honor.max" (focus)="onGenericFocus('max', 'honor')"
-                    (blur)="onGenericBlur('max', 'honor')" (input)="onGenericInput('max', 'honor', $event)"
-                    [title]="formFilters.maxHonor" [placeholder]="'Honneur max.' | translate">
-                </div>
+                  <input field type="text" id="honorMin" name="honorMin" [value]="displayFormValues.honor.min"
+                    (focus)="onGenericFocus('min', 'honor')" (blur)="onGenericBlur('min', 'honor')"
+                    (input)="onGenericInput('min', 'honor', $event)" [title]="formFilters.minHonor"
+                    [placeholder]="'Honneur min.' | translate">
+                  <input field type="text" id="honorMax" name="honorMax" [value]="displayFormValues.honor.max"
+                    (focus)="onGenericFocus('max', 'honor')" (blur)="onGenericBlur('max', 'honor')"
+                    (input)="onGenericInput('max', 'honor', $event)" [title]="formFilters.maxHonor"
+                    [placeholder]="'Honneur max.' | translate">
+                </app-modal-form-group>
               </div>
               <!-- Might -->
               <div class="col-12 col-sm my-1">
-                <div class="input-group">
-                  <span class="input-group-text">
-                    <img src="/assets/pp1.png" [alt]="'Puissance' | translate"
-                      [title]="'Filtrer par point de puissance' | translate" height="24">
+                <app-modal-form-group class="compact">
+                  <span field prefix>
+                    <img src="/assets/pp1.png" [attr.alt]="'Puissance' | translate"
+                      [title]="'Filtrer par point de puissance' | translate">
                   </span>
-                  <input type="text" class="form-control ggetracker-input" id="mightMin" name="mightMin"
-                    [value]="displayFormValues.might.min" (focus)="onGenericFocus('min', 'might')"
-                    (blur)="onGenericBlur('min', 'might')" (input)="onGenericInput('min', 'might', $event)"
-                    [title]="formFilters.minMight" [placeholder]="'Puissance min.' | translate">
-                  <div class="input-arrow">
-                    <lucide-icon [img]="ArrowBigRightDash" [size]="20" class="m-auto"></lucide-icon>
-                  </div>
-                  <input type="text" class="form-control ggetracker-input" id="mightMax" name="mightMax"
-                    [value]="displayFormValues.might.max" (focus)="onGenericFocus('max', 'might')"
-                    (blur)="onGenericBlur('max', 'might')" (input)="onGenericInput('max', 'might', $event)"
-                    [title]="formFilters.maxMight" [placeholder]="'Puissance max.' | translate">
-                </div>
+                  <input field type="text" id="mightMin" name="mightMin" [value]="displayFormValues.might.min"
+                    (focus)="onGenericFocus('min', 'might')" (blur)="onGenericBlur('min', 'might')"
+                    (input)="onGenericInput('min', 'might', $event)" [title]="formFilters.minMight"
+                    [placeholder]="'Puissance min' | translate">
+                  <input field type="text" id="mightMax" name="mightMax" [value]="displayFormValues.might.max"
+                    (focus)="onGenericFocus('max', 'might')" (blur)="onGenericBlur('max', 'might')"
+                    (input)="onGenericInput('max', 'might', $event)" [title]="formFilters.maxMight"
+                    [placeholder]="'Puissance max' | translate">
+                </app-modal-form-group>
               </div>
             </div>
-            <div class="row mt-1">
-              <!-- Loot -->
-              <div class="col-12 col-sm my-1">
-                <div class="input-group">
-                  <span class="input-group-text">
-                    <img src="/assets/loot.png" [alt]="'Pillage' | translate"
-                      [title]="'Filtrer par point de pillage' | translate" height="24">
-                  </span>
-                  <input type="text" class="form-control ggetracker-input" id="lootMin" name="lootMin"
-                    [value]="displayFormValues.loot.min" (focus)="onGenericFocus('min', 'loot')"
-                    (blur)="onGenericBlur('min', 'loot')" (input)="onGenericInput('min', 'loot', $event)"
-                    [title]="formFilters.minLoot" [placeholder]="'Pillage min.' | translate">
-                  <div class="input-arrow">
-                    <lucide-icon [img]="ArrowBigRightDash" [size]="20" class="m-auto"></lucide-icon>
-                  </div>
-                  <input type="text" class="form-control ggetracker-input" id="lootMax" name="lootMax"
-                    [value]="displayFormValues.loot.max" (focus)="onGenericFocus('max', 'loot')"
-                    (blur)="onGenericBlur('max', 'loot')" (input)="onGenericInput('max', 'loot', $event)"
-                    [title]="formFilters.maxLoot" [placeholder]="'Pillage max.' | translate">
-                </div>
-              </div>
-              <!-- Level -->
-              <div class="col-12 col-sm my-1">
-                <div class="input-group">
-                  <span class="input-group-text">
-                    <img src="/assets/lvl.png" [alt]="'Niveau' | translate" [title]="'Filtrer par niveau' | translate"
-                      height="24">
-                  </span>
-                  <input type="text" class="form-control ggetracker-input" id="levelMin" name="levelMin"
-                    [(ngModel)]="formFilters.minLevel" [title]="formFilters.minLevel"
-                    [placeholder]="'Niveau min.' | translate">
-                  <div class="input-arrow">
-                    <lucide-icon [img]="ArrowBigRightDash" [size]="20" class="m-auto"></lucide-icon>
-                  </div>
-                  <input type="text" class="form-control ggetracker-input" id="levelMax" name="levelMax"
-                    [(ngModel)]="formFilters.maxLevel" [title]="formFilters.maxLevel"
-                    [placeholder]="'Niveau max.' | translate">
-                </div>
-              </div>
-            </div>
-            <div class="row mt-1">
-              <!-- Fame (glory) -->
-              <div class="col-12 col-sm my-1">
-                <div class="input-group">
-                  <span class="input-group-text">
-                    <img src="/assets/glory.png" [alt]="'Gloire' | translate" [title]="'Filtrer par gloire' | translate"
-                      height="24">
-                  </span>
-                  <input type="text" class="form-control ggetracker-input" id="fameMin" name="fameMin"
-                    [value]="displayFormValues.fame.min" (focus)="onGenericFocus('min', 'fame')"
-                    (blur)="onGenericBlur('min', 'fame')" (input)="onGenericInput('min', 'fame', $event)"
-                    [title]="formFilters.minFame" [placeholder]="'Gloire min.' | translate">
-                  <div class="input-arrow">
-                    <lucide-icon [img]="ArrowBigRightDash" [size]="20" class="m-auto"></lucide-icon>
-                  </div>
-                  <input type="text" class="form-control ggetracker-input" id="fameMax" name="fameMax"
-                    [value]="displayFormValues.fame.max" (focus)="onGenericFocus('max', 'fame')"
-                    (blur)="onGenericBlur('max', 'fame')" (input)="onGenericInput('max', 'fame', $event)"
-                    [title]="formFilters.maxFame" [placeholder]="'Gloire max.' | translate">
-                </div>
-              </div>
-              <!-- Castle count -->
-              <div class="col-12 col-sm my-1">
-                <div class="input-group">
-                  <span class="input-group-text">
-                    <img src="/assets/castle4.png" [alt]="'Châteaux' | translate"
-                      [title]="'Filtrer par nombre de châteaux' | translate" height="24">
-                  </span>
-                  <input type="text" class="form-control ggetracker-input" id="castleCountMin" name="castleCountMin"
-                    [value]="displayFormValues.castleCount.min" (focus)="onGenericFocus('min', 'castleCount')"
-                    (blur)="onGenericBlur('min', 'castleCount')" (input)="onGenericInput('min', 'castleCount', $event)"
-                    [title]="formFilters.castleCountMin" [placeholder]="'Châteaux min.' | translate">
-                  <div class="input-arrow">
-                    <lucide-icon [img]="ArrowBigRightDash" [size]="20" class="m-auto"></lucide-icon>
-                  </div>
-                  <input type="text" class="form-control ggetracker-input" id="castleCountMax" name="castleCountMax"
-                    [value]="displayFormValues.castleCount.max" (focus)="onGenericFocus('max', 'castleCount')"
-                    (blur)="onGenericBlur('max', 'castleCount')" (input)="onGenericInput('max', 'castleCount', $event)"
-                    [title]="formFilters.castleCountMax" [placeholder]="'Châteaux max.' | translate">
-                </div>
-              </div>
-            </div>
-            <div class="row mt-1">
-              <div class="input-group">
-                <span class="input-group-text">
-                  <img src="/assets/map.png" width="20" alt="Map Icon" />
-                  &nbsp;
-                  <span>{{ 'Royaume' | translate }}</span>
+          </div>
+          <div class="row mt-1">
+            <!-- Loot -->
+            <div class="col-12 col-sm my-1">
+              <app-modal-form-group class="compact">
+                <span field prefix>
+                  <img src="/assets/loot.png" [attr.alt]="'Pillage' | translate"
+                    [title]="'Filtrer par point de pillage' | translate">
                 </span>
-                <ng-select [items]="realms" bindLabel="label" bindValue="key" [(ngModel)]="formFilters.kingdomFilter"
-                  (change)="onRealmChange($event)"
-                  [multiple]="true" [closeOnSelect]="false" class="form-control">
+                <input field type="text" id="lootMin" name="lootMin" [value]="displayFormValues.loot.min"
+                  (focus)="onGenericFocus('min', 'loot')" (blur)="onGenericBlur('min', 'loot')"
+                  (input)="onGenericInput('min', 'loot', $event)" [title]="formFilters.minLoot"
+                  [placeholder]="'Pillage min.' | translate">
+                <input field type="text" id="lootMax" name="lootMax" [value]="displayFormValues.loot.max"
+                  (focus)="onGenericFocus('max', 'loot')" (blur)="onGenericBlur('max', 'loot')"
+                  (input)="onGenericInput('max', 'loot', $event)" [title]="formFilters.maxLoot"
+                  [placeholder]="'Pillage max.' | translate">
+              </app-modal-form-group>
+            </div>
+            <!-- Level -->
+            <div class="col-12 col-sm my-1">
+              <app-modal-form-group class="compact">
+                <span field prefix>
+                  <img src="/assets/lvl.png" [attr.alt]="'Niveau' | translate"
+                    [title]="'Filtrer par niveau' | translate">
+                </span>
+                <input field type="text" id="levelMin" name="levelMin" [(ngModel)]="formFilters.minLevel"
+                  [title]="formFilters.minLevel" [placeholder]="'Niveau min' | translate">
+                <input field type="text" id="levelMax" name="levelMax" [(ngModel)]="formFilters.maxLevel"
+                  [title]="formFilters.maxLevel" [placeholder]="'Niveau max' | translate">
+              </app-modal-form-group>
+            </div>
+          </div>
+          <div class="row mt-1">
+            <!-- Fame (glory) -->
+            <div class="col-12 col-sm my-1">
+              <app-modal-form-group class="compact">
+                <span field prefix>
+                  <img src="/assets/glory.png" [attr.alt]="'Points de gloire' | translate"
+                    [title]="'Filtrer par gloire' | translate">
+                </span>
+                <input field type="text" id="fameMin" name="fameMin" [value]="displayFormValues.fame.min"
+                  (focus)="onGenericFocus('min', 'fame')" (blur)="onGenericBlur('min', 'fame')"
+                  (input)="onGenericInput('min', 'fame', $event)" [title]="formFilters.minFame"
+                  [placeholder]="'Gloire min.' | translate">
+                <input field type="text" id="fameMax" name="fameMax" [value]="displayFormValues.fame.max"
+                  (focus)="onGenericFocus('max', 'fame')" (blur)="onGenericBlur('max', 'fame')"
+                  (input)="onGenericInput('max', 'fame', $event)" [title]="formFilters.maxFame"
+                  [placeholder]="'Gloire max.' | translate">
+              </app-modal-form-group>
+            </div>
+            <!-- Castle count -->
+            <div class="col-12 col-sm my-1">
+              <app-modal-form-group class="compact">
+                <span field prefix>
+                  <img src="/assets/castle4.png" [attr.alt]="'Châteaux' | translate"
+                    [title]="'Filtrer par nombre de châteaux' | translate">
+                </span>
+                <input field type="text" id="castleCountMin" name="castleCountMin"
+                  [value]="displayFormValues.castleCount.min" (focus)="onGenericFocus('min', 'castleCount')"
+                  (blur)="onGenericBlur('min', 'castleCount')" (input)="onGenericInput('min', 'castleCount', $event)"
+                  [title]="formFilters.castleCountMin" [placeholder]="'Châteaux min.' | translate">
+                <input field type="text" id="castleCountMax" name="castleCountMax"
+                  [value]="displayFormValues.castleCount.max" (focus)="onGenericFocus('max', 'castleCount')"
+                  (blur)="onGenericBlur('max', 'castleCount')" (input)="onGenericInput('max', 'castleCount', $event)"
+                  [title]="formFilters.castleCountMax" [placeholder]="'Châteaux max.' | translate">
+              </app-modal-form-group>
+            </div>
+          </div>
+          <div class="row mt-1">
+            <!-- Alliance Might -->
+            <div class="col-12 col-sm-6 my-1">
+              <app-modal-form-group class="compact">
+                <span field prefix>
+                  <img src="/assets/min-alliance.png" [attr.alt]="'Filtrer par puissance totale de l\'alliance' | translate"
+                    [title]="'Filtrer par puissance totale de l\'alliance' | translate">
+                </span>
+                <input field type="text" id="allianceMightMin" name="allianceMightMin"
+                  [value]="displayFormValues.allianceMight.min" (focus)="onGenericFocus('min', 'allianceMight')"
+                  (blur)="onGenericBlur('min', 'allianceMight')"
+                  (input)="onGenericInput('min', 'allianceMight', $event)" [title]="formFilters.minAllianceMight"
+                  [placeholder]="('Puissance min' | translate) + ' (' + ('Alliance' | translate) + ')'">
+                <input field type="text" id="allianceMightMax" name="allianceMightMax"
+                  [value]="displayFormValues.allianceMight.max" (focus)="onGenericFocus('max', 'allianceMight')"
+                  (blur)="onGenericBlur('max', 'allianceMight')"
+                  (input)="onGenericInput('max', 'allianceMight', $event)" [title]="formFilters.maxAllianceMight"
+                  [placeholder]="('Puissance max' | translate) + ' (' + ('Alliance' | translate) + ')'">
+              </app-modal-form-group>
+            </div>
+          </div>
+          <div class="row mt-1">
+            <div class="col-6">
+              <app-modal-form-group [label]="'Royaume' | translate">
+                <span field prefix>
+                  <img src="/assets/map.png" [attr.alt]="'Royaume' | translate">
+                </span>
+                <ng-select field [items]="realms" bindLabel="label" bindValue="key"
+                  [(ngModel)]="formFilters.kingdomFilter" (change)="onRealmChange($event)" [multiple]="true"
+                  [closeOnSelect]="false">
                   <ng-template ng-option-tmp let-item="item">
-                    @if (item.key !== '999') {
-                      <img [src]="'assets/dungeon' + item.key + '.png'" width="20" class="ms-2" />
-                    }
-                    {{ item.label | translate }}
+                    <div class="d-flex align-items-center">
+                      @if (item.image) {
+                      <img [src]="item.image" width="20" class="me-2" />
+                      }
+                      <span>{{ item.label | translate }}</span>
+                    </div>
                   </ng-template>
                   <ng-template ng-label-tmp let-item="item">
-                    @if (item.key !== '999') {
-                      <img [src]="'assets/dungeon' + item.key + '.png'" width="20" class="ms-2" />
-                    }
-                    {{ item.label | translate }}
+                    <div class="d-flex align-items-center">
+                      @if (item.image) {
+                      <img [src]="item.image" width="15" class="me-1" />
+                      }
+                      <small>{{ item.label | translate }}</small>
+                    </div>
                   </ng-template>
                 </ng-select>
+              </app-modal-form-group>
+            </div>
+            <!-- Filter by distance (playername) -->
+            <div class="col-6" [title]="'Distance-text' | translate">
+              <app-modal-form-group [label]="('Distance (m)' | translate) + ' *'">
+                <span field prefix>
+                  <img src="/assets/players.png"
+                    [title]="'Filtrer par distance depuis le château principal d\'un joueur' | translate"
+                    [attr.alt]="'Filtrer par distance depuis le château principal d\'un joueur' | translate">
+                </span>
+                <input field type="text" id="playerCastleDistance" name="playerCastleDistance"
+                  [placeholder]="'Pseudonyme du joueur (château principal)' | translate"
+                  [(ngModel)]="formFilters.playerCastleDistance">
+              </app-modal-form-group>
+            </div>
+          </div>
+
+          <div class="row">
+            <!-- Filter by stormyIsland -->
+            <div class="col-12">
+              <div class="text-center mt-1 stormy-island-icon">
+                <img src="assets/dungeon4.png" [alt]="'Les Îles orageuses' | translate"
+                  [title]="'Les Îles orageuses' | translate" height="32">
+              </div>
+              <div class="input-group align-items-center justify-content-center">
+                <div class="col-4 text-center">
+                  <label for="yes">{{ 'Débloqué' | translate }}</label>
+                  <div>
+                    <input type="radio" class="form-check-input" id="yes" value="1" name="stormyIsland"
+                      [(ngModel)]="formFilters.stormyIslandsFilter">
+                  </div>
+                </div>
+                <div class="col-4 text-center">
+                  <label for="no">{{ 'Non débloqué' | translate }}</label>
+                  <div>
+                    <input type="radio" class="form-check-input" id="no" name="stormyIsland" value="0"
+                      [(ngModel)]="formFilters.stormyIslandsFilter">
+                  </div>
+                </div>
+                <div class="col-4 text-center">
+                  <label for="noStormyIsland">{{ 'Pas de filtre' | translate }}</label>
+                  <div>
+                    <input type="radio" class="form-check-input" id="noStormyIsland" name="stormyIsland" value="-1"
+                      [(ngModel)]="formFilters.stormyIslandsFilter">
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="row mt-1">
-              <!-- Filter by distance (playername) -->
-              <div class="col-12 col-sm my-1">
-                <div class="input-group">
-                  <span class="input-group-text">
-                    <img src="/assets/players.png" height="24"
-                      [title]="'Filtrer par distance depuis le château principal d\'un joueur' | translate"
-                      [attr.alt]="'Filtrer par distance depuis le château principal d\'un joueur' | translate">
-                  </span>
-                  <input type="text" class="form-control" id="playerCastleDistance" name="playerCastleDistance"
-                    [placeholder]="'Pseudonyme du joueur (château principal)' | translate"
-                    [(ngModel)]="formFilters.playerCastleDistance">
-                </div>
-                <div class="form-text text-muted small" [innerHTML]="'Distance-text' | translate"></div>
+          </div>
+          <div class="row">
+            <!-- Filter by alliance -->
+            <div class="col-12">
+              <div class="text-center mt-1 alliance-icon">
+                <img src="/assets/min-alliance.png" [alt]="'Alliance' | translate"
+                  [title]="'Filtrer par alliance' | translate" height="32">
               </div>
-              <div class="row">
-                <!-- Filter by alliance -->
-                <div class="col-12">
-                  <div class="text-center mt-1 alliance-icon">
-                    <img src="/assets/min-alliance.png" [alt]="'Alliance' | translate"
-                      [title]="'Filtrer par alliance' | translate" height="32">
-                  </div>
-                  <div class="input-group align-items-center justify-content-center">
-                    <div class="col-4 text-center">
-                      <label for="alliance1" translate>Avec alliance</label>
-                      <div>
-                        <input type="radio" class="form-check-input" id="alliance1" value="1" name="alliance"
-                          [(ngModel)]="formFilters.allianceFilter">
-                      </div>
-                    </div>
-                    <div class="col-4 text-center">
-                      <label for="alliance0" translate>Sans alliance</label>
-                      <div>
-                        <input type="radio" class="form-check-input" id="alliance0" name="alliance" value="0"
-                          [(ngModel)]="formFilters.allianceFilter">
-                      </div>
-                    </div>
-                    <div class="col-4 text-center">
-                      <label for="noAlliance" translate>Pas de filtre</label>
-                      <div>
-                        <input type="radio" class="form-check-input" id="noAlliance" name="alliance" value="-1"
-                          [(ngModel)]="formFilters.allianceFilter">
-                      </div>
-                    </div>
+              <div class="input-group align-items-center justify-content-center">
+                <div class="col-4 text-center">
+                  <label for="alliance1">{{ 'Avec alliance' | translate }}</label>
+                  <div>
+                    <input type="radio" class="form-check-input" id="alliance1" value="1" name="alliance"
+                      [(ngModel)]="formFilters.allianceFilter">
                   </div>
                 </div>
-                <!-- Filter player rank -->
-                <div class="col-12">
-                  @if (formFilters.allianceFilter !== '0') {
-                    <div class="d-flex  filter-rank-container">
-                      @for (rank of [0,1,2,3,4,5,6,7,8,9]; track rank) {
-                        <div class="col text-center checkbox-wrapper-15">
-                          <input class="inp-cbx d-none" type="checkbox" [id]="'allianceRank' + rank"
-                            name="allianceRankFilter"
-                            [value]="formFilters.allianceRankFilter[rank]"
-                            [checked]="formFilters.allianceRankFilter[rank] === '0'"
-                            (change)="onAllianceRankFilterChanged(rank)">
-                          <label for="allianceRank{{ rank }}" class="cbx">
-                            <span>
-                              <svg width="12px" height="9px" viewbox="0 0 12 9">
-                                <polyline points="1 5 4 8 11 1"></polyline>
-                              </svg>
-                            </span>
-                            <div>
-                              <img src="/assets/alliance_ranks/{{ rank }}.png" class="alliance-rank-icon-filter mb-2"
-                                [alt]="'Rank ' + rank">
-                            </div>
-                          </label>
-                        </div>
-                      }
+                <div class="col-4 text-center">
+                  <label for="alliance0">{{ 'Sans alliance' | translate }}</label>
+                  <div>
+                    <input type="radio" class="form-check-input" id="alliance0" name="alliance" value="0"
+                      [(ngModel)]="formFilters.allianceFilter">
+                  </div>
+                </div>
+                <div class="col-4 text-center">
+                  <label for="noAlliance">{{ 'Pas de filtre' | translate }}</label>
+                  <div>
+                    <input type="radio" class="form-check-input" id="noAlliance" name="alliance" value="-1"
+                      [(ngModel)]="formFilters.allianceFilter">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Filter player rank -->
+            <div class="col-12 mb-1">
+              @if (formFilters.allianceFilter !== '0') {
+              <div class="d-flex justify-content-center filter-rank-container">
+                @for (rank of [0,1,2,3,4,5,6,7,8,9]; track rank) {
+                <div class="col-2 col-md text-center checkbox-wrapper-15">
+                  <input class="inp-cbx d-none" type="checkbox" [id]="'allianceRank' + rank" name="allianceRankFilter"
+                    [value]="formFilters.allianceRankFilter[rank]"
+                    [checked]="formFilters.allianceRankFilter[rank] === '0'"
+                    (change)="onAllianceRankFilterChanged(rank)">
+                  <label for="allianceRank{{ rank }}" class="cbx">
+                    <span>
+                      <svg width="12px" height="9px" viewbox="0 0 12 9">
+                        <polyline points="1 5 4 8 11 1"></polyline>
+                      </svg>
+                    </span>
+                    <div>
+                      <img src="/assets/alliance_ranks/{{ rank }}.png" class="alliance-rank-icon-filter mb-2"
+                        [alt]="'Rank ' + rank">
                     </div>
+                  </label>
+                </div>
+                }
+              </div>
+              }
+            </div>
+            <!-- Protection -->
+            <div class="col-12">
+              <div class="text-center mt-1 peace-icon">
+                <img src="/assets/peace.png" [alt]="'Protection'  | translate"
+                  [title]="'Filtrer par protection' | translate" height="32">
+              </div>
+              <div class="input-group align-items-center justify-content-center">
+                <div class="col-4 text-center">
+                  <label for="peace1">{{ 'En protection' | translate }}</label>
+                  <div>
+                    <input type="radio" class="form-check-input" id="peace1" name="peace" value="1"
+                      [(ngModel)]="formFilters.protectionFilter">
+                  </div>
+                </div>
+                <div class="col-4 text-center">
+                  <label for="peace0">{{ 'Hors protection' | translate }}</label>
+                  <div>
+                    <input type="radio" class="form-check-input" id="peace0" name="peace" value="0"
+                      [(ngModel)]="formFilters.protectionFilter">
+                  </div>
+                </div>
+                <div class="col-4 text-center">
+                  <label for="noPeace">{{ 'Pas de filtre' | translate }}</label>
+                  <div>
+                    <input type="radio" class="form-check-input" id="noPeace" name="peace" value="-1" checked
+                      [(ngModel)]="formFilters.protectionFilter">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Ban -->
+            <div class="col-12">
+              <div class="text-center mt-1 ban-icon">
+                <img src="/assets/error.png" [alt]="'Banissement' | translate"
+                  [title]="'Filtrer par banissement' | translate" height="32">
+              </div>
+              <div class="input-group align-items-center justify-content-center">
+                <div class="col-4 text-center">
+                  <label for="ban1">{{ 'Banni' | translate }}</label>
+                  <div>
+                    <input type="radio" class="form-check-input" id="ban1" name="ban" value="1"
+                      [(ngModel)]="formFilters.banFilter">
+                  </div>
+                </div>
+                <div class="col-4 text-center">
+                  <label for="ban0">{{ 'Non banni' | translate }}</label>
+                  <div>
+                    <input type="radio" class="form-check-input" id="ban0" name="ban" value="0"
+                      [(ngModel)]="formFilters.banFilter">
+                  </div>
+                </div>
+                <div class="col-4 text-center">
+                  <label for="noBan">{{ 'Pas de filtre' | translate }}</label>
+                  <div>
+                    <input type="radio" class="form-check-input" id="noBan" name="ban" value="-1" checked
+                      [(ngModel)]="formFilters.banFilter">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Inactive player -->
+            <div class="col-12">
+              <div class="text-center mt-1 inactive-icon">
+                <img src="/assets/compass.png" [alt]="'Inactif' | translate"
+                  [title]="'Filtrer par joueur inactif (N\'étant pas sur la carte)' | translate" height="32">
+              </div>
+              <div class="input-group align-items-center justify-content-center">
+                <div class="col-4 text-center">
+                  <label for="inactive1">{{ 'Inactif' | translate }}</label>
+                  <div>
+                    <input type="radio" class="form-check-input" id="inactive1" name="inactive" value="0"
+                      [(ngModel)]="formFilters.inactiveFilter">
+                  </div>
+                </div>
+                <div class="col-4 text-center">
+                  <label for="inactive0">{{ 'Actif' | translate }}</label>
+                  <div>
+                    <input type="radio" class="form-check-input" id="inactive0" name="inactive" value="1"
+                      [(ngModel)]="formFilters.inactiveFilter">
+                  </div>
+                </div>
+                <div class="col-4 text-center">
+                  <label for="noInactive">{{ 'Pas de filtre' | translate }}</label>
+                  <div>
+                    <input type="radio" class="form-check-input" id="noInactive" name="inactive" value="-1" checked
+                      [(ngModel)]="formFilters.inactiveFilter">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row mt-1">
+            <div class="col-12">
+              <app-modal-form-group [label]="'Trier les résultats' | translate">
+                <select field [(ngModel)]="sort">
+                  @for (option of sortByOptions; track option) {
+                  <option [value]="option.value">{{ option.label | translate }}</option>
                   }
-                </div>
-                <!-- Protection -->
-                <div class="col-12">
-                  <div class="text-center mt-1 peace-icon">
-                    <img src="/assets/peace.png" [alt]="'Protection'  | translate"
-                      [title]="'Filtrer par protection' | translate" height="32">
-                  </div>
-                  <div class="input-group align-items-center justify-content-center">
-                    <div class="col-4 text-center">
-                      <label for="peace1" translate>En protection</label>
-                      <div>
-                        <input type="radio" class="form-check-input" id="peace1" name="peace" value="1"
-                          [(ngModel)]="formFilters.protectionFilter">
-                      </div>
-                    </div>
-                    <div class="col-4 text-center">
-                      <label for="peace0" translate>Hors protection</label>
-                      <div>
-                        <input type="radio" class="form-check-input" id="peace0" name="peace" value="0"
-                          [(ngModel)]="formFilters.protectionFilter">
-                      </div>
-                    </div>
-                    <div class="col-4 text-center">
-                      <label for="noPeace" translate>Pas de filtre</label>
-                      <div>
-                        <input type="radio" class="form-check-input" id="noPeace" name="peace" value="-1" checked
-                          [(ngModel)]="formFilters.protectionFilter">
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <!-- Ban -->
-                <div class="col-12">
-                  <div class="text-center mt-1 ban-icon">
-                    <img src="/assets/error.png" [alt]="'Banissement' | translate"
-                      [title]="'Filtrer par banissement' | translate" height="32">
-                  </div>
-                  <div class="input-group align-items-center justify-content-center">
-                    <div class="col-4 text-center">
-                      <label for="ban1" translate>Banni</label>
-                      <div>
-                        <input type="radio" class="form-check-input" id="ban1" name="ban" value="1"
-                          [(ngModel)]="formFilters.banFilter">
-                      </div>
-                    </div>
-                    <div class="col-4 text-center">
-                      <label for="ban0" translate>Non banni</label>
-                      <div>
-                        <input type="radio" class="form-check-input" id="ban0" name="ban" value="0"
-                          [(ngModel)]="formFilters.banFilter">
-                      </div>
-                    </div>
-                    <div class="col-4 text-center">
-                      <label for="noBan" translate>Pas de filtre</label>
-                      <div>
-                        <input type="radio" class="form-check-input" id="noBan" name="ban" value="-1" checked
-                          [(ngModel)]="formFilters.banFilter">
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <!-- Inactive player -->
-                <div class="col-12">
-                  <div class="text-center mt-1 inactive-icon">
-                    <img src="/assets/compass.png" [alt]="'Inactif' | translate"
-                      [title]="'Filtrer par joueur inactif (N\'étant pas sur la carte)' | translate" height="32">
-                  </div>
-                  <div class="input-group align-items-center justify-content-center">
-                    <div class="col-4 text-center">
-                      <label for="inactive1" translate>Inactif</label>
-                      <div>
-                        <input type="radio" class="form-check-input" id="inactive1" name="inactive" value="0"
-                          [(ngModel)]="formFilters.inactiveFilter">
-                      </div>
-                    </div>
-                    <div class="col-4 text-center">
-                      <label for="inactive0" translate>Actif</label>
-                      <div>
-                        <input type="radio" class="form-check-input" id="inactive0" name="inactive" value="1"
-                          [(ngModel)]="formFilters.inactiveFilter">
-                      </div>
-                    </div>
-                    <div class="col-4 text-center">
-                      <label for="noInactive" translate>Pas de filtre</label>
-                      <div>
-                        <input type="radio" class="form-check-input" id="noInactive" name="inactive" value="-1" checked
-                          [(ngModel)]="formFilters.inactiveFilter">
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="row">
-                <div class="col-12">
-                  <div class="mt-3">
-                    <h5 class="d-flex">
-                      <app-icon [name]="'ArrowDown01'" [size]="24" class="me-2"></app-icon>
-                      {{ 'Trier les résultats' | translate }}
-                    </h5>
-                  </div>
-                  <div class="input-group align-items-center justify-content-center gge-tracker-select-container">
-                    <select class="form-select w-auto mt-2" [(ngModel)]="sort">
-                      @for (option of sortByOptions; track option) {
-                        <option [value]="option.value">{{ option.label | translate}}
-                        </option>
-                      }
-                    </select>
-                    <button class="gge-btn reset sort mt-2" (click)="sort = sort; reverse = !reverse">
-                      <i class="fa-solid" [ngClass]="{'fa-arrow-down-long': !reverse, 'fa-arrow-up-long': reverse}"></i>
-                      &nbsp;
-                      @if (!reverse) {
-                        <span>{{ 'Descendant' | translate }}</span>
-                      }
-                      @if (reverse) {
-                        <span>{{ 'Ascendant' | translate }}</span>
-                      }
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <hr class="my-4">
-              <div class="row">
-                <div class="col text-center">
-                  <div class="btn-group" role="group">
-                    <button class="gge-btn success" (click)="applyFilters()" data-bs-dismiss="modal">
-                      <i class="fa-solid fa-check"></i>
-                      &nbsp;
-                      <span>{{ 'Appliquer les filtres' | translate }}</span>
-                    </button>
-                    <button
-                      appIconToggle
-                      baseIcon="fa-floppy-disk"
-                      [validated]="validated['saveFilters']"
-                      [disabled]="!areFiltersChanged()"
-                      class="gge-btn search"
-                      (click)="saveFilters()"
-                      >
-                      {{ 'Enregistrer les filtres' | translate }}
-                    </button>
-                    <button
-                      appIconToggle
-                      baseIcon="fa-folder-open"
-                      [validated]="validated['loadFilters']"
-                      [disabled]="!areFiltersSavedInLocalStorage"
-                      class="gge-btn search"
-                      (click)="loadFiltersFromLocalStorage()"
-                      >
-                      {{ 'Charger les filtres' | translate }}
-                    </button>
-                    <button
-                      appIconToggle
-                      baseIcon="fa-rotate-left"
-                      [validated]="validated['resetFilters']"
-                      [disabled]="!areFiltersChanged()"
-                      class="gge-btn reset"
-                      (click)="resetFilters()"
-                      >
-                      {{ 'Réinitialiser les filtres' | translate }}
-                    </button>
-                  </div>
-                </div>
+                </select>
+                <button action reset (click)="sort = sort; reverse = !reverse">
+                  <i class="fa-solid" [ngClass]="{'fa-arrow-down-long': !reverse, 'fa-arrow-up-long': reverse}"></i>
+                  @if (!reverse) { <span>{{ 'Descendant' | translate }}</span> }
+                  @if (reverse) { <span>{{ 'Ascendant' | translate }}</span> }
+                </button>
+              </app-modal-form-group>
+            </div>
+          </div>
+          <hr class="my-4">
+          <div class="row">
+            <div class="col text-center">
+              <div class="btn-group" role="group">
+                <button class="gge-btn success" (click)="applyFilters()" data-bs-dismiss="modal">
+                  <i class="fa-solid fa-check"></i>
+                  &nbsp;
+                  <span>{{ 'Appliquer les filtres' | translate }}</span>
+                </button>
+                <button appIconToggle baseIcon="fa-floppy-disk" [validated]="validated['saveFilters']"
+                  [disabled]="!areFiltersChanged()" class="gge-btn search" (click)="saveFilters()">
+                  {{ 'Enregistrer les filtres' | translate }}
+                </button>
+                <button appIconToggle baseIcon="fa-folder-open" [validated]="validated['loadFilters']"
+                  [disabled]="!areFiltersSavedInLocalStorage" class="gge-btn search"
+                  (click)="loadFiltersFromLocalStorage()">
+                  {{ 'Charger les filtres' | translate }}
+                </button>
+                <button appIconToggle baseIcon="fa-rotate-left" [validated]="validated['resetFilters']"
+                  [disabled]="!areFiltersChanged()" class="gge-btn reset" (click)="resetFilters()">
+                  {{ 'Réinitialiser les filtres' | translate }}
+                </button>
               </div>
             </div>
           </div>

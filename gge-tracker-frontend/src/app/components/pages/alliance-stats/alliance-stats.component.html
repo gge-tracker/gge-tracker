@@ -104,42 +104,56 @@
   <div [ngClass]="selectedTab === 'members' ? 'd-block' : 'd-none'" class="alliances-stats-content pb-3 pt-3"
     >
     <div class="container">
-      <div class="row align-items-center justify-content-end">
-        <div class="col-6 col-lg-4">
+      <div class="distance-panel">
+        <div class="distance-panel-header">
+          <img src="/assets/players.png" height="14" alt="">
+          <span>{{ 'Distance' | translate }}</span>
+        </div>
+        <div class="distance-panel-body">
           <input
             type="text"
-            class="form-control form-control-sm"
-            [placeholder]="'Pseudonyme du joueur (château principal)' | translate"
+            class="distance-input"
+            [placeholder]="'Pseudonyme' | translate"
             [(ngModel)]="playerNameForDistance">
-        </div>
-        <div class="col-auto">
-          <div class="btn-group" role="group" aria-label="Distance buttons">
-            <button class="btn btn-primary btn-sm"
+          <div class="world-selector-group">
+            @for (world of availableWorlds; track world.id) {
+              <button
+                class="world-btn"
+                [class.active]="selectedKingdomId === world.id"
+                (click)="selectKingdom(world.id)"
+                [title]="world.name | translate">
+                <img width="24" height="24" class="me-2" [alt]="world.name | translate" [src]="'assets/dungeon' + world.id + '.png'">
+                {{ world.name | translate }}
+              </button>
+            }
+          </div>
+          <div class="distance-actions">
+            <button class="distance-action-btn primary"
               (click)="onAddDistanceColumn()"
-              [disabled]="!playerNameForDistance.trim()">
+              [disabled]="!playerNameForDistance.trim()"
+              [title]="'Filtrer par distance depuis le château principal d\'un joueur' | translate">
               @if (!isDistanceIsInLoading) {
-                <div>
-                  <img src="/assets/players.png" height="24" [title]="'Filtrer par distance depuis le château principal d\'un joueur' | translate" [attr.alt]="'Filtrer par distance depuis le château principal d\'un joueur' | translate">
-                  {{ 'Afficher la distance' | translate }}
-                </div>
+                <i class="fas fa-map-marker-alt"></i>
+                <span>{{ 'Afficher la distance' | translate }}</span>
               } @else {
-                <i class="fas fa-spinner fa-spin me-1"></i>
+                <i class="fas fa-spinner fa-spin"></i>
               }
             </button>
-            <button class="btn btn-secondary btn-cancel btn-sm"
-              (click)="resetDistanceColumn()"
-              [title]="'Réinitialiser' | translate"
-              [disabled]="!playerNameForDistance.trim()">
-              <i class="fas fa-times"></i>
+            @if (playerNameForDistance.trim()) {
+              <button class="distance-action-btn secondary"
+                (click)="resetDistanceColumn()"
+                [title]="'Réinitialiser' | translate">
+                <i class="fas fa-times"></i>
+              </button>
+            }
+            <button class="distance-action-btn export"
+              (click)="exportData()"
+              [title]="'Exporter les données' | translate">
+              <lucide-icon [img]="Download"></lucide-icon>
             </button>
           </div>
         </div>
-        <div class="col-auto">
-          <button class="btn-filter btn btn-light btn-sm" (click)="exportData()" [title]="'Exporter les données' | translate">
-            <lucide-icon class="lucide lucide-download" [img]="Download"></lucide-icon>
-          </button>
-        </div>
-        <div class="form-text text-muted small mb-3 text-end" [innerHTML]="'Distance-text' | translate"></div>
+        <div class="distance-help-text" [innerHTML]="'Distance-text' | translate"></div>
       </div>
       <div class="players-container">
         <app-table [sort]="sort" [reverse]="reverse" [isInLoading]="isInLoading" [maxPage]="maxPage!" [page]="page"
@@ -450,7 +464,7 @@
                 [dataName]="'Puissance' | translate" [backgroundIconImage]="'/assets/banner-pp.png'"
                 [backgroundColour]="'rgb(255 230 35)'">
                 <div after class="info-icon">
-                  <i class="fas fa-info-circle" [title]="'Informations' | translate" data-bs-toggle="modal" data-bs-target="#infoDesc1Modal" (click)="openModal1()" (keydown.enter)="openModal1()"></i>
+                  <i class="fas fa-info-circle" [title]="'Aide' | translate" data-bs-toggle="modal" data-bs-target="#infoDesc1Modal" (click)="openModal1()" (keydown.enter)="openModal1()"></i>
                 </div>
               </app-player-stats-card>
             }
@@ -464,7 +478,7 @@
                 [dataName]="'Puissance' | translate" [backgroundIconImage]="'/assets/banner-pp.png'"
                 [backgroundColour]="'rgb(255 230 35)'">
                 <div after class="info-icon">
-                  <i class="fas fa-info-circle" [title]="'Informations' | translate" data-bs-toggle="modal" data-bs-target="#infoDesc2Modal" (click)="openModal2()" (keydown.enter)="openModal2()"></i>
+                  <i class="fas fa-info-circle" [title]="'Aide' | translate" data-bs-toggle="modal" data-bs-target="#infoDesc2Modal" (click)="openModal2()" (keydown.enter)="openModal2()"></i>
                 </div>
               </app-player-stats-card>
             }
@@ -485,7 +499,7 @@
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="infoDesc1ModalLabel" translate>Explication</h5>
+        <h5 class="modal-title" id="infoDesc1ModalLabel">{{ 'Explication' | translate }}</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" [attr.aria-label]="'Fermer' | translate"></button>
       </div>
       <div class="modal-body">
@@ -499,7 +513,7 @@
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" translate>Fermer</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ 'Fermer' | translate }}</button>
           </div>
         </div>
       </div>
@@ -512,7 +526,7 @@
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="infoDesc2ModalLabel" translate>Explication</h5>
+          <h5 class="modal-title" id="infoDesc2ModalLabel">{{ 'Explication' | translate }}</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" [attr.aria-label]="'Fermer' | translate"></button>
         </div>
         <div class="modal-body">
@@ -526,7 +540,7 @@
               </div>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" translate>Fermer</button>
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ 'Fermer' | translate }}</button>
             </div>
           </div>
         </div>

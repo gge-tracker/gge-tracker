@@ -11,6 +11,38 @@
   width: 100%;
 }
 
+.card-loading {
+  opacity: .7;
+  pointer-events: none;
+}
+
+.loading-overlay {
+  border-radius: inherit;
+  inset: 0;
+  overflow: hidden;
+  position: absolute;
+  z-index: 10;
+}
+
+.loading-shimmer {
+  animation: shimmer 1.2s ease-in-out infinite;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.12) 50%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  height: 100%;
+  width: 100%;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+
+
 .event-card {
   align-items: flex-end;
   background-position: center;
@@ -19,7 +51,7 @@
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
   cursor: pointer;
   display: flex;
-  min-height: 180px;
+  min-height: 160px;
   overflow: hidden;
   position: relative;
   transition:
@@ -72,7 +104,7 @@
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
-.event-players {
+:host ::ng-deep .event-badge-header {
   align-items: center;
   backdrop-filter: blur(2px);
   background: rgba(255, 255, 255, 0.12);
@@ -85,7 +117,7 @@
   transition: background 0.2s ease;
 }
 
-.event-players:hover {
+:host ::ng-deep .event-badge-header:hover {
   background: rgba(255, 255, 255, 0.2);
 }
 

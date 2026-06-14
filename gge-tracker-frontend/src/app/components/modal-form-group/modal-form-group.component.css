@@ -1,0 +1,339 @@
+:host {
+  --accent: #0891b2;
+  --accent-2: #059669;
+  --accent-subtle: rgba(8, 145, 178, 0.08);
+  --border: #e2e8f0;
+  --muted: #64748b;
+  --radius: 9px;
+  --text: #1e293b;
+  --text-secondary: #475569;
+  --transition: 180ms cubic-bezier(0.2, 0.9, 0.2, 1);
+  display: block;
+}
+
+.mfg-wrapper {
+  background: #f8fafc;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 14px 16px;
+}
+
+:host.compact .mfg-wrapper {
+  padding: 0;
+  background: none;
+  border: none;
+}
+
+.mfg-label {
+  color: var(--text-secondary);
+  font-family: "Inter", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+.mfg-row {
+  align-items: stretch;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mfg-fields {
+  align-items: center;
+  display: flex;
+  flex-grow: 1;
+  flex-wrap: nowrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.mfg-actions {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+}
+
+:host ::ng-deep [field]:not([prefix]):not([separator]):not(ng-select):not([toggle]) {
+  background-color: #ffffff !important;
+  border-radius: 7px !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: none !important;
+  caret-color: var(--accent);
+  color: var(--text) !important;
+  flex: 1 1 100%;
+  font-family: "Inter", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  min-width: 60px;
+  padding: 7px 11px;
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
+}
+
+:host ::ng-deep select[field] {
+  appearance: auto;
+  cursor: pointer;
+  padding-right: 32px;
+}
+
+:host ::ng-deep [field]:not([prefix]):not([separator]):not(ng-select):not([toggle])::placeholder {
+  color: #94a3b8;
+}
+
+:host ::ng-deep [field]:not([prefix]):not([separator]):not(ng-select):not([toggle]):focus {
+  border-color: rgba(8, 145, 178, 0.45) !important;
+  box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1) !important;
+  outline: none;
+}
+
+:host ::ng-deep [field][prefix] {
+  align-items: center;
+  background: #f1f5f9;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  display: inline-flex;
+  flex-shrink: 0;
+  font-family: "Inter", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  justify-content: center;
+  letter-spacing: 0.06em;
+  min-height: 34px;
+  min-width: 36px;
+  padding: 5px 10px;
+  text-transform: uppercase;
+  user-select: none;
+}
+
+:host ::ng-deep [field][prefix] img {
+  display: block;
+  height: 20px;
+  object-fit: contain;
+  width: 30px;
+}
+
+:host ::ng-deep [field][prefix].large img {
+  height: 55px;
+}
+
+:host ::ng-deep [field][separator] {
+  align-items: center;
+  color: #94a3b8;
+  display: inline-flex;
+  flex-shrink: 0;
+  justify-content: center;
+  min-width: 28px;
+  padding: 0 2px;
+}
+
+:host ::ng-deep ng-select[field] {
+  flex: 1 1 140px;
+  min-width: 120px;
+}
+
+:host ::ng-deep ng-select[field] .ng-select-container {
+  background: #ffffff;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  box-shadow: none;
+  color: var(--text);
+  font-family: "Inter", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  min-height: 34px;
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
+}
+
+:host ::ng-deep ng-select[field].ng-select-focused .ng-select-container {
+  border-color: rgba(8, 145, 178, 0.45);
+  box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1);
+  outline: none;
+}
+
+:host ::ng-deep ng-select[field] .ng-placeholder {
+  color: #94a3b8;
+}
+
+:host ::ng-deep ng-select[field] .ng-value {
+  align-items: center;
+  background: var(--accent-subtle);
+  border-radius: 5px;
+  border: 1px solid rgba(8, 145, 178, 0.2);
+  color: var(--accent);
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 500;
+  gap: 4px;
+  padding: 2px 6px;
+}
+
+:host ::ng-deep ng-select[field] .ng-value .ng-value-icon {
+  border-right: 1px solid rgba(8, 145, 178, 0.2);
+  color: var(--accent);
+  font-size: 14px;
+  padding-right: 4px;
+}
+
+:host ::ng-deep ng-select[field] .ng-value .ng-value-icon:hover {
+  background: rgba(8, 145, 178, 0.12);
+  color: var(--text);
+}
+
+:host ::ng-deep ng-select[field] .ng-dropdown-panel {
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  font-family: "Inter", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+:host ::ng-deep ng-select[field] .ng-option {
+  color: var(--text-secondary);
+  padding: 8px 12px;
+  transition: background var(--transition);
+}
+
+:host ::ng-deep ng-select[field] .ng-option.ng-option-selected {
+  background: var(--accent-subtle);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+:host ::ng-deep ng-select[field] .ng-option.ng-option-marked {
+  background: #f8fafc;
+  color: var(--text);
+}
+
+:host ::ng-deep [action] {
+  align-items: center;
+  border-radius: 7px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  font-family: "Inter", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  gap: 6px;
+  justify-content: center;
+  padding: 7px 14px;
+  transition:
+    background var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition);
+  white-space: nowrap;
+}
+
+:host ::ng-deep [action]:active {
+  transform: scale(0.97);
+}
+
+:host ::ng-deep [action][search] {
+  background: linear-gradient(145deg, #3a53dd, #2c3cbf);
+  box-shadow: 0 2px 8px rgba(50, 70, 200, 0.22);
+  color: #ffffff;
+}
+
+:host ::ng-deep [action][search]:hover {
+  background: linear-gradient(145deg, #425cff, #3345cf);
+  box-shadow: 0 4px 14px rgba(50, 70, 200, 0.32);
+}
+
+:host ::ng-deep [action][reset] {
+  background: #f1f5f9;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  color: var(--text-secondary);
+}
+
+:host ::ng-deep [action][reset]:hover {
+  background: #e2e8f0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  color: var(--text);
+}
+
+:host ::ng-deep [field][toggle] {
+  cursor: pointer;
+  display: inline-block;
+  flex-shrink: 0;
+  height: 24px;
+  margin-left: auto;
+  position: relative;
+  width: 44px;
+}
+
+:host ::ng-deep .ng-select .ng-select-container .ng-value-container .ng-input>input {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+:host ::ng-deep [field][toggle] input[type="checkbox"] {
+  height: 0;
+  opacity: 0;
+  position: absolute;
+  width: 0;
+}
+
+:host ::ng-deep [field][toggle] .slider {
+  background: var(--border);
+  border-radius: 34px;
+  bottom: 0;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+  transition: 0.3s;
+}
+
+:host ::ng-deep [field][toggle] .slider::before {
+  background-color: #ffffff;
+  border-radius: 50%;
+  bottom: 3px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  content: "";
+  height: 18px;
+  left: 3px;
+  position: absolute;
+  transition: 0.3s;
+  width: 18px;
+}
+
+:host ::ng-deep [field][toggle] input:checked + .slider {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 0 8px rgba(8, 145, 178, 0.35);
+}
+
+:host ::ng-deep [field][toggle] input:checked + .slider::before {
+  background-color: #fff;
+  transform: translateX(20px);
+}
+
+@media (max-width: 520px) {
+  .mfg-row {
+    flex-direction: column;
+  }
+
+  .mfg-fields,
+  .mfg-actions {
+    width: 100%;
+  }
+
+  :host ::ng-deep [field]:not([prefix]):not([toggle]) {
+    flex: 1 1;
+  }
+
+  :host ::ng-deep [action] {
+    flex: 1;
+    justify-content: center;
+  }
+}

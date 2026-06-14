@@ -195,12 +195,23 @@ export class RenamesComponent extends GenericComponent implements AfterViewInit,
         rank: rankFunction(index),
         player: movement.player_name,
         alliance: movement.alliance_name,
-        date: movement.date,
+        date: this.formatMovementDate(movement.date),
         might: movement.player_might,
         updatedPlayerName: movement.new_player_name,
         oldPlayerName: movement.old_player_name,
       };
     });
+  }
+
+  /**
+   * Format the movement date to remove minutes and seconds to avoid timezone issues and only keep the date and hour
+   * @param date The date in ISO format (e.g. 2026-01-01T10:11:10.944Z)
+   * @returns The date in ISO format with 00:00 for minutes and seconds to avoid timezone issues (e.g. 2026-01-01T10:00:00.000Z)
+   */
+  private formatMovementDate(date: string): string {
+    const dateObject = new Date(date);
+    dateObject.setUTCMinutes(0, 0, 0);
+    return dateObject.toISOString();
   }
 
   private updateViewStatus(state: boolean): void {

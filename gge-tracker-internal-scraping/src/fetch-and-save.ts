@@ -22,13 +22,6 @@ if (!ID_SERVER || !PG_DB || !MYSQL_DB || !CLICKHOUSE_DB || !logSuffix || !CONNEC
 }
 
 const BASE_API_URL: string = `http://empire-api:3000/${ID_SERVER}/`;
-const DATABASE_CONFIG = {
-  host: 'mariadb',
-  user: process.env.SQL_USER,
-  password: process.env.SQL_PASSWORD,
-  database: MYSQL_DB,
-  connectionLimit: Number(CONNECTION_LIMIT),
-};
 const CLICKHOUSE_CONFIG = {
   url: 'http://clickhouse',
   port: 8123,
@@ -55,18 +48,12 @@ const genericPostgresConfig = {
 };
 
 async function executeFillInOrder(): Promise<void> {
-  const generic = new GenericFetchAndSaveBackend(
-    BASE_API_URL,
-    DATABASE_CONFIG,
-    CLICKHOUSE_CONFIG,
-    postgresConfig,
-    logSuffix,
-  );
+  const generic = new GenericFetchAndSaveBackend(BASE_API_URL, CLICKHOUSE_CONFIG, postgresConfig, logSuffix);
   await generic.executeFillInOrder();
   if (logSuffix === 'DE1') {
-    const generic2 = new GenericFetchAndSaveBackend(BASE_API_URL, null, null, genericPostgresConfig, 'GLOBAL_RANKING');
+    const generic2 = new GenericFetchAndSaveBackend(BASE_API_URL, null, genericPostgresConfig, 'GLOBAL_RANKING');
     await generic2.refreshGlobalRankings();
-    const generic3 = new GenericFetchAndSaveBackend(BASE_API_URL, null, null, genericPostgresConfig, 'GT_TOURNAMENT');
+    const generic3 = new GenericFetchAndSaveBackend(BASE_API_URL, null, genericPostgresConfig, 'GT_TOURNAMENT');
     await generic3.fillGrandTournamentResults();
   }
   setTimeout(() => {

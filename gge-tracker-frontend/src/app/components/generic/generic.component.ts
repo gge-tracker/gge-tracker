@@ -44,6 +44,15 @@ export class GenericComponent {
     await this.updateGenericParamsInUrl({ page: page }, { page: 1 });
   }
 
+  public async i18n(text: string): Promise<string> {
+    try {
+      return await firstValueFrom(this.translateService.get(text));
+    } catch (error) {
+      console.error('Error fetching translation for', text, error);
+      return text;
+    }
+  }
+
   public async updateGenericParamsInUrl(
     parameters: { [key: string]: any },
     defaultParameters: { [key: string]: any },

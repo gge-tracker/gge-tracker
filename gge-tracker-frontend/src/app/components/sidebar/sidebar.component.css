@@ -37,7 +37,7 @@ img,
   color: #94a3b8;
   cursor: pointer;
   display: flex;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 500;
   gap: 12px;
   overflow: hidden;
@@ -171,6 +171,7 @@ img,
 .sidebar-scroll {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 1.5rem 0.75rem;
   padding-top: 5px;
 }

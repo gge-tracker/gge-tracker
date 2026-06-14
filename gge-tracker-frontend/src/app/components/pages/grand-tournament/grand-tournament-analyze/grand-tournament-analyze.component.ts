@@ -45,6 +45,7 @@ export class GrandTournamentAnalyzeComponent extends GenericComponent implements
         return {
           ...entry,
           scoreDifference: this.formatScoreDifferenceHTML(Math.max(scoreDifference, 0)),
+          id: index,
         };
       })
       .reverse();

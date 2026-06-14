@@ -20,13 +20,13 @@
           @for (castle of castles; track castle) {
             <div
               class="castle-card position-relative kid-{{ castle.kingdomId }}"
-              [ngClass]="{ unavailable: !castle.isAvailable }"
-              (click)="castle.isAvailable ? onCastleClick(castle) : displayUnavailableCastleMessage()"
+              [ngClass]="{ unavailable: !castle.isAvailable, dummy: castle.dummy }"
+              (click)="castle.dummy ? false : castle.isAvailable ? onCastleClick(castle) : displayUnavailableCastleMessage()"
               [title]="castle.isAvailable ? ('Voir plus' | translate) : ''">
               <div class="position-absolute top-0 end-0 pe-2 ext-indicator"><i class="fa-solid fa-square-up-right"></i></div>
               <div class="castle-header text-center">
                 <div class="castle-image">
-                  <img [src]="getSearchCastleImg(castle)" alt="{{ castle.name }}" class="castle-img-{{castle.type}}">
+                  <img [src]="getSearchCastleImg(castle, true)" alt="{{ castle.name }}" class="castle-img-{{castle.type}}">
                 </div>
                 <div class="castle-info row justify-content-center">
                   <div class="col-12">
@@ -89,277 +89,359 @@
           </div>
           @if (!isInLoading) {
             @if (canvasReady && cid) {
-              <div class="castle-view d-flex container-fluid">
-                <aside class="castle-legend glass-card d-flex flex-column">
-                  <div class="legend-header d-flex align-items-start justify-content-between">
-                    <div class="legend-main d-flex align-items-center">
-                      <i class="fa-solid fa-user-helmet-safety legend-icon me-2" aria-hidden="true"></i>
-                      <div>
-                        <h5 class="m-0 legend-title">{{ data.playerName }}</h5>
-                        <div class="legend-subtitle text-muted">
-                          <lucide-angular [img]="Castle" class="me-1" [size]="16"></lucide-angular>
-                          <span>{{ data.castleName }}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="legend-actions d-flex flex-column align-items-end">
-                      <button class="btn-ghost btn-back mb-2" (click)="onBackButtonClick()" [attr.aria-label]="'Retour' | translate">
-                        <i class="fa-solid fa-arrow-left"></i>
-                      </button>
-                      <button class="btn-ghost d-md-none legend-toggle" type="button" data-bs-toggle="collapse"
-                        data-bs-target="#legendBody" aria-expanded="false" aria-controls="legendBody"
-                        [title]="'Afficher les détails' | translate">
-                      <i class="fa-solid fa-chevron-down"></i>
+              <div class="castle-panel">
+
+                <div class="castle-panel-header">
+                  <button class="btn-ghost btn-back panel-back" (click)="onBackButtonClick()"
+                    [attr.aria-label]="'Retour' | translate">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span class="d-none d-sm-inline ms-1">{{ 'Retour' | translate }}</span>
+                  </button>
+
+                  <div class="castle-identity">
+                    <i class="fa-solid fa-user-helmet-safety me-1 identity-icon" aria-hidden="true"></i>
+                    <span class="identity-player">{{ calculatedCastleProperties.playerName }}</span>
+                    <span class="identity-sep">·</span>
+                    <lucide-angular [img]="Castle" [size]="13" class="text-light me-1 flex-shrink-0"></lucide-angular>
+                    <span class="identity-castle">{{ calculatedCastleProperties.castleName }}</span>
+                    <span class="castle-type-pill ms-2 d-none d-md-inline">{{ calculatedCastleProperties.castleType | translate }}</span>
+                    <span class="castle-level-pill ms-1 d-none d-lg-inline">{{ 'Niveau' | translate }} {{ calculatedCastleProperties.level }}</span>
+                  </div>
+
+                  <div class="view-switcher" role="tablist">
+                    <button class="vsw-btn" role="tab"
+                      [class.active]="activeView === 'canvas'"
+                      (click)="activeView = 'canvas'"
+                      [attr.aria-selected]="activeView === 'canvas'"
+                      [title]="'Carte' | translate">
+                      <i class="fa-solid fa-map"></i>
+                      <span class="d-none d-sm-inline ms-1">{{ 'Carte' | translate }}</span>
+                    </button>
+                    <button class="vsw-btn" role="tab"
+                      [class.active]="activeView === 'grid'"
+                      (click)="activeView = 'grid'"
+                      [attr.aria-selected]="activeView === 'grid'"
+                      [title]="'Liste des bâtiments' | translate">
+                      <i class="fa-solid fa-border-all"></i>
+                      <span class="d-none d-sm-inline ms-1">{{ 'Liste des bâtiments' | translate }}</span>
                     </button>
                   </div>
                 </div>
-                <div id="legendBody" class="legend-body collapse show d-md-block">
-                  <div class="legend-grid">
-                    <div class="legend-block key" [title]="'Type' | translate">
-                      <div class="small label">{{ 'Type' | translate }}</div>
-                      <div class="value">{{ data.castleType | translate }}</div>
+
+                <div class="stats-strip">
+                  <div class="stat-chip" [title]="'Coordonnées' | translate">
+                    <img src="/assets/compass.png" class="stat-chip-img" alt="Coordinates icon">
+                    <div class="stat-chip-body">
+                      <span class="stat-chip-label">{{ 'Coordonnées' | translate }}</span>
+                      <span class="stat-chip-val">{{ calculatedCastleProperties.positionX }}&thinsp;;&thinsp;{{ calculatedCastleProperties.positionY }}</span>
                     </div>
-                    <div class="legend-block key" [title]="'Coordonnées' | translate">
-                      <div class="small label">{{ 'Coordonnées' | translate }}</div>
-                      <div class="value">{{ data.positionX }} ; {{ data.positionY }}</div>
+                  </div>
+                  <div class="stat-chip" [title]="'Puissance' | translate">
+                    <img src="/assets/might.png" class="stat-chip-img" alt="Might icon">
+                    <div class="stat-chip-body">
+                      <span class="stat-chip-label">{{ 'Puissance' | translate }}</span>
+                      <span class="stat-chip-val">{{ formatValue(calculatedCastleProperties.sumMight) }}</span>
                     </div>
-                    <div class="legend-block" [title]="'Ordre public' | translate">
-                      <div class="small label">{{ 'Ordre public' | translate }}</div>
-                      <div class="value">{{ formatValue(data.sumOP) }}</div>
+                  </div>
+                  <div class="stat-chip" [title]="'Ordre public' | translate">
+                    <img src="/assets/publicOrder.png" class="stat-chip-img" alt="Public order icon">
+                    <div class="stat-chip-body">
+                      <span class="stat-chip-label">{{ 'Ordre public' | translate }}</span>
+                      <span class="stat-chip-val">{{ formatValue(calculatedCastleProperties.publicOrder.base + calculatedCastleProperties.publicOrder.effects) }}</span>
                     </div>
-                    <div class="legend-block" [title]="'Puissance' | translate">
-                      <div class="small label">{{ 'Puissance' | translate }}</div>
-                      <div class="value">{{ formatValue(data.sumMight) }}</div>
+                  </div>
+                  <div class="stat-chip" [class.stat-chip-danger]="calculatedCastleProperties.nbFire > 0"
+                    [title]="'Bâtiments en feu' | translate">
+                    <img src="/assets/fire2.png" class="stat-chip-img" alt="Fire icon">
+                    <div class="stat-chip-body">
+                      <span class="stat-chip-label">{{ 'Bâtiments en feu' | translate }}</span>
+                      <span class="stat-chip-val">{{ calculatedCastleProperties.nbFire }}</span>
                     </div>
-                    <div class="legend-block" [title]="'Zones occupées' | translate">
-                      <div class="small label">{{ 'Zones occupées' | translate }}</div>
-                      <div class="value">{{ formatValue(data.placeOccupied) }}</div>
+                  </div>
+                  <div class="stat-chip" [title]="'Zones occupées' | translate">
+                    <img src="/assets/construction.webp" class="stat-chip-img" alt="Occupied tiles icon">
+                    <div class="stat-chip-body">
+                      <span class="stat-chip-label">{{ 'Zones occupées' | translate }}</span>
+                      <span class="stat-chip-val">{{ formatValue(calculatedCastleProperties.placeOccupied) }}</span>
                     </div>
-                    <div class="legend-block" [title]="'Zones disponibles' | translate">
-                      <div class="small label">{{ 'Zones disponibles' | translate }}</div>
-                      <div class="value">{{ formatValue(data.placeNotOccupied) }}</div>
+                  </div>
+                  <div class="stat-chip" [title]="'Extensions du château' | translate">
+                    <img src="/assets/expansion.webp" class="stat-chip-img" alt="Castle extensions icon">
+                    <div class="stat-chip-body">
+                      <span class="stat-chip-label">{{ 'Extensions du château' | translate }}</span>
+                      <span class="stat-chip-val">{{ calculatedCastleProperties.nbFloors }}/{{ calculatedCastleProperties.maxFloors }}</span>
                     </div>
-                    <div class="legend-block" [title]="'Bâtiments en feu' | translate">
-                      <div class="small label">{{ 'Bâtiments en feu' | translate }}</div>
-                      <div class="value">{{ formatValue(data.nbFire) }}</div>
+                  </div>
+                  <div class="stat-chip" [title]="'Soldats sur les murs' | translate">
+                    <img src="/assets/unit_walls.webp" class="stat-chip-img" alt="Soldiers on walls icon">
+                    <div class="stat-chip-body">
+                      <span class="stat-chip-label">{{ 'Soldats sur les murs' | translate }}</span>
+                      <span class="stat-chip-val">{{ formatValue(calculatedCastleProperties.wall.base + (calculatedCastleProperties.wall.base * calculatedCastleProperties.wall.effects / 100)) }}</span>
                     </div>
-                    <div class="legend-block progress-block mt-1" style="grid-column: 1 / -1;">
-                      <div class="d-flex justify-content-between align-items-center mb-1">
-                        <div class="small label">{{ 'Zones occupées' | translate }}</div>
-                        <div class="small fw-bold">
-                          {{ (data.placeOccupied / (data.placeOccupied + data.placeNotOccupied) * 100) | number:'1.2-2' }}%
-                        </div>
-                      </div>
-                      <div class="progress-rail">
-                        <div class="progress-fill"
-                        [style.width.%]="(data.placeOccupied / (data.placeOccupied + data.placeNotOccupied) * 100)"></div>
-                      </div>
-                    </div>
-                    <div class="legend-block progress-block" style="grid-column: 1 / -1;">
-                      <div class="d-flex justify-content-between align-items-center mb-1">
-                        <div class="small label">{{ 'Extensions' | translate }}</div>
-                        <div class="small fw-bold">{{ data.nbFloors }}/{{data.maxFloors}}</div>
-                      </div>
-                      <div class="progress-rail alt">
-                        <div class="progress-fill bg-success" [style.width.%]="(data.nbFloors / data.maxFloors * 100)"></div>
-                      </div>
+                  </div>
+                  <div class="stat-chip" [title]="'Détection' | translate">
+                    <img src="/assets/detection.webp" class="stat-chip-img" alt="Sight radius icon">
+                    <div class="stat-chip-body">
+                      <span class="stat-chip-label">{{ 'Détection' | translate }}</span>
+                      <span class="stat-chip-val">+{{ formatValue(calculatedCastleProperties.sightRadius) }}%</span>
                     </div>
                   </div>
                 </div>
-              </aside>
-              <div class="castle-map flex-grow-1 d-flex align-items-center justify-content-center">
-                <div class="canvas-wrapper">
-                  <canvas #mapCanvas width="900" height="900" (mousemove)="onMouseMove($event)" (click)="onClick($event)"
-                  (mouseleave)="tooltip = null"></canvas>
-                  @if (tooltip) {
-                    <div [style.left.px]="tooltip.x" [style.top.px]="tooltip.y" class="castle-tooltip"
-                      id="tooltip">
-                      <div [innerHTML]="tooltip.text"></div>
+
+                <div class="castle-split-body" [class.gallery-mode]="activeView === 'grid'">
+
+                  <div class="castle-split-map">
+                    <div class="canvas-zone" [hidden]="activeView !== 'canvas'">
+                      <div class="canvas-wrapper">
+                        <canvas #mapCanvas [width]="canvasWidth" [height]="canvasHeight"
+                          (mousemove)="onMouseMove($event)"
+                          (click)="onClick($event)"
+                          (mouseleave)="tooltip = null"></canvas>
+                        @if (tooltip) {
+                          <div [style.left.px]="tooltip.x" [style.top.px]="tooltip.y"
+                            class="castle-tooltip" id="tooltip">
+                            <div [innerHTML]="tooltip.text"></div>
+                          </div>
+                        }
+                      </div>
+                      <div class="map-hud">
+                        <div class="hud-bar">
+                          <span class="hud-label">{{ 'Zones occupées' | translate }}</span>
+                          <div class="progress-rail flex-grow-1">
+                            <div class="progress-fill"
+                              [style.width.%]="calculatedCastleProperties.placeOccupied / (calculatedCastleProperties.placeOccupied + calculatedCastleProperties.placeNotOccupied) * 100">
+                            </div>
+                          </div>
+                          <span class="hud-val">{{ (calculatedCastleProperties.placeOccupied / (calculatedCastleProperties.placeOccupied + calculatedCastleProperties.placeNotOccupied) * 100) | number:'1.0-0' }}%</span>
+                        </div>
+                        <div class="hud-bar">
+                          <span class="hud-label">{{ 'Extensions du château' | translate }}</span>
+                          <div class="progress-rail alt flex-grow-1">
+                            <div class="progress-fill bg-success"
+                              [style.width.%]="calculatedCastleProperties.nbFloors / calculatedCastleProperties.maxFloors * 100">
+                            </div>
+                          </div>
+                          <span class="hud-val">{{ calculatedCastleProperties.nbFloors }}/{{ calculatedCastleProperties.maxFloors }}</span>
+                        </div>
+                      </div>
                     </div>
-                  }
-                </div>
-              </div>
-            </div>
-          }
-          @if (canvasReady && cid) {
-            <div>
-              <div class="table-wrapper modern-panel rounded-4 mt-3 mb-5 pb-2 dense">
-                <div class="table-toolbar d-flex align-items-center gap-2 flex-wrap px-3 pt-3">
-                  <app-search-bar [attrListInput]="[]" [searchInput]="searchTerm" [placeholderInput]="('Rechercher' | translate)+ '...'"
-                  [name]="'castle-search'" (searchEmitter)="searchTerm = $event; onSearchChange()"></app-search-bar>
-                  <app-filter [countFilterActivated]="countFilterActivated"></app-filter>
-                </div>
-                <div class="table-responsive modern-scroll">
-                  <table class="modern-table w-100">
-                    <thead class="sticky-top">
-                      <tr>
-                        <th class="sticky-col w-100px" (click)="sortBy('building.wodID')" scope="col">
-                          #
-                          @if (sortColumn === 'building.wodID') {
-                            <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
-                            [class.fa-arrow-down]="!sortAsc"></i>
-                          }
-                        </th>
-                        <th (click)="sortBy('data.translatedName')" scope="col" class="name-col">
-                          {{ 'Nom' | translate }}
-                          @if (sortColumn === 'data.translatedName') {
-                            <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
-                            [class.fa-arrow-down]="!sortAsc"></i>
-                          }
-                        </th>
-                        <th (click)="sortBy('data.level')" scope="col" class="d-none d-sm-table-cell  w-ch-12">
-                          {{ 'Niveau' | translate }}
-                          @if (sortColumn === 'data.level') {
-                            <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
-                            [class.fa-arrow-down]="!sortAsc"></i>
-                          }
-                        </th>
-                        <th (click)="sortBy('data.publicOrder')" scope="col" class="d-none d-md-table-cell">
-                          {{ 'Ordre public' | translate }}
-                          @if (sortColumn === 'data.publicOrder') {
-                            <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
-                            [class.fa-arrow-down]="!sortAsc"></i>
-                          }
-                        </th>
-                        <th (click)="sortBy('data.burnable')" scope="col" class="d-none d-lg-table-cell w-ch-12">
-                          {{ 'Brûlable' | translate }}
-                          @if (sortColumn === 'data.burnable') {
-                            <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
-                            [class.fa-arrow-down]="!sortAsc"></i>
-                          }
-                        </th>
-                        <th (click)="sortBy('building.damageType')" scope="col" class="d-none d-xl-table-cell w-ch-12">
-                          {{ 'Dégâts (feu)' | translate }}
-                          @if (sortColumn === 'building.damageType') {
-                            <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
-                            [class.fa-arrow-down]="!sortAsc"></i>
-                          }
-                        </th>
-                        <th (click)="sortBy('data.mightValue')" scope="col" class="d-none d-sm-table-cell">
-                          {{ 'Puissance' | translate }}
-                          @if (sortColumn === 'data.mightValue') {
-                            <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
-                            [class.fa-arrow-down]="!sortAsc"></i>
-                          }
-                        </th>
-                        <th (click)="sortBy('data.totalwidth')" scope="col" class="d-none d-lg-table-cell">
-                          {{ 'Dimensions' | translate }}
-                          @if (sortColumn === 'data.totalwidth') {
-                            <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
-                            [class.fa-arrow-down]="!sortAsc"></i>
-                          }
-                        </th>
-                        <th (click)="sortBy('data.buildingGroundType')" scope="col" class="d-none d-xl-table-cell">
-                          {{ 'Catégorie' | translate }}
-                          @if (sortColumn === 'data.buildingGroundType') {
-                            <i class="ms-1 fa-solid"
-                            [class.fa-arrow-up]="sortAsc" [class.fa-arrow-down]="!sortAsc"></i>
-                          }
-                        </th>
-                        <th scope="col" class="items-col text-center">
-                          {{ 'Objets de construction' | translate }}
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (building of paginatedBuildings; track building) {
-                        <tr (click)="updateSelectedItem(building)"
-                          data-bs-toggle="modal" data-bs-target="#viewItemModal" [title]="'Voir plus' | translate"
-                          class="pointer">
-                          <td class="sticky-col id-cell">
-                            <div class="id-stack">
-                              <span>{{ building.building.wodID }}</span>
-                              <small>#{{ building.building.objectID }}</small>
-                            </div>
-                          </td>
-                          <td class="name-cell">
-                            <div class="d-flex align-items-center gap-2">
-                              <app-building-img [src]="getBuildingUrl(building)" [alt]="getBuildingName(building)" [size]="40"
-                              class="rounded shadow-sm flex-shrink-0"></app-building-img>
-                              <div class="text-truncate">
-                                <div class="fw-semibold text-truncate">{{ capitalizeFirstLetter(getBuildingName(building)) }}
-                                </div>
-                                <div class="mini-meta d-none d-sm-flex gap-2">
-                                  <span class="badge-soft">{{ 'lvl_short_term' | translate }} {{ building.data['level'] }}</span>
-                                  <span class="badge-soft d-none d-md-inline">{{ building.data['width'] }}×{{
-                                  building.data['height'] }}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td class="d-none d-sm-table-cell">{{ building.data['level'] }}
-                            @if (!building.data['upgradeWodID']) {
-                              <span [title]="'Niveau max.' | translate">
-                                <i class="maxed fa-solid fa-star"></i>
-                              </span>
+                    <div class="building-gallery" [hidden]="activeView !== 'grid'">
+                      <div class="gallery-toolbar">
+                        <app-search-bar [attrListInput]="[]" [searchInput]="searchTerm"
+                          [placeholderInput]="('Rechercher' | translate) + '...'"
+                          [name]="'castle-gallery-search'"
+                          (searchEmitter)="searchTerm = $event; onSearchChange()">
+                        </app-search-bar>
+                        <app-filter [countFilterActivated]="countFilterActivated"></app-filter>
+                        <span class="bsh-count">{{ galleryBuildings.length }}<span class="bsh-total">/{{ allVisibleBuildings.length }}</span></span>
+                      </div>
+                      <div class="building-gallery-grid">
+                        @for (building of galleryBuildings; track building) {
+                          <div class="bg-card pointer"
+                            (click)="updateSelectedItem(building)"
+                            data-bs-toggle="modal" data-bs-target="#viewItemModal"
+                            [title]="capitalizeFirstLetter(getBuildingName(building))">
+                            @if (building.building.damageFactor > 0) {
+                              <span class="bg-badge bg-badge-fire"><i class="fa-solid fa-fire"></i></span>
                             }
-                          </td>
-                          <td class="d-none d-md-table-cell ">
-                            <span class="chip-numeric">{{ building.data['publicOrder'] }}</span>
-                          </td>
-                          <td class="d-none d-lg-table-cell">
-                            <span class="chip pill" [class.chip-success]="building.data['burnable'] == 0"
-                              [class.chip-danger]="building.data['burnable'] != 0">
-                              {{ ((building.data['burnable'] == 0) ? 'Non' : 'Oui') | translate }}
-                            </span>
-                          </td>
-                          <td class="d-none d-xl-table-cell ">
-                            {{ building.building['damageFactor'] > 0 ? (building.building['damageFactor']*100 + '%') : '-' }}
-                          </td>
-                          <td class="d-none d-sm-table-cell ">
-                            <span class="chip-numeric">{{ building.data['mightValue'] }}</span>
-                          </td>
-                          <td class="d-none d-lg-table-cell text-center">{{ building.data['width'] }} x {{ building.data['height']
-                          }}</td>
-                          <td class="d-none d-xl-table-cell ">
-                            <span class="chip-soft">{{ building.data['buildingGroundType'] }}</span>
-                          </td>
-                          <!-- Visual items -->
-                          <td class="items-col">
-                            <div class="items-visual">
+                            @if (!building.data['upgradeWodID']) {
+                              <span class="bg-badge bg-badge-max"><i class="fa-solid fa-star"></i></span>
+                            }
+                            <div class="bg-card-stage">
+                              <app-building-img
+                                [src]="getBuildingAssetUrl(building)"
+                                [alt]="getBuildingName(building)"
+                                [shadow]="true"
+                                [size]="80">
+                              </app-building-img>
+                            </div>
+                            <div class="bg-card-info">
+                              <div class="bg-card-name text-truncate">{{ capitalizeFirstLetter(getBuildingName(building)) }}</div>
+                              <div class="bg-card-level">{{ 'Niveau' | translate }} {{ building.data['level'] }}</div>
+                            </div>
+                            <div class="bg-card-items">
                               @for (i of [1, 0, 2]; track i) {
-                                <div class="item-slot">
+                                <div class="bg-card-slot">
                                   @if (building.constructionItems[i]) {
                                     <div [ngStyle]="{'background-image': 'url(' + building.constructionItems[i]['boxUrl'] + ')'}"
-                                      class="construction-box construction-box-1"
+                                      class="construction-box"
                                       [attr.data-level]="building.constructionItems[i]['level']"
-                                      [title]="building.constructionItems[i]['translatedName'] + ' (' + getSlotTypeName(i) + ')'">
+                                      [title]="building.constructionItems[i]['translatedName']">
                                       <img [src]="getConstructionUrl(building.constructionItems[i])" alt="">
                                     </div>
                                   } @else {
                                     <div [ngStyle]="{'background-image': 'url(' + getDefaultBoxUrl(i) + ')'}"
-                                    class="construction-box no--item" [title]="getSlotTypeName(i)"></div>
+                                      class="construction-box no--item"
+                                      [title]="getSlotTypeName(i)">
+                                    </div>
                                   }
                                 </div>
                               }
                             </div>
-                          </td>
-                        </tr>
-                      }
-                      @if (paginatedBuildings.length === 0) {
-                        <tr>
-                          <td colspan="10" class="text-center py-5">
-                            -
-                          </td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-                <div class="pagination-modern d-flex justify-content-center align-items-center mt-3 gap-2">
-                  <button class="btn btn-light btn-sm rounded-circle shadow-sm" (click)="changePage(-1)"
-                    [disabled]="currentPage <= 1" title="{{ 'Précédent' | translate }}">
-                    <i class="fa-solid fa-chevron-left"></i>
-                  </button>
-                  <span class="page-indicator">{{ currentPage }} / {{ totalPages }}</span>
-                  <button class="btn btn-light btn-sm rounded-circle shadow-sm" (click)="changePage(1)"
-                    [disabled]="currentPage >= totalPages" title="{{ 'Suivant' | translate }}">
-                    <i class="fa-solid fa-chevron-right"></i>
-                  </button>
+                          </div>
+                        }
+                        @if (galleryBuildings.length === 0) {
+                          <div class="bg-empty">-</div>
+                        }
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="castle-split-table table-wrapper dense" [hidden]="activeView === 'grid'">
+                    <div class="panel-title-row px-3 pt-3 pb-2 d-flex align-items-center gap-2">
+                      <i class="fa-solid fa-table-list" aria-hidden="true"></i>
+                      <span class="panel-title-text">{{ 'Tous les bâtiments' | translate }}</span>
+                      <span class="bsh-count ms-1">{{ visibleBuildings.length }}<span class="bsh-total">/{{ allVisibleBuildings.length }}</span></span>
+                      <span class="ms-auto panel-hint d-none d-lg-flex align-items-center gap-1">
+                        <i class="fa-solid fa-hand-pointer me-1"></i>{{ 'Cliquer pour afficher les détails' | translate }}
+                      </span>
+                    </div>
+                    <div class="table-toolbar d-flex align-items-center gap-2 flex-wrap px-3 pt-2">
+                      <app-search-bar [attrListInput]="[]" [searchInput]="searchTerm" [placeholderInput]="('Rechercher' | translate)+ '...'"
+                      [name]="'castle-search'" (searchEmitter)="searchTerm = $event; onSearchChange()"></app-search-bar>
+                      <app-filter [countFilterActivated]="countFilterActivated"></app-filter>
+                    </div>
+                    <div class="table-responsive modern-scroll">
+                      <table class="modern-table w-100">
+                        <thead class="sticky-top">
+                          <tr>
+                            <!-- <th class="sticky-col w-100px" (click)="sortBy('building.wodID')" scope="col">
+                              #
+                              @if (sortColumn === 'building.wodID') {
+                                <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
+                                [class.fa-arrow-down]="!sortAsc"></i>
+                              }
+                            </th> -->
+                            <th (click)="sortBy('data.translatedName')" scope="col" class="name-col">
+                              {{ 'Nom' | translate }}
+                              @if (sortColumn === 'data.translatedName') {
+                                <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
+                                [class.fa-arrow-down]="!sortAsc"></i>
+                              }
+                            </th>
+                            <th (click)="sortBy('data.level')" scope="col" class="ct-show-sm w-ch-10">
+                              {{ 'Niveau' | translate }}
+                              @if (sortColumn === 'data.level') {
+                                <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
+                                [class.fa-arrow-down]="!sortAsc"></i>
+                              }
+                            </th>
+                            <th (click)="sortBy('data.mightValue')" scope="col" class="ct-show-md">
+                              {{ 'Puissance' | translate }}
+                              @if (sortColumn === 'data.mightValue') {
+                                <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
+                                [class.fa-arrow-down]="!sortAsc"></i>
+                              }
+                            </th>
+                            <th (click)="sortBy('data.burnable')" scope="col" class="ct-show-lg w-ch-10">
+                              {{ 'Brûlable' | translate }}
+                              @if (sortColumn === 'data.burnable') {
+                                <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
+                                [class.fa-arrow-down]="!sortAsc"></i>
+                              }
+                            </th>
+                            <th (click)="sortBy('data.publicOrder')" scope="col" class="ct-show-lg">
+                              {{ 'Ordre public' | translate }}
+                              @if (sortColumn === 'data.publicOrder') {
+                                <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
+                                [class.fa-arrow-down]="!sortAsc"></i>
+                              }
+                            </th>
+                            <th scope="col" class="items-col text-center">
+                              {{ 'Objets de construction' | translate }}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (building of paginatedBuildings; track building) {
+                            <tr (click)="updateSelectedItem(building)"
+                              data-bs-toggle="modal" data-bs-target="#viewItemModal" [title]="'Voir plus' | translate"
+                              class="pointer">
+                              <!-- <td class="sticky-col id-cell">
+                                <div class="id-stack">
+                                  <span>{{ building.building.wodID }}</span>
+                                  <small>#{{ building.building.objectID }}</small>
+                                </div>
+                              </td> -->
+                              <td class="name-cell">
+                                <div class="d-flex align-items-center gap-2">
+                                  <app-building-img [src]="getBuildingAssetUrl(building)" [alt]="getBuildingName(building)" [size]="34"
+                                  class="rounded shadow-sm flex-shrink-0"></app-building-img>
+                                  <div class="text-truncate">
+                                    <div class="fw-semibold text-truncate small">{{ capitalizeFirstLetter(getBuildingName(building)) }}</div>
+                                    <div class="mini-meta d-flex gap-1">
+                                      <span class="badge-soft ct-hide-sm">{{ 'lvl_short_term' | translate }}&nbsp;{{ building.data['level'] }}</span>
+                                      @if (!building.data['upgradeWodID']) {
+                                        <span class="badge-soft text-warning" [title]="'Niveau max' | translate">
+                                          <i class="maxed fa-solid fa-star"></i>
+                                        </span>
+                                      }
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td class="ct-show-sm">
+                                {{ building.data['level'] }}
+                                @if (!building.data['upgradeWodID']) {
+                                  <i class="maxed fa-solid fa-star ms-1" [title]="'Niveau max' | translate"></i>
+                                }
+                              </td>
+                              <td class="ct-show-md">
+                                <span class="chip-numeric">{{ building.data['mightValue'] }}</span>
+                              </td>
+                              <td class="ct-show-lg">
+                                <span class="chip pill" [class.chip-success]="building.data['burnable'] == 0"
+                                  [class.chip-danger]="building.data['burnable'] != 0">
+                                  {{ ((building.data['burnable'] == 0) ? 'Non' : 'Oui') | translate }}
+                                </span>
+                              </td>
+                              <td class="ct-show-lg">
+                                <span class="chip-numeric">{{ building.data['publicOrder'] }}</span>
+                              </td>
+                              <td class="items-col">
+                                <div class="items-visual">
+                                  @for (i of [1, 0, 2]; track i) {
+                                    <div class="item-slot">
+                                      @if (building.constructionItems[i]) {
+                                        <div [ngStyle]="{'background-image': 'url(' + building.constructionItems[i]['boxUrl'] + ')'}"
+                                          class="construction-box construction-box-1"
+                                          [attr.data-level]="building.constructionItems[i]['level']"
+                                          [title]="building.constructionItems[i]['translatedName'] + ' (' + getSlotTypeName(i) + ')'">
+                                          <img [src]="getConstructionUrl(building.constructionItems[i])" alt="">
+                                        </div>
+                                      } @else {
+                                        <div [ngStyle]="{'background-image': 'url(' + getDefaultBoxUrl(i) + ')'}"
+                                        class="construction-box no--item" [title]="getSlotTypeName(i)"></div>
+                                      }
+                                    </div>
+                                  }
+                                </div>
+                              </td>
+                            </tr>
+                          }
+                          @if (paginatedBuildings.length === 0) {
+                            <tr>
+                              <td colspan="7" class="text-center py-5">-</td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                    <div class="pagination-modern d-flex justify-content-center align-items-center py-2 gap-2">
+                      <button class="btn btn-light btn-sm rounded-circle shadow-sm" (click)="changePage(-1)"
+                        [disabled]="currentPage <= 1" title="{{ 'Précédent' | translate }}">
+                        <i class="fa-solid fa-chevron-left"></i>
+                      </button>
+                      <span class="page-indicator">{{ currentPage }} / {{ totalPages }}</span>
+                      <button class="btn btn-light btn-sm rounded-circle shadow-sm" (click)="changePage(1)"
+                        [disabled]="currentPage >= totalPages" title="{{ 'Suivant' | translate }}">
+                        <i class="fa-solid fa-chevron-right"></i>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          }
+            }
         }
       </div>
 
@@ -385,7 +467,7 @@
               </div>
               <div class="modal-body modern-modal">
                 <div class="text-center mb-3 visualize-img py-5">
-                  <app-building-img [src]="getBuildingUrl(selectedItem)" [alt]="getBuildingName(selectedItem)" [shadow]="true">
+                  <app-building-img [src]="getBuildingAssetUrl(selectedItem)" [alt]="getBuildingName(selectedItem)" [shadow]="true">
                   </app-building-img>
                 </div>
                 <div class="text-center mb-4">
@@ -485,7 +567,7 @@
                     <div class="col-4 d-flex flex-column pointer"
                       (click)="updateSelectedItem(item, selectedItem)">
                       <div class="text-center mb-3 visualize-img py-5">
-                        <app-building-img [src]="getBuildingUrl(item)" [alt]="getBuildingName(item)" [shadow]="true"
+                        <app-building-img [src]="getBuildingAssetUrl(item)" [alt]="getBuildingName(item)" [shadow]="true"
                           [size]="200">
                         </app-building-img>
                       </div>
@@ -516,7 +598,7 @@
               </button>
             </div>
           </div>
-          <div class="modal-body modern-modal">
+          <div class="modal-body filters-modal-body">
             <div class="filters-container row g-3">
               <div class="col-12">
                 <div class="construction-slots">
@@ -579,57 +661,57 @@
                 </div>
               </div>
               <div class="col-12 col-md-6">
-                <label class="filter-label">{{ 'Niveau min.' | translate }}</label>
+                <label class="filter-label">{{ 'Niveau min' | translate }}</label>
                 <app-search-bar [attrListInput]="[]" [searchInput]="filters.minLevel"
                   (searchEmitter)="filters.minLevel = $event; updateFilters()" [inputType]="'number'" [name]="'level-min'" [min]="0"
-                  [placeholderInput]="'0'" [hasContent]="true"><img src="/assets/upgrade2.png" alt="{{ 'Niveau min.' | translate }}"></app-search-bar>
+                  [placeholderInput]="'0'" [hasContent]="true"><img src="/assets/upgrade2.png" alt="{{ 'Niveau min' | translate }}"></app-search-bar>
                 </div>
                 <div class="col-12 col-md-6">
-                  <label class="filter-label">{{ 'Niveau max.' | translate }}</label>
+                  <label class="filter-label">{{ 'Niveau max' | translate }}</label>
                   <app-search-bar [attrListInput]="[]" [searchInput]="filters.maxLevel"
                     (searchEmitter)="filters.maxLevel = $event; updateFilters()" [inputType]="'number'" [name]="'level-max'" [min]="0"
-                    [placeholderInput]="'∞'" [hasContent]="true"><img src="/assets/upgrade2.png" alt="{{ 'Niveau max.' | translate }}"></app-search-bar>
+                    [placeholderInput]="'∞'" [hasContent]="true"><img src="/assets/upgrade2.png" alt="{{ 'Niveau max' | translate }}"></app-search-bar>
                   </div>
 
                   <div class="col-12 col-md-6">
-                    <label class="filter-label">{{ 'Prix de revente min.' | translate }}</label>
+                    <label class="filter-label">{{ 'Prix de revente min' | translate }}</label>
                     <app-search-bar [attrListInput]="[]" [searchInput]="filters.sellPriceMin"
                       (searchEmitter)="filters.sellPriceMin = $event; updateFilters()" [inputType]="'number'" [name]="'sell-price-min'" [min]="0"
-                      [placeholderInput]="'0'" [hasContent]="true"><img src="/assets/gold.png" alt="{{ 'Prix de revente min.' | translate }}"></app-search-bar>
+                      [placeholderInput]="'0'" [hasContent]="true"><img src="/assets/gold.png" alt="{{ 'Prix de revente min' | translate }}"></app-search-bar>
                     </div>
 
                     <div class="col-12 col-md-6">
-                      <label class="filter-label">{{ 'Prix de revente max.' | translate }}</label>
+                      <label class="filter-label">{{ 'Prix de revente max' | translate }}</label>
                       <app-search-bar [attrListInput]="[]" [searchInput]="filters.sellPriceMax"
                         (searchEmitter)="filters.sellPriceMax = $event; updateFilters()" [inputType]="'number'" [name]="'sell-price-max'" [min]="0"
-                        [placeholderInput]="'∞'" [hasContent]="true"><img src="/assets/gold.png" alt="{{ 'Prix de revente max.' | translate }}"></app-search-bar>
+                        [placeholderInput]="'∞'" [hasContent]="true"><img src="/assets/gold.png" alt="{{ 'Prix de revente max' | translate }}"></app-search-bar>
                       </div>
 
                       <div class="col-12 col-md-6">
-                        <label class="filter-label">{{ 'Puissance min.' | translate }}</label>
+                        <label class="filter-label">{{ 'Puissance min' | translate }}</label>
                         <app-search-bar [attrListInput]="[]" [searchInput]="filters.mightMin"
                           (searchEmitter)="filters.mightMin = $event; updateFilters()" [inputType]="'number'" [name]="'might-min'" [min]="0"
-                          [placeholderInput]="'0'" [hasContent]="true"><img src="/assets/might.png" alt="{{ 'Puissance min.' | translate }}"></app-search-bar>
+                          [placeholderInput]="'0'" [hasContent]="true"><img src="/assets/might.png" alt="{{ 'Puissance min' | translate }}"></app-search-bar>
                         </div>
 
                         <div class="col-12 col-md-6">
-                          <label class="filter-label">{{ 'Puissance max.' | translate }}</label>
+                          <label class="filter-label">{{ 'Puissance max' | translate }}</label>
                           <app-search-bar [attrListInput]="[]" [searchInput]="filters.mightMax"
                             (searchEmitter)="filters.mightMax = $event; updateFilters()" [inputType]="'number'" [name]="'might-max'" [min]="0"
-                            [placeholderInput]="'∞'" [hasContent]="true"><img src="/assets/might.png" alt="{{ 'Puissance max.' | translate }}"></app-search-bar>
+                            [placeholderInput]="'∞'" [hasContent]="true"><img src="/assets/might.png" alt="{{ 'Puissance max' | translate }}"></app-search-bar>
                           </div>
 
                           <div class="col-12 col-md-6">
-                            <label class="filter-label">{{ 'Dégâts min. (feu)' | translate }}</label>
+                            <label class="filter-label">{{ 'Dégâts min (feu)' | translate }}</label>
                             <app-search-bar [attrListInput]="[]" [searchInput]="filters.fireDamageMin"
                               (searchEmitter)="filters.fireDamageMin = $event; updateFilters()" [inputType]="'number'" [name]="'fire-damage-min'"
-                              [min]="0" [placeholderInput]="'0'" [hasContent]="true"><img src="/assets/fire2.png" alt="{{ 'Dégâts min. (feu)' | translate }}"></app-search-bar>
+                              [min]="0" [placeholderInput]="'0'" [hasContent]="true"><img src="/assets/fire2.png" alt="{{ 'Dégâts min (feu)' | translate }}"></app-search-bar>
                             </div>
                             <div class="col-12 col-md-6">
-                              <label class="filter-label">{{ 'Dégâts max. (feu)' | translate }}</label>
+                              <label class="filter-label">{{ 'Dégâts max (feu)' | translate }}</label>
                               <app-search-bar [attrListInput]="[]" [searchInput]="filters.fireDamageMax"
                                 (searchEmitter)="filters.fireDamageMax = $event; updateFilters()" [inputType]="'number'" [name]="'fire-damage-max'"
-                                [min]="0" [placeholderInput]="'∞'" [hasContent]="true"><img src="/assets/fire2.png" alt="{{ 'Dégâts max. (feu)' | translate }}"></app-search-bar>
+                                [min]="0" [placeholderInput]="'∞'" [hasContent]="true"><img src="/assets/fire2.png" alt="{{ 'Dégâts max (feu)' | translate }}"></app-search-bar>
                               </div>
 
                               <div class="col-12 col-md-6">
@@ -658,7 +740,7 @@
 
                                   <hr>
 
-                                    <div class="col-12 col-md-3 d-flex gap-3 align-items-center">
+                                    <div class="col-12 col-md-3 filter-bool-item">
                                       <div class="row text-center">
                                         <div class="col-12">
                                           <img src="{{ apiPath }}assets/images/fooddistrictbuildinglevel1.png" alt="{{ 'Uniquement les bâtiments dans un quartier' | translate }}" class="filter-icon"
@@ -673,7 +755,7 @@
                                       </div>
                                     </div>
 
-                                    <div class="col-12 col-md-3 d-flex gap-3 align-items-center">
+                                    <div class="col-12 col-md-3 filter-bool-item">
                                       <div class="row text-center">
                                         <div class="col-12">
                                           <img src="/assets/max-level.png" alt="{{ 'Uniquement des bâtiments de niveau maximal' | translate }}" class="filter-icon" width="128">
@@ -687,7 +769,7 @@
                                       </div>
                                     </div>
 
-                                    <div class="col-12 col-md-3 d-flex gap-3 align-items-center">
+                                    <div class="col-12 col-md-3 filter-bool-item">
                                       <div class="row text-center">
                                         <div class="col-12">
                                           <img src="/assets/upgradable.png" alt="{{ 'Uniquement des bâtiments améliorables' | translate }}" class="filter-icon" width="128">
@@ -701,7 +783,7 @@
                                       </div>
                                     </div>
 
-                                    <div class="col-12 col-md-3 d-flex gap-3 align-items-center">
+                                    <div class="col-12 col-md-3 filter-bool-item">
                                       <div class="row text-center">
                                         <div class="col-12">
                                           <img src="/assets/burnable.png" alt="{{ 'Uniquement des bâtiments brûlables' | translate }}" class="filter-icon" width="128">

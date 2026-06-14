@@ -47,6 +47,11 @@ export abstract class ApiAlliances implements ApiHelper {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
         return;
       }
+      const kingdomId = Number.parseInt(String(request.query.kingdomId || '0'));
+      if (Number.isNaN(kingdomId) || kingdomId < 0 || kingdomId > 4) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidKingdomId });
+        return;
+      }
       /* ---------------------------------
        * Resolve the database pool and country code
        * --------------------------------- */
@@ -65,7 +70,9 @@ export abstract class ApiAlliances implements ApiHelper {
         : '';
       const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${request['language']}`)) || '1';
       const cachedKey =
-        request['language'] + `:${cacheVersion}:` + `alliances:${encodedAllianceId}:${encodedPlayerNameForDistance}`;
+        request['language'] +
+        `:${cacheVersion}:` +
+        `alliances:${encodedAllianceId}:${encodedPlayerNameForDistance}:${kingdomId}`;
       /* ---------------------------------
        * Check cache
        * --------------------------------- */
@@ -80,9 +87,8 @@ export abstract class ApiAlliances implements ApiHelper {
       let playerX = null;
       let playerY = null;
       if (ApiHelper.isValidInput(playerNameForDistance)) {
-        // If player name is provided, get player's main castle coordinates
-        let parameterIndex = 1;
-        const playerQuery = `SELECT castles FROM players WHERE LOWER(name) = LOWER($${parameterIndex++}) LIMIT 1`;
+        const column = kingdomId > 0 ? 'castles_realm' : 'castles';
+        const playerQuery = `SELECT ${column} FROM players WHERE LOWER(name) = LOWER($1) LIMIT 1`;
         const playerResults: any[] = await new Promise((resolve, reject) => {
           pool.query(playerQuery, [playerNameForDistance], (error, results) => {
             if (error) {
@@ -97,20 +103,34 @@ export abstract class ApiAlliances implements ApiHelper {
           response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
           return;
         }
-        const playerKid = playerResults[0].castles ?? '[]';
-        const playerKidParsed = playerKid;
-        const selectedKid = playerKidParsed.filter((kid: any) => kid[2] === 1);
-        // Get main castle coordinates
-        if (selectedKid && selectedKid.length > 0) {
-          playerX = selectedKid[0][0];
-          playerY = selectedKid[0][1];
+        if (kingdomId > 0) {
+          // castles_realm: [[kingdomId, x, y, castleType], ...]  castleType=12 is realm main castle
+          const realmCastles: number[][] = playerResults[0].castles_realm ?? [];
+          const mainRealmCastle = realmCastles.find((c) => c[0] === kingdomId && c[3] === 12);
+          if (!mainRealmCastle) {
+            response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.PlayerNotInRealm });
+            return;
+          }
+          playerX = mainRealmCastle[1];
+          playerY = mainRealmCastle[2];
+        } else {
+          // castles: [[x, y, castleType], ...]  castleType=1 is main castle
+          const castles: number[][] = playerResults[0].castles ?? [];
+          const mainCastle = castles.filter((kid) => kid[2] === 1);
+          if (mainCastle && mainCastle.length > 0) {
+            playerX = mainCastle[0][0];
+            playerY = mainCastle[0][1];
+          }
         }
       }
       /* ---------------------------------
        * Build and execute main query
        * --------------------------------- */
-      const query = this.getAllianceByAllianceIdSQLQuery();
-      const parameters = [playerX, playerX, playerY, ApiHelper.removeCountryCode(allianceId)];
+      const query = this.getAllianceByAllianceIdSQLQuery(kingdomId);
+      const parameters =
+        kingdomId > 0
+          ? [playerX, playerX, playerY, kingdomId, ApiHelper.removeCountryCode(allianceId)]
+          : [playerX, playerX, playerY, ApiHelper.removeCountryCode(allianceId)];
       pool.query(query, parameters, async (error, results) => {
         if (error) {
           ApiHelper.logError(error, 'getAllianceByAllianceId', request);
@@ -488,8 +508,38 @@ export abstract class ApiAlliances implements ApiHelper {
    *
    * @returns {string} The SQL query string for fetching alliance and player data by alliance ID
    */
-  private static getAllianceByAllianceIdSQLQuery(): string {
+  private static getAllianceByAllianceIdSQLQuery(kingdomId: number): string {
     let parameterIndex = 1;
+    const distanceExpr = `
+        (
+          POWER(
+            LEAST(
+              ABS(CAST(MC.castle_x AS INTEGER) - $${parameterIndex++}),
+              1287 - ABS(CAST(MC.castle_x AS INTEGER) - $${parameterIndex++})
+            ),
+            2
+          ) +
+          POWER(ABS(CAST(MC.castle_y AS INTEGER) - $${parameterIndex++}), 2)
+        )`;
+    const lateralJoin =
+      kingdomId > 0
+        ? `LEFT JOIN LATERAL (
+          SELECT
+            (castle_elem->>1)::int AS castle_x,
+            (castle_elem->>2)::int AS castle_y
+          FROM jsonb_array_elements(P.castles_realm) AS castle_elem
+          WHERE (castle_elem->>0)::int = $${parameterIndex++} AND (castle_elem->>3)::int = 12
+          LIMIT 1
+        ) AS MC ON true`
+        : `LEFT JOIN LATERAL (
+          SELECT
+            (castle_elem->>0)::int AS castle_x,
+            (castle_elem->>1)::int AS castle_y,
+            (castle_elem->>2)::int AS is_main
+          FROM jsonb_array_elements(P.castles) AS castle_elem
+          WHERE (castle_elem->>2)::int = 1
+          LIMIT 1
+        ) AS MC ON true`;
     return `
       SELECT
         A.name AS alliance_name,
@@ -510,32 +560,12 @@ export abstract class ApiAlliances implements ApiHelper {
         P.level,
         P.alliance_rank,
         P.legendary_level,
-        (
-          POWER(
-          LEAST(
-            ABS(CAST(MC.castle_x AS INTEGER) - $${parameterIndex++}),
-            1287 - ABS(CAST(MC.castle_x AS INTEGER) - $${parameterIndex++})
-          ),
-          2
-          ) +
-          POWER(
-          ABS(CAST(MC.castle_y AS INTEGER) - $${parameterIndex++}),
-          2
-          )
-        ) AS calculated_distance
+        ${distanceExpr} AS calculated_distance
       FROM
         alliances A
       LEFT JOIN
         players P ON A.id = P.alliance_id
-      LEFT JOIN LATERAL (
-          SELECT
-            (castle_elem->>0)::int AS castle_x,
-            (castle_elem->>1)::int AS castle_y,
-            (castle_elem->>2)::int AS is_main
-        FROM jsonb_array_elements(P.castles) AS castle_elem
-        WHERE (castle_elem->>2)::int = 1
-        LIMIT 1
-        ) AS MC ON true
+      ${lateralJoin}
       WHERE
         A.id = $${parameterIndex++}
       AND

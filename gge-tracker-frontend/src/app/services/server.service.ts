@@ -25,40 +25,6 @@ export interface ServerEntry {
 export class ServerService {
   public currentServer?: ServerEntry;
   public xmlServers: ServerEntry[] = [];
-  public mappedLangsToServers: Record<string, string[]> = {
-    fr: ['FR1'],
-    de: ['DE1'],
-    nl: ['NL1'],
-    en: ['WORLD1', 'INT3', 'US1'],
-    ro: ['RO1'],
-    cz: ['CZ1'],
-    tr: ['TR1'],
-    br: ['BR1'],
-    in: ['IN1'],
-    it: ['IT1'],
-    pl: ['PL1'],
-    pt: ['PT1'],
-    au: ['AU1'],
-    ar: ['AR1'],
-    hant1: ['HANT1'],
-    hu: ['HU1', 'HU2'],
-    es: ['ES1'],
-    sa: ['SA1'],
-    ru: ['RU1'],
-    cn: ['CN1'],
-    gr: ['GR1'],
-    asia: ['ASIA'],
-    lt: ['LT1'],
-    skn: ['SKN1'],
-    sk: ['SK1'],
-    bg: ['BG1'],
-    gb: ['GB1'],
-    kr: ['KR1'],
-    jp: ['JP1'],
-    his: ['HIS1'],
-    ae: ['AE1'],
-    eg: ['EG1'],
-  };
 
   public flagsUrl: Record<string, string> = {
     AE: 'https://flagsapi.com/AE/flat/64.png',
@@ -79,10 +45,8 @@ export class ServerService {
     HIS: 'https://flagsapi.com/MX/flat/64.png',
     HU: 'https://flagsapi.com/HU/flat/64.png',
     IN: 'https://flagsapi.com/IN/flat/64.png',
-    INT: '/assets/int_flag.png',
     IT: 'https://flagsapi.com/IT/flat/64.png',
     JP: 'https://flagsapi.com/JP/flat/64.png',
-    LIVE: '/assets/int_flag.png',
     LT: 'https://flagsapi.com/LT/flat/64.png',
     NL: 'https://flagsapi.com/NL/flat/64.png',
     PL: 'https://flagsapi.com/PL/flat/64.png',
@@ -94,8 +58,6 @@ export class ServerService {
     SKN: 'https://flagsapi.com/SE/flat/64.png',
     TR: 'https://flagsapi.com/TR/flat/64.png',
     US: 'https://flagsapi.com/US/flat/64.png',
-    WORLD: '/assets/int_flag.png',
-    SP: '/assets/int_flag.png',
   };
   public ggeEmpireActiveServerPrefixes = [
     'AE1',
@@ -123,7 +85,8 @@ export class ServerService {
     'INT3',
     'IT1',
     'JP1',
-    'LIVE',
+    'WLD1',
+    'WLD2',
     'LT1',
     'NL1',
     'PL1',
@@ -152,7 +115,7 @@ export class ServerService {
     }
     const regex = /\d+$/g;
     server = server.replaceAll(regex, '');
-    return this.flagsUrl[server] || '/assets/default_flag.png';
+    return this.flagsUrl[server] || '/assets/int_flag.png';
   }
 
   public get servers(): string[] {
@@ -175,7 +138,7 @@ export class ServerService {
         this.xmlServers = this.parseServers(xml);
       })
       .catch((error) => console.error('Error loading servers:', error));
-    const lang = this.mappedLangsToServers[this.languageService.currentLang.trim().toLowerCase()][0];
+    const lang = this.languageService.currentLang.trim().toUpperCase() + '1';
     const defaultServer = this.xmlServers.find((s) => s.name === 'WORLD1' && s.enabled) || this.xmlServers[0];
     const storedServer = this.localStorage.getItem('server');
     const target = this.xmlServers.find((s) => s.name === storedServer && s.enabled);

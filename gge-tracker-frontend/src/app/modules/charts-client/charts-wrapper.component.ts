@@ -26,6 +26,7 @@ import {
   ApexTooltip,
   ApexLegend,
   ApexForecastDataPoints,
+  ApexNonAxisChartSeries,
 } from 'ng-apexcharts';
 
 type ChartComponentInstance = InstanceType<(typeof import('ng-apexcharts'))['ChartComponent']>;
@@ -36,11 +37,11 @@ type ChartComponentInstance = InstanceType<(typeof import('ng-apexcharts'))['Cha
   template: '<ng-container #container></ng-container>',
 })
 export class ChartsWrapperComponent implements OnInit {
-  public series = input.required<ApexAxisChartSeries>();
+  public series = input.required<ApexAxisChartSeries | ApexNonAxisChartSeries>();
   public chart = input.required<ApexChart>();
-  public xaxis = input<ApexXAxis>();
+  public xaxis = input<ApexXAxis | ApexXAxis[]>();
   public annotations = input<ApexAnnotations>();
-  public yaxis = input<ApexYAxis>();
+  public yaxis = input<ApexYAxis | ApexYAxis[]>();
   public dataLabels = input<ApexDataLabels>();
   public plotOptions = input<ApexPlotOptions>();
   public labels = input<string[]>();

@@ -82,6 +82,24 @@
   border-color: transparent transparent #616161 !important;
 }
 
+:host ::ng-deep .modal-body .table-wrapper img {
+  width: 32px;
+  height: 32px;
+}
+
+@media (max-width: 480px) {
+
+  :host ::ng-deep .search-bar-container {
+    flex-wrap: wrap !important;
+    gap: 4px;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+
+  :host ::ng-deep .actions {
+    justify-content: center;
+  }
+}
 
 td, th {
   text-align: center;
@@ -99,6 +117,16 @@ td, th {
   color: white;
 }
 
+.modal-info {
+  color: #8c8c8c;
+  transition: all 0.3s ease;
+}
+
+.modal-info:hover {
+  color: #8c8c8c;
+  filter: brightness(1.2);
+}
+
 .btn-search {
   background: rgba(80,180,255,0.2);
 }
@@ -107,6 +135,9 @@ td, th {
   background: rgba(255,80,103,0.2);
 }
 
+.mono {
+  font-family: monospace;
+}
 .btn.btn-warning {
   background-position: center;
   background-size: 24px;
@@ -126,4 +157,58 @@ td, th {
   background: #ff8500b5;
   border-radius: 7px;
   border: 2px black solid;
+}
+
+.dungeon-avail-progress {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  height: 2px;
+  overflow: hidden;
+  width: 100%;
+  max-width: 190px;
+  margin: auto;
+  margin-top: 1px;
+}
+
+.dungeon-avail-fill {
+  animation-fill-mode: both;
+  animation-name: dungeon-avail-grow;
+  animation-timing-function: linear;
+  background: linear-gradient(90deg, #3e9212, #a8e063);
+  border-radius: 3px;
+  height: 100%;
+  width: 0%;
+}
+
+.dungeon-avail-fill--exceeded {
+  background: linear-gradient(90deg, #b45309, #f59e0b);
+}
+
+@keyframes dungeon-avail-grow {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+.attack-stat-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  padding: 14px 10px;
+  text-align: center;
+}
+
+.attack-stat-value {
+  color: #0891b2;
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.attack-stat-label {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  margin-top: 5px;
+  text-transform: uppercase;
 }

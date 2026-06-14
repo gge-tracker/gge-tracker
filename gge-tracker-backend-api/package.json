@@ -1,11 +1,11 @@
 {
   "name": "gge-tracker-backend-api",
-  "version": "26.04.07-beta",
+  "version": "26.06.02-beta",
   "private": true,
   "description": "",
   "scripts": {
     "start": "node dist/api/main.js",
-    "build": "npx tsc && npx swagger-jsdoc -d ./dist/api/documentation.js",
+    "build": "npx tsc && npx swagger-jsdoc -d ./dist/documentation.js",
     "lint": "eslint .",
     "lint-fix": "eslint . --fix",
     "dev": "nodemon"

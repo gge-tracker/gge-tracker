@@ -37,7 +37,7 @@ TARGET_CLICKHOUSE_DB=$(get_conf_value "ORREALTIME" "olap")
 TARGET_LOG_SUFFIX="ORREALTIME"
 TARGET_CONNECTION_LIMIT=$(get_conf_value "ORREALTIME" "limit")
 
-docker run --rm --network backend --env-file=$BASE_SCRIPT_DIR/.env \
+exec docker run --rm --init --network backend --env-file=$BASE_SCRIPT_DIR/.env \
     --name ic-fetch-token-$SERVER \
     -e ID_SERVER=$ID_SERVER \
     -e PG_DB=$PG_DB \

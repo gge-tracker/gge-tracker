@@ -7,14 +7,12 @@
 //
 //  Copyrights (c) 2025-2026 - gge-tracker.com & gge-tracker contributors
 //
-import axios, { AxiosResponse } from 'axios';
+import axios, { AxiosError, AxiosResponse } from 'axios';
 import { ClickHouse } from 'clickhouse';
 import { format } from 'date-fns';
 import * as mysql from 'mysql2/promise';
-import { RowDataPacket } from 'mysql2/promise';
 import pLimit from 'p-limit';
 import * as pg from 'pg';
-import { exit } from 'process';
 import * as readline from 'readline';
 import { createClient } from 'redis';
 import { HIGHSCORES_CONFIG } from './definitions/highest_scores.config';
@@ -22,6 +20,29 @@ import { SWAP_RANK_POINTS_TABLE } from './definitions/swap-rank-points.config';
 import { TEMP_SERVER_SETTINGS } from './definitions/temp-server-events.config';
 import { Castle, CastleMovement, DungeonMap, HighScoreKey, PlayerDatabase } from './interfaces';
 import Utils from './utils';
+
+export interface DiscordApiMessageBody {
+  channelId: string;
+  embeds: {
+    title: string;
+    color: number;
+    fields: {
+      name: string;
+      value: string;
+      inline: boolean;
+    }[];
+    thumbnail?: {
+      url: string;
+    };
+    image?: {
+      url: string;
+    };
+    footer?: {
+      text: string;
+    };
+    timestamp: string;
+  }[];
+}
 
 /**
  * This class provides a comprehensive backend service for fetching, processing,
@@ -59,11 +80,12 @@ export class GenericFetchAndSaveBackend {
   public allianceUpdated: { [key: string]: boolean } = {};
   private readonly WEBHOOK_URL: string = process.env.WEBHOOK_URL || '';
   private readonly CURRENT_ENV: string = process.env.ENVIRONMENT || 'development';
+  private readonly DISCORD_OR_CHANNEL_ID: string = process.env.DISCORD_OR_CHANNEL_ID || '';
+  private readonly DISCORD_OR_API_URL: string = process.env.DISCORD_OR_API_URL || '';
   private readonly MAP_SIZE = 1286;
   private readonly BASE_API_URL: string;
-  private readonly DATABASE_CONFIG: mysql.PoolOptions | null;
   private readonly CLICKHOUSE_CONFIG: { [key: string]: string | number | undefined } | undefined;
-  private readonly PGSQL_CONFIG: pg.PoolConfig;
+  private readonly PGSQL_CONFIG: pg.PoolConfig | undefined;
   private readonly server: string;
   private playerLootAndMightPointHistoryList: { [key: string]: any[] } = {};
   private playerEventPointHistoryList: { [key: string]: { [key: string]: number | null } } = {};
@@ -83,18 +105,20 @@ export class GenericFetchAndSaveBackend {
 
   constructor(
     BASE_API_URL: string,
-    DATABASE_CONFIG: mysql.PoolOptions | null,
     CLICKHOUSE_CONFIG: { [key: string]: string | number | undefined } | null,
-    PGSQL_CONFIG: pg.PoolConfig,
-    server: string,
+    PGSQL_CONFIG: pg.PoolConfig | null,
+    server: string | undefined,
   ) {
     this.BASE_API_URL = BASE_API_URL;
-    this.DATABASE_CONFIG = DATABASE_CONFIG;
     this.CLICKHOUSE_CONFIG = CLICKHOUSE_CONFIG ? CLICKHOUSE_CONFIG : undefined;
-    this.PGSQL_CONFIG = PGSQL_CONFIG;
-    this.server = server;
+    if (PGSQL_CONFIG) {
+      this.PGSQL_CONFIG = PGSQL_CONFIG;
+    }
+    this.server = server ? server : 'unknown';
     this.isE4KServer = String(server).toLowerCase().startsWith('e4k');
-    this.createNewPool();
+    if (PGSQL_CONFIG) {
+      this.createNewPool();
+    }
   }
 
   public async sleep(numberMs: number = 1500): Promise<void> {
@@ -113,14 +137,14 @@ export class GenericFetchAndSaveBackend {
     Utils.logMessage('Try getting TLT token for Outer Realms...');
     let response = await this.genericFetchData('glt', { GST: 2 });
     if (!response.data.content) {
-      await this.genericFetchData('qsc', { QID: 3490 });
-      await this.genericFetchData('dcl', { CD: 1 });
       const responseTsh = await this.genericFetchData('tsh', null);
       if (!responseTsh.data.content) {
         Utils.logMessage(' No content received from tsh endpoint. Aborting Outer Realms entry.');
         Utils.logMessage('Content received:', JSON.stringify(responseTsh.data));
         return null;
       }
+      await this.genericFetchData('qsc', { QID: 3490 });
+      await this.genericFetchData('dcl', { CD: 1 });
       await this.sleep(500);
       Utils.logMessage('Selecting free castle in Outer Realms...');
       await this.genericFetchData('tsc', { ID: 31, OC2: 1, PWR: 0, GST: 2 });
@@ -168,6 +192,15 @@ export class GenericFetchAndSaveBackend {
     const value = await redisClient.get(key);
     await redisClient.quit();
     return value;
+  }
+
+  public async setRedisValue(key: string, value: string): Promise<void> {
+    const redisClient = createClient({
+      url: 'redis://redis-server:6379',
+    });
+    await redisClient.connect();
+    await redisClient.set(key, value);
+    await redisClient.quit();
   }
 
   public async fillGrandTournamentResults(): Promise<void> {
@@ -324,6 +357,8 @@ export class GenericFetchAndSaveBackend {
         });
         await redisClient.connect();
         await redisClient.incr(`grand-tournament:event-dates:version`);
+        const refreshQuery = 'REFRESH MATERIALIZED VIEW CONCURRENTLY grand_tournament_hours_mv';
+        await this.pgSqlQuery(refreshQuery);
       }
       const end = new Date();
       const duration = end.getTime() - start.getTime();
@@ -347,6 +382,17 @@ export class GenericFetchAndSaveBackend {
     }
     await this.pgSqlConnection.end();
     Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, this.server);
+
+    await this.logToLoki({
+      job: 'grand-tournament',
+      data: {
+        server: this.server,
+        grandTournamentRecordsInserted:
+          Object.keys(this.DB_UPDATES).length > 0 ? Object.values(this.DB_UPDATES).length : 0,
+        criticalErrors: this.DB_UPDATES.criticalErrors,
+        durationMs: new Date().getTime() - start.getTime(),
+      },
+    });
   }
 
   /**
@@ -381,6 +427,14 @@ export class GenericFetchAndSaveBackend {
     }
     await this.pgSqlConnection.end();
     Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, this.server);
+    await this.logToLoki({
+      job: 'global-rankings-refresh',
+      data: {
+        server: this.server,
+        criticalErrors: this.DB_UPDATES.criticalErrors,
+        durationMs: new Date().getTime() - start.getTime(),
+      },
+    });
   }
 
   /**
@@ -452,6 +506,19 @@ export class GenericFetchAndSaveBackend {
     maxX = Math.ceil(maxX / zone) * zone;
     maxY = Math.ceil(maxY / zone) * zone;
     const totalRequests = Math.ceil((maxX - minX) / zone) * Math.ceil((maxY - minY) / zone);
+
+    const delay = (ms: number): Promise<void> => new Promise((res) => setTimeout(res, ms));
+    const minValue = 100;
+    const maxValue = 1100;
+    let randoms: number[] = [];
+    for (let i = 0; i < totalRequests; i++) {
+      const random = Math.floor(Math.random() * (maxValue - minValue + 1)) + minValue;
+      randoms.push(random);
+    }
+    // We shuffle the list to avoid having patterns in the requests
+    randoms = randoms.sort(() => Math.random() - 0.5);
+    const minuteToRetrieve = Math.ceil((totalRequests * (minValue + maxValue)) / 2 / 60000);
+
     const confirmationMessage = `About to retrieve dungeons for world ${worldNumber} with the following parameters:
       - minX: ${minX}
       - minY: ${minY}
@@ -459,7 +526,7 @@ export class GenericFetchAndSaveBackend {
       - maxY: ${maxY}
       - step: ${step}
       - zone: ${zone}
-      This will result in approximately ${totalRequests} API requests, which may take around ${Math.ceil(totalRequests / 120 + 3)} minutes to complete. Do you want to proceed? (yes/no)`;
+      This will result in approximately ${totalRequests} API requests, which may take around ${minuteToRetrieve} minutes to complete. Do you want to proceed? (yes/no)`;
     const userInput = await this.askConfirmation(confirmationMessage);
     if (!userInput) {
       Utils.logMessage('Dungeon retrieval aborted by user.');
@@ -531,11 +598,7 @@ export class GenericFetchAndSaveBackend {
           }
         }
         // Throttle management
-        const delay = (ms: number): Promise<void> => new Promise((res) => setTimeout(res, ms));
-        const minValue = 500;
-        const maxValue = 1500;
-        const random = Math.floor(Math.random() * (maxValue - minValue + 1)) + minValue;
-        await delay(random);
+        await delay(randoms[rowIndex % randoms.length]);
         done++;
         const percent = (done / totalRequests) * 100;
         const barWidth = 40;
@@ -565,23 +628,34 @@ export class GenericFetchAndSaveBackend {
       'dungeons found.',
     );
     console.log('Database connection successful');
-    const values: any[] = [];
-    for (const dungeon of dungeonMaps) {
-      const coordinates = dungeon.coordinates;
-      const time = dungeon.time;
-      const playerId = dungeon.playerId;
-      const updatedAt = dungeon.updatedAt;
-      values.push(worldNumber, coordinates[0], coordinates[1], time, playerId, 0, updatedAt);
+    const CHUNK_SIZE = 500;
+
+    const chunks = this.chunkArray(dungeonMaps, CHUNK_SIZE);
+    for (const chunk of chunks) {
+      const values: any[] = [];
+      const placeholders = chunk
+        .map((dungeon, i) => {
+          const baseIndex = i * 4;
+          const coordinates = dungeon.coordinates;
+          const time = dungeon.time;
+          const global_available_at = new Date(Date.now() + time * 1000);
+
+          values.push(worldNumber, coordinates[0], coordinates[1], global_available_at);
+
+          return `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4})`;
+        })
+        .join(', ');
+
+      await this.pgSqlConnection.query(
+        `INSERT INTO dungeons (kid, position_x, position_y, global_available_at) VALUES ${placeholders}`,
+        values,
+      );
     }
-    const placeholders = dungeonMaps.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ');
-    await this.connection.execute(
-      `INSERT INTO dungeons (kid, position_x, position_y, attack_cooldown, player_id, total_attack_count, updated_at) VALUES ${placeholders}`,
-      values,
-    );
+
     console.log('\nDungeons list updated successfully for world', worldNumber, '\n');
   }
 
-  public async fillGenericEventHistory(): Promise<void> {
+  public async fillGenericEventHistory(dryRunInsertBTH = false, dryRunInsertOR = false): Promise<void> {
     const start = new Date();
     Utils.logMessage('Execution of the event history for Outer Realms + BTH');
     try {
@@ -590,12 +664,18 @@ export class GenericFetchAndSaveBackend {
         'outer_realms_event',
         'outer_realms_ranking',
         this.ENV_LT.outerRealms,
+        10,
+        6,
+        dryRunInsertOR,
       );
       await this.executeCustomEventHistory(
         'Beyond the Horizon',
         'beyond_the_horizon_event',
         'beyond_the_horizon_ranking',
         this.ENV_LT.beyondTheHorizon,
+        10,
+        6,
+        dryRunInsertBTH,
       );
       const end = new Date();
       Utils.logMessage('Duration of processing:', Math.floor((end.getTime() - start.getTime()) / 1000), 'seconds');
@@ -615,8 +695,20 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('=========== END STACK TRACE =============');
       this.DB_UPDATES.criticalErrors++;
     } finally {
-      await this.pgSqlConnection.end();
-      Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, 'OUTER_REALMS_AND_BEYOND_THE_HORIZON_EVENT_HISTORY');
+      if (!dryRunInsertOR || !dryRunInsertBTH) {
+        await this.pgSqlConnection.end().catch((error) => {
+          Utils.logMessage('Error closing PostgreSQL connection:', error);
+        });
+        await this.logToLoki({
+          job: 'outer-realms-and-beyond-the-horizon-event-history',
+          data: {
+            server: this.server,
+            criticalErrors: this.DB_UPDATES.criticalErrors,
+            durationMs: new Date().getTime() - start.getTime(),
+          },
+        });
+        Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, 'OUTER_REALMS_AND_BEYOND_THE_HORIZON_EVENT_HISTORY');
+      }
     }
   }
 
@@ -660,15 +752,6 @@ export class GenericFetchAndSaveBackend {
   public async executeFillInOrder(): Promise<void> {
     const start = new Date();
     try {
-      await this.logToLoki(
-        JSON.stringify({
-          message: 'Starting fill process',
-          server: this.server,
-          step: 'start',
-          timestamp: start.toISOString(),
-        }),
-        { server: this.server, step: 'start' },
-      );
       Utils.logMessage('=====================================');
       Utils.logMessage(' [info] Starting fill process');
       Utils.logMessage(' [info] Current environment:', this.CURRENT_ENV);
@@ -711,6 +794,8 @@ export class GenericFetchAndSaveBackend {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       Utils.logMessage('* Updating player might and loot current/total (9/9)');
       await this.updatePlayersMightAndLoot();
+      Utils.logMessage('* Updating player aquamarine data');
+      await this.fillPlayerAquamarineData();
       Utils.logMessage('* Updating server statistics');
       await this.updateServerStatistics();
       Utils.logMessage('* Updating inactive players');
@@ -756,22 +841,20 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('=========== END STACK TRACE =============');
     } finally {
       const end = new Date();
-      const durationMs = end.getTime() - start.getTime();
-      await this.logToLoki(
-        JSON.stringify({
-          message: 'End of data filling',
+      try {
+        await this.logToClickHouse({
           server: this.server,
-          step: 'end',
-          criticalErrors: this.DB_UPDATES.criticalErrors,
+          startTime: new Date(start),
+          endTime: new Date(end),
           alliancesCreated: this.DB_UPDATES.alliancesCreated,
           playersCreated: this.DB_UPDATES.playersCreated,
           playersAllianceUpdated: this.DB_UPDATES.playersAllianceUpdated,
           alliancesUpdated: this.DB_UPDATES.alliancesUpdated,
-          durationMs,
-          timestamp: end.toISOString(),
-        }),
-        { server: this.server, step: 'end' },
-      );
+          criticalErrors: this.DB_UPDATES.criticalErrors,
+          playerCount: Object.keys(this.playerLootAndMightPointHistoryList).length || 0,
+          allianceCount: this.customPlayersAttributesList['alliances_count'] || 0,
+        });
+      } catch {}
       const criticalErrors = this.DB_UPDATES.criticalErrors;
       this.DB_UPDATES.alliancesCreated = 0;
       this.DB_UPDATES.playersCreated = 0;
@@ -790,115 +873,248 @@ export class GenericFetchAndSaveBackend {
   public async updateDungeonsList(): Promise<void> {
     const squares: { [key: string]: { AX1: number; AY1: number; AX2: number; AY2: number } } = {};
     const mapSize = this.MAP_SIZE;
-    let done = 0;
-    console.log('Connection to the database successful');
-    const [rows] = await this.connection.query<RowDataPacket[]>(`
-      SELECT kid, position_x, position_y
-      FROM dungeons
-      WHERE attack_cooldown = 0
-      OR TIMESTAMPADD(SECOND, attack_cooldown, updated_at) <= NOW()`);
     const start = new Date();
-    const totalRequests = rows.length;
-    for (const row of rows) {
-      const { kid, position_x, position_y } = row;
-      const square = await this.getCorrespondingSquare(position_x, position_y, mapSize);
-      if (square) {
-        squares[`${kid}-${position_x}-${position_y}`] = square;
-        const { AX1, AY1, AX2, AY2 } = square;
-        const json = `"KID":${kid},"AX1":${AX1},"AY1":${AY1},"AX2":${AX2},"AY2":${AY2}`;
-        const url: string = encodeURI(this.BASE_API_URL + 'gaa/' + json);
-        try {
-          const response = await axios.get(url);
-          const data = response.data;
-          if (data && data['return_code'] == '0') {
-            const dungeons = data.content?.AI ?? [];
-            for (const dungeon of dungeons) {
-              if (dungeon[0] == '11') {
-                const coordinates = [dungeon[1], dungeon[2]];
-                const time = dungeon[5];
-                // We calculate the time since the last attack
-                const attackedTimeInSeconds = 24 * 60 * 60 - time;
-                // We calculate the date of the last attack
-                const lastAttackDate = new Date(Date.now() - attackedTimeInSeconds * 1000);
-                const playerId = dungeon[6];
-                try {
-                  // We retrieve the old player_id
-                  const [rows] = await this.connection.execute(
-                    `SELECT player_id FROM dungeons WHERE kid = ? AND position_x = ? AND position_y = ?`,
-                    [kid, coordinates[0], coordinates[1]],
+    const pgPool = new pg.Pool(this.PGSQL_CONFIG);
+    let done = 0;
+    try {
+      console.log('Connection to the database successful');
+      const { rows } = await pgPool.query(
+        `
+        SELECT kid, position_x, position_y, global_available_at
+        FROM dungeons
+        WHERE global_available_at <= NOW()
+        `,
+      );
+      const totalRequests = rows.length;
+      console.log('Total dungeons to check:', totalRequests);
+      const dungeonsToUpdate: {
+        kid: number;
+        position_x: number;
+        position_y: number;
+        global_available_at: Date;
+        player_available_at: Date;
+        player_id: number;
+      }[] = [];
+      for (const row of rows) {
+        const { kid, position_x, position_y } = row;
+        const square = await this.getCorrespondingSquare(position_x, position_y, mapSize);
+        if (square) {
+          squares[`${kid}-${position_x}-${position_y}`] = square;
+          const { AX1, AY1, AX2, AY2 } = square;
+          const json = `"KID":${kid},"AX1":${AX1},"AY1":${AY1},"AX2":${AX2},"AY2":${AY2}`;
+          const url: string = encodeURI(this.BASE_API_URL + 'gaa/' + json);
+          try {
+            const response = await axios.get(url);
+            const currentTime = new Date();
+            const data = response.data;
+            if (data && data['return_code'] == '0') {
+              const dungeons = data.content?.AI ?? [];
+              for (const dungeon of dungeons) {
+                if (dungeon[0] == '11') {
+                  const coordinates = [dungeon[1], dungeon[2]];
+                  const PLAYER_COOLDOWN_SECONDS = 4 * 24 * 60 * 60;
+                  // We calculate the date of the last attack
+                  this.DB_UPDATES.playersCreated++;
+                  const remainingCooldown24h = dungeon[5];
+                  const globalAvailableDate = new Date(currentTime.getTime() + remainingCooldown24h * 1000);
+                  const playerAvailableDate = new Date(
+                    currentTime.getTime() + (remainingCooldown24h + PLAYER_COOLDOWN_SECONDS) * 1000,
                   );
-                  const oldPlayerId = (rows as any[])[0]?.player_id;
-                  if (oldPlayerId !== playerId) {
-                    await this.connection.execute(
-                      `INSERT INTO dungeon_player_state (kid, position_x, position_y, player_id, last_attack_at)
-                      VALUES (?, ?, ?, ?, ?)`,
-                      [kid, coordinates[0], coordinates[1], playerId, lastAttackDate],
-                    );
+                  if (remainingCooldown24h <= 0) {
+                    // Skipping cooldown update if the dungeon is already available
+                    continue;
                   }
-                  await this.connection.execute(
-                    `UPDATE dungeons
-                    SET attack_cooldown = ?, player_id = ?, updated_at = NOW()
-                    WHERE kid = ? AND position_x = ? AND position_y = ?`,
-                    [time, playerId, kid, coordinates[0], coordinates[1]],
-                  );
-                } catch (error) {
-                  console.log(error);
-                  exit(1);
+                  dungeonsToUpdate.push({
+                    kid,
+                    position_x: coordinates[0],
+                    position_y: coordinates[1],
+                    global_available_at: globalAvailableDate,
+                    player_available_at: playerAvailableDate,
+                    player_id: dungeon[6],
+                  });
                 }
               }
+            } else if (!data['return_code'] || data['return_code'] === '-1') {
+              if (this.WEBHOOK_URL) {
+                const message = {
+                  content: 'An error occurred: ' + JSON.stringify(row),
+                  username: 'Dungeon Fetcher',
+                };
+                await axios.post(this.WEBHOOK_URL, message);
+                console.log('Message sent to Discord webhook');
+                return;
+              }
+              this.DB_UPDATES.criticalErrors++;
+              console.error('Invalid response for URL:', url, data);
             }
-          } else if (!data['return_code'] || data['return_code'] === '-1') {
-            if (this.WEBHOOK_URL) {
-              const message = {
-                content: 'An error occurred: ' + JSON.stringify(row),
-                username: 'Dungeon Fetcher',
-              };
-              await axios.post(this.WEBHOOK_URL, message);
-              console.log('Message sent to Discord webhook');
-              exit();
+            if (done % 20 === 0) {
+              await new Promise((resolve) => setTimeout(resolve, 30));
             }
-          }
-          if (done % 20 === 0) {
-            await new Promise((resolve) => setTimeout(resolve, 30));
-          }
-          done++;
-          if (process.stdout.isTTY) {
-            const percent = (done / totalRequests) * 100;
-            const barWidth = 40;
-            const filled = Math.round(barWidth * (done / totalRequests));
-            const bar =
-              '[' +
-              '█'.repeat(filled) +
-              '-'.repeat(barWidth - filled) +
-              `] ${percent.toFixed(1)}% (${done}/${totalRequests})`;
-            process.stdout.clearLine(0);
-            process.stdout.cursorTo(0);
-            process.stdout.write(bar);
-          }
-        } catch (err: any) {
-          const code = err?.code;
-          if (code !== 'ERR_BAD_REQUEST' && code !== 'ECONNRESET') {
-            console.error('Unexpected error code on URL:', url, err);
-          } else {
+            done++;
+            if (process.stdout.isTTY) {
+              const percent = (done / totalRequests) * 100;
+              const barWidth = 40;
+              const filled = Math.round(barWidth * (done / totalRequests));
+              const bar =
+                '[' +
+                '█'.repeat(filled) +
+                '-'.repeat(barWidth - filled) +
+                `] ${percent.toFixed(1)}% (${done}/${totalRequests})`;
+              process.stdout.clearLine(0);
+              process.stdout.cursorTo(0);
+              process.stdout.write(bar);
+            }
+          } catch (err: AxiosError | any) {
+            if (err instanceof AxiosError) {
+              console.error('Axios error on URL:', url, err.message);
+              throw new Error(`Fetch error: ${err.message}`);
+            }
             console.error('Error on URL:', url);
+            throw new Error('Terminating due to error while fetching dungeon data.');
           }
-          throw new Error('Terminating due to error while fetching dungeon data.');
         }
       }
+      try {
+        const updateValues: (Date | number)[] = [];
+        const updatePlaceholders: string[] = [];
+        const historyValues: number[] = [];
+        const historyPlaceholders: string[] = [];
+        const cooldownValues: (number | Date)[] = [];
+        const cooldownPlaceholders: string[] = [];
+
+        dungeonsToUpdate.forEach((dungeon, index) => {
+          // UPDATE
+          const updateOffset = index * 4;
+          updatePlaceholders.push(
+            `(
+              $${updateOffset + 1}::timestamp,
+              $${updateOffset + 2}::smallint,
+              $${updateOffset + 3}::smallint,
+              $${updateOffset + 4}::smallint
+            )`,
+          );
+          updateValues.push(dungeon.global_available_at, dungeon.kid, dungeon.position_x, dungeon.position_y);
+
+          // HISTORY
+          const historyOffset = index * 4;
+          historyPlaceholders.push(
+            `(
+              $${historyOffset + 1}::smallint,
+              $${historyOffset + 2}::smallint,
+              $${historyOffset + 3}::smallint,
+              $${historyOffset + 4}::integer
+            )`,
+          );
+          historyValues.push(dungeon.kid, dungeon.position_x, dungeon.position_y, dungeon.player_id);
+
+          // COOLDOWNS
+          const cooldownOffset = index * 5;
+          cooldownPlaceholders.push(
+            `(
+                $${cooldownOffset + 1}::smallint,
+                $${cooldownOffset + 2}::smallint,
+                $${cooldownOffset + 3}::smallint,
+                $${cooldownOffset + 4}::integer,
+                $${cooldownOffset + 5}::timestamp
+              )`,
+          );
+
+          cooldownValues.push(
+            dungeon.kid,
+            dungeon.position_x,
+            dungeon.position_y,
+            dungeon.player_id,
+            dungeon.player_available_at,
+          );
+        });
+
+        if (updatePlaceholders.length === 0) {
+          console.log('No dungeons to update in PostgreSQL');
+          return;
+        }
+        console.log('\nUpdating dungeons...');
+        await pgPool.query(
+          `
+          UPDATE dungeons d
+          SET global_available_at = v.global_available_at
+          FROM (
+            VALUES
+              ${updatePlaceholders.join(',')}
+          ) AS v(global_available_at, kid, position_x, position_y)
+          WHERE d.kid = v.kid
+            AND d.position_x = v.position_x
+            AND d.position_y = v.position_y
+          `,
+          updateValues,
+        );
+
+        console.log('Inserting dungeon history...');
+        await pgPool.query(
+          `
+          INSERT INTO dungeons_history (
+            kid,
+            position_x,
+            position_y,
+            player_id
+          )
+          VALUES
+            ${historyPlaceholders.join(',')}
+          `,
+          historyValues,
+        );
+
+        console.log('Updating dungeon cooldowns...');
+        await pgPool.query(
+          `
+          INSERT INTO dungeon_player_cooldowns (
+            kid,
+            position_x,
+            position_y,
+            player_id,
+            available_at
+          )
+          VALUES ${cooldownPlaceholders.join(',')}
+          ON CONFLICT (kid, position_x, position_y, player_id)
+          DO UPDATE SET available_at = EXCLUDED.available_at
+          `,
+          cooldownValues,
+        );
+      } catch (error) {
+        console.log(error);
+        throw new Error(
+          'Error while updating dungeon data in the PostgreSQL database: ' +
+            (error instanceof Error ? error.message : String(error)),
+        );
+      }
+    } catch (error) {
+      console.error('Error while updating dungeons list:', error);
+      this.DB_UPDATES.criticalErrors++;
+    } finally {
+      await pgPool.end();
+      const end = new Date();
+      const elapsedTime = end.getTime() - start.getTime();
+      const elapsedTimeInSeconds = Math.floor(elapsedTime / 1000);
+      const elapsedTimeInMinutes = Math.floor(elapsedTimeInSeconds / 60);
+      console.log(
+        'Time taken to retrieve dungeons:',
+        elapsedTimeInSeconds,
+        'seconds (',
+        elapsedTimeInMinutes,
+        'minutes)',
+      );
+      console.log('Dungeons list updated successfully');
+      console.log('Squares count:', Object.keys(squares).length);
+      await this.logToLoki({
+        job: 'update-dungeons-list',
+        data: {
+          server: this.server,
+          criticalErrors: this.DB_UPDATES.criticalErrors,
+          durationMs: elapsedTime,
+          squaresCount: Object.keys(squares).length,
+          dungeonsUpdated: this.DB_UPDATES.playersCreated,
+        },
+      });
     }
-    const end = new Date();
-    const elapsedTime = end.getTime() - start.getTime();
-    const elapsedTimeInSeconds = Math.floor(elapsedTime / 1000);
-    const elapsedTimeInMinutes = Math.floor(elapsedTimeInSeconds / 60);
-    console.log(
-      'Time taken to retrieve dungeons:',
-      elapsedTimeInSeconds,
-      'seconds (',
-      elapsedTimeInMinutes,
-      'minutes)',
-    );
-    console.log('Dungeons list updated successfully');
-    console.log('Squares count:', Object.keys(squares).length);
   }
 
   public getCorrespondigLtByOuterRealmsType(type: string): string | null {
@@ -914,16 +1130,17 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
-  public async startOuterRealmsDataFetch(): Promise<void> {
+  public async startOuterRealmsDataFetch(): Promise<'collector' | 'might' | 'rankSwap' | null> {
     const start = new Date();
     const type = 'hgh';
     const LID = 1;
+    let LT: number | null = null;
+    let scoringSystemType: 'collector' | 'might' | 'rankSwap' | null = null;
     try {
       Utils.logMessage('=====================================');
       Utils.logMessage(' Starting Outer Realms data fetch');
       Utils.logMessage(' Current environment:', this.CURRENT_ENV);
       Utils.logMessage('=====================================');
-      let LT: number | null = null;
       let initialResponse: AxiosResponse<any>;
       const redisClient = createClient({
         url: 'redis://redis-server:6379',
@@ -935,8 +1152,8 @@ export class GenericFetchAndSaveBackend {
           (el) => el.settingID && Number(el.settingID) === Number(temporaryServerData),
         );
         if (tempServerSetting) {
-          const scoringSystemType = tempServerSetting.scoringSystem;
-          if (['collector', 'might', 'rankSwap'].includes(scoringSystemType)) {
+          if (['collector', 'might', 'rankSwap'].includes(tempServerSetting.scoringSystem)) {
+            scoringSystemType = tempServerSetting.scoringSystem as 'collector' | 'might' | 'rankSwap';
             const correspondingLt = this.getCorrespondigLtByOuterRealmsType(scoringSystemType);
             if (correspondingLt) {
               LT = Number(correspondingLt);
@@ -945,7 +1162,9 @@ export class GenericFetchAndSaveBackend {
               );
             }
           } else {
-            throw new Error(`Unrecognized scoring system type '${scoringSystemType}' in temporary server settings.`);
+            throw new Error(
+              `Unrecognized scoring system type '${tempServerSetting.scoringSystem}' in temporary server settings.`,
+            );
           }
         } else {
           throw new Error(
@@ -961,19 +1180,19 @@ export class GenericFetchAndSaveBackend {
           );
           await redisClient.set(`outerRealmsDataFetchError`, 'No active event found with known LT codes');
           await redisClient.quit();
-          return;
+          throw new Error(`No active Outer Realms event found with last known LT=${LT}`);
         }
       } else {
         Utils.logMessage(' No temporary server setting found in Redis. Exiting temporary server LT check.');
         await redisClient.set(`outerRealmsDataFetchError`, 'No active event found with known LT codes');
         await redisClient.quit();
-        return;
+        throw new Error('No temporary server setting found in Redis');
       }
       if (!LT) {
         Utils.logMessage(' No active Outer Realms event found with any known LT code. Aborting data fetch.');
         await redisClient.set(`outerRealmsDataFetchError`, 'No active event found with known LT codes');
         await redisClient.quit();
-        return;
+        throw new Error('No active Outer Realms event found with known LT codes');
       }
       await redisClient.del(`outerRealmsDataFetchError`);
       await redisClient.quit();
@@ -1088,6 +1307,8 @@ export class GenericFetchAndSaveBackend {
           password: this.CLICKHOUSE_CONFIG!.password as string,
         };
 
+        this.DB_UPDATES.playersCreated = playerArray.length;
+
         const fetchDateStr = new Date(fetchDate).toISOString().slice(0, 19).replace('T', ' ');
         for (let i = 0; i < playerArray.length; i += batchSize) {
           const batch = playerArray.slice(i, i + batchSize);
@@ -1157,21 +1378,214 @@ export class GenericFetchAndSaveBackend {
         Utils.logMessage('.');
       }
       Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, this.server);
+      await this.logToLoki({
+        job: 'outer-realms-data-fetch',
+        data: {
+          server: this.server,
+          criticalErrors: this.DB_UPDATES.criticalErrors,
+          playersCreated: this.DB_UPDATES.playersCreated,
+          LT,
+          durationMs: duration,
+        },
+      });
+      return scoringSystemType || null;
+    }
+  }
+
+  public async sendDiscordNotification(messageBody: DiscordApiMessageBody): Promise<void> {
+    if (!this.DISCORD_OR_API_URL) {
+      console.error('Missing Discord API URL or Channel ID environment variables');
+      throw new Error('Missing Discord API URL or Channel ID environment variables');
+    }
+    try {
+      await this.fetchUrl(this.DISCORD_OR_API_URL, 'POST', messageBody);
+      Utils.logMessage(' [info] Discord notification sent successfully');
+    } catch (error) {
+      Utils.logMessage(error);
+    }
+  }
+
+  public getDiscordApiMessageBody(
+    eventType: 'Beyond the Horizon' | 'Outer Realms',
+    playersAdded: number,
+    eventNum: number,
+    players: {
+      server: string;
+      level: number;
+      legendaryLevel: number;
+      point: number;
+      rank: number;
+      realPlayerId: number;
+      playerName: string;
+      allianceName: string;
+    }[],
+  ): DiscordApiMessageBody {
+    if (!this.DISCORD_OR_CHANNEL_ID) {
+      console.error('Missing Discord Channel ID environment variable');
+      throw new Error('Missing Discord Channel ID environment variable');
+    }
+    const description = `**Top 10 Players: ** \n${players
+      .slice(0, 10)
+      .map(
+        (p, index) =>
+          `**${index + 1}. ${index === 0 ? ':first_place: ' : index === 1 ? ':second_place: ' : index === 2 ? ':third_place: ' : ''}${this.formatValueForDiscord(p.playerName)} ${this.transformServerNameToEmoji(p.server)}** (Level: ${p.legendaryLevel ? p.level + '/' + p.legendaryLevel : p.level}, Alliance: _${this.formatValueForDiscord(p.allianceName) || '-'}_)`,
+      )
+      .join('\n')}`;
+    const baseImageUrl = 'https://gge-tracker.com/assets/';
+    return {
+      channelId: this.DISCORD_OR_CHANNEL_ID,
+      embeds: [
+        {
+          title: `${eventType} Leaderboard Update`,
+          color: 11027200,
+          fields: [
+            {
+              name: `:trophy: The final ranking for '${eventType}' event is available!`,
+              value: `\n${description}\n\n :arrow_right: https://gge-tracker.com/events/${eventType.toLowerCase().replace(/\s/g, '-')}/${eventNum}`,
+              inline: false,
+            },
+          ],
+          image: {
+            url: baseImageUrl + eventType.toLowerCase().replace(/\s/g, '-') + '.png',
+          },
+          footer: {
+            text: 'gge-tracker.com - ' + playersAdded + ' players',
+          },
+          timestamp: new Date().toISOString(),
+        },
+      ],
+    };
+  }
+
+  /**
+   * This method fetches data for the "Wheel of Unimaginable Affluence"
+   *  event (LT: 72) and inserts it into the ClickHouse database.
+   */
+  public async insertWheelOfUnimaginableAffluenceData(retry = 0): Promise<void> {
+    const LT = 72;
+    const LID = 1;
+    Utils.logMessage('Start fetching Wheel of Unimaginable Affluence data with LT =', LT);
+    try {
+      const response = await this.genericFetchData('hgh', { LT, LID, SV: '1' });
+      if (response.data.return_code == '0' && response.data.content?.L?.length > 0) {
+        Utils.logMessage('Wheel of Unimaginable Affluence event is active. Start fetching data...');
+        const entriesPerPage = response.data.content.L.length;
+        const totalEntries = response.data.content.LR || 0;
+        let fetchedEntries = 0;
+        let hasMore = true;
+        let SV = Math.ceil(entriesPerPage / 2);
+        const wheelData: {
+          playerId: number;
+          points: number;
+        }[] = [];
+        while (hasMore) {
+          const pageResponse = await this.genericFetchData('hgh', { LT, LID, SV: String(SV) });
+          if (pageResponse.data.return_code == '0' && pageResponse.data.content?.L?.length > 0) {
+            const content = pageResponse.data.content.L;
+            for (const entry of content) {
+              const playerData = entry[2];
+              const OID = Number(playerData.OID);
+              if (!wheelData.some((e) => e.playerId === OID)) {
+                wheelData.push({
+                  playerId: OID,
+                  points: Number(entry[1]),
+                });
+                fetchedEntries++;
+              } else {
+                // This is unexpected but we log it just in case
+                Utils.logMessage(`Duplicate entry found for player ID ${OID} at SV=${SV}. Skipping.`);
+              }
+            }
+            Utils.logMessage(`Fetched ${fetchedEntries}/${totalEntries} entries...`);
+            SV += entriesPerPage;
+            if (SV > totalEntries + entriesPerPage) {
+              hasMore = false;
+            }
+          } else {
+            hasMore = false;
+          }
+        }
+        const now = new Date();
+        Utils.logMessage(
+          'Finished fetching Wheel of Unimaginable Affluence data. Total entries:',
+          wheelData.length,
+          ', at time:',
+          now.toISOString(),
+        );
+        const clickhouseBaseUrl = (this.CLICKHOUSE_CONFIG!.url as string) + ':' + this.CLICKHOUSE_CONFIG!.port;
+        try {
+          const insertSQL = `INSERT INTO wheel_unimaginable_affluence FORMAT JSONEachRow`;
+          const clickhouseUrl =
+            clickhouseBaseUrl +
+            '/?query=' +
+            encodeURIComponent(insertSQL) +
+            '&database=' +
+            encodeURIComponent(this.CLICKHOUSE_CONFIG!.database as string);
+          const fetchDateStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
+          const clickhouseAuth = {
+            username: this.CLICKHOUSE_CONFIG!.user as string,
+            password: this.CLICKHOUSE_CONFIG!.password as string,
+          };
+          const batchSize = 100;
+          for (let i = 0; i < wheelData.length; i += batchSize) {
+            const batch = wheelData.slice(i, i + batchSize);
+            const payload = batch
+              .map((entry) =>
+                JSON.stringify({
+                  player_id: entry.playerId,
+                  point: entry.points,
+                  created_at: fetchDateStr,
+                }),
+              )
+              .join('\n');
+            try {
+              await axios.post(clickhouseUrl, payload, {
+                headers: {
+                  'Content-Type': 'text/plain',
+                },
+                auth: clickhouseAuth,
+              });
+              Utils.logMessage(`Inserted ${batch.length} entries into ClickHouse`);
+            } catch (error) {
+              Utils.logMessage('Error inserting batch into ClickHouse:', error);
+              Utils.logMessage('Payload:', payload);
+              this.DB_UPDATES.criticalErrors++;
+            }
+          }
+        } catch (error) {
+          Utils.logMessage('Error executing query:', error);
+          this.DB_UPDATES.criticalErrors++;
+        }
+      } else {
+        Utils.logMessage('Wheel of Unimaginable Affluence event is not active. No data to fetch.');
+      }
+    } catch (error) {
+      if (retry < 3) {
+        Utils.logMessage(`Error fetching Wheel of Unimaginable Affluence data. Retrying... (Attempt ${retry + 1}/3)`);
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        await this.insertWheelOfUnimaginableAffluenceData(retry + 1);
+        return;
+      }
+      Utils.logMessage('Error fetching Wheel of Unimaginable Affluence data:', error);
+      this.DB_UPDATES.criticalErrors++;
+    } finally {
+      Utils.logMessage('Finished processing Wheel of Unimaginable Affluence data.');
+      if (this.DB_UPDATES.criticalErrors > 0) {
+        Utils.logMessage(
+          'Number of critical errors during Wheel of Unimaginable Affluence data fetch:',
+          this.DB_UPDATES.criticalErrors,
+        );
+      }
+      Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, this.server);
     }
   }
 
   private createNewPool(): void {
-    if (this.connection) {
-      this.connection.end().catch((error) => {
-        Utils.logMessage('An error occurred while closing the previous connection:', error);
-      });
-    }
     if (this.pgSqlConnection) {
       this.pgSqlConnection.end().catch((error) => {
         Utils.logMessage('An error occurred while closing the previous PostgreSQL connection:', error);
       });
     }
-    if (this.DATABASE_CONFIG) this.connection = mysql.createPool(this.DATABASE_CONFIG);
     this.pgSqlConnection = new pg.Pool(this.PGSQL_CONFIG);
   }
 
@@ -1278,9 +1692,9 @@ export class GenericFetchAndSaveBackend {
             Utils.logMessage(' [info] No event active (0)');
             return;
           } else {
-            const tentatives = 3;
+            const attempts = 3;
             let k = 0;
-            while (k < tentatives && (!data || data['return_code'] != '0')) {
+            while (k < attempts && (!data || data['return_code'] != '0')) {
               await new Promise((resolve) => setTimeout(resolve, 3000));
               data = await this.fetchDataAndReturn(lt, levelCategory, 1);
               k++;
@@ -1311,12 +1725,9 @@ export class GenericFetchAndSaveBackend {
             while (c) {
               let p = await this.fetchDataAndReturn(lt, levelCategory, i);
               let fetchData = p?.content?.L ?? [];
-              const tryTentatives = 7;
+              const attempts = 7;
               let currentTry = 0;
-              while (
-                currentTry < tryTentatives &&
-                (!p || p['return_code'] != '0' || !fetchData || fetchData.length === 0)
-              ) {
+              while (currentTry < attempts && (!p || p['return_code'] != '0' || !fetchData || fetchData.length === 0)) {
                 await new Promise((resolve) => setTimeout(resolve, 2000));
                 p = await this.fetchDataAndReturn(lt, levelCategory, i);
                 fetchData = p?.content?.L ?? [];
@@ -1460,9 +1871,9 @@ export class GenericFetchAndSaveBackend {
         i = increment / 2;
         let data = await this.fetchDataAndReturn(6, levelCategory, i);
         if (!data || data['return_code'] != '0') {
-          const tentatives = 10;
+          const attempts = 10;
           let k = 0;
-          while (k < tentatives && (!data || data['return_code'] != '0')) {
+          while (k < attempts && (!data || data['return_code'] != '0')) {
             await new Promise((resolve) => setTimeout(resolve, 10000));
             data = await this.fetchDataAndReturn(6, levelCategory, i);
             k++;
@@ -1484,9 +1895,9 @@ export class GenericFetchAndSaveBackend {
           while (c) {
             let p = await this.fetchDataAndReturn(6, levelCategory, i);
             let players = p?.content?.L ?? [];
-            const tentatives = 10;
+            const attempts = 10;
             let k = 0;
-            while (k < tentatives && (!p || p['return_code'] != '0' || !players || players.length === 0)) {
+            while (k < attempts && (!p || p['return_code'] != '0' || !players || players.length === 0)) {
               await new Promise((resolve) => setTimeout(resolve, 10000));
               p = await this.fetchDataAndReturn(6, levelCategory, i);
               players = p?.content?.L ?? [];
@@ -1647,6 +2058,20 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
+  private transformServerNameToEmoji(serverName: string): string {
+    const server = serverName
+      .toLowerCase()
+      .trim()
+      .replace(/[0-9]*/g, '');
+    return Utils.getDiscordEmojis().find((flagName) => flagName === ':flag_' + server + ':') || '(' + serverName + ')';
+  }
+
+  private formatValueForDiscord(value?: string | number): string {
+    if (value === undefined || value === null) return '';
+    const strValue = value.toString();
+    return strValue.replace(/([\\_*~`>|@\#])/g, '\\$1');
+  }
+
   private async fillLootHistory(): Promise<void> {
     try {
       if (!this.CLICKHOUSE_CONFIG) throw new Error('ClickHouse configuration is missing.');
@@ -1697,9 +2122,9 @@ export class GenericFetchAndSaveBackend {
           while (c) {
             let p = await this.fetchDataAndReturn(2, levelCategory, i);
             let players = p?.content?.L ?? [];
-            const tentatives = 10;
+            const attempts = 10;
             let k = 0;
-            while (k < tentatives && (!p || p['return_code'] != '0' || !players || players.length === 0)) {
+            while (k < attempts && (!p || p['return_code'] != '0' || !players || players.length === 0)) {
               if (this.CURRENT_ENV === 'development') Utils.logMessage('Debug:');
               if (this.CURRENT_ENV === 'development')
                 Utils.logMessage('Try n°', k + 1, 'for category', levelCategory, 'with i =', i);
@@ -1815,9 +2240,9 @@ export class GenericFetchAndSaveBackend {
             let data = await this.fetchDataAndReturn(2, levelCategory, 1);
             let maxNegative = data?.content?.LR;
             if (!data || data['return_code'] != '0') {
-              const tentatives = 3;
+              const attempts = 3;
               let k = 0;
-              while (k < tentatives && (!data || data['return_code'] != '0')) {
+              while (k < attempts && (!data || data['return_code'] != '0')) {
                 await new Promise((resolve) => setTimeout(resolve, 3000));
                 data = await this.fetchDataAndReturn(2, levelCategory, 1);
                 k++;
@@ -1840,9 +2265,9 @@ export class GenericFetchAndSaveBackend {
             while (c) {
               let data = await this.fetchDataAndReturn(2, levelCategory, maxNegative);
               let players = data?.content?.L ?? [];
-              const tentatives = 3;
+              const attempts = 3;
               let k = 0;
-              while (k < tentatives && (!data || data['return_code'] != '0' || !players || players.length === 0)) {
+              while (k < attempts && (!data || data['return_code'] != '0' || !players || players.length === 0)) {
                 await new Promise((resolve) => setTimeout(resolve, 3000));
                 data = await this.fetchDataAndReturn(2, levelCategory, maxNegative);
                 players = data?.content?.L ?? [];
@@ -1992,7 +2417,17 @@ export class GenericFetchAndSaveBackend {
   }
 
   private async removePlayerFromDatabase(playerId: number): Promise<void> {
-    const pgSqlQuery = "UPDATE players SET castles = '[]'::jsonb, alliance_id = NULL WHERE id = $1";
+    const pgSqlQuery = `
+      UPDATE players SET
+        castles = '[]'::jsonb,
+        castles_realm = '[]'::jsonb,
+        alliance_id = NULL,
+        might_current = 0,
+        loot_current = 0,
+        alliance_rank = NULL,
+        honor = 0,
+        current_fame = 0
+      WHERE id = $1`;
     Utils.logMessage(' [Info] Deleting player', playerId);
     try {
       await this.pgSqlQuery(pgSqlQuery, [playerId]);
@@ -2016,9 +2451,9 @@ export class GenericFetchAndSaveBackend {
     const pgSqlQueryUpdateAllianceName = 'UPDATE alliances SET name = $1 WHERE id = $2';
     await Promise.all([this.pgSqlQuery(pgSqlQueryUpdateAllianceName, [allianceName, allianceId])]);
     const pgSqlQueryInsertAllianceUpdateHistory = `
-            INSERT INTO alliance_update_history (alliance_id, old_name, new_name)
-            VALUES ($1, $2, $3)
-        `;
+      INSERT INTO alliance_update_history (alliance_id, old_name, new_name)
+      VALUES ($1, $2, $3)
+    `;
     await Promise.all([
       this.pgSqlQuery(pgSqlQueryInsertAllianceUpdateHistory, [allianceId, currentAllianceName, allianceName]),
     ]);
@@ -2443,7 +2878,7 @@ export class GenericFetchAndSaveBackend {
     return new Promise((resolve) => {
       rl.question(question, (answer) => {
         rl.close();
-        resolve(answer.trim().toLowerCase() === 'y');
+        resolve(answer.trim().toLowerCase() === 'y' || answer.trim().toLowerCase() === 'yes');
       });
     });
   }
@@ -2582,6 +3017,122 @@ export class GenericFetchAndSaveBackend {
         `);
   }
 
+  private async fillPlayerAquamarineData(): Promise<void> {
+    try {
+      if (this.DB_UPDATES.criticalErrors > 0) {
+        Utils.logMessage(' [KO] There are critical errors, stopping the process');
+        return;
+      }
+
+      if (!this.CLICKHOUSE_CONFIG) {
+        throw new Error('ClickHouse configuration is missing.');
+      }
+
+      // Only process players that have aquamarine realm AP data (index 4)
+      const eligiblePlayerIds = Object.keys(this.playerLootAndMightPointHistoryList)
+        .map(Number)
+        .filter((playerId) => {
+          const realmAp = this.playerLootAndMightPointHistoryList[playerId][13];
+          return realmAp?.length > 0 && realmAp.some((ap: any[]) => ap[0] === 4);
+        });
+
+      Utils.logMessage('Number of players to update with aquamarine', eligiblePlayerIds.length);
+
+      const EID = 102;
+
+      const fetchDate = new Date();
+      const collected_at = new Date(fetchDate).toISOString().slice(0, 19).replace('T', ' ');
+      const allRows: any[] = [];
+      const limit = pLimit(5);
+
+      await Promise.all(
+        eligiblePlayerIds.map((playerId) =>
+          limit(async () => {
+            try {
+              const response = await this.genericFetchData('gpe', {
+                PID: playerId,
+                EID,
+              });
+
+              if (!response?.data?.content) {
+                Utils.logMessage(' [KO] No data returned for player', playerId);
+                return;
+              }
+              const { PST = [], AMT: cargoAmt = 0, PE = 0 } = response.data.content;
+              if (PE !== 1) {
+                Utils.logMessage(' [KO] Player has not entered', playerId);
+                return;
+              }
+
+              for (const item of PST) {
+                if (!item) continue;
+                allRows.push({
+                  player_id: playerId,
+                  metric_id: Number(item.PSI),
+                  value: Number(item.AMT ?? 0),
+                  collected_at,
+                });
+              }
+
+              // Cargo points
+              allRows.push({
+                player_id: playerId,
+                metric_id: 100,
+                value: Number(cargoAmt ?? 0),
+                collected_at,
+              });
+            } catch (error) {
+              Utils.logMessage(`Error while fetching aquamarine data for player ${playerId}`);
+              console.error(error);
+            }
+          }),
+        ),
+      );
+
+      if (allRows.length === 0) {
+        Utils.logMessage('No player_metrics rows to insert');
+        return;
+      }
+      const clickhouseBaseUrl = (this.CLICKHOUSE_CONFIG.url as string) + ':' + this.CLICKHOUSE_CONFIG.port;
+      const insertSQL = `
+        INSERT INTO player_metrics
+        FORMAT JSONEachRow
+      `;
+      const clickhouseUrl =
+        clickhouseBaseUrl +
+        '/?query=' +
+        encodeURIComponent(insertSQL) +
+        '&database=' +
+        encodeURIComponent(this.CLICKHOUSE_CONFIG.database as string);
+      const clickhouseAuth = {
+        username: this.CLICKHOUSE_CONFIG.user as string,
+        password: this.CLICKHOUSE_CONFIG.password as string,
+      };
+      const payload = allRows.map((row) => JSON.stringify(row)).join('\n');
+      try {
+        await axios.post(clickhouseUrl, payload, {
+          headers: {
+            'Content-Type': 'text/plain',
+          },
+          auth: clickhouseAuth,
+        });
+        Utils.logMessage(`Inserted ${allRows.length} player_metrics rows for ${eligiblePlayerIds.length} players`);
+      } catch (error) {
+        Utils.logMessage('Error while bulk-inserting player metrics');
+        Utils.logMessage(error);
+        this.DB_UPDATES.criticalErrors++;
+      }
+    } catch (error) {
+      Utils.logMessage('Error updating player aquamarine data');
+      Utils.logMessage('========== BEGIN STACK TRACE ============');
+      Utils.logMessage('Identifier: 103');
+      Utils.logMessage(error);
+      Utils.logMessage('=========== END STACK TRACE =============');
+
+      this.DB_UPDATES.criticalErrors++;
+    }
+  }
+
   private async updatePlayersMightAndLoot(): Promise<void> {
     try {
       if (this.DB_UPDATES.criticalErrors > 0) {
@@ -2592,7 +3143,7 @@ export class GenericFetchAndSaveBackend {
       const keys = Object.keys(this.playerLootAndMightPointHistoryList);
       const length = keys.length;
       let j = 0;
-      const dbConnectionLimit = Number(this.DATABASE_CONFIG?.['connectionLimit']) || 5;
+      const dbConnectionLimit = Number(this.PGSQL_CONFIG?.['max']) || 5;
       let targetLimit: number = 1;
       if (dbConnectionLimit > 20) {
         targetLimit = 20;
@@ -2838,7 +3389,9 @@ export class GenericFetchAndSaveBackend {
       const result = await this.pgSqlQuery(query);
       const lastStats = result.rows[0];
       const playerLootAndMightPointHistoryListWithMoreThanOneCastle = Object.fromEntries(
-        Object.entries(this.playerLootAndMightPointHistoryList).filter(([, val]) => val[4] && val[4].length > 1),
+        Object.entries(this.playerLootAndMightPointHistoryList).filter(
+          ([, val]) => val[4] && val[4].length > 0 && (!val[6] || val[6] < 60 * 60 * 24 * 63),
+        ),
       );
       const playersCount = Object.keys(playerLootAndMightPointHistoryListWithMoreThanOneCastle).length;
       const playerLootMightEntries: [number, any[]][] = Object.entries(
@@ -2863,9 +3416,10 @@ export class GenericFetchAndSaveBackend {
       const alliancesCount = new Set(
         playerLootMightEntries.map(([, val]) => val[2]).filter((id) => id !== undefined && id !== -1),
       ).size;
-      // We get the number of players who are in protection and who are not new players (level >= 30)
+      this.customPlayersAttributesList['alliances_count'] = alliancesCount;
+      // We get the number of players who are in protection and who are not new players (level >= 11)
       const playersInPeace = playerLootMightEntries.filter(
-        ([, val]) => val[6] && val[6] > 0 && val[6] < 60 * 60 * 24 * 63 && val[8] && val[8] >= 30,
+        ([, val]) => val[6] && val[6] > 0 && val[6] < 60 * 60 * 24 * 63 && val[8] && val[8] >= 11,
       ).length;
       const playersWhoChangedAlliance = this.customPlayersAttributesList['player_alliance_update_count'] || 0;
       const playersWhoChangedName = this.customPlayersAttributesList['player_name_update_count'] || 0;
@@ -2893,7 +3447,6 @@ export class GenericFetchAndSaveBackend {
           [number, any[]]
         >((maxEntry, currentEntry) => (Number(currentEntry[1][0]) > Number(maxEntry[1][0]) ? currentEntry : maxEntry), [0, [0,
               0]]);
-
       const maxLoot = Number(maxLootEntry[1][0]);
       const maxLootPlayerId = maxLootEntry[0] || null;
       const variationMight = totalMight - (lastStats ? lastStats.total_might : 0);
@@ -3226,9 +3779,15 @@ export class GenericFetchAndSaveBackend {
     lt: number,
     increment: number = 10,
     levelCategory: number = 6,
-  ): Promise<void> {
+    dryRunInsert: boolean = false,
+  ): Promise<number> {
     try {
       Utils.logMessage(' Executing custom event history for', eventName);
+      if (!this.PGSQL_CONFIG) {
+        Utils.logMessage(' [KO] No database connection, stopping the process executeCustomEventHistory');
+        return -1;
+      }
+      const start = Date.now();
       const pgQuery = `
         SELECT event_num, player_name, level, point, rank
         FROM ${tableEventHistoryName}
@@ -3248,12 +3807,12 @@ export class GenericFetchAndSaveBackend {
       let data = await this.fetchDataAndReturn(lt, levelCategory, i);
       if (!data || data['return_code'] != '0') {
         if (i < 10) {
-          Utils.logMessage(' [info] Invalid event (0)');
-          return;
+          Utils.logMessage(' [info] Invalid event');
+          return -1;
         } else {
-          const tentatives = 3;
+          const attempts = 3;
           let k = 0;
-          while (k < tentatives && (!data || data['return_code'] != '0')) {
+          while (k < attempts && (!data || data['return_code'] != '0')) {
             await new Promise((resolve) => setTimeout(resolve, 3000));
             data = await this.fetchDataAndReturn(lt, levelCategory, i);
             k++;
@@ -3261,8 +3820,8 @@ export class GenericFetchAndSaveBackend {
         }
       }
       if (!data || data['return_code'] != '0' || !data?.content?.LR) {
-        Utils.logMessage(' [info] Invalid event (1)');
-        return;
+        Utils.logMessage(' [info] Invalid event');
+        return -1;
       }
       const max = data?.content?.LR ?? 50000;
       if (max && Number(max) >= 0) {
@@ -3270,31 +3829,30 @@ export class GenericFetchAndSaveBackend {
         const igh = data?.content?.IGH;
         if (data?.content?.L) {
           const content = data.content.L;
-          if (await this.checkEventAlreadyExists(content, result.rows, 'trace')) {
+          if ((await this.checkEventAlreadyExists(content, result.rows, 'trace')) && !dryRunInsert) {
             Utils.logMessage(' [info] No new event to fill');
-            return;
+            return -1;
           }
           // Insert the new event
           Utils.logMessage(' [info] New event to fill');
           const firstPlayerId = content[0][2]['OID'];
           const firstPlayerScore = content[0][1];
           const collectDate = new Date();
-          await this.pgSqlQuery(
-            `
-            INSERT INTO ${tableEventName} (event_num, collect_date, fr, igh, top1_player_id, top1_player_score)
-            VALUES ($1, $2, $3, $4, $5, $6)
-          `,
-            [lastEventNum + 1, collectDate, fr, igh, firstPlayerId, firstPlayerScore],
-          );
+          if (!dryRunInsert) {
+            await this.pgSqlQuery(
+              `
+              INSERT INTO ${tableEventName} (event_num, collect_date, fr, igh, top1_player_id, top1_player_score)
+              VALUES ($1, $2, $3, $4, $5, $6)
+            `,
+              [lastEventNum + 1, collectDate, fr, igh, firstPlayerId, firstPlayerScore],
+            );
+          }
           while (c) {
             let p = await this.fetchDataAndReturn(lt, levelCategory, i);
             let fetchData = p?.content?.L ?? [];
-            const tryTentatives = 7;
+            const attempts = 7;
             let currentTry = 0;
-            while (
-              currentTry < tryTentatives &&
-              (!p || p['return_code'] != '0' || !fetchData || fetchData.length === 0)
-            ) {
+            while (currentTry < attempts && (!p || p['return_code'] != '0' || !fetchData || fetchData.length === 0)) {
               await new Promise((resolve) => setTimeout(resolve, 2000));
               p = await this.fetchDataAndReturn(lt, levelCategory, i);
               fetchData = p?.content?.L ?? [];
@@ -3309,7 +3867,7 @@ export class GenericFetchAndSaveBackend {
               Utils.logMessage('p:', JSON.stringify(p));
               Utils.logMessage('=========== END STACK TRACE =============');
               this.DB_UPDATES.criticalErrors++;
-              return;
+              return -1;
             } else {
               const ids: number[] = [];
               for (const singleData of fetchData) {
@@ -3330,6 +3888,7 @@ export class GenericFetchAndSaveBackend {
                     server: server,
                     level: singleData[2]['L'],
                     legendaryLevel: singleData[2]['LL'],
+                    allianceName: singleData[2]['AN'] || null,
                   };
                 } catch (error) {
                   Utils.logMessage(' [error] Migration error:', JSON.stringify(singleData));
@@ -3358,54 +3917,67 @@ export class GenericFetchAndSaveBackend {
           const entries = Object.entries(entities);
 
           const serverEntities = new Map();
-          for (const [, entity] of entries) {
-            if (!serverEntities.has(entity.server)) {
-              serverEntities.set(entity.server, []);
+          if (!dryRunInsert) {
+            for (const [, entity] of entries) {
+              if (!serverEntities.has(entity.server)) {
+                serverEntities.set(entity.server, []);
+              }
+              serverEntities.get(entity.server).push(entity);
             }
-            serverEntities.get(entity.server).push(entity);
-          }
-          for (const [server, entitiesForServer] of serverEntities.entries()) {
-            let dbConn;
-            let dbName;
-            Utils.logMessage(' [info] Processing server:', server);
-            if (server === 'FR1') {
-              dbConn = this.pgSqlConnection;
-            } else {
-              dbName =
-                server === 'LIVE'
-                  ? 'empire-ranking-world1'
-                  : server === 'HANT'
-                    ? 'empire-ranking-hant1'
-                    : `empire-ranking-${server.toLowerCase()}`;
-              const exists = await this.pgSqlQuery('SELECT 1 FROM pg_database WHERE datname=$1', [dbName]);
-              if (!exists.rowCount) continue; // skip if nonexistent
-              // Create a temporary connection (or use a global pool if already created)
-              dbConn = new pg.Pool({
-                user: this.PGSQL_CONFIG.user,
-                password: this.PGSQL_CONFIG.password,
-                host: this.PGSQL_CONFIG.host,
-                port: this.PGSQL_CONFIG.port,
-                database: dbName,
-              });
-              await dbConn.connect();
-              Utils.logMessage(' [info] Connected to database for server:', server);
-            }
-            // Retrieve all real player_ids at once
-            const names = entitiesForServer.map((e: { playerName: any }) => e.playerName);
-            Utils.logMessage(' [info] Count: ' + names.length + ' players to process for server ' + server);
-            const res = await dbConn.query(
-              `SELECT n AS name, MIN(p.id) AS id FROM unnest($1::text[]) n LEFT JOIN players p ON p.name = n GROUP BY n;`,
-              [names],
-            );
-            Utils.logMessage(' [info] Retrieval of real player_ids completed');
-            const nameToId = new Map(res.rows.map((r) => [r.name, r.id]));
-            Utils.logMessage(' [info] Number of real player_ids retrieved:', nameToId.size);
-            // Update each entity with the real player_id
-            for (const entity of entitiesForServer) {
-              entity.realPlayerId = nameToId.get(entity.playerName);
+            for (const [server, entitiesForServer] of serverEntities.entries()) {
+              let dbConn: pg.Pool | null = null;
+              let dbName = '';
+              Utils.logMessage(' [info] Processing server:', server);
+              switch (server) {
+                case 'FR1':
+                  dbConn = this.pgSqlConnection;
+                  break;
+                case 'WLD1':
+                case 'LIVE':
+                  dbName = 'empire-ranking-world1';
+                  break;
+                case 'WLD2':
+                case 'LIVE2':
+                  dbName = 'empire-ranking-world2';
+                  break;
+                case 'HANT':
+                  dbName = 'empire-ranking-hant1';
+                  break;
+                default:
+                  dbName = `empire-ranking-${server.toLowerCase()}`;
+              }
+              if (!dbConn) {
+                const exists = await this.pgSqlQuery('SELECT 1 FROM pg_database WHERE datname=$1', [dbName]);
+                if (!exists.rowCount) continue; // skip if nonexistent
+                // Create a temporary connection (or use a global pool if already created)
+                dbConn = new pg.Pool({
+                  user: this.PGSQL_CONFIG.user,
+                  password: this.PGSQL_CONFIG.password,
+                  host: this.PGSQL_CONFIG.host,
+                  port: this.PGSQL_CONFIG.port,
+                  database: dbName,
+                });
+                await dbConn.connect();
+                Utils.logMessage(' [info] Connected to database for server:', server);
+              }
+              // Retrieve all real player_ids at once
+              const names = entitiesForServer.map((e: { playerName: any }) => e.playerName);
+              Utils.logMessage(' [info] Count: ' + names.length + ' players to process for server ' + server);
+              const res = await dbConn.query(
+                `SELECT n AS name, MIN(p.id) AS id FROM unnest($1::text[]) n LEFT JOIN players p ON p.name = n GROUP BY n;`,
+                [names],
+              );
+              Utils.logMessage(' [info] Retrieval of real player_ids completed');
+              const nameToId = new Map(res.rows.map((r) => [r.name, r.id]));
+              Utils.logMessage(' [info] Number of real player_ids retrieved:', nameToId.size);
+              // Update each entity with the real player_id
+              for (const entity of entitiesForServer) {
+                entity.realPlayerId = nameToId.get(entity.playerName);
+              }
             }
           }
           Utils.logMessage(' [info] Insertion of players into the database for event ' + eventName);
+          let invalidPlayerIdCount = 0;
           // Adding players
           for (let i = 0; i < entries.length; i += batchSize) {
             const chunk = entries.slice(i, i + batchSize);
@@ -3416,37 +3988,76 @@ export class GenericFetchAndSaveBackend {
               const playerIdNum = Number(playerId);
               if (Number.isNaN(playerIdNum)) {
                 Utils.logMessage(' [info] Invalid player ID:', playerId);
+                invalidPlayerIdCount++;
                 continue;
               }
-              const { server, level, legendaryLevel, point, rank, realPlayerId, playerName } = entity;
+              const { server, level, legendaryLevel, point, rank, realPlayerId, playerName, allianceName } = entity;
               valuesPlaceholders.push(
-                `($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${paramIndex + 7})`,
+                `($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${paramIndex + 7}, $${paramIndex + 8})`,
               );
-              insertValues.push(lastEventNum + 1, realPlayerId, server, level, legendaryLevel, point, rank, playerName);
-              paramIndex += 8;
+              insertValues.push(
+                lastEventNum + 1,
+                realPlayerId,
+                server,
+                level,
+                legendaryLevel,
+                point,
+                rank,
+                playerName,
+                allianceName,
+              );
+              paramIndex += 9;
             }
             // Check if there are values to insert
-            if (insertValues.length > 0) {
+            if (!dryRunInsert && insertValues.length > 0) {
               const insertQuery = `
                 INSERT INTO ${tableEventHistoryName}
-                  (event_num, player_id, server, level, legendary_level, point, rank, player_name)
+                  (event_num, player_id, server, level, legendary_level, point, rank, player_name, alliance_name)
                 VALUES
                   ${valuesPlaceholders.join(',\n')}
               `;
               Utils.logMessage(
-                ` [info] Insertion of batch of ${insertValues.length / 8} players (batch ${Math.floor(i / batchSize) + 1})`,
+                ` [info] Insertion of batch of ${insertValues.length / 9} players (batch ${Math.floor(i / batchSize) + 1})`,
               );
               await this.pgSqlQuery(insertQuery, insertValues);
             }
           }
-          Utils.logMessage(' [info] Insertion of event data for ' + eventName + ' completed successfully');
+          if (!dryRunInsert) {
+            Utils.logMessage(' [info] Insertion of event data for ' + eventName + ' completed successfully');
+            await this.logToLoki({
+              job: 'event-history-scraper-' + eventName.toLowerCase().replace(/\s/g, '-'),
+              level: 'info',
+              data: {
+                playersAdded: entries.length,
+                invalidPlayerIds: invalidPlayerIdCount,
+                eventNum: lastEventNum + 1,
+                durationMs: Date.now() - start,
+              },
+            });
+          }
+          try {
+            const top10Players = Object.values(entities)
+              .sort((a, b) => b.point - a.point)
+              .slice(0, 10);
+            const discordMessage = this.getDiscordApiMessageBody(
+              eventName,
+              entries.length,
+              lastEventNum + 1,
+              top10Players,
+            );
+            await this.sendDiscordNotification(discordMessage);
+          } catch (error) {
+            Utils.logMessage('Error while sending Discord notification for event ' + eventName);
+            Utils.logMessage(error);
+          }
+          return 0;
         } else {
           Utils.logMessage(' [info] No data found for event ' + eventName);
-          return;
+          return -1;
         }
       } else {
         Utils.logMessage(' [info] No data found for event ' + eventName);
-        return;
+        return -1;
       }
     } catch (error) {
       Utils.logMessage('Error while filling event history for ' + eventName);
@@ -3455,6 +4066,7 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage(error);
       Utils.logMessage('=========== END STACK TRACE =============');
       this.DB_UPDATES.criticalErrors++;
+      return -1;
     }
   }
 
@@ -3523,27 +4135,167 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
-  private async logToLoki(message: string, labels = {}, level = 'info'): Promise<void> {
+  private generateTraceId(): string {
+    return crypto.randomUUID().replace(/-/g, '');
+  }
+
+  private generateSpanId(): string {
+    return crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+  }
+
+  private formatAttribute(value: any): {
+    stringValue?: string;
+    intValue?: number;
+    doubleValue?: number;
+    boolValue?: boolean;
+  } {
+    if (typeof value === 'number') {
+      if (Number.isInteger(value)) {
+        return { intValue: value };
+      }
+      return { doubleValue: value };
+    }
+    if (typeof value === 'boolean') {
+      return { boolValue: value };
+    }
+    return { stringValue: String(value) };
+  }
+
+  private async logToClickHouse({
+    server,
+    startTime,
+    endTime,
+    playersCreated = 0,
+    alliancesCreated = 0,
+    playersAllianceUpdated = 0,
+    alliancesUpdated = 0,
+    criticalErrors = 0,
+    playerCount = 0,
+    allianceCount = 0,
+  }: {
+    server: string;
+    startTime: Date;
+    endTime: Date;
+    playersCreated?: number;
+    alliancesCreated?: number;
+    playersAllianceUpdated?: number;
+    alliancesUpdated?: number;
+    criticalErrors?: number;
+    playerCount?: number;
+    allianceCount?: number;
+  }): Promise<void> {
+    const durationMs = endTime.getTime() - startTime.getTime();
+    try {
+      const clickhouse = new ClickHouse(this.CLICKHOUSE_CONFIG as any);
+      await clickhouse
+        .query(
+          `
+        INSERT INTO logs.scrapes
+        (server, timestamp, durationMs, playersCreated, alliancesCreated, playersAllianceUpdated, alliancesUpdated, criticalErrors, playerCount, allianceCount)
+        VALUES
+        ('${server}', '${Math.floor(endTime.getTime() / 1000)}', ${durationMs}, ${playersCreated}, ${alliancesCreated}, ${playersAllianceUpdated}, ${alliancesUpdated}, ${criticalErrors}, ${playerCount}, ${allianceCount})
+      `,
+        )
+        .toPromise();
+    } catch (err: any) {
+      console.error('ClickHouse insert error:', err.message);
+    }
+  }
+
+  private async logToTempo({
+    name = 'scrape',
+    server,
+    startTime,
+    endTime,
+    attributes = {},
+  }: {
+    name?: string;
+    server: string;
+    startTime: number;
+    endTime: number;
+    attributes?: Record<string, any>;
+  }): Promise<void> {
+    let traceId: string;
+    let spanId: string;
+    let payload: any;
+    try {
+      traceId = this.generateTraceId();
+      spanId = this.generateSpanId();
+
+      payload = {
+        resourceSpans: [
+          {
+            resource: {
+              attributes: [{ key: 'service.name', value: { stringValue: 'scraper' } }],
+            },
+            scopeSpans: [
+              {
+                scope: {
+                  name: 'custom-scraper',
+                },
+                spans: [
+                  {
+                    traceId,
+                    spanId,
+                    name,
+                    kind: 1,
+                    startTimeUnixNano: `${startTime * 1_000_000}`,
+                    endTimeUnixNano: `${endTime * 1_000_000}`,
+                    attributes: [
+                      { key: 'server', value: { stringValue: server } },
+                      ...Object.entries(attributes).map(([key, value]) => ({
+                        key,
+                        value: this.formatAttribute(value),
+                      })),
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+      await axios.post('http://tempo:4318/v1/traces', payload);
+    } catch (err: any) {
+      console.error('Error sending trace to Tempo:', err.message);
+      console.error('Payload was:', JSON.stringify(payload));
+    }
+  }
+
+  private chunkArray<T>(arr: T[], size: number): T[][] {
+    const result: T[][] = [];
+    for (let i = 0; i < arr.length; i += size) {
+      result.push(arr.slice(i, i + size));
+    }
+    return result;
+  }
+
+  private async logToLoki({
+    data,
+    level = 'info',
+    job = 'cron-scraper',
+  }: {
+    data: Record<string, any>;
+    level?: 'debug' | 'info' | 'warn' | 'error';
+    job?: string;
+  }): Promise<void> {
     const logEntry = {
-      message,
-      timestamp: new Date().toISOString(),
-      ...labels,
+      ...data,
+      ts: new Date().toISOString(),
     };
     const payload = {
       streams: [
         {
           stream: {
-            job: 'cron-scraper',
+            job,
             level,
-            ...labels,
           },
           values: [[`${Date.now()}000000`, JSON.stringify(logEntry)]],
         },
       ],
     };
     try {
-      const LOKI_URL = 'http://loki:3100/loki/api/v1/push';
-      await axios.post(LOKI_URL, payload);
+      await axios.post('http://loki:3100/loki/api/v1/push', payload);
     } catch (err: any) {
       console.error('Error sending log to Loki:', err.message);
     }

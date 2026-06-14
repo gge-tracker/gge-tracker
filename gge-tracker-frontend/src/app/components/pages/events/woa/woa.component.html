@@ -1,0 +1,156 @@
+<div class="container my-3 woa">
+  <div class="row g-4">
+    <div class="col-12" [ngClass]="{'loading': isInLoading}">
+      @if (!currentEvent) {
+        <div class="row mt-3 row-gap-3">
+          @for (event of events; track event.date; let i = $index) {
+            <div class="col-12 col-lg-6">
+              <app-event-card
+                [event]="event"
+                [loading]="woaCardInLoading"
+                [options]="{ displayMode: 'player-count', dateFormat: 'Date_1' }"
+                (onEventClick)="onEventClick($event)"
+              >
+              <div event-footer class="col-auto">
+                <div class="event-badge-header woa-tickets ms-1">
+                  <img src="/assets/woa_points.png" class="woa-icon" alt="WOA Icon">
+                  &nbsp;
+                  {{ event.totalTickets | formatNumber }}
+                </div>
+              </div>
+            </app-event-card>
+            </div>
+          }
+        </div>
+        <div class="pagination-modern mt-3">
+          <button class="btn btn-sm rounded-circle shadow-sm" (click)="navigateToEventPage(pagination.current_page - 1)"
+            [disabled]="pagination.current_page <= 1">
+            <i class="fa-solid fa-chevron-left"></i>
+          </button>
+          <span class="page-indicator">{{ pagination.current_page }} / {{ pagination.total_pages }}</span>
+          <button class="btn btn-sm rounded-circle shadow-sm" (click)="navigateToEventPage(pagination.current_page + 1)"
+            [disabled]="pagination.current_page >= pagination.total_pages">
+            <i class="fa-solid fa-chevron-right"></i>
+          </button>
+        </div>
+      } @else {
+        <div class="events">
+          <app-events-header
+            [eventName]="'Roue des richesses inimaginables' | translate"
+            [from]="currentEvent.from"
+            [to]="currentEvent.to"
+            [dateFormat]="'Date_1'"
+            [nbPlayers]="currentEvent.playerCount"
+            [eventType]="currentEvent.type"
+          ></app-events-header>
+          <div class="row g-2 mb-3" [ngClass]="{'table-loading': tableLoading}">
+            <div class="col-auto">
+              <button class="back-btn" [routerLink]="['/woa']">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span class="d-none d-sm-inline-block">{{ 'Retour' | translate }}</span>
+              </button>
+            </div>
+            <div class="col">
+              <app-search-form
+                [isInLoading]="isInLoading"
+                [formFilters]="null"
+                [inputTip]="'Rechercher un joueur ou une alliance' | translate"
+                [searchTypes]="{
+                  player: true,
+                  alliance: true
+                }"
+                (searchPlayer)="searchPlayer($event)"
+                (searchAlliance)="searchAlliance($event)">
+              </app-search-form>
+            </div>
+            <app-table
+              [sort]="''"
+              [reverse]="false"
+              [isInLoading]="isInLoading"
+              [maxPage]="pagination.total_pages"
+              [page]="page"
+              [search]="playerNameFilter"
+              [headers]="[
+                ['playerName', 'Pseudonyme' | translate, '', true],
+                ['level', 'Niveau' | translate, '/assets/lvl.png', true],
+                ['allianceName', 'Alliance' | translate, '/assets/min-alliance.png', true],
+                ['mightPoints', 'Points de puissance' | translate, '/assets/pp1.png', true],
+                ['points', 'Points' | translate, '/assets/woa_points.png', true],
+                ['actions', 'Actions' | translate, '', true]
+          ]" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
+              @if (players.length === 0 && !isInLoading) {
+                <tr>
+                  <td colspan="10" class="no-data">{{ 'Aucun joueur trouvé' | translate }}</td>
+                </tr>
+              }
+              @for (player of players; track player.playerId) {
+                <tr>
+                  <td class="col-rank">
+                    <span class="mobile-only">#</span>
+                    {{ player.rank }}
+                  </td>
+                  <td class="col-name">{{ player.playerName }}</td>
+                  <td class="col-level">
+                    <div class="level-box" [ngClass]="{ 'level-legendary': player.playerLegendaryLevel }">
+                      <span class="level-main">{{player.playerLevel}}</span>
+                      @if (player.playerLegendaryLevel) {
+                        <div class="level-separator"></div>
+                        <span class="level-legendary" [attr.data-level]="player.playerLegendaryLevel">
+                          {{ player.playerLegendaryLevel }}
+                        </span>
+                      }
+                    </div>
+                  </td>
+                  <td class="col-alliance alliance-link">
+                    @if (player.allianceName) {
+                      <a (click)="router.navigate(['/alliance', player.allianceId])" (keydown.enter)="router.navigate(['/alliance', player.allianceId])">
+                        @if (player.allianceId) {
+                          <img src="/assets/alliance_ranks/{{ player.playerAllianceRank ?? 0 }}.png"
+                            class="alliance-rank-icon" [alt]="'Rank ' + (player.playerAllianceRank ?? 0)">
+                        }
+                        {{ player.allianceName }}
+                      </a>
+                    } @else {
+                      -
+                    }
+                  <td class="col-metric px-2" [title]="player.playerAllTimeMight | formatNumber:'visual'">
+                    <div class="metric">
+                      <div class="metric-header">
+                        <span class="metric-current"><span class="mobile-only">{{ 'Puissance' | translate }}:&nbsp;</span>{{ player.playerCurrentMight | formatNumber }}</span>
+                        <span class="metric-max">{{ player.playerAllTimeMight | formatNumber }}</span>
+                      </div>
+                      <div class="metric-bar-bg">
+                        <div class="metric-bar bar-yellow" [style.width.%]="(player.playerCurrentMight / player.playerAllTimeMight) * 100"></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="col-points">
+                    <span class="points">{{ player.point }}</span>
+                    <img src="/assets/woa_points.png" class="points-icon" alt="WOA Points Icon">
+                  </td>
+                  <td class="col-actions">
+                    @if (player.playerId) {
+                      <div class="d-flex justify-content-end">
+                        <a [routerLink]="['/', 'player', player.playerId]" class="gge-btn search py-1">
+                          <i class="fa-solid fa-eye"></i>
+                          <span class="d-none d-sm-inline-block">&nbsp;{{ 'Analyser le joueur' | translate }}</span>
+                        </a>
+                      </div>
+                    } @else {
+                      <a class="gge-btn btn-sm disabled">
+                        <span class="d-none d-sm-inline-block py-1">
+                          <i class="fa-solid fa-ban"></i>
+                          <span class="d-none d-sm-inline-block">&nbsp;{{ 'Aucune action' | translate }}</span>
+                        </span>
+                      </a>
+                    }
+                  </td>
+                </tr>
+              }
+            </app-table>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</div>

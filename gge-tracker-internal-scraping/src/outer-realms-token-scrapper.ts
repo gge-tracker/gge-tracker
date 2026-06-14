@@ -7,11 +7,11 @@
 //
 //  Copyrights (c) 2025 - gge-tracker.com & gge-tracker contributors
 //
+import { DiscordApiMessageBody } from './interfaces';
 import { GenericFetchAndSaveBackend } from './main';
 
 const ID_SERVER = process.env.ID_SERVER;
 const PG_DB = process.env.PG_DB;
-const MYSQL_DB = process.env.MYSQL_DB;
 const CLICKHOUSE_DB = process.env.CLICKHOUSE_DB;
 const logSuffix = process.env.LOG_SUFFIX;
 const CONNECTION_LIMIT = process.env.CONNECTION_LIMIT;
@@ -23,10 +23,12 @@ const TARGET_CLICKHOUSE_DB = process.env.TARGET_CLICKHOUSE_DB;
 const TARGET_LOG_SUFFIX = process.env.TARGET_LOG_SUFFIX;
 const TARGET_CONNECTION_LIMIT = process.env.TARGET_CONNECTION_LIMIT;
 
+const DISCORD_OR_API_URL = process.env.DISCORD_OR_API_URL;
+const DISCORD_OR_CHANNEL_ID = process.env.DISCORD_OR_CHANNEL_ID;
+
 if (
   !ID_SERVER ||
   !PG_DB ||
-  !MYSQL_DB ||
   !CLICKHOUSE_DB ||
   !logSuffix ||
   !CONNECTION_LIMIT ||
@@ -43,22 +45,6 @@ if (
 const BASE_DOMAIN_URL: string = `http://empire-api-realtime:3000`;
 const BASE_API_URL: string = `${BASE_DOMAIN_URL}/${ID_SERVER}/`;
 const TARGET_BASE_API_URL: string = `${BASE_DOMAIN_URL}/${TARGET_ID_SERVER}/`;
-
-// MariaDB Configuration
-const DATABASE_CONFIG = {
-  host: 'mariadb',
-  user: process.env.SQL_USER,
-  password: process.env.SQL_PASSWORD,
-  database: MYSQL_DB,
-  connectionLimit: Number(CONNECTION_LIMIT),
-};
-const TARGET_DATABASE_CONFIG = {
-  host: 'mariadb',
-  user: process.env.SQL_USER,
-  password: process.env.SQL_PASSWORD,
-  database: TARGET_MYSQL_DB,
-  connectionLimit: Number(TARGET_CONNECTION_LIMIT),
-};
 
 // ClickHouse Configuration
 const CLICKHOUSE_CONFIG = {
@@ -103,17 +89,24 @@ async function createOuterRealmsInstance(): Promise<void> {
   try {
     const generic = new GenericFetchAndSaveBackend(
       BASE_API_URL,
-      DATABASE_CONFIG,
       CLICKHOUSE_CONFIG,
       postgresConfig,
-      logSuffix,
+      logSuffix || 'Outer Realms Token Scraper',
     );
 
     console.log('Checking Empire API Realtime status for Outer Realms server...');
     const statusResponse = await generic.fetchUrl(statusUrl, 'GET', null);
     const realtimeRedisStatus = await generic.getRedisValue('outerRealmsDataFetchError');
-
+    let lastTSIDValue: string | null = process.env.INITIAL_TSID_VALUE || null;
     if (!statusResponse.data || statusResponse.data['EmpireEx_42'] !== true || realtimeRedisStatus) {
+      const lastCheckTime = await generic.getRedisValue('outerRealmsLastCheckTime');
+      lastTSIDValue = await generic.getRedisValue('temporaryServerData');
+      const now = Date.now();
+      if (lastCheckTime && now - Number(lastCheckTime) < 10 * 60 * 1000) {
+        console.error('Outer Realms server is not ready yet. Last check was less than 10 minutes ago. Exiting.');
+        return;
+      }
+      await generic.setRedisValue('outerRealmsLastCheckTime', now.toString());
       console.log('Deleting existing Outer Realms server configuration if any...');
       try {
         await generic.fetchUrl(serverUrl + '/' + TARGET_ID_SERVER, 'DELETE', null);
@@ -150,16 +143,87 @@ async function createOuterRealmsInstance(): Promise<void> {
     console.log('Starting Outer Realms data fetch process...');
     const target = new GenericFetchAndSaveBackend(
       TARGET_BASE_API_URL,
-      TARGET_DATABASE_CONFIG,
       TARGET_CLICKHOUSE_CONFIG,
       TARGET_postgresConfig,
-      TARGET_LOG_SUFFIX,
+      TARGET_LOG_SUFFIX || 'Outer Realms Token Scraper',
     );
-    await target.startOuterRealmsDataFetch();
+    const scoringSystemType: 'collector' | 'might' | 'rankSwap' | null = await target.startOuterRealmsDataFetch();
+    const currentTSIDValue = await generic.getRedisValue('temporaryServerData');
+    console.log('Current TSID value in Redis:', currentTSIDValue);
+    console.log('Last TSID value in Redis:', lastTSIDValue);
+    console.log('Scoring system type detected:', scoringSystemType);
+    if (
+      lastTSIDValue &&
+      currentTSIDValue &&
+      lastTSIDValue &&
+      lastTSIDValue !== currentTSIDValue &&
+      scoringSystemType &&
+      DISCORD_OR_API_URL &&
+      DISCORD_OR_CHANNEL_ID
+    ) {
+      console.log('TSID value has changed since last check. New TSID:', currentTSIDValue);
+      const discordMessageBody = getDiscordApiMessageBody(scoringSystemType);
+      try {
+        await generic.fetchUrl(DISCORD_OR_API_URL, 'POST', discordMessageBody);
+      } catch (error) {
+        console.error('Error sending Discord notification:', error);
+      }
+    }
   } catch (error) {
     console.error('Error fetching Empire API Realtime status:', error);
     return;
   }
+}
+
+const OuterRealmsData = {
+  collector: {
+    name: 'Heritage hunter',
+    image: 'https://gge-tracker.com/assets/live/collector.png',
+    description:
+      'Collect daily ranking points by launching attacks on the main castle of your enemies in the Great Empire and looting their heritage. The amount of heritage that can be claimed during each attack can be increased by using special heritage boosters, which can be purchased with rubies from the event shop.',
+  },
+  might: {
+    name: 'Masters of might',
+    image: 'https://gge-tracker.com/assets/live/might.png',
+    description:
+      'Collect daily ranking points by constructing mighty buildings and decorations in your new event castle and earn treasures of rare value for your people. The might points of any buildings in your castle that are burning will not be considered when the daily points are calculated, so keep those defenses up!',
+  },
+  rankSwap: {
+    name: 'Snappy swap',
+    image: 'https://gge-tracker.com/assets/live/rankSwap.png',
+    description:
+      'Collect daily ranking points by launching attacks on the main castle of your enemies in the Great Empire and swap ranking positions with them. Eligible players are marked in the daily ranking list.',
+  },
+};
+
+function getDiscordApiMessageBody(scoring: 'collector' | 'might' | 'rankSwap'): DiscordApiMessageBody {
+  if (!DISCORD_OR_API_URL || !DISCORD_OR_CHANNEL_ID) {
+    console.error('Missing Discord API URL or Channel ID environment variables');
+    throw new Error('Missing Discord API URL or Channel ID environment variables');
+  }
+  return {
+    channelId: DISCORD_OR_CHANNEL_ID,
+    embeds: [
+      {
+        title: 'Outer Realms Notification',
+        color: 7419530,
+        fields: [
+          {
+            name: `:fire: A new Outer Realms event is available : ${OuterRealmsData[scoring].name}`,
+            value: `${OuterRealmsData[scoring].description}\n\n :arrow_right: https://gge-tracker.com/live/outer-realms `,
+            inline: false,
+          },
+        ],
+        thumbnail: {
+          url: OuterRealmsData[scoring].image,
+        },
+        footer: {
+          text: 'gge-tracker.com',
+        },
+        timestamp: new Date().toISOString(),
+      },
+    ],
+  };
 }
 
 void createOuterRealmsInstance();

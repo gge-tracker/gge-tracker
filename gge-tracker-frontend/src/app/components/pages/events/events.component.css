@@ -102,18 +102,32 @@ h5,
 }
 
 .apx-chart {
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  background: #ffffff6e;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.78);
   border-radius: 1.25rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-  padding: 1rem;
-  transition: transform 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  padding: 1.25rem 1rem;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .apx-chart:hover {
-  transform: translateY(-4px);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
+  transform: translateY(-3px);
+}
+
+.chart-subtitle {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  margin-bottom: 0.25rem;
+  padding: 0 0.25rem 0.5rem;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(100, 116, 139, 0.15);
 }
 
 .back-btn {
@@ -176,68 +190,179 @@ h5,
   width: 32px;
 }
 
-.stat-card {
+.table-loading {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.event-analytics-divider {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+}
+
+.event-analytics-divider .divider-line {
+  background: rgba(255, 255, 255, 0.28);
+  flex: 1;
+  height: 1px;
+}
+
+.event-analytics-divider .divider-label {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.14);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
-  background: rgba(30, 30, 30, 0.35);
-  border-radius: 1.5rem;
-  border: 1px solid rgba(255, 215, 0, 0.15);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
-  color: #f9f9f9;
-  padding: 1.5rem 1rem;
-  position: relative;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  border-radius: 100px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  font-size: 0.82rem;
+  font-weight: 600;
+  gap: 0.5rem;
+  letter-spacing: 0.4px;
+  padding: 0.4rem 1.1rem;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+}
+
+.kpi-card {
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  background: rgba(15, 23, 42, 0.52);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  padding: 1.25rem 1rem 1.1rem;
+  text-align: center;
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease;
 }
 
-.stat-card > * {
-  position: relative;
-  z-index: 1;
-}
-
-.stat-card::before {
-  background: url("/assets/bg-decoration-wood.png") center/cover no-repeat;
-  border-radius: inherit;
-  content: "";
-  filter: brightness(0.4) contrast(1.2);
-  height: 100%;
-  left: 0;
-  position: absolute;
-  top: 0;
-  width: 100%;
-  z-index: 0;
-}
-
-.stat-card:hover {
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
+.kpi-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
   transform: translateY(-4px);
 }
 
-.stat-icon img {
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
-  height: auto;
-  margin-bottom: 0.75rem;
-  width: 48px;
+.kpi-icon-el {
+  display: block;
+  height: 26px;
+  margin: 0 auto 0.65rem;
+  width: 26px;
 }
 
-.stat-label {
-  color: rgba(255, 215, 0, 0.8);
-  font-size: 0.95rem;
-  letter-spacing: 0.3px;
+.kpi-value {
+  color: #fff;
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+  margin-bottom: 0.35rem;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
-.stat-value {
-  font-size: 1.8rem;
-  font-weight: 600;
+.kpi-label {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.72rem;
+  font-weight: 500;
   letter-spacing: 0.5px;
-  margin-bottom: 0.25rem;
+  text-transform: uppercase;
 }
 
-.table-loading {
-  opacity: 0.5;
-  pointer-events: none;
+.kpi-card.kpi-gold {
+  background: linear-gradient(145deg, rgba(251, 191, 36, 0.22), rgba(15, 23, 42, 0.6));
+  border-color: rgba(251, 191, 36, 0.28);
+}
+
+.kpi-card.kpi-gold .kpi-icon-el {
+  color: #FBBF24;
+}
+
+.kpi-card.kpi-teal {
+  background: linear-gradient(145deg, rgba(20, 184, 166, 0.22), rgba(15, 23, 42, 0.6));
+  border-color: rgba(20, 184, 166, 0.28);
+}
+
+.kpi-card.kpi-teal .kpi-icon-el {
+  color: #2DD4BF;
+}
+
+.kpi-card.kpi-blue {
+  background: linear-gradient(145deg, rgba(99, 102, 241, 0.22), rgba(15, 23, 42, 0.6));
+  border-color: rgba(99, 102, 241, 0.28);
+}
+
+.kpi-card.kpi-blue .kpi-icon-el {
+  color: #818CF8;
+}
+
+.kpi-card.kpi-slate {
+  background: linear-gradient(145deg, rgba(148, 163, 184, 0.16), rgba(15, 23, 42, 0.6));
+  border-color: rgba(148, 163, 184, 0.16);
+}
+
+.kpi-card.kpi-slate .kpi-icon-el {
+  color: #94A3B8;
+}
+
+.analytics-section-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.85rem;
+  margin-bottom: 1.1rem;
+}
+
+.analytics-section-badge {
+  align-items: center;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  display: flex;
+  flex-shrink: 0;
+  font-size: 0.9rem;
+  height: 38px;
+  justify-content: center;
+  width: 38px;
+}
+
+.analytics-section-badge.badge-amber {
+  background: rgba(251, 191, 36, 0.18);
+  border-color: rgba(251, 191, 36, 0.28);
+  color: #F59E0B;
+}
+
+.analytics-section-badge.badge-teal {
+  background: rgba(20, 184, 166, 0.18);
+  border-color: rgba(20, 184, 166, 0.28);
+  color: #14B8A6;
+}
+
+.analytics-section-badge.badge-purple {
+  background: rgba(139, 92, 246, 0.18);
+  border-color: rgba(139, 92, 246, 0.28);
+  color: #8B5CF6;
+}
+
+.analytics-section-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  justify-content: center;
+}
+
+.analytics-section-title {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.1px;
+  margin: 0;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.analytics-section-desc {
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 0.78rem;
+  letter-spacing: 0.1px;
+  margin: 0;
 }
 
 @media (max-width: 768px) {
@@ -258,5 +383,21 @@ h5,
     align-items: flex-start;
     flex-direction: column;
     font-size: 1.4rem;
+  }
+
+  .kpi-value {
+    font-size: 1.25rem;
+  }
+
+  .kpi-label {
+    font-size: 0.68rem;
+  }
+
+  .kpi-card {
+    padding: 1rem 0.75rem 0.9rem;
+  }
+
+  .analytics-section-title {
+    font-size: 0.95rem;
   }
 }

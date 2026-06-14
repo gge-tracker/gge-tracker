@@ -3,7 +3,7 @@ import { ChangeDetectorRef, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
-import { IconComponent } from '@ggetracker-components/icon/icon.component';
+import { ModalFormGroupComponent } from '@ggetracker-components/modal-form-group/modal-form-group.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
 import {
@@ -19,7 +19,8 @@ import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { LanguageService } from '@ggetracker-services/language.service';
 import { ServerService } from '@ggetracker-services/server.service';
 import { TranslatePipe } from '@ngx-translate/core';
-import { CalendarCheck, LucideAngularModule, SquareUser } from 'lucide-angular';
+import { Activity, CalendarCheck, LucideAngularModule, SquareUser, Target, TrendingUp, Trophy } from 'lucide-angular';
+import { NgSelectComponent } from '@ng-select/ng-select';
 import { ApexAxisChartSeries, ApexChart, ApexNonAxisChartSeries, ApexOptions, ApexPlotOptions } from 'ng-apexcharts';
 import { firstValueFrom } from 'rxjs';
 import { EventsHeaderComponent } from './events-header/events-header.component';
@@ -59,20 +60,36 @@ export interface EventList {
     LucideAngularModule,
     EventsHeaderComponent,
     ChartsWrapperComponent,
-    IconComponent,
     EventCardComponent,
+    ModalFormGroupComponent,
+    NgSelectComponent,
   ],
   templateUrl: './events.component.html',
   styleUrl: './events.component.css',
 })
 export class EventsComponent extends GenericComponent {
+  public readonly allianceNameDisplayIdThreshold = {
+    [EventType.OUTER_REALM]: 58,
+    [EventType.BEYOND_THE_HORIZON]: 22,
+  };
   public CalendarCheck = CalendarCheck;
   public SquareUser = SquareUser;
+  public TrophyIcon = Trophy;
+  public TrendingUpIcon = TrendingUp;
+  public TargetIcon = Target;
+  public ActivityIcon = Activity;
   public eventType: EventType | null = null;
   public responseTime = 0;
   public events: EventList[] = [];
   public activatedRoute = inject(ActivatedRoute);
   public serverService = inject(ServerService);
+  public tableHeaders: [string, string, string?, boolean?][] = [
+    ['playerName', this.translateService.instant('Pseudonyme'), '', true],
+    ['server', this.translateService.instant('Serveur'), '', true],
+    ['points', this.translateService.instant('Points'), '', true],
+    ['actions', this.translateService.instant('Actions'), '', true],
+  ];
+  public hasAllianceColumn = false;
   public tableLoading = false;
   public page = 1;
   public pagination = {
@@ -82,20 +99,20 @@ export class EventsComponent extends GenericComponent {
     total_items_count: 0,
   };
   public maxPage = 1;
+  public cardLoading = false;
   public playerNameFilter = '';
   public players: ApiOuterRealmPlayer[] = [];
   public nbPlayers = 0;
   public charts: Record<string, ChartAdvancedOptions> = {};
   public currentEvent: ApiOuterRealmEvent | null = null;
   public formFilters: {
-    server: string | undefined;
+    server: string | null | undefined;
     isFiltered: boolean;
   } = {
-    server: '',
+    server: null,
     isFiltered: false,
   };
   public translations: Record<string, string> = {};
-
   private eventId: number | null = null;
   private languageService = inject(LanguageService);
   private cdr = inject(ChangeDetectorRef);
@@ -104,6 +121,7 @@ export class EventsComponent extends GenericComponent {
     super();
     this.onInit();
   }
+  public serverGroupFn = (server: string): string => server.replaceAll(/\d+$/g, '').toUpperCase();
 
   public onInit(): void {
     void this.generateTranslations().then(() => {
@@ -119,27 +137,15 @@ export class EventsComponent extends GenericComponent {
     }
   }
 
-  public eventsNavigateTo(page: number): void {
-    if (this.isInLoading) return;
-    this.isInLoading = true;
+  public async eventsNavigateTo(page: number): Promise<void> {
+    if (this.cardLoading) return;
+    this.cardLoading = true;
     this.page = page;
-    void this.initEventList(this.page, this.eventType ?? undefined).then(() => {
-      this.isInLoading = false;
-      void this.updatePageInUrl(this.page);
-      this.cdr.detectChanges();
+    await this.initEventList(this.page, this.eventType ?? undefined).then(async () => {
+      await this.updatePageInUrl(this.page);
     });
-  }
-
-  public eventsPreviousPage(): void {
-    if (this.pagination.current_page > 1) {
-      void this.initEventList(this.pagination.current_page - 1, this.eventType ?? undefined);
-    }
-  }
-
-  public eventsNextPage(): void {
-    if (this.pagination.current_page < this.pagination.total_pages) {
-      void this.initEventList(this.pagination.current_page + 1, this.eventType ?? undefined);
-    }
+    this.cardLoading = false;
+    this.cdr.detectChanges();
   }
 
   public getEventName(type: string): string {
@@ -195,6 +201,7 @@ export class EventsComponent extends GenericComponent {
   }
 
   public applyFilters(): void {
+    this.formFilters.isFiltered = !!this.formFilters.server;
     this.isInLoading = true;
     this.page = 1;
     this.getEventPlayersById()
@@ -343,6 +350,10 @@ export class EventsComponent extends GenericComponent {
           const urlParameters = this.route.snapshot.queryParams;
           const page = urlParameters['page'] ? Number(urlParameters['page']) : 1;
           this.page = page;
+          if (this.eventId >= this.allianceNameDisplayIdThreshold[this.eventType]) {
+            this.tableHeaders.splice(3, 0, ['alliance', this.translateService.instant('Alliance'), '', true]);
+            this.hasAllianceColumn = true;
+          }
           const eventPlayers = await this.getEventPlayersById();
           this.responseTime = eventPlayers.response;
           this.players = eventPlayers.data.players;
@@ -362,94 +373,94 @@ export class EventsComponent extends GenericComponent {
   }
 
   private buildEvents(data: ApiOuterRealmEvent): void {
-    const nbAndRatioInTop100Data: Record<string, { nb: number; ratio: number }> = {};
-    data.nb_in_top_100.forEach((item) => {
-      nbAndRatioInTop100Data[item.server] = {
-        nb: Number(item.nb_in_top_100),
-        ratio: data.top_100_ratio.find((r) => r.server === item.server)?.ratio_top_100 ?? 0,
-      };
-    });
-    this.initGenericChartOption('nbInTop100', {
-      type: 'bar',
-      series: [
-        {
-          name: this.translations['Nombre de joueurs classés'],
-          data: Object.values(nbAndRatioInTop100Data).map((s) => s.nb),
+    const sortedByAvgScore = [...data.server_avg_score]
+      .sort((a, b) => Number(b.avg_score) - Number(a.avg_score))
+      .slice(0, 15);
+    const sortedByTop100Ratio = [...data.top_100_ratio].sort((a, b) => b.ratio_top_100 - a.ratio_top_100).slice(0, 15);
+
+    this.initGenericChartOption(
+      'topScores',
+      {
+        type: 'bar',
+        series: [
+          {
+            name: this.translations['Score'],
+            data: [
+              Number(data.top_scores.top_1),
+              Number(data.top_scores.top_2),
+              Number(data.top_scores.top_3),
+              Number(data.top_scores.top_100),
+              Number(data.top_scores.top_1000),
+              Number(data.top_scores.top_10000),
+            ],
+          },
+        ],
+        colors: ['#F59E0B', '#94A3B8', '#B45309', '#3B82F6', '#8B5CF6', '#64748B'],
+        xaxisCategories: [
+          this.translations['1er'],
+          this.translations['2ème'],
+          this.translations['3ème'],
+          this.translations['Top 100'],
+          this.translations['Top 1k'],
+          this.translations['Top 10k'],
+        ],
+        title: '',
+        extraOptions: {
+          plotOptions: { bar: { distributed: true, borderRadius: 6, borderRadiusApplication: 'end' } },
+          legend: { show: false },
         },
-        {
-          name: this.translations['Pourcentage de joueurs du serveur dans le top 100'],
-          data: Object.values(nbAndRatioInTop100Data).map((s) => Number((s.ratio * 100).toFixed(2))),
+      },
+      false,
+      280,
+    );
+
+    this.initGenericChartOption(
+      'serverAvgScore',
+      {
+        type: 'bar',
+        series: [
+          {
+            name: this.translations['Score moyen'],
+            data: sortedByAvgScore.map((s) => Math.round(Number(s.avg_score))),
+          },
+        ],
+        colors: ['#14B8A6'],
+        xaxisCategories: sortedByAvgScore.map((s) => s.server),
+        title: '',
+        extraOptions: {
+          plotOptions: { bar: { horizontal: true, borderRadius: 4, borderRadiusApplication: 'end' } },
         },
-      ],
-      colors: ['#FEB019', '#FF4560'],
-      xaxisCategories: Object.keys(nbAndRatioInTop100Data),
-      horizontal: false,
-      title: this.translations['Classement des serveurs selon le nombre de joueurs dans le top 100'],
-    });
-    this.initGenericChartOption('topScores', {
-      type: 'bar',
-      series: [
-        {
-          name: this.translations['Score'],
-          data: [
-            Number(data.top_scores.top_1),
-            Number(data.top_scores.top_2),
-            Number(data.top_scores.top_3),
-            Number(data.top_scores.top_100),
-            Number(data.top_scores.top_1000),
-            Number(data.top_scores.top_10000),
-          ],
+      },
+      false,
+      400,
+    );
+
+    this.initGenericChartOption(
+      'top100Ratio',
+      {
+        type: 'bar',
+        series: [
+          {
+            name: this.translations['Pourcentage'],
+            data: sortedByTop100Ratio.map((s) => Number((s.ratio_top_100 * 100).toFixed(2))),
+          },
+        ],
+        colors: ['#6366F1'],
+        xaxisCategories: sortedByTop100Ratio.map((s) => s.server),
+        title: '',
+        extraOptions: {
+          plotOptions: { bar: { horizontal: true, borderRadius: 4, borderRadiusApplication: 'end' } },
+          tooltip: {
+            y: {
+              formatter: (value: number) => `${value}%`,
+            },
+          },
         },
-      ],
-      colors: ['#00E396'],
-      xaxisCategories: [
-        this.translations['1er'],
-        this.translations['2ème'],
-        this.translations['3ème'],
-        this.translations['Top 100'],
-        this.translations['Top 1k'],
-        this.translations['Top 10k'],
-      ],
-      title: this.translations['Répartition des scores par palier'],
-    });
-    this.initGenericChartOption('serverAvgScore', {
-      type: 'bar',
-      series: [
-        {
-          name: this.translations['Score moyen'],
-          data: data.server_avg_score
-            .sort((a, b) => Number(b.avg_score) - Number(a.avg_score))
-            .slice(0, 15)
-            .map((s) => Math.round(Number(s.avg_score))),
-        },
-      ],
-      colors: ['#775DD0', '#FEB019'],
-      xaxisCategories: data.server_avg_score
-        .sort((a, b) => Number(b.avg_score) - Number(a.avg_score))
-        .slice(0, 15)
-        .map((s) => s.server),
-      horizontal: true,
-      title: this.translations['Serveurs avec le meilleur score moyen'],
-    });
-    this.initGenericChartOption('top100Ratio', {
-      type: 'bar',
-      series: [
-        {
-          name: this.translations['Pourcentage'],
-          data: data.top_100_ratio
-            .sort((a, b) => b.ratio_top_100 - a.ratio_top_100)
-            .slice(0, 15)
-            .map((s) => Number((s.ratio_top_100 * 100).toFixed(2))),
-        },
-      ],
-      colors: ['#FF4560'],
-      xaxisCategories: data.top_100_ratio
-        .sort((a, b) => b.ratio_top_100 - a.ratio_top_100)
-        .slice(0, 15)
-        .map((s) => s.server),
-      horizontal: true,
-      title: this.translations['Serveurs avec le plus fort pourcentage de joueurs dans le top 100'],
-    });
+      },
+      false,
+      400,
+    );
+
     this.initGenericChartOption(
       'levelDistribution',
       {
@@ -460,12 +471,15 @@ export class EventsComponent extends GenericComponent {
             data: data.level_distribution.map((l) => Number(l.nb_players)),
           },
         ],
-        colors: ['#008FFB'],
+        colors: ['#8B5CF6'],
         xaxisCategories: data.level_distribution.map((l) => l.level.toString()),
-        title: this.translations['Nombre de joueurs par niveau'],
+        title: '',
+        extraOptions: {
+          plotOptions: { bar: { borderRadius: 3, borderRadiusApplication: 'end' } },
+        },
       },
       true,
-      550,
+      320,
     );
   }
 
@@ -479,10 +493,12 @@ export class EventsComponent extends GenericComponent {
         animations: { enabled: false },
         locales: this.rankingService.CHART_LOCALES,
         defaultLocale: this.languageService.getCurrentLang(),
-        toolbar: {},
+        toolbar: { show: false },
         stacked: false,
+        background: 'transparent',
+        foreColor: '#475569',
       },
-      title: { text: config.title ?? '' },
+      title: { text: '' },
       colors: config.colors,
       tooltip: {
         shared: false,
@@ -493,41 +509,39 @@ export class EventsComponent extends GenericComponent {
         },
       },
       dataLabels: { enabled: false },
-      stroke: { width: [2, 2, 0], curve: 'smooth' },
+      stroke: { show: false },
       legend: { show: true, showForZeroSeries: true },
       yaxis: {
         labels: {
           formatter: (value: number) =>
             value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ','),
+          style: { colors: '#64748b' },
         },
         min: 0,
         logarithmic: logarithmic,
         forceNiceScale: true,
       },
       fill: {
-        type: 'gradient',
-        gradient: {
-          shade: 'dark',
-          gradientToColors: config.colors,
-          shadeIntensity: 0.8,
-          type: 'horizontal',
-          opacityFrom: 0.9,
-          opacityTo: 0.6,
-          stops: [0, 100],
-        },
+        type: 'solid',
+        opacity: 0.9,
       },
       grid: {
-        row: { colors: ['#f3f3f3', 'transparent'], opacity: 0.5 },
+        borderColor: 'rgba(100,116,139,0.15)',
+        row: { colors: ['transparent', 'transparent'] },
       },
       xaxis: config.xaxisCategories
         ? {
             categories: config.xaxisCategories,
-            labels: { rotate: -45, trim: false },
+            labels: {
+              rotate: -38,
+              trim: false,
+              style: { colors: '#64748b', fontSize: '12px' },
+            },
           }
         : {
             type: 'datetime',
             labels: {
-              rotate: -45,
+              rotate: -38,
               datetimeFormatter: {
                 year: 'yyyy',
                 month: "MMM 'yy",
@@ -537,15 +551,11 @@ export class EventsComponent extends GenericComponent {
               },
               datetimeUTC: false,
               trim: false,
+              style: { colors: '#64748b' },
             },
           },
       plotOptions: {},
     };
-    if (config.type === 'bar' && config.horizontal) {
-      defaultOptions.plotOptions = {
-        bar: { horizontal: true },
-      };
-    }
     if (config.type === 'radialBar' && config.extraOptions?.labels) {
       defaultOptions.labels = config.extraOptions.labels;
     }

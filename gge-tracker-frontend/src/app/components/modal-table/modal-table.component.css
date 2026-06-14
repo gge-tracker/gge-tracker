@@ -1,0 +1,215 @@
+:host {
+  --accent: #0891b2;
+  --accent-2: #059669;
+  --accent-subtle: rgba(8, 145, 178, 0.08);
+  --border: #e2e8f0;
+  --muted: #64748b;
+  --radius: 10px;
+  --shadow: 0 1px 4px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.05);
+  --text: #1e293b;
+  --text-secondary: #475569;
+  --transition: 180ms cubic-bezier(0.2, 0.9, 0.2, 1);
+  display: block;
+}
+
+.table-wrapper {
+  background: #ffffff;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  font-family: "Inter", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+  position: relative;
+}
+
+.table-wrapper::before {
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  content: "";
+  height: 2px;
+  left: 0;
+  opacity: 0.7;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.search-area {
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px;
+}
+
+.search-area .search-icon {
+  color: var(--muted);
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+.search-input {
+  background: #f8fafc !important;
+  border-radius: 7px !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: none !important;
+  color: var(--text) !important;
+  font-size: 13px;
+  transition:
+    background var(--transition),
+    border-color var(--transition),
+    box-shadow var(--transition);
+}
+
+.search-input::placeholder {
+  color: #94a3b8;
+}
+
+.search-input:focus {
+  background: #ffffff !important;
+  border-color: rgba(8, 145, 178, 0.45) !important;
+  box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1) !important;
+  color: var(--text) !important;
+  outline: none;
+}
+
+:host ::ng-deep .modern-table {
+  background: transparent;
+  border-collapse: collapse;
+  color: var(--text);
+  font-family: "Inter", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+}
+
+:host ::ng-deep .modern-table thead {
+  background: #f8fafc;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+:host ::ng-deep .modern-table thead th {
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 10px 16px;
+  text-align: center;
+  text-transform: uppercase;
+  transition:
+    background var(--transition),
+    color var(--transition);
+  user-select: none;
+  white-space: nowrap;
+}
+
+:host ::ng-deep .modern-table thead th:hover {
+  background: #f1f5f9;
+  color: var(--accent);
+}
+
+:host ::ng-deep .modern-table tbody tr {
+  animation: mtSlideIn 0.15s ease forwards;
+  background: #ffffff;
+  border-bottom: 1px solid var(--border);
+  transition:
+    background var(--transition),
+    box-shadow var(--transition);
+}
+
+:host ::ng-deep .modern-table tbody tr:nth-child(even) {
+  background: #fafafa;
+}
+
+:host ::ng-deep .modern-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+:host ::ng-deep .modern-table tbody tr:hover {
+  background: var(--accent-subtle);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+:host ::ng-deep .modern-table td {
+  color: var(--text-secondary);
+  font-size: 13px;
+  padding: 9px 16px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.table-responsive {
+  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-width: thin;
+  overflow-y: hidden;
+}
+
+.pagination-modern {
+  border-top: 1px solid var(--border);
+  padding: 9px 14px;
+  background: #f9f9f9;
+
+}
+
+.pagination-modern .btn {
+  align-items: center;
+  background: #f8fafc;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  display: inline-flex;
+  font-size: 11px;
+  height: 28px;
+  justify-content: center;
+  transition:
+    background var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    transform var(--transition);
+  width: 28px;
+}
+
+.pagination-modern .btn:hover:not(:disabled) {
+  background: var(--accent-subtle);
+  border-color: rgba(8, 145, 178, 0.3);
+  color: var(--accent);
+  transform: scale(1.08);
+}
+
+.pagination-modern .btn:disabled {
+  color: #cbd5e1;
+  cursor: not-allowed;
+  opacity: 1;
+  pointer-events: none;
+}
+
+.page-indicator {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  min-width: 52px;
+  text-align: center;
+}
+
+.empty-state {
+  color: var(--muted);
+  font-family: "Inter", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  font-style: italic;
+  padding: 20px 0;
+  text-align: center;
+}
+
+@keyframes mtSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

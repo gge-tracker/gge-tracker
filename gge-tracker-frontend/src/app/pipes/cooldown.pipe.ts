@@ -1,4 +1,5 @@
 import { Pipe, PipeTransform, ChangeDetectorRef, NgZone, OnDestroy, inject } from '@angular/core';
+import { Dungeon } from '@ggetracker-interfaces/empire-ranking';
 import { TranslateService } from '@ngx-translate/core';
 
 @Pipe({
@@ -9,6 +10,7 @@ import { TranslateService } from '@ngx-translate/core';
 export class CooldownPipe implements PipeTransform, OnDestroy {
   private translateService = inject(TranslateService);
   private timer: ReturnType<typeof setInterval> | null = null;
+  private now = Date.now();
 
   private translations: Record<string, string> = {};
 
@@ -18,6 +20,7 @@ export class CooldownPipe implements PipeTransform, OnDestroy {
   ) {
     this.zone.runOutsideAngular(() => {
       this.timer = setInterval(() => {
+        this.now = Date.now();
         this.zone.run(() => this.reference.markForCheck());
       }, 1000);
     });
@@ -41,16 +44,14 @@ export class CooldownPipe implements PipeTransform, OnDestroy {
     }
   }
 
-  public transform(cooldown: string, lastAttackDate: string): string {
-    const updatedDate = new Date(cooldown);
-    const endTime = new Date(updatedDate);
-    const now = new Date();
+  public transform(dungeon: Dungeon): string {
+    const availableAt = new Date(dungeon.effectiveCooldownUntil || dungeon.globalAvailableAt || 0);
+    const now = new Date(this.now);
     // We are adding 1 second to the end time to ensure that the cooldown is considered over after the last second
-    const remaining = endTime.getTime() - now.getTime() + 1000;
+    const remaining = availableAt.getTime() - now.getTime() + 1000;
     if (remaining <= 0) {
-      const cooldownDuration = 24 * 60 * 60 * 1000;
-      const lastAttackDateTime = new Date(lastAttackDate).getTime();
-      const elapsed = now.getTime() - lastAttackDateTime - cooldownDuration;
+      // Dungeon is available
+      const elapsed = now.getTime() - availableAt.getTime();
       const totalSeconds = Math.floor(elapsed / 1000);
       const hours = Math.floor(totalSeconds / 3600)
         .toString()
@@ -62,7 +63,7 @@ export class CooldownPipe implements PipeTransform, OnDestroy {
       if (elapsed <= 0) {
         return this.translations['Attaquable'];
       }
-      const elapsedTime = `${hours}${this.translations['heures']} ${minutes}${this.translations['minutes']} ${seconds}${this.translations['secondes']}`;
+      const elapsedTime = `${hours == '00' ? '' : hours + this.translations['heures']} ${minutes}${this.translations['minutes']} ${seconds}${this.translations['secondes']}`;
       if (Number(hours) > 480_000) {
         return this.translations['Attaquable'] + ' (?)';
       }

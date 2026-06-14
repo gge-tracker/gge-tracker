@@ -12,6 +12,21 @@ a:hover {
   cursor: pointer;
 }
 
+.form-check-input:checked {
+  background-color: #3c53c7;
+  border-color: #3c53c7;
+}
+
+.btn-close[data-bs-dismiss]:focus {
+  box-shadow: none;
+}
+
+img.alliance-rank-icon {
+  max-height: 19px;
+  vertical-align: middle;
+  max-width: 37px;
+}
+
 body, html {
   background: url('/assets/bg.png'), #819a41;
   font-family: 'Inter', sans-serif;
@@ -83,6 +98,22 @@ html:has(.fullscreen) {
 
 .modal-body .peace-icon::after {
   background: #8e8e8eb9;
+  content: "";
+  height: 3px;
+  left: 45px;
+  margin-top: 14px;
+  position: absolute;
+  right: 45px;
+  z-index: 0;
+}
+
+.modal-body .stormy-island-icon img {
+  position: relative;
+  z-index: 1;
+}
+
+.modal-body .stormy-island-icon::after {
+  background: #0d9c8e;
   content: "";
   height: 3px;
   left: 45px;
@@ -618,4 +649,64 @@ select.form-select, .modal-content input[type="text"], .modal-content input[type
     rgba(255,255,255,0) 70%
   );
   filter: blur(40px);
+}
+
+.pagination-modern {
+  background: #1a1d20;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  width: fit-content;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 20px auto;
+}
+
+.pagination-modern .btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  border: 1px solid transparent;
+  color: #adb5bd;
+  transition: all 0.2s ease-in-out;
+  font-size: 0.75rem;
+}
+
+.pagination-modern .btn:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.pagination-modern .btn:active:not(:disabled) {
+  transform: scale(0.92);
+  background-color: rgba(13, 110, 253, 0.2);
+}
+
+.pagination-modern .btn:disabled {
+  color: #495057;
+  opacity: 0.4;
+  cursor: default;
+}
+
+.page-indicator {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #dee2e6;
+  margin: 0 10px;
+  user-select: none;
+  letter-spacing: 0.3px;
+  font-family: 'Segoe UI', Roboto, sans-serif;
+}
+
+.page-indicator {
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0 12px;
 }

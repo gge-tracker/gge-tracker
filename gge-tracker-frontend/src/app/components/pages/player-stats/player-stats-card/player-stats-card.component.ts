@@ -12,12 +12,19 @@ import {
   QueryList,
   ViewChildren,
 } from '@angular/core';
-import { ApiGenericData, ChartOptions, ChartTypes, EventGenericVariation } from '@ggetracker-interfaces/empire-ranking';
+import {
+  ApiGenericData,
+  ChartOptions,
+  ChartTypes,
+  EventGenericVariation,
+  EventStatsData,
+} from '@ggetracker-interfaces/empire-ranking';
 import { ChartsWrapperComponent } from '@ggetracker-modules/charts-client/charts-wrapper.component';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { ApiRestService } from '@ggetracker-services/api-rest.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { ChartComponent } from 'ng-apexcharts';
+import { ApexXAxis } from 'ng-apexcharts';
 
 @Component({
   selector: 'app-player-stats-card',
@@ -44,7 +51,7 @@ export class PlayerStatsCardComponent implements AfterViewInit, OnInit {
   public title = input.required<string>();
   public onePlayerOnly = input<boolean>(true);
   public subtitle = input<string>();
-  public charts = input.required<Partial<Record<ChartTypes, ChartOptions | null>>>();
+  public charts = input.required<Record<string, ChartOptions | null>>();
   public data = input.required<EventGenericVariation[]>();
   public dataName = input.required<string>();
   public backgroundIconImage = input.required<string>();
@@ -54,12 +61,15 @@ export class PlayerStatsCardComponent implements AfterViewInit, OnInit {
   public playerId = input<number>();
   public needSpecialLoader = input<boolean>(false);
   public eventName = input.required<string>();
+  public stats = input<EventStatsData | null>(null);
+  public readonly STATS_TAB_KEY = ChartTypes.STATS;
   public period = 'week';
   public maxLoadedPeriod = 'week';
   public selectedTab = ChartTypes.EVOLUTION;
   public inversedData: EventGenericVariation[] = [];
   public changeTabOutput = output<ChartTypes>();
   public updateData = output<{ eventName: string; points: ApiGenericData[] }>();
+  public changePeriodOutput = output<'day' | 'week' | 'month' | 'year'>();
 
   private cdr = inject(ChangeDetectorRef);
   private apiRestService = inject(ApiRestService);
@@ -134,7 +144,6 @@ export class PlayerStatsCardComponent implements AfterViewInit, OnInit {
         this.chartComps.toArray().forEach((chart) => {
           chart.component = chartComponent;
         });
-        this.changePeriod('week');
         setTimeout(() => {
           this.isReady = true;
           this.cdr.detectChanges();
@@ -147,8 +156,14 @@ export class PlayerStatsCardComponent implements AfterViewInit, OnInit {
   public changePeriod(period: 'day' | 'week' | 'month' | 'year'): void {
     if (!this.chartComps) return;
     this.period = period;
+    if (this.isWeekly()) {
+      this.changePeriodOutput.emit(period);
+      this.cdr.detectChanges();
+      return;
+    }
     this.chartComps.toArray().forEach((chart) => {
-      const categories = chart.xaxis()?.categories as string[];
+      const xaxis: ApexXAxis | ApexXAxis[] | undefined = chart.xaxis();
+      const categories = (Array.isArray(xaxis) ? xaxis[0]?.categories : xaxis?.categories) as string[];
       const targetChart = chart.component;
       if (!targetChart) return;
       switch (period) {
@@ -211,6 +226,9 @@ export class PlayerStatsCardComponent implements AfterViewInit, OnInit {
       }
       case ChartTypes.TABLE: {
         return 'fas fa-table';
+      }
+      case ChartTypes.SCORES: {
+        return 'fas fa-chart-bar';
       }
       default: {
         return 'fas fa-chart-line';

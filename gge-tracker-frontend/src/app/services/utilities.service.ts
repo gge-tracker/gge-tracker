@@ -116,6 +116,19 @@ export class UtilitiesService {
     saveAs(blob, fileName);
   }
 
+  public calculateWoaEventEndTime(collectDate: Date): Date {
+    const hours = collectDate.getUTCHours();
+    collectDate.setUTCMinutes(0, 0, 0);
+    collectDate.setUTCHours(hours + 1);
+    return collectDate;
+  }
+
+  public calculateWoaEventBeginTime(collectDate: Date): Date {
+    const calculateEventEndTime = this.calculateWoaEventEndTime(collectDate);
+    calculateEventEndTime.setUTCHours(calculateEventEndTime.getUTCHours() - 12);
+    return calculateEventEndTime;
+  }
+
   public async loadImageNativeSize(url: string): Promise<{ base64: string; width: number; height: number }> {
     return new Promise((resolve, reject) => {
       const img = new Image();

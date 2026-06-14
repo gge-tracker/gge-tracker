@@ -17160,7 +17160,8 @@
   "refresh": "1m",
   "schemaVersion": 41,
   "tags": [
-    "linux"
+    "Infrastructure",
+    "Admin"
   ],
   "templating": {
     "list": [
@@ -17273,7 +17274,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Node Exporter Full",
+  "title": "[gge-tracker] Node Exporter Full Metrics",
   "uid": "rYdddlPWk",
   "version": 1
 }

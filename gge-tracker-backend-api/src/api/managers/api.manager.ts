@@ -435,7 +435,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-world1',
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_world1',
       },
-      outer_name: 'LIVE',
+      outer_name: 'WLD1',
       timezoneOffset: 0,
       code: '060',
       zone: 'EmpireEx_46',
@@ -445,7 +445,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
         sql: GgeTrackerSqlBaseNameEnum.BASE_SQL_DB_NAME + '-world2',
         olap: GgeTrackerSqlBaseNameEnum.BASE_OLAP_DB_NAME + '_world2',
       },
-      outer_name: 'LIVE2',
+      outer_name: 'WLD2',
       timezoneOffset: 0,
       code: '061',
       zone: 'EmpireEx_49',
@@ -815,6 +815,19 @@ export class ApiGgeTrackerManager extends DatabaseManager {
       return entry[1].databases.olap || null;
     }
     return null;
+  }
+
+  /**
+   * Retrieves the OLAP database name associated with a given server code
+   *
+   * This method searches through the available servers to find the one whose code matches the provided code
+   *
+   * @param code - The unique code identifying the server
+   * @returns The name of the OLAP database if a matching server is found; otherwise, `null`
+   */
+  public getOlapDatabaseFromCode(code: string): string | null {
+    const server = this.getServerByCode(code);
+    return server ? server.databases.olap : null;
   }
 
   /**

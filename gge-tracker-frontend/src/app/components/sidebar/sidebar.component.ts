@@ -1,4 +1,4 @@
-import { NgClass } from '@angular/common';
+import { NgClass, TitleCasePipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import package_ from '../../../../package.json';
@@ -8,7 +8,7 @@ import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-sidebar',
-  imports: [RouterLink, TranslateModule, NgClass],
+  imports: [RouterLink, TranslateModule, NgClass, TitleCasePipe],
   standalone: true,
   templateUrl: './sidebar.component.html',
   styleUrls: ['./sidebar.component.css'],
@@ -25,7 +25,7 @@ export class SidebarComponent {
       title: 'Rechercher et analyser',
       items: [
         { label: 'Joueurs', id: 'players', iconUrl: '/assets/tools/players.webp' },
-        { label: 'Alliances', id: 'alliances', iconUrl: '/assets/tools/alliances.webp' },
+        { label: 'alliances', id: 'alliances', iconUrl: '/assets/tools/alliances.webp' },
         { label: 'Changements de nom', id: 'renames', iconUrl: '/assets/tools/renames.webp' },
         { label: 'Mouvements', id: 'movements', iconUrl: '/assets/tools/movements.webp' },
       ],
@@ -49,6 +49,17 @@ export class SidebarComponent {
         },
         { label: 'Le Grand Tournoi', id: 'grand-tournament', iconUrl: '/assets/tools/gt.webp', frequency: 'Par heure' },
         { label: 'Scores finaux', id: 'events', iconUrl: '/assets/tools/events.webp' },
+        {
+          label: 'Roue des richesses inimaginables',
+          id: 'woa',
+          iconUrl: '/assets/tools/woa.webp',
+        },
+        {
+          label: 'Îles orageuses',
+          id: 'stormy-isles',
+          iconUrl: '/assets/tools/aquamarine.webp',
+          frequency: 'Par heure',
+        },
       ],
     },
     {
@@ -63,7 +74,7 @@ export class SidebarComponent {
       title: 'Autres outils',
       items: [
         {
-          label: 'Empire-Rankings',
+          label: 'empire-rankings.io',
           url: 'https://danadum.github.io/empire-rankings/',
           iconUrl: '/assets/tools/empire-rankings.webp',
         },

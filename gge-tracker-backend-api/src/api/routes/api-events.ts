@@ -5,7 +5,7 @@ import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { EventTypes } from '../enums/event-types.enums';
 import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
 import { ApiHelper } from '../helper/api-helper';
-import { ApiInvalidInputType } from '../types/parameter.types';
+import { ApiInputErrorType, ApiInvalidInputType } from '../types/parameter.types';
 import { TEMP_SERVER_SETTINGS } from '../interfaces/temporary-server-events.config';
 
 /**
@@ -18,6 +18,19 @@ import { TEMP_SERVER_SETTINGS } from '../interfaces/temporary-server-events.conf
  * @implements {ApiHelper}
  */
 export abstract class ApiEvents implements ApiHelper {
+  public static CLICKHOUSE_WOA_TABLE_NAME = 'wheel_unimaginable_affluence';
+  public static CLICKHOUSE_PLAYER_METRICS_TABLE_NAME = 'player_metrics';
+
+  private static readonly AQUAMARINE_ITEMS_PER_PAGE = 15;
+  private static readonly AQUAMARINE_CACHE_TTL_LEADERBOARD = 60 * 60;
+  private static readonly AQUAMARINE_CACHE_TTL_PLAYER = 10 * 60;
+  private static readonly AQUAMARINE_ALLOWED_ORDER_DIRS = new Set(['ASC', 'DESC']);
+
+  private static readonly STORMY_ISLES_ITEMS_PER_PAGE = 15;
+  private static readonly STORMY_ISLES_CACHE_TTL_LEADERBOARD = 60 * 60;
+  private static readonly STORMY_ISLES_ALLOWED_METRIC_IDS = new Set([15, 16, 17, 18, 19, 20, 100]);
+  private static readonly STORMY_ISLES_ALLOWED_SORTABLE_KEYS = new Set(['player_name', 'level', 'might_current']);
+
   /**
    * Retrieves a list of events from the database, combining results from both
    * "outer realms" and "beyond the horizon" event sources. Results are cached
@@ -200,12 +213,7 @@ export abstract class ApiEvents implements ApiHelper {
         SELECT
           event_id,
           ARRAY_AGG(hour ORDER BY hour) AS dates
-        FROM (
-          SELECT DISTINCT
-            event_id,
-            date_trunc('hour', created_at) AS hour
-          FROM grand_tournament
-        ) s
+        FROM grand_tournament_hours_mv
         GROUP BY event_id
         ORDER BY event_id;
       `;
@@ -816,7 +824,7 @@ export abstract class ApiEvents implements ApiHelper {
       let parameterIndex = 1;
       const offset = (page - 1) * PAGINATION_LIMIT;
       const query = `
-        SELECT player_id, player_name, rank, point, server
+        SELECT player_id, player_name, rank, point, server, alliance_name
         FROM ${sqlTable}
         WHERE event_num = $${parameterIndex++}
         ${isValidPlayerNameFilter ? `AND LOWER(player_name) LIKE LOWER($${parameterIndex++})` : ''}
@@ -825,7 +833,6 @@ export abstract class ApiEvents implements ApiHelper {
         LIMIT $${parameterIndex++} OFFSET $${parameterIndex++}
         `;
       parameters.push(PAGINATION_LIMIT, offset);
-
       /* ---------------------------------
        * Query from DB
        * --------------------------------- */
@@ -853,6 +860,7 @@ export abstract class ApiEvents implements ApiHelper {
         level: result.level,
         legendary_level: result.legendary_level,
         server: result.server,
+        alliance_name: result.alliance_name,
       }));
       const totalPages = Math.ceil(total / PAGINATION_LIMIT);
       const pagination = {
@@ -1213,28 +1221,19 @@ export abstract class ApiEvents implements ApiHelper {
       });
       const sizePerPage = 10;
       const offset = (page - 1) * sizePerPage;
-      const mainTableName = 'ggetracker_global.outer_realms_ranking';
-      const fetchDateTableName = 'ggetracker_global.latest_fetch_date';
       const clickhouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
-
-      /* ---------------------------------
-       * Query database for last fetch date
-       * --------------------------------- */
-      const lastFetchResult = await clickhouseClient.query({
-        query: `SELECT fetch_date FROM ${fetchDateTableName} ORDER BY fetch_date DESC LIMIT 1`,
-      });
-      const jsonLastFetch = (await lastFetchResult.json()) as { data: Array<{ fetch_date: string }> };
-      const lastFetchDate = jsonLastFetch.data[0]?.fetch_date;
-
-      if (!lastFetchDate) {
-        response.status(ApiHelper.HTTP_OK).send({ total_items: 0, players: [] });
-        return;
-      }
 
       /* ---------------------------------
        * Query database for players
        * --------------------------------- */
       const playersQuery = `
+        WITH
+          (SELECT max(fetch_date) FROM ggetracker_global.outer_realms_ranking) AS last_date,
+          (
+            SELECT max(fetch_date)
+            FROM ggetracker_global.outer_realms_ranking
+            WHERE fetch_date < last_date
+          ) AS prev_date
         SELECT
           now.player_id,
           now.player_name,
@@ -1248,30 +1247,29 @@ export abstract class ApiEvents implements ApiHelper {
           now.castle_position_y,
           now.fetch_date,
           (now.score - coalesce(before.score, now.score)) AS score_diff,
-          (coalesce(before.rank, now.rank) - now.rank) AS rank_diff
-        FROM ${mainTableName} AS now
-        LEFT JOIN ${mainTableName} AS before
-          ON before.player_id = now.player_id
-          AND before.fetch_date = (
-            SELECT MAX(fetch_date)
-            FROM ${mainTableName}
-            WHERE fetch_date < '${lastFetchDate}'
-          )
-        WHERE now.fetch_date = '${lastFetchDate}'
-          ${ApiHelper.isValidInput(searchPlayerName) ? `AND player_name_lower ILIKE {searchPlayerName:String}` : ''}
+          (coalesce(before.rank, now.rank) - now.rank) AS rank_diff,
+          count() OVER () AS total_count
+        FROM ggetracker_global.outer_realms_ranking AS now
+        LEFT JOIN
+        (
+          SELECT player_id, score, rank
+          FROM ggetracker_global.outer_realms_ranking
+          WHERE fetch_date = prev_date
+        ) AS before
+        ON before.player_id = now.player_id
+        WHERE now.fetch_date = last_date
+        ${ApiHelper.isValidInput(searchPlayerName) ? `AND now.player_name_lower LIKE {searchPlayerName:String}` : ''}
         ORDER BY now.rank ASC
         LIMIT ${sizePerPage} OFFSET ${offset};
       `;
       const rawPlayersResult = await clickhouseClient.query({
         query: playersQuery,
-        query_params: ApiHelper.isValidInput(searchPlayerName) ? { searchPlayerName: `%${searchPlayerName}%` } : {},
+        query_params: ApiHelper.isValidInput(searchPlayerName)
+          ? { searchPlayerName: `%${searchPlayerName.toLowerCase()}%` }
+          : {},
       });
       const jsonPlayers = await rawPlayersResult.json();
       const playersResult: any = jsonPlayers.data;
-      if (playersResult.length === 0) {
-        response.status(ApiHelper.HTTP_OK).send({ total_items: 0, players: [] });
-        return;
-      }
 
       /* ---------------------------------
        * Event active verification
@@ -1279,7 +1277,10 @@ export abstract class ApiEvents implements ApiHelper {
       const nowTs = new Date();
       const tenMinutesAgo = new Date(nowTs.getTime() - 10 * 60 * 1000);
 
-      if (!playersResult[0]?.fetch_date || new Date(playersResult[0]?.fetch_date) < tenMinutesAgo) {
+      if (
+        (!ApiHelper.isValidInput(searchPlayerName) || playersResult.length > 0) &&
+        (!playersResult[0]?.fetch_date || new Date(playersResult[0]?.fetch_date) < tenMinutesAgo)
+      ) {
         response.status(ApiHelper.HTTP_FORBIDDEN).send({ error: RouteErrorMessagesEnum.EventNotActive });
         return;
       }
@@ -1304,20 +1305,9 @@ export abstract class ApiEvents implements ApiHelper {
       /* ---------------------------------
        * Query database for total count
        * --------------------------------- */
-      const totalCountQuery = `
-        SELECT COUNT(*) AS total
-        FROM ${mainTableName}
-        WHERE fetch_date = '${lastFetchDate}'
-        ${ApiHelper.isValidInput(searchPlayerName) ? `AND player_name_lower ILIKE {searchPlayerName:String}` : ''}
-      `;
-      const rawTotalResult = await clickhouseClient.query({
-        query: totalCountQuery,
-        query_params: ApiHelper.isValidInput(searchPlayerName) ? { searchPlayerName: `%${searchPlayerName}%` } : {},
-      });
-      const jsonTotal = (await rawTotalResult.json()) as { data: Array<{ total: number }> };
-      const total_items = Number(jsonTotal.data[0]?.total || 0);
-      const total_pages = Math.ceil(total_items / sizePerPage);
       const currentOuterRealmsEvent = await this.getCurrentOuterRealmsEvent();
+      const total_items = playersResult[0]?.total_count || 0;
+      const total_pages = Math.ceil(total_items / sizePerPage);
 
       const responseData = {
         players,
@@ -1339,19 +1329,1037 @@ export abstract class ApiEvents implements ApiHelper {
     }
   }
 
+  public static async getWoaEventsByPlayerId(request: express.Request, response: express.Response): Promise<void> {
+    try {
+      /* ---------------------------------
+       * Validate and parse parameters
+       * --------------------------------- */
+      const playerId = ApiHelper.verifyIdWithCountryCode(String(request.params.playerId));
+      if (!playerId) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
+        return;
+      }
+      const realPlayerId = ApiHelper.removeCountryCode(playerId);
+      const clickhouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
+      const database = ApiHelper.ggeTrackerManager.getOlapDatabaseFromRequestId(playerId);
+      if (!database) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
+        return;
+      }
+
+      /* ---------------------------------
+       * Query database for WOA events of the player
+       * --------------------------------- */
+      const query = `
+        SELECT
+          point,
+          created_at,
+          RANK() OVER (
+            PARTITION BY created_at
+            ORDER BY point DESC
+          ) AS rank
+        FROM ${database}.${ApiEvents.CLICKHOUSE_WOA_TABLE_NAME}
+        QUALIFY player_id = {playerId:UInt32}
+        ORDER BY created_at DESC
+        LIMIT 100
+      `;
+      const rawResult = await clickhouseClient.query({
+        query,
+        query_params: {
+          playerId: realPlayerId,
+        },
+      });
+      const json = await rawResult.json();
+
+      /* ---------------------------------
+       * Format results
+       * --------------------------------- */
+      const events = json.data.map((row: any) => ({
+        point: row.point,
+        date: new Date(row.created_at).toISOString(),
+        rank: row.rank,
+      }));
+      response.status(ApiHelper.HTTP_OK).send({ events });
+    } catch (error) {
+      const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
+      response.status(code).send({ error: message });
+      ApiHelper.logError(error, 'getWoaEventsByPlayerId', request);
+      return;
+    }
+  }
+
+  public static async getWoaEventDataByEvent(request: express.Request, response: express.Response): Promise<void> {
+    try {
+      /* ---------------------------------
+       * Validate and parse parameters
+       * --------------------------------- */
+      const parameters = this.parseWoaEventSharedParams(request, response);
+      if (!parameters) return;
+      const { code, page, searchPlayerName, searchAllianceName } = parameters;
+      const dateParameter = request.params.date;
+      let dateObject: Date;
+      if (this.validateDate(dateParameter, true)) {
+        dateObject = new Date(dateParameter);
+      } else {
+        try {
+          dateObject = ApiHelper.decodeDate(dateParameter);
+        } catch {
+          response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidFlatDateFormat });
+          return;
+        }
+      }
+      if (Number.isNaN(dateObject.getTime()) || dateObject > new Date()) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidFlatDateFormat });
+        return;
+      }
+
+      /* ---------------------------------
+       * Fetch and return WOA event data
+       * --------------------------------- */
+      await this.fetchWoaEventData(
+        response,
+        code,
+        dateObject,
+        page,
+        searchPlayerName,
+        searchAllianceName,
+        request['pg_pool'] as pg.Pool,
+      );
+    } catch (error) {
+      const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
+      response.status(code).send({ error: message });
+      ApiHelper.logError(error, 'getWoaEventDataByEvent', request);
+    }
+  }
+
+  public static async getWoaEventDataById(request: express.Request, response: express.Response): Promise<void> {
+    try {
+      /* ---------------------------------
+       * Validate and parse parameters
+       * --------------------------------- */
+      const parameters = this.parseWoaEventSharedParams(request, response);
+      if (!parameters) return;
+      const { code, page, searchPlayerName, searchAllianceName } = parameters;
+      let dateObject: Date;
+      try {
+        dateObject = ApiHelper.decodeDate(request.params.id);
+      } catch {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidInput });
+        return;
+      }
+      if (Number.isNaN(dateObject.getTime()) || dateObject > new Date()) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidInput });
+        return;
+      }
+
+      /* ---------------------------------
+       * Fetch and return WOA event data
+       * --------------------------------- */
+      await this.fetchWoaEventData(
+        response,
+        code,
+        dateObject,
+        page,
+        searchPlayerName,
+        searchAllianceName,
+        request['pg_pool'] as pg.Pool,
+      );
+    } catch (error) {
+      const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
+      response.status(code).send({ error: message });
+      ApiHelper.logError(error, 'getWoaEventDataById', request);
+    }
+  }
+
+  public static async getWoaEventList(request: express.Request, response: express.Response): Promise<void> {
+    try {
+      /* ---------------------------------
+       * Validate and parse parameters
+       * --------------------------------- */
+      const code = request['code'];
+      const page = ApiHelper.validatePageNumber(request.query.page) || 1;
+      const itemsPerPage = 8;
+      if (!ApiHelper.ggeTrackerManager.isValidCode(code)) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
+        return;
+      }
+      const database = ApiHelper.ggeTrackerManager.getOlapDatabaseFromCode(code);
+      if (!database) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
+        return;
+      }
+
+      /* ---------------------------------
+       * Cache check
+       * --------------------------------- */
+      const cachedKey = `woa_events:${code}-page:${page}`;
+      const cachedData = await ApiHelper.redisClient.get(cachedKey);
+      if (cachedData) {
+        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        return;
+      }
+
+      /* ---------------------------------
+       * Query database for WOA events list
+       * --------------------------------- */
+      const clickhouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
+      const rawCountResult = await clickhouseClient.query({
+        query: `SELECT COUNT(DISTINCT created_at) AS total FROM ${database}.${ApiEvents.CLICKHOUSE_WOA_TABLE_NAME}`,
+      });
+      const jsonCount: any = await rawCountResult.json();
+      const total = jsonCount.data[0] ? Number(jsonCount.data[0].total) : 0;
+      if (total === 0) {
+        response.status(ApiHelper.HTTP_OK).send({
+          events: [],
+          pagination: { current_page: page, total_pages: 1, current_items_count: 0, total_items_count: 0 },
+        });
+        return;
+      }
+
+      /* ---------------------------------
+       * Construct and execute query
+       * --------------------------------- */
+      const rawResult = await clickhouseClient.query({
+        query: `
+          SELECT
+            created_at,
+            COUNT(DISTINCT player_id) AS participants,
+            SUM(point) AS total_points
+          FROM ${database}.${ApiEvents.CLICKHOUSE_WOA_TABLE_NAME}
+          GROUP BY created_at
+          ORDER BY created_at DESC
+          LIMIT ${itemsPerPage} OFFSET ${(page - 1) * itemsPerPage}
+        `,
+      });
+      const json = await rawResult.json();
+
+      /* ---------------------------------
+       * Format results
+       * --------------------------------- */
+      const events = json.data.map((row: any) => ({
+        date: new Date(row.created_at).toISOString(),
+        participants: row.participants || 0,
+        total_tickets: row.total_points || 0,
+        id: ApiHelper.encodeDate(new Date(row.created_at).toISOString()),
+      }));
+      const total_pages = Math.ceil(total / itemsPerPage);
+      const pagination = {
+        current_page: page,
+        total_pages,
+        current_items_count: events.length,
+        total_items_count: total,
+      };
+      void ApiHelper.updateCache(cachedKey, { events, pagination }, 60 * 60);
+      response.status(ApiHelper.HTTP_OK).send({ events, pagination });
+    } catch (error) {
+      const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
+      response.status(code).send({ error: message });
+      ApiHelper.logError(error, 'getWoaEventList', request);
+    }
+  }
+
+  public static async getAquamarinePointsByPlayerId(
+    request: express.Request,
+    response: express.Response,
+  ): Promise<void> {
+    try {
+      /* ---------------------------------
+       * Validate parameters
+       * --------------------------------- */
+      const playerId = ApiHelper.verifyIdWithCountryCode(String(request.params.playerId));
+      if (!playerId) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
+        return;
+      }
+      const realPlayerId = Number(ApiHelper.removeCountryCode(playerId));
+
+      const database = ApiHelper.ggeTrackerManager.getOlapDatabaseFromRequestId(playerId);
+      if (!database) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
+        return;
+      }
+
+      /* ---------------------------------
+       * Cache check
+       * --------------------------------- */
+      const cachedKey = `aquamarine:player:${playerId}`;
+      const cachedData = await ApiHelper.redisClient.get(cachedKey);
+      if (cachedData) {
+        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        return;
+      }
+
+      /* ---------------------------------
+       * ClickHouse query
+       * --------------------------------- */
+      const clickhouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
+      const rawResult = await clickhouseClient.query({
+        query: `
+          SELECT
+            metric_id,
+            value,
+            collected_at
+          FROM ${database}.${ApiEvents.CLICKHOUSE_PLAYER_METRICS_TABLE_NAME}
+          WHERE player_id = {playerId:UInt32}
+          ORDER BY collected_at DESC
+        `,
+        query_params: { playerId: realPlayerId },
+      });
+      const json = await rawResult.json();
+
+      if (json.data.length === 0) {
+        response.status(ApiHelper.HTTP_OK).send({ metrics: [] });
+        return;
+      }
+
+      /* ---------------------------------
+       * Format results into snapshots
+       * grouped by collected_at timestamp
+       * --------------------------------- */
+      const snapshotMap = new Map<string, { metric_id: number; value: number }[]>();
+      for (const row of json.data as Array<{ metric_id: number; value: number; collected_at: string }>) {
+        const ts = new Date(row.collected_at).toISOString();
+        if (!snapshotMap.has(ts)) snapshotMap.set(ts, []);
+        snapshotMap.get(ts)!.push({ metric_id: Number(row.metric_id), value: Number(row.value) });
+      }
+      const snapshots = [...snapshotMap.entries()].map(([collected_at, metrics]) => ({
+        collected_at,
+        metrics,
+      }));
+
+      /* ---------------------------------
+       * Update cache and send response
+       * --------------------------------- */
+      const responseData = { player_id: String(playerId), snapshots };
+      void ApiHelper.updateCache(cachedKey, responseData, ApiEvents.AQUAMARINE_CACHE_TTL_PLAYER);
+      response.status(ApiHelper.HTTP_OK).send(responseData);
+    } catch (error) {
+      const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
+      response.status(code).send({ error: message });
+      ApiHelper.logError(error, 'getAquamarinePointsByPlayerId', request);
+    }
+  }
+
+  public static async getAquamarinePointsData(request: express.Request, response: express.Response): Promise<void> {
+    try {
+      /* ---------------------------------
+       * Validate parameters
+       * --------------------------------- */
+      const code = request['code'] as string;
+      const pgPool = request['pg_pool'] as pg.Pool;
+      if (!ApiHelper.ggeTrackerManager.isValidCode(code)) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
+        return;
+      }
+      const database = ApiHelper.ggeTrackerManager.getOlapDatabaseFromCode(code);
+      if (!database) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
+        return;
+      }
+      const page = ApiHelper.validatePageNumber(request.query.page);
+      const rawOrderDirection = String(request.query.order_dir || 'DESC').toUpperCase();
+      const orderDirection = ApiEvents.AQUAMARINE_ALLOWED_ORDER_DIRS.has(rawOrderDirection)
+        ? rawOrderDirection
+        : 'DESC';
+      const rawOrderBy = request.query.order_by;
+      let orderByMetricId: number | null = null;
+      let orderByDate = false;
+      if (rawOrderBy === 'collected_at') {
+        orderByDate = true;
+      } else {
+        const parsed = Number.parseInt(String(rawOrderBy ?? 100));
+        orderByMetricId = Number.isNaN(parsed) || parsed < 0 ? 100 : parsed;
+      }
+
+      /* ---------------------------------
+       * Cache check
+       * --------------------------------- */
+      const orderKey = orderByDate ? 'collected_at' : String(orderByMetricId);
+      const cachedKey = `aquamarine:leaderboard:${code}:page:${page}:order:${orderKey}:${orderDirection}`;
+      const cachedData = await ApiHelper.redisClient.get(cachedKey);
+      if (cachedData) {
+        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        return;
+      }
+
+      /* ---------------------------------
+       * ClickHouse query to get paginated
+       * player metrics with sorting
+       * --------------------------------- */
+      const clickhouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
+      const table = `${database}.${ApiEvents.CLICKHOUSE_PLAYER_METRICS_TABLE_NAME}`;
+      const limit = ApiEvents.AQUAMARINE_ITEMS_PER_PAGE;
+      const offset = (page - 1) * limit;
+
+      const [rawCount, rawData] = await Promise.all([
+        clickhouseClient.query({
+          query: `SELECT COUNT(DISTINCT player_id) AS total FROM ${table}`,
+        }),
+        clickhouseClient.query({
+          // Inner query: argMax per (player_id, metric_id) to pick the latest value
+          // Outer query: pivot into arrays and extract the sort column
+          query: `
+            SELECT
+              player_id,
+              groupArray(metric_id)    AS metric_ids,
+              groupArray(latest_value) AS latest_values,
+              max(last_collected_at)   AS last_collected_at,
+              sumIf(latest_value, metric_id = {orderMetricId:Int64}) AS order_metric_value
+            FROM (
+              SELECT
+                player_id,
+                metric_id,
+                argMax(value, collected_at) AS latest_value,
+                max(collected_at)           AS last_collected_at
+              FROM ${table}
+              GROUP BY player_id, metric_id
+            )
+            GROUP BY player_id
+            ORDER BY ${orderByDate ? 'last_collected_at' : 'order_metric_value'} ${orderDirection}
+            LIMIT ${limit} OFFSET ${offset}
+          `,
+          query_params: { orderMetricId: orderByMetricId ?? 100 },
+        }),
+      ]);
+      const jsonCount = await rawCount.json();
+      const total_items = Number((jsonCount.data as Array<{ total: number }>)[0]?.total ?? 0);
+      if (total_items === 0) {
+        const empty = {
+          players: [],
+          pagination: { current_page: page, total_pages: 1, current_items_count: 0, total_items_count: 0 },
+        };
+        response.status(ApiHelper.HTTP_OK).send(empty);
+        return;
+      }
+
+      /* ---------------------------------
+       * Format ClickHouse results and
+       * enrich with PostgreSQL player data
+       * --------------------------------- */
+      const jsonData = await rawData.json();
+      const rows = jsonData.data as Array<{
+        player_id: number;
+        metric_ids: number[];
+        latest_values: number[];
+        last_collected_at: string;
+      }>;
+      const playerIds = rows.map((r) => r.player_id);
+      const pgResult = await pgPool.query(
+        `SELECT id, name AS player_name, alliance_id, might_current AS player_current_might
+          FROM players WHERE id = ANY($1)`,
+        [playerIds],
+      );
+      const pgById = new Map(pgResult.rows.map((r: any) => [r.id, r]));
+
+      /* ---------------------------------
+       * Construct final player data with metrics
+       * --------------------------------- */
+      const players = rows.map((row) => {
+        const metrics: Record<number, number> = {};
+        for (let index = 0; index < row.metric_ids.length; index++) {
+          metrics[Number(row.metric_ids[index])] = Number(row.latest_values[index]);
+        }
+        const pg = pgById.get(row.player_id);
+        return {
+          player_id: ApiHelper.addCountryCode(String(row.player_id), code),
+          player_name: pg?.player_name ?? null,
+          alliance_id: pg?.alliance_id ? ApiHelper.addCountryCode(String(pg.alliance_id), code) : null,
+          player_current_might: pg?.player_current_might ?? 0,
+          metrics,
+          last_collected_at: new Date(row.last_collected_at).toISOString(),
+        };
+      });
+
+      const total_pages = Math.ceil(total_items / limit);
+      const responseData = {
+        players,
+        pagination: {
+          current_page: page,
+          total_pages,
+          current_items_count: players.length,
+          total_items_count: total_items,
+        },
+      };
+      void ApiHelper.updateCache(cachedKey, responseData, ApiEvents.AQUAMARINE_CACHE_TTL_LEADERBOARD);
+      response.status(ApiHelper.HTTP_OK).send(responseData);
+    } catch (error) {
+      const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
+      response.status(code).send({ error: message });
+      ApiHelper.logError(error, 'getAquamarinePointsData', request);
+    }
+  }
+
+  public static async getStormyIslesLeaderboard(request: express.Request, response: express.Response): Promise<void> {
+    try {
+      /* ---------------------------------
+       * Validate parameters
+       * --------------------------------- */
+      const pgPool = request['pg_pool'] as pg.Pool;
+      const code = request['code'] as string;
+      if (!ApiHelper.ggeTrackerManager.isValidCode(code)) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
+        return;
+      }
+      const database = ApiHelper.ggeTrackerManager.getOlapDatabaseFromCode(code);
+      if (!database) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
+        return;
+      }
+      const page = ApiHelper.validatePageNumber(request.query.page);
+      const rawOrderDirection = String(request.query.order_dir || 'DESC').toUpperCase();
+      const orderDirection = ['ASC', 'DESC'].includes(rawOrderDirection) ? rawOrderDirection : 'DESC';
+      const rawOrderBy = String(request.query.order_by);
+      let orderMetricId: number | string = 100;
+      if (rawOrderBy !== undefined && ApiEvents.STORMY_ISLES_ALLOWED_METRIC_IDS.has(Number(rawOrderBy))) {
+        orderMetricId = Number(rawOrderBy);
+      } else if (this.STORMY_ISLES_ALLOWED_SORTABLE_KEYS.has(rawOrderBy)) {
+        orderMetricId = rawOrderBy;
+      }
+      const playerNameRaw = ApiHelper.validateSearchAndSanitize(request.query.player_name, { toLowerCase: false });
+      const allianceNameRaw = ApiHelper.validateSearchAndSanitize(request.query.alliance_name, { toLowerCase: false });
+      const playerNameString = ApiHelper.isValidInput(playerNameRaw) ? playerNameRaw : null;
+      const allianceNameString = ApiHelper.isValidInput(allianceNameRaw) ? allianceNameRaw : null;
+
+      /* ---------------------------------
+       * Cache check
+       * --------------------------------- */
+      const filterKey = `pn:${playerNameString ?? ''}:an:${allianceNameString ?? ''}`;
+      const cachedKey = `stormy-isles:lb:${code}:p:${page}:o:${orderMetricId}:${orderDirection}:${filterKey}`;
+      const cachedData = await ApiHelper.redisClient.get(cachedKey);
+      if (cachedData) {
+        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        return;
+      }
+
+      /* ---------------------------------
+       * Pre-filtering in PostgreSQL to get relevant
+       * player IDs based on name/alliance search
+       * --------------------------------- */
+      const clickhouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
+      const table = `${database}.${ApiEvents.CLICKHOUSE_PLAYER_METRICS_TABLE_NAME}`;
+      const limit = ApiEvents.STORMY_ISLES_ITEMS_PER_PAGE;
+      const offset = (page - 1) * limit;
+
+      const latestDateResult = await clickhouseClient.query({
+        query: `SELECT toDate(MAX(collected_at)) AS latest_date FROM ${table}`,
+      });
+      const latestDateJson = await latestDateResult.json();
+      const latestDate = (latestDateJson.data as Array<{ latest_date: string }>)[0]?.latest_date;
+      if (!latestDate) {
+        const empty = {
+          players: [],
+          snapshot_date: null,
+          pagination: { current_page: page, total_pages: 0, current_items_count: 0, total_items_count: 0 },
+        };
+        response.status(ApiHelper.HTTP_OK).send(empty);
+        return;
+      }
+
+      /* ---------------------------------
+       * Filter player/alliance IDs (string match)
+       * --------------------------------- */
+      let pgFilteredIds: number[] | null = null;
+      if (playerNameString || allianceNameString) {
+        const conditions: string[] = [];
+        const pgParameters: unknown[] = [];
+        if (playerNameString) {
+          pgParameters.push(`%${playerNameString}%`);
+          conditions.push(`P.name ILIKE $${pgParameters.length}`);
+        }
+        if (allianceNameString) {
+          pgParameters.push(`%${allianceNameString}%`);
+          conditions.push(`A.name ILIKE $${pgParameters.length}`);
+        }
+        const pgFilterResult = await pgPool.query(
+          `SELECT P.id FROM players P LEFT JOIN alliances A ON P.alliance_id = A.id WHERE ${conditions.join(' AND ')}`,
+          pgParameters,
+        );
+        pgFilteredIds = pgFilterResult.rows.map((r: { id: number }) => r.id);
+        if (pgFilteredIds.length === 0) {
+          const empty = {
+            players: [],
+            snapshot_date: latestDate,
+            pagination: { current_page: page, total_pages: 0, current_items_count: 0, total_items_count: 0 },
+          };
+          response.status(ApiHelper.HTTP_OK).send(empty);
+          return;
+        }
+      }
+      const playerIdClause = pgFilteredIds ? `AND player_id IN (${pgFilteredIds.join(',')})` : '';
+
+      /* ---------------------------------
+       * Branch: sort by PostgreSQL player field
+       * (player_name, level, might_current)
+       * --------------------------------- */
+      if (typeof orderMetricId === 'string') {
+        const chIdsResult = await clickhouseClient.query({
+          query: `
+            SELECT DISTINCT player_id
+            FROM ${table}
+            WHERE toDate(collected_at) = {latestDate:String}
+            ${playerIdClause}
+          `,
+          query_params: { latestDate },
+        });
+        const chIdsJson = await chIdsResult.json();
+        const allChPlayerIds = (chIdsJson.data as Array<{ player_id: number }>).map((r) => r.player_id);
+        if (allChPlayerIds.length === 0) {
+          const empty = {
+            players: [],
+            snapshot_date: latestDate,
+            pagination: { current_page: page, total_pages: 0, current_items_count: 0, total_items_count: 0 },
+          };
+          response.status(ApiHelper.HTTP_OK).send(empty);
+          return;
+        }
+
+        const pgSortExpr =
+          orderMetricId === 'player_name'
+            ? 'P.name'
+            : orderMetricId === 'level'
+              ? '(P.level + P.legendary_level)'
+              : 'P.might_current';
+        const [pgCountResult, pgPageResult] = await Promise.all([
+          pgPool.query(`SELECT COUNT(*) AS total FROM players P WHERE P.id = ANY($1)`, [allChPlayerIds]),
+          pgPool.query(
+            `SELECT
+                P.id,
+                P.name         AS player_name,
+                P.alliance_id,
+                A.name         AS alliance_name,
+                P.might_current,
+                P.might_all_time,
+                P.level,
+                P.legendary_level
+              FROM players P
+              LEFT JOIN alliances A ON P.alliance_id = A.id
+              WHERE P.id = ANY($1)
+              ORDER BY ${pgSortExpr} ${orderDirection}
+              LIMIT $2 OFFSET $3`,
+            [allChPlayerIds, limit, offset],
+          ),
+        ]);
+        const pgTotal = Number(pgCountResult.rows[0]?.total ?? 0);
+        if (pgTotal === 0) {
+          const empty = {
+            players: [],
+            snapshot_date: latestDate,
+            pagination: { current_page: page, total_pages: 0, current_items_count: 0, total_items_count: 0 },
+          };
+          response.status(ApiHelper.HTTP_OK).send(empty);
+          return;
+        }
+        const pgRows = pgPageResult.rows as Array<{
+          id: number;
+          player_name: string | null;
+          alliance_id: number | null;
+          alliance_name: string | null;
+          might_current: number;
+          might_all_time: number;
+          level: number;
+          legendary_level: number;
+        }>;
+        const pagePlayerIds = pgRows.map((r) => r.id);
+
+        const metricsByPlayerId = new Map<
+          number,
+          { metric_ids: number[]; metric_values: number[]; latest_collected_at: string }
+        >();
+        if (pagePlayerIds.length > 0) {
+          const chMetricsResult = await clickhouseClient.query({
+            query: `
+              SELECT
+                player_id,
+                groupArray(metric_id)  AS metric_ids,
+                groupArray(value)      AS metric_values,
+                any(collected_at)      AS latest_collected_at
+              FROM ${table}
+              WHERE toDate(collected_at) = {latestDate:String}
+                AND player_id IN (${pagePlayerIds.join(',')})
+              GROUP BY player_id
+            `,
+            query_params: { latestDate },
+          });
+          const chMetricsJson = await chMetricsResult.json();
+          for (const r of chMetricsJson.data as Array<{
+            player_id: number;
+            metric_ids: number[];
+            metric_values: number[];
+            latest_collected_at: string;
+          }>) {
+            metricsByPlayerId.set(Number(r.player_id), r);
+          }
+        }
+
+        const players = pgRows.map((pg, index) => {
+          const chRow = metricsByPlayerId.get(pg.id);
+          const metrics: Record<number, number> = {};
+          if (chRow) {
+            for (let index_ = 0; index_ < chRow.metric_ids.length; index_++) {
+              metrics[Number(chRow.metric_ids[index_])] = Number(chRow.metric_values[index_]);
+            }
+          }
+          return {
+            rank: offset + index + 1,
+            player_id: ApiHelper.addCountryCode(String(pg.id), code),
+            player_name: pg.player_name ?? null,
+            alliance_id: pg.alliance_id ? ApiHelper.addCountryCode(String(pg.alliance_id), code) : null,
+            alliance_name: pg.alliance_name ?? null,
+            might_current: pg.might_current ?? 0,
+            might_all_time: pg.might_all_time ?? 0,
+            level: pg.level ?? 0,
+            legendary_level: pg.legendary_level ?? 0,
+            metrics,
+            collected_at: chRow ? new Date(chRow.latest_collected_at).toISOString() : null,
+          };
+        });
+        const total_pages = Math.ceil(pgTotal / limit);
+        const responseData = {
+          players,
+          snapshot_date: latestDate,
+          pagination: {
+            current_page: page,
+            total_pages,
+            current_items_count: players.length,
+            total_items_count: pgTotal,
+          },
+        };
+        void ApiHelper.updateCache(cachedKey, responseData, ApiEvents.STORMY_ISLES_CACHE_TTL_LEADERBOARD);
+        response.status(ApiHelper.HTTP_OK).send(responseData);
+        return;
+      }
+
+      /* ---------------------------------
+       * ClickHouse query to get paginated, sorted
+       * player metrics (metric_id sort)
+       * --------------------------------- */
+      const [rawCount, rawData] = await Promise.all([
+        clickhouseClient.query({
+          query: `
+            SELECT COUNT(DISTINCT player_id) AS total
+            FROM ${table}
+            WHERE toDate(collected_at) = {latestDate:String}
+            ${playerIdClause}
+          `,
+          query_params: { latestDate },
+        }),
+        clickhouseClient.query({
+          query: `
+            SELECT
+              player_id,
+              groupArray(metric_id)    AS metric_ids,
+              groupArray(value)        AS metric_values,
+              any(collected_at)        AS latest_collected_at,
+              sumIf(value, metric_id = {orderMetricId:Int64}) AS order_metric_value
+            FROM ${table}
+            WHERE toDate(collected_at) = {latestDate:String}
+            ${playerIdClause}
+            GROUP BY player_id
+            ORDER BY order_metric_value ${orderDirection}
+            LIMIT ${limit} OFFSET ${offset}
+          `,
+          query_params: { latestDate, orderMetricId },
+        }),
+      ]);
+      const jsonCount = await rawCount.json();
+      const total_items = Number((jsonCount.data as Array<{ total: number }>)[0]?.total ?? 0);
+      if (total_items === 0) {
+        const empty = {
+          players: [],
+          snapshot_date: latestDate,
+          pagination: { current_page: page, total_pages: 0, current_items_count: 0, total_items_count: 0 },
+        };
+        response.status(ApiHelper.HTTP_OK).send(empty);
+        return;
+      }
+      const jsonData = await rawData.json();
+      const rows = jsonData.data as Array<{
+        player_id: number;
+        metric_ids: number[];
+        metric_values: number[];
+        latest_collected_at: string;
+      }>;
+
+      /* ---------------------------------
+       * Enrich with PostgreSQL player data
+       * --------------------------------- */
+      const playerIds = rows.map((r) => r.player_id);
+      const pgResult = await pgPool.query(
+        `SELECT
+          P.id,
+          P.name         AS player_name,
+          P.alliance_id,
+          A.name         AS alliance_name,
+          P.might_current,
+          P.might_all_time,
+          P.level,
+          P.legendary_level
+          FROM players P
+          LEFT JOIN alliances A ON P.alliance_id = A.id
+          WHERE P.id = ANY($1)`,
+        [playerIds],
+      );
+      const pgById = new Map(pgResult.rows.map((r: any) => [r.id, r]));
+
+      /* ---------------------------------
+       * Format and respond
+       * --------------------------------- */
+      const players = rows.map((row, index) => {
+        const metrics: Record<number, number> = {};
+        for (let index_ = 0; index_ < row.metric_ids.length; index_++) {
+          metrics[Number(row.metric_ids[index_])] = Number(row.metric_values[index_]);
+        }
+        const pg = pgById.get(row.player_id);
+        return {
+          rank: offset + index + 1,
+          player_id: ApiHelper.addCountryCode(String(row.player_id), code),
+          player_name: pg?.player_name ?? null,
+          alliance_id: pg?.alliance_id ? ApiHelper.addCountryCode(String(pg.alliance_id), code) : null,
+          alliance_name: pg?.alliance_name ?? null,
+          might_current: pg?.might_current ?? 0,
+          might_all_time: pg?.might_all_time ?? 0,
+          level: pg?.level ?? 0,
+          legendary_level: pg?.legendary_level ?? 0,
+          metrics,
+          collected_at: new Date(row.latest_collected_at).toISOString(),
+        };
+      });
+
+      const total_pages = Math.ceil(total_items / limit);
+      const responseData = {
+        players,
+        snapshot_date: latestDate,
+        pagination: {
+          current_page: page,
+          total_pages,
+          current_items_count: players.length,
+          total_items_count: total_items,
+        },
+      };
+      void ApiHelper.updateCache(cachedKey, responseData, ApiEvents.STORMY_ISLES_CACHE_TTL_LEADERBOARD);
+      response.status(ApiHelper.HTTP_OK).send(responseData);
+    } catch (error) {
+      const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
+      response.status(code).send({ error: message });
+      ApiHelper.logError(error, 'getStormyIslesLeaderboard', request);
+    }
+  }
+
+  /**
+   * Parses and validates shared parameters for WoA event requests
+   * @param request express.Request object containing the request parameters
+   * @param response express.Response object to send the response in case of errors
+   * @returns An object containing the parsed parameters or null if validation fails
+   */
+  private static parseWoaEventSharedParams(
+    request: express.Request,
+    response: express.Response,
+  ): {
+    code: string;
+    page: number;
+    searchPlayerName: ApiInputErrorType | string;
+    searchAllianceName: ApiInputErrorType | string;
+  } | null {
+    const code = request['code'];
+    const page = ApiHelper.validatePageNumber(request.query.page) || 1;
+    const searchPlayerName = ApiHelper.validateSearchAndSanitize(request.query.player_name, {
+      maxLength: 50,
+      toLowerCase: false,
+    });
+    const searchAllianceName = ApiHelper.validateSearchAndSanitize(request.query.alliance_name, {
+      maxLength: 50,
+      toLowerCase: false,
+    });
+    if (!ApiHelper.ggeTrackerManager.isValidCode(code)) {
+      response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
+      return null;
+    }
+    if (searchPlayerName === ApiInvalidInputType) {
+      response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
+      return null;
+    }
+    if (searchAllianceName === ApiInvalidInputType) {
+      response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceName });
+      return null;
+    }
+    return { code, page, searchPlayerName, searchAllianceName };
+  }
+
+  /**
+   * Core WoA event data fetcher: runs the ClickHouse leaderboard query for the given date
+   * and enriches results with PostgreSQL player details; Sends the final response directly
+   * @param response express.Response object to send the response
+   * @param code game code
+   * @param dateObject Date object representing the event date
+   * @param page pagination page number
+   * @param searchPlayerName optional player name filter (takes precedence over alliance filter)
+   * @param searchAllianceName optional alliance name filter
+   * @param pgPool PostgreSQL connection pool for player data enrichment
+   */
+  private static async fetchWoaEventData(
+    response: express.Response,
+    code: string,
+    dateObject: Date,
+    page: number,
+    searchPlayerName: ApiInputErrorType | string,
+    searchAllianceName: ApiInputErrorType | string,
+    pgPool: pg.Pool,
+  ): Promise<void> {
+    const sizePerPage = 15;
+    const emptyResponse = {
+      players: [],
+      event_date: dateObject.toISOString(),
+      pagination: { current_page: page, total_pages: 1, current_items_count: 0, total_items_count: 0 },
+    };
+
+    const cachedKey = `woa_event_data:${code}:${dateObject.toISOString()}:${page}:${String(searchPlayerName)}:${String(searchAllianceName)}`;
+    const cachedData = await ApiHelper.redisClient.get(cachedKey);
+    if (cachedData) {
+      response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+      return;
+    }
+
+    // Note: player_name and alliance_name filters are mutually
+    // exclusive; but player_name takes precedence
+    let idsToFilter: number[] = [];
+    try {
+      if (ApiHelper.isValidInput(searchPlayerName)) {
+        const results = await pgPool.query(
+          `SELECT P.id FROM players P WHERE LOWER(P.name) = LOWER($1) AND P.castles <> '[]';`,
+          [searchPlayerName],
+        );
+        if (results.rows.length === 0) throw new Error('No player found');
+        idsToFilter = results.rows.map((row) => row.id);
+      } else if (ApiHelper.isValidInput(searchAllianceName)) {
+        const results = await pgPool.query(
+          `SELECT P.id FROM players P LEFT JOIN active_alliances A ON A.id = P.alliance_id WHERE LOWER(A.name) = LOWER($1) AND P.castles <> '[]';`,
+          [searchAllianceName],
+        );
+        if (results.rows.length === 0) throw new Error('No alliance found');
+        idsToFilter = results.rows.map((row) => row.id);
+      }
+    } catch {
+      response.status(ApiHelper.HTTP_OK).send(emptyResponse);
+      return;
+    }
+
+    const database = ApiHelper.ggeTrackerManager.getOlapDatabaseFromCode(code);
+    if (!database) {
+      response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
+      return;
+    }
+
+    const clickhouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
+    const dateParameter = dateObject.toISOString().slice(0, 19).replace('T', ' ');
+    const playerFilter = idsToFilter.length > 0 ? `AND player_id IN (${idsToFilter.join(',')})` : '';
+
+    const rawCountResult = await clickhouseClient.query({
+      query: `
+        SELECT COUNT(*) AS total_items
+        FROM ${database}.${ApiEvents.CLICKHOUSE_WOA_TABLE_NAME}
+        WHERE created_at = toDateTime({date:String})
+        ${playerFilter}
+      `,
+      query_params: { date: dateParameter },
+    });
+    const jsonCount = await rawCountResult.json();
+    const total_items = (jsonCount.data as Array<{ total_items: number }>)[0]
+      ? Number((jsonCount.data as Array<{ total_items: number }>)[0].total_items)
+      : 0;
+    if (total_items === 0) {
+      response.status(ApiHelper.HTTP_OK).send(emptyResponse);
+      return;
+    }
+
+    const rawResult = await clickhouseClient.query({
+      query: `
+        SELECT
+          player_id,
+          point,
+        FROM ${database}.${ApiEvents.CLICKHOUSE_WOA_TABLE_NAME}
+        WHERE
+          created_at = toDateTime({date:String})
+          ${playerFilter}
+        ORDER BY point DESC
+        LIMIT ${sizePerPage} OFFSET ${(page - 1) * sizePerPage}
+      `,
+      query_params: { date: dateParameter },
+    });
+    const json = await rawResult.json();
+    if (json.data.length === 0) {
+      response.status(ApiHelper.HTTP_OK).send(emptyResponse);
+      return;
+    }
+
+    const playerIds = json.data.map((row: any) => row.player_id);
+    const pgResult = await pgPool.query(
+      `
+      SELECT
+        P.id,
+        P.name AS player_name,
+        P.alliance_rank AS player_alliance_rank,
+        P.might_current AS player_current_might,
+        P.might_all_time AS player_all_time_might,
+        P.level AS player_level,
+        P.legendary_level AS player_legendary_level,
+        P.alliance_id,
+        A.name AS alliance_name
+      FROM players P LEFT JOIN alliances A ON A.id = P.alliance_id
+      WHERE P.id = ANY($1)
+      `,
+      [playerIds],
+    );
+    const playersData = pgResult.rows;
+    const players = json.data.map((row: any) => {
+      const playerInfo = playersData.find((player: any) => player.id === row.player_id);
+      return {
+        player_id: row.player_id ? ApiHelper.addCountryCode(row.player_id, code) : null,
+        player_name: playerInfo?.player_name || 'Unknown',
+        alliance_id: playerInfo?.alliance_id ? ApiHelper.addCountryCode(playerInfo.alliance_id, code) : null,
+        alliance_name: playerInfo?.alliance_name || null,
+        alliance_rank: playerInfo?.player_alliance_rank || null,
+        player_current_might: playerInfo?.player_current_might || 0,
+        player_all_time_might: playerInfo?.player_all_time_might || 0,
+        player_level: playerInfo?.player_level || 0,
+        player_legendary_level: playerInfo?.player_legendary_level || 0,
+        point: row.point,
+      };
+    });
+    const total_pages = Math.ceil(total_items / sizePerPage);
+    const responseData = {
+      players,
+      event_date: dateObject.toISOString(),
+      pagination: {
+        current_page: page,
+        total_pages,
+        current_items_count: players.length,
+        total_items_count: total_items,
+      },
+    };
+    void ApiHelper.updateCache(cachedKey, responseData, 60 * 60);
+    response.status(ApiHelper.HTTP_OK).send(responseData);
+  }
+
   /**
    * Validates that the provided value is a date-time string with hour precision
-   * in strict UTC ISO-8601 form: YYYY-MM-DDTHH:00:00.000Z
+   * in strict UTC ISO-8601 form: YYYY-MM-DDTHH:00:00.000Z (if hourPrecision is true)
+   * or YYYY-MM-DDTHH:mm:ss.000Z (if hourPrecision is false or not provided)
    *
    * @upgrade This method should be replaced with a more robust date-time validation library if needed
    * @param dateString - The value to validate as a date-time string
+   * @param hourPrecision - Whether to validate for hour precision (true) or second precision (false, default)
+   * @returns True if the value is a valid date-time string in the expected format, false otherwise
    */
-  private static validateDate(dateString: any): boolean {
+  private static validateDate(dateString: any, hourPrecision: boolean = false): boolean {
     if (typeof dateString !== 'string') {
       return false;
     }
-    // If date is not specific in YYYY-MM-DDTHH:00:00.000Z (with hours precision), reject it
-    const dateRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:00:00\.000Z$/;
+    let dateRegex: RegExp;
+    if (hourPrecision) {
+      dateRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.000Z$/;
+    } else {
+      dateRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:00:00\.000Z$/;
+    }
     if (!dateRegex.test(dateString)) {
       return false;
     }

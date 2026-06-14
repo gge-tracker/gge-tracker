@@ -1,0 +1,72 @@
+@if (players().length === 0) {
+  <tr>
+    <td colspan="12" class="no-data">{{ 'Aucun joueur trouvé' | translate }}</td>
+  </tr>
+}
+@for (player of players(); track player.player_id) {
+  <tr class="si-row">
+    <!-- Rank -->
+    <td class="col-rank">{{ player.rank }}</td>
+
+    <!-- Name -->
+    <td class="col-name">
+      <a [routerLink]="['/player', player.player_id]" class="si-player-link">
+        {{ player.player_name }}
+      </a>
+    </td>
+
+    <!-- Level -->
+    <td class="col-level">
+      <div class="level-box" [ngClass]="{ 'level-legendary': player.legendary_level }">
+        <span class="level-main">{{player.level}}</span>
+        @if (player.legendary_level) {
+          <div class="level-separator"></div>
+          <span class="level-legendary" [attr.data-level]="player.legendary_level">
+            {{ player.legendary_level }}
+          </span>
+        }
+      </div>
+    </td>
+
+    <!-- Might current / max -->
+    <td class="col-might">
+      <div class="metric">
+        <div class="metric-header">
+          <span class="metric-current"><span class="mobile-only">{{ 'Puissance' | translate }}:&nbsp;</span>{{ player.might_current | formatNumber }}</span>
+          <span class="metric-max">{{ player.might_all_time | formatNumber }}</span>
+        </div>
+        <div class="metric-bar-bg">
+          <div class="metric-bar bar-yellow"
+            [style.width.%]="player.might_all_time > 0 ? (player.might_current / player.might_all_time) * 100 : 0">
+          </div>
+        </div>
+      </div>
+    </td>
+
+    <!-- Alliance -->
+    <td class="col-alliance ps-4">
+      @if (player.alliance_name) {
+        <a class="alliance-link"
+          (click)="clickOnAlliance.emit(player.alliance_name)" (keydown.enter)="clickOnAlliance.emit(player.alliance_name)">
+          {{ player.alliance_name }}
+        </a>
+      } @else {
+        -
+      }
+    </td>
+
+    <!-- Aquamarine metrics: 100, 15, 16, 17, 18, 19, 20 -->
+    @for (metricId of METRIC_IDS; track metricId) {
+      <td class="col-metric" [style.--m-color]="METRIC_COLORS[metricId]">
+        @if (player.metrics[metricId] !== undefined) {
+          <span class="metric-val">
+            <span class="mobile-only">{{ METRIC_LABELS[metricId] }}:&nbsp;</span>
+            {{ player.metrics[metricId] | formatNumber }}
+          </span>
+        } @else {
+          <span class="metric-empty">-</span>
+        }
+      </td>
+    }
+  </tr>
+}

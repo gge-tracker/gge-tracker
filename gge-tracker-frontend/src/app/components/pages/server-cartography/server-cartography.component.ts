@@ -10,6 +10,8 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { ModalFormGroupComponent } from '@ggetracker-components/modal-form-group/modal-form-group.component';
+import { ModalTableComponent } from '@ggetracker-components/modal-table/modal-table.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import {
   ApiCartoAlliance,
@@ -37,7 +39,16 @@ interface ILegend {
 
 @Component({
   selector: 'app-server-cartography',
-  imports: [NgClass, FormatNumberPipe, NgTemplateOutlet, FormsModule, TranslateModule, SearchFormComponent],
+  imports: [
+    NgClass,
+    FormatNumberPipe,
+    NgTemplateOutlet,
+    FormsModule,
+    TranslateModule,
+    SearchFormComponent,
+    ModalTableComponent,
+    ModalFormGroupComponent,
+  ],
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './server-cartography.component.html',
@@ -71,12 +82,6 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
   public nbPlayers = 0;
   public searchedAlliance = '';
   public monumentsList: Monument[] = [];
-  public pageSize = 10;
-  public currentPage = 1;
-  public totalPages = 1;
-  public searchTerm = '';
-  public sortColumn: keyof Monument | null = null;
-  public sortAsc = true;
   public selectedWorld: number | undefined = undefined;
   public formFilters: Record<string, boolean> = {
     outpost: true,
@@ -677,22 +682,10 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     );
   }
 
-  public changePage(delta: number): void {
-    this.currentPage = Math.min(this.totalPages, Math.max(1, this.currentPage + delta));
-  }
-
-  public onSearchChange(): void {
-    this.currentPage = 1;
-  }
-
-  public sortBy(column: keyof Monument): void {
-    if (this.sortColumn === column) {
-      this.sortAsc = !this.sortAsc;
-    } else {
-      this.sortColumn = column;
-      this.sortAsc = true;
-    }
-  }
+  public readonly monumentsSearchFilter = (item: Monument, term: string): boolean =>
+    item.type.toLowerCase().includes(term) ||
+    item.position.toLowerCase().includes(term) ||
+    item.owner.toLowerCase().includes(term);
 
   public hexToRgb(hex: string): string {
     const result = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex);
@@ -1414,35 +1407,5 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
         context.fillRect(col * cellWidth, row * cellHeight, cellWidth, cellHeight);
       }
     }
-  }
-
-  public get paginatedMonuments(): Monument[] {
-    let filtered = this.monumentsList;
-
-    if (this.searchTerm.trim()) {
-      const lower = this.searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (m) =>
-          m.type.toLowerCase().includes(lower) ||
-          m.position.toLowerCase().includes(lower) ||
-          m.owner.toLowerCase().includes(lower),
-      );
-    }
-    const sortColum = this.sortColumn;
-    if (sortColum) {
-      filtered = [...filtered].sort((a, b) => {
-        const aValue = a[sortColum] ?? '';
-        const bValue = b[sortColum] ?? '';
-        return (
-          ('' + aValue).localeCompare('' + bValue, undefined, {
-            sensitivity: 'base',
-          }) * (this.sortAsc ? 1 : -1)
-        );
-      });
-    }
-
-    this.totalPages = Math.max(1, Math.ceil(filtered.length / this.pageSize));
-    const start = (this.currentPage - 1) * this.pageSize;
-    return filtered.slice(start, start + this.pageSize);
   }
 }

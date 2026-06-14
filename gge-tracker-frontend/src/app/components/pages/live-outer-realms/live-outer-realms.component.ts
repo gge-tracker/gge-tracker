@@ -169,7 +169,7 @@ export class LiveOuterRealmsComponent extends GenericComponent {
     this.requestCounter++;
     this.isDataLoading = true;
     const response = await this.apiRestService.getLiveRankingOuterRealms(page, playerName);
-    if (!response.success || (response.success && response.data.players.length === 0)) {
+    if (!response.success) {
       this.isInLoading = false;
       if (this.requestCounter === 1) {
         this.eventNotActive = true;

@@ -1,0 +1,49 @@
+@if (items().length > 0) {
+  <div class="table-wrapper">
+
+    <div class="search-area">
+      <i class="fa-solid fa-magnifying-glass search-icon"></i>
+      <input
+        type="text"
+        [(ngModel)]="searchTerm"
+        (ngModelChange)="onSearchChange()"
+        placeholder="{{ 'Rechercher' | translate }}..."
+        class="form-control search-input"
+      />
+    </div>
+
+    <div class="table-responsive">
+      <table class="modern-table w-100">
+        <thead>
+          <ng-container
+            [ngTemplateOutlet]="headerTemplate()"
+            [ngTemplateOutletContext]="sortContext"
+          />
+        </thead>
+        <tbody>
+          @for (item of paginatedItems; track $index) {
+            <ng-container
+              [ngTemplateOutlet]="rowTemplate()"
+              [ngTemplateOutletContext]="{ $implicit: item }"
+            />
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (totalPages > 1) {
+      <div class="pagination-modern d-flex justify-content-center align-items-center gap-2">
+        <button class="btn" (click)="changePage(-1)" [disabled]="currentPage <= 1">
+          <i class="fa-solid fa-chevron-left"></i>
+        </button>
+        <span class="page-indicator">{{ currentPage }} / {{ totalPages }}</span>
+        <button class="btn" (click)="changePage(1)" [disabled]="currentPage >= totalPages">
+          <i class="fa-solid fa-chevron-right"></i>
+        </button>
+      </div>
+    }
+
+  </div>
+} @else {
+  <p class="empty-state">{{ 'Aucun résultat' | translate }}</p>
+}

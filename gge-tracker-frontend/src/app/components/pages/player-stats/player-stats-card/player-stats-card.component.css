@@ -17,6 +17,11 @@ i.fas.fa-spinner.fa-spin {
   border: 1px white solid;
   color: white;
 }
+.bar {
+  max-height: 450px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
 .opacity-0 {
   opacity: 0;
 }

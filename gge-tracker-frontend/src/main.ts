@@ -18,6 +18,7 @@ import { routes } from './app/app.routes';
 
 void bootstrapApplication(AppComponent, {
   providers: [
+    provideClientHydration(),
     importProvidersFrom(
       BrowserModule,
       CommonModule,
@@ -29,14 +30,13 @@ void bootstrapApplication(AppComponent, {
           useFactory: DynamicTranslateLoaderFactory,
           deps: [HttpClient],
         },
-        defaultLanguage: 'en',
+        fallbackLang: 'en',
       }),
       ServiceWorkerModule.register('ngsw-worker.js', {
         enabled: !isDevMode(),
         registrationStrategy: 'registerWhenStable:30000',
       }),
     ),
-    provideClientHydration(),
     { provide: LUCIDE_ICONS, multi: true, useValue: new LucideIconProvider(myIcons) },
     {
       provide: APP_INITIALIZER,

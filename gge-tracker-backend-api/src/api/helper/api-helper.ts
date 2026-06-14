@@ -19,6 +19,10 @@ import * as cacheVersion from './cache/cache-version';
  * @abstract
  */
 export abstract class ApiHelper {
+  public static readonly ALPHABET: string = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  // eslint-disable-next-line prettier/prettier
+  public static readonly API_PUBLIC_TOKEN = 0x5F_37_59_DFn;
+  public static readonly PRIME = 11_400_714_819_323_198_485n;
   public static readonly PAGINATION_LIMIT = 15;
   public static readonly REDIS_KEY_GGE_VERSION = 'gge_build_version';
   public static readonly MAX_RESULT_PAGE = 999_999_999;
@@ -34,7 +38,7 @@ export abstract class ApiHelper {
   public static readonly GGE_BASE_URL = 'https://empire-html5.goodgamestudios.com';
   public static readonly ASSETS_BASE_URL = this.GGE_BASE_URL + '/default';
   public static readonly CONFIG_BASE_URL = this.GGE_BASE_URL + '/config';
-  public static readonly API_VERSION = '25.12.08-beta';
+  public static readonly API_VERSION = require('../../../package.json').version;
   public static readonly API_VERSION_RELEASE_DATE = this.formatReleaseDate(this.API_VERSION);
 
   /**
@@ -154,25 +158,32 @@ export abstract class ApiHelper {
    * @param methodName - The name of the method where the error occurred
    * @param request - The Express request object associated with the error, used to log query, params, and body
    */
-  public static logError(error: any, methodName: string, request: express.Request): void {
-    const uniqueId = crypto.randomBytes(4).toString('hex');
-    const redColor = '\u001B[31m';
-    const resetColor = '\u001B[0m';
-    console.log('');
-    const colorize = (text: string): string => this.colorize(text, redColor, resetColor);
-    console.log(colorize(`----- ERROR LOG START #${uniqueId} -----`));
-    console.log(colorize(`* Unique ID: ${uniqueId}`));
-    console.log(colorize(`* Timestamp: ${new Date().toISOString()}`));
-    if (error instanceof Error) {
-      console.log(colorize(`* Error message: ${error.message}`));
-      console.log(colorize(`* Stack trace:\n${error.stack || ''}`));
-    } else {
-      console.error(colorize(`* Error:\n${String(error)}`));
+  public static logError(error: unknown, methodName: string, request?: express.Request): void {
+    const message = error instanceof Error ? error.message : String(error);
+    const contextParts: string[] = [];
+    if (request?.query && Object.keys(request.query).length > 0) {
+      contextParts.push(`query=${JSON.stringify(request.query)}`);
     }
-    console.log(colorize(`* Method: ${methodName}`));
-    if (request?.query) console.log(colorize(`* Query:\n${JSON.stringify(request.query, null, 2)}`));
-    if (request?.params) console.log(colorize(`* Params:\n${JSON.stringify(request.params, null, 2)}`));
-    console.log(colorize(`----- ERROR LOG END #${uniqueId} -----`));
+    if (request?.params && Object.keys(request.params).length > 0) {
+      contextParts.push(`params=${JSON.stringify(request.params)}`);
+    }
+    const context = contextParts.length > 0 ? ` ${contextParts.join(' ')}` : '';
+    const timestamp = new Date().toISOString().replace('T', ' ').split('.')[0];
+    const red = '\u001B[31m';
+    const reset = '\u001B[0m';
+    const bold = '\u001B[1m';
+    console.error(`${timestamp} ${red}${bold}ERROR${reset} ${methodName} → ${message}${context}`);
+    if (process.env.NODE_ENV !== 'production' && error instanceof Error) {
+      console.error(error.stack);
+    }
+  }
+
+  public static logInfo(methodName: string, message: string): void {
+    const timestamp = new Date().toISOString().replace('T', ' ').split('.')[0];
+    const blue = '\u001B[34m';
+    const reset = '\u001B[0m';
+    const bold = '\u001B[1m';
+    console.info(`${timestamp} ${blue}${bold}INFO${reset} ${methodName} → ${message}`);
   }
 
   /**
@@ -380,6 +391,41 @@ export abstract class ApiHelper {
     return '';
   }
 
+  public static encodeBase62(value: bigint): string {
+    if (value === 0n) {
+      return '0';
+    }
+    let result = '';
+    let current = value;
+    while (current > 0n) {
+      const remainder = Number(current % 62n);
+      result = this.ALPHABET[remainder] + result;
+      current = current / 62n;
+    }
+
+    return result;
+  }
+
+  public static decodeBase62(value: string): bigint {
+    let result = 0n;
+    for (const char of value) {
+      result = result * 62n + BigInt(this.ALPHABET.indexOf(char));
+    }
+    return result;
+  }
+
+  public static encodeDate(date: string): string {
+    const timestamp = BigInt(Date.parse(date));
+    const obfuscated = (timestamp ^ this.API_PUBLIC_TOKEN) * this.PRIME;
+    return this.encodeBase62(obfuscated);
+  }
+
+  public static decodeDate(id: string): Date {
+    const obfuscated = this.decodeBase62(id);
+    const timestamp = (obfuscated / this.PRIME) ^ this.API_PUBLIC_TOKEN;
+    return new Date(Number(timestamp));
+  }
+
   /**
    * Attempts to fetch a resource from the specified URL, with up to three retries on failure
    * If the URL starts with "https://empire-html5.goodgamestudios.com/default/", or "https://discord.com", it rewrites the URL
@@ -408,11 +454,11 @@ export abstract class ApiHelper {
         }
         return response;
       } catch (error) {
-        console.error('Fetch error on %s: %s', url, error);
         if (index === retries - 1) throw error;
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
-    throw new Error('Max retries reached');
+    throw new Error(`Failed to fetch ${url} after ${retries} attempts`);
   }
 
   /**

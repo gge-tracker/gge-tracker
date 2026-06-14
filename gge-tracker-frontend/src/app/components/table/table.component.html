@@ -11,9 +11,6 @@
             <lucide-icon class="ms-1 lucide-icon" [img]="ChevronsDown"
             [class.reverse]="true"></lucide-icon>
           }
-          @if (sort() !== currentSort) {
-            <lucide-icon class="ms-1 lucide-icon" [img]="ChevronsUpDown"></lucide-icon>
-          }
         </span>
       </ng-template>
 
@@ -50,7 +47,7 @@
     @if (page() > 1) {
       <li class="page-item previous">
         <a (click)="previousPage.emit()" (keydown.enter)="previousPage.emit()" (keydown.space)="previousPage.emit()"
-        [class.loading]="isInLoading()" tabindex="0" translate>Précédent</a>
+        [class.loading]="isInLoading()" tabindex="0">{{ 'Précédent' | translate }}</a>
       </li>
     }
     @if (maxPage() && maxPage() < 6) {
@@ -96,7 +93,7 @@
     @if (maxPage() && page() < maxPage()) {
       <li class="page-item next">
         <a (click)="nextPage.emit()" (keydown.enter)="nextPage.emit()" (keydown.space)="nextPage.emit()"
-        [class.loading]="isInLoading()" tabindex="0" translate>Suivant</a>
+        [class.loading]="isInLoading()" tabindex="0">{{ 'Suivant' | translate }}</a>
       </li>
     }
   </ul>

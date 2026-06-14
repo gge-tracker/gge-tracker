@@ -674,7 +674,8 @@
   "refresh": "10s",
   "schemaVersion": 42,
   "tags": [
-    "docker"
+    "Infrastructure",
+    "Admin"
   ],
   "templating": {
     "list": []
@@ -685,7 +686,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Docker monitoring",
+  "title": "[gge-tracker] Docker Containers Monitoring",
   "uid": "deksb4lti6whsd",
   "version": 1
 }

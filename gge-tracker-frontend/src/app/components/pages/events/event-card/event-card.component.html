@@ -1,35 +1,52 @@
 <div [title]="'Voir le détail' | translate" (click)="onEventClick.emit(this.event())"
   (keyup.enter)="onEventClick.emit(this.event())" (keydown.space)="onEventClick.emit(this.event())" class="event-card"
-  [ngStyle]="{'background-image': 'url(/assets/' + event().type + '.png)'}">
+  [class.card-loading]="loading()"
+  [ngStyle]="{'background-image': 'url(/assets/' + selectedEvent().type + '.png)'}">
   <div class="event-overlay">
-    <div class="event-header">
-      <div class="event-badge">
+    <div class="event-header row gx-0">
+      <div class="event-badge col">
         <lucide-icon class="icons calendar-check" [img]="CalendarCheck"></lucide-icon>
         &nbsp;
-        {{ 'Événement du 0 au 0' | translate: { start: (event().from | date: ('Date_7' | translate)), end:
-        (event().to | date: ('Date_7' | translate)) } }}
+        {{ 'Événement du 0 au 0' | translate: {
+          start: (event().from | date: (options().dateFormat | translate) : ('Date_7' | translate)),
+          end: (event().to | date: (options().dateFormat | translate) : ('Date_7' | translate))
+        }
+        }}
       </div>
-      <div class="event-players">
+      <div class="event-badge-header col-auto">
         @if (options().displayMode === 'player-count') {
           <lucide-icon class="icons square-user" [img]="SquareUser"></lucide-icon>
           &nbsp;
           {{ (playerCount() || 0) | formatNumber }} {{ 'Joueurs' | translate | lowercase }}
+        } @else if (options().displayMode === 'points') {
+            <lucide-icon class="icons trophy" [img]="Trophy"></lucide-icon>
+            &nbsp;
+            #{{( rank() || 0) | formatNumber }}
+            ({{ (point() || 0) | formatNumber }} {{ 'points' | translate }})
         } @else {
           <lucide-icon class="icons trophy" [img]="Trophy"></lucide-icon>
           &nbsp;
           #{{( rank() || 0) | formatNumber }}
         }
       </div>
+      <ng-content select="[event-header-extra]"></ng-content>
     </div>
     <h5 class="event-title">
-      {{ (event().type === 'outer-realms' ? 'Royaume extérieur' : 'Lacis') | translate | titlecase }}
+      {{ selectedEvent().title | translate | titlecase }}
       <span class="event-icon">
-        <i class="fa-solid" [ngClass]="{
-          'fa-trophy': event().type === 'outer-realms',
-          'fa-shield-alt': event().type === 'beyond-the-horizon'
-        }"></i>
+        <i class="fa-solid" [ngClass]="selectedEvent().icon"></i>
       </span>
+      <ng-content select="[event-title-extra]"></ng-content>
     </h5>
-    <span class="event-cta">{{ 'Voir le détail' | translate }}</span>
+    <ng-content select="[event-body]"></ng-content>
+    <div class="event-footer d-flex w-100 justify-content-between align-items-end">
+      <span class="event-cta">{{ 'Voir le détail' | translate }}</span>
+      <ng-content select="[event-footer]"></ng-content>
+    </div>
   </div>
+  @if (loading()) {
+    <div class="loading-overlay">
+      <div class="loading-shimmer"></div>
+    </div>
+  }
 </div>

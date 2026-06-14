@@ -218,6 +218,14 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   public actualMonth = new Date().toISOString().split('T')[0].slice(0, 7);
   public groupedUpdates: GroupedUpdatesByDate[] = [];
   public playerNameForDistance = '';
+  public selectedKingdomId = 0;
+  public readonly availableWorlds = [
+    { id: 0, name: 'Le Grand Empire' },
+    { id: 2, name: 'Le Glacier éternel' },
+    { id: 1, name: 'Les Sables brûlants' },
+    { id: 3, name: 'Les Pics du feu' },
+    { id: 4, name: 'Les Îles orageuses' },
+  ];
   public allianceName = '';
   public updatesPlayers: ApiUpdateAlliancePlayers[] = [];
   public countQueryFinished = 0;
@@ -677,9 +685,16 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     this.cdr.detectChanges();
   }
 
+  public selectKingdom(id: number): void {
+    this.selectedKingdomId = id;
+    this.cdr.detectChanges();
+  }
+
   public async resetDistanceColumn(): Promise<void> {
     this.playerNameForDistance = '';
-    this.localStorage.removeItem('allianceDistancePlayerName_' + this.apiRestService.serverService.currentServer?.name);
+    this.selectedKingdomId = 0;
+    const serverName = this.apiRestService.serverService.currentServer?.name;
+    this.localStorage.removeItem('allianceDistancePlayerName_' + serverName);
     this.cdr.detectChanges();
     this.removeHeaderTableBlock();
   }
@@ -687,10 +702,8 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   public async onAddDistanceColumn(): Promise<void> {
     if (!this.playerNameForDistance?.trim()) return;
     this.isDistanceIsInLoading = true;
-    this.localStorage.setItem(
-      'allianceDistancePlayerName_' + this.apiRestService.serverService.currentServer?.name,
-      this.playerNameForDistance,
-    );
+    const serverName = this.apiRestService.serverService.currentServer?.name;
+    this.localStorage.setItem('allianceDistancePlayerName_' + serverName, this.playerNameForDistance);
     const data = await this.getAllianceMembers();
     this.isDistanceIsInLoading = false;
     if (!data) return;
@@ -871,21 +884,24 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   }
 
   private async getAllianceMembers(): Promise<ApiAlliancePlayersSearchResponse | undefined> {
-    let response = await this.apiRestService.getAllianceStats(this.allianceId, this.playerNameForDistance);
+    let response = await this.apiRestService.getAllianceStats(
+      this.allianceId,
+      this.playerNameForDistance,
+      this.selectedKingdomId,
+    );
     if (response.success === false) {
       if (response.error === 'Invalid player name') {
         this.toastService.add(ErrorType.NO_PLAYER_FOUND, 20_000);
         void this.resetDistanceColumn();
-        this.localStorage.setItem(
-          'allianceDistancePlayerName_' + this.apiRestService.serverService.currentServer?.name,
-          '',
-        );
         this.playerNameForDistance = '';
-        response = await this.apiRestService.getAllianceStats(this.allianceId, '');
+        response = await this.apiRestService.getAllianceStats(this.allianceId, '', 0);
         if (response.success === false) {
           this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
           return;
         }
+      } else if (response.error === 'Player not in this realm') {
+        this.toastService.add(ErrorType.PLAYER_NOT_IN_REALM, 20_000);
+        return;
       } else {
         this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
         return;
@@ -932,9 +948,8 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         this.cdr.detectChanges();
       }
     });
-    const allianceDistancePlayerName = this.localStorage.getItem(
-      'allianceDistancePlayerName_' + this.apiRestService.serverService.currentServer?.name,
-    );
+    const serverName = this.apiRestService.serverService.currentServer?.name;
+    const allianceDistancePlayerName = this.localStorage.getItem('allianceDistancePlayerName_' + serverName);
     if (allianceDistancePlayerName) {
       this.playerNameForDistance = allianceDistancePlayerName;
     }
@@ -2582,6 +2597,40 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         label: 'Nombre de joueurs',
         logo: 'assets/players.png',
         value: this.players.length.toString(),
+        valueCompare: 0,
+        avg: '',
+      },
+    );
+    const now = new Date();
+    const playersInPeace = this.players.filter(
+      (player) => player.peaceDisabledAt && new Date(player.peaceDisabledAt).getTime() > now.getTime(),
+    ).length;
+    const maxFameByAPlayer = this.players.reduce((accumulator, player) => Math.max(accumulator, player.currentFame), 0);
+    const maxFamePlayerName = this.players.find((player) => player.currentFame === maxFameByAPlayer)?.playerName;
+    const totalFame = this.players.reduce((accumulator, player) => accumulator + player.currentFame, 0);
+    this.cards.push(
+      {
+        identifier: 'players_in_peace',
+        label: 'En protection',
+        logo: 'assets/peace.png',
+        value:
+          playersInPeace.toString() + ' (' + this.formatAvg((playersInPeace / this.players.length) * 100, 1) + '%)',
+        valueCompare: 0,
+        avg: '',
+      },
+      {
+        identifier: 'max_fame',
+        label: 'Gloire max.',
+        logo: 'assets/glory.png',
+        value: this.customFormatter(maxFameByAPlayer, 0),
+        valueCompare: 0,
+        avg: maxFamePlayerName || '-',
+      },
+      {
+        identifier: 'total_fame',
+        label: 'Gloire cumulée',
+        logo: 'assets/glory.png',
+        value: this.customFormatter(totalFame, 0),
         valueCompare: 0,
         avg: '',
       },

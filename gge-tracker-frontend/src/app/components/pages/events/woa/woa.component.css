@@ -1,0 +1,41 @@
+img.alliance-rank-icon {
+  height: auto;
+  width: auto;
+}
+
+.points {
+  color: #ddd;
+  font-weight: bold;
+  text-align: center;
+}
+
+img.points-icon {
+  width: 26px;
+  height: 26px;
+  margin-left: 4px;
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-select: none;
+  --webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -o-user-select: none;
+}
+
+img.points-icon::selection {
+  background: transparent;
+}
+
+.col-alliance {
+  text-align: left;
+}
+
+.woa-tickets {
+  color: white;
+}
+
+.woa-tickets img {
+  width: 32px;
+}

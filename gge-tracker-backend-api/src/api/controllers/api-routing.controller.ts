@@ -169,6 +169,34 @@ export class ApiRoutingController {
     );
   }
 
+  public getWoaEventDataByEvent(request: express.Request, response: express.Response): void {
+    void ApiEvents.getWoaEventDataByEvent(request, response);
+  }
+
+  public getWoaEventDataById(request: express.Request, response: express.Response): void {
+    void ApiEvents.getWoaEventDataById(request, response);
+  }
+
+  public getWoaEventsByPlayerId(request: express.Request, response: express.Response): void {
+    void ApiEvents.getWoaEventsByPlayerId(request, response);
+  }
+
+  public getAquamarinePointsByPlayerId(request: express.Request, response: express.Response): void {
+    void ApiEvents.getAquamarinePointsByPlayerId(request, response);
+  }
+
+  public getAquamarinePointsData(request: express.Request, response: express.Response): void {
+    void ApiEvents.getAquamarinePointsData(request, response);
+  }
+
+  public getStormyIslesLeaderboard(request: express.Request, response: express.Response): void {
+    void ApiEvents.getStormyIslesLeaderboard(request, response);
+  }
+
+  public getWoaEventList(request: express.Request, response: express.Response): void {
+    void ApiEvents.getWoaEventList(request, response);
+  }
+
   public getDataEventType(request: express.Request, response: express.Response): void {
     // Events are stored only on FR1 database (centralized database)
     void ApiEvents.getDataEventType(
@@ -196,6 +224,10 @@ export class ApiRoutingController {
 
   public getDungeons(request: express.Request, response: express.Response): void {
     void ApiDungeons.getDungeons(request, response);
+  }
+
+  public getDungeonsByPlayerId(request: express.Request, response: express.Response): void {
+    void ApiDungeons.getDungeonsByPlayer(request, response);
   }
 
   public getServerMovements(request: express.Request, response: express.Response): void {
@@ -226,6 +258,10 @@ export class ApiRoutingController {
   public getCastleByPlayerName(request: express.Request, response: express.Response): void {
     // Queue the castle requests to avoid overloading the server with multiple requests at the same time
     this.castleQueue.enqueue(request, response, ApiCastle.getCastleByPlayerName);
+  }
+
+  public getRandomCastle(request: express.Request, response: express.Response): void {
+    void ApiCastle.getRandomCastle(request, response);
   }
 
   public getCartographyByAllianceId(request: express.Request, response: express.Response): void {

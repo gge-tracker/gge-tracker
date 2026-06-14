@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { IconComponent } from '@ggetracker-components/icon/icon.component';
+import { ModalFormGroupComponent } from '@ggetracker-components/modal-form-group/modal-form-group.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
 import { Alliance, ApiAllianceResponse, ErrorType } from '@ggetracker-interfaces/empire-ranking';
@@ -41,6 +42,7 @@ interface FormFilters {
     SearchFormComponent,
     TranslateModule,
     DecimalPipe,
+    ModalFormGroupComponent,
   ],
   standalone: true,
   templateUrl: './alliances.component.html',

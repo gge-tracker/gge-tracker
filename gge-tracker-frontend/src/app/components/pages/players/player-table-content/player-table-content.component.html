@@ -36,7 +36,7 @@
         <span class="level-main">{{player.level}}</span>
         @if (player.legendaryLevel) {
           <div class="level-separator"></div>
-          <span class="level-legendary">
+          <span class="level-legendary" [attr.data-level]="player.legendaryLevel">
             {{ player.legendaryLevel }}
           </span>
         }
