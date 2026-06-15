@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "js-yaml": "^4.1.1",
+    "js-yaml": "^4.2.0",
     "pg": "^8.11.0"
   }
 }
