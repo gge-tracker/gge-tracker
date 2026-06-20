@@ -27,7 +27,7 @@
     "redis": "^5.11.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
-    "undici": "^6.24.0",
+    "undici": "^6.27.0",
     "ws": "^8.21.0"
   },
   "devDependencies": {
