@@ -169,8 +169,19 @@ export abstract class ApiAlliances implements ApiHelper {
               legendary_level: Number(result.legendary_level),
             };
           });
+          const ggeTrackerData = ApiHelper.ggeTrackerManager.getServerByCode(code);
           const result = {
+            ggetracker_server_name: ggeTrackerData.outer_name,
+            ggetracker_server_id: ggeTrackerData.code,
+            ggetracker_timezone_offset: ggeTrackerData.timezoneOffset,
+            ggetracker_zone: ggeTrackerData.zone,
             alliance_name: results.rows[0].alliance_name,
+            is_island_king: results.rows[0].is_island_king,
+            is_searching_players: results.rows[0].is_searching_players,
+            auto_join_enabled: results.rows[0].auto_join_enabled,
+            language: results.rows[0].language,
+            description: results.rows[0].description,
+            description_history: results.rows[0].description_history ?? [],
             players: allianceStatistics,
           };
           void ApiHelper.updateCache(cachedKey, result);
@@ -238,7 +249,12 @@ export abstract class ApiAlliances implements ApiHelper {
           SUM(P.loot_all_time) AS loot_all_time,
           SUM(P.current_fame) AS current_fame,
           SUM(P.highest_fame) AS highest_fame,
-          COUNT(P.id) AS player_count
+          COUNT(P.id) AS player_count,
+          A.is_island_king,
+          A.is_searching_alliance AS is_searching_players,
+          A.auto_join_enabled,
+          A.language,
+          A.description
         FROM
           alliances A
         LEFT JOIN
@@ -278,6 +294,11 @@ export abstract class ApiAlliances implements ApiHelper {
             current_fame: result.current_fame,
             highest_fame: result.highest_fame,
             player_count: result.player_count,
+            is_island_king: result.is_island_king,
+            is_searching_players: result.is_searching_players,
+            auto_join_enabled: result.auto_join_enabled,
+            language: result.language,
+            description: result.description,
           };
           void ApiHelper.updateCache(cachedKey, mappedResult);
           response.status(ApiHelper.HTTP_OK).send(mappedResult);
@@ -398,7 +419,12 @@ export abstract class ApiAlliances implements ApiHelper {
           SUM(P.current_fame) AS current_fame,
           SUM(P.highest_fame) AS highest_fame,
           COUNT(P.id) AS player_count,
-          COUNT(P.id) FILTER (WHERE P.loot_current > 0) AS active_player_count
+          COUNT(P.id) FILTER (WHERE P.loot_current > 0) AS active_player_count,
+          A.is_island_king,
+          A.is_searching_alliance AS is_searching_players,
+          A.auto_join_enabled,
+          A.language,
+          A.description
         FROM
           alliances A
         LEFT JOIN
@@ -487,6 +513,11 @@ export abstract class ApiAlliances implements ApiHelper {
                 highest_fame: result.highest_fame,
                 player_count: result.player_count,
                 active_player_count: result.active_player_count,
+                is_island_king: result.is_island_king,
+                is_searching_players: result.is_searching_players,
+                auto_join_enabled: result.auto_join_enabled,
+                language: result.language,
+                description: result.description,
               };
             }),
           };
@@ -545,6 +576,11 @@ export abstract class ApiAlliances implements ApiHelper {
     return `
       SELECT
         A.name AS alliance_name,
+        A.is_island_king,
+        A.is_searching_alliance AS is_searching_players,
+        A.auto_join_enabled,
+        A.language,
+        A.description,
         P.id AS player_id,
         P.name AS player_name,
         A.name AS alliance_name,
@@ -562,11 +598,24 @@ export abstract class ApiAlliances implements ApiHelper {
         P.level,
         P.alliance_rank,
         P.legendary_level,
+        D.history AS description_history,
         ${distanceExpr} AS calculated_distance
       FROM
         alliances A
       LEFT JOIN
         players P ON A.id = P.alliance_id
+      LEFT JOIN LATERAL (
+        SELECT jsonb_agg(
+          jsonb_build_object(
+            'old_description', old_description,
+            'new_description', new_description,
+            'created_at', created_at
+          )
+          ORDER BY created_at DESC
+        ) AS history
+        FROM alliance_description_history
+        WHERE alliance_id = A.id
+      ) D ON true
       ${lateralJoin}
       WHERE
         A.id = $${parameterIndex++}

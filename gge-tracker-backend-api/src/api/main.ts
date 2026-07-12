@@ -2143,6 +2143,47 @@ publicRoutes.get('/cartography/id/:allianceId', routingInstance.getCartographyBy
  *                 alliance_name:
  *                   type: string
  *                   description: The name of the alliance
+ *                 ggetracker_server_name:
+ *                   type: string
+ *                   description: Internal server name
+ *                 ggetracker_server_id:
+ *                   type: string
+ *                   description: Internal server identifier
+ *                 ggetracker_timezone_offset:
+ *                   type: string
+ *                   description: Internal server timezone offset
+ *                 ggetracker_zone:
+ *                   type: string
+ *                   description: Internal server zone identifier
+ *                 is_island_king:
+ *                   type: boolean
+ *                   description: True if the alliance is island King
+ *                 is_searching_players:
+ *                   type: boolean
+ *                   description: True if the alliance is searching new players
+ *                 auto_join_enabled:
+ *                   type: boolean
+ *                   description: True if anyone can instant join the alliance
+ *                 language:
+ *                   type: string
+ *                   description: Alliance language
+ *                 description:
+ *                   type: string
+ *                   description: Alliance description
+ *                 description_history:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       created_at:
+ *                         type: string
+ *                         description: Timestamp of the description update
+ *                       new_description:
+ *                         type: string
+ *                         description: New description content
+ *                       old_description:
+ *                         type: integer
+ *                         description: Previous description content
  *                 players:
  *                   type: array
  *                   items:
