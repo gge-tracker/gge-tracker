@@ -38,7 +38,7 @@ export abstract class ApiHelper {
   public static readonly GGE_BASE_URL = 'https://empire-html5.goodgamestudios.com';
   public static readonly ASSETS_BASE_URL = this.GGE_BASE_URL + '/default';
   public static readonly CONFIG_BASE_URL = this.GGE_BASE_URL + '/config';
-  public static readonly API_VERSION = require('../../../package.json').version;
+  public static readonly API_VERSION = require('/app/package.json').version;
   public static readonly API_VERSION_RELEASE_DATE = this.formatReleaseDate(this.API_VERSION);
 
   /**

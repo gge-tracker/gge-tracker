@@ -2903,7 +2903,10 @@ export class GenericFetchAndSaveBackend {
               allianceToUpdate.allianceId,
             ]);
 
-            if (allianceToUpdate.oldDescription !== allianceToUpdate.allianceDescription) {
+            if (
+              currentAlliancesMap.get(allianceToUpdate.allianceId) &&
+              allianceToUpdate.oldDescription !== allianceToUpdate.allianceDescription
+            ) {
               const pgSqlAllianceHistoryQuery = `
                 INSERT INTO alliance_description_history
                 (
