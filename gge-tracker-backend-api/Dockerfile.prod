@@ -11,7 +11,7 @@
 #                                                                                    #
 ######################################################################################
 
-FROM node:20-slim AS documentation
+FROM node:24-slim AS documentation
 
 WORKDIR /app
 
@@ -23,7 +23,7 @@ COPY . .
 RUN npx tsc \
     && npx swagger-jsdoc -d ./dist/documentation.js
 
-FROM node:20-slim AS build
+FROM node:24-slim AS build
 WORKDIR /app
 
 COPY package*.json ./
@@ -31,7 +31,7 @@ RUN npm ci --omit=dev
 RUN npx puppeteer browsers install chrome
 COPY --from=documentation /app/dist/api/ /app/dist/
 
-FROM node:20 AS production
+FROM node:24 AS production
 # Node 20 (and not slim) is required for puppeteer to work properly
 WORKDIR /app
 

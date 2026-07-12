@@ -1,6 +1,9 @@
 {
 	"name": "my-fetcher",
 	"version": "1.0.0",
+	"engines": {
+		"node": ">=24"
+	},
 	"private": true,
 	"scripts": {
 		"deploy": "wrangler deploy",

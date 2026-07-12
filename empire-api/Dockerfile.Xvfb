@@ -11,7 +11,7 @@
 #                                                                                    #
 ######################################################################################
 
-FROM node:20-slim AS build
+FROM node:24-slim AS build
 
 LABEL fly_launch_runtime="NodeJS"
 
@@ -38,7 +38,7 @@ fi
 
 RUN npm install --omit=dev
 
-FROM node:20-alpine
+FROM node:24-alpine
 
 RUN apk add --no-cache \
     bash \

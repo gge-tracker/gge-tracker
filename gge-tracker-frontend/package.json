@@ -1,6 +1,9 @@
 {
   "name": "gge-tracker",
   "version": "26.06.02-beta",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "ng": "ng",
     "start": "ng serve --host 0.0.0.0",

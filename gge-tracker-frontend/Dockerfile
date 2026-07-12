@@ -11,7 +11,7 @@
 #                                                                                    #
 ######################################################################################
 
-FROM node:20-slim AS build
+FROM node:24-slim AS build
 
 WORKDIR /app
 COPY ./package*.json ./
@@ -28,7 +28,7 @@ RUN if [ "$BUILD_ENV" = "beta" ]; then \
     fi
 RUN npm run build --output-path=dist --configuration=production
 
-FROM node:20-slim AS production
+FROM node:24-slim AS production
 
 RUN apt-get update \
     && apt-get install -y nginx \
