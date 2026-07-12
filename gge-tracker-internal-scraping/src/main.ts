@@ -18,7 +18,7 @@ import { createClient } from 'redis';
 import { HIGHSCORES_CONFIG } from './definitions/highest_scores.config';
 import { SWAP_RANK_POINTS_TABLE } from './definitions/swap-rank-points.config';
 import { TEMP_SERVER_SETTINGS } from './definitions/temp-server-events.config';
-import { Castle, CastleMovement, DungeonMap, HighScoreKey, PlayerDatabase } from './interfaces';
+import { AllianceDatabase, Castle, CastleMovement, DungeonMap, HighScoreKey, PlayerDatabase } from './interfaces';
 import Utils from './utils';
 
 export interface DiscordApiMessageBody {
@@ -91,6 +91,7 @@ export class GenericFetchAndSaveBackend {
   private playerEventPointHistoryList: { [key: string]: { [key: string]: number | null } } = {};
   private customPlayersAttributesList: { [key: string]: any } = {};
   private currentPlayers: PlayerDatabase[] = [];
+  private currentAlliances: AllianceDatabase[] = [];
   private isE4KServer: boolean = false;
   private readonly ENV_LT = {
     war_realms: 44,
@@ -762,7 +763,9 @@ export class GenericFetchAndSaveBackend {
       // Request a full clear of parameters
       await this.clearParameters();
       Utils.logMessage(' [info] Retrieving player data from the database...');
-      this.currentPlayers = await this.getDatabasePlayers();
+      const { players, alliances } = await this.getDatabasePlayers();
+      this.currentPlayers = players;
+      this.currentAlliances = alliances;
       Utils.logMessage('* Processing loot (1/9)');
       await this.updateParameter('is_currently_updating', 1);
       await this.fillLootHistory();
@@ -2829,6 +2832,108 @@ export class GenericFetchAndSaveBackend {
     await this.genericFillHistory(args, date, 'berimond kingdoms', successCallback);
   }
 
+  private async bulkUpdateAlliance(allianceIds: Set<number>): Promise<void> {
+    Utils.logMessage('Starting bulkUpdateAlliance insertions...');
+    const allianceToUpdates = [];
+    const batchSize = 25;
+    const currentAlliancesMap = new Map(this.currentAlliances.map((a) => [a.allianceId, a]));
+
+    for (const allianceId of allianceIds) {
+      const response = await this.genericFetchData('ain', { AID: allianceId });
+      if (!response?.data?.content?.A) {
+        Utils.logMessage(' [KO] No alliance data for alliance', allianceId);
+        continue;
+      }
+      const data = response.data.content.A;
+      const allianceDescription: string = data.D;
+      const allianceLanguage: string = data.ALL;
+      const autoJoinEnabled: boolean = data.IA !== 0;
+      const isIslandKingAlliance: boolean = data.KA !== 0;
+      const isSearchingAlliance: boolean = data.IS !== 0;
+      const currentAlliance = currentAlliancesMap.get(allianceId);
+
+      if (
+        !currentAlliance ||
+        currentAlliance.auto_join_enabled !== autoJoinEnabled ||
+        currentAlliance.description !== allianceDescription ||
+        currentAlliance.language !== allianceLanguage ||
+        currentAlliance.is_island_king !== isIslandKingAlliance ||
+        currentAlliance.is_searching_alliance !== isSearchingAlliance
+      ) {
+        allianceToUpdates.push({
+          allianceId,
+          oldDescription: currentAlliance?.description ?? null,
+          new: !currentAlliance,
+          autoJoinEnabled,
+          isIslandKingAlliance,
+          isSearchingAlliance,
+          allianceLanguage,
+          allianceDescription,
+        });
+      }
+    }
+
+    const createdAt = new Date();
+
+    Utils.logMessage('Preparing database bulk insertion of ' + allianceToUpdates.length + 'items...');
+
+    for (let i = 0; i < allianceToUpdates.length; i += batchSize) {
+      const batch = allianceToUpdates.slice(i, i + batchSize);
+      try {
+        Utils.logMessage('[bulkUpdateAlliance] : Insert new batch : ' + i);
+        await Promise.all(
+          batch.map(async (allianceToUpdate) => {
+            const pgSqlAllianceUpdateQuery = `
+              UPDATE alliances
+              SET
+                is_searching_alliance = $1,
+                auto_join_enabled = $2,
+                is_island_king = $3,
+                language = $4,
+                description = $5
+              WHERE id = $6
+            `;
+
+            await this.pgSqlQuery(pgSqlAllianceUpdateQuery, [
+              allianceToUpdate.isSearchingAlliance,
+              allianceToUpdate.autoJoinEnabled,
+              allianceToUpdate.isIslandKingAlliance,
+              allianceToUpdate.allianceLanguage,
+              allianceToUpdate.allianceDescription,
+              allianceToUpdate.allianceId,
+            ]);
+
+            if (allianceToUpdate.oldDescription !== allianceToUpdate.allianceDescription) {
+              const pgSqlAllianceHistoryQuery = `
+                INSERT INTO alliance_description_history
+                (
+                  alliance_id,
+                  old_description,
+                  new_description,
+                  created_at
+                )
+                VALUES
+                ($1, $2, $3, $4)
+              `;
+
+              await this.pgSqlQuery(pgSqlAllianceHistoryQuery, [
+                allianceToUpdate.allianceId,
+                allianceToUpdate.oldDescription,
+                allianceToUpdate.allianceDescription,
+                createdAt,
+              ]);
+            }
+          }),
+        );
+      } catch (error) {
+        Utils.logMessage('Error during bulkUpdateAlliance : ' + error);
+        Utils.logMessage('Skipping');
+      }
+    }
+
+    Utils.logMessage('Finished bulkUpdateAlliance insertions');
+  }
+
   private async fillBloodcrowHistory(): Promise<void> {
     if (this.DB_UPDATES.criticalErrors > 0) {
       Utils.logMessage(' [KO] There are critical errors, stopping process');
@@ -3155,11 +3260,13 @@ export class GenericFetchAndSaveBackend {
       const limit = pLimit(targetLimit);
       const insertionPromises: Promise<void>[] = [];
       const updates: Record<number, any[]> = {};
+      const allianceIds: Set<number> = new Set<number>();
       for (const key of keys) {
         const playerId = Number(key);
         const loot_current = this.playerLootAndMightPointHistoryList[key][0] || 0;
         const might_current = this.playerLootAndMightPointHistoryList[key][1] || 0;
         const allianceId = this.playerLootAndMightPointHistoryList[key][2] || null;
+        allianceIds.add(allianceId);
         const allianceName = this.playerLootAndMightPointHistoryList[key][3] || null;
         let ap = this.playerLootAndMightPointHistoryList[key][4] || null;
         let realmAp = this.playerLootAndMightPointHistoryList[key][13] || null;
@@ -3221,6 +3328,8 @@ export class GenericFetchAndSaveBackend {
           j++;
         }
       }
+      Utils.logMessage('Updating alliance history...');
+      await this.bulkUpdateAlliance(allianceIds);
       Utils.logMessage('Number of players to update (1):', j);
       Utils.logMessage('Updating players...');
       await Promise.all(insertionPromises);
@@ -3603,7 +3712,6 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('maxLootPlayerId:', maxLootPlayerId);
       Utils.logMessage('[end debug] Server statistics params');
       //await this.connection.execute(ServerStatsQuery, params);
-      Utils.logMessage('MariaDB: Updating server statistics...');
       await this.pgSqlQuery(pgServerStatsQuery, params);
       Utils.logMessage('PostgreSQL: Updating server statistics...');
     } catch (error) {
@@ -3722,34 +3830,59 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
-  private async getDatabasePlayers(): Promise<PlayerDatabase[]> {
+  private async getDatabasePlayers(): Promise<{ players: PlayerDatabase[]; alliances: AllianceDatabase[] }> {
     if (this.DB_UPDATES.criticalErrors > 0) {
       Utils.logMessage(' [KO] There are critical errors, stopping the process getDatabasePlayers');
-      return [];
+      return { players: [], alliances: [] };
     }
     Utils.logMessage('Database connection successful');
     const pgQuery = `
-      SELECT P.id as player_id, P.alliance_id, P.name AS player_name, A.name AS alliance_name, P.castles
-      FROM players P LEFT JOIN alliances A
+      SELECT
+        P.id as player_id,
+        P.alliance_id,
+        P.name AS player_name,
+        P.castles,
+        A.name AS alliance_name,
+        A.is_searching_alliance,
+        A.auto_join_enabled,
+        A.is_island_king,
+        A.language,
+        A.description
+      FROM players P
+      LEFT JOIN alliances A
       ON P.alliance_id = A.id
     `;
+
     const result = await this.pgSqlQuery(pgQuery);
     const rows = result.rows;
-    return rows.map((row: { player_id: any; alliance_id: any; player_name: any; alliance_name: any; castles: any }) => {
-      const playerId = row.player_id;
-      const allianceId = row.alliance_id;
-      const playerName = row.player_name;
-      const allianceName = row.alliance_name;
-      const castles = row.castles;
-      const parsedCastles: Castle[] = castles ?? [];
-      return {
-        playerId: playerId,
-        allianceId: allianceId,
-        playerName: playerName,
-        allianceName: allianceName,
-        castles: parsedCastles,
-      };
+
+    const players: PlayerDatabase[] = [];
+    const alliancesMap = new Map<number, AllianceDatabase>();
+
+    rows.forEach((row: any) => {
+      // Player
+      players.push({
+        playerId: row.player_id,
+        allianceId: row.alliance_id,
+        playerName: row.player_name,
+        allianceName: row.alliance_name,
+        castles: row.castles ?? [],
+      });
+
+      // Alliance
+      if (row.alliance_id !== null && !alliancesMap.has(row.alliance_id)) {
+        alliancesMap.set(row.alliance_id, {
+          allianceId: row.alliance_id,
+          is_searching_alliance: row.is_searching_alliance,
+          auto_join_enabled: row.auto_join_enabled,
+          language: row.language,
+          description: row.description,
+          is_island_king: row.is_island_king,
+        });
+      }
     });
+    const alliances = Array.from(alliancesMap.values());
+    return { players, alliances };
   }
 
   private async clearParameters(): Promise<void> {

@@ -84,10 +84,6 @@ services:
       - ./gge-tracker-backend-api:/app
       - /app/node_modules
     depends_on:
-      mariadb:
-        condition: service_healthy
-      redis-server:
-        condition: service_healthy
       postgres:
         condition: service_healthy
       # database-migrate:

@@ -19,6 +19,15 @@ export interface PlayerDatabase {
   castles: Castle[];
 }
 
+export interface AllianceDatabase {
+  allianceId: number;
+  is_searching_alliance: boolean | null;
+  auto_join_enabled: boolean | null;
+  language: string | null;
+  description: string | null;
+  is_island_king: boolean | null;
+}
+
 export interface DiscordApiMessageBody {
   channelId: string;
   embeds: {

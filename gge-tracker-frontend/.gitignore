@@ -49,3 +49,6 @@ Thumbs.db
 
 # Scully
 .scully
+
+# Others
+src/app/components/pages/release-notes/discord-announcements
