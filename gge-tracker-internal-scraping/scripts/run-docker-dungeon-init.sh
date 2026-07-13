@@ -34,5 +34,4 @@ docker run -it --rm --network backend --env-file=$BASE_SCRIPT_DIR/.env \
     -e PG_DB=$PG_DB \
     -e LOG_SUFFIX=$LOG_SUFFIX \
     -e CONNECTION_LIMIT=$CONNECTION_LIMIT \
-    -v $BASE_SCRIPT_DIR/logs:/app/logs \
     gge-tracker-internal-scraping dist/dungeon-init.js

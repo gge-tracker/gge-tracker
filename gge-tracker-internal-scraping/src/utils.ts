@@ -5,16 +5,44 @@
 //  \___  /\___  / \___  >          |__|  |__|  (____  /\___  >__|_ \\___  >__|
 // /_____//_____/      \/                            \/     \/     \/    \/
 //
-//  Copyrights (c) 2025 - gge-tracker.com & gge-tracker contributors
+//  Copyrights (c) 2026 - gge-tracker.com & gge-tracker contributors
 //
-import * as fs from 'fs';
+import * as path from 'path';
+import { pino, destination, stdTimeFunctions, Logger } from 'pino';
+
+const isDevelopment: boolean = process.env.ENVIRONMENT === 'development';
+
+/**
+ * Structured logger writing NDJSON to stdout. The Docker `json-file` driver persists it and
+ * Promtail ships it to Loki (see `monitoring/promtail-config.yml`), so no log file is written
+ * by the process itself.
+ *
+ * Every record carries `service`, `script` and `server` so a single run can be isolated in
+ * Grafana. In development the output is piped through `pino-pretty` for human reading.
+ */
+const logger: Logger = pino(
+  {
+    level: process.env.LOG_LEVEL ?? 'info',
+    base: {
+      service: 'internal-scraping',
+      script: path.basename(process.argv[1] ?? 'unknown', '.js'),
+      server: process.env.LOG_SUFFIX ?? process.env.TARGET_LOG_SUFFIX,
+    },
+    timestamp: stdTimeFunctions.isoTime,
+    formatters: { level: (label: string) => ({ level: label }) },
+    ...(isDevelopment
+      ? { transport: { target: 'pino-pretty', options: { colorize: true, translateTime: 'HH:MM:ss' } } }
+      : {}),
+  },
+  // These are short-lived one-shot containers that may `process.exit()` on an error path;
+  // synchronous writes guarantee the last records are not lost on exit.
+  isDevelopment ? undefined : destination({ sync: true }),
+);
 
 /**
  * Utility class providing logging and progress reporting functionalities.
  */
 class Utils {
-  private static currentLogs: string[] = [];
-
   /**
    * Writes a progress message to the standard output, displaying the current percentage
    * of completion and the current time.
@@ -30,49 +58,51 @@ class Utils {
   }
 
   /**
-   * Logs a message to the standard output with a timestamp and stores it in the current logs.
+   * Logs a message at `info` level.
    *
    * @param message - The message components to log. All arguments are joined into a single string.
    */
   public static logMessage(...message: Array<any>): void {
-    const messageStr: string = message.join(' ');
-    const time: string = new Date().toLocaleTimeString();
-    const logMessage: string = `[${time}] ${messageStr}\n`;
-    process.stdout.write(logMessage);
-    Utils.currentLogs.push(logMessage);
+    logger.info(Utils.formatMessage(message));
   }
 
   /**
-   * Writes the current logs to a file in the `/app/logs` directory.
-   * The filename format depends on the number of critical logs:
-   * - If `nbCriticals` is greater than 0, the file is named with a `-CRITICAL.log` suffix.
-   * - Otherwise, the file includes the minute and has a `.log` extension.
+   * Logs a message at `warn` level.
    *
-   * The log file is created synchronously and contains all entries from `Utils.currentLogs`.
-   * After writing, `Utils.currentLogs` is cleared.
-   *
-   * @param nbCriticals - The number of critical log entries.
-   * @param server - The server identifier (default is `'FR1'`).
+   * @param message - The message components to log. All arguments are joined into a single string.
    */
-  public static logsAllInFile(nbCriticals: number, server = 'FR1'): void {
-    try {
-      const date: Date = new Date();
-      const year: number = date.getFullYear();
-      const month: string = date.getMonth() < 9 ? `0${date.getMonth() + 1}` : `${date.getMonth() + 1}`;
-      const day: string = date.getDate() < 10 ? `0${date.getDate()}` : `${date.getDate()}`;
-      const hour: string = date.getHours() < 10 ? `0${date.getHours()}` : `${date.getHours()}`;
-      const minutes: string = date.getMinutes() < 10 ? `0${date.getMinutes()}` : `${date.getMinutes()}`;
-      let fileName: string;
-      if (nbCriticals > 0) {
-        fileName = `/app/logs/${year}-${month}-${day}-${hour}h-${server}-CRITICAL.log`;
-      } else {
-        fileName = `/app/logs/${year}-${month}-${day}-${hour}h-${minutes}m-${server}.log`;
-      }
-      fs.writeFileSync(fileName, Utils.currentLogs.join('\n'));
-    } catch (error) {
-      console.error('Error in logsAllFile', error);
-    } finally {
-      Utils.currentLogs = [];
+  public static logWarning(...message: Array<any>): void {
+    logger.warn(Utils.formatMessage(message));
+  }
+
+  /**
+   * Logs a message at `error` level. Use this for anything counted as a critical error, so it can
+   * be alerted on in Grafana with `{service="internal-scraping", level="error"}`.
+   *
+   * @param message - The message components to log. All arguments are joined into a single string.
+   */
+  public static logError(...message: Array<any>): void {
+    logger.error(Utils.formatMessage(message));
+  }
+
+  /**
+   * Emits the closing record of a run. Replaces the previous per-run log file: instead of encoding
+   * severity in a `-CRITICAL.log` filename, the summary is logged at `error` level when the run
+   * produced critical errors and at `info` level otherwise.
+   *
+   * The `server` label is not taken from here but from `LOG_SUFFIX`, which identifies the container.
+   * A single container runs several scopes (the server itself, plus pseudo-scopes such as
+   * `GLOBAL_RANKING` or `GT_TOURNAMENT`), so the argument is recorded as `scope` instead.
+   *
+   * @param nbCriticals - The number of critical errors recorded during the run.
+   * @param scope - The scope that just finished (default is `'FR1'`).
+   */
+  public static flushRunSummary(nbCriticals: number, scope = 'FR1'): void {
+    const summary = { event: 'run_summary', scope, criticalErrors: nbCriticals };
+    if (nbCriticals > 0) {
+      logger.error(summary, `Run finished with ${nbCriticals} critical error(s)`);
+    } else {
+      logger.info(summary, 'Run finished without critical error');
     }
   }
 
@@ -344,6 +374,30 @@ class Utils {
       ':transgender_flag:',
       ':triangular_flag_on_post:',
     ];
+  }
+
+  /**
+   * Renders log arguments into a single message. `Error` instances are expanded to their stack
+   * trace and plain objects are serialized, so neither is flattened into `[object Object]`.
+   *
+   * @param message - The message components to render.
+   */
+  private static formatMessage(message: Array<any>): string {
+    return message
+      .map((part: any): string => {
+        if (part instanceof Error) {
+          return part.stack ?? `${part.name}: ${part.message}`;
+        }
+        if (typeof part === 'object' && part !== null) {
+          try {
+            return JSON.stringify(part);
+          } catch {
+            return String(part);
+          }
+        }
+        return String(part);
+      })
+      .join(' ');
   }
 }
 

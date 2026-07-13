@@ -372,7 +372,6 @@ export class GenericFetchAndSaveBackend {
         Utils.logMessage('.');
       }
       await this.pgSqlConnection.end();
-      Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, this.server);
     } catch (error) {
       Utils.logMessage('Error refreshing Grand Tournament results');
       Utils.logMessage('========= BEGIN STACK TRACE ============');
@@ -382,7 +381,7 @@ export class GenericFetchAndSaveBackend {
       this.DB_UPDATES.criticalErrors++;
     }
     await this.pgSqlConnection.end();
-    Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, this.server);
+    Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, this.server);
 
     await this.logToLoki({
       job: 'grand-tournament',
@@ -427,7 +426,7 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('.');
     }
     await this.pgSqlConnection.end();
-    Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, this.server);
+    Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, this.server);
     await this.logToLoki({
       job: 'global-rankings-refresh',
       data: {
@@ -708,7 +707,7 @@ export class GenericFetchAndSaveBackend {
             durationMs: new Date().getTime() - start.getTime(),
           },
         });
-        Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, 'OUTER_REALMS_AND_BEYOND_THE_HORIZON_EVENT_HISTORY');
+        Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, 'OUTER_REALMS_AND_BEYOND_THE_HORIZON_EVENT_HISTORY');
       }
     }
   }
@@ -869,7 +868,7 @@ export class GenericFetchAndSaveBackend {
       this.playerEventPointHistoryList = {};
       this.currentPlayers = [];
       await this.pgSqlConnection.end();
-      Utils.logsAllInFile(criticalErrors, this.server);
+      Utils.flushRunSummary(criticalErrors, this.server);
     }
   }
 
@@ -1380,7 +1379,7 @@ export class GenericFetchAndSaveBackend {
       for (let i = 0; i < 9; i++) {
         Utils.logMessage('.');
       }
-      Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, this.server);
+      Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, this.server);
       await this.logToLoki({
         job: 'outer-realms-data-fetch',
         data: {
@@ -1579,7 +1578,7 @@ export class GenericFetchAndSaveBackend {
           this.DB_UPDATES.criticalErrors,
         );
       }
-      Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, this.server);
+      Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, this.server);
     }
   }
 
@@ -2832,6 +2831,40 @@ export class GenericFetchAndSaveBackend {
     await this.genericFillHistory(args, date, 'berimond kingdoms', successCallback);
   }
 
+  /**
+   * Fetches the details of a single alliance, retrying transient network failures.
+   *
+   * empire-api drops the connection (`socket hang up`) when its underlying GGE socket reconnects or
+   * when it is hammered, so a single alliance must never abort the whole player update: on repeated
+   * failure we return null and the caller skips that alliance.
+   *
+   * @param allianceId - The alliance to fetch.
+   * @returns The `ain` response, or null if every attempt failed.
+   */
+  private async fetchAllianceInfo(allianceId: number): Promise<AxiosResponse<any> | null> {
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await this.genericFetchData('ain', { AID: allianceId });
+      } catch (error) {
+        Utils.logMessage(
+          ' [KO] Error fetching alliance',
+          allianceId,
+          '- attempt',
+          attempt + '/' + maxAttempts,
+          ':',
+          String(error),
+        );
+        if (attempt === maxAttempts) {
+          return null;
+        }
+        // Back off before retrying, to let empire-api recover instead of hammering it.
+        await this.sleep(1000 * attempt);
+      }
+    }
+    return null;
+  }
+
   private async bulkUpdateAlliance(allianceIds: Set<number>): Promise<void> {
     Utils.logMessage('Starting bulkUpdateAlliance insertions...');
     const allianceToUpdates = [];
@@ -2839,7 +2872,7 @@ export class GenericFetchAndSaveBackend {
     const currentAlliancesMap = new Map(this.currentAlliances.map((a) => [a.allianceId, a]));
 
     for (const allianceId of allianceIds) {
-      const response = await this.genericFetchData('ain', { AID: allianceId });
+      const response = await this.fetchAllianceInfo(allianceId);
       if (!response?.data?.content?.A) {
         Utils.logMessage(' [KO] No alliance data for alliance', allianceId);
         continue;
@@ -3331,8 +3364,6 @@ export class GenericFetchAndSaveBackend {
           j++;
         }
       }
-      Utils.logMessage('Updating alliance history...');
-      await this.bulkUpdateAlliance(allianceIds);
       Utils.logMessage('Number of players to update (1):', j);
       Utils.logMessage('Updating players...');
       await Promise.all(insertionPromises);
@@ -3342,6 +3373,8 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('Player updates completed successfully!');
       Utils.logMessage('Power and loot points updates completed successfully');
       Utils.logMessage('Number of players updated:', j);
+      Utils.logMessage('Updating alliance history...');
+      await this.bulkUpdateAlliance(allianceIds);
     } catch (error) {
       Utils.logMessage('Error updating player power and loot points');
       Utils.logMessage('========== BEGIN STACK TRACE ============');

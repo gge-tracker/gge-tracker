@@ -52,5 +52,4 @@ exec docker run --rm --init --network backend --env-file=$BASE_SCRIPT_DIR/.env \
     -e TARGET_LOG_SUFFIX=$TARGET_LOG_SUFFIX \
     -e TARGET_CONNECTION_LIMIT=$TARGET_CONNECTION_LIMIT \
     --cpus="0.5" \
-    -v $BASE_SCRIPT_DIR/logs:/app/logs \
     gge-tracker-internal-scraping dist/outer-realms-token-scrapper.js

@@ -34,7 +34,6 @@ script -q -c "docker run -it --rm --network backend --env-file=$BASE_SCRIPT_DIR/
     -e PG_DB=$PG_DB \
     -e LOG_SUFFIX=$LOG_SUFFIX \
     -e CONNECTION_LIMIT=$CONNECTION_LIMIT \
-    -v $BASE_SCRIPT_DIR/logs:/app/logs \
     --memory="300m" \
     --memory-swap="300m" \
     --cpus="0.1" \
