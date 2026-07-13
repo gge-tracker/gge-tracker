@@ -1,0 +1,14 @@
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: discord-scraping
+    receivers:
+      - uid: discord-scraping
+        type: discord
+        settings:
+          url: ${DISCORD_WEBHOOK_URL}
+          title: '{{ template "gge.title" . }}'
+          message: '{{ template "gge.message" . }}'
+          use_discord_username: true
+        disableResolveMessage: false

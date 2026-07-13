@@ -1,0 +1,124 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: scraping
+    folder: Scraping
+    interval: 1m
+    rules:
+      - uid: scraping-error
+        title: Scraping error
+        condition: B
+        for: 0m
+        noDataState: OK
+        execErrState: OK
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: loki
+            model:
+              refId: A
+              editorMode: code
+              queryType: instant
+              expr: 'sum by (server, identifier, msg) (count_over_time({service="internal-scraping", level="error", event!="run_summary"} | json [5m]))'
+          - refId: B
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+                  operator: { type: and }
+                  query: { params: [B] }
+                  reducer: { type: last, params: [] }
+                  type: threshold
+        labels:
+          severity: critical
+          notify: discord
+        annotations:
+          summary: '{{ $labels.server }}: {{ $labels.msg }}'
+      - uid: scraping-stopped
+        title: Scraping stopped
+        condition: B
+        for: 10m
+        noDataState: Alerting
+        execErrState: OK
+        data:
+          - refId: A
+            relativeTimeRange: { from: 7200, to: 0 }
+            datasourceUid: loki
+            model:
+              refId: A
+              editorMode: code
+              queryType: instant
+              expr: 'sum(count_over_time({service="internal-scraping", event="run_summary"}[2h]))'
+          - refId: B
+            relativeTimeRange: { from: 7200, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: lt, params: [1] }
+                  operator: { type: and }
+                  query: { params: [B] }
+                  reducer: { type: last, params: [] }
+                  type: threshold
+        labels:
+          severity: critical
+          notify: discord
+        annotations:
+          summary: No scraping run has completed in the last 2 hours.
+      - uid: scraping-digest
+        title: Scraping hourly report
+        condition: D
+        for: 0m
+        noDataState: Alerting
+        execErrState: OK
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: loki
+            model:
+              refId: A
+              editorMode: code
+              queryType: instant
+              expr: 'sum(count_over_time({service="internal-scraping", event="run_summary"}[1h])) or vector(0)'
+          - refId: B
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: loki
+            model:
+              refId: B
+              editorMode: code
+              queryType: instant
+              expr: 'count(count by (server) (count_over_time({service="internal-scraping", event="run_summary"}[1h]))) or vector(0)'
+          - refId: C
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: loki
+            model:
+              refId: C
+              editorMode: code
+              queryType: instant
+              expr: 'sum(count_over_time({service="internal-scraping", level="error"}[1h])) or vector(0)'
+          - refId: D
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: D
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1] }
+                  operator: { type: and }
+                  query: { params: [D] }
+                  reducer: { type: last, params: [] }
+                  type: threshold
+        labels:
+          notify: digest
+        annotations:
+          runs: '{{ $values.A }}'
+          servers: '{{ $values.B }}'
+          errors: '{{ $values.C }}'

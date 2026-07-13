@@ -40,6 +40,7 @@ querier:
   engine:
     timeout: 2m
   query_timeout: 2m
+  max_concurrent: 12
 
 query_range:
   align_queries_with_step: true
@@ -49,7 +50,13 @@ query_range:
 frontend:
   log_queries_longer_than: 5s
   compress_responses: true
+  max_outstanding_per_tenant: 8192
+
+query_scheduler:
+  max_outstanding_requests_per_tenant: 8192
 
 limits_config:
   retention_period: 336h
-  split_queries_by_interval: 15m
+  split_queries_by_interval: 1h
+  max_query_parallelism: 16
+  tsdb_max_query_parallelism: 32

@@ -343,7 +343,7 @@ export class GenericFetchAndSaveBackend {
           try {
             await this.pgSqlQuery(queryText, values);
           } catch (error) {
-            Utils.logMessage('Error executing query:', error);
+            Utils.logCritical('', error, 'Error executing query:');
             Utils.logMessage('Query text:', queryText);
             Utils.logMessage('Values:', values);
             this.DB_UPDATES.criticalErrors++;
@@ -373,11 +373,7 @@ export class GenericFetchAndSaveBackend {
       }
       await this.pgSqlConnection.end();
     } catch (error) {
-      Utils.logMessage('Error refreshing Grand Tournament results');
-      Utils.logMessage('========= BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 411');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('411', error, 'Error refreshing Grand Tournament results');
       this.DB_UPDATES.criticalErrors++;
     }
     await this.pgSqlConnection.end();
@@ -411,11 +407,7 @@ export class GenericFetchAndSaveBackend {
       await this.pgSqlQuery('REFRESH MATERIALIZED VIEW CONCURRENTLY global_ranking;');
       Utils.logMessage('Global rankings refreshed successfully');
     } catch (error) {
-      Utils.logMessage('Error refreshing global rankings');
-      Utils.logMessage('========= BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 100');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('100', error, 'Error refreshing global rankings');
       this.DB_UPDATES.criticalErrors++;
     }
     const end = new Date();
@@ -688,11 +680,11 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('=====================================');
       Utils.logMessage('.');
     } catch (error) {
-      Utils.logMessage('Error occurred while executing the event history for Outer Realms + Beyond the Horizon');
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 101');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical(
+        '101',
+        error,
+        'Error occurred while executing the event history for Outer Realms + Beyond the Horizon',
+      );
       this.DB_UPDATES.criticalErrors++;
     } finally {
       if (!dryRunInsertOR || !dryRunInsertBTH) {
@@ -740,11 +732,7 @@ export class GenericFetchAndSaveBackend {
         Utils.logMessage(' [error] Data retrieval failed');
       }
     } catch (error) {
-      Utils.logMessage(' [error] Database connection failed');
-      Utils.logMessage('=========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 000');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('000', error, ' [error] Database connection failed');
       this.DB_UPDATES.criticalErrors++;
     }
   }
@@ -836,11 +824,7 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('.');
       return;
     } catch (error) {
-      Utils.logMessage(' [CRITICAL] Unhandled error occurred while processing fills');
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 999');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('999', error, ' [CRITICAL] Unhandled error occurred while processing fills');
     } finally {
       const end = new Date();
       try {
@@ -1342,7 +1326,7 @@ export class GenericFetchAndSaveBackend {
             Utils.logMessage(`Inserted ${batch.length} players`);
             Utils.logMessage('Outer Realms data fetch and database update completed successfully');
           } catch (error) {
-            Utils.logMessage('Error inserting batch into ClickHouse:', error);
+            Utils.logCritical('', error, 'Error inserting batch into ClickHouse:');
             Utils.logMessage('Payload:', payload);
             this.DB_UPDATES.criticalErrors++;
           }
@@ -1365,11 +1349,11 @@ export class GenericFetchAndSaveBackend {
           },
         );
       } catch (error) {
-        Utils.logMessage('Error executing query:', error);
+        Utils.logCritical('', error, 'Error executing query:');
         this.DB_UPDATES.criticalErrors++;
       }
     } catch (error) {
-      Utils.logMessage('Error during Outer Realms data fetch:', error);
+      Utils.logCritical('', error, 'Error during Outer Realms data fetch:');
       this.DB_UPDATES.criticalErrors++;
     } finally {
       const end = new Date();
@@ -1549,13 +1533,13 @@ export class GenericFetchAndSaveBackend {
               });
               Utils.logMessage(`Inserted ${batch.length} entries into ClickHouse`);
             } catch (error) {
-              Utils.logMessage('Error inserting batch into ClickHouse:', error);
+              Utils.logCritical('', error, 'Error inserting batch into ClickHouse:');
               Utils.logMessage('Payload:', payload);
               this.DB_UPDATES.criticalErrors++;
             }
           }
         } catch (error) {
-          Utils.logMessage('Error executing query:', error);
+          Utils.logCritical('', error, 'Error executing query:');
           this.DB_UPDATES.criticalErrors++;
         }
       } else {
@@ -1568,7 +1552,7 @@ export class GenericFetchAndSaveBackend {
         await this.insertWheelOfUnimaginableAffluenceData(retry + 1);
         return;
       }
-      Utils.logMessage('Error fetching Wheel of Unimaginable Affluence data:', error);
+      Utils.logCritical('', error, 'Error fetching Wheel of Unimaginable Affluence data:');
       this.DB_UPDATES.criticalErrors++;
     } finally {
       Utils.logMessage('Finished processing Wheel of Unimaginable Affluence data.');
@@ -1661,11 +1645,7 @@ export class GenericFetchAndSaveBackend {
       try {
         clickhouse = new ClickHouse(this.CLICKHOUSE_CONFIG);
       } catch (error) {
-        Utils.logMessage('Error while connecting to ClickHouse');
-        Utils.logMessage('========== BEGIN STACK TRACE ============');
-        Utils.logMessage('Identifier: 006');
-        Utils.logMessage(error);
-        Utils.logMessage('=========== END STACK TRACE =============');
+        Utils.logCritical('006', error, 'Error while connecting to ClickHouse');
       }
       let { lt, tableName, levelCategorySize } = args;
       let i: number;
@@ -1736,13 +1716,10 @@ export class GenericFetchAndSaveBackend {
                 currentTry++;
               }
               if (!fetchData || fetchData.length === 0) {
-                Utils.logMessage('/!\\ No players found, but status is OK');
-                Utils.logMessage('========== BEGIN STACK TRACE ============');
-                Utils.logMessage('Identifier: 002-' + eventName);
                 Utils.logMessage('Url :', this.BASE_API_URL + 'hgh' + `/"LT":${lt},"LID":${levelCategory},"SV":"${i}"`);
                 Utils.logMessage('Nb:', j + ' players found on', max);
                 Utils.logMessage('p:', JSON.stringify(p));
-                Utils.logMessage('=========== END STACK TRACE =============');
+                Utils.logCritical('002-' + eventName, undefined, '/!\\ No players found, but status is OK');
                 this.DB_UPDATES.criticalErrors++;
                 return;
               } else {
@@ -1819,21 +1796,14 @@ export class GenericFetchAndSaveBackend {
                 await clickhouse.query(clickhouseQuery).toPromise();
               }
             } catch (error) {
-              Utils.logMessage('Error while inserting into player table for', eventName);
-              Utils.logMessage('========== BEGIN STACK TRACE ============');
-              Utils.logMessage('Identifier: 004');
-              Utils.logMessage(error);
-              Utils.logMessage('=========== END STACK TRACE =============');
+              Utils.logCritical('004', error, 'Error while inserting into player table for', eventName);
               console.error(error);
               this.DB_UPDATES.criticalErrors++;
             }
           } else {
-            Utils.logMessage('No players found for category', levelCategory);
-            Utils.logMessage('========== BEGIN STACK TRACE ============');
-            Utils.logMessage('Identifier: 005');
             Utils.logMessage('Url :', this.BASE_API_URL + 'hgh' + `/"LT":${lt},"LID":${levelCategory},"SV":"${i}"`);
             Utils.logMessage(JSON.stringify(data));
-            Utils.logMessage('=========== END STACK TRACE =============');
+            Utils.logCritical('005', undefined, 'No players found for category', levelCategory);
             this.DB_UPDATES.criticalErrors++;
           }
         }
@@ -1841,11 +1811,7 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('Finished searching for all categories');
       successCallback();
     } catch (error) {
-      Utils.logMessage('Final error while processing statistics');
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 007');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('007', error, 'Final error while processing statistics');
     }
   }
 
@@ -1906,14 +1872,11 @@ export class GenericFetchAndSaveBackend {
               k++;
             }
             if (!players || players.length === 0) {
-              Utils.logMessage(' [KO] No players found, but status is OK');
-              Utils.logMessage('========== BEGIN STACK TRACE ============');
-              Utils.logMessage('Identifier: 009');
               Utils.logMessage('Url : ', this.BASE_API_URL + 'hgh' + `/"LT":6,"LID":${levelCategory},"SV":"${i}"`);
               Utils.logMessage('Nb:', j + 'players found out of', max);
               if (players) Utils.logMessage('Players.length:' + players.length);
               Utils.logMessage(JSON.stringify(p));
-              Utils.logMessage('=========== END STACK TRACE =============');
+              Utils.logCritical('009', undefined, ' [KO] No players found, but status is OK');
               this.DB_UPDATES.criticalErrors++;
             } else {
               const ids: number[] = [];
@@ -1969,11 +1932,12 @@ export class GenericFetchAndSaveBackend {
                     this.playerLootAndMightPointHistoryList[uid.toString()][15] = infos['AR'];
                   }
                 } catch (error) {
-                  Utils.logMessage(' [KO] Error while storing in playerMightHistoryList', JSON.stringify(player));
-                  Utils.logMessage('========== BEGIN STACK TRACE ============');
-                  Utils.logMessage('Identifier: 052');
-                  Utils.logMessage(error);
-                  Utils.logMessage('=========== END STACK TRACE =============');
+                  Utils.logCritical(
+                    '052',
+                    error,
+                    ' [KO] Error while storing in playerMightHistoryList',
+                    JSON.stringify(player),
+                  );
                   this.DB_UPDATES.criticalErrors++;
                 }
                 j++;
@@ -1993,12 +1957,9 @@ export class GenericFetchAndSaveBackend {
             }
           }
         } else {
-          Utils.logMessage(' [KO] No players found for category', levelCategory);
-          Utils.logMessage('========== BEGIN STACK TRACE ============');
-          Utils.logMessage('Identifier: 011');
           Utils.logMessage('Url : ', this.BASE_API_URL + 'hgh' + `/"LT":6,"LID":${levelCategory},"SV":"${i}"`);
           Utils.logMessage(JSON.stringify(data));
-          Utils.logMessage('=========== END STACK TRACE =============');
+          Utils.logCritical('011', undefined, ' [KO] No players found for category', levelCategory);
         }
       }
       Utils.logMessage('Finished searching for all categories for might points, starting insertion into database');
@@ -2029,11 +1990,7 @@ export class GenericFetchAndSaveBackend {
               const clickhouseQuery = `INSERT INTO player_might_history (player_id, point, created_at) VALUES ${clickhouseValues.join(', ')}`;
               await clickhouse.query(clickhouseQuery).toPromise();
             } catch (error) {
-              Utils.logMessage(' [KO] Error while adding mightPoints to ClickHouse', error);
-              Utils.logMessage('========== BEGIN STACK TRACE ============');
-              Utils.logMessage('Identifier: 728');
-              Utils.logMessage(error);
-              Utils.logMessage('=========== END STACK TRACE =============');
+              Utils.logCritical('728', error, ' [KO] Error while adding mightPoints to ClickHouse', error);
             }
           }
         } catch (error) {
@@ -2041,21 +1998,14 @@ export class GenericFetchAndSaveBackend {
             ' [KO] Another error occurred while inserting into the player_might_history table at batch level',
             i,
           );
-          Utils.logMessage('========== BEGIN STACK TRACE ============');
-          Utils.logMessage('Identifier: 725');
           Utils.logMessage(JSON.stringify(batch));
-          Utils.logMessage(error);
-          Utils.logMessage('=========== END STACK TRACE =============');
+          Utils.logCritical('725', error);
           this.DB_UPDATES.criticalErrors++;
           console.error(error);
         }
       }
     } catch (error) {
-      Utils.logMessage(' [KO] Final error occurred while processing statistics');
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 012');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('012', error, ' [KO] Final error occurred while processing statistics');
       this.DB_UPDATES.criticalErrors++;
     }
   }
@@ -2100,11 +2050,7 @@ export class GenericFetchAndSaveBackend {
         clickhouse = new ClickHouse(this.CLICKHOUSE_CONFIG);
         Utils.logMessage(' ClickHouse connection successful');
       } catch (error) {
-        Utils.logMessage('Error while connecting to ClickHouse');
-        Utils.logMessage('========== BEGIN STACK TRACE ============');
-        Utils.logMessage('Identifier: 013');
-        Utils.logMessage(error);
-        Utils.logMessage('=========== END STACK TRACE =============');
+        Utils.logCritical('013', error, 'Error while connecting to ClickHouse');
       }
       const currentDate = new Date();
       const currentDateFormatted = format(currentDate, 'yyyy-MM-dd HH:mm:ss');
@@ -2140,12 +2086,9 @@ export class GenericFetchAndSaveBackend {
               k++;
             }
             if (!players || players.length === 0) {
-              Utils.logMessage(' /!\\ There are no players found, but the status is OK');
-              Utils.logMessage('========== BEGIN STACK TRACE ============');
-              Utils.logMessage('Identifier: 014');
               Utils.logMessage('Url : ', this.BASE_API_URL + 'hgh' + `/"LT":2,"LID":${levelCategory},"SV":"${i}"`);
               Utils.logMessage(JSON.stringify(p));
-              Utils.logMessage('=========== END STACK TRACE =============');
+              Utils.logCritical('014', undefined, ' /!\\ There are no players found, but the status is OK');
               this.DB_UPDATES.criticalErrors++;
               return;
             } else {
@@ -2208,11 +2151,12 @@ export class GenericFetchAndSaveBackend {
                     this.playerLootAndMightPointHistoryList[uid.toString()][15] = infos['AR'];
                   }
                 } catch (error) {
-                  Utils.logMessage(' [KO] Error while storing in playerLootHistoryList', JSON.stringify(player));
-                  Utils.logMessage('========== BEGIN STACK TRACE ============');
-                  Utils.logMessage('Identifier: 063');
-                  Utils.logMessage(error);
-                  Utils.logMessage('=========== END STACK TRACE =============');
+                  Utils.logCritical(
+                    '063',
+                    error,
+                    ' [KO] Error while storing in playerLootHistoryList',
+                    JSON.stringify(player),
+                  );
                   this.DB_UPDATES.criticalErrors++;
                 }
                 j++;
@@ -2252,15 +2196,12 @@ export class GenericFetchAndSaveBackend {
             }
             maxNegative = data?.content?.LR;
             if (!data || data['return_code'] != '0' || !maxNegative) {
-              Utils.logMessage(' [KO] The request failed for category', levelCategory);
-              Utils.logMessage('========== BEGIN STACK TRACE ============');
-              Utils.logMessage('Identifier: 026');
               Utils.logMessage(
                 'Url : ',
                 this.BASE_API_URL + 'hgh' + `/"LT":2,"LID":${levelCategory},"SV":"${maxNegative}"`,
               );
               Utils.logMessage(JSON.stringify(data));
-              Utils.logMessage('=========== END STACK TRACE =============');
+              Utils.logCritical('026', undefined, ' [KO] The request failed for category', levelCategory);
               console.error('[KO] The request failed for category', levelCategory);
               c = false;
             }
@@ -2277,15 +2218,12 @@ export class GenericFetchAndSaveBackend {
               }
               if (!players || players.length === 0) {
                 c = false;
-                Utils.logMessage(' [KO] No players found');
-                Utils.logMessage('========== BEGIN STACK TRACE ============');
-                Utils.logMessage('Identifier: 023');
                 Utils.logMessage(
                   'Url : ',
                   this.BASE_API_URL + 'hgh' + `/"LT":2,"LID":${levelCategory},"SV":"${maxNegative}"`,
                 );
                 Utils.logMessage(JSON.stringify(data));
-                Utils.logMessage('=========== END STACK TRACE =============');
+                Utils.logCritical('023', undefined, ' [KO] No players found');
               } else {
                 const ids: number[] = [];
                 const OVERFLOW_OFFSET = 2 ** 32;
@@ -2351,22 +2289,19 @@ export class GenericFetchAndSaveBackend {
                       Utils.logMessage('Stopping search for negative loot due to player with 0 points: ', j);
                     }
                   } catch (error) {
-                    Utils.logMessage(' [KO] Error while storing in playerLootHistoryList', JSON.stringify(player));
-                    Utils.logMessage('========== BEGIN STACK TRACE ============');
-                    Utils.logMessage('Identifier: 064');
-                    Utils.logMessage(error);
-                    Utils.logMessage('=========== END STACK TRACE =============');
+                    Utils.logCritical(
+                      '064',
+                      error,
+                      ' [KO] Error while storing in playerLootHistoryList',
+                      JSON.stringify(player),
+                    );
                   }
                 }
                 maxNegative -= increment;
               }
             }
           } catch (error) {
-            Utils.logMessage('Error while retrieving negative loot points');
-            Utils.logMessage('========== BEGIN STACK TRACE ============');
-            Utils.logMessage('Identifier: 027');
-            Utils.logMessage(error);
-            Utils.logMessage('=========== END STACK TRACE =============');
+            Utils.logCritical('027', error, 'Error while retrieving negative loot points');
           }
           Utils.logMessage(' Beginning insertion of loot for players into the database');
           for (const player of Object.values(playerList)) {
@@ -2376,11 +2311,7 @@ export class GenericFetchAndSaveBackend {
                   const clickhouseQuery = `INSERT INTO player_loot_history (player_id, point, created_at) VALUES (${player.uid}, ${player.points}, '${currentDateFormatted}')`;
                   await clickhouse.query(clickhouseQuery).toPromise();
                 } catch (error) {
-                  Utils.logMessage(' [KO] Error while adding loot to ClickHouse', error);
-                  Utils.logMessage('========== BEGIN STACK TRACE ============');
-                  Utils.logMessage('Identifier: 726');
-                  Utils.logMessage(error);
-                  Utils.logMessage('=========== END STACK TRACE =============');
+                  Utils.logCritical('726', error, ' [KO] Error while adding loot to ClickHouse', error);
                 }
               }
             } catch (error) {
@@ -2390,30 +2321,20 @@ export class GenericFetchAndSaveBackend {
                 player.name,
                 ')',
               );
-              Utils.logMessage('========== BEGIN STACK TRACE ============');
-              Utils.logMessage('Identifier: 515');
-              Utils.logMessage(error);
-              Utils.logMessage('=========== END STACK TRACE =============');
+              Utils.logCritical('515', error);
               this.DB_UPDATES.criticalErrors++;
               console.error(error);
             }
           }
         } else {
-          Utils.logMessage(' [KO] No players found for category', levelCategory);
-          Utils.logMessage('========== BEGIN STACK TRACE ============');
-          Utils.logMessage('Identifier: 017');
           Utils.logMessage('Url : ', this.BASE_API_URL + 'hgh' + `/"LT":2,"LID":${levelCategory},"SV":"${i}"`);
           Utils.logMessage(JSON.stringify(data));
-          Utils.logMessage('=========== END STACK TRACE =============');
+          Utils.logCritical('017', undefined, ' [KO] No players found for category', levelCategory);
         }
       }
       Utils.logMessage(' End of search for all categories for loot');
     } catch (error) {
-      Utils.logMessage(' [KO] Final error while processing statistics');
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 018');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('018', error, ' [KO] Final error while processing statistics');
       this.DB_UPDATES.criticalErrors++;
     }
   }
@@ -2435,11 +2356,7 @@ export class GenericFetchAndSaveBackend {
       await this.pgSqlQuery(pgSqlQuery, [playerId]);
       Utils.logMessage(' [OK] Player deletion successful', playerId);
     } catch (error) {
-      Utils.logMessage(' [KO] Error while deleting player', playerId);
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 019');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('019', error, ' [KO] Error while deleting player', playerId);
     }
   }
 
@@ -2551,13 +2468,9 @@ export class GenericFetchAndSaveBackend {
             ]);
             this.DB_UPDATES.playersCreated++;
           } catch (error) {
-            Utils.logMessage(' [KO] Error while adding player', playerId, '(name :', playerName, ')');
-            Utils.logMessage('========== BEGIN STACK TRACE ============');
-            Utils.logMessage('Identifier: 838');
             Utils.logMessage('PlayerId:', playerId);
             Utils.logMessage('PlayerName:', playerName);
-            Utils.logMessage(error);
-            Utils.logMessage('=========== END STACK TRACE =============');
+            Utils.logCritical('838', error, ' [KO] Error while adding player', playerId, '(name :', playerName, ')');
             this.DB_UPDATES.criticalErrors++;
           }
         }
@@ -2583,15 +2496,19 @@ export class GenericFetchAndSaveBackend {
         const parsedNewCastles: Castle[] = castles ? castles : [];
         await this.updatePlayerCastles(playerId, parsedCurrentCastles, parsedNewCastles);
       } catch (error) {
-        Utils.logMessage(' [KO] Error while updating player castles', playerId, '(name :', playerName, ')');
-        Utils.logMessage('========== BEGIN STACK TRACE ============');
-        Utils.logMessage('Identifier: 077');
         Utils.logMessage('PlayerId:', playerId);
         Utils.logMessage('PlayerName:', playerName);
         Utils.logMessage('currentCastles:', currentCastles);
         Utils.logMessage('castles:', castles);
-        Utils.logMessage(error);
-        Utils.logMessage('=========== END STACK TRACE =============');
+        Utils.logCritical(
+          '077',
+          error,
+          ' [KO] Error while updating player castles',
+          playerId,
+          '(name :',
+          playerName,
+          ')',
+        );
         this.DB_UPDATES.criticalErrors++;
       }
       // 2. Update player name if it has changed
@@ -2619,14 +2536,18 @@ export class GenericFetchAndSaveBackend {
             this.customPlayersAttributesList['player_name_update_count'] || 0;
           this.customPlayersAttributesList['player_name_update_count']++;
         } catch (error) {
-          Utils.logMessage(' [KO] Error while updating player name', playerId, '(name :', playerName, ')');
-          Utils.logMessage('========== BEGIN STACK TRACE ============');
-          Utils.logMessage('Identifier: 010');
           Utils.logMessage('PlayerId:', playerId);
           Utils.logMessage('PlayerName:', playerName);
           Utils.logMessage('currentPlayerName:', currentPlayerName);
-          Utils.logMessage(error);
-          Utils.logMessage('=========== END STACK TRACE =============');
+          Utils.logCritical(
+            '010',
+            error,
+            ' [KO] Error while updating player name',
+            playerId,
+            '(name :',
+            playerName,
+            ')',
+          );
           this.DB_UPDATES.criticalErrors++;
         }
       }
@@ -2660,28 +2581,36 @@ export class GenericFetchAndSaveBackend {
               if (error.code !== 'ER_NO_REFERENCED_ROW_2' && error.code !== '23503') {
                 // Do nothing
               } else {
-                Utils.logMessage(' [KO] Error while updating player alliance', playerId, '(name :', playerName, ')');
-                Utils.logMessage('========== BEGIN STACK TRACE ============');
-                Utils.logMessage('Identifier: 091');
                 Utils.logMessage('PlayerId:', playerId);
                 Utils.logMessage('PlayerName:', playerName);
                 Utils.logMessage('OldAllianceId:', currentAllianceId);
                 Utils.logMessage('NewAllianceId:', allianceId);
-                Utils.logMessage(error);
-                Utils.logMessage('=========== END STACK TRACE =============');
+                Utils.logCritical(
+                  '091',
+                  error,
+                  ' [KO] Error while updating player alliance',
+                  playerId,
+                  '(name :',
+                  playerName,
+                  ')',
+                );
               }
             }
           } else {
             this.DB_UPDATES.criticalErrors++;
-            Utils.logMessage(' [KO] Error while updating player alliance', playerId, '(name :', playerName, ')');
-            Utils.logMessage('========== BEGIN STACK TRACE ============');
-            Utils.logMessage('Identifier: 019');
             Utils.logMessage('PlayerId:', playerId);
             Utils.logMessage('PlayerName:', playerName);
             Utils.logMessage('OldAllianceId:', currentAllianceId);
             Utils.logMessage('NewAllianceId:', allianceId);
-            Utils.logMessage(error);
-            Utils.logMessage('=========== END STACK TRACE =============');
+            Utils.logCritical(
+              '019',
+              error,
+              ' [KO] Error while updating player alliance',
+              playerId,
+              '(name :',
+              playerName,
+              ')',
+            );
           }
         }
       }
@@ -2705,17 +2634,21 @@ export class GenericFetchAndSaveBackend {
           );
           await this.updateAllianceName(allianceId, allianceName, currentAllianceName);
         } catch (error) {
-          Utils.logMessage(' [KO] Error while updating alliance name', playerId, '(name :', playerName, ')');
-          Utils.logMessage('========== BEGIN STACK TRACE ============');
-          Utils.logMessage('Identifier: 020');
           Utils.logMessage('PlayerId:', playerId);
           Utils.logMessage('PlayerName:', playerName);
           Utils.logMessage('currentAllianceId:', currentAllianceId);
           Utils.logMessage('allianceId:', allianceId);
           Utils.logMessage('currentAllianceName:', currentAllianceName);
           Utils.logMessage('allianceName:', allianceName);
-          Utils.logMessage(error);
-          Utils.logMessage('=========== END STACK TRACE =============');
+          Utils.logCritical(
+            '020',
+            error,
+            ' [KO] Error while updating alliance name',
+            playerId,
+            '(name :',
+            playerName,
+            ')',
+          );
           this.DB_UPDATES.criticalErrors++;
         }
       }
@@ -2729,11 +2662,15 @@ export class GenericFetchAndSaveBackend {
     } catch (error: any) {
       if (error.code != '23505') {
         this.DB_UPDATES.criticalErrors++;
-        Utils.logMessage(' [KO] Error while inserting alliance', allianceId, '(name :', allianceName, ')');
-        Utils.logMessage('========== BEGIN STACK TRACE ============');
-        Utils.logMessage('Identifier: 021');
-        Utils.logMessage(error);
-        Utils.logMessage('=========== END STACK TRACE =============');
+        Utils.logCritical(
+          '021',
+          error,
+          ' [KO] Error while inserting alliance',
+          allianceId,
+          '(name :',
+          allianceName,
+          ')',
+        );
       }
     }
   }
@@ -2832,14 +2769,10 @@ export class GenericFetchAndSaveBackend {
   }
 
   /**
-   * Fetches the details of a single alliance, retrying transient network failures.
+   * Fetches the details of a single alliance
    *
-   * empire-api drops the connection (`socket hang up`) when its underlying GGE socket reconnects or
-   * when it is hammered, so a single alliance must never abort the whole player update: on repeated
-   * failure we return null and the caller skips that alliance.
-   *
-   * @param allianceId - The alliance to fetch.
-   * @returns The `ain` response, or null if every attempt failed.
+   * @param allianceId - The alliance to fetch
+   * @returns The `ain` response, or null if every attempt failed
    */
   private async fetchAllianceInfo(allianceId: number): Promise<AxiosResponse<any> | null> {
     const maxAttempts = 3;
@@ -2858,7 +2791,6 @@ export class GenericFetchAndSaveBackend {
         if (attempt === maxAttempts) {
           return null;
         }
-        // Back off before retrying, to let empire-api recover instead of hammering it.
         await this.sleep(1000 * attempt);
       }
     }
@@ -3001,11 +2933,7 @@ export class GenericFetchAndSaveBackend {
     try {
       await clickhouse.query(clickhouseQuery).toPromise();
     } catch (error) {
-      Utils.logMessage('Error while adding event timestamp for table', tableName);
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 467');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('467', error, 'Error while adding event timestamp for table', tableName);
       this.DB_UPDATES.criticalErrors++;
     }
   }
@@ -3264,11 +3192,7 @@ export class GenericFetchAndSaveBackend {
         this.DB_UPDATES.criticalErrors++;
       }
     } catch (error) {
-      Utils.logMessage('Error updating player aquamarine data');
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 103');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('103', error, 'Error updating player aquamarine data');
 
       this.DB_UPDATES.criticalErrors++;
     }
@@ -3376,11 +3300,7 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('Updating alliance history...');
       await this.bulkUpdateAlliance(allianceIds);
     } catch (error) {
-      Utils.logMessage('Error updating player power and loot points');
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 099');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('099', error, 'Error updating player power and loot points');
       this.DB_UPDATES.criticalErrors++;
     }
   }
@@ -3483,11 +3403,7 @@ export class GenericFetchAndSaveBackend {
             await this.removePlayerFromDatabase(id);
           }
         } catch (error) {
-          Utils.logMessage(' [KO] Error', id);
-          Utils.logMessage('========== BEGIN STACK TRACE ============');
-          Utils.logMessage('Identifier: 104');
-          Utils.logMessage(error);
-          Utils.logMessage('=========== END STACK TRACE =============');
+          Utils.logCritical('104', error, ' [KO] Error', id);
           const pgSqlQuery = `
             UPDATE players
             SET
@@ -3499,21 +3415,13 @@ export class GenericFetchAndSaveBackend {
           try {
             await this.pgSqlQuery(pgSqlQuery, [id]);
           } catch (error) {
-            Utils.logMessage(' [KO] Error while updating player', id);
-            Utils.logMessage('========== BEGIN STACK TRACE ============');
-            Utils.logMessage('Identifier: 105');
-            Utils.logMessage(error);
-            Utils.logMessage('=========== END STACK TRACE =============');
+            Utils.logCritical('105', error, ' [KO] Error while updating player', id);
             this.DB_UPDATES.criticalErrors++;
           }
         }
       }
     } catch (error) {
-      Utils.logMessage('Error updating inactive players');
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 100');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('100', error, 'Error updating inactive players');
       this.DB_UPDATES.criticalErrors++;
     }
   }
@@ -3751,11 +3659,7 @@ export class GenericFetchAndSaveBackend {
       await this.pgSqlQuery(pgServerStatsQuery, params);
       Utils.logMessage('PostgreSQL: Updating server statistics...');
     } catch (error) {
-      Utils.logMessage('Error updating server statistics');
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 103');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('103', error, 'Error updating server statistics');
       this.DB_UPDATES.criticalErrors++;
     }
   }
@@ -3857,11 +3761,7 @@ export class GenericFetchAndSaveBackend {
         ]);
       }
     } catch (error) {
-      Utils.logMessage('Error inserting castle movements');
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 104');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('104', error, 'Error inserting castle movements');
       this.DB_UPDATES.criticalErrors++;
     }
   }
@@ -4028,13 +3928,10 @@ export class GenericFetchAndSaveBackend {
               currentTry++;
             }
             if (!fetchData || fetchData.length === 0) {
-              Utils.logMessage('/!\\ No players found, but status OK');
-              Utils.logMessage('========== BEGIN STACK TRACE ============');
-              Utils.logMessage('Identifier: 002-' + eventName);
               Utils.logMessage('Url :', this.BASE_API_URL + 'hgh' + `/"LT":${lt},"LID":${levelCategory},"SV":"${i}"`);
               Utils.logMessage('Nb:', j + 'players found on', max);
               Utils.logMessage('p:', JSON.stringify(p));
-              Utils.logMessage('=========== END STACK TRACE =============');
+              Utils.logCritical('002-' + eventName, undefined, '/!\\ No players found, but status OK');
               this.DB_UPDATES.criticalErrors++;
               return -1;
             } else {
@@ -4229,11 +4126,7 @@ export class GenericFetchAndSaveBackend {
         return -1;
       }
     } catch (error) {
-      Utils.logMessage('Error while filling event history for ' + eventName);
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 099');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('099', error, 'Error while filling event history for ' + eventName);
       this.DB_UPDATES.criticalErrors++;
       return -1;
     }
@@ -4289,11 +4182,7 @@ export class GenericFetchAndSaveBackend {
             await new Promise((resolve) => setTimeout(resolve, 20000));
             this.createNewPool();
           } catch (err) {
-            Utils.logMessage(' [CRITICAL] Error occurred while reconnecting to the database');
-            Utils.logMessage('========== BEGIN STACK TRACE ============');
-            Utils.logMessage('Identifier: 999');
-            Utils.logMessage(err);
-            Utils.logMessage('=========== END STACK TRACE =============');
+            Utils.logCritical('999', err, ' [CRITICAL] Error occurred while reconnecting to the database');
             this.DB_UPDATES.criticalErrors++;
             throw new Error(`Error occurred while executing PostgreSQL query: ${error}`);
           }
@@ -4471,14 +4360,11 @@ export class GenericFetchAndSaveBackend {
   }
 
   private async stackTraceError(identifier: string, criticalError = false, error: string | string[]): Promise<void> {
-    Utils.logMessage('========== BEGIN STACK TRACE ============');
-    Utils.logMessage('Identifier: ' + identifier);
     if (Array.isArray(error)) {
       error.forEach((err) => Utils.logMessage(err));
     } else {
-      Utils.logMessage(error);
     }
-    Utils.logMessage('=========== END STACK TRACE =============');
+    Utils.logCritical('' + identifier, error);
     if (criticalError) this.DB_UPDATES.criticalErrors++;
   }
 }

@@ -13,12 +13,7 @@ import { pino, destination, stdTimeFunctions, Logger } from 'pino';
 const isDevelopment: boolean = process.env.ENVIRONMENT === 'development';
 
 /**
- * Structured logger writing NDJSON to stdout. The Docker `json-file` driver persists it and
- * Promtail ships it to Loki (see `monitoring/promtail-config.yml`), so no log file is written
- * by the process itself.
- *
- * Every record carries `service`, `script` and `server` so a single run can be isolated in
- * Grafana. In development the output is piped through `pino-pretty` for human reading.
+ * Structured logger writing NDJSON to stdout
  */
 const logger: Logger = pino(
   {
@@ -86,14 +81,21 @@ class Utils {
   }
 
   /**
-   * Emits the closing record of a run. Replaces the previous per-run log file: instead of encoding
-   * severity in a `-CRITICAL.log` filename, the summary is logged at `error` level when the run
-   * produced critical errors and at `info` level otherwise.
-   *
-   * The `server` label is not taken from here but from `LOG_SUFFIX`, which identifies the container.
-   * A single container runs several scopes (the server itself, plus pseudo-scopes such as
-   * `GLOBAL_RANKING` or `GT_TOURNAMENT`), so the argument is recorded as `scope` instead.
-   *
+   * Emits a single `error` record for a failure
+   * @param identifier The failure identifier
+   * @param error The thrown value, if any
+   * @param context What failed
+   */
+  public static logCritical(identifier: string, error: unknown, ...context: Array<any>): void {
+    const detail: string = error === undefined || error === null ? '' : Utils.formatMessage([error]);
+    const reason: string = error instanceof Error ? error.message : detail.split('\n')[0];
+    const summary: string = Utils.formatMessage(context).trim().replace(/:$/, '');
+    const msg: string = reason ? `${summary}: ${reason}`.slice(0, 200) : summary;
+    logger.error({ identifier: identifier || undefined, detail: detail || undefined }, msg);
+  }
+
+  /**
+   * Emits the closing record of a run
    * @param nbCriticals - The number of critical errors recorded during the run.
    * @param scope - The scope that just finished (default is `'FR1'`).
    */

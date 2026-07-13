@@ -1,0 +1,34 @@
+apiVersion: 1
+
+templates:
+  - orgId: 1
+    name: gge.title
+    template: |-
+      {{ define "gge.title" }}{{ if eq .Status "resolved" }}✅{{ else if eq .CommonLabels.notify "digest" }} {{ else }}🔴{{ end }} {{ .CommonLabels.alertname }}{{ if .CommonLabels.server }} - {{ .CommonLabels.server }}{{ end }}{{ end }}
+
+  - orgId: 1
+    name: gge.message
+    template: |-
+      {{ define "gge.message" }}
+      {{- if eq .Status "resolved" }}
+      No new errors on **{{ .CommonLabels.server }}**. Scraping is healthy again.
+      {{- else if eq .CommonLabels.notify "digest" }}
+      {{- range .Alerts }}
+      {{- if .Annotations.runs }}
+      ✅ **{{ .Annotations.servers }}** servers · **{{ .Annotations.runs }}** runs completed · **{{ .Annotations.errors }}** errors — in the last hour.
+      {{- else }}
+      ⚠️ **No scraping run completed in the last hour.**
+      {{- end }}
+      {{- end }}
+      {{- else }}
+      **{{ len .Alerts.Firing }} error(s)** on server **{{ .CommonLabels.server }}**
+      {{ range $i, $a := .Alerts.Firing }}{{ if lt $i 6 }}
+      {{ if $a.Labels.identifier }}`#{{ $a.Labels.identifier }}` {{ end }}{{ printf "%.150s" $a.Labels.msg }}
+      {{- end }}{{ end }}
+      {{ if gt (len .Alerts.Firing) 6 }}
+      _…and more. Open the dashboard for the full list._
+      {{- end }}
+      {{- end }}
+
+      [Open the scraping dashboard]({{ .ExternalURL }}/d/scraping-logs-loki?var-server={{ .CommonLabels.server }})
+      {{ end }}

@@ -1,0 +1,21 @@
+apiVersion: 1
+
+policies:
+  - orgId: 1
+    receiver: discord-scraping
+    group_by: ['alertname', 'server']
+    routes:
+      - receiver: discord-scraping
+        object_matchers:
+          - ['notify', '=', 'discord']
+        group_by: ['alertname', 'server']
+        group_wait: 2m
+        group_interval: 10m
+        repeat_interval: 6h
+      - receiver: discord-scraping
+        object_matchers:
+          - ['notify', '=', 'digest']
+        group_by: ['alertname']
+        group_wait: 30s
+        group_interval: 1h
+        repeat_interval: 1h

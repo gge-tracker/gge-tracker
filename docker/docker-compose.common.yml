@@ -164,7 +164,6 @@ services:
       - backend
     volumes:
       - ./../gge-tracker-internal-scraping/config/servers.conf:/app/config/servers.conf:ro
-      - ./../gge-tracker-internal-scraping/logs:/app/logs
     command: ["dist/dungeon-update.worker.js"]
     environment:
       - INTERVAL_MS=${DUNGEON_UPDATE_INTERVAL_MS:-120000}
@@ -235,6 +234,7 @@ services:
       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
       - GF_PLUGINS_PREINSTALL=grafana-clickhouse-datasource
       - GF_LOG_LEVEL=${GF_LOG_LEVEL}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
       - CLICKHOUSE_HOST=${CLICKHOUSE_HOST}
       - CLICKHOUSE_USER=${CLICKHOUSE_USER}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
@@ -345,8 +345,8 @@ services:
 
   loki:
     image: grafana/loki:2.9.2
-    mem_limit: 250m
-    cpu_quota: 30000
+    mem_limit: 1g
+    cpu_quota: 200000
     cpu_period: 100000
     container_name: loki
     volumes:
