@@ -14,14 +14,14 @@ templates:
       No new errors on **{{ .CommonLabels.server }}**. Scraping is healthy again.
       {{- else if eq .CommonLabels.notify "digest" }}
       {{- range .Alerts }}
-      {{- if .Annotations.runs }}
-      ✅ **{{ .Annotations.servers }}** servers · **{{ .Annotations.runs }}** runs completed · **{{ .Annotations.errors }}** errors — in the last hour.
-      {{- else }}
+      {{- if eq .Annotations.runs "0" }}
       ⚠️ **No scraping run completed in the last hour.**
+      {{- else if .Annotations.runs }}
+      ✅ **{{ .Annotations.servers }}** servers · **{{ .Annotations.runs }}** runs completed · **{{ .Annotations.errors }}** errors — in the last hour.
       {{- end }}
       {{- end }}
       {{- else }}
-      **{{ len .Alerts.Firing }} error(s)** on server **{{ .CommonLabels.server }}**
+      @Error **{{ len .Alerts.Firing }} error(s)** on server **{{ .CommonLabels.server }}**
       {{ range $i, $a := .Alerts.Firing }}{{ if lt $i 6 }}
       {{ if $a.Labels.identifier }}`#{{ $a.Labels.identifier }}` {{ end }}{{ printf "%.150s" $a.Labels.msg }}
       {{- end }}{{ end }}

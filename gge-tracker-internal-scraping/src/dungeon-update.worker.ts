@@ -140,7 +140,7 @@ async function processServer(server: ServerConfig, index: string, total: number)
 
 async function safeCloseConnections(backend: GenericFetchAndSaveBackend): Promise<void> {
   try {
-    await backend.pgSqlConnection.end();
+    await backend.closePool();
     await backend.connection.end();
   } catch {
     // Ignore errors during connection close

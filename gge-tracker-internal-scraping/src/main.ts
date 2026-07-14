@@ -66,6 +66,17 @@ export interface DiscordApiMessageBody {
  * Comments and logs should be standardized to English.
  */
 export class GenericFetchAndSaveBackend {
+  private static readonly PG_TRANSIENT_ERRORS = [
+    'Connection terminated unexpectedly',
+    'Connection terminated due to connection timeout',
+    'timeout exceeded when trying to connect',
+    'sorry, too many clients already',
+    'the database system is starting up',
+    'ECONNRESET',
+    'ECONNREFUSED',
+    'ETIMEDOUT',
+    'EPIPE',
+  ];
   public playerRenamedList: { [key: string]: any } = {};
   public allianceRenamedList: { [key: string]: any } = {};
   public DB_UPDATES = {
@@ -78,6 +89,7 @@ export class GenericFetchAndSaveBackend {
   public connection!: mysql.Pool;
   public pgSqlConnection!: pg.Pool;
   public allianceUpdated: { [key: string]: boolean } = {};
+  private pgSqlPoolEnded: boolean = false;
   private readonly WEBHOOK_URL: string = process.env.WEBHOOK_URL || '';
   private readonly CURRENT_ENV: string = process.env.ENVIRONMENT || 'development';
   private readonly DISCORD_OR_CHANNEL_ID: string = process.env.DISCORD_OR_CHANNEL_ID || '';
@@ -124,6 +136,16 @@ export class GenericFetchAndSaveBackend {
 
   public async sleep(numberMs: number = 1500): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, numberMs));
+  }
+
+  public async closePool(): Promise<void> {
+    if (!this.pgSqlConnection || this.pgSqlPoolEnded) {
+      return;
+    }
+    this.pgSqlPoolEnded = true;
+    await this.pgSqlConnection.end().catch((error) => {
+      Utils.logMessage('An error occurred while closing the PostgreSQL pool:', error);
+    });
   }
 
   public async getOuterRealmsCode(): Promise<{
@@ -371,12 +393,11 @@ export class GenericFetchAndSaveBackend {
       for (let i = 0; i < 9; i++) {
         Utils.logMessage('.');
       }
-      await this.pgSqlConnection.end();
     } catch (error) {
       Utils.logCritical('411', error, 'Error refreshing Grand Tournament results');
       this.DB_UPDATES.criticalErrors++;
     }
-    await this.pgSqlConnection.end();
+    await this.closePool();
     Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, this.server);
 
     await this.logToLoki({
@@ -417,8 +438,8 @@ export class GenericFetchAndSaveBackend {
     for (let i = 0; i < 9; i++) {
       Utils.logMessage('.');
     }
-    await this.pgSqlConnection.end();
-    Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, this.server);
+    await this.closePool();
+    Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, 'GLOBAL_RANKING');
     await this.logToLoki({
       job: 'global-rankings-refresh',
       data: {
@@ -441,9 +462,8 @@ export class GenericFetchAndSaveBackend {
    * @returns A Promise that resolves when the dungeon list has been retrieved and stored.
    */
   public async getDungeonsList(worldNumber: number): Promise<void> {
-    const pgPool = new pg.Pool(this.PGSQL_CONFIG);
     const pgSqlPlayerCastles = 'SELECT castles_realm FROM players WHERE castles IS NOT NULL';
-    const pgSqlPlayerCastlesResult = await pgPool.query(pgSqlPlayerCastles);
+    const pgSqlPlayerCastlesResult = await this.pgSqlQuery(pgSqlPlayerCastles);
     if (!pgSqlPlayerCastlesResult.rows || pgSqlPlayerCastlesResult.rows.length === 0) {
       Utils.logMessage('No castles found in the database. Aborting dungeon retrieval.');
       return;
@@ -638,7 +658,7 @@ export class GenericFetchAndSaveBackend {
         })
         .join(', ');
 
-      await this.pgSqlConnection.query(
+      await this.pgSqlQuery(
         `INSERT INTO dungeons (kid, position_x, position_y, global_available_at) VALUES ${placeholders}`,
         values,
       );
@@ -688,9 +708,7 @@ export class GenericFetchAndSaveBackend {
       this.DB_UPDATES.criticalErrors++;
     } finally {
       if (!dryRunInsertOR || !dryRunInsertBTH) {
-        await this.pgSqlConnection.end().catch((error) => {
-          Utils.logMessage('Error closing PostgreSQL connection:', error);
-        });
+        await this.closePool();
         await this.logToLoki({
           job: 'outer-realms-and-beyond-the-horizon-event-history',
           data: {
@@ -707,7 +725,7 @@ export class GenericFetchAndSaveBackend {
   public async executeHealthCheck(): Promise<void> {
     try {
       try {
-        await this.pgSqlConnection.query('SELECT 1');
+        await this.getPool().query('SELECT 1');
         Utils.logMessage(' [info] PostgreSQL database connection is operational');
       } catch {
         Utils.logMessage(' [error] PostgreSQL database connection failed');
@@ -851,7 +869,7 @@ export class GenericFetchAndSaveBackend {
       this.customPlayersAttributesList = {};
       this.playerEventPointHistoryList = {};
       this.currentPlayers = [];
-      await this.pgSqlConnection.end();
+      await this.closePool();
       Utils.flushRunSummary(criticalErrors, this.server);
     }
   }
@@ -860,7 +878,7 @@ export class GenericFetchAndSaveBackend {
     const squares: { [key: string]: { AX1: number; AY1: number; AX2: number; AY2: number } } = {};
     const mapSize = this.MAP_SIZE;
     const start = new Date();
-    const pgPool = new pg.Pool(this.PGSQL_CONFIG);
+    const pgPool = this.getPool();
     let done = 0;
     try {
       console.log('Connection to the database successful');
@@ -1076,7 +1094,7 @@ export class GenericFetchAndSaveBackend {
       console.error('Error while updating dungeons list:', error);
       this.DB_UPDATES.criticalErrors++;
     } finally {
-      await pgPool.end();
+      await this.closePool();
       const end = new Date();
       const elapsedTime = end.getTime() - start.getTime();
       const elapsedTimeInSeconds = Math.floor(elapsedTime / 1000);
@@ -1363,7 +1381,7 @@ export class GenericFetchAndSaveBackend {
       for (let i = 0; i < 9; i++) {
         Utils.logMessage('.');
       }
-      Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, this.server);
+      Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, 'LIVE_OUTER_REALMS');
       await this.logToLoki({
         job: 'outer-realms-data-fetch',
         data: {
@@ -1567,12 +1585,23 @@ export class GenericFetchAndSaveBackend {
   }
 
   private createNewPool(): void {
-    if (this.pgSqlConnection) {
-      this.pgSqlConnection.end().catch((error) => {
-        Utils.logMessage('An error occurred while closing the previous PostgreSQL connection:', error);
-      });
+    this.pgSqlConnection = new pg.Pool({
+      idleTimeoutMillis: 10_000,
+      connectionTimeoutMillis: 15_000,
+      allowExitOnIdle: true,
+      ...this.PGSQL_CONFIG,
+    });
+    this.pgSqlPoolEnded = false;
+    this.pgSqlConnection.on('error', (error) => {
+      Utils.logMessage(' [WARN] Idle PostgreSQL client discarded by the pool:', error.message);
+    });
+  }
+
+  private getPool(): pg.Pool {
+    if (!this.pgSqlConnection || this.pgSqlPoolEnded) {
+      this.createNewPool();
     }
-    this.pgSqlConnection = new pg.Pool(this.PGSQL_CONFIG);
+    return this.pgSqlConnection;
   }
 
   private async getCorrespondingSquare(
@@ -3992,11 +4021,12 @@ export class GenericFetchAndSaveBackend {
             }
             for (const [server, entitiesForServer] of serverEntities.entries()) {
               let dbConn: pg.Pool | null = null;
+              let tempPool: pg.Pool | null = null;
               let dbName = '';
               Utils.logMessage(' [info] Processing server:', server);
               switch (server) {
                 case 'FR1':
-                  dbConn = this.pgSqlConnection;
+                  dbConn = this.getPool();
                   break;
                 case 'WLD1':
                 case 'LIVE':
@@ -4012,33 +4042,42 @@ export class GenericFetchAndSaveBackend {
                 default:
                   dbName = `empire-ranking-${server.toLowerCase()}`;
               }
-              if (!dbConn) {
-                const exists = await this.pgSqlQuery('SELECT 1 FROM pg_database WHERE datname=$1', [dbName]);
-                if (!exists.rowCount) continue; // skip if nonexistent
-                // Create a temporary connection (or use a global pool if already created)
-                dbConn = new pg.Pool({
-                  user: this.PGSQL_CONFIG.user,
-                  password: this.PGSQL_CONFIG.password,
-                  host: this.PGSQL_CONFIG.host,
-                  port: this.PGSQL_CONFIG.port,
-                  database: dbName,
-                });
-                await dbConn.connect();
-                Utils.logMessage(' [info] Connected to database for server:', server);
-              }
-              // Retrieve all real player_ids at once
-              const names = entitiesForServer.map((e: { playerName: any }) => e.playerName);
-              Utils.logMessage(' [info] Count: ' + names.length + ' players to process for server ' + server);
-              const res = await dbConn.query(
-                `SELECT n AS name, MIN(p.id) AS id FROM unnest($1::text[]) n LEFT JOIN players p ON p.name = n GROUP BY n;`,
-                [names],
-              );
-              Utils.logMessage(' [info] Retrieval of real player_ids completed');
-              const nameToId = new Map(res.rows.map((r) => [r.name, r.id]));
-              Utils.logMessage(' [info] Number of real player_ids retrieved:', nameToId.size);
-              // Update each entity with the real player_id
-              for (const entity of entitiesForServer) {
-                entity.realPlayerId = nameToId.get(entity.playerName);
+              try {
+                if (!dbConn) {
+                  const exists = await this.pgSqlQuery('SELECT 1 FROM pg_database WHERE datname=$1', [dbName]);
+                  if (!exists.rowCount) continue; // skip if nonexistent
+                  tempPool = new pg.Pool({
+                    user: this.PGSQL_CONFIG.user,
+                    password: this.PGSQL_CONFIG.password,
+                    host: this.PGSQL_CONFIG.host,
+                    port: this.PGSQL_CONFIG.port,
+                    database: dbName,
+                    max: 1,
+                    idleTimeoutMillis: 10_000,
+                    connectionTimeoutMillis: 15_000,
+                    allowExitOnIdle: true,
+                  });
+                  dbConn = tempPool;
+                  Utils.logMessage(' [info] Connected to database for server:', server);
+                }
+                const names = entitiesForServer.map((e: { playerName: any }) => e.playerName);
+                Utils.logMessage(' [info] Count: ' + names.length + ' players to process for server ' + server);
+                const res = await dbConn.query(
+                  `SELECT n AS name, MIN(p.id) AS id FROM unnest($1::text[]) n LEFT JOIN players p ON p.name = n GROUP BY n;`,
+                  [names],
+                );
+                Utils.logMessage(' [info] Retrieval of real player_ids completed');
+                const nameToId = new Map(res.rows.map((r) => [r.name, r.id]));
+                Utils.logMessage(' [info] Number of real player_ids retrieved:', nameToId.size);
+                for (const entity of entitiesForServer) {
+                  entity.realPlayerId = nameToId.get(entity.playerName);
+                }
+              } finally {
+                if (tempPool) {
+                  await tempPool.end().catch((error) => {
+                    Utils.logMessage(' [WARN] Error closing temporary PostgreSQL pool for ' + server + ':', error);
+                  });
+                }
               }
             }
           }
@@ -4160,37 +4199,34 @@ export class GenericFetchAndSaveBackend {
     return true; // All entries match
   }
 
-  private async pgSqlQuery(query: string, params: any[] = []): Promise<any> {
-    try {
-      if (!this.pgSqlConnection) {
-        this.createNewPool();
-      }
-      return await this.pgSqlConnection.query(query, params);
-    } catch (error: any) {
-      const message = error?.message || '';
-      if (
-        message.includes('Connection terminated unexpectedly') ||
-        message.includes('ECONNRESET') ||
-        message.includes('timeout')
-      ) {
-        try {
-          Utils.logMessage(' [WARN] Lost connection to PostgreSQL, attempting to reconnect...');
-          await new Promise((resolve) => setTimeout(resolve, 5000));
-          this.createNewPool();
-        } catch {
-          try {
-            await new Promise((resolve) => setTimeout(resolve, 20000));
-            this.createNewPool();
-          } catch (err) {
-            Utils.logCritical('999', err, ' [CRITICAL] Error occurred while reconnecting to the database');
-            this.DB_UPDATES.criticalErrors++;
-            throw new Error(`Error occurred while executing PostgreSQL query: ${error}`);
-          }
+  private isTransientPgError(error: any): boolean {
+    const message = String(error?.message ?? '');
+    return GenericFetchAndSaveBackend.PG_TRANSIENT_ERRORS.some((pattern) => message.includes(pattern));
+  }
+
+  private async pgSqlQuery(query: string, params: any[] = [], attempts: number = 3): Promise<any> {
+    let lastError: any;
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+      try {
+        return await this.getPool().query(query, params);
+      } catch (error: any) {
+        lastError = error;
+        if (!this.isTransientPgError(error) || attempt === attempts) {
+          break;
         }
-      } else {
-        throw error;
+        const delayMs = 5000 * attempt;
+        Utils.logMessage(
+          ` [WARN] Transient PostgreSQL error (attempt ${attempt}/${attempts}), retrying in ${delayMs}ms:`,
+          error.message,
+        );
+        await this.sleep(delayMs);
       }
     }
+    if (this.isTransientPgError(lastError)) {
+      Utils.logCritical('999', lastError, ' [CRITICAL] PostgreSQL query failed after all retries');
+      this.DB_UPDATES.criticalErrors++;
+    }
+    throw lastError;
   }
 
   private generateTraceId(): string {
