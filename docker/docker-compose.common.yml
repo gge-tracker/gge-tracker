@@ -244,6 +244,35 @@ services:
       - CLICKHOUSE_USER=${CLICKHOUSE_USER}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
       - GF_INSTALL_PLUGINS=grafana-clickhouse-datasource
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: "no"
+
+  grafana-provisioner:
+    image: alpine:3.20
+    container_name: grafana-provisioner
+    depends_on:
+      grafana:
+        condition: service_healthy
+    networks:
+      - backend
+    volumes:
+      - ./../monitoring/grafana/provisioning/scripts:/scripts:ro
+    environment:
+      - GF_URL=http://grafana:3000
+      - GF_USERNAME=${GF_USERNAME}
+      - GF_PASSWORD=${GF_PASSWORD}
+      - GF_ADMIN_VIEWER_USER=${GF_ADMIN_VIEWER_USER}
+      - GF_ADMIN_VIEWER_PASSWORD=${GF_ADMIN_VIEWER_PASSWORD}
+      - GF_ADMIN_VIEWER_EMAIL=${GF_ADMIN_VIEWER_EMAIL:-}
+      - GF_MOD_VIEWER_USER=${GF_MOD_VIEWER_USER}
+      - GF_MOD_VIEWER_PASSWORD=${GF_MOD_VIEWER_PASSWORD}
+      - GF_MOD_VIEWER_EMAIL=${GF_MOD_VIEWER_EMAIL:-}
+    entrypoint: ["sh", "-c", "apk add --no-cache curl jq >/dev/null && sh /scripts/provision-users.sh"]
     restart: "no"
 
   tempo:

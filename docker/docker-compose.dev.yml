@@ -121,6 +121,14 @@ services:
     ports:
       - "3001:3000"
 
+  grafana-provisioner:
+    extends:
+      service: grafana-provisioner
+      file: docker/docker-compose.common.yml
+    depends_on:
+      grafana:
+        condition: service_healthy
+
   # database-migrate:
   #   extends:
   #     service: database-migrate
