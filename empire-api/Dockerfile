@@ -24,7 +24,6 @@ COPY tsconfig.json ./
 RUN npx tsc
 
 COPY src/config ./dist/config
-COPY src/data ./dist/data
 
 FROM node:24-slim
 

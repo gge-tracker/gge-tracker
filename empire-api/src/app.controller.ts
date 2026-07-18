@@ -14,9 +14,13 @@ interface CommandInterface {
 }
 
 const __dirname = import.meta.dirname;
-const commands: CommandInterface = JSON.parse(
-  fs.readFileSync(path.join(__dirname, 'data', 'commands.json')).toString(),
-);
+let commands: CommandInterface;
+
+function loadCommands(): void {
+  commands = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'commands.json')).toString());
+}
+
+loadCommands();
 
 export default function createApp(sockets: {
   [x: string]: GgeEmpire4KingdomsSocket | GgeEmpireSocket | GgeLiveTemporaryServerSocket | GgeEmpire4KingdomsTcp;
@@ -70,6 +74,22 @@ export default function createApp(sockets: {
       }
     } catch (error) {
       response.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/refresh-commands', (request, response) => {
+    try {
+      loadCommands();
+      response.json({
+        success: true,
+        commands: Object.keys(commands),
+      });
+    } catch (error: unknown) {
+      console.error(error);
+      response.status(500).json({
+        success: false,
+        error: (error as Error).message,
+      });
     }
   });
 
