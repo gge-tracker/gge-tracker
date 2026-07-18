@@ -1907,6 +1907,12 @@ protectedRoutes.get(
  *         description: The ID of the castle to retrieve data for
  *         schema:
  *           type: integer
+ *         in: query
+ *         description: Kingdom ID (1-based, default is 1)
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
  *     responses:
  *       '200':
  *         description: Successfully retrieved the castle information for the specified castle
