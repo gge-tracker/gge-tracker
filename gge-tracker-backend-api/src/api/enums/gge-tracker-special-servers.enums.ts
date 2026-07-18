@@ -26,6 +26,7 @@ export enum AuthorizedSpecialServersEnum {
   ASIA = 'ASIA',
   E4K_INT2 = 'E4K_INT2',
   E4K_FR1 = 'E4K_FR1',
+  E4K_GB1 = 'E4K_GB1',
   E4K_DE1 = 'E4K_DE1',
   E4K_DE2 = 'E4K_DE2',
 }
