@@ -185,6 +185,8 @@ services:
       context: ./../empire-api
       dockerfile: Dockerfile
     container_name: empire-api-container
+    volumes:
+      - ./../empire-api/src/data:/app/data
     environment:
       NODE_ENV: production
     networks:
@@ -198,6 +200,8 @@ services:
       args:
         API_TYPE: realtime
     container_name: empire-api-container-realtime
+    volumes:
+      - ./../empire-api/src/data:/app/data
     environment:
       NODE_ENV: production
       API_TYPE: realtime
