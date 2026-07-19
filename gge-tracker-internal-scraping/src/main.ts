@@ -1698,7 +1698,6 @@ export class GenericFetchAndSaveBackend {
         for (const object of areaInfos) {
           const objectType = Number(object[0]);
           if (objectType === this.STORM_BORDER_OBJECT_ID) {
-            console.log('Found border zone ' + this.STORM_BORDER_OBJECT_ID + ', border reached.');
             borderReached = true;
             continue;
           }
@@ -1919,6 +1918,14 @@ export class GenericFetchAndSaveBackend {
       throw error;
     } finally {
       client.release();
+    }
+    // Enter in storm islands event
+    const kscContent = await axios.get(encodeURI(this.BASE_API_URL + 'ksc/' + '"ID":16,"D":0,"PWR":0,"OC2":0,"SID":4'));
+    if (kscContent.data.return_code === 0) {
+      console.log('Success: player entered island');
+      await this.sleep(1000);
+    } else {
+      console.log('Info: player already entered island. Continue...');
     }
   }
 
