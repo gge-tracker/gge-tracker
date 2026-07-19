@@ -18,7 +18,18 @@ import { createClient } from 'redis';
 import { HIGHSCORES_CONFIG } from './definitions/highest_scores.config';
 import { SWAP_RANK_POINTS_TABLE } from './definitions/swap-rank-points.config';
 import { TEMP_SERVER_SETTINGS } from './definitions/temp-server-events.config';
-import { AllianceDatabase, Castle, CastleMovement, DungeonMap, HighScoreKey, PlayerDatabase } from './interfaces';
+import {
+  AllianceDatabase,
+  Castle,
+  CastleMovement,
+  DungeonMap,
+  HighScoreKey,
+  PlayerDatabase,
+  StormFort,
+  StormIsle,
+  StormIsleState,
+  StormScanResult,
+} from './interfaces';
 import Utils from './utils';
 
 export interface DiscordApiMessageBody {
@@ -95,6 +106,19 @@ export class GenericFetchAndSaveBackend {
   private readonly DISCORD_OR_CHANNEL_ID: string = process.env.DISCORD_OR_CHANNEL_ID || '';
   private readonly DISCORD_OR_API_URL: string = process.env.DISCORD_OR_API_URL || '';
   private readonly MAP_SIZE = 1286;
+  private readonly STORM_KID = 4;
+  private readonly STORM_CENTER_X = 644;
+  private readonly STORM_CENTER_Y = 644;
+  private readonly STORM_TILE_SPAN = 100;
+  private readonly STORM_TILE_HALF_SPAN = 50;
+  private readonly STORM_TILE_SPACING = 101;
+  private readonly STORM_MAX_RINGS = 5;
+  private readonly STORM_FORT_OBJECT_ID = 25;
+  private readonly STORM_ISLE_OBJECT_ID = 24;
+  private readonly STORM_BORDER_OBJECT_ID = 31;
+  private readonly STORM_RESET_HOUR_UTC = 0;
+  private readonly STORM_RESET_MINUTE_UTC = 30;
+  private readonly STORM_CHUNK_SIZE = 500;
   private readonly BASE_API_URL: string;
   private readonly CLICKHOUSE_CONFIG: { [key: string]: string | number | undefined } | undefined;
   private readonly PGSQL_CONFIG: pg.PoolConfig | undefined;
@@ -1121,6 +1145,48 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
+  /**
+   * Scans the Storm Islands kingdom and refreshes the current state of every storm fort and
+   * resource isle for this server
+   *
+   * @returns A Promise that resolves once the storm state has been persisted.
+   */
+  public async updateStormMap(): Promise<void> {
+    const start = new Date();
+    try {
+      await this.applyStormSeasonRolloverIfNeeded();
+
+      const { rows: metaRows } = await this.pgSqlQuery('SELECT scan_radius FROM storm_meta WHERE id = TRUE');
+      const knownRadius = metaRows.length > 0 ? Number(metaRows[0].scan_radius) : this.STORM_TILE_HALF_SPAN;
+
+      const scan = await this.scanStormMap(knownRadius);
+      console.log(
+        `Storm scan done for ${this.server}: ${scan.forts.length} forts, ${scan.isles.length} isles, ` +
+          `radius ${scan.radius}${scan.borderReached ? ' (border reached)' : ''}`,
+      );
+
+      await this.persistStormForts(scan.forts);
+      await this.persistStormIsles(scan.isles);
+      await this.pgSqlQuery('UPDATE storm_meta SET scan_radius = $1, last_scan_at = NOW() WHERE id = TRUE', [
+        scan.radius,
+      ]);
+    } catch (error) {
+      console.error('Error while updating the storm map:', error);
+      this.DB_UPDATES.criticalErrors++;
+      throw error;
+    } finally {
+      const elapsedTime = Date.now() - start.getTime();
+      await this.logToLoki({
+        job: 'update-storm-map',
+        data: {
+          server: this.server,
+          criticalErrors: this.DB_UPDATES.criticalErrors,
+          durationMs: elapsedTime,
+        },
+      });
+    }
+  }
+
   public getCorrespondigLtByOuterRealmsType(type: string): string | null {
     switch (type) {
       case 'collector':
@@ -1602,6 +1668,302 @@ export class GenericFetchAndSaveBackend {
       this.createNewPool();
     }
     return this.pgSqlConnection;
+  }
+
+  /**
+   * Sweeps the storm kingdom ring by ring from the centre and parses every storm object found
+   *
+   * @param knownRadius Radius in map cells reached by the previous scan, used as the starting size
+   * @returns The forts and isles found, the radius actually covered and whether the map border was met
+   */
+  private async scanStormMap(knownRadius: number): Promise<StormScanResult> {
+    const forts = new Map<string, StormFort>();
+    const isles = new Map<string, StormIsle>();
+    const knownRings = this.stormRadiusToRings(knownRadius);
+    let borderReached = false;
+    let ring = 0;
+    let reachedRings = knownRings;
+    let done = 0;
+
+    while (ring <= this.STORM_MAX_RINGS) {
+      const tiles = this.getStormRingTiles(ring);
+      let ringHasObjects = false;
+      for (const tile of tiles) {
+        const json = `"KID":${this.STORM_KID},"AX1":${tile.AX1},"AY1":${tile.AY1},"AX2":${tile.AX2},"AY2":${tile.AY2}`;
+        console.log('Fetching zone: ' + json);
+        const url: string = encodeURI(this.BASE_API_URL + 'gaa/' + json);
+        const areaInfos = await this.fetchStormArea(url);
+        const currentTime = new Date();
+
+        for (const object of areaInfos) {
+          const objectType = Number(object[0]);
+          if (objectType === this.STORM_BORDER_OBJECT_ID) {
+            console.log('Found border zone ' + this.STORM_BORDER_OBJECT_ID + ', border reached.');
+            borderReached = true;
+            continue;
+          }
+          if (objectType === this.STORM_FORT_OBJECT_ID) {
+            const fort = this.parseStormFort(object, currentTime);
+            forts.set(`${fort.positionX}:${fort.positionY}`, fort);
+            ringHasObjects = true;
+          } else if (objectType === this.STORM_ISLE_OBJECT_ID) {
+            const isle = this.parseStormIsle(object, currentTime);
+            isles.set(`${isle.positionX}:${isle.positionY}`, isle);
+            ringHasObjects = true;
+          }
+        }
+
+        done++;
+        await this.sleep(30);
+        if (done % 5 === 0) {
+          await this.sleep(1000);
+        }
+      }
+
+      if (ringHasObjects && ring > reachedRings) {
+        reachedRings = ring;
+      }
+      // Keep growing only while the frontier still yields
+      // storm objects and the edge is not met
+      if (ring >= knownRings && (!ringHasObjects || borderReached)) {
+        console.log('Border reached for current ring, stopping scan.');
+        break;
+      }
+      ring++;
+    }
+
+    return {
+      forts: [...forts.values()],
+      isles: [...isles.values()],
+      radius: this.stormRingsToRadius(reachedRings),
+      borderReached,
+    };
+  }
+
+  /**
+   * Performs a single gaa call on the storm kingdom,
+   * retrying once on an invalid payload
+   *
+   * @param url The gaa URL
+   * @returns The AI array of the area
+   */
+  private async fetchStormArea(url: string): Promise<any[]> {
+    try {
+      const response = await axios.get(url);
+      if (response.data && response.data['return_code'] == '0') {
+        return response.data.content?.AI ?? [];
+      }
+      console.error('Invalid storm response for URL:', url, response.data);
+      await this.sleep(3000);
+      const retryResponse = await axios.get(url);
+      if (retryResponse.data && retryResponse.data['return_code'] == '0') {
+        return retryResponse.data.content?.AI ?? [];
+      }
+      console.error('Storm retry failed for URL:', url, retryResponse.data);
+      this.DB_UPDATES.criticalErrors++;
+      return [];
+    } catch (error: AxiosError | any) {
+      console.error('Error on storm URL:', url, error instanceof AxiosError ? error.message : error);
+      this.DB_UPDATES.criticalErrors++;
+      if (this.DB_UPDATES.criticalErrors >= 10) {
+        throw new Error('Too many errors encountered while scanning the storm map.');
+      }
+      return [];
+    }
+  }
+
+  /**
+   * Parses a raw AI row of type 25 into a storm fort
+   *
+   * @param row The raw AI entry
+   * @param observedAt Timestamp of the scan
+   */
+  private parseStormFort(row: any[], observedAt: Date): StormFort {
+    const cooldownSeconds = Number(row[6]) || 0;
+    return {
+      positionX: Number(row[1]),
+      positionY: Number(row[2]),
+      isleId: Number(row[5]),
+      victoryCount: Number(row[7]) || 0,
+      isVisible: Number(row[8]) === 0,
+      availableAt: cooldownSeconds > 0 ? new Date(observedAt.getTime() + cooldownSeconds * 1000) : observedAt,
+    };
+  }
+
+  /**
+   * Parses a raw AI row of type 24 into a resource isle
+   *
+   * @param row The raw AI entry
+   * @param observedAt Timestamp of the scan
+   */
+  private parseStormIsle(row: any[], observedAt: Date): StormIsle {
+    const occupierId = Number(row[4]);
+    const remainingSeconds = Number(row[9]) || 0;
+    const isOccupied = occupierId > 0;
+    const state = isOccupied
+      ? StormIsleState.OCCUPIED
+      : remainingSeconds > 0
+        ? StormIsleState.RESPAWNING
+        : StormIsleState.FREE;
+
+    return {
+      positionX: Number(row[1]),
+      positionY: Number(row[2]),
+      objectId: Number(row[3]),
+      isleId: Number(row[8]),
+      occupierId: isOccupied ? occupierId : null,
+      state,
+      availableAt: remainingSeconds > 0 ? new Date(observedAt.getTime() + remainingSeconds * 1000) : observedAt,
+    };
+  }
+
+  /**
+   * Upserts the scanned forts, refreshing existing coordinates in place
+   *
+   * @param forts The forts collected by the scan
+   */
+  private async persistStormForts(forts: StormFort[]): Promise<void> {
+    if (forts.length === 0) return;
+    for (const chunk of this.chunkArray(forts, this.STORM_CHUNK_SIZE)) {
+      const values: (number | boolean | Date)[] = [];
+      const placeholders = chunk
+        .map((fort, index) => {
+          const offset = index * 6;
+          values.push(fort.positionX, fort.positionY, fort.isleId, fort.victoryCount, fort.isVisible, fort.availableAt);
+          return `($${offset + 1}::smallint, $${offset + 2}::smallint, $${offset + 3}::smallint,
+                  $${offset + 4}::smallint, $${offset + 5}::boolean, $${offset + 6}::timestamptz)`;
+        })
+        .join(', ');
+
+      await this.pgSqlQuery(
+        `INSERT INTO storm_forts (position_x, position_y, isle_id, victory_count, is_visible, available_at)
+        VALUES ${placeholders}
+        ON CONFLICT (position_x, position_y) DO UPDATE SET
+          isle_id       = EXCLUDED.isle_id,
+          victory_count = EXCLUDED.victory_count,
+          is_visible    = EXCLUDED.is_visible,
+          available_at  = EXCLUDED.available_at,
+          updated_at    = NOW()`,
+        values,
+      );
+    }
+  }
+
+  /**
+   * Upserts the scanned resource isles, refreshing existing coordinates in place
+   *
+   * @param isles - The isles collected by the scan.
+   */
+  private async persistStormIsles(isles: StormIsle[]): Promise<void> {
+    if (isles.length === 0) return;
+    for (const chunk of this.chunkArray(isles, this.STORM_CHUNK_SIZE)) {
+      const values: (number | Date | null)[] = [];
+      const placeholders = chunk
+        .map((isle, index) => {
+          const offset = index * 7;
+          values.push(
+            isle.positionX,
+            isle.positionY,
+            isle.objectId,
+            isle.isleId,
+            isle.occupierId,
+            isle.state,
+            isle.availableAt,
+          );
+          return `($${offset + 1}::smallint, $${offset + 2}::smallint, $${offset + 3}::integer,
+                  $${offset + 4}::smallint, $${offset + 5}::integer, $${offset + 6}::smallint,
+                  $${offset + 7}::timestamptz)`;
+        })
+        .join(', ');
+
+      await this.pgSqlQuery(
+        `INSERT INTO storm_isles (position_x, position_y, object_id, isle_id, occupier_id, state, available_at)
+        VALUES ${placeholders}
+        ON CONFLICT (position_x, position_y) DO UPDATE SET
+          object_id    = EXCLUDED.object_id,
+          isle_id      = EXCLUDED.isle_id,
+          occupier_id  = EXCLUDED.occupier_id,
+          state        = EXCLUDED.state,
+          available_at = EXCLUDED.available_at,
+          updated_at   = NOW()`,
+        values,
+      );
+    }
+  }
+
+  private async applyStormSeasonRolloverIfNeeded(): Promise<void> {
+    const boundary = this.getLastStormSeasonBoundary();
+    const { rows } = await this.pgSqlQuery('SELECT season_started_at FROM storm_meta WHERE id = TRUE');
+    if (rows.length > 0 && new Date(rows[0].season_started_at) >= boundary) {
+      return;
+    }
+
+    console.log(`New storm season detected for ${this.server}, wiping the previous map...`);
+    const pool = this.getPool();
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('TRUNCATE storm_forts, storm_isles');
+      await client.query(
+        `INSERT INTO storm_meta (id, season_started_at, scan_radius, last_scan_at)
+        VALUES (TRUE, $1, $2, NULL)
+        ON CONFLICT (id) DO UPDATE SET
+          season_started_at = EXCLUDED.season_started_at,
+          scan_radius       = EXCLUDED.scan_radius,
+          last_scan_at      = NULL`,
+        [boundary, this.STORM_TILE_HALF_SPAN],
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  private getLastStormSeasonBoundary(): Date {
+    const now = new Date();
+    const boundary = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        1,
+        this.STORM_RESET_HOUR_UTC,
+        this.STORM_RESET_MINUTE_UTC,
+        0,
+        0,
+      ),
+    );
+    if (now < boundary) {
+      boundary.setUTCMonth(boundary.getUTCMonth() - 1);
+    }
+    return boundary;
+  }
+
+  private getStormRingTiles(ring: number): { AX1: number; AY1: number; AX2: number; AY2: number }[] {
+    const tiles: { AX1: number; AY1: number; AX2: number; AY2: number }[] = [];
+    for (let tileY = -ring; tileY <= ring; tileY++) {
+      for (let tileX = -ring; tileX <= ring; tileX++) {
+        if (ring > 0 && Math.abs(tileX) !== ring && Math.abs(tileY) !== ring) continue;
+        const AX1 = this.STORM_CENTER_X - this.STORM_TILE_HALF_SPAN + tileX * this.STORM_TILE_SPACING;
+        const AY1 = this.STORM_CENTER_Y - this.STORM_TILE_HALF_SPAN + tileY * this.STORM_TILE_SPACING;
+        const AX2 = AX1 + this.STORM_TILE_SPAN;
+        const AY2 = AY1 + this.STORM_TILE_SPAN;
+        if (AX1 < 0 || AY1 < 0 || AX2 > this.MAP_SIZE || AY2 > this.MAP_SIZE) continue;
+        tiles.push({ AX1, AY1, AX2, AY2 });
+      }
+    }
+    return tiles;
+  }
+
+  private stormRadiusToRings(radius: number): number {
+    const rings = Math.ceil((radius - this.STORM_TILE_HALF_SPAN) / this.STORM_TILE_SPACING);
+    return Math.min(Math.max(rings, 0), this.STORM_MAX_RINGS);
+  }
+
+  private stormRingsToRadius(rings: number): number {
+    return this.STORM_TILE_HALF_SPAN + rings * this.STORM_TILE_SPACING;
   }
 
   private async getCorrespondingSquare(

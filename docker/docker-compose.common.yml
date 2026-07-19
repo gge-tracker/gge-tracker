@@ -180,6 +180,32 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  storm-update-worker:
+    build:
+      context: ./../gge-tracker-internal-scraping
+      dockerfile: Dockerfile
+    container_name: storm-update-worker
+    restart: unless-stopped
+    networks:
+      - backend
+    volumes:
+      - ./../gge-tracker-internal-scraping/config/servers.conf:/app/config/servers.conf:ro
+    command: ["dist/storm-update.worker.js"]
+    environment:
+      - INTERVAL_MS=${STORM_UPDATE_INTERVAL_MS:-120000}
+      - SQL_USER=${SQL_USER}
+      - SQL_PASSWORD=${SQL_PASSWORD}
+    deploy:
+      resources:
+        limits:
+          cpus: "0.2"
+          memory: 300M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   empire-api:
     build:
       context: ./../empire-api

@@ -65,6 +65,38 @@ export interface DungeonMap {
   updatedAt: Date;
 }
 
+export enum StormIsleState {
+  FREE = 0,
+  OCCUPIED = 1,
+  RESPAWNING = 2,
+}
+
+export interface StormFort {
+  positionX: number;
+  positionY: number;
+  isleId: number;
+  victoryCount: number;
+  isVisible: boolean;
+  availableAt: Date;
+}
+
+export interface StormIsle {
+  positionX: number;
+  positionY: number;
+  objectId: number;
+  isleId: number;
+  occupierId: number | null;
+  state: StormIsleState;
+  availableAt: Date;
+}
+
+export interface StormScanResult {
+  forts: StormFort[];
+  isles: StormIsle[];
+  radius: number;
+  borderReached: boolean;
+}
+
 export type HighScoreKey = (typeof HIGH_SCORE_KEYS)[number];
 export const HIGH_SCORE_KEYS = [
   'ALIEN_INVASIONALIEN_INVASION',
