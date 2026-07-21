@@ -41,7 +41,7 @@
               <td colspan="10" class="no-data">{{ 'Aucune alliance trouvée' | translate }}</td>
             </tr>
           }
-          @for (alliance of alliances; track alliance) {
+          @for (alliance of alliances; track alliance.id) {
             <tr>
               <!-- Rank -->
               <td class="col-rank">
@@ -49,8 +49,11 @@
                 {{ alliance.rank }}
               </td>
               <!-- Name -->
-              <td class="col-name">
-                <span class="name">{{ alliance.name }}</span>
+              <td class="col-name" [ngClass]="{ 'island-king-name': alliance.isIslandKing }">
+                @if (alliance.isIslandKing) {
+                  <img class="island-king-icon me-2" src="/assets/aquamarine_15.webp" alt="Current Alliance Stormlord" [title]="'current_stormlord' | translate">
+                }
+                <span class="name" [title]="alliance.name">{{ alliance.name }}</span>
               </td>
               <!-- Player Count -->
               <td class="col-metric px-2" [title]="alliance.playerCount | formatNumber:'visual'">

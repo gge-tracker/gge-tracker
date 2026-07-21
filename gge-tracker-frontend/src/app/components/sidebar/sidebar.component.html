@@ -14,7 +14,7 @@
               @if (item.iconUrl) {
                 <img [src]="item.iconUrl" alt="{{ item.label | translate | titlecase }}" class="img-icon" />
               }
-              <span>{{ item.label | translate | titlecase }}</span>
+              <span>{{ item.label | translate }}</span>
               @if (item.frequency) {
                 <span class="badge-frequency">{{ item.frequency | translate }}</span>
               }

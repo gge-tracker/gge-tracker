@@ -1396,6 +1396,267 @@ protectedRoutes.get('/dungeons', routingInstance.getDungeons.bind(routingInstanc
 
 /**
  * @openapi
+ * /storms/forts:
+ *   get:
+ *     summary: Retrieve the live state of the Storm Islands forts
+ *     description: >
+ *       Returns the current state of every storm fort of the running monthly event, including
+ *       whether it is on the map, how many attacks it can still take before sinking, and when it
+ *       reappears
+ *     tags:
+ *       - Storms
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The page number to retrieve
+ *       - in: query
+ *         name: filterByAvailability
+ *         schema:
+ *           type: string
+ *         description: >
+ *           Filter forts by availability. Possible values:
+ *           `1` attackable now, `2` back on the map within 5 minutes, `3` within 1 hour
+ *       - in: query
+ *         name: minAttacksLeft
+ *         schema:
+ *           type: integer
+ *         description: Only return forts that can still take at least this many attacks (0-10)
+ *       - in: query
+ *         name: positionX
+ *         schema:
+ *           type: integer
+ *         description: X coordinate used as the origin for distance sorting
+ *       - in: query
+ *         name: positionY
+ *         schema:
+ *           type: integer
+ *         description: Y coordinate used as the origin for distance sorting
+ *       - in: query
+ *         name: nearPlayerName
+ *         schema:
+ *           type: string
+ *         description: >
+ *           Sort by distance to this player's Storm Islands castle. Returns an error when the
+ *           player has not entered the Storm Islands this month
+ *       - in: query
+ *         name: maxDistance
+ *         schema:
+ *           type: number
+ *         description: Only return forts within this many tiles of the sort origin
+ *       - in: query
+ *         name: size
+ *         schema:
+ *           type: integer
+ *         description: Number of results per page (default 15, max 4000)
+ *     responses:
+ *       200:
+ *         description: Successful response with the current state of the storm forts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 forts:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       kid:
+ *                         type: integer
+ *                         description: Always 4, the kingdom hosting the Storm Islands
+ *                       position_x:
+ *                         type: integer
+ *                         description: The X position of the fort on the map
+ *                       position_y:
+ *                         type: integer
+ *                         description: The Y position of the fort on the map
+ *                       isle_id:
+ *                         type: integer
+ *                         description: The fort type, used to resolve its level and rewards
+ *                       victory_count:
+ *                         type: integer
+ *                         description: How many times the fort has been beaten (it sinks at 10)
+ *                       attacks_left:
+ *                         type: integer
+ *                         description: How many attacks the fort can still take before sinking
+ *                       is_visible:
+ *                         type: boolean
+ *                         description: Whether the fort is currently on the map
+ *                       available_at:
+ *                         type: string
+ *                         description: When the fort is attackable, or when it reappears if hidden
+ *                       updated_at:
+ *                         type: string
+ *                         description: When this row was last refreshed by the scan
+ *                       distance:
+ *                         type: number
+ *                         description: (Optional) Distance to the sort origin, in tiles
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ */
+protectedRoutes.get('/storms/forts', routingInstance.getStormForts.bind(routingInstance));
+
+/**
+ * @openapi
+ * /storms/isles:
+ *   get:
+ *     summary: Retrieve the live state of the Storm Islands resource isles
+ *     description: >
+ *       Returns the current state of every resource isle of the running monthly event. An isle is
+ *       either free (capturable now), occupied by a single player until it sinks, or already
+ *       harvested and waiting to reappear at the same spot
+ *     tags:
+ *       - Storms
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The page number to retrieve
+ *       - in: query
+ *         name: filterByState
+ *         schema:
+ *           type: string
+ *         description: >
+ *           Filter isles by state. Possible values:
+ *           `1` free, `2` occupied, `3` harvested and waiting to respawn
+ *       - in: query
+ *         name: filterByOccupierName
+ *         schema:
+ *           type: string
+ *         description: Only return isles currently held by this player
+ *       - in: query
+ *         name: positionX
+ *         schema:
+ *           type: integer
+ *         description: X coordinate used as the origin for distance sorting
+ *       - in: query
+ *         name: positionY
+ *         schema:
+ *           type: integer
+ *         description: Y coordinate used as the origin for distance sorting
+ *       - in: query
+ *         name: nearPlayerName
+ *         schema:
+ *           type: string
+ *         description: Sort by distance to this player's Storm Islands castle
+ *       - in: query
+ *         name: maxDistance
+ *         schema:
+ *           type: number
+ *         description: Only return isles within this many tiles of the sort origin
+ *       - in: query
+ *         name: size
+ *         schema:
+ *           type: integer
+ *         description: Number of results per page (default 15, max 4000)
+ *     responses:
+ *       200:
+ *         description: Successful response with the current state of the resource isles
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 isles:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       kid:
+ *                         type: integer
+ *                         description: Always 4, the kingdom hosting the Storm Islands
+ *                       position_x:
+ *                         type: integer
+ *                         description: The X position of the isle on the map
+ *                       position_y:
+ *                         type: integer
+ *                         description: The Y position of the isle on the map
+ *                       object_id:
+ *                         type: integer
+ *                         description: Game side object id, regenerated every time the isle respawns
+ *                       isle_id:
+ *                         type: integer
+ *                         description: The isle type, used to resolve which resource it yields
+ *                       state:
+ *                         type: integer
+ *                         description: '0 free, 1 occupied, 2 harvested and waiting to respawn'
+ *                       occupier_id:
+ *                         type: string
+ *                         description: The player currently holding the isle, null when free
+ *                       occupier_name:
+ *                         type: string
+ *                         description: The name of the player currently holding the isle
+ *                       occupier_might:
+ *                         type: integer
+ *                         description: The might of the player currently holding the isle
+ *                       occupier_level:
+ *                         type: integer
+ *                         description: The level of the player currently holding the isle
+ *                       occupier_legendary_level:
+ *                         type: integer
+ *                         description: The legendary level of the player currently holding the isle
+ *                       occupier_alliance_name:
+ *                         type: string
+ *                         description: The alliance of the player currently holding the isle
+ *                       available_at:
+ *                         type: string
+ *                         description: >
+ *                           When the isle becomes capturable: now if free, when it sinks if
+ *                           occupied, or when it reappears if it has been harvested
+ *                       updated_at:
+ *                         type: string
+ *                         description: When this row was last refreshed by the scan
+ *                       distance:
+ *                         type: number
+ *                         description: (Optional) Distance to the sort origin, in tiles
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ */
+protectedRoutes.get('/storms/isles', routingInstance.getStormIsles.bind(routingInstance));
+
+/**
+ * @openapi
+ * /storms/meta:
+ *   get:
+ *     summary: Retrieve the freshness of the Storm Islands data
+ *     description: >
+ *       Returns when the storm map was last scanned, how far the scan currently reaches and how
+ *       many objects are tracked
+ *     tags:
+ *       - Storms
+ *     responses:
+ *       200:
+ *         description: Successful response with the storm scan metadata
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 season_started_at:
+ *                   type: string
+ *                   description: Start of the monthly event currently being tracked
+ *                 scan_radius:
+ *                   type: integer
+ *                   description: Radius in map cells currently covered by the scan
+ *                 last_scan_at:
+ *                   type: string
+ *                   description: When the map was last scanned
+ *                 forts_count:
+ *                   type: integer
+ *                   description: Number of storm forts currently tracked
+ *                 isles_count:
+ *                   type: integer
+ *                   description: Number of resource isles currently tracked
+ */
+protectedRoutes.get('/storms/meta', routingInstance.getStormMeta.bind(routingInstance));
+
+/**
+ * @openapi
  * /server/movements:
  *   get:
  *     summary: Retrieve player castle movement history

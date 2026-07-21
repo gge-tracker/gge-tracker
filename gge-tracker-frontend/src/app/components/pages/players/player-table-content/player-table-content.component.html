@@ -3,7 +3,7 @@
     <td colspan="12" class="no-data">{{ 'Aucun joueur trouvé' | translate }}</td>
   </tr>
 }
-@for (player of players(); track player) {
+@for (player of players(); track player.playerId) {
   <tr [ngClass]="{ 'row-favorite': player.isFavorite }" class="player-row">
     <!-- Rank -->
     <td class="col-rank">

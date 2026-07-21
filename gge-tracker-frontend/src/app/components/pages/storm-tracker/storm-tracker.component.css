@@ -1,0 +1,587 @@
+:host {
+  --storm-surface: rgba(255, 255, 255, 0.15);
+  --storm-surface-hover: rgba(255, 255, 255, 0.25);
+  --storm-border: rgba(255, 255, 255, 0.09);
+  --storm-ring: rgba(255, 255, 255, 0.2);
+  --storm-text: #e7e7e7;
+  --storm-text-dim: rgba(255, 255, 255, 0.62);
+  --storm-accent: #26c6da;
+  --storm-accent-large: #178d9b;
+  --storm-accent-hover: #3ad3e6;
+  --storm-accent-ink: #05323a;
+  --storm-radius: 14px;
+  --storm-radius-sm: 11px;
+  --storm-control-h: 40px;
+  --storm-gap: 0.5rem;
+  --storm-gap-lg: 0.85rem;
+  --storm-transition: 0.25s ease;
+}
+
+.storm-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--storm-gap-lg);
+}
+
+
+.storm-segmented {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: var(--storm-radius);
+  border: 1px solid var(--storm-border);
+  display: inline-flex;
+  gap: 4px;
+  max-width: 100%;
+  padding: 4px;
+}
+
+.storm-segment {
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border-radius: var(--storm-radius-sm);
+  border: none;
+  color: var(--storm-text-dim);
+  display: inline-flex;
+  font-size: 0.92rem;
+  font-weight: 500;
+  gap: 0.5rem;
+  padding: 0.5rem 0.95rem;
+  transition:
+    background var(--storm-transition),
+    color var(--storm-transition);
+  white-space: nowrap;
+}
+
+.storm-segment:hover:not(.storm-segment--on) {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--storm-text);
+}
+
+.storm-segment--on {
+  background: var(--storm-surface);
+  color: #fff;
+  font-weight: 600;
+}
+
+.storm-segment--on:hover {
+  background: var(--storm-surface-hover);
+}
+
+.storm-segment:focus-visible {
+  box-shadow: 0 0 0 3px var(--storm-ring);
+  outline: none;
+}
+
+
+.storm-count {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  color: inherit;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1;
+  padding: 3px 7px;
+}
+
+.storm-count--accent {
+  background: var(--storm-accent);
+  color: var(--storm-accent-ink);
+}
+
+
+.storm-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--storm-gap);
+}
+
+.storm-toolbar__search {
+  align-items: center;
+  display: flex;
+  flex: 1 1 clamp(240px, 32vw, 420px);
+  gap: var(--storm-gap);
+  min-width: 0;
+}
+
+:host ::ng-deep .storm-toolbar__search .input-group-text {
+  padding-left: 1rem !important;
+}
+
+.storm-toolbar__group {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--storm-gap);
+}
+
+.storm-toolbar__actions {
+  align-items: center;
+  display: flex;
+  gap: var(--storm-gap);
+  margin-left: auto;
+}
+
+.storm-toolbar__select {
+  min-width: 190px;
+}
+
+
+.storm-btn,
+.storm-icon-btn {
+  align-items: center;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  background: var(--storm-surface);
+  border-radius: var(--storm-radius);
+  border: 1px solid var(--storm-border);
+  color: var(--storm-text);
+  display: inline-flex;
+  font-size: 0.92rem;
+  font-weight: 500;
+  height: var(--storm-control-h);
+  justify-content: center;
+  transition:
+    background var(--storm-transition),
+    box-shadow var(--storm-transition),
+    color var(--storm-transition);
+}
+
+.storm-btn {
+  gap: 0.5rem;
+  padding: 0 0.95rem;
+  white-space: nowrap;
+}
+
+.storm-icon-btn {
+  padding: 0;
+  width: var(--storm-control-h);
+}
+
+.storm-btn:hover,
+.storm-icon-btn:hover {
+  background: var(--storm-surface-hover);
+  color: #fff;
+}
+
+.storm-btn:focus-visible,
+.storm-icon-btn:focus-visible {
+  box-shadow: 0 0 0 3px var(--storm-ring);
+  outline: none;
+}
+
+.storm-icon-btn--accent {
+  background: rgba(38, 198, 218, 0.22);
+  border-color: rgba(38, 198, 218, 0.34);
+  color: #d6f7fc;
+}
+
+.storm-icon-btn--accent:hover {
+  background: rgba(38, 198, 218, 0.34);
+  color: #fff;
+}
+
+
+.storm-chips {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.storm-chips__divider {
+  background: var(--storm-border);
+  height: 20px;
+  margin: 0 2px;
+  width: 1px;
+}
+
+.storm-chip {
+  --chip-bg: var(--storm-surface);
+  --chip-fg: var(--storm-text);
+  align-items: center;
+  background: var(--chip-bg);
+  border-radius: var(--storm-radius-sm);
+  border: 1px solid var(--storm-border);
+  color: var(--chip-fg);
+  display: inline-flex;
+  font-size: 0.85rem;
+  font-weight: 500;
+  gap: 0.4rem;
+  height: 32px;
+  padding: 0 0.75rem;
+  transition:
+    background var(--storm-transition),
+    color var(--storm-transition),
+    box-shadow var(--storm-transition);
+  white-space: nowrap;
+}
+
+.storm-chip:hover {
+  --chip-bg: var(--storm-surface-hover);
+  --chip-fg: #fff;
+}
+
+.storm-chip--on {
+  --chip-bg: var(--storm-accent);
+  --chip-fg: var(--storm-accent-ink);
+  border-color: transparent;
+  font-weight: 600;
+}
+
+.storm-chip--on:hover {
+  --chip-bg: var(--storm-accent-hover);
+  --chip-fg: var(--storm-accent-ink);
+}
+
+.storm-chip:focus-visible {
+  box-shadow: 0 0 0 3px var(--storm-ring);
+  outline: none;
+}
+
+.storm-chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.storm-chip--star.storm-chip--on {
+  --chip-bg: #f5b301;
+  --chip-fg: #3a2a00;
+}
+
+.storm-chip--star.storm-chip--on:hover {
+  --chip-bg: #ffc41f;
+}
+
+.storm-chip--clear {
+  --chip-fg: #ffb4bd;
+}
+
+.storm-chip--clear:hover {
+  --chip-bg: rgba(255, 80, 103, 0.28);
+  --chip-fg: #fff;
+}
+
+.storm-chip > img {
+  max-height: 24px;
+  max-width: 28px;
+}
+
+.storm-chip__dot {
+  background: currentcolor;
+  border-radius: 50%;
+  height: 8px;
+  opacity: 0.9;
+  width: 8px;
+}
+
+.storm-chip--aquamarine {
+  --chip-fg: #7fd8e6;
+}
+
+.storm-chip--stone {
+  --chip-fg: #cbc6c1;
+}
+
+.storm-chip--wood {
+  --chip-fg: #e0b877;
+}
+
+.storm-chip--aquamarine.storm-chip--on {
+  --chip-bg: #26c6da;
+  --chip-fg: var(--storm-accent-ink);
+}
+
+.storm-chip--stone.storm-chip--on {
+  --chip-bg: #a8a29e;
+  --chip-fg: #2a2723;
+}
+
+.storm-chip--wood.storm-chip--on {
+  --chip-bg: #c98a2b;
+  --chip-fg: #34220a;
+}
+
+
+.storm-notice {
+  align-items: center;
+  background: rgba(255, 133, 0, 0.16);
+  border-radius: var(--storm-radius-sm);
+  border: 1px solid rgba(255, 133, 0, 0.4);
+  color: #ffd9ab;
+  display: flex;
+  font-size: 0.88rem;
+  gap: 0.5rem;
+  padding: 0.6rem 0.85rem;
+}
+
+.storm-status {
+  align-items: center;
+  border-top: 1px solid var(--storm-border);
+  color: var(--storm-text-dim);
+  display: flex;
+  font-size: 0.78rem;
+  gap: 0.45rem;
+  padding-top: var(--storm-gap);
+}
+
+.guard-img {
+  width: 18px;
+  margin-right: .25rem
+}
+
+
+@media (max-width: 768px) {
+  .storm-toolbar__actions {
+    margin-left: 0;
+  }
+
+  .storm-toolbar__group,
+  .storm-toolbar__search {
+    flex: 1 1 100%;
+  }
+
+  .storm-toolbar__select {
+    flex: 1 1 auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .storm-segmented {
+    width: 100%;
+  }
+
+  .storm-segment {
+    flex: 1 1 0;
+    justify-content: center;
+    padding: 0.5rem 0.6rem;
+  }
+
+  .storm-segment__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .storm-btn span:not(.storm-count) {
+    display: none;
+  }
+
+  .storm-btn {
+    padding: 0 0.8rem;
+  }
+}
+
+td,
+th {
+  text-align: center;
+}
+
+.mono {
+  font-family: monospace;
+}
+
+.isle-state {
+  border-radius: 999px;
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 2px 9px;
+  text-transform: uppercase;
+}
+
+.isle-state-0 {
+  background: rgba(62,146,18,0.18);
+  color: #3e9212;
+}
+
+.isle-state-1 {
+  background: rgba(38, 198, 218, 0.16);
+  color: var(--storm-accent);
+}
+
+.isle-state-2 {
+  background: rgba(180,83,9,0.18);
+  color: #b45309;
+}
+
+.storm-sunk {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.attacks-left {
+  margin: auto;
+  max-width: 120px;
+}
+
+.attacks-left-value {
+  color: #3e9212;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.attacks-left-value--low {
+  color: #b45309;
+}
+
+.attacks-left-value--empty {
+  color: #c92727;
+}
+
+.attacks-left-total {
+  color: #94a3b8;
+  font-size: 0.8rem;
+  margin-left: 2px;
+}
+
+.attacks-left-bar {
+  background: rgba(255,255,255,0.15);
+  border-radius: 3px;
+  height: 3px;
+  margin-top: 3px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.attacks-left-fill {
+  background: linear-gradient(90deg, #3e9212, #a8e063);
+  border-radius: 3px;
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.attacks-left-fill--low {
+  background: linear-gradient(90deg, #b45309, #f59e0b);
+}
+
+.storm-thumb {
+  height: 38px;
+  width: 38px;
+  object-fit: contain;
+}
+
+.storm-level {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.storm-level[data-level="40"] {
+  color:  #9e9e9e;
+}
+
+.storm-level[data-level="50"] {
+  color: #81c784;
+}
+
+.storm-level[data-level="60"] {
+  color: #42a5f5;
+}
+
+.storm-level[data-level="70"] {
+  color: #ab47bc;
+}
+
+.storm-level[data-level="80"] {
+  color: #ffb300;
+}
+
+.storm-sub {
+  color: #94a3b8;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.storm-low-garrison {
+  color: #f5b301;
+  margin-left: 4px;
+}
+
+.storm-units {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.storm-units--low {
+  color: #3e9212;
+}
+
+
+.storm-resource {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.storm-loot {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.storm-resource-aquamarine {
+  color: var(--storm-accent);
+}
+
+.storm-resource-stone {
+  color: #78716c;
+}
+
+.storm-resource-wood {
+  color: #a16207;
+}
+
+
+.storm-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.storm-filter-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.storm-filter-hint {
+  color: #64748b;
+  font-size: 0.76rem;
+}
+
+.alliance-text-muted {
+  color: grey;
+  font-size: .7rem;
+}
+
+.modal-body .storm-chip {
+  --chip-bg: rgba(0, 0, 0, 0.05);
+  --chip-fg: #1e293b;
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.modal-body .storm-chip:hover {
+  --chip-bg: rgba(0, 0, 0, 0.1);
+  --chip-fg: #0f172a;
+}
+
+.modal-body .storm-chip--on {
+  --chip-bg: var(--storm-accent);
+  --chip-fg: var(--storm-accent-ink);
+  border-color: transparent;
+}
+
+.modal-body .storm-chip--on:hover {
+  --chip-bg: var(--storm-accent-hover);
+}
+
+.storm-available {
+  color: #3e9212;
+  font-weight: 600;
+}
+
+.storm-menu-icon {
+  width: 45px;
+}

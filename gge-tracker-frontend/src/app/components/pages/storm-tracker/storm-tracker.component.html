@@ -1,0 +1,456 @@
+<div class="container my-3 storms">
+  <div class="row">
+    <div class="col-12" [ngClass]="{'loading': isInLoading}">
+      <div class="search container-fluid mb-2">
+        <header class="storm-header">
+
+          <nav class="storm-segmented w-100" role="tablist">
+            <button class="storm-segment" role="tab" [attr.aria-selected]="activeTab === 'forts'"
+              [class.storm-segment--on]="activeTab === 'forts'" (click)="switchTab('forts')">
+              <img src="/assets/storm-tracker/fort.png" class="storm-menu-icon">
+              <span class="storm-segment__label">{{ 'Forteresses des tempêtes' | translate }}</span>
+              @if (stormMeta) {
+              <span class="storm-count">{{ stormMeta.forts_count }}</span>
+              }
+            </button>
+            <button class="storm-segment" role="tab" [attr.aria-selected]="activeTab === 'isles'"
+              [class.storm-segment--on]="activeTab === 'isles'" (click)="switchTab('isles')">
+              <img src="/assets/storm-tracker/village/6.png" class="storm-menu-icon">
+              <span class="storm-segment__label">{{ 'Îles de ressources' | translate }}</span>
+              @if (stormMeta) {
+              <span class="storm-count">{{ stormMeta.isles_count }}</span>
+              }
+            </button>
+          </nav>
+
+          <div class="storm-toolbar">
+            @if (activeTab === 'isles') {
+            <div class="storm-toolbar__search">
+              <app-search-bar [attrListInput]="[]" [searchInput]="filterByOccupierName"
+                (searchEmitter)="filterByOccupierName = $event" [inputType]="'string'" [name]="'occupier-name'"
+                [placeholderInput]="'Nom du joueur' | translate" [hasContent]="true">
+                {{ 'Occupant' | translate }}
+              </app-search-bar>
+              <button class="storm-icon-btn storm-icon-btn--accent" [title]="'Rechercher' | translate"
+                (click)="onOccupierNameChange(filterByOccupierName!)">
+                <lucide-icon class="lucide" [img]="Search"></lucide-icon>
+              </button>
+              <button class="storm-icon-btn" [title]="'Réinitialiser' | translate" (click)="resetOccupierName()">
+                <lucide-icon class="lucide" [img]="X"></lucide-icon>
+              </button>
+            </div>
+            }
+
+            <div class="storm-toolbar__group">
+              @if (displayedStates && displayedStates.length > 0) {
+              <div class="storm-toolbar__select">
+                <app-select [items]="displayedStates" [name]="'storm-state'"
+                  [selectedItem]="(activeTab === 'forts' ? (filterByAvailability ?? 0) : (filterByState ?? 0)).toString()"
+                  (selectEmitter)="changeState($event)"></app-select>
+              </div>
+              }
+              <button class="storm-btn" data-bs-toggle="modal" data-bs-target="#stormFilterModal">
+                <i class="fa-solid fa-filter"></i>
+                <span>{{ 'Filtrer' | translate }}</span>
+                @if (activeFilterCount > 0) {
+                <span class="storm-count storm-count--accent">{{ activeFilterCount }}</span>
+                }
+              </button>
+              <button class="storm-btn" data-bs-toggle="modal" data-bs-target="#stormSortModal">
+                <i class="fa-solid fa-arrow-down-short-wide"></i>
+                <span>{{ 'Trier' | translate }}</span>
+                @if (activeSortCount > 0) {
+                <span class="storm-count storm-count--accent">{{ activeSortCount }}</span>
+                }
+              </button>
+              <button class="storm-btn" data-bs-toggle="modal" data-bs-target="#stormPagingModal">
+                <i class="fa-solid fa-list-ol"></i>
+                <span>{{ 'Pagination' | translate }}</span>
+              </button>
+            </div>
+
+            <div class="storm-toolbar__actions">
+              <button class="storm-icon-btn" [title]="'Actualiser' | translate" (click)="refresh()">
+                <i class="fa-solid fa-arrows-rotate" [ngClass]="{'fa-spin': refreshDataAnimationSpinner}"></i>
+              </button>
+            </div>
+          </div>
+
+          @if (serverService.currentServer && !allowedServers.includes(serverService.currentServer.name)) {
+          <div class="storm-notice">
+            <i class="fa-solid fa-circle-info"></i>
+            <em>{{ 'server-not-available' | translate: { server: (serverService.currentServer.name) } }}</em>
+          </div>
+          }
+
+          @if (stormMeta && stormMeta.last_scan_at) {
+          <div class="storm-status">
+            <i class="fa-solid fa-satellite-dish"></i>
+            <span>{{ 'Dernier scan' | translate }} : {{ stormMeta.last_scan_at | date:'short' }}</span>
+          </div>
+          }
+        </header>
+
+        <div class="flex flex-col justify-between gap-6 mt-2">
+          <app-table [sort]="''" [reverse]="false" [isInLoading]="isInLoading" [maxPage]="maxPage!" [page]="page"
+            [search]="''" [headers]="headers" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()"
+            (nextPage)="nextPage()">
+
+            @if (activeTab === 'forts') {
+              @if (forts.length === 0 && !isInLoading) {
+              <tr>
+                <td colspan="10" class="no-data">{{ 'Aucun résultat' | translate }}</td>
+              </tr>
+              }
+              @for (fort of forts; track fort.position) {
+              <tr [ngClass]="{'table-custom': isInCooldown(fort)}">
+                <td class="col-rank">
+                  <span class="mobile-only">#</span>
+                  {{ fort.rank }}
+                </td>
+                <td>
+                  <div class="d-flex align-items-center justify-content-center gap-2">
+                    <img [src]="fort.image" [alt]="'Forteresses des tempêtes' | translate" class="storm-thumb" />
+                    <div class="text-start">
+                      @if (fort.definition) {
+                      <div class="storm-level" [attr.data-level]="fort.definition.level">
+                        {{ 'Niveau' | translate }} {{ fort.definition.level }}
+                        @if (fort.definition.isLowGarrison) {
+                        <i class="fa-solid fa-star storm-low-garrison"
+                          [title]="'storm-low-garrison-hint' | translate"></i>
+                        }
+                      </div>
+                      <div class="storm-sub">
+                        {{ fort.definition.guards }}
+                        {{ 'gardes' | translate }}
+                      </div>
+                      } @else {
+                      <div class="storm-sub">{{ 'Inconnu' | translate }}</div>
+                      }
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="mobile-only">{{ 'Position' | translate }}:&nbsp;</span> {{ fort.position }}
+                </td>
+                @if (isDistanceShown && headers.length > 5) {
+                <td>{{ fort.distance !== null && fort.distance !== undefined ? fort.distance + 'm' : '?' }}</td>
+                }
+                <td>
+                  @if (isSunk(fort)) {
+                  <span class="storm-sunk">
+                    <i class="fa-solid fa-skull-crossbones me-1"></i>{{ 'Coulée' | translate }}
+                  </span>
+                  } @else if (isInCooldown(fort)) {
+                    <span class="isle-state isle-state-2">
+                      {{ getIsleStateLabel(2) | translate }}
+                    </span>
+                    <div class="mono small align-top">{{ fort | cooldown }}</div>
+                  } @else {
+                    <i class="fa-solid fa-chess-rook special-fa me-1"></i>
+                    <span class="storm-available">{{ 'Attaquable' | translate }}</span>
+                  }
+                </td>
+                <td>
+                  @if (!isInCooldown(fort)) {
+                    <div class="attacks-left" [title]="fort.victoryCount + ' / ' + maxVictories">
+                      <span class="attacks-left-value" [ngClass]="{'attacks-left-value--low': fort.attacksLeft <= 2}">
+                        {{ fort.attacksLeft }}
+                      </span>
+                      <span class="attacks-left-total">/ {{ maxVictories }}</span>
+                      <div class="attacks-left-bar">
+                        <div class="attacks-left-fill"
+                          [class.attacks-left-fill--low]="fort.attacksLeft <= 2"
+                          [style.width.%]="(fort.attacksLeft / maxVictories) * 100">
+                        </div>
+                      </div>
+                    </div>
+                  } @else {
+                    <div class="attacks-left" [title]="'0 / ' + maxVictories">
+                      <span class="attacks-left-value attacks-left-value--empty">
+                        0
+                      </span>
+                      <span class="attacks-left-total">/ {{ maxVictories }}</span>
+                      <div class="attacks-left-bar">
+                        <div class="attacks-left-fill"
+                          [style.width.%]="0">
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </td>
+                <td>
+                  @if (fort.definition && fort.definition.units) {
+                  <span class="storm-units" [class.storm-units--low]="fort.definition.isLowGarrison">
+                    @if (fort.definition.units.min === fort.definition.units.max) {
+                    {{ fort.definition.units.min | number }}
+                    } @else {
+                    {{ fort.definition.units.min | number }}&nbsp;-&nbsp;{{ fort.definition.units.max | number }}
+                    }
+                  </span>
+                  <div class="storm-sub">{{ 'unités' | translate }}</div>
+                  } @else {
+                  <span class="storm-sub">?</span>
+                  }
+                </td>
+              </tr>
+              }
+            }
+
+            @if (activeTab === 'isles') {
+              @if (isles.length === 0 && !isInLoading) {
+              <tr>
+                <td colspan="10" class="no-data">{{ 'Aucun résultat' | translate }}</td>
+              </tr>
+              }
+              @for (isle of isles; track isle.position) {
+              <tr [ngClass]="{'table-custom': isInCooldown(isle)}">
+                <td class="col-rank">
+                  <span class="mobile-only">#</span>
+                  {{ isle.rank }}
+                </td>
+                <td>
+                  <div class="d-flex align-items-center justify-content-center gap-2">
+                    <img [src]="isle.image" [alt]="'Îles de ressources' | translate" class="storm-thumb" />
+                    <div class="text-start">
+                      @if (isle.definition) {
+                      <div class="storm-resource storm-resource-{{ isle.definition.resource }}}">
+                        {{ getStormResourceLabel(isle.definition.resource) | translate }}
+                      </div>
+                      } @else {
+                      <div class="storm-sub">{{ 'Inconnu' | translate }}</div>
+                      }
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="mobile-only">{{ 'Position' | translate }}:&nbsp;</span> {{ isle.position }}
+                </td>
+                @if (isDistanceShown) {
+                <td>{{ isle.distance !== null && isle.distance !== undefined ? isle.distance + 'm' : '?' }}</td>
+                }
+                <td>
+                  <span class="isle-state isle-state-{{ isle.state }}">
+                    {{ getIsleStateLabel(isle.state) | translate }}
+                  </span>
+                  @if (isle.state !== StormIsleState.FREE && isInCooldown(isle)) {
+                  <div class="mono small">{{ isle | cooldown }}</div>
+                  }
+                </td>
+                <td>
+                  @if (isle.occupierName) {
+                  <div>
+                    <span>{{ isle.occupierName }}</span>
+                    @if (isle.occupierAllianceName) {
+                    <div class="mono small alliance-text-muted">{{ isle.occupierAllianceName }}</div>
+                    }
+                  </div>
+                  } @else {
+                  -
+                  }
+                </td>
+                <td>
+                  @if (isle.definition) {
+                  <span class="storm-loot storm-resource-{{ isle.definition.resource }} storm-id-{{ isle.isleId }}">
+                    {{ isle.definition.fixedLoot | number }}
+                    <img src="/assets/storm-tracker/aquamarine.webp" style="width: 20px">
+                  </span>
+                  @if (isle.definition.cargoPoints) {
+                  <div class="storm-sub">
+                    {{ isle.definition.cargoPoints | number }}
+                    <img src="/assets/aquamarine_100.webp"  style="width: 15px">
+                  </div>
+                  }
+                  } @else {
+                  -
+                  }
+                </td>
+              </tr>
+              }
+            }
+          </app-table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="stormFilterModal" tabindex="-1" aria-labelledby="stormFilterModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="stormFilterModalLabel">
+            <i class="fa-solid fa-filter"></i>&nbsp;{{ 'Filtrer les résultats' | translate }}
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"
+            [attr.aria-label]="'Fermer' | translate"></button>
+        </div>
+        <div class="modal-body d-flex flex-column gap-3">
+          @if (activeTab === 'forts') {
+          <div class="storm-filter-group">
+            <div class="storm-filter-label">{{ 'Niveau' | translate }}</div>
+            <div class="storm-chips">
+              @for (level of fortLevels; track level) {
+              <button class="storm-chip" [class.storm-chip--on]="selectedLevels.includes(level)"
+                (click)="toggleLevel(level)">
+                {{ level }}
+              </button>
+              }
+            </div>
+            <div class="storm-filter-hint">{{ 'storm-filter-level-hint' | translate }}</div>
+          </div>
+
+          <div class="storm-filter-group">
+            <div class="storm-filter-label">{{ 'Défenseurs' | translate }}</div>
+            <button class="storm-chip" [class.storm-chip--on]="lowGarrisonOnly" (click)="toggleLowGarrisonOnly()">
+              <i class="fa-solid fa-star me-1"></i>{{ 'Peu défendues' | translate }}
+            </button>
+            <div class="storm-filter-hint">{{ 'storm-low-garrison-hint' | translate }}</div>
+          </div>
+
+          <app-modal-form-group [label]="'Attaques restantes minimum' | translate">
+            <input field type="number" [(ngModel)]="minAttacksLeft" [placeholder]="'Attaques restantes' | translate"
+              min="0" [attr.max]="maxVictories" />
+            <button action search data-bs-dismiss="modal" (click)="onMinAttacksLeftChange(minAttacksLeft)">
+              {{ 'Rechercher' | translate }}
+            </button>
+            <button action reset data-bs-dismiss="modal" (click)="resetMinAttacksLeft()">
+              {{ 'Réinitialiser' | translate }}
+            </button>
+          </app-modal-form-group>
+          } @else {
+          <div class="storm-filter-group">
+            <div class="storm-filter-label">{{ 'Ressource' | translate }}</div>
+            <div class="storm-chips">
+              @for (resource of resources; track resource) {
+              <button class="storm-chip storm-chip--{{ resource }}"
+                [class.storm-chip--on]="selectedResources.includes(resource)" (click)="toggleResource(resource)">
+                <img [src]="'/assets/storm-tracker/' + resource + '.webp'" [alt]="'Îles de ressources' | translate" class="storm-thumb" />
+                {{ getStormResourceLabel(resource) | translate }}
+              </button>
+              }
+            </div>
+            <div class="storm-filter-hint">{{ 'storm-filter-resource-hint' | translate }}</div>
+          </div>
+          }
+
+          <div class="storm-filter-group">
+            <button class="btn btn-modern" data-bs-dismiss="modal" (click)="resetFilters()">
+              <i class="fa-solid fa-xmark me-1"></i>{{ 'Réinitialiser les filtres' | translate }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="stormSortModal" tabindex="-1" aria-labelledby="stormSortModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="stormSortModalLabel">
+            <i class="fa-solid fa-arrow-down-short-wide"></i>&nbsp;{{ 'Trier les résultats' | translate }}
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"
+            [attr.aria-label]="'Fermer' | translate"></button>
+        </div>
+        <div class="modal-body d-flex flex-column gap-3">
+          <div class="storm-filter-group">
+            <div class="storm-filter-label">{{ 'Trier par' | translate }}</div>
+            <div class="storm-chips">
+              @for (sort of (activeTab === 'forts' ? fortSorts : isleSorts); track sort.value) {
+              <button class="storm-chip" [class.storm-chip--on]="orderBy === sort.value"
+                [disabled]="sort.value === 'distance' && !isDistanceShown" (click)="changeSort(sort.value)">
+                {{ sort.label | translate }}
+              </button>
+              }
+              <button class="storm-chip" (click)="toggleSortDirection()"
+                [title]="'storm-sort-direction-hint' | translate">
+                <i class="fa-solid" [ngClass]="orderDirection === 'asc' ? 'fa-arrow-up-9-1' : 'fa-arrow-down-1-9'"></i>
+                {{ (orderDirection === 'asc' ? 'Croissant' : 'Décroissant') | translate }}
+              </button>
+            </div>
+            @if (!isDistanceShown) {
+            <div class="storm-filter-hint">{{ 'storm-sort-distance-hint' | translate }}</div>
+            }
+          </div>
+
+          <app-modal-form-group [label]="'Plus proche d\'une position' | translate">
+            <span field prefix>X</span>
+            <input field type="number" [(ngModel)]="positionX" [placeholder]="'Position X' | translate" />
+            <span field prefix>Y</span>
+            <input field type="number" [(ngModel)]="positionY" [placeholder]="'Position Y' | translate" />
+            <button action search data-bs-dismiss="modal" (click)="onPositionChange(positionX, positionY)">
+              {{ 'Rechercher' | translate }}
+            </button>
+            <button action reset data-bs-dismiss="modal" (click)="resetPosition()">
+              {{ 'Réinitialiser' | translate }}
+            </button>
+          </app-modal-form-group>
+
+          <app-modal-form-group [label]="'Plus proche d\'un joueur' | translate">
+            <span field prefix>{{ 'Joueur' | translate }}</span>
+            <input field type="text" [(ngModel)]="nearPlayerName" [placeholder]="'Nom du joueur' | translate" />
+            <button action search data-bs-dismiss="modal" (click)="onPositionChangePlayerName(nearPlayerName)">
+              {{ 'Rechercher' | translate }}
+            </button>
+            <button action reset data-bs-dismiss="modal" (click)="resetPosition()">
+              {{ 'Réinitialiser' | translate }}
+            </button>
+          </app-modal-form-group>
+
+          <app-modal-form-group [label]="'Distance maximale (cases)' | translate">
+            <input field type="number" [(ngModel)]="maxDistance" [placeholder]="'Distance maximale' | translate"
+              min="1" />
+            <button action search data-bs-dismiss="modal" (click)="onMaxDistanceChange(maxDistance)">
+              {{ 'Rechercher' | translate }}
+            </button>
+            <button action reset data-bs-dismiss="modal" (click)="onMaxDistanceChange(null)">
+              {{ 'Réinitialiser' | translate }}
+            </button>
+          </app-modal-form-group>
+
+          @if (activeTab === 'forts') {
+          <app-modal-form-group [label]="'Attaques restantes minimum' | translate">
+            <input field type="number" [(ngModel)]="minAttacksLeft"
+              [placeholder]="'Attaques restantes' | translate" min="0" [attr.max]="maxVictories" />
+            <button action search data-bs-dismiss="modal" (click)="onMinAttacksLeftChange(minAttacksLeft)">
+              {{ 'Rechercher' | translate }}
+            </button>
+            <button action reset data-bs-dismiss="modal" (click)="resetMinAttacksLeft()">
+              {{ 'Réinitialiser' | translate }}
+            </button>
+          </app-modal-form-group>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="stormPagingModal" tabindex="-1" aria-labelledby="stormPagingModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="stormPagingModalLabel">
+            <i class="fa-solid fa-list-ol"></i>&nbsp;{{ 'Pagination' | translate }}
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"
+            [attr.aria-label]="'Fermer' | translate"></button>
+        </div>
+        <div class="modal-body">
+          <app-modal-form-group [label]="'Nombre de résultats par page' | translate">
+            <input field type="number" [(ngModel)]="pageSize" [placeholder]="'Nombre de résultats' | translate"
+              min="0" />
+            <button action search data-bs-dismiss="modal" (click)="onPageSizeChange(pageSize)">
+              {{ 'Rechercher' | translate }}
+            </button>
+            <button action reset data-bs-dismiss="modal" (click)="resetPageSize()">
+              {{ 'Réinitialiser' | translate }}
+            </button>
+          </app-modal-form-group>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,6 +1,10 @@
 import { Pipe, PipeTransform, ChangeDetectorRef, NgZone, OnDestroy, inject } from '@angular/core';
-import { Dungeon } from '@ggetracker-interfaces/empire-ranking';
 import { TranslateService } from '@ngx-translate/core';
+
+export interface CooldownTarget {
+  effectiveCooldownUntil?: string | null;
+  globalAvailableAt?: string | null;
+}
 
 @Pipe({
   name: 'cooldown',
@@ -44,7 +48,7 @@ export class CooldownPipe implements PipeTransform, OnDestroy {
     }
   }
 
-  public transform(dungeon: Dungeon): string {
+  public transform(dungeon: CooldownTarget): string {
     const availableAt = new Date(dungeon.effectiveCooldownUntil || dungeon.globalAvailableAt || 0);
     const now = new Date(this.now);
     // We are adding 1 second to the end time to ensure that the cooldown is considered over after the last second

@@ -1,5 +1,172 @@
+@font-face {
+  font-family: "_BodyFont";
+  src: url(/assets/fonts/Roboto_Regular_BodyFont.woff2) format("woff2")
+}
+
 .players-container {
   border-bottom: 2px #000000d4 solid;
+}
+
+.alliance-description {
+  font-family: _Bodyfont;
+  font-size: 18px;
+  margin: auto;
+  width: 576px;
+  background: #ead0b2;
+  white-space: pre-wrap;
+  padding: 10px;
+  border: 10px #c1a584 solid;
+}
+
+.alliance-description.fluid {
+  max-width: 100%;
+  width: 100%;
+  word-break: break-word;
+}
+
+.description-current {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.description-current-label,
+.description-version-label {
+  color: #cca300;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.description-history {
+  padding: 0 1rem;
+}
+
+.description-history-title {
+  align-items: center;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.18);
+  color: #4a3b16;
+  display: flex;
+  font-size: 0.8rem;
+  font-weight: 700;
+  gap: 0.4rem;
+  letter-spacing: 0.07em;
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.4rem;
+  text-transform: uppercase;
+}
+
+.description-history-count {
+  background: rgba(204, 163, 0, 0.22);
+  border-radius: 999px;
+  border: 1px solid rgba(204, 163, 0, 0.5);
+  color: #6b5400;
+  font-size: 0.7rem;
+  line-height: 1;
+  padding: 0.15rem 0.45rem;
+}
+
+.description-history-empty {
+  color: #5c5241;
+  font-style: italic;
+  text-align: center;
+}
+
+.description-change {
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  margin-bottom: 0.9rem;
+  padding: 0.6rem 0.8rem 0.8rem;
+}
+
+.description-change-header {
+  align-items: center;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.15);
+  display: flex;
+  gap: 0.5rem;
+  justify-content: space-between;
+  margin-bottom: 0.7rem;
+  padding-bottom: 0.4rem;
+}
+
+.description-change-date {
+  align-items: center;
+  color: #4a3b16;
+  display: flex;
+  font-size: 0.82rem;
+  font-weight: 600;
+  gap: 0.35rem;
+}
+
+.description-change-index {
+  color: #7a6c50;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.description-change-body {
+  align-items: stretch;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr auto 1fr;
+}
+
+.description-version {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.description-version .alliance-description.fluid {
+  flex: 1;
+}
+
+.description-version ::ng-deep .description-added,
+.description-version ::ng-deep .description-removed {
+  border-radius: 3px;
+  padding: 0 2px;
+}
+
+.description-version ::ng-deep .description-removed {
+  background: #e5a3a3;
+  box-shadow: inset 0 0 0 1px #b96a6a;
+  color: #5d1f1f;
+  text-decoration: line-through;
+}
+
+.description-version ::ng-deep .description-added {
+  background: #b3d68a;
+  box-shadow: inset 0 0 0 1px #7ba64f;
+  color: #2b4a12;
+}
+
+.description-version.old .alliance-description {
+  border-color: #b3a695;
+  filter: saturate(0.55);
+  opacity: 0.85;
+}
+
+.description-version.new .alliance-description {
+  border-color: #a8c184;
+  box-shadow: 0 0 0 1px rgba(70, 120, 30, 0.35);
+}
+
+.description-version.old .description-version-label {
+  color: #8a7c5e;
+}
+
+.description-version.new .description-version-label {
+  color: #4b7a1e;
+}
+
+.description-change-arrow {
+  align-self: center;
+  color: #4b7a1e;
+  font-size: 1.2rem;
 }
 
 .distance-panel {
@@ -667,6 +834,21 @@ div[after] {
 @media (max-width: 1494px) {
   .alliance-stats-container {
     max-height: calc(100vh - 85px);
+  }
+}
+
+@media (max-width: 992px) {
+  .alliance-description {
+    max-width: 100%;
+  }
+
+  .description-change-body {
+    grid-template-columns: 1fr;
+  }
+
+  .description-change-arrow {
+    text-align: center;
+    transform: rotate(90deg);
   }
 }
 

@@ -16,6 +16,7 @@ import { ApiPlayers } from '../routes/api-players';
 import { ApiServer } from '../routes/api-server';
 import { ApiStatistics } from '../routes/api-statistics';
 import { ApiStatus } from '../routes/api-status';
+import { ApiStorms } from '../routes/api-storms';
 import { ApiUpdates } from '../routes/api-updates';
 import { QueueService } from '../services/queue-service';
 import { ApiMiniGame } from '../routes/api-mini-game';
@@ -228,6 +229,18 @@ export class ApiRoutingController {
 
   public getDungeonsByPlayerId(request: express.Request, response: express.Response): void {
     void ApiDungeons.getDungeonsByPlayer(request, response);
+  }
+
+  public getStormForts(request: express.Request, response: express.Response): void {
+    void ApiStorms.getStormForts(request, response);
+  }
+
+  public getStormIsles(request: express.Request, response: express.Response): void {
+    void ApiStorms.getStormIsles(request, response);
+  }
+
+  public getStormMeta(request: express.Request, response: express.Response): void {
+    void ApiStorms.getStormMeta(request, response);
   }
 
   public getServerMovements(request: express.Request, response: express.Response): void {

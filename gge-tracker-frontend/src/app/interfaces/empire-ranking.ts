@@ -109,6 +109,47 @@ export interface Dungeon {
   availabilityExceeded?: boolean;
 }
 
+export enum StormIsleState {
+  FREE = 0,
+  OCCUPIED = 1,
+  RESPAWNING = 2,
+}
+
+export interface StormFort {
+  rank: number;
+  position: string;
+  positionX: number;
+  positionY: number;
+  isleId: number;
+  victoryCount: number;
+  attacksLeft: number;
+  isVisible: boolean;
+  availableAt: string;
+  updatedAt: string;
+  distance?: number | null;
+  effectiveCooldownUntil: string;
+}
+
+export interface StormIsle {
+  rank: number;
+  position: string;
+  positionX: number;
+  positionY: number;
+  objectId: number;
+  isleId: number;
+  state: StormIsleState;
+  occupierId?: number | null;
+  occupierName?: string | null;
+  occupierMight?: number | null;
+  occupierLevel?: number | null;
+  occupierLegendaryLevel?: number | null;
+  occupierAllianceName?: string | null;
+  availableAt: string;
+  updatedAt: string;
+  distance?: number | null;
+  effectiveCooldownUntil: string;
+}
+
 export interface Offer {
   startAt: string;
   endAt: string;
@@ -169,6 +210,10 @@ export interface Alliance {
   lootAllTime: number;
   currentFame: number;
   highestFame: number;
+  autoJoinEnabled: boolean;
+  description: string;
+  isIslandKing: boolean;
+  isSearchingPlayers: boolean;
 }
 
 export interface FavoritePlayer {
@@ -445,10 +490,25 @@ export interface ApiAllianceSearchResponse {
   current_fame: number;
   highest_fame: number;
   active_player_count: number;
+  auto_join_enabled: boolean;
+  description: string;
+  is_island_king: boolean;
+  is_searching_players: boolean;
+}
+
+export interface ApiAllianceDescriptionHistory {
+  created_at: string;
+  old_description: string;
+  new_description: string;
 }
 
 export interface ApiAlliancePlayersSearchResponse {
   alliance_name: string;
+  auto_join_enabled: boolean;
+  description: string;
+  is_island_king: boolean;
+  description_history: ApiAllianceDescriptionHistory[];
+  is_searching_players: boolean;
   players: ApiPlayerSearchResponse[];
 }
 
@@ -468,7 +528,7 @@ export interface ApiUpdateAlliancePlayers {
   player_name: string;
 }
 
-export type ISelectedTab = 'movement' | 'stats' | 'progress' | 'members' | 'movements' | 'health';
+export type ISelectedTab = 'movement' | 'description' | 'stats' | 'progress' | 'members' | 'movements' | 'health';
 
 export interface GroupedUpdatesByDate {
   date: string;
@@ -505,6 +565,53 @@ export interface ApiDungeonsByPlayerIdResponse extends ApiGenericResponse {
 
 export interface ApiDungeonsResponse extends ApiGenericResponse {
   dungeons: ApiDungeonsResource[];
+}
+
+export interface ApiStormFort {
+  kid: number;
+  position_x: number;
+  position_y: number;
+  isle_id: number;
+  victory_count: number;
+  attacks_left: number;
+  is_visible: boolean;
+  available_at: string;
+  updated_at: string;
+  distance?: number | null;
+}
+
+export interface ApiStormIsle {
+  kid: number;
+  position_x: number;
+  position_y: number;
+  object_id: number;
+  isle_id: number;
+  state: number;
+  occupier_id: number | null;
+  occupier_name: string | null;
+  occupier_might: number | null;
+  occupier_level: number | null;
+  occupier_legendary_level: number | null;
+  occupier_alliance_name: string | null;
+  available_at: string;
+  updated_at: string;
+  distance?: number | null;
+}
+
+export interface ApiStormFortsResponse extends ApiGenericResponse {
+  forts: ApiStormFort[];
+}
+
+export interface ApiStormIslesResponse extends ApiGenericResponse {
+  isles: ApiStormIsle[];
+}
+
+export interface ApiStormMetaResponse {
+  season_started_at: string | null;
+  scan_radius: number;
+  last_scan_at: string | null;
+  forts_count: number;
+  isles_count: number;
 }
 
 export interface ApiPlayersResponse extends ApiGenericResponse {

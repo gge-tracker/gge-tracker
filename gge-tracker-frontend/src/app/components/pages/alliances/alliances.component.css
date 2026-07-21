@@ -1,0 +1,8 @@
+.island-king-icon {
+  width: 25px;
+  margin-top: -2px;
+}
+
+::ng-deep #table-component td.island-king-name .name {
+  color: #7bc4a7;
+}

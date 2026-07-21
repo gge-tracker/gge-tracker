@@ -21,7 +21,7 @@ templates:
       {{- end }}
       {{- end }}
       {{- else }}
-      @Error **{{ len .Alerts.Firing }} error(s)** on server **{{ .CommonLabels.server }}**
+      <@&1473337948098396322> **{{ len .Alerts.Firing }} error(s)** on server **{{ .CommonLabels.server }}**
       {{ range $i, $a := .Alerts.Firing }}{{ if lt $i 6 }}
       {{ if $a.Labels.identifier }}`#{{ $a.Labels.identifier }}` {{ end }}{{ printf "%.150s" $a.Labels.msg }}
       {{- end }}{{ end }}

@@ -17,7 +17,7 @@
       <thead>
         <tr>
           <th>#</th>
-          @for (header of headers(); track header) {
+          @for (header of headers(); track header[0]) {
             <th (click)="header[3] ?? sortAlliances(header[0])"
               [ngClass]="{ 'pointer': !header[3] }">
               @if (header[1] && !header[2]) {

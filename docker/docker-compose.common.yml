@@ -163,7 +163,7 @@ services:
     networks:
       - backend
     volumes:
-      - ./../gge-tracker-internal-scraping/config/servers.conf:/app/config/servers.conf:ro
+      - ./../gge-tracker-internal-scraping/config:/app/config
     command: ["dist/dungeon-update.worker.js"]
     environment:
       - INTERVAL_MS=${DUNGEON_UPDATE_INTERVAL_MS:-120000}
@@ -189,7 +189,7 @@ services:
     networks:
       - backend
     volumes:
-      - ./../gge-tracker-internal-scraping/config/servers.conf:/app/config/servers.conf:ro
+      - ./../gge-tracker-internal-scraping/config:/app/config
     command: ["dist/storm-update.worker.js"]
     environment:
       - INTERVAL_MS=${STORM_UPDATE_INTERVAL_MS:-120000}

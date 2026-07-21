@@ -25,7 +25,7 @@ export class SidebarComponent {
       title: 'Rechercher et analyser',
       items: [
         { label: 'Joueurs', id: 'players', iconUrl: '/assets/tools/players.webp' },
-        { label: 'alliances', id: 'alliances', iconUrl: '/assets/tools/alliances.webp' },
+        { label: 'Alliances', id: 'alliances', iconUrl: '/assets/tools/alliances.webp' },
         { label: 'Changements de nom', id: 'renames', iconUrl: '/assets/tools/renames.webp' },
         { label: 'Mouvements', id: 'movements', iconUrl: '/assets/tools/movements.webp' },
       ],
@@ -35,6 +35,12 @@ export class SidebarComponent {
       items: [
         { label: 'Cartographie', id: 'map', iconUrl: '/assets/tools/cartography.webp' },
         { label: 'Forteresses', id: 'dungeons', iconUrl: '/assets/tools/fortresses.webp', frequency: 'Temps réel' },
+        {
+          label: 'Îles orageuses',
+          id: 'storm-tracker',
+          iconUrl: '/assets/storm-tracker/fort.png',
+          frequency: 'Temps réel',
+        },
         { label: 'Châteaux', id: 'castles', iconUrl: '/assets/tools/castles.webp', frequency: 'Temps réel' },
       ],
     },
@@ -55,7 +61,7 @@ export class SidebarComponent {
           iconUrl: '/assets/tools/woa.webp',
         },
         {
-          label: 'Îles orageuses',
+          label: 'Classement des aigues-marines',
           id: 'stormy-isles',
           iconUrl: '/assets/tools/aquamarine.webp',
           frequency: 'Par heure',

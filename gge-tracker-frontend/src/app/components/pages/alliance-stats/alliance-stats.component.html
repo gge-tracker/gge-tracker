@@ -33,6 +33,11 @@
       </button>
     </li>
     <li class="nav-item">
+      <button class="nav-link" (click)="changeTab('description')" [ngClass]="selectedTab === 'description' ? 'active' : ''" title="{{ 'Description' | translate }}">
+        <lucide-icon class="scrollText" [img]="ScrollText"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Description' | translate }}</span>
+      </button>
+    </li>
+    <li class="nav-item">
       <button class="nav-link" (click)="changeTab('movement')" [ngClass]="selectedTab === 'movement' ? 'active' : ''" title="{{ 'Arrivées et départs' | translate }}">
         <lucide-icon class="briefcaseConveyorBelt" [img]="BriefcaseConveyorBelt"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Arrivées et départs' | translate }}</span>
       </button>
@@ -167,11 +172,55 @@
       </div>
     </div>
   </div>
-}
+  <div [ngClass]="selectedTab === 'description' ? 'd-block' : 'd-none'" class="alliances-stats-content pb-3 pt-3">
+    <div class="description-current">
+      <div class="description-current-label">{{ 'alliance_description' | translate }}</div>
+      <div class="alliance-description">
+        <span [innerHTML]="allianceData?.description | decodeHtml"></span>
+      </div>
+    </div>
 
-@if (!isInLoading) {
-  <div [ngClass]="selectedTab === 'movement' ? 'd-block' : 'd-none'" class="alliances-stats-content pb-3 pt-3"
-    >
+    @if (descriptionHistory.length) {
+      <div class="description-history container-fluid mt-4">
+        <div class="description-history-title">
+          <lucide-icon [img]="History"></lucide-icon>
+          <span>{{ 'Historique des descriptions' | translate }}</span>
+          <span class="description-history-count">{{ descriptionHistory.length }}</span>
+        </div>
+        @for (change of descriptionHistory; track $index) {
+          <article class="description-change">
+            <header class="description-change-header">
+              <span class="description-change-date">
+                <i class="fas fa-clock"></i>
+                {{ change.createdAt | date: ('Date_5' | translate) }}
+              </span>
+              <span class="description-change-index">#{{ descriptionHistory.length - $index }}</span>
+            </header>
+            <div class="description-change-body">
+              <div class="description-version old">
+                <div class="description-version-label">{{ 'Ancienne description' | translate }}</div>
+                <div class="alliance-description fluid">
+                  <span [innerHTML]="change.previousHtml"></span>
+                </div>
+              </div>
+              <div class="description-change-arrow" aria-hidden="true">
+                <i class="fas fa-arrow-right"></i>
+              </div>
+              <div class="description-version new">
+                <div class="description-version-label">{{ 'Nouvelle description' | translate }}</div>
+                <div class="alliance-description fluid">
+                  <span [innerHTML]="change.currentHtml"></span>
+                </div>
+              </div>
+            </div>
+          </article>
+        }
+      </div>
+    } @else {
+      <div class="description-history-empty mt-4">{{ 'Aucune modification trouvée' | translate }}</div>
+    }
+  </div>
+  <div [ngClass]="selectedTab === 'movement' ? 'd-block' : 'd-none'" class="alliances-stats-content pb-3 pt-3">
     <div class="timeline-section container pt-3">
       <div class="timeline-header text-center mb-3">
         <div class="row">

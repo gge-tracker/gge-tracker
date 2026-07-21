@@ -22,6 +22,7 @@ import { GrandTournamentComponent } from '@ggetracker-pages/grand-tournament/gra
 import { LiveOuterRealmsComponent } from '@ggetracker-pages/live-outer-realms/live-outer-realms.component';
 import { GuessDailyPlayerComponent } from '@ggetracker-pages/guess-daily-player/guess-daily-player.component';
 import { WoaComponent } from '@ggetracker-pages/events/woa/woa.component';
+import { StormTrackerComponent } from '@ggetracker-pages/storm-tracker/storm-tracker.component';
 import { StormyIslesComponent } from '@ggetracker-pages/stormy-isles/stormy-isles.component';
 
 export const routes: Routes = [
@@ -179,6 +180,15 @@ export const routes: Routes = [
         resolve: { titleResolver },
         data: {
           description: 'Browse the Stormy Isles leaderboard on Goodgame Empire, with aquamarine metrics.',
+          titleKey: 'Classement des aigues-marines',
+        },
+      },
+      {
+        path: 'storm-tracker',
+        component: StormTrackerComponent,
+        resolve: { titleResolver },
+        data: {
+          description: 'Goodgame Empire Tracker: Track Storm Islands forts and resource isles in real-time.',
           titleKey: 'Îles orageuses',
         },
       },

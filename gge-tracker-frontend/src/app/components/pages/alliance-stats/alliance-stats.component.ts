@@ -13,6 +13,7 @@ import { Title } from '@angular/platform-browser';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
 import {
+  ApiAllianceDescriptionHistory,
   ApiAlliancePlayersSearchResponse,
   ApiGenericData,
   ApiMovementsResponse,
@@ -48,7 +49,9 @@ import {
   Download,
   Earth,
   Flag,
+  History,
   LucideAngularModule,
+  ScrollText,
   Trophy,
   Users,
 } from 'lucide-angular';
@@ -56,11 +59,25 @@ import { ApexAxisChartSeries, XAxisAnnotations } from 'ng-apexcharts';
 import { PlayerStatsCardComponent } from '../player-stats/player-stats-card/player-stats-card.component';
 import { StatsCardContentComponent } from './stats-card-content/stats-card-content.component';
 import { PlayerTableContentComponent } from '@ggetracker-pages/players/player-table-content/player-table-content.component';
+import { DecodeHtmlPipe } from '../../../pipes/decode-html.pipe';
 
 enum ChartTypeHeights {
   DEFAULT = 450,
   LARGE = 650,
 }
+
+interface DescriptionSegment {
+  text: string;
+  changed: boolean;
+}
+
+interface DescriptionChange {
+  createdAt: string;
+  previousHtml: string;
+  currentHtml: string;
+}
+
+const DESCRIPTION_DIFF_MAX_TOKENS = 600;
 
 interface CardConfig {
   chartKey: keyof typeof ApiPlayerStatsType;
@@ -89,6 +106,7 @@ interface CardConfig {
     FormatNumberPipe,
     StatsCardContentComponent,
     TranslateModule,
+    DecodeHtmlPipe,
   ],
   standalone: true,
   templateUrl: './alliance-stats.component.html',
@@ -124,8 +142,10 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   public readonly Trophy = Trophy;
   public readonly BriefcaseConveyorBelt = BriefcaseConveyorBelt;
   public readonly Users = Users;
+  public readonly ScrollText = ScrollText;
   public readonly Earth = Earth;
   public readonly Flag = Flag;
+  public readonly History = History;
   public readonly Activity = Activity;
   /**
    * Array of loading messages for the component (these are i18n keys).
@@ -227,6 +247,8 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     { id: 4, name: 'Les Îles orageuses' },
   ];
   public allianceName = '';
+  public allianceData?: ApiAlliancePlayersSearchResponse;
+  public descriptionHistory: DescriptionChange[] = [];
   public updatesPlayers: ApiUpdateAlliancePlayers[] = [];
   public countQueryFinished = 0;
   public totalQuery = 0;
@@ -919,6 +941,8 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     }
     this.addPageTitle(data.alliance_name);
     this.allianceName = data.alliance_name;
+    this.allianceData = data;
+    this.descriptionHistory = this.buildDescriptionHistory(data.description_history);
     const updatesPlayers = await this.apiRestService.getUpdatePlayersAlliance(allianceId);
     if (updatesPlayers.success === false) {
       this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
@@ -2635,5 +2659,86 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         avg: '',
       },
     );
+  }
+
+  private buildDescriptionHistory(history: ApiAllianceDescriptionHistory[] | undefined): DescriptionChange[] {
+    const decoder = new DecodeHtmlPipe();
+
+    return (history ?? []).map((entry) => {
+      const previousTokens = this.tokenizeDescription(decoder.transform(entry.old_description));
+      const currentTokens = this.tokenizeDescription(decoder.transform(entry.new_description));
+      const { previousSegments, currentSegments } = this.diffDescriptions(previousTokens, currentTokens);
+      return {
+        createdAt: entry.created_at,
+        previousHtml: this.renderSegments(previousSegments, 'description-removed'),
+        currentHtml: this.renderSegments(currentSegments, 'description-added'),
+      };
+    });
+  }
+
+  private tokenizeDescription(description: string): string[] {
+    return description.split(/(<[^>]*>|\s+)/).filter((token) => token !== '');
+  }
+
+  private renderSegments(segments: DescriptionSegment[], highlightClass: string): string {
+    return segments
+      .map((segment) => (segment.changed ? `<span class="${highlightClass}">${segment.text}</span>` : segment.text))
+      .join('');
+  }
+
+  private diffDescriptions(
+    previousTokens: string[],
+    currentTokens: string[],
+  ): { previousSegments: DescriptionSegment[]; currentSegments: DescriptionSegment[] } {
+    const previousSegments: DescriptionSegment[] = [];
+    const currentSegments: DescriptionSegment[] = [];
+    const previousLength = previousTokens.length;
+    const currentLength = currentTokens.length;
+    if (previousLength > DESCRIPTION_DIFF_MAX_TOKENS || currentLength > DESCRIPTION_DIFF_MAX_TOKENS) {
+      for (const token of previousTokens) this.pushSegment(previousSegments, token, false);
+      for (const token of currentTokens) this.pushSegment(currentSegments, token, false);
+      return { previousSegments, currentSegments };
+    }
+    const width = currentLength + 1;
+    const lcs = new Int32Array((previousLength + 1) * width);
+    for (let previousIndex = previousLength - 1; previousIndex >= 0; previousIndex--) {
+      for (let currentIndex = currentLength - 1; currentIndex >= 0; currentIndex--) {
+        lcs[previousIndex * width + currentIndex] =
+          previousTokens[previousIndex] === currentTokens[currentIndex]
+            ? lcs[(previousIndex + 1) * width + currentIndex + 1] + 1
+            : Math.max(lcs[(previousIndex + 1) * width + currentIndex], lcs[previousIndex * width + currentIndex + 1]);
+      }
+    }
+
+    let previousIndex = 0;
+    let currentIndex = 0;
+    while (previousIndex < previousLength && currentIndex < currentLength) {
+      if (previousTokens[previousIndex] === currentTokens[currentIndex]) {
+        this.pushSegment(previousSegments, previousTokens[previousIndex++], false);
+        this.pushSegment(currentSegments, currentTokens[currentIndex++], false);
+      } else if (lcs[(previousIndex + 1) * width + currentIndex] >= lcs[previousIndex * width + currentIndex + 1]) {
+        this.pushSegment(previousSegments, previousTokens[previousIndex++], true);
+      } else {
+        this.pushSegment(currentSegments, currentTokens[currentIndex++], true);
+      }
+    }
+    while (previousIndex < previousLength) {
+      this.pushSegment(previousSegments, previousTokens[previousIndex++], true);
+    }
+    while (currentIndex < currentLength) {
+      this.pushSegment(currentSegments, currentTokens[currentIndex++], true);
+    }
+
+    return { previousSegments, currentSegments };
+  }
+
+  private pushSegment(segments: DescriptionSegment[], text: string, changed: boolean): void {
+    const isChanged = changed && text.trim() !== '' && !/^<[^>]*>$/.test(text);
+    const previous = segments.at(-1);
+    if (previous?.changed === isChanged) {
+      previous.text += text;
+      return;
+    }
+    segments.push({ text, changed: isChanged });
   }
 }

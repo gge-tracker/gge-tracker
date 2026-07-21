@@ -3,7 +3,6 @@ import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
-import { IconComponent } from '@ggetracker-components/icon/icon.component';
 import { ModalFormGroupComponent } from '@ggetracker-components/modal-form-group/modal-form-group.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
@@ -35,7 +34,6 @@ interface FormFilters {
     LucideAngularModule,
     NgClass,
     RouterLink,
-    IconComponent,
     FormsModule,
     FormatNumberPipe,
     TableComponent,
@@ -418,6 +416,10 @@ export class AlliancesComponent extends GenericComponent implements OnInit {
         currentFame: alliance.current_fame ?? 0,
         highestFame: alliance.highest_fame ?? 0,
         activePlayerCount: alliance.active_player_count ?? 0,
+        autoJoinEnabled: alliance.auto_join_enabled,
+        description: alliance.description,
+        isIslandKing: alliance.is_island_king ?? false,
+        isSearchingPlayers: alliance.is_searching_players ?? false,
       };
     });
   }

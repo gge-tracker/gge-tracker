@@ -23,6 +23,9 @@ import {
   ApiUpdateAlliancePlayersResponse,
   ErrorType,
   ApiDungeonsResponse,
+  ApiStormFortsResponse,
+  ApiStormIslesResponse,
+  ApiStormMetaResponse,
   ApiAllianceHealthResponse,
   ApiEventlist,
   ApiOuterRealmEvent,
@@ -183,6 +186,92 @@ export class ApiRestService {
     if (positionY !== null) request += `&positionY=${positionY}`;
     if (nearPlayerName) request += `&nearPlayerName=${nearPlayerName}`;
     const response = await this.apiFetch<ApiDungeonsResponse>(request);
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  /**
+   * Get the live state of the Storm Islands forts
+   * @param page The page number to fetch
+   * @param size The number of items per page
+   * @param filterByAvailability Optional filter on availability (1 now, 2 < 5min, 3 < 1h)
+   * @param minAttacksLeft Optional filter keeping only forts with at least this many attacks left
+   * @param positionX Optional X coordinate used as the distance sort origin
+   * @param positionY Optional Y coordinate used as the distance sort origin
+   * @param nearPlayerName Optional player whose storm castle is used as the distance sort origin
+   * @param maxDistance Optional radius in tiles around the sort origin
+   * @returns A promise that resolves to the storm forts data
+   */
+  public async getStormFortsList(
+    page: number,
+    size: number,
+    filterByAvailability: number | null = null,
+    minAttacksLeft: number | null = null,
+    positionX: number | null = null,
+    positionY: number | null = null,
+    nearPlayerName: string | null = null,
+    maxDistance: number | null = null,
+    filterByIsleIds: number[] | null = null,
+    orderBy: string | null = null,
+    orderDirection: 'asc' | 'desc' | null = null,
+  ): Promise<ApiResponse<ApiStormFortsResponse>> {
+    let request = `${ApiRestService.apiUrl}storms/forts?page=${page}&size=${size}`;
+    if (filterByAvailability) request += `&filterByAvailability=${filterByAvailability}`;
+    if (minAttacksLeft !== null) request += `&minAttacksLeft=${minAttacksLeft}`;
+    if (filterByIsleIds !== null) request += `&filterByIsleIds=${JSON.stringify(filterByIsleIds)}`;
+    if (orderBy) request += `&orderBy=${orderBy}`;
+    if (orderDirection) request += `&orderDirection=${orderDirection}`;
+    if (positionX !== null) request += `&positionX=${positionX}`;
+    if (positionY !== null) request += `&positionY=${positionY}`;
+    if (nearPlayerName) request += `&nearPlayerName=${nearPlayerName}`;
+    if (maxDistance !== null) request += `&maxDistance=${maxDistance}`;
+    const response = await this.apiFetch<ApiStormFortsResponse>(request);
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  /**
+   * Get the live state of the Storm Islands resource isles
+   * @param page The page number to fetch
+   * @param size The number of items per page
+   * @param filterByState Optional filter on the isle state (1 free, 2 occupied, 3 respawning)
+   * @param filterByOccupierName Optional filter keeping only isles held by this player
+   * @param positionX Optional X coordinate used as the distance sort origin
+   * @param positionY Optional Y coordinate used as the distance sort origin
+   * @param nearPlayerName Optional player whose storm castle is used as the distance sort origin
+   * @param maxDistance Optional radius in tiles around the sort origin
+   * @returns A promise that resolves to the storm isles data
+   */
+  public async getStormIslesList(
+    page: number,
+    size: number,
+    filterByState: number | null = null,
+    filterByOccupierName: string | null = null,
+    positionX: number | null = null,
+    positionY: number | null = null,
+    nearPlayerName: string | null = null,
+    maxDistance: number | null = null,
+    filterByIsleIds: number[] | null = null,
+    orderBy: string | null = null,
+    orderDirection: 'asc' | 'desc' | null = null,
+  ): Promise<ApiResponse<ApiStormIslesResponse>> {
+    let request = `${ApiRestService.apiUrl}storms/isles?page=${page}&size=${size}`;
+    if (filterByState) request += `&filterByState=${filterByState}`;
+    if (filterByOccupierName) request += `&filterByOccupierName=${filterByOccupierName}`;
+    if (filterByIsleIds !== null) request += `&filterByIsleIds=${JSON.stringify(filterByIsleIds)}`;
+    if (orderBy) request += `&orderBy=${orderBy}`;
+    if (orderDirection) request += `&orderDirection=${orderDirection}`;
+    if (positionX !== null) request += `&positionX=${positionX}`;
+    if (positionY !== null) request += `&positionY=${positionY}`;
+    if (nearPlayerName) request += `&nearPlayerName=${nearPlayerName}`;
+    if (maxDistance !== null) request += `&maxDistance=${maxDistance}`;
+    const response = await this.apiFetch<ApiStormIslesResponse>(request);
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  public async getStormMeta(): Promise<ApiResponse<ApiStormMetaResponse>> {
+    const response = await this.apiFetch<ApiStormMetaResponse>(`${ApiRestService.apiUrl}storms/meta`);
     if (!response.success) return response;
     return { success: true, data: response.data };
   }
@@ -473,7 +562,7 @@ export class ApiRestService {
     kingdomId: number = 0,
   ): Promise<ApiResponse<ApiAlliancePlayersSearchResponse>> {
     const response = await this.apiFetch<ApiAlliancePlayersSearchResponse>(
-      `${ApiRestService.apiUrl}alliances/id/${allianceId}?playerNameForDistance=${playerNameForDistance}&kingdomId=${kingdomId}`,
+      `${ApiRestService.apiUrl}alliances/id/${allianceId}${playerNameForDistance ? `?playerNameForDistance=${playerNameForDistance}&kingdomId=${kingdomId}` : ''}`,
     );
     if (!response.success) return response;
     return { success: true, data: response.data };

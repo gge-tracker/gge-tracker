@@ -523,7 +523,7 @@ export class GenericFetchAndSaveBackend {
       if (y > maxY) maxY = y;
     }
 
-    const step = 12;
+    const step = 100;
     const zone = step + 1;
     const margin = zone * 2;
 
@@ -683,7 +683,7 @@ export class GenericFetchAndSaveBackend {
         .join(', ');
 
       await this.pgSqlQuery(
-        `INSERT INTO dungeons (kid, position_x, position_y, global_available_at) VALUES ${placeholders}`,
+        `INSERT INTO dungeons (kid, position_x, position_y, global_available_at) VALUES ${placeholders} ON CONFLICT DO NOTHING`,
         values,
       );
     }

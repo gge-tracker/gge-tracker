@@ -62,7 +62,7 @@
               <td>{{ ((getDescription(movement.type, movement.positionOld, movement.positionNew).keyword) | translate) + '
                 '
               + getDescription(movement.type, movement.positionOld, movement.positionNew).description }}</td>
-              <td class="text-center">{{ movement.date | date: ('Date_1' | translate)}}</td>
+              <td class="text-center" [title]="movement.date | date">{{ movement.date | date: ('Date_1' | translate)}}</td>
               <td class="text-end">
                 <div class="d-flex justify-content-center">
                   <a [routerLink]="['/', 'players']" [queryParams]="{ player: movement.player}">
