@@ -2276,6 +2276,7 @@ export class GenericFetchAndSaveBackend {
               Utils.logMessage(JSON.stringify(p));
               Utils.logCritical('009', undefined, ' [KO] No players found, but status is OK');
               this.DB_UPDATES.criticalErrors++;
+              c = false;
             } else {
               const ids: number[] = [];
               for (const player of players) {
@@ -2352,6 +2353,11 @@ export class GenericFetchAndSaveBackend {
               if (j % 100 === 0) {
                 await new Promise((resolve) => setTimeout(resolve, 100));
               }
+            }
+            // Specific issue on IN1 : server is not cleaned at all, so low players aren't taken into account
+            if (levelCategory === 1 && this.server === 'IN1' && players.length > 0 && players[0][2]['MP'] <= 35) {
+              Utils.logMessage('Search stopped for IN1, level=' + levelCategory);
+              c = false;
             }
           }
         } else {
@@ -3714,11 +3720,13 @@ export class GenericFetchAndSaveBackend {
       }
 
       Utils.logMessage(' Database connection successful');
+      const pgPoolForIn1 = this.server === 'IN1' ? 'AND might_current > 35' : '';
       const pgSqlQuery = `
         SELECT id
         FROM players
         WHERE updated_at < NOW() - INTERVAL '24 hours'
         AND castles IS NOT NULL
+        ${pgPoolForIn1}
       `;
       const result = await this.pgSqlQuery(pgSqlQuery);
       //const ids = rows.map((row) => row.id);
