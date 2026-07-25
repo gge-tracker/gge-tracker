@@ -6,6 +6,7 @@ import { GgeEmpireSocket } from './utils/ws/empire-socket.js';
 import { GgeEmpire4KingdomsSocket } from './utils/ws/empire4kingdoms-socket.js';
 import { GgeLiveTemporaryServerSocket } from './utils/ws/live-temporary-server-socket.js';
 import { GgeEmpire4KingdomsTcp } from './utils/ws/empire4kingdoms-tcp.js';
+import { SocketService } from './utils/ws/sockets.js';
 
 interface CommandInterface {
   [key: string]: {
@@ -15,9 +16,17 @@ interface CommandInterface {
 
 const __dirname = import.meta.dirname;
 let commands: CommandInterface;
+let instancesSyncRunning = false;
 
 function loadCommands(): void {
   commands = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'commands.json')).toString());
+}
+
+function isDryRunRequested(request: express.Request): boolean {
+  const raw = request.query.dryRun ?? request.query['dry-run'] ?? (request.body as { dryRun?: unknown })?.dryRun;
+  if (raw === undefined) return false;
+  if (typeof raw === 'boolean') return raw;
+  return ['', '1', 'true', 'yes'].includes(String(raw).toLowerCase());
 }
 
 loadCommands();
@@ -90,6 +99,34 @@ export default function createApp(sockets: {
         success: false,
         error: (error as Error).message,
       });
+    }
+  });
+
+  /**
+   * Reconciles the live sockets with the mounted configuration volume
+   * connects the instances that were added to instances.json, kills the ones that were removed
+   * Pass '?dryRun=1' to get the delta without applying it
+   */
+  app.post('/instances/sync', async (request, response) => {
+    const dryRun = isDryRunRequested(request);
+    if (instancesSyncRunning) {
+      response.status(409).json({ error: 'An instances sync is already running' });
+      return;
+    }
+    instancesSyncRunning = true;
+    try {
+      const result = await SocketService.syncInstances(sockets, dryRun);
+      console.log(
+        `[instances/sync]${dryRun ? ' [dry-run]' : ''} added: ${result.summary.added}, ` +
+          `removed: ${result.summary.removed}, unchanged: ${result.summary.unchanged}, ` +
+          `skipped: ${result.summary.skipped}, unmanaged: ${result.summary.unmanaged}`,
+      );
+      response.status(200).json({ success: true, ...result });
+    } catch (error: unknown) {
+      console.error('[instances/sync] Failed:', error);
+      response.status(500).json({ success: false, dryRun, error: (error as Error).message });
+    } finally {
+      instancesSyncRunning = false;
     }
   });
 
