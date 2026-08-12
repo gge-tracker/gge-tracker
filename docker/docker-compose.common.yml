@@ -344,7 +344,7 @@ services:
     restart: always
 
   cloudflare-exporter:
-    image: ghcr.io/lablabs/cloudflare_exporter:0.2.3
+    image: ghcr.io/lablabs/cloudflare_exporter@sha256:6bf84a81725c6d75b14fb584135ccfe5f8aff89d23c36b04511d22b1c6cc10cb
     mem_limit: 128m
     cpu_quota: 10000
     cpu_period: 100000
@@ -353,13 +353,10 @@ services:
       - backend
     environment:
       - CF_API_TOKEN=${CF_API_TOKEN}
-      - CF_ACCOUNTS=${CF_ACCOUNT_ID}
       - CF_ZONES=${CF_ZONE_ID}
       - FREE_TIER=true
       - LISTEN=:8080
-      - SCRAPE_INTERVAL=${CF_SCRAPE_INTERVAL:-300}
-      - ENABLE_ACCOUNT_USAGE_METRICS=true
-      - ACCOUNT_USAGE_REQUEST_SOURCE=eyeball
+      - SCRAPE_DELAY=${CF_SCRAPE_DELAY:-300}
       - LOG_LEVEL=${CF_LOG_LEVEL:-error}
     restart: always
 
@@ -377,6 +374,7 @@ services:
     environment:
       - CF_API_TOKEN=${CF_API_TOKEN}
       - CF_ZONES=${CF_ZONE_ID}
+      - CF_ACCOUNTS=${CF_ACCOUNT_ID}
       - LISTEN_PORT=8081
       - SCRAPE_INTERVAL=${CF_SCRAPE_INTERVAL:-300}
     healthcheck:

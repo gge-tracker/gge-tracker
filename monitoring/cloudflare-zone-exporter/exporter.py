@@ -23,6 +23,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 GRAPHQL_URL = "https://api.cloudflare.com/client/v4/graphql"
 ZONES_URL = "https://api.cloudflare.com/client/v4/zones?per_page=50"
+ACCOUNTS_URL = "https://api.cloudflare.com/client/v4/accounts?per_page=50"
 
 API_TOKEN = os.environ.get("CF_API_TOKEN", "").strip()
 ZONE_FILTER = [z.strip() for z in os.environ.get("CF_ZONES", "").split(",") if z.strip()]
@@ -31,6 +32,8 @@ SCRAPE_INTERVAL = int(os.environ.get("SCRAPE_INTERVAL", "300"))
 HTTP_TIMEOUT = int(os.environ.get("CF_TIMEOUT", "20"))
 LAG_MINUTES = int(os.environ.get("SCRAPE_DELAY_MINUTES", "10"))
 MAX_COUNTRIES = int(os.environ.get("MAX_COUNTRIES", "40"))
+ACCOUNT_FILTER = [a.strip() for a in os.environ.get("CF_ACCOUNTS", "").split(",") if a.strip()]
+ACCOUNT_USAGE_REQUEST_SOURCE = os.environ.get("ACCOUNT_USAGE_REQUEST_SOURCE", "eyeball")
 
 # Shared between the poll thread and the HTTP handlers
 _lock = threading.Lock()
@@ -71,6 +74,16 @@ def discover_zones():
     if ZONE_FILTER:
         zones = {zid: name for zid, name in zones.items() if zid in ZONE_FILTER}
     return zones
+
+
+def discover_accounts():
+    doc = api_get(ACCOUNTS_URL)
+    if not doc.get("success"):
+        raise RuntimeError(f"account listing failed: {json.dumps(doc.get('errors'))[:300]}")
+    accounts = {a["id"]: a["name"] for a in doc.get("result") or []}
+    if ACCOUNT_FILTER:
+        accounts = {aid: name for aid, name in accounts.items() if aid in ACCOUNT_FILTER}
+    return accounts
 
 
 def escape(value):
@@ -135,6 +148,17 @@ query ($zone: String!, $mintime: Time!, $maxtime: Time!, $limit: Int!) {
 """
 
 
+Q_ACCOUNT_TRANSFER = """
+query ($account: String!, $mintime: Time!, $maxtime: Time!, $requestSource: String!) {
+  viewer { accounts(filter: { accountTag: $account }) {
+    httpRequestsAdaptiveGroups(
+      limit: 1
+      filter: { datetime_geq: $mintime, datetime_lt: $maxtime, requestSource_in: [$requestSource] }
+    ) { sum { edgeResponseBytes } }
+  } } }
+"""
+
+
 def zone_rows(data, field):
     zones = (data.get("viewer") or {}).get("zones") or []
     if not zones:
@@ -187,6 +211,39 @@ DAILY_FIELDS = [
     ("threats_today", "threats", "Threats blocked today (UTC)"),
     ("pageviews_today", "pageViews", "Page views today (UTC)"),
 ]
+
+
+def collect_account_usage(reg, account_id, account_name):
+    """
+    Month-to-date HTTP data transfer, plus a linear projection to month end
+    """
+    now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+    month_start = now.replace(day=1, hour=0, minute=0)
+    next_month = (month_start + timedelta(days=32)).replace(day=1)
+
+    rows = ((graphql(Q_ACCOUNT_TRANSFER, {
+        "account": account_id,
+        "mintime": month_start.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "maxtime": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "requestSource": ACCOUNT_USAGE_REQUEST_SOURCE,
+    }).get("viewer") or {}).get("accounts") or [])
+    if not rows:
+        return
+    groups = rows[0].get("httpRequestsAdaptiveGroups") or []
+    month_to_date = ((groups[0].get("sum") or {}).get("edgeResponseBytes") or 0) if groups else 0
+    elapsed = (now - month_start).total_seconds()
+    total = (next_month - month_start).total_seconds()
+    projected = (month_to_date / elapsed * total) if elapsed > 0 else 0
+    labels = {"account": account_name}
+
+    reg.gauge("cloudflare_account_http_data_transfer_month_to_date_bytes",
+      "Account HTTP data transfer for the current calendar month to date", labels, month_to_date)
+    reg.gauge("cloudflare_account_http_data_transfer_projected_month_bytes",
+      "Linear projection of this month's account HTTP data transfer", labels, projected)
+    reg.gauge("cloudflare_account_http_data_transfer_month_elapsed_seconds",
+      "Seconds elapsed in the current calendar month", labels, elapsed)
+    reg.gauge("cloudflare_account_http_data_transfer_month_total_seconds",
+      "Total seconds in the current calendar month", labels, total)
 
 
 def collect_zone(reg, zone_id, zone_name, window, today):
@@ -243,6 +300,12 @@ def scrape_once():
         zones = discover_zones()
         if not zones:
             log("WARN", "token can read no zones (or CF_ZONES matched none)")
+        for account_id, account_name in discover_accounts().items():
+            try:
+                collect_account_usage(reg, account_id, account_name)
+            except Exception as exc:
+                ok = 0
+                log("ERROR", f"account {account_name}:", exc)
         for zone_id, zone_name in zones.items():
             try:
                 collect_zone(reg, zone_id, zone_name, window, today)
