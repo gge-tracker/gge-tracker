@@ -14,7 +14,7 @@ export abstract class ApiMiniGame implements ApiHelper {
       const cachedKey = `statistics:daily-mini-game:${currentDay}:${request['language']}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
-        response.status(ApiHelper.HTTP_OK).send(cachedData);
+        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
         return;
       }
 

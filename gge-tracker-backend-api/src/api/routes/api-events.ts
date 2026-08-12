@@ -5,8 +5,29 @@ import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { EventTypes } from '../enums/event-types.enums';
 import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
 import { ApiHelper } from '../helper/api-helper';
+import { qFlag, qNumber } from '../helper/parse-query';
 import { ApiInputErrorType, ApiInvalidInputType } from '../types/parameter.types';
 import { TEMP_SERVER_SETTINGS } from '../interfaces/temporary-server-events.config';
+
+interface StormyIslesPgRow {
+  id: number;
+  player_name: string | null;
+  alliance_id: number | null;
+  alliance_name: string | null;
+  might_current: number;
+  might_all_time: number;
+  level: number;
+  legendary_level: number;
+  alliance_might: number;
+  alliance_player_count: number;
+}
+
+interface StormyIslesClickhouseRow {
+  player_id: number;
+  metric_ids: number[];
+  metric_values: number[];
+  latest_collected_at: string;
+}
 
 /**
  * Abstract class providing API endpoints for event-related data (BTH, OR, GT, ...)
@@ -26,10 +47,39 @@ export abstract class ApiEvents implements ApiHelper {
   private static readonly AQUAMARINE_CACHE_TTL_PLAYER = 10 * 60;
   private static readonly AQUAMARINE_ALLOWED_ORDER_DIRS = new Set(['ASC', 'DESC']);
 
+  private static readonly SMALLINT_MAX = 32_767;
   private static readonly STORMY_ISLES_ITEMS_PER_PAGE = 15;
   private static readonly STORMY_ISLES_CACHE_TTL_LEADERBOARD = 60 * 60;
   private static readonly STORMY_ISLES_ALLOWED_METRIC_IDS = new Set([15, 16, 17, 18, 19, 20, 100]);
-  private static readonly STORMY_ISLES_ALLOWED_SORTABLE_KEYS = new Set(['player_name', 'level', 'might_current']);
+  private static readonly STORMY_ISLES_PG_SORT_EXPRESSIONS: Record<string, string> = {
+    player_name: 'P.name',
+    level: '(P.level + P.legendary_level)',
+    might_current: 'P.might_current',
+    might_all_time: 'P.might_all_time',
+    alliance_name: 'A.name',
+    alliance_might: 'COALESCE(AGG.alliance_might, 0)',
+    alliance_player_count: 'COALESCE(AGG.alliance_player_count, 0)',
+  };
+  private static readonly STORMY_ISLES_ALLIANCE_AGGREGATE_JOIN = `
+    LEFT JOIN (
+      SELECT alliance_id,
+        SUM(might_current) AS alliance_might,
+        COUNT(*)           AS alliance_player_count
+      FROM players
+      WHERE alliance_id IS NOT NULL
+      GROUP BY alliance_id
+    ) AGG ON AGG.alliance_id = P.alliance_id`;
+  private static readonly STORMY_ISLES_PG_COLUMNS = `
+    P.id,
+    P.name         AS player_name,
+    P.alliance_id,
+    A.name         AS alliance_name,
+    P.might_current,
+    P.might_all_time,
+    P.level,
+    P.legendary_level,
+    COALESCE(AGG.alliance_might, 0)        AS alliance_might,
+    COALESCE(AGG.alliance_player_count, 0) AS alliance_player_count`;
 
   /**
    * Retrieves a list of events from the database, combining results from both
@@ -110,25 +160,27 @@ export abstract class ApiEvents implements ApiHelper {
        * Construct SQL Query
        * --------------------------------- */
       const query = `
-        SELECT
-          e.event_num,
-          e.collect_date,
-          COUNT(*) AS player_count,
-          'outer_realms' AS type
-        FROM outer_realms_event e
-        INNER JOIN outer_realms_ranking r
-          ON e.event_num = r.event_num
-        GROUP BY e.event_num, e.collect_date
-        UNION ALL
-        SELECT
-          e.event_num,
-          e.collect_date,
-          COUNT(*) AS player_count,
-          'beyond_the_horizon' AS type
-        FROM beyond_the_horizon_event e
-        INNER JOIN beyond_the_horizon_ranking r
-          ON e.event_num = r.event_num
-        GROUP BY e.event_num, e.collect_date
+        SELECT * FROM (
+          SELECT
+            e.event_num,
+            e.collect_date,
+            COUNT(*) AS player_count,
+            'outer_realms' AS type
+          FROM outer_realms_event e
+          INNER JOIN outer_realms_ranking r
+            ON e.event_num = r.event_num
+          GROUP BY e.event_num, e.collect_date
+          UNION ALL
+          SELECT
+            e.event_num,
+            e.collect_date,
+            COUNT(*) AS player_count,
+            'beyond_the_horizon' AS type
+          FROM beyond_the_horizon_event e
+          INNER JOIN beyond_the_horizon_ranking r
+            ON e.event_num = r.event_num
+          GROUP BY e.event_num, e.collect_date
+        ) AS combined_events
         ${whereClause}
         ORDER BY collect_date DESC
         LIMIT ${itemsPerPage} OFFSET ${(page - 1) * itemsPerPage};
@@ -406,7 +458,7 @@ export abstract class ApiEvents implements ApiHelper {
       const cachedKey = `grand-tournament:search-alliance-name:${allianceName}:date:${date.toISOString()}:page:${pagination_page}:v${cacheVersion}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
-        response.status(ApiHelper.HTTP_OK).send(cachedData);
+        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
         return;
       }
 
@@ -1724,7 +1776,7 @@ export abstract class ApiEvents implements ApiHelper {
               GROUP BY player_id, metric_id
             )
             GROUP BY player_id
-            ORDER BY ${orderByDate ? 'last_collected_at' : 'order_metric_value'} ${orderDirection}
+            ORDER BY ${orderByDate ? 'last_collected_at' : 'order_metric_value'} ${orderDirection}, player_id
             LIMIT ${limit} OFFSET ${offset}
           `,
           query_params: { orderMetricId: orderByMetricId ?? 100 },
@@ -1819,34 +1871,31 @@ export abstract class ApiEvents implements ApiHelper {
       const orderDirection = ['ASC', 'DESC'].includes(rawOrderDirection) ? rawOrderDirection : 'DESC';
       const rawOrderBy = String(request.query.order_by);
       let orderMetricId: number | string = 100;
-      if (rawOrderBy !== undefined && ApiEvents.STORMY_ISLES_ALLOWED_METRIC_IDS.has(Number(rawOrderBy))) {
+      if (ApiEvents.STORMY_ISLES_ALLOWED_METRIC_IDS.has(Number(rawOrderBy))) {
         orderMetricId = Number(rawOrderBy);
-      } else if (this.STORMY_ISLES_ALLOWED_SORTABLE_KEYS.has(rawOrderBy)) {
+      } else if (rawOrderBy in ApiEvents.STORMY_ISLES_PG_SORT_EXPRESSIONS) {
         orderMetricId = rawOrderBy;
       }
-      const playerNameRaw = ApiHelper.validateSearchAndSanitize(request.query.player_name, { toLowerCase: false });
-      const allianceNameRaw = ApiHelper.validateSearchAndSanitize(request.query.alliance_name, { toLowerCase: false });
-      const playerNameString = ApiHelper.isValidInput(playerNameRaw) ? playerNameRaw : null;
-      const allianceNameString = ApiHelper.isValidInput(allianceNameRaw) ? allianceNameRaw : null;
+      const playerFilter = ApiEvents.buildStormyIslesPlayerFilter(request);
+      const metricFilter = ApiEvents.buildStormyIslesMetricFilter(request);
+      const sizeValue = Number(request.query.size);
+      const limit =
+        !Number.isNaN(sizeValue) && sizeValue > 0 && sizeValue < 9999
+          ? Number(sizeValue)
+          : ApiEvents.STORMY_ISLES_ITEMS_PER_PAGE;
 
       /* ---------------------------------
        * Cache check
        * --------------------------------- */
-      const filterKey = `pn:${playerNameString ?? ''}:an:${allianceNameString ?? ''}`;
-      const cachedKey = `stormy-isles:lb:${code}:p:${page}:o:${orderMetricId}:${orderDirection}:${filterKey}`;
+      const cachedKey = `stormy-isles:lb:${code}:l:${limit}:p:${page}:o:${orderMetricId}:${orderDirection}:${playerFilter.cacheKey}:${metricFilter.cacheKey}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
         return;
       }
 
-      /* ---------------------------------
-       * Pre-filtering in PostgreSQL to get relevant
-       * player IDs based on name/alliance search
-       * --------------------------------- */
       const clickhouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
       const table = `${database}.${ApiEvents.CLICKHOUSE_PLAYER_METRICS_TABLE_NAME}`;
-      const limit = ApiEvents.STORMY_ISLES_ITEMS_PER_PAGE;
       const offset = (page - 1) * limit;
 
       const latestDateResult = await clickhouseClient.query({
@@ -1855,125 +1904,67 @@ export abstract class ApiEvents implements ApiHelper {
       const latestDateJson = await latestDateResult.json();
       const latestDate = (latestDateJson.data as Array<{ latest_date: string }>)[0]?.latest_date;
       if (!latestDate) {
-        const empty = {
-          players: [],
-          snapshot_date: null,
-          pagination: { current_page: page, total_pages: 0, current_items_count: 0, total_items_count: 0 },
-        };
-        response.status(ApiHelper.HTTP_OK).send(empty);
+        response.status(ApiHelper.HTTP_OK).send(ApiEvents.emptyStormyIslesLeaderboard(page, null));
         return;
       }
 
       /* ---------------------------------
-       * Filter player/alliance IDs (string match)
+       * Resolve the eligible player ids
        * --------------------------------- */
-      let pgFilteredIds: number[] | null = null;
-      if (playerNameString || allianceNameString) {
-        const conditions: string[] = [];
-        const pgParameters: unknown[] = [];
-        if (playerNameString) {
-          pgParameters.push(`%${playerNameString}%`);
-          conditions.push(`P.name ILIKE $${pgParameters.length}`);
-        }
-        if (allianceNameString) {
-          pgParameters.push(`%${allianceNameString}%`);
-          conditions.push(`A.name ILIKE $${pgParameters.length}`);
+      const sortsOnPgColumn = typeof orderMetricId === 'string';
+      let eligiblePlayerIds: number[] | null = null;
+      if (sortsOnPgColumn || playerFilter.isActive) {
+        const chIdsResult = await clickhouseClient.query({
+          query: `
+            SELECT player_id
+            FROM ${table}
+            WHERE toDate(collected_at) = {latestDate:String}
+            GROUP BY player_id
+            ${metricFilter.having}
+          `,
+          query_params: { latestDate, ...metricFilter.queryParameters },
+        });
+        const chIdsJson = await chIdsResult.json();
+        const candidateIds = (chIdsJson.data as Array<{ player_id: number }>).map((r) => Number(r.player_id));
+        if (candidateIds.length === 0) {
+          response.status(ApiHelper.HTTP_OK).send(ApiEvents.emptyStormyIslesLeaderboard(page, latestDate));
+          return;
         }
         const pgFilterResult = await pgPool.query(
-          `SELECT P.id FROM players P LEFT JOIN alliances A ON P.alliance_id = A.id WHERE ${conditions.join(' AND ')}`,
-          pgParameters,
+          `SELECT P.id
+            FROM players P
+            LEFT JOIN alliances A ON P.alliance_id = A.id
+            ${ApiEvents.STORMY_ISLES_ALLIANCE_AGGREGATE_JOIN}
+            WHERE P.id = ANY($1) ${playerFilter.where}`,
+          [candidateIds, ...playerFilter.values],
         );
-        pgFilteredIds = pgFilterResult.rows.map((r: { id: number }) => r.id);
-        if (pgFilteredIds.length === 0) {
-          const empty = {
-            players: [],
-            snapshot_date: latestDate,
-            pagination: { current_page: page, total_pages: 0, current_items_count: 0, total_items_count: 0 },
-          };
-          response.status(ApiHelper.HTTP_OK).send(empty);
+        eligiblePlayerIds = pgFilterResult.rows.map((r: { id: number }) => Number(r.id));
+        if (eligiblePlayerIds.length === 0) {
+          response.status(ApiHelper.HTTP_OK).send(ApiEvents.emptyStormyIslesLeaderboard(page, latestDate));
           return;
         }
       }
-      const playerIdClause = pgFilteredIds ? `AND player_id IN (${pgFilteredIds.join(',')})` : '';
 
       /* ---------------------------------
-       * Branch: sort by PostgreSQL player field
-       * (player_name, level, might_current)
+       * Branch: sort by a PostgreSQL player/alliance field
+       * (player_name, level, might_current, alliance_might, ...)
        * --------------------------------- */
-      if (typeof orderMetricId === 'string') {
-        const chIdsResult = await clickhouseClient.query({
-          query: `
-            SELECT DISTINCT player_id
-            FROM ${table}
-            WHERE toDate(collected_at) = {latestDate:String}
-            ${playerIdClause}
-          `,
-          query_params: { latestDate },
-        });
-        const chIdsJson = await chIdsResult.json();
-        const allChPlayerIds = (chIdsJson.data as Array<{ player_id: number }>).map((r) => r.player_id);
-        if (allChPlayerIds.length === 0) {
-          const empty = {
-            players: [],
-            snapshot_date: latestDate,
-            pagination: { current_page: page, total_pages: 0, current_items_count: 0, total_items_count: 0 },
-          };
-          response.status(ApiHelper.HTTP_OK).send(empty);
-          return;
-        }
+      if (sortsOnPgColumn) {
+        const totalItems = (eligiblePlayerIds as number[]).length;
+        const pgPageResult = await pgPool.query(
+          `SELECT ${ApiEvents.STORMY_ISLES_PG_COLUMNS}
+            FROM players P
+            LEFT JOIN alliances A ON P.alliance_id = A.id
+            ${ApiEvents.STORMY_ISLES_ALLIANCE_AGGREGATE_JOIN}
+            WHERE P.id = ANY($1)
+            ORDER BY ${ApiEvents.STORMY_ISLES_PG_SORT_EXPRESSIONS[orderMetricId as string]} ${orderDirection}, P.id
+            LIMIT $2 OFFSET $3`,
+          [eligiblePlayerIds, limit, offset],
+        );
+        const pgRows = pgPageResult.rows as StormyIslesPgRow[];
+        const pagePlayerIds = pgRows.map((r) => Number(r.id));
 
-        const pgSortExpr =
-          orderMetricId === 'player_name'
-            ? 'P.name'
-            : orderMetricId === 'level'
-              ? '(P.level + P.legendary_level)'
-              : 'P.might_current';
-        const [pgCountResult, pgPageResult] = await Promise.all([
-          pgPool.query(`SELECT COUNT(*) AS total FROM players P WHERE P.id = ANY($1)`, [allChPlayerIds]),
-          pgPool.query(
-            `SELECT
-                P.id,
-                P.name         AS player_name,
-                P.alliance_id,
-                A.name         AS alliance_name,
-                P.might_current,
-                P.might_all_time,
-                P.level,
-                P.legendary_level
-              FROM players P
-              LEFT JOIN alliances A ON P.alliance_id = A.id
-              WHERE P.id = ANY($1)
-              ORDER BY ${pgSortExpr} ${orderDirection}
-              LIMIT $2 OFFSET $3`,
-            [allChPlayerIds, limit, offset],
-          ),
-        ]);
-        const pgTotal = Number(pgCountResult.rows[0]?.total ?? 0);
-        if (pgTotal === 0) {
-          const empty = {
-            players: [],
-            snapshot_date: latestDate,
-            pagination: { current_page: page, total_pages: 0, current_items_count: 0, total_items_count: 0 },
-          };
-          response.status(ApiHelper.HTTP_OK).send(empty);
-          return;
-        }
-        const pgRows = pgPageResult.rows as Array<{
-          id: number;
-          player_name: string | null;
-          alliance_id: number | null;
-          alliance_name: string | null;
-          might_current: number;
-          might_all_time: number;
-          level: number;
-          legendary_level: number;
-        }>;
-        const pagePlayerIds = pgRows.map((r) => r.id);
-
-        const metricsByPlayerId = new Map<
-          number,
-          { metric_ids: number[]; metric_values: number[]; latest_collected_at: string }
-        >();
+        const metricsByPlayerId = new Map<number, { metrics: Record<number, number>; collectedAt: string }>();
         if (pagePlayerIds.length > 0) {
           const chMetricsResult = await clickhouseClient.query({
             query: `
@@ -1984,53 +1975,38 @@ export abstract class ApiEvents implements ApiHelper {
                 any(collected_at)      AS latest_collected_at
               FROM ${table}
               WHERE toDate(collected_at) = {latestDate:String}
-                AND player_id IN (${pagePlayerIds.join(',')})
+                AND player_id IN ({pagePlayerIds:Array(Int64)})
               GROUP BY player_id
             `,
-            query_params: { latestDate },
+            query_params: { latestDate, pagePlayerIds },
           });
           const chMetricsJson = await chMetricsResult.json();
-          for (const r of chMetricsJson.data as Array<{
-            player_id: number;
-            metric_ids: number[];
-            metric_values: number[];
-            latest_collected_at: string;
-          }>) {
-            metricsByPlayerId.set(Number(r.player_id), r);
+          for (const row of chMetricsJson.data as StormyIslesClickhouseRow[]) {
+            metricsByPlayerId.set(Number(row.player_id), {
+              metrics: ApiEvents.mapStormyIslesMetrics(row),
+              collectedAt: row.latest_collected_at,
+            });
           }
         }
 
-        const players = pgRows.map((pg, index) => {
-          const chRow = metricsByPlayerId.get(pg.id);
-          const metrics: Record<number, number> = {};
-          if (chRow) {
-            for (let index_ = 0; index_ < chRow.metric_ids.length; index_++) {
-              metrics[Number(chRow.metric_ids[index_])] = Number(chRow.metric_values[index_]);
-            }
-          }
-          return {
-            rank: offset + index + 1,
-            player_id: ApiHelper.addCountryCode(String(pg.id), code),
-            player_name: pg.player_name ?? null,
-            alliance_id: pg.alliance_id ? ApiHelper.addCountryCode(String(pg.alliance_id), code) : null,
-            alliance_name: pg.alliance_name ?? null,
-            might_current: pg.might_current ?? 0,
-            might_all_time: pg.might_all_time ?? 0,
-            level: pg.level ?? 0,
-            legendary_level: pg.legendary_level ?? 0,
-            metrics,
-            collected_at: chRow ? new Date(chRow.latest_collected_at).toISOString() : null,
-          };
+        const players = pgRows.map((row, index) => {
+          const chRow = metricsByPlayerId.get(Number(row.id));
+          return ApiEvents.formatStormyIslesPlayer(
+            row,
+            offset + index + 1,
+            code,
+            chRow?.metrics ?? {},
+            chRow ? new Date(chRow.collectedAt).toISOString() : null,
+          );
         });
-        const total_pages = Math.ceil(pgTotal / limit);
         const responseData = {
           players,
           snapshot_date: latestDate,
           pagination: {
             current_page: page,
-            total_pages,
+            total_pages: Math.ceil(totalItems / limit),
             current_items_count: players.length,
-            total_items_count: pgTotal,
+            total_items_count: totalItems,
           },
         };
         void ApiHelper.updateCache(cachedKey, responseData, ApiEvents.STORMY_ISLES_CACHE_TTL_LEADERBOARD);
@@ -2042,15 +2018,27 @@ export abstract class ApiEvents implements ApiHelper {
        * ClickHouse query to get paginated, sorted
        * player metrics (metric_id sort)
        * --------------------------------- */
+      const playerIdClause = eligiblePlayerIds ? 'AND player_id IN ({eligiblePlayerIds:Array(Int64)})' : '';
+      const chQueryParameters = {
+        latestDate,
+        orderMetricId,
+        ...metricFilter.queryParameters,
+        ...(eligiblePlayerIds ? { eligiblePlayerIds } : {}),
+      };
       const [rawCount, rawData] = await Promise.all([
         clickhouseClient.query({
           query: `
-            SELECT COUNT(DISTINCT player_id) AS total
-            FROM ${table}
-            WHERE toDate(collected_at) = {latestDate:String}
-            ${playerIdClause}
+            SELECT COUNT() AS total
+            FROM (
+              SELECT player_id
+              FROM ${table}
+              WHERE toDate(collected_at) = {latestDate:String}
+              ${playerIdClause}
+              GROUP BY player_id
+              ${metricFilter.having}
+            )
           `,
-          query_params: { latestDate },
+          query_params: chQueryParameters,
         }),
         clickhouseClient.query({
           query: `
@@ -2064,83 +2052,58 @@ export abstract class ApiEvents implements ApiHelper {
             WHERE toDate(collected_at) = {latestDate:String}
             ${playerIdClause}
             GROUP BY player_id
-            ORDER BY order_metric_value ${orderDirection}
+            ${metricFilter.having}
+            ORDER BY order_metric_value ${orderDirection}, player_id
             LIMIT ${limit} OFFSET ${offset}
           `,
-          query_params: { latestDate, orderMetricId },
+          query_params: chQueryParameters,
         }),
       ]);
       const jsonCount = await rawCount.json();
       const total_items = Number((jsonCount.data as Array<{ total: number }>)[0]?.total ?? 0);
       if (total_items === 0) {
-        const empty = {
-          players: [],
-          snapshot_date: latestDate,
-          pagination: { current_page: page, total_pages: 0, current_items_count: 0, total_items_count: 0 },
-        };
-        response.status(ApiHelper.HTTP_OK).send(empty);
+        response.status(ApiHelper.HTTP_OK).send(ApiEvents.emptyStormyIslesLeaderboard(page, latestDate));
         return;
       }
       const jsonData = await rawData.json();
-      const rows = jsonData.data as Array<{
-        player_id: number;
-        metric_ids: number[];
-        metric_values: number[];
-        latest_collected_at: string;
-      }>;
+      const rows = jsonData.data as StormyIslesClickhouseRow[];
 
       /* ---------------------------------
        * Enrich with PostgreSQL player data
        * --------------------------------- */
-      const playerIds = rows.map((r) => r.player_id);
+      const playerIds = rows.map((r) => Number(r.player_id));
       const pgResult = await pgPool.query(
-        `SELECT
-          P.id,
-          P.name         AS player_name,
-          P.alliance_id,
-          A.name         AS alliance_name,
-          P.might_current,
-          P.might_all_time,
-          P.level,
-          P.legendary_level
+        `SELECT ${ApiEvents.STORMY_ISLES_PG_COLUMNS}
           FROM players P
           LEFT JOIN alliances A ON P.alliance_id = A.id
+          ${ApiEvents.STORMY_ISLES_ALLIANCE_AGGREGATE_JOIN}
           WHERE P.id = ANY($1)`,
         [playerIds],
       );
-      const pgById = new Map(pgResult.rows.map((r: any) => [r.id, r]));
+      const pgById = new Map<number, StormyIslesPgRow>(
+        (pgResult.rows as StormyIslesPgRow[]).map((r) => [Number(r.id), r]),
+      );
 
       /* ---------------------------------
        * Format and respond
        * --------------------------------- */
-      const players = rows.map((row, index) => {
-        const metrics: Record<number, number> = {};
-        for (let index_ = 0; index_ < row.metric_ids.length; index_++) {
-          metrics[Number(row.metric_ids[index_])] = Number(row.metric_values[index_]);
-        }
-        const pg = pgById.get(row.player_id);
-        return {
-          rank: offset + index + 1,
-          player_id: ApiHelper.addCountryCode(String(row.player_id), code),
-          player_name: pg?.player_name ?? null,
-          alliance_id: pg?.alliance_id ? ApiHelper.addCountryCode(String(pg.alliance_id), code) : null,
-          alliance_name: pg?.alliance_name ?? null,
-          might_current: pg?.might_current ?? 0,
-          might_all_time: pg?.might_all_time ?? 0,
-          level: pg?.level ?? 0,
-          legendary_level: pg?.legendary_level ?? 0,
-          metrics,
-          collected_at: new Date(row.latest_collected_at).toISOString(),
-        };
-      });
+      const players = rows.map((row, index) =>
+        ApiEvents.formatStormyIslesPlayer(
+          pgById.get(Number(row.player_id)),
+          offset + index + 1,
+          code,
+          ApiEvents.mapStormyIslesMetrics(row),
+          new Date(row.latest_collected_at).toISOString(),
+          Number(row.player_id),
+        ),
+      );
 
-      const total_pages = Math.ceil(total_items / limit);
       const responseData = {
         players,
         snapshot_date: latestDate,
         pagination: {
           current_page: page,
-          total_pages,
+          total_pages: Math.ceil(total_items / limit),
           current_items_count: players.length,
           total_items_count: total_items,
         },
@@ -2152,6 +2115,161 @@ export abstract class ApiEvents implements ApiHelper {
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getStormyIslesLeaderboard', request);
     }
+  }
+
+  /**
+   * Builds the empty payload returned when no stormy isles entry matches the request
+   * @param page requested page number
+   * @param snapshotDate date of the latest snapshot, or null when no snapshot exists yet
+   * @returns an empty leaderboard payload
+   */
+  private static emptyStormyIslesLeaderboard(page: number, snapshotDate: string | null): object {
+    return {
+      players: [],
+      snapshot_date: snapshotDate,
+      pagination: { current_page: page, total_pages: 0, current_items_count: 0, total_items_count: 0 },
+    };
+  }
+
+  /**
+   * Flattens the parallel metric_ids / metric_values arrays returned into a metric id keyed record
+   * @param row raw ClickHouse aggregated row
+   * @returns a record mapping each metric id to its value
+   */
+  private static mapStormyIslesMetrics(row: StormyIslesClickhouseRow): Record<number, number> {
+    const metrics: Record<number, number> = {};
+    for (const [index, metricId] of row.metric_ids.entries()) {
+      metrics[Number(metricId)] = Number(row.metric_values[index]);
+    }
+    return metrics;
+  }
+
+  /**
+   * Formats a single stormy isles leaderboard entry from its PostgreSQL and ClickHouse parts
+   * @param pgRow PostgreSQL player row, may be undefined when the player is no longer tracked
+   * @param rank rank of the entry within the whole leaderboard
+   * @param code game code, used to suffix player/alliance ids
+   * @param metrics aquamarine metrics of the player
+   * @param collectedAt ISO date of the metrics collection, or null when unknown
+   * @param fallbackPlayerId player id to use when the PostgreSQL row is missing
+   * @returns the formatted leaderboard entry
+   */
+  private static formatStormyIslesPlayer(
+    pgRow: StormyIslesPgRow | undefined,
+    rank: number,
+    code: string,
+    metrics: Record<number, number>,
+    collectedAt: string | null,
+    fallbackPlayerId?: number,
+  ): object {
+    const playerId = pgRow ? Number(pgRow.id) : (fallbackPlayerId as number);
+    return {
+      rank,
+      player_id: ApiHelper.addCountryCode(String(playerId), code),
+      player_name: pgRow?.player_name ?? null,
+      alliance_id: pgRow?.alliance_id ? ApiHelper.addCountryCode(String(pgRow.alliance_id), code) : null,
+      alliance_name: pgRow?.alliance_name ?? null,
+      might_current: Number(pgRow?.might_current ?? 0),
+      might_all_time: Number(pgRow?.might_all_time ?? 0),
+      level: Number(pgRow?.level ?? 0),
+      legendary_level: Number(pgRow?.legendary_level ?? 0),
+      alliance_might: Number(pgRow?.alliance_might ?? 0),
+      alliance_player_count: Number(pgRow?.alliance_player_count ?? 0),
+      metrics,
+      collected_at: collectedAt,
+    };
+  }
+
+  /**
+   * Builds the PostgreSQL conditions narrowing the stormy isles leaderboard to the players
+   * matching the advanced filters (name, might, level, alliance name/might/member count)
+   *
+   * @param request express.Request object containing the query parameters
+   * @returns the SQL fragment, its bound values, whether any filter is active and a cache discriminator
+   */
+  private static buildStormyIslesPlayerFilter(request: express.Request): {
+    where: string;
+    values: unknown[];
+    isActive: boolean;
+    cacheKey: string;
+  } {
+    const conditions: string[] = [];
+    const values: unknown[] = [];
+    const cacheParts: string[] = [];
+    const parameterOffset = 1; // $1 is reserved for the candidate player ids of the caller query
+    const numberField = qNumber({ min: 0, max: ApiHelper.MAX_BIG_VALUE });
+
+    const addRange = (name: string, expression: string, ceiling: number = ApiHelper.MAX_BIG_VALUE): void => {
+      for (const bound of ['min', 'max'] as const) {
+        const parsed = numberField.parse(request.query[`${bound}_${name}`]);
+        if (parsed === undefined) continue;
+        const value = Math.min(parsed, ceiling);
+        values.push(value);
+        conditions.push(`${expression} ${bound === 'min' ? '>=' : '<='} $${values.length + parameterOffset}`);
+        cacheParts.push(`${bound}_${name}:${value}`);
+      }
+    };
+
+    for (const [queryName, column] of [
+      ['player_name', 'P.name'],
+      ['alliance_name', 'A.name'],
+    ] as const) {
+      const rawValue = ApiHelper.validateSearchAndSanitize(request.query[queryName], { toLowerCase: false });
+      if (!ApiHelper.isValidInput(rawValue)) continue;
+      values.push(`%${rawValue}%`);
+      conditions.push(`${column} ILIKE $${values.length + parameterOffset}`);
+      cacheParts.push(`${queryName}:${rawValue}`);
+    }
+    addRange('might', 'P.might_current');
+    addRange('level', '(P.level + P.legendary_level)', ApiEvents.SMALLINT_MAX);
+    addRange('alliance_might', 'COALESCE(AGG.alliance_might, 0)');
+    addRange('alliance_players', 'COALESCE(AGG.alliance_player_count, 0)');
+    const allianceFilter = qFlag().parse(request.query.alliance_filter);
+    if (allianceFilter !== undefined) {
+      conditions.push(`P.alliance_id IS ${allianceFilter === 1 ? 'NOT NULL' : 'NULL'}`);
+      cacheParts.push(`alliance_filter:${allianceFilter}`);
+    }
+    return {
+      where: conditions.length > 0 ? `AND ${conditions.join(' AND ')}` : '',
+      values,
+      isActive: conditions.length > 0,
+      cacheKey: cacheParts.join('|'),
+    };
+  }
+
+  /**
+   * Builds the ClickHouse HAVING clause narrowing the stormy isles leaderboard to the players
+   * whose aquamarine metrics fall within the requested `min_metric_<id>` / `max_metric_<id>` bounds
+   * @param request express.Request object containing the query parameters
+   * @returns the HAVING clause, its named query parameters and a cache discriminator
+   */
+  private static buildStormyIslesMetricFilter(request: express.Request): {
+    having: string;
+    queryParameters: Record<string, number>;
+    cacheKey: string;
+  } {
+    const havingParts: string[] = [];
+    const queryParameters: Record<string, number> = {};
+    const cacheParts: string[] = [];
+    const numberField = qNumber({ min: 0, max: ApiHelper.MAX_BIG_VALUE });
+
+    for (const metricId of ApiEvents.STORMY_ISLES_ALLOWED_METRIC_IDS) {
+      for (const bound of ['min', 'max'] as const) {
+        const value = numberField.parse(request.query[`${bound}_metric_${metricId}`]);
+        if (value === undefined) continue;
+        const parameterName = `${bound}Metric${metricId}`;
+        queryParameters[parameterName] = value;
+        havingParts.push(
+          `sumIf(value, metric_id = ${metricId}) ${bound === 'min' ? '>=' : '<='} {${parameterName}:Int64}`,
+        );
+        cacheParts.push(`${bound}m${metricId}:${value}`);
+      }
+    }
+    return {
+      having: havingParts.length > 0 ? `HAVING ${havingParts.join(' AND ')}` : '',
+      queryParameters,
+      cacheKey: cacheParts.join('|'),
+    };
   }
 
   /**
@@ -2289,7 +2407,7 @@ export abstract class ApiEvents implements ApiHelper {
         WHERE
           created_at = toDateTime({date:String})
           ${playerFilter}
-        ORDER BY point DESC
+        ORDER BY point DESC, player_id
         LIMIT ${sizePerPage} OFFSET ${(page - 1) * sizePerPage}
       `,
       query_params: { date: dateParameter },

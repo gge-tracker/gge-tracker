@@ -343,6 +343,50 @@ services:
       - backend
     restart: always
 
+  cloudflare-exporter:
+    image: ghcr.io/lablabs/cloudflare_exporter:0.2.3
+    mem_limit: 128m
+    cpu_quota: 10000
+    cpu_period: 100000
+    container_name: cloudflare-exporter
+    networks:
+      - backend
+    environment:
+      - CF_API_TOKEN=${CF_API_TOKEN}
+      - CF_ACCOUNTS=${CF_ACCOUNT_ID}
+      - CF_ZONES=${CF_ZONE_ID}
+      - FREE_TIER=true
+      - LISTEN=:8080
+      - SCRAPE_INTERVAL=${CF_SCRAPE_INTERVAL:-300}
+      - ENABLE_ACCOUNT_USAGE_METRICS=true
+      - ACCOUNT_USAGE_REQUEST_SOURCE=eyeball
+      - LOG_LEVEL=${CF_LOG_LEVEL:-error}
+    restart: always
+
+  cloudflare-zone-exporter:
+    image: python:3.13-alpine
+    mem_limit: 128m
+    cpu_quota: 10000
+    cpu_period: 100000
+    container_name: cloudflare-zone-exporter
+    command: ["python", "-u", "/app/exporter.py"]
+    volumes:
+      - ./../monitoring/cloudflare-zone-exporter:/app:ro
+    networks:
+      - backend
+    environment:
+      - CF_API_TOKEN=${CF_API_TOKEN}
+      - CF_ZONES=${CF_ZONE_ID}
+      - LISTEN_PORT=8081
+      - SCRAPE_INTERVAL=${CF_SCRAPE_INTERVAL:-300}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8081/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: always
+
   promtail:
     image: grafana/promtail:2.9.2
     mem_limit: 200m

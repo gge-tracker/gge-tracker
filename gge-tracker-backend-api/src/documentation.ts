@@ -1,7 +1,7 @@
 import swaggerJsdoc from 'swagger-jsdoc';
 import fs from 'node:fs';
 
-const options = {
+export const options = {
   failOnErrors: true,
   definition: {
     openapi: '3.0.0',
@@ -132,7 +132,10 @@ const options = {
   apis: ['./dist/api/main.js'],
 };
 
-const openapiSpecification = swaggerJsdoc(options);
+export function buildOpenApiSpecification(apis: string[] = options.apis): Record<string, any> {
+  return swaggerJsdoc({ ...options, apis, verbose: true }) as Record<string, any>;
+}
 
-// Write the OpenAPI JSON file
-fs.writeFileSync('./dist/api/documentation.json', JSON.stringify(openapiSpecification, null, 2));
+if (require.main === module) {
+  fs.writeFileSync('./dist/documentation.json', JSON.stringify(buildOpenApiSpecification(), null, 2));
+}

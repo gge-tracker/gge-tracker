@@ -15,7 +15,11 @@ function envStr(name: string, fallback: string): string {
 }
 
 export const config = {
-  baseUrl: envStr('TEST_API_BASE_URL', 'http://localhost:3000/api/v1'),
+  baseUrl: envStr('TEST_API_BASE_URL', 'http://localhost:3002/api/v1'),
+  server: envStr('TEST_SERVER', 'FR1'),
+  specialServer: envStr('TEST_SPECIAL_SERVER', 'FR1'),
+  unsupportedServer: envStr('TEST_UNSUPPORTED_SERVER', 'INT1'),
+  requireSeeds: process.env.TEST_REQUIRE_SEEDS === '1',
   requestTimeoutMs: envInt('TEST_REQUEST_TIMEOUT_MS', 15_000),
   rateLimit: {
     points: envInt('RATE_LIMIT_POINTS', 30),
@@ -31,6 +35,16 @@ export const config = {
   },
   verbose: process.env.TEST_VERBOSE === '1' || process.argv.includes('--verbose'),
   skipRateLimit: process.env.TEST_SKIP_RATELIMIT === '1',
+  trace: {
+    enabled: process.env.TEST_TRACE !== '0' && !process.argv.includes('--no-trace'),
+    dir: envStr('TEST_TRACE_DIR', '.trace'),
+    file: envStr('TEST_TRACE_FILE', ''),
+    json: process.env.TEST_TRACE_JSON === '1',
+    maxBodyChars: envInt('TEST_TRACE_BODY_CHARS', 1200),
+    full: process.env.TEST_TRACE_FULL === '1',
+    failuresOnly: process.env.TEST_TRACE_FAILURES === '1',
+    maxExchangesPerCheck: envInt('TEST_TRACE_MAX_EXCHANGES', 3),
+  },
 } as const;
 
 export type Config = typeof config;

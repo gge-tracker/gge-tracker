@@ -1,3 +1,4 @@
 internal/
 logs/*
 **/seed.sql
+fixtures

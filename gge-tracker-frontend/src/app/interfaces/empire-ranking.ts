@@ -1162,6 +1162,8 @@ export interface ApiStormyIslesPlayer {
   might_all_time: number;
   level: number;
   legendary_level: number;
+  alliance_might: number;
+  alliance_player_count: number;
   metrics: Record<number, number>;
   collected_at: string;
 }

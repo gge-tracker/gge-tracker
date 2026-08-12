@@ -4,7 +4,8 @@
 import { Report } from '../lib/report';
 import { Seeds } from '../lib/bootstrap';
 import { config } from '../config';
-import { CATALOG, Endpoint } from '../lib/catalog';
+import { CATALOG } from '../lib/catalog';
+import { callable, headersFor } from '../lib/endpoints';
 import { request } from '../lib/http';
 
 function percentile(sorted: number[], p: number): number {
@@ -13,19 +14,12 @@ function percentile(sorted: number[], p: number): number {
   return sorted[Math.max(0, idx)];
 }
 
-function callable(ep: Endpoint, seeds: Seeds): boolean {
-  if (ep.method !== 'GET') return false;
-  const needsServer = ep.scope === 'protected' || (ep.needs ?? []).includes('server');
-  return !(needsServer && !seeds.server);
-}
-
 export async function runTiming(report: Report, seeds: Seeds): Promise<void> {
   const section = report.section('timing');
   const { samples, p95BudgetMs } = config.timing;
 
-  for (const ep of CATALOG.filter((e) => callable(e, seeds))) {
-    const needsServer = ep.scope === 'protected' || (ep.needs ?? []).includes('server');
-    const headers = needsServer ? seeds.serverHeader() : {};
+  for (const ep of CATALOG.filter((e) => e.method === 'GET' && callable(e, seeds))) {
+    const headers = headersFor(ep, seeds);
     const times: number[] = [];
     let serverError = false;
 
@@ -44,7 +38,14 @@ export async function runTiming(report: Report, seeds: Seeds): Promise<void> {
     report.addTiming({ label: `GET ${ep.id}`, p50, p95, p99, budget: p95BudgetMs, ok });
     section.expect(
       `GET ${ep.id} p95 within budget`,
-      { ok, detail: serverError ? 'server error during sampling' : `p95=${p95.toFixed(0)}ms (budget ${p95BudgetMs}ms)` },
+      {
+        ok,
+        detail: serverError ? 'server error during sampling' : `p95=${p95.toFixed(0)}ms (budget ${p95BudgetMs}ms)`,
+        expected: `p95 at or under ${p95BudgetMs}ms over ${samples} calls, none of them failing`,
+        actual: serverError
+          ? `a 5xx or a dropped connection during sampling (p95=${p95.toFixed(0)}ms)`
+          : `p50=${p50.toFixed(0)}ms p95=${p95.toFixed(0)}ms p99=${p99.toFixed(0)}ms`,
+      },
       p95,
     );
   }

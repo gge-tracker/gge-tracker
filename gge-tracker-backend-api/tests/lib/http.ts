@@ -4,6 +4,7 @@
 import axios, { AxiosRequestConfig, Method } from 'axios';
 import { randomUUID } from 'node:crypto';
 import { config } from '../config';
+import { pickResponseHeaders, record, serializeBody, truncate } from './journal';
 
 export interface HttpResult {
   status: number;
@@ -42,23 +43,66 @@ export function resetCircuit(): void {
   circuitOpen = false;
 }
 
+function journal(
+  method: string,
+  path: string,
+  url: string,
+  requestHeaders: Record<string, string>,
+  body: unknown,
+  result: HttpResult,
+  at: string,
+): void {
+  const budget = config.trace.maxBodyChars;
+  const request = serializeBody(body);
+  const requestPreview = request === undefined ? undefined : truncate(request, budget);
+  const responsePreview = truncate(result.raw ?? '', budget);
+  record({
+    at,
+    method,
+    path,
+    url,
+    requestHeaders,
+    requestBody: requestPreview?.text,
+    requestBodyTruncated: requestPreview?.truncated,
+    status: result.status,
+    responseHeaders: pickResponseHeaders(result.headers),
+    responseBody: responsePreview.text,
+    responseBodyTruncated: responsePreview.truncated,
+    responseBytes: (result.raw ?? '').length,
+    ms: result.ms,
+    networkError: result.networkError,
+  });
+}
+
 export async function request(options: RequestOptions): Promise<HttpResult> {
   const { method = 'GET', path, headers = {}, body, clientIp, timeoutMs } = options;
   const url = config.baseUrl + path;
   const ip = clientIp ?? uniqueIp();
+  const at = new Date().toISOString();
+
+  const sentHeaders: Record<string, string> = {
+    'X-Forwarded-For': ip,
+    'User-Agent': `gge-api-test/${randomUUID().slice(0, 8)}`,
+    ...headers,
+  };
 
   if (circuitOpen) {
-    return { status: 0, headers: {}, body: undefined, raw: '', ms: 0, networkError: 'circuit-open: server unreachable' };
+    const shortCircuited: HttpResult = {
+      status: 0,
+      headers: {},
+      body: undefined,
+      raw: '',
+      ms: 0,
+      networkError: 'circuit-open: server unreachable',
+    };
+    journal(String(method), path, url, sentHeaders, body, shortCircuited, at);
+    return shortCircuited;
   }
 
   const axiosConfig: AxiosRequestConfig = {
     method,
     url,
-    headers: {
-      'X-Forwarded-For': ip,
-      'User-Agent': `gge-api-test/${randomUUID().slice(0, 8)}`,
-      ...headers,
-    },
+    headers: sentHeaders,
     data: body,
     timeout: timeoutMs ?? config.requestTimeoutMs,
     validateStatus: () => true,
@@ -82,12 +126,14 @@ export async function request(options: RequestOptions): Promise<HttpResult> {
       }
     }
     consecutiveNetworkErrors = 0;
-    return { status: response.status, headers: response.headers as any, body: parsed, raw, ms };
+    const result: HttpResult = { status: response.status, headers: response.headers as any, body: parsed, raw, ms };
+    journal(String(method), path, url, sentHeaders, body, result, at);
+    return result;
   } catch (error: any) {
     const ms = performance.now() - started;
     consecutiveNetworkErrors++;
     if (consecutiveNetworkErrors >= CIRCUIT_THRESHOLD) circuitOpen = true;
-    return {
+    const result: HttpResult = {
       status: 0,
       headers: {},
       body: undefined,
@@ -95,5 +141,7 @@ export async function request(options: RequestOptions): Promise<HttpResult> {
       ms,
       networkError: error?.code ?? error?.message ?? String(error),
     };
+    journal(String(method), path, url, sentHeaders, body, result, at);
+    return result;
   }
 }

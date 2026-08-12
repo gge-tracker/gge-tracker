@@ -848,12 +848,20 @@ export class ApiRestService {
     orderDirection?: string,
     playerName?: string,
     allianceName?: string,
+    filters?: Record<string, string | number>,
   ): Promise<ApiResponse<ApiStormyIslesLeaderboardResponse>> {
-    let request = `${ApiRestService.apiUrl}stormy-isles?page=${page}`;
+    let request = `${ApiRestService.apiUrl}stormy-isles?size=10&page=${page}`;
     if (orderBy !== undefined) request += `&order_by=${orderBy}`;
     if (orderDirection !== undefined) request += `&order_dir=${orderDirection}`;
     if (playerName) request += `&player_name=${encodeURIComponent(playerName)}`;
     if (allianceName) request += `&alliance_name=${encodeURIComponent(allianceName)}`;
+    if (filters) {
+      for (const key in filters) {
+        if (filters[key] !== undefined) {
+          request += `&${key}=${encodeURIComponent(filters[key])}`;
+        }
+      }
+    }
     const response = await this.apiFetch<ApiStormyIslesLeaderboardResponse>(request);
     if (!response.success) return response;
     return { success: true, data: response.data };

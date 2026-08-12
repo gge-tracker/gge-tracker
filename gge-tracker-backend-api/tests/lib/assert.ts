@@ -3,6 +3,8 @@ import { HttpResult } from './http';
 export interface Outcome {
   ok: boolean;
   detail: string;
+  expected?: string;
+  actual?: string;
 }
 
 function preview(res: HttpResult, max = 160): string {
@@ -14,6 +16,8 @@ export function reachable(res: HttpResult): Outcome {
   return {
     ok: res.status !== 0,
     detail: res.status === 0 ? `no response (${res.networkError})` : `status ${res.status}`,
+    expected: 'any HTTP response at all',
+    actual: res.status === 0 ? `no response (${res.networkError})` : `HTTP ${res.status} in ${Math.round(res.ms)}ms`,
   };
 }
 
@@ -21,6 +25,8 @@ export function statusIn(res: HttpResult, allowed: number[]): Outcome {
   return {
     ok: allowed.includes(res.status),
     detail: `expected ${allowed.join('|')}, got ${res.status} ${res.status === 0 ? `(${res.networkError})` : ''}`.trim(),
+    expected: `HTTP status ${allowed.join(' or ')}`,
+    actual: res.status === 0 ? `no response (${res.networkError})` : `HTTP ${res.status}`,
   };
 }
 
@@ -29,26 +35,44 @@ export function noServerError(res: HttpResult): Outcome {
   return {
     ok,
     detail: ok ? `status ${res.status}` : `5xx/none (${res.status || res.networkError}) body="${preview(res, 120)}"`,
+    expected: 'a response below HTTP 500 - the API answers rather than breaks',
+    actual: res.status === 0 ? `no response (${res.networkError})` : `HTTP ${res.status}`,
   };
 }
 
 export function isJson(res: HttpResult): Outcome {
   const ct = String(res.headers['content-type'] ?? '');
-  return { ok: ct.includes('application/json'), detail: `content-type="${ct || 'missing'}"` };
+  return {
+    ok: ct.includes('application/json'),
+    detail: `content-type="${ct || 'missing'}"`,
+    expected: 'content-type containing application/json',
+    actual: `content-type: ${ct || 'missing'}`,
+  };
 }
 
 export function bodyHasKeys(res: HttpResult, keys: string[]): Outcome {
+  const expected = `a JSON object carrying the keys: ${keys.join(', ')}`;
   if (res.body === null || typeof res.body !== 'object') {
-    return { ok: false, detail: `body is not an object (${typeof res.body})` };
+    return { ok: false, detail: `body is not an object (${typeof res.body})`, expected, actual: `body is ${typeof res.body}, not an object` };
   }
   const target = Array.isArray(res.body) ? res.body[0] ?? {} : res.body;
   const missing = keys.filter((k) => !(k in target));
-  return { ok: missing.length === 0, detail: missing.length ? `missing keys: ${missing.join(', ')}` : 'all keys present' };
+  return {
+    ok: missing.length === 0,
+    detail: missing.length ? `missing keys: ${missing.join(', ')}` : 'all keys present',
+    expected,
+    actual: `keys present: ${Object.keys(target).slice(0, 25).join(', ') || 'none'}${missing.length ? ` - missing ${missing.join(', ')}` : ''}`,
+  };
 }
 
 export function headerPresent(res: HttpResult, header: string): Outcome {
   const value = res.headers[header.toLowerCase()];
-  return { ok: value !== undefined, detail: `${header}="${value ?? 'missing'}"` };
+  return {
+    ok: value !== undefined,
+    detail: `${header}="${value ?? 'missing'}"`,
+    expected: `the response to carry a ${header} header`,
+    actual: value === undefined ? `${header} absent` : `${header}: ${value}`,
+  };
 }
 
 const LEAK_PATTERNS: { name: string; re: RegExp }[] = [
@@ -64,15 +88,26 @@ const LEAK_PATTERNS: { name: string; re: RegExp }[] = [
 const BINARY_CONTENT_TYPE = /^(image|audio|video|font)\/|application\/(octet-stream|pdf|zip|wasm)/i;
 
 export function noLeak(res: HttpResult): Outcome {
+  const expected = `a body free of internal detail (no ${LEAK_PATTERNS.map((p) => p.name).join(', ')})`;
   const contentType = String(res.headers['content-type'] ?? '');
   if (BINARY_CONTENT_TYPE.test(contentType)) {
-    return { ok: true, detail: `binary response (${contentType}) - leak scan skipped` };
+    return {
+      ok: true,
+      detail: `binary response (${contentType}) - leak scan skipped`,
+      expected,
+      actual: `binary response (${contentType}) - not scanned`,
+    };
   }
   const text = res.raw || (typeof res.body === 'string' ? res.body : JSON.stringify(res.body ?? ''));
   for (const p of LEAK_PATTERNS) {
     if (p.re.test(text)) {
-      return { ok: false, detail: `leaked ${p.name}: "${preview(res, 140)}"` };
+      return {
+        ok: false,
+        detail: `leaked ${p.name}: "${preview(res, 140)}"`,
+        expected,
+        actual: `body matched the "${p.name}" pattern: "${preview(res, 140)}"`,
+      };
     }
   }
-  return { ok: true, detail: 'no internal details leaked' };
+  return { ok: true, detail: 'no internal details leaked', expected, actual: 'no pattern matched' };
 }

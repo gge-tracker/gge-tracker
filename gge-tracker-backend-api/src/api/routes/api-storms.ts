@@ -16,8 +16,10 @@ export abstract class ApiStorms implements ApiHelper {
   private static readonly ISLE_STATE_FREE = 0;
   private static readonly ISLE_STATE_OCCUPIED = 1;
   private static readonly ISLE_STATE_RESPAWNING = 2;
-  /** Sort keys the storm tables can actually order on */
-  private static readonly ALLOWED_ORDER_BY = new Set(['distance', 'availability', 'attacksLeft', 'position']);
+
+  private static readonly ORDER_TIEBREAK = 'S.position_x ASC, S.position_y ASC';
+  private static readonly ALLOWED_ORDER_BY_FORTS = new Set(['distance', 'availability', 'attacksLeft', 'position']);
+  private static readonly ALLOWED_ORDER_BY_ISLES = new Set(['distance', 'availability', 'position']);
 
   /**
    * Handles the retrieval of storm forts with filtering, distance sorting and pagination
@@ -42,7 +44,7 @@ export abstract class ApiStorms implements ApiHelper {
       const { filterByAvailability, nearPlayerName, size, maxDistance } = parameters_;
       let { sortByPositionX, sortByPositionY } = parameters_;
       const minAttacksLeft = ApiHelper.getParsedString(request.query.minAttacksLeft, null);
-      const { orderBy, orderDescending } = this.parseOrdering(request);
+      const { orderBy, orderDescending } = this.parseOrdering(request, this.ALLOWED_ORDER_BY_FORTS);
       const isleIds = this.parseIsleIds(request.query.filterByIsleIds);
 
       if (!this.validateStormQueryParams(response, size, maxDistance, nearPlayerName)) return;
@@ -147,7 +149,7 @@ export abstract class ApiStorms implements ApiHelper {
       let { sortByPositionX, sortByPositionY } = parameters_;
       const filterByState = ApiHelper.getParsedString(request.query.filterByState, null);
       const filterByOccupierName = ApiHelper.getParsedString(request.query.filterByOccupierName, null);
-      const { orderBy, orderDescending } = this.parseOrdering(request);
+      const { orderBy, orderDescending } = this.parseOrdering(request, this.ALLOWED_ORDER_BY_ISLES);
       const isleIds = this.parseIsleIds(request.query.filterByIsleIds);
 
       if (!this.validateStormQueryParams(response, size, maxDistance, nearPlayerName)) return;
@@ -378,6 +380,10 @@ export abstract class ApiStorms implements ApiHelper {
     return ids;
   }
 
+  private static orderedBy(clause: string): string {
+    return ` ORDER BY ${clause}, ${this.ORDER_TIEBREAK}`;
+  }
+
   /**
    * Maps the requested sort to a SQL ORDER BY clause
    *
@@ -395,20 +401,20 @@ export abstract class ApiStorms implements ApiHelper {
     const direction = descending ? 'DESC' : 'ASC';
     switch (orderBy) {
       case 'distance': {
-        return isSorted ? ` ORDER BY calculated_distance ${direction}` : ` ORDER BY ${defaultClause}`;
+        return this.orderedBy(isSorted ? `calculated_distance ${direction}` : defaultClause);
       }
       case 'availability': {
-        return ` ORDER BY S.available_at ${direction}`;
+        return this.orderedBy(`S.available_at ${direction}`);
       }
       case 'attacksLeft': {
         // attacks left is the inverse of victory_count, so the direction flips
-        return ` ORDER BY S.victory_count ${descending ? 'ASC' : 'DESC'}`;
+        return this.orderedBy(`S.victory_count ${descending ? 'ASC' : 'DESC'}`);
       }
       case 'position': {
-        return ` ORDER BY S.position_x ${direction}, S.position_y ${direction}`;
+        return this.orderedBy(`S.position_x ${direction}, S.position_y ${direction}`);
       }
       default: {
-        return isSorted ? ' ORDER BY calculated_distance ASC' : ` ORDER BY ${defaultClause}`;
+        return this.orderedBy(isSorted ? 'calculated_distance ASC' : defaultClause);
       }
     }
   }
@@ -739,11 +745,14 @@ export abstract class ApiStorms implements ApiHelper {
     return true;
   }
 
-  private static parseOrdering(request: express.Request): { orderBy: string | null; orderDescending: boolean } {
+  private static parseOrdering(
+    request: express.Request,
+    allowed: ReadonlySet<string>,
+  ): { orderBy: string | null; orderDescending: boolean } {
     const rawOrderBy = ApiHelper.getParsedString(request.query.orderBy, null);
     const rawDirection = ApiHelper.getParsedString(request.query.orderDirection, null);
     return {
-      orderBy: rawOrderBy && this.ALLOWED_ORDER_BY.has(rawOrderBy) ? rawOrderBy : null,
+      orderBy: rawOrderBy && allowed.has(rawOrderBy) ? rawOrderBy : null,
       orderDescending: rawDirection?.toLowerCase() === 'desc',
     };
   }

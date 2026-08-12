@@ -219,7 +219,7 @@ export abstract class ApiServer implements ApiHelper {
         query += ` ${where}`;
       }
       let parameterIndex = qb.getLastParameterIndex();
-      query += ` ORDER BY M.created_at DESC LIMIT $${parameterIndex++} OFFSET $${parameterIndex++};`;
+      query += ` ORDER BY M.created_at DESC, M.id LIMIT $${parameterIndex++} OFFSET $${parameterIndex++};`;
 
       /* ---------------------------------
        * Execute main query
@@ -458,7 +458,7 @@ export abstract class ApiServer implements ApiHelper {
       if (conditions.length > 0) {
         query += ` WHERE ` + conditions.join(' AND ');
       }
-      query += ` ORDER BY R.created_at DESC LIMIT $${parameterIndex++} OFFSET $${parameterIndex++};`;
+      query += ` ORDER BY R.created_at DESC, R.id LIMIT $${parameterIndex++} OFFSET $${parameterIndex++};`;
 
       /* ---------------------------------
        * Execute query

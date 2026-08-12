@@ -3,22 +3,11 @@
  */
 import { Report, Section } from '../lib/report';
 import { Seeds } from '../lib/bootstrap';
-import { CATALOG, Endpoint } from '../lib/catalog';
+import { CATALOG } from '../lib/catalog';
+import { callable, headersFor } from '../lib/endpoints';
 import { request } from '../lib/http';
 import { noServerError, noLeak, statusIn } from '../lib/assert';
 import { NUMERIC_ABUSE, UNEXPECTED_METHODS, MALFORMED_JSON_BODIES, HOSTILE_SERVER_HEADERS } from '../lib/payloads';
-
-function needsServer(ep: Endpoint): boolean {
-  return ep.scope === 'protected' || (ep.needs ?? []).includes('server');
-}
-
-function headersFor(ep: Endpoint, seeds: Seeds): Record<string, string> {
-  return needsServer(ep) ? seeds.serverHeader() : {};
-}
-
-function callable(ep: Endpoint, seeds: Seeds): boolean {
-  return !(needsServer(ep) && !seeds.server);
-}
 
 function numericSegmentIndexes(path: string): number[] {
   const [pathPart] = path.split('?');
@@ -71,7 +60,7 @@ export async function runRobustness(report: Report, seeds: Seeds): Promise<void>
 
   const writeEndpoints = CATALOG.filter((e) => e.method === 'POST' || e.method === 'PUT');
   for (const ep of writeEndpoints) {
-    if (needsServer(ep) && !seeds.server) continue;
+    if (!callable(ep, seeds)) continue;
     const headers = { ...headersFor(ep, seeds), 'Content-Type': 'application/json' };
     for (const body of MALFORMED_JSON_BODIES) {
       const res = await request({ method: ep.method, path: ep.path(seeds), headers, body: body.raw });
@@ -107,11 +96,18 @@ export async function runRobustness(report: Report, seeds: Seeds): Promise<void>
         section.expect(`${base} rejected (4xx)`, {
           ok: res.status >= 400 && res.status < 500,
           detail: `status ${res.status}`,
+          expected: 'a 4xx: this is not a real server name, so it must be refused, not served and not crashed on',
+          actual: res.status === 0 ? `no response (${res.networkError})` : `HTTP ${res.status}`,
         });
         section.expect(`${base} no leak`, noLeak(res));
         // A CRLF-injected header must not reflect into the response headers.
         const injected = res.headers['x-injected'];
-        section.expect(`${base} no header injection`, { ok: injected === undefined, detail: `x-injected=${injected}` });
+        section.expect(`${base} no header injection`, {
+          ok: injected === undefined,
+          detail: `x-injected=${injected}`,
+          expected: 'no x-injected header: a CRLF in the value must not split into a new response header',
+          actual: injected === undefined ? 'no x-injected header' : `x-injected: ${injected}`,
+        });
       }
     }
   }

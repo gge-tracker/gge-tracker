@@ -26,15 +26,19 @@ export async function runRateLimit(report: Report, seeds: Seeds): Promise<void> 
       section.expect('429 body shape', {
         ok: typeof body === 'object' && typeof body?.error === 'string' && /too many/i.test(body.error),
         detail: `body=${JSON.stringify(body)?.slice(0, 80)}`,
+        expected: 'a JSON body with an "error" string reading "too many..."',
+        actual: `body=${JSON.stringify(body)?.slice(0, 120)}`,
       });
       break;
     }
   }
   const tripped = statuses.includes(429);
-  section.expect(
-    `limiter trips within ${burst} reqs (limit ${points}/${durationSec}s)`,
-    { ok: tripped, detail: tripped ? `429 after ${statuses.indexOf(429) + 1} reqs` : `no 429 in ${burst} reqs: [${statuses.join(',')}]` },
-  );
+  section.expect(`limiter trips within ${burst} reqs (limit ${points}/${durationSec}s)`, {
+    ok: tripped,
+    detail: tripped ? `429 after ${statuses.indexOf(429) + 1} reqs` : `no 429 in ${burst} reqs: [${statuses.join(',')}]`,
+    expected: `a 429 within ${burst} calls from one IP, the limit being ${points} per ${durationSec}s`,
+    actual: tripped ? `429 on call ${statuses.indexOf(429) + 1}` : `no 429 in ${burst} calls: [${statuses.join(',')}]`,
+  });
 
   for (const ep of BYPASS_ENDPOINTS) {
     const bypassIp = '203.0.113.251';
@@ -46,7 +50,12 @@ export async function runRateLimit(report: Report, seeds: Seeds): Promise<void> 
         break;
       }
     }
-    section.expect(`bypass route not throttled: ${ep.id}`, { ok: !any429, detail: any429 ? 'unexpected 429' : `survived ${burst} reqs` });
+    section.expect(`bypass route not throttled: ${ep.id}`, {
+      ok: !any429,
+      detail: any429 ? 'unexpected 429' : `survived ${burst} reqs`,
+      expected: `no 429 at all: ${ep.id} is declared exempt from the limiter`,
+      actual: any429 ? 'a 429 came back - the exemption is not applied' : `${burst} calls, none throttled`,
+    });
   }
 
   if (tripped) {

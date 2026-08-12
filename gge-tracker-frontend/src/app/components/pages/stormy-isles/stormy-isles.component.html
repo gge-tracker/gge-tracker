@@ -3,7 +3,8 @@
     <div class="col-12">
 
       <app-search-form
-        [formFilters]="null"
+        #searchForm
+        [formFilters]="formFilters"
         [isInLoading]="isInLoading"
         [inputTip]="'Rechercher un joueur ou une alliance' | translate"
         [defaultSearch]="search"
@@ -32,6 +33,202 @@
         </app-table>
       </div>
 
+    </div>
+  </div>
+
+  <div class="modal fade" id="filtersModal" tabindex="-1" aria-labelledby="filtersModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="filtersModalLabel">
+            <i class="fa-solid fa-filter"></i>&nbsp;{{ 'Filtrer les résultats' | translate }}
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"
+            [attr.aria-label]="'Fermer' | translate"></button>
+        </div>
+        <div class="modal-body">
+          <div class="filters-container">
+            <div class="row">
+              <!-- Player might -->
+              <div class="col-12 col-sm my-1">
+                <app-modal-form-group class="compact">
+                  <span field prefix>
+                    <img src="/assets/pp1.png" [attr.alt]="'Puissance' | translate"
+                      [title]="'Filtrer par point de puissance' | translate">
+                  </span>
+                  <input field type="text" id="mightMin" name="mightMin" [value]="displayFormValues.might.min"
+                    (focus)="onGenericFocus('min', 'might')" (blur)="onGenericBlur('min', 'might')"
+                    (input)="onGenericInput('min', 'might', $event)" [title]="formFilters.minMight"
+                    [placeholder]="'Puissance min' | translate">
+                  <input field type="text" id="mightMax" name="mightMax" [value]="displayFormValues.might.max"
+                    (focus)="onGenericFocus('max', 'might')" (blur)="onGenericBlur('max', 'might')"
+                    (input)="onGenericInput('max', 'might', $event)" [title]="formFilters.maxMight"
+                    [placeholder]="'Puissance max' | translate">
+                </app-modal-form-group>
+              </div>
+              <!-- Player level -->
+              <div class="col-12 col-sm my-1">
+                <app-modal-form-group class="compact">
+                  <span field prefix>
+                    <img src="/assets/lvl.png" [attr.alt]="'Niveau' | translate"
+                      [title]="'Filtrer par niveau' | translate">
+                  </span>
+                  <input field type="text" id="levelMin" name="levelMin" [value]="displayFormValues.level.min"
+                    (focus)="onGenericFocus('min', 'level')" (blur)="onGenericBlur('min', 'level')"
+                    (input)="onGenericInput('min', 'level', $event)" [title]="formFilters.minLevel"
+                    [placeholder]="'Niveau min' | translate">
+                  <input field type="text" id="levelMax" name="levelMax" [value]="displayFormValues.level.max"
+                    (focus)="onGenericFocus('max', 'level')" (blur)="onGenericBlur('max', 'level')"
+                    (input)="onGenericInput('max', 'level', $event)" [title]="formFilters.maxLevel"
+                    [placeholder]="'Niveau max' | translate">
+                </app-modal-form-group>
+              </div>
+            </div>
+
+            <div class="row mt-1">
+              <!-- Alliance might -->
+              <div class="col-12 col-sm my-1">
+                <app-modal-form-group class="compact">
+                  <span field prefix>
+                    <img src="/assets/min-alliance.png"
+                      [attr.alt]="'Filtrer par puissance totale de l\'alliance' | translate"
+                      [title]="'Filtrer par puissance totale de l\'alliance' | translate">
+                  </span>
+                  <input field type="text" id="allianceMightMin" name="allianceMightMin"
+                    [value]="displayFormValues.allianceMight.min" (focus)="onGenericFocus('min', 'allianceMight')"
+                    (blur)="onGenericBlur('min', 'allianceMight')"
+                    (input)="onGenericInput('min', 'allianceMight', $event)" [title]="formFilters.minAllianceMight"
+                    [placeholder]="('Puissance min' | translate) + ' (' + ('Alliance' | translate) + ')'">
+                  <input field type="text" id="allianceMightMax" name="allianceMightMax"
+                    [value]="displayFormValues.allianceMight.max" (focus)="onGenericFocus('max', 'allianceMight')"
+                    (blur)="onGenericBlur('max', 'allianceMight')"
+                    (input)="onGenericInput('max', 'allianceMight', $event)" [title]="formFilters.maxAllianceMight"
+                    [placeholder]="('Puissance max' | translate) + ' (' + ('Alliance' | translate) + ')'">
+                </app-modal-form-group>
+              </div>
+              <!-- Alliance member count -->
+              <div class="col-12 col-sm my-1">
+                <app-modal-form-group class="compact">
+                  <span field prefix>
+                    <img src="/assets/players.png"
+                      [attr.alt]="'Filtrer par nombre de membres' | translate"
+                      [title]="'Filtrer par nombre de membres' | translate">
+                  </span>
+                  <input field type="text" id="alliancePlayersMin" name="alliancePlayersMin"
+                    [value]="displayFormValues.alliancePlayers.min" (focus)="onGenericFocus('min', 'alliancePlayers')"
+                    (blur)="onGenericBlur('min', 'alliancePlayers')"
+                    (input)="onGenericInput('min', 'alliancePlayers', $event)" [title]="formFilters.minAlliancePlayers"
+                    [placeholder]="'Nombre de membres min.' | translate">
+                  <input field type="text" id="alliancePlayersMax" name="alliancePlayersMax"
+                    [value]="displayFormValues.alliancePlayers.max" (focus)="onGenericFocus('max', 'alliancePlayers')"
+                    (blur)="onGenericBlur('max', 'alliancePlayers')"
+                    (input)="onGenericInput('max', 'alliancePlayers', $event)" [title]="formFilters.maxAlliancePlayers"
+                    [placeholder]="'Nombre de membres max.' | translate">
+                </app-modal-form-group>
+              </div>
+            </div>
+
+            <!-- Aquamarine metrics -->
+            <p class="filters-section-title mt-3 mb-1">{{ 'Aigues-marines' | translate }}</p>
+            <div class="row">
+              @for (metric of filterableMetrics; track metric.id) {
+                <div class="col-12 col-sm-6 my-1">
+                  <app-modal-form-group class="compact">
+                    <span field prefix>
+                      <img [src]="metric.icon" [attr.alt]="metric.label | translate"
+                        [title]="metric.label | translate">
+                    </span>
+                    <input field type="text" [id]="metric.field + 'Min'" [name]="metric.field + 'Min'"
+                      [value]="displayFormValues[metric.field].min" (focus)="onGenericFocus('min', metric.field)"
+                      (blur)="onGenericBlur('min', metric.field)" (input)="onGenericInput('min', metric.field, $event)"
+                      [placeholder]="(metric.label | translate) + ' (min)'">
+                    <input field type="text" [id]="metric.field + 'Max'" [name]="metric.field + 'Max'"
+                      [value]="displayFormValues[metric.field].max" (focus)="onGenericFocus('max', metric.field)"
+                      (blur)="onGenericBlur('max', metric.field)" (input)="onGenericInput('max', metric.field, $event)"
+                      [placeholder]="(metric.label | translate) + ' (max)'">
+                  </app-modal-form-group>
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="row">
+            <!-- Filter by alliance membership -->
+            <div class="col-12">
+              <div class="text-center mt-1 alliance-icon">
+                <img src="/assets/min-alliance.png" [alt]="'Alliance' | translate"
+                  [title]="'Filtrer par alliance' | translate" height="32">
+              </div>
+              <div class="input-group align-items-center justify-content-center">
+                <div class="col-4 text-center">
+                  <label for="alliance1">{{ 'Avec alliance' | translate }}</label>
+                  <div>
+                    <input type="radio" class="form-check-input" id="alliance1" value="1" name="alliance"
+                      [(ngModel)]="formFilters.allianceFilter">
+                  </div>
+                </div>
+                <div class="col-4 text-center">
+                  <label for="alliance0">{{ 'Sans alliance' | translate }}</label>
+                  <div>
+                    <input type="radio" class="form-check-input" id="alliance0" name="alliance" value="0"
+                      [(ngModel)]="formFilters.allianceFilter">
+                  </div>
+                </div>
+                <div class="col-4 text-center">
+                  <label for="noAlliance">{{ 'Pas de filtre' | translate }}</label>
+                  <div>
+                    <input type="radio" class="form-check-input" id="noAlliance" name="alliance" value="-1"
+                      [(ngModel)]="formFilters.allianceFilter">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row mt-1">
+            <div class="col-12">
+              <app-modal-form-group [label]="'Trier les résultats' | translate">
+                <select field [(ngModel)]="sort">
+                  @for (option of sortByOptions; track option.value) {
+                    <option [value]="option.value">{{ option.label | translate }}</option>
+                  }
+                </select>
+                <button action reset (click)="reverse = !reverse">
+                  <i class="fa-solid" [ngClass]="{'fa-arrow-down-long': !reverse, 'fa-arrow-up-long': reverse}"></i>
+                  @if (!reverse) { <span>{{ 'Descendant' | translate }}</span> }
+                  @if (reverse) { <span>{{ 'Ascendant' | translate }}</span> }
+                </button>
+              </app-modal-form-group>
+            </div>
+          </div>
+
+          <hr class="my-4">
+          <div class="row">
+            <div class="col text-center">
+              <div class="btn-group" role="group">
+                <button class="gge-btn success" (click)="applyFilters()" data-bs-dismiss="modal">
+                  <i class="fa-solid fa-check"></i>
+                  &nbsp;
+                  <span>{{ 'Appliquer les filtres' | translate }}</span>
+                </button>
+                <button appIconToggle baseIcon="fa-floppy-disk" [validated]="validated['saveFilters']"
+                  [disabled]="!areFiltersChanged()" class="gge-btn search" (click)="saveFilters()">
+                  {{ 'Enregistrer les filtres' | translate }}
+                </button>
+                <button appIconToggle baseIcon="fa-folder-open" [validated]="validated['loadFilters']"
+                  [disabled]="!areFiltersSavedInLocalStorage" class="gge-btn search"
+                  (click)="loadFiltersFromLocalStorage()">
+                  {{ 'Charger les filtres' | translate }}
+                </button>
+                <button appIconToggle baseIcon="fa-rotate-left" [validated]="validated['resetFilters']"
+                  [disabled]="!areFiltersChanged()" class="gge-btn reset" (click)="resetFilters()">
+                  {{ 'Réinitialiser les filtres' | translate }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>

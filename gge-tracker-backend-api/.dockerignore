@@ -1,1 +1,13 @@
 node_modules
+dist
+tests
+.git
+.gitignore
+.claude
+Dockerfile.dev
+Dockerfile.prod
+.dockerignore
+npm-debug.log*
+*.tsbuildinfo
+.env
+.env.*

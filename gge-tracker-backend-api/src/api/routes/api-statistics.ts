@@ -50,6 +50,21 @@ export abstract class ApiStatistics implements ApiHelper {
       }
 
       /* ---------------------------------
+       * Optional response trimming
+       * --------------------------------- */
+      const eventTables = ApiHelper.ggeTrackerManager.getOlapEventTables();
+      const requestedEvents = ApiHelper.getParsedString(request.query.events)
+        ?.split(',')
+        .map((event) => event.trim())
+        .filter((event) => event.length > 0);
+      if (requestedEvents?.some((event) => !eventTables.includes(event))) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventName });
+        return;
+      }
+      const parsedLimit = Number.parseInt(String(request.query.limit ?? ''), 10);
+      const rowLimit = Number.isInteger(parsedLimit) && parsedLimit >= 0 ? parsedLimit : null;
+
+      /* ---------------------------------
        * Cache validation
        * --------------------------------- */
       const language = ApiHelper.ggeTrackerManager.getServerNameFromRequestId(allianceId);
@@ -57,7 +72,9 @@ export abstract class ApiStatistics implements ApiHelper {
       const cachedKey = `statistics:alliances:${language}:${cacheVersion}:${allianceId}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
-        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        response
+          .status(ApiHelper.HTTP_OK)
+          .send(this.trimAllianceStatistics(JSON.parse(cachedData), requestedEvents, rowLimit));
         return;
       }
 
@@ -74,7 +91,7 @@ export abstract class ApiStatistics implements ApiHelper {
           ),
         };
         void ApiHelper.updateCache(cachedKey, data);
-        response.status(ApiHelper.HTTP_OK).send(data);
+        response.status(ApiHelper.HTTP_OK).send(this.trimAllianceStatistics(data, requestedEvents, rowLimit));
       } catch (error) {
         console.error('Error executing queries:', error);
         response
@@ -701,6 +718,34 @@ export abstract class ApiStatistics implements ApiHelper {
     } catch {
       return { error: RouteErrorMessagesEnum.GenericInternalServerError };
     }
+  }
+
+  /**
+   * Narrows an alliance statistics payload to the event tables and row count the caller asked for
+   *
+   * A populated alliance returns several hundred kilobytes of point rows, which is more than a
+   * documentation UI or an exploratory client can render. Both `events` and `limit` are optional:
+   * when neither is supplied the payload is returned untouched, so existing consumers are unaffected
+   *
+   * The trimming is applied on the way out rather than in the query, so the Redis entry always holds
+   * the complete payload and a trimmed request never displaces a full one in the cache
+   *
+   * `diffs` is left whole: it reports the time every table actually took to query, which does not
+   * change because the caller asked for fewer of them
+   *
+   * @param data - The full statistics payload, either freshly queried or read back from the cache
+   * @param events - The event tables to keep, or undefined to keep them all
+   * @param limit - The maximum number of rows to keep per event table, or null to keep them all
+   * @returns The payload with `points` narrowed accordingly
+   */
+  private static trimAllianceStatistics(data: any, events: string[] | undefined, limit: number | null): any {
+    if (!events?.length && limit === null) return data;
+    const points: any = {};
+    for (const [table, rows] of Object.entries(data?.points ?? {})) {
+      if (events?.length && !events.includes(table)) continue;
+      points[table] = limit === null || !Array.isArray(rows) ? rows : rows.slice(0, limit);
+    }
+    return { ...data, points };
   }
 
   /**

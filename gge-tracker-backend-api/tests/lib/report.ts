@@ -2,6 +2,7 @@
  * Result collection and terminal reporting
  */
 import { config } from '../config';
+import { Exchange, drain } from './journal';
 
 export interface CheckResult {
   suite: string;
@@ -10,6 +11,19 @@ export interface CheckResult {
   skipped?: boolean;
   detail?: string;
   ms?: number;
+  at: string;
+  expected?: string;
+  actual?: string;
+  exchanges?: Exchange[];
+  exchangeCount?: number;
+  exchangesShared?: boolean;
+}
+
+export interface Outcomeish {
+  ok: boolean;
+  detail?: string;
+  expected?: string;
+  actual?: string;
 }
 
 const c = {
@@ -28,27 +42,59 @@ export class Section {
     public readonly name: string,
   ) {}
 
-  expect(name: string, outcome: boolean | { ok: boolean; detail?: string }, ms?: number): boolean {
+  expect(name: string, outcome: boolean | Outcomeish, ms?: number): boolean {
     const ok = typeof outcome === 'boolean' ? outcome : outcome.ok;
     const detail = typeof outcome === 'boolean' ? undefined : outcome.detail;
-    this.report.add({ suite: this.name, name, ok, detail, ms });
+    const expected = typeof outcome === 'boolean' ? undefined : outcome.expected;
+    const actual = typeof outcome === 'boolean' ? undefined : outcome.actual;
+    this.report.add({ suite: this.name, name, ok, detail, ms, expected, actual, at: new Date().toISOString() });
     return ok;
   }
 
   skip(name: string, detail: string): void {
-    this.report.add({ suite: this.name, name, ok: true, skipped: true, detail });
+    this.report.add({ suite: this.name, name, ok: true, skipped: true, detail, at: new Date().toISOString() });
   }
 }
 
 export class Report {
   private results: CheckResult[] = [];
   private timings: { label: string; p50: number; p95: number; p99: number; budget?: number; ok?: boolean }[] = [];
+  readonly startedAt = new Date();
+  private lastExchanges: { entries: Exchange[]; total: number; suite: string } | undefined;
 
   section(name: string): Section {
     return new Section(this, name);
   }
 
+  snapshot(): CheckResult[] {
+    return this.results;
+  }
+
+  private attach(result: CheckResult): void {
+    if (!config.trace.enabled) return;
+    const fresh = drain();
+    if (fresh.total > 0) {
+      this.lastExchanges = { ...fresh, suite: result.suite };
+    } else if (!this.lastExchanges || this.lastExchanges.suite !== result.suite) {
+      return;
+    } else {
+      result.exchangesShared = true;
+    }
+    const group = this.lastExchanges;
+    if (!group) return;
+    const seen = new Set<string>();
+    const distinct = group.entries.filter((x) => {
+      const key = `${x.method} ${x.path} ${x.status}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    result.exchanges = distinct.slice(0, config.trace.maxExchangesPerCheck);
+    result.exchangeCount = group.total;
+  }
+
   add(result: CheckResult): void {
+    this.attach(result);
     this.results.push(result);
     if (config.verbose || (!result.ok && !result.skipped)) {
       this.printLine(result);
@@ -57,6 +103,10 @@ export class Report {
 
   addTiming(row: { label: string; p50: number; p95: number; p99: number; budget?: number; ok?: boolean }): void {
     this.timings.push(row);
+  }
+
+  timingRows(): { label: string; p50: number; p95: number; p99: number; budget?: number; ok?: boolean }[] {
+    return this.timings;
   }
 
   private printLine(r: CheckResult): void {

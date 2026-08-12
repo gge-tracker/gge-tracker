@@ -136,7 +136,7 @@ publicRoutes.put('/assets/update/:token', routingInstance.updateAssets.bind(rout
 
 /**
  * @swagger
- * /assets/images/{image}:
+ * /assets/images/{asset}:
  *   get:
  *     summary: Get a specific rendered image for a Goodgame Empire asset
  *     description: Returns the rendered image for the specified Goodgame Empire asset
@@ -144,7 +144,7 @@ publicRoutes.put('/assets/update/:token', routingInstance.updateAssets.bind(rout
  *       - Assets
  *     parameters:
  *       - in: path
- *         name: image
+ *         name: asset
  *         required: true
  *         description: The name of the Goodgame Empire image to retrieve
  *         example: "keepbuildinglevel8.png"
@@ -512,7 +512,7 @@ publicRoutes.get('/servers', routingInstance.getServers.bind(routingInstance));
  *         description: Filter events by type. If omitted, all event types are returned
  *         schema:
  *           type: string
- *           enum: [outer_realms, beyond_the_horizon]
+ *           enum: [outer-realms, beyond-the-horizon]
  *       - name: page
  *         in: query
  *         required: false
@@ -1451,6 +1451,28 @@ protectedRoutes.get('/dungeons', routingInstance.getDungeons.bind(routingInstanc
  *         schema:
  *           type: integer
  *         description: Number of results per page (default 15, max 4000)
+ *       - in: query
+ *         name: filterByIsleIds
+ *         schema:
+ *           type: string
+ *         description: >
+ *           JSON array of isle ids to restrict the result to, e.g. `[1,2,3]` (max 50 ids).
+ *           An empty array matches nothing
+ *       - in: query
+ *         name: orderBy
+ *         schema:
+ *           type: string
+ *           enum: [distance, availability, attacksLeft, position]
+ *         description: >
+ *           Sort key. Defaults to the most actionable first (on the map and attackable, then by
+ *           shortest wait), or by distance when a sort origin is given. `distance` is ignored
+ *           without a sort origin
+ *       - in: query
+ *         name: orderDirection
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *         description: Direction of `orderBy` (default `asc`)
  *     responses:
  *       200:
  *         description: Successful response with the current state of the storm forts
@@ -1554,6 +1576,27 @@ protectedRoutes.get('/storms/forts', routingInstance.getStormForts.bind(routingI
  *         schema:
  *           type: integer
  *         description: Number of results per page (default 15, max 4000)
+ *       - in: query
+ *         name: filterByIsleIds
+ *         schema:
+ *           type: string
+ *         description: >
+ *           JSON array of isle ids to restrict the result to, e.g. `[1,2,3]` (max 50 ids).
+ *           An empty array matches nothing
+ *       - in: query
+ *         name: orderBy
+ *         schema:
+ *           type: string
+ *           enum: [distance, availability, attacksLeft, position]
+ *         description: >
+ *           Sort key. Defaults to free isles first, then by shortest wait, or by distance when a
+ *           sort origin is given. `distance` is ignored without a sort origin
+ *       - in: query
+ *         name: orderDirection
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *         description: Direction of `orderBy` (default `asc`)
  *     responses:
  *       200:
  *         description: Successful response with the current state of the resource isles
@@ -2096,8 +2139,19 @@ protectedRoutes.get('/server/statistics', routingInstance.getServerStatistics.bi
  *                     type: string
  *                     description: Name of the player
  *                   castles:
- *                     type: string
- *                     description: A JSON string representing the player's castles' coordinates
+ *                     type: array
+ *                     description: Castle positions in the Great Kingdom, each as [x, y, castle type]
+ *                     items:
+ *                       type: array
+ *                       items:
+ *                         type: integer
+ *                   castles_realm:
+ *                     type: array
+ *                     description: Castle positions in the outer realms, each as [kingdom ID, x, y, castle type]
+ *                     items:
+ *                       type: array
+ *                       items:
+ *                         type: integer
  *                   might_current:
  *                     type: integer
  *                     description: The current might of the player
@@ -2142,8 +2196,19 @@ protectedRoutes.get('/cartography/size/:size', routingInstance.getCartographyByS
  *                     type: string
  *                     description: Name of the player
  *                   castles:
- *                     type: string
- *                     description: A JSON string representing the player's castles' coordinates
+ *                     type: array
+ *                     description: Castle positions in the Great Kingdom, each as [x, y, castle type]
+ *                     items:
+ *                       type: array
+ *                       items:
+ *                         type: integer
+ *                   castles_realm:
+ *                     type: array
+ *                     description: Castle positions in the outer realms, each as [kingdom ID, x, y, castle type]
+ *                     items:
+ *                       type: array
+ *                       items:
+ *                         type: integer
  *                   might_current:
  *                     type: integer
  *                     description: The current might of the player
@@ -2168,75 +2233,78 @@ protectedRoutes.get(
  *         description: The ID of the castle to retrieve data for
  *         schema:
  *           type: integer
- *         in: query
- *         description: Kingdom ID (1-based, default is 1)
+ *       - in: query
+ *         name: kingdomId
  *         required: false
+ *         description: >
+ *           Kingdom to read the castle from (0 the Great Empire, 1 Everwinter Glacier,
+ *           2 Burning Sands, 3 Fire Peaks). Only the main kingdom is available on special servers
  *         schema:
  *           type: integer
- *           minimum: 1
+ *           minimum: 0
+ *           maximum: 3
+ *           default: 0
  *     responses:
  *       '200':
  *         description: Successfully retrieved the castle information for the specified castle
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   playerName:
- *                     type: string
- *                     description: The name of the player who owns the castle
- *                   castleName:
- *                     type: string
- *                     description: The name of the castle
- *                   castleType:
- *                     type: integer
- *                     description: The type of the castle
- *                   level:
- *                     type: integer
- *                     description: The level of the player who owns the castle
- *                   legendaryLevel:
- *                     type: integer
- *                     description: The legendary level of the player who owns the castle
- *                   positionX:
- *                     type: integer
- *                     description: The X position of the castle
- *                   positionY:
- *                     type: integer
- *                     description: The Y position of the castle
- *                   data:
- *                     type: object
- *                     description: The data related to the castle
- *                     properties:
- *                       buildings:
- *                         type: array
- *                         description: The buildings within the castle
- *                         items:
- *                           type: object
- *                       towers:
- *                         type: array
- *                         description: The towers within the castle
- *                         items:
- *                           type: object
- *                       defenses:
- *                         type: array
- *                         description: The defenses within the castle (e.g. moat, walls)
- *                         items:
- *                           type: object
- *                       gates:
- *                         type: array
- *                         description: The gate within the castle
- *                         items:
- *                           type: object
- *                       grounds:
- *                         type: array
- *                         description: The castle expansions of the castle
- *                         items:
- *                           type: object
- *                   constructionItems:
- *                     type: object
- *                     description: The construction items for the castle
+ *               type: object
+ *               properties:
+ *                 playerName:
+ *                   type: string
+ *                   description: The name of the player who owns the castle
+ *                 castleName:
+ *                   type: string
+ *                   description: The name of the castle
+ *                 castleType:
+ *                   type: integer
+ *                   description: The type of the castle
+ *                 level:
+ *                   type: integer
+ *                   description: The level of the player who owns the castle
+ *                 legendaryLevel:
+ *                   type: integer
+ *                   description: The legendary level of the player who owns the castle
+ *                 positionX:
+ *                   type: integer
+ *                   description: The X position of the castle
+ *                 positionY:
+ *                   type: integer
+ *                   description: The Y position of the castle
+ *                 data:
+ *                   type: object
+ *                   description: The data related to the castle
+ *                   properties:
+ *                     buildings:
+ *                       type: array
+ *                       description: The buildings within the castle
+ *                       items:
+ *                         type: object
+ *                     towers:
+ *                       type: array
+ *                       description: The towers within the castle
+ *                       items:
+ *                         type: object
+ *                     defenses:
+ *                       type: array
+ *                       description: The defenses within the castle (e.g. moat, walls)
+ *                       items:
+ *                         type: object
+ *                     gates:
+ *                       type: array
+ *                       description: The gate within the castle
+ *                       items:
+ *                         type: object
+ *                     grounds:
+ *                       type: array
+ *                       description: The castle expansions of the castle
+ *                       items:
+ *                         type: object
+ *                 constructionItems:
+ *                   type: object
+ *                   description: The construction items for the castle
  */
 publicRoutes.get('/castle/analysis/:castleId', routingInstance.getCastleById.bind(routingInstance));
 
@@ -2371,11 +2439,28 @@ protectedRoutes.get('/castle/random', routingInstance.getRandomCastle.bind(routi
  *                     type: string
  *                     description: Name of the player
  *                   castles:
- *                     type: string
- *                     description: A JSON string representing the player's castles' coordinates
+ *                     type: array
+ *                     description: Castle positions in the Great Kingdom, each as [x, y, castle type]
+ *                     items:
+ *                       type: array
+ *                       items:
+ *                         type: integer
+ *                   castles_realm:
+ *                     type: array
+ *                     description: Castle positions in the outer realms, each as [kingdom ID, x, y, castle type]
+ *                     items:
+ *                       type: array
+ *                       items:
+ *                         type: integer
  *                   might_current:
  *                     type: integer
  *                     description: The current might of the player
+ *                   alliance_id:
+ *                     type: integer
+ *                     description: The ID of the player's alliance
+ *                   alliance_name:
+ *                     type: string
+ *                     description: The name of the player's alliance
  */
 publicRoutes.get('/cartography/id/:allianceId', routingInstance.getCartographyByAllianceId.bind(routingInstance));
 
@@ -3198,6 +3283,40 @@ protectedRoutes.get('/players/:playerName', routingInstance.getPlayersByPlayerNa
  *     parameters:
  *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - $ref: '#/components/parameters/AllianceId'
+ *       - name: events
+ *         in: query
+ *         required: false
+ *         style: form
+ *         explode: false
+ *         description: |
+ *           Comma-separated list of event tables to return in `points`. Any name outside this list
+ *           is rejected with a 400. When omitted, every event table is returned
+ *         schema:
+ *           type: array
+ *           default:
+ *             - player_might_history
+ *           items:
+ *             type: string
+ *             enum:
+ *               - player_event_berimond_invasion_history
+ *               - player_event_berimond_kingdom_history
+ *               - player_event_bloodcrow_history
+ *               - player_event_nomad_history
+ *               - player_event_samurai_history
+ *               - player_event_war_realms_history
+ *               - player_loot_history
+ *               - player_might_history
+ *       - name: limit
+ *         in: query
+ *         required: false
+ *         description: |
+ *           Maximum number of point rows to return per event table, most recent first. When omitted,
+ *           every row in the window is returned
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           default: 50
+ *           example: 50
  *     responses:
  *       '200':
  *         description: Successfully retrieved alliance statistics
@@ -4360,6 +4479,267 @@ publicRoutes.get('/aquamarine/player/:playerId', routingInstance.getAquamarinePo
  */
 protectedRoutes.get('/aquamarine', routingInstance.getAquamarinePointsData.bind(routingInstance));
 
+/**
+ * @openapi
+ * /stormy-isles:
+ *   get:
+ *     summary: Stormy Isles leaderboard
+ *     description: |
+ *       Returns a paginated leaderboard of the players taking part in the Stormy Isles event, with
+ *       their latest aquamarine metric values and their alliance aggregates.
+ *       Rows can be narrowed on the player (name, might, level), on their alliance (name, total
+ *       might, member count) and on any aquamarine metric through the
+ *       `min_metric_<id>` / `max_metric_<id>` bounds
+ *     tags:
+ *       - Stormy Isles
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - name: page
+ *         in: query
+ *         required: false
+ *         description: Page number for pagination (default 1)
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - name: size
+ *         in: query
+ *         required: false
+ *         description: Number of results per page (default 15, must stay below 9999)
+ *         schema:
+ *           type: integer
+ *           default: 15
+ *       - name: order_by
+ *         in: query
+ *         required: false
+ *         description: |
+ *           Column to sort by: an aquamarine metric id (`15`, `16`, `17`, `18`, `19`, `20`, `100`)
+ *           or one of `player_name`, `level`, `might_current`, `might_all_time`, `alliance_name`,
+ *           `alliance_might`, `alliance_player_count`. Anything else falls back to `100`
+ *         schema:
+ *           type: string
+ *           default: "100"
+ *       - name: order_dir
+ *         in: query
+ *         required: false
+ *         description: Sort direction (default DESC)
+ *         schema:
+ *           type: string
+ *           enum: [ASC, DESC]
+ *           default: DESC
+ *       - name: player_name
+ *         in: query
+ *         required: false
+ *         description: Only players whose name contains this text
+ *         schema:
+ *           type: string
+ *       - name: alliance_name
+ *         in: query
+ *         required: false
+ *         description: Only players whose alliance name contains this text
+ *         schema:
+ *           type: string
+ *       - name: alliance_filter
+ *         in: query
+ *         required: false
+ *         description: "`1` only players in an alliance, `0` only players without one"
+ *         schema:
+ *           type: integer
+ *           enum: [0, 1]
+ *       - name: min_might
+ *         in: query
+ *         required: false
+ *         description: Lower bound on the current might of the player
+ *         schema:
+ *           type: integer
+ *       - name: max_might
+ *         in: query
+ *         required: false
+ *         description: Upper bound on the current might of the player
+ *         schema:
+ *           type: integer
+ *       - name: min_level
+ *         in: query
+ *         required: false
+ *         description: Lower bound on the level of the player, legendary levels included
+ *         schema:
+ *           type: integer
+ *       - name: max_level
+ *         in: query
+ *         required: false
+ *         description: Upper bound on the level of the player, legendary levels included
+ *         schema:
+ *           type: integer
+ *       - name: min_alliance_might
+ *         in: query
+ *         required: false
+ *         description: Lower bound on the summed might of the player's alliance
+ *         schema:
+ *           type: integer
+ *       - name: max_alliance_might
+ *         in: query
+ *         required: false
+ *         description: Upper bound on the summed might of the player's alliance
+ *         schema:
+ *           type: integer
+ *       - name: min_alliance_players
+ *         in: query
+ *         required: false
+ *         description: Lower bound on the member count of the player's alliance
+ *         schema:
+ *           type: integer
+ *       - name: max_alliance_players
+ *         in: query
+ *         required: false
+ *         description: Upper bound on the member count of the player's alliance
+ *         schema:
+ *           type: integer
+ *       - name: min_metric_15
+ *         in: query
+ *         required: false
+ *         description: Lower bound on the aquamarine metric 15
+ *         schema:
+ *           type: integer
+ *       - name: max_metric_15
+ *         in: query
+ *         required: false
+ *         description: Upper bound on the aquamarine metric 15
+ *         schema:
+ *           type: integer
+ *       - name: min_metric_16
+ *         in: query
+ *         required: false
+ *         description: Lower bound on the aquamarine metric 16
+ *         schema:
+ *           type: integer
+ *       - name: max_metric_16
+ *         in: query
+ *         required: false
+ *         description: Upper bound on the aquamarine metric 16
+ *         schema:
+ *           type: integer
+ *       - name: min_metric_17
+ *         in: query
+ *         required: false
+ *         description: Lower bound on the aquamarine metric 17
+ *         schema:
+ *           type: integer
+ *       - name: max_metric_17
+ *         in: query
+ *         required: false
+ *         description: Upper bound on the aquamarine metric 17
+ *         schema:
+ *           type: integer
+ *       - name: min_metric_18
+ *         in: query
+ *         required: false
+ *         description: Lower bound on the aquamarine metric 18
+ *         schema:
+ *           type: integer
+ *       - name: max_metric_18
+ *         in: query
+ *         required: false
+ *         description: Upper bound on the aquamarine metric 18
+ *         schema:
+ *           type: integer
+ *       - name: min_metric_19
+ *         in: query
+ *         required: false
+ *         description: Lower bound on the aquamarine metric 19
+ *         schema:
+ *           type: integer
+ *       - name: max_metric_19
+ *         in: query
+ *         required: false
+ *         description: Upper bound on the aquamarine metric 19
+ *         schema:
+ *           type: integer
+ *       - name: min_metric_20
+ *         in: query
+ *         required: false
+ *         description: Lower bound on the aquamarine metric 20
+ *         schema:
+ *           type: integer
+ *       - name: max_metric_20
+ *         in: query
+ *         required: false
+ *         description: Upper bound on the aquamarine metric 20
+ *         schema:
+ *           type: integer
+ *       - name: min_metric_100
+ *         in: query
+ *         required: false
+ *         description: Lower bound on the aquamarine cargo points (metric 100)
+ *         schema:
+ *           type: integer
+ *       - name: max_metric_100
+ *         in: query
+ *         required: false
+ *         description: Upper bound on the aquamarine cargo points (metric 100)
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Paginated leaderboard with the latest metric values per player
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 players:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       rank:
+ *                         type: integer
+ *                         example: 1
+ *                       player_id:
+ *                         type: string
+ *                         example: "12345678"
+ *                       player_name:
+ *                         type: string
+ *                         nullable: true
+ *                       alliance_id:
+ *                         type: string
+ *                         nullable: true
+ *                       alliance_name:
+ *                         type: string
+ *                         nullable: true
+ *                       might_current:
+ *                         type: integer
+ *                       might_all_time:
+ *                         type: integer
+ *                       level:
+ *                         type: integer
+ *                       legendary_level:
+ *                         type: integer
+ *                       alliance_might:
+ *                         type: integer
+ *                         description: Summed might of every member of the player's alliance
+ *                       alliance_player_count:
+ *                         type: integer
+ *                         description: Number of members in the player's alliance
+ *                       metrics:
+ *                         type: object
+ *                         additionalProperties:
+ *                           type: number
+ *                         description: Map of metric_id to latest value
+ *                         example: { "100": 4200, "15": 300 }
+ *                       collected_at:
+ *                         type: string
+ *                         nullable: true
+ *                         example: "2026-01-01T10:00:00.000Z"
+ *                 snapshot_date:
+ *                   type: string
+ *                   nullable: true
+ *                   description: Date of the metric snapshot the leaderboard is built from
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
 protectedRoutes.get('/stormy-isles', routingInstance.getStormyIslesLeaderboard.bind(routingInstance));
 
 /**
