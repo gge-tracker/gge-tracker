@@ -1,6 +1,8 @@
 import { AfterViewInit, Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
+const STARTUP_OVERLAY_FADE_MS = 400;
+
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -10,9 +12,10 @@ import { RouterOutlet } from '@angular/router';
 export class AppComponent implements AfterViewInit {
   public ngAfterViewInit(): void {
     const overlay: HTMLElement | null = document.querySelector('#startup-overlay');
-    if (overlay) {
-      overlay.style.opacity = '0';
-      overlay.remove();
-    }
+    if (!overlay) return;
+    requestAnimationFrame(() => {
+      overlay.classList.add('startup-dismissed');
+      setTimeout(() => overlay.remove(), STARTUP_OVERLAY_FADE_MS);
+    });
   }
 }

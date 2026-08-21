@@ -1,5 +1,7 @@
 @if (!isInLoading) {
-  <div class="container-fluid container-xxl alliance-stats-container mb-5 mb-lg-3">
+  <section class="alliance-hero">
+    <div class="alliance-hero-backdrop" [class.is-ready]="isHeroBackdropReady" aria-hidden="true"></div>
+    <div class="container-fluid container-xxl alliance-stats-container mb-5 mb-lg-3">
     <h2 class="title">{{ allianceName }}</h2>
     <span class="badge bg-custom-font mt-3" [ngClass]="{ 'd-none': !lastUpdate }">
       <i class="fas fa-sync-alt"></i>
@@ -7,8 +9,8 @@
       }}</em>
     </span>
     <div class="stats-grid">
-      @for (card of cards; track card) {
-        <div class="stat-card pointer">
+      @for (card of cards; track card; let i = $index) {
+        <div class="stat-card pointer" [style.--i]="i">
           <div class="stat-card-content">
             <img [src]="card.logo" class="icon" [alt]="card.label | translate">
             <div class="value">{{ card.value }}</div>
@@ -21,48 +23,29 @@
         </div>
       }
     </div>
-  </div>
+    </div>
+  </section>
 }
 
 
 @if (!isInLoading) {
-  <ul class="nav nav-tabs pt-3 ps-3 mt-5">
-    <li class="nav-item">
-      <button class="nav-link" (click)="changeTab('members')" [ngClass]="selectedTab === 'members' ? 'active' : ''" title="{{ 'Membres' | translate }}">
-        <lucide-icon class="users" [img]="Users"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Membres' | translate }}</span>
-      </button>
-    </li>
-    <li class="nav-item">
-      <button class="nav-link" (click)="changeTab('description')" [ngClass]="selectedTab === 'description' ? 'active' : ''" title="{{ 'Description' | translate }}">
-        <lucide-icon class="scrollText" [img]="ScrollText"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Description' | translate }}</span>
-      </button>
-    </li>
-    <li class="nav-item">
-      <button class="nav-link" (click)="changeTab('movement')" [ngClass]="selectedTab === 'movement' ? 'active' : ''" title="{{ 'Arrivées et départs' | translate }}">
-        <lucide-icon class="briefcaseConveyorBelt" [img]="BriefcaseConveyorBelt"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Arrivées et départs' | translate }}</span>
-      </button>
-    </li>
-    <li class="nav-item">
-      <button class="nav-link" (click)="changeTab('stats')" [ngClass]="selectedTab === 'stats' ? 'active' : ''" title="{{ 'Statistiques des joueurs' | translate }}">
-        <lucide-icon class="chartSpline" [img]="ChartSpline"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Statistiques des joueurs' | translate }}</span>
-      </button>
-    </li>
-    <li class="nav-item">
-      <button class="nav-link" (click)="changeTab('health')" [ngClass]="selectedTab === 'health' ? 'active' : ''" title="{{ 'Rythme de l\'alliance' | translate }}">
-        <lucide-icon class="activity" [img]="Activity"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Rythme de l\'alliance' | translate }}</span>
-      </button>
-    </li>
-    <li class="nav-item">
-      <button class="nav-link" (click)="changeTab('movements')" [ngClass]="selectedTab === 'movements' ? 'active' : ''" title="{{ 'Mouvements' | translate }}">
-        <lucide-icon class="flag" [img]="Flag"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Mouvements' | translate }}</span>
-      </button>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" [href]="'/map/' + allianceId" target="_blank" title="{{ 'Carte' | translate }}">
-        <lucide-icon class="earth" [img]="Earth"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Carte' | translate}} <small><sup><i  class="fa-solid fa-external-link"></i></sup></small></span>
+  <nav class="alliance-tabs mt-5" role="tablist" [attr.aria-label]="'Alliance' | translate">
+    <div class="alliance-tabs-scroller">
+      @for (tab of tabs; track tab.key) {
+        <button type="button" class="alliance-tab" role="tab" [class.active]="selectedTab === tab.key"
+          [attr.aria-selected]="selectedTab === tab.key" (click)="changeTab(tab.key)" title="{{ tab.label | translate }}">
+          <lucide-icon class="alliance-tab-icon" [img]="tab.icon" [size]="18"></lucide-icon>
+          <span class="alliance-tab-label">{{ tab.label | translate }}</span>
+        </button>
+      }
+      <a class="alliance-tab alliance-tab-link" [href]="'/map/' + allianceId" target="_blank" rel="noopener"
+        title="{{ 'Carte' | translate }}">
+        <lucide-icon class="alliance-tab-icon" [img]="Earth" [size]="18"></lucide-icon>
+        <span class="alliance-tab-label">{{ 'Carte' | translate }}</span>
+        <i class="fa-solid fa-arrow-up-right-from-square alliance-tab-external"></i>
       </a>
-    </li>
-  </ul>
+    </div>
+  </nav>
 }
 
 @if (!isInLoading) {

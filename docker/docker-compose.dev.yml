@@ -113,6 +113,20 @@ services:
     ports:
       - "8080:8080"
 
+  cloudflare-exporter:
+    extends:
+      service: cloudflare-exporter
+      file: docker/docker-compose.common.yml
+    ports:
+      - "8082:8080"
+
+  cloudflare-zone-exporter:
+    extends:
+      service: cloudflare-zone-exporter
+      file: docker/docker-compose.common.yml
+    ports:
+      - "8081:8081"
+
   # Grafana for data visualization and dashboarding
   grafana:
     extends:

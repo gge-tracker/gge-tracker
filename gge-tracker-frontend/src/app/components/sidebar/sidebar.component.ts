@@ -1,5 +1,5 @@
 import { NgClass, TitleCasePipe } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import package_ from '../../../../package.json';
 import { SidebarService } from '@ggetracker-services/sidebar.service';
@@ -12,14 +12,30 @@ import { TranslateModule } from '@ngx-translate/core';
   standalone: true,
   templateUrl: './sidebar.component.html',
   styleUrls: ['./sidebar.component.css'],
+  host: {
+    '[class.sb-collapsed]': '!isSidebarOpen()',
+    '[class.sb-overlay]': 'sidebarService.isMobileView',
+  },
 })
-export class SidebarComponent {
+export class SidebarComponent implements AfterViewInit, OnDestroy {
+  @ViewChild('panel', { read: ElementRef }) public panel?: ElementRef<HTMLElement>;
+  @ViewChild('scroll', { read: ElementRef }) public scroll?: ElementRef<HTMLElement>;
   public sidebarService = inject(SidebarService);
   public apiRestService = inject(ApiRestService);
   public version = package_.version.split('-')[0].replaceAll('.', '-');
   public readonly menuStructure: {
     title: string;
-    items: { label: string; id?: string; url?: string; iconUrl?: string; frequency?: 'Temps réel' | 'Par heure' }[];
+    order?: number;
+    items: {
+      label: string;
+      id?: string;
+      url?: string;
+      iconUrl?: string;
+      iconClass?: string;
+      tag?: 'bot';
+      frequency?: 'Temps réel' | 'Par heure';
+      order?: number;
+    }[];
   }[] = [
     {
       title: 'Rechercher et analyser',
@@ -70,25 +86,66 @@ export class SidebarComponent {
     },
     {
       title: 'Analytique',
-      items: [{ label: 'Statistiques', id: 'statistics', iconUrl: '/assets/tools/stats.webp' }],
+      items: [
+        { label: 'Statistiques', id: 'statistics', iconUrl: '/assets/tools/stats.webp' },
+        { label: 'Offres', id: 'offers', iconUrl: '/assets/tools/shop.webp' },
+      ],
     },
     {
       title: 'Défis quotidiens',
       items: [{ label: 'Qui est-ce ?', id: 'guess', iconUrl: '/assets/tools/guess.webp' }],
     },
     {
-      title: 'Autres outils',
+      title: 'À découvrir',
       items: [
         {
           label: 'empire-rankings.io',
           url: 'https://danadum.github.io/empire-rankings/',
           iconUrl: '/assets/tools/empire-rankings.webp',
         },
+        {
+          label: 'GGE Assistant',
+          url: 'https://top.gg/bot/1472309793065533493',
+          iconClass: 'fa-brands fa-discord',
+          tag: 'bot',
+        },
       ],
     },
   ];
 
   private router = inject(Router);
+  private host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private widthObserver?: ResizeObserver;
+
+  constructor() {
+    let order = 0;
+    for (const section of this.menuStructure) {
+      section.order = order++;
+      for (const item of section.items) {
+        item.order = order++;
+      }
+    }
+  }
+
+  public ngAfterViewInit(): void {
+    this.revealActiveItem();
+
+    const panel = this.panel?.nativeElement;
+    if (!panel || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    this.widthObserver = new ResizeObserver(() => {
+      const width = panel.getBoundingClientRect().width;
+      if (width > 0) {
+        this.host.nativeElement.style.setProperty('--sb-w', `${Math.ceil(width)}px`);
+      }
+    });
+    this.widthObserver.observe(panel);
+  }
+
+  public ngOnDestroy(): void {
+    this.widthObserver?.disconnect();
+  }
 
   public isActive(route: string | string[]): boolean {
     if (Array.isArray(route)) {
@@ -105,5 +162,25 @@ export class SidebarComponent {
 
   public closeSidebar(): void {
     this.sidebarService.closeSidebar();
+  }
+
+  /**
+   * Deep-linking to a page low in the menu leaves its highlighted row below the fold,
+   * with nothing on screen saying where you are. Centre it in the scroller instead —
+   * without touching the page scroll, which scrollIntoView() would drag along.
+   */
+  private revealActiveItem(): void {
+    const container = this.scroll?.nativeElement;
+    const active = container?.querySelector<HTMLElement>('.active-nav');
+    if (!container || !active) {
+      return;
+    }
+    const overflow = container.scrollHeight - container.clientHeight;
+    if (overflow <= 0) {
+      return;
+    }
+    const offset = active.getBoundingClientRect().top - container.getBoundingClientRect().top;
+    const centered = container.scrollTop + offset - (container.clientHeight - active.offsetHeight) / 2;
+    container.scrollTop = Math.max(0, Math.min(centered, overflow));
   }
 }

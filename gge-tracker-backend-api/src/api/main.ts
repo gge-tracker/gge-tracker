@@ -1108,7 +1108,6 @@ publicRoutes.get('/events/player/:playerId', routingInstance.getEventByPlayerId.
  *     tags:
  *       - Updates
  *     parameters:
- *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - $ref: '#/components/parameters/AllianceId'
  *     responses:
  *       200:
@@ -1176,7 +1175,6 @@ publicRoutes.get(
  *     tags:
  *       - Updates
  *     parameters:
- *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - $ref: '#/components/parameters/PlayerId'
  *     responses:
  *       200:
@@ -1215,7 +1213,6 @@ publicRoutes.get('/updates/players/:playerId/names', routingInstance.getNamesUpd
  *     tags:
  *       - Updates
  *     parameters:
- *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - $ref: '#/components/parameters/PlayerId'
  *     responses:
  *       200:
@@ -1406,6 +1403,7 @@ protectedRoutes.get('/dungeons', routingInstance.getDungeons.bind(routingInstanc
  *     tags:
  *       - Storms
  *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - in: query
  *         name: page
  *         required: true
@@ -1533,6 +1531,7 @@ protectedRoutes.get('/storms/forts', routingInstance.getStormForts.bind(routingI
  *     tags:
  *       - Storms
  *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - in: query
  *         name: page
  *         required: true
@@ -1672,6 +1671,8 @@ protectedRoutes.get('/storms/isles', routingInstance.getStormIsles.bind(routingI
  *       many objects are tracked
  *     tags:
  *       - Storms
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
  *     responses:
  *       200:
  *         description: Successful response with the storm scan metadata
@@ -2423,7 +2424,6 @@ protectedRoutes.get('/castle/random', routingInstance.getRandomCastle.bind(routi
  *     tags:
  *       - Cartography
  *     parameters:
- *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - $ref: '#/components/parameters/AllianceId'
  *     responses:
  *       '200':
@@ -2475,7 +2475,6 @@ publicRoutes.get('/cartography/id/:allianceId', routingInstance.getCartographyBy
  *     tags:
  *       - Alliances
  *     parameters:
- *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - $ref: '#/components/parameters/AllianceId'
  *       - in: query
  *         name: playerNameForDistance
@@ -2742,7 +2741,6 @@ protectedRoutes.get('/alliances', routingInstance.getAlliances.bind(routingInsta
  *     tags:
  *       - Players
  *     parameters:
- *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - $ref: '#/components/parameters/PlayerId'
  *     responses:
  *       '200':
@@ -3281,7 +3279,6 @@ protectedRoutes.get('/players/:playerName', routingInstance.getPlayersByPlayerNa
  *     tags:
  *       - Statistics
  *     parameters:
- *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - $ref: '#/components/parameters/AllianceId'
  *       - name: events
  *         in: query
@@ -3671,20 +3668,67 @@ publicRoutes.get(
  *     description: |
  *       This endpoint retrieves event statistics for a specific player, including their name, alliance information, and points history
  *       The player ID must be a valid identifier, and if the player is not found, an error message is returned
- *       Due to optimization, the generic endpoint applies the following time limits:
- *         berimond invasion: no limit
- *         berimond kingdom: no limit
- *         bloodcrow: no limit
- *         nomad: no limit
- *         samurai: no limit
- *         war realms: no limit
- *         loot: 60 days
- *         might: 7 days
+ *
+ *       Called without query parameters it returns every recorded point of every event table, which for
+ *       an established player is tens of thousands of rows covering their whole history. A client that
+ *       draws a few recent points per chart should narrow the response with `events`, `since`, `limit`
+ *       and `dedup`, or read `/statistics/player/{playerId}/summary` first and fetch each series on demand
  *     tags:
  *       - Statistics
  *     parameters:
- *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - $ref: '#/components/parameters/PlayerId'
+ *       - name: events
+ *         in: query
+ *         required: false
+ *         style: form
+ *         explode: false
+ *         description: |
+ *           Comma-separated list of event tables to query and return in `points`. Any name outside this
+ *           list is rejected with a 400. When omitted, every event table is queried
+ *         schema:
+ *           type: array
+ *           items:
+ *             type: string
+ *             enum:
+ *               - player_event_berimond_invasion_history
+ *               - player_event_berimond_kingdom_history
+ *               - player_event_bloodcrow_history
+ *               - player_event_nomad_history
+ *               - player_event_samurai_history
+ *               - player_event_war_realms_history
+ *               - player_loot_history
+ *               - player_might_history
+ *       - name: since
+ *         in: query
+ *         required: false
+ *         description: |
+ *           How many days back to query, applied to every requested table. When omitted, the whole
+ *           recorded history is returned
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 1825
+ *           example: 30
+ *       - name: limit
+ *         in: query
+ *         required: false
+ *         description: |
+ *           Maximum number of point rows to return per event table, keeping the most recent ones in
+ *           chronological order. Applied after `dedup`. When omitted, every row in the window is returned
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           example: 200
+ *       - name: dedup
+ *         in: query
+ *         required: false
+ *         description: |
+ *           Drops the rows that do not change a chart: for `player_might_history` and
+ *           `player_loot_history`, points equal to both of their neighbours; for the event tables, the
+ *           occurrences the player sat out and the leading zeroes of the ones they played
+ *         schema:
+ *           type: boolean
+ *           example: true
  *     responses:
  *       '200':
  *         description: Successful response with player statistics
@@ -3760,6 +3804,211 @@ publicRoutes.get('/statistics/player/:playerId', routingInstance.getStatisticsBy
 
 /**
  * @swagger
+ * /statistics/player/{playerId}/summary:
+ *   get:
+ *     summary: Retrieve a headline summary of a player's event statistics
+ *     description: |
+ *       This endpoint returns one aggregate per event table instead of the points themselves: how many
+ *       rows exist, the window they cover, the latest value, the peak and when it was reached, and the
+ *       same over the last seven days
+ *     tags:
+ *       - Statistics
+ *     parameters:
+ *       - $ref: '#/components/parameters/PlayerId'
+ *     responses:
+ *       '200':
+ *         description: Successful response with the player summary
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 player_name:
+ *                   type: string
+ *                   example: "PlayerOne"
+ *                 alliance_name:
+ *                   type: string
+ *                   nullable: true
+ *                   example: "AllianceName"
+ *                 alliance_id:
+ *                   type: string
+ *                   nullable: true
+ *                   example: "1001"
+ *                 timezone_offset:
+ *                   type: integer
+ *                   nullable: true
+ *                   example: 2
+ *                 glory_points_100:
+ *                   type: array
+ *                   description: Fame value at ranks 1, 10, 50 and 100 of the player's server
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       top:
+ *                         type: integer
+ *                         example: 10
+ *                       point:
+ *                         type: integer
+ *                         example: 125000
+ *                 events:
+ *                   type: object
+ *                   description: One entry per event table, keyed by table name
+ *                   additionalProperties:
+ *                     type: object
+ *                     properties:
+ *                       row_count:
+ *                         type: integer
+ *                         example: 10405
+ *                       row_count_7d:
+ *                         type: integer
+ *                         example: 177
+ *                       first_date:
+ *                         type: string
+ *                         nullable: true
+ *                         example: "2025-06-01T16:00:00.000Z"
+ *                       last_date:
+ *                         type: string
+ *                         nullable: true
+ *                         example: "2026-08-15T09:00:00.000Z"
+ *                       last_point:
+ *                         type: integer
+ *                         nullable: true
+ *                         example: 1000
+ *                       max_point:
+ *                         type: integer
+ *                         nullable: true
+ *                         example: 1500
+ *                       max_point_date:
+ *                         type: string
+ *                         nullable: true
+ *                         example: "2026-07-02T11:00:00.000Z"
+ *                       max_point_7d:
+ *                         type: integer
+ *                         nullable: true
+ *                         example: 1200
+ *                       point_gain_7d:
+ *                         type: integer
+ *                         nullable: true
+ *                         description: |
+ *                           Points gained over the last seven days. Negative where the table resets on a
+ *                           cycle, as the weekly loot ranking does. Null when the player has no rows in
+ *                           that window
+ *                         example: 340
+ *       '400':
+ *         description: Bad request, invalid player ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Invalid user id"
+ *       '404':
+ *         description: Player not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Player not found"
+ *       '500':
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "An error occurred during the request"
+ */
+publicRoutes.get(
+  '/statistics/player/:playerId/summary',
+  routingInstance.getStatisticsSummaryByPlayerId.bind(routingInstance),
+);
+
+/**
+ * @swagger
+ * /statistics/player/{playerId}/{eventName}/occurrences:
+ *   get:
+ *     summary: Retrieve one entry per run of an event, with the score the player finished it on
+ *     description: |
+ *       This endpoint reports how an event has gone for a player across its whole history: one entry per
+ *       run of the event, holding when it started, when it ended, and the score the player finished it on
+ *     tags:
+ *       - Statistics
+ *     parameters:
+ *       - $ref: '#/components/parameters/PlayerId'
+ *       - name: eventName
+ *         in: path
+ *         required: true
+ *         description: The event table to group into runs
+ *         schema:
+ *           type: string
+ *           enum:
+ *             - player_event_berimond_invasion_history
+ *             - player_event_berimond_kingdom_history
+ *             - player_event_bloodcrow_history
+ *             - player_event_nomad_history
+ *             - player_event_samurai_history
+ *             - player_event_war_realms_history
+ *     responses:
+ *       '200':
+ *         description: Successful response with one entry per run, oldest first
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 event:
+ *                   type: string
+ *                   example: "player_event_nomad_history"
+ *                 occurrences:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       started_at:
+ *                         type: string
+ *                         example: "2026-07-25T08:09:20.000Z"
+ *                       ended_at:
+ *                         type: string
+ *                         example: "2026-07-28T07:09:06.000Z"
+ *                       point:
+ *                         type: integer
+ *                         description: The score the player finished this run on, 0 if they did not take part
+ *                         example: 1065656
+ *       '400':
+ *         description: Bad request, invalid player ID or event name
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Invalid event name"
+ *       '500':
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "An error occurred during the request"
+ */
+publicRoutes.get(
+  '/statistics/player/:playerId/:eventName/occurrences',
+  routingInstance.getEventOccurrencesByPlayerId.bind(routingInstance),
+);
+
+/**
+ * @swagger
  * /statistics/player/{playerId}/{eventName}/{duration}:
  *   get:
  *     summary: Retrieve event statistics for a specific player in a specific event, with a specified duration
@@ -3770,7 +4019,6 @@ publicRoutes.get('/statistics/player/:playerId', routingInstance.getStatisticsBy
  *     tags:
  *       - Statistics
  *     parameters:
- *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - $ref: '#/components/parameters/PlayerId'
  *       - name: eventName
  *         in: path
@@ -4794,6 +5042,61 @@ protectedRoutes.get('/stormy-isles', routingInstance.getStormyIslesLeaderboard.b
  *         $ref: '#/components/responses/InternalServerError'
  */
 publicRoutes.get('/dungeons/player/:playerId', routingInstance.getDungeonsByPlayerId.bind(routingInstance));
+
+/**
+ * @swagger
+ * /offers:
+ *   get:
+ *     summary: Retrieve the current cash offers catalog
+ *     description: >
+ *       Returns the cash offers the official Goodgame Empire store would show to a player of the given
+ *       keep level and legendary level
+ *     tags:
+ *       - Offers
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - in: query
+ *         name: locale
+ *         required: false
+ *         description: The locale the offers are translated in. Defaults to 'en'
+ *         example: "en"
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: currency
+ *         required: false
+ *         description: The currency the offers are priced in. Defaults to 'EUR'
+ *         example: "EUR"
+ *         schema:
+ *           type: string
+ *           enum: [EUR, USD, GBP, BRL, TRY, PLN, CZK, HUF, RON, SEK, AUD, JPY, KRW, INR, SAR, AED, TWD]
+ *       - in: query
+ *         name: level
+ *         required: false
+ *         description: The level of the player the offers are computed for (1-70). Defaults to 70
+ *         example: 70
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: legendaryLevel
+ *         required: false
+ *         description: The legendary level of the player the offers are computed for. Defaults to 950
+ *         example: 950
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved the cash offers catalog, as returned by the GGS API
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+protectedRoutes.get('/offers', routingInstance.getOffers.bind(routingInstance));
 
 /**
  * Express middleware that validates the presence and validity of the 'gge-server' header in incoming requests

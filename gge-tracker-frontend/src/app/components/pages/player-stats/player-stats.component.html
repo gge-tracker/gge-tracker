@@ -203,16 +203,28 @@
               [title]="'Points de puissance' | translate" [dataName]="'Points de puissance' | translate"
               [backgroundIconImage]="'/assets/banner-pp.png'" [needSpecialLoader]="true"
               [eventName]="'player_might_history'" [isWeekly]="true" [playerId]="playerId"
-              (updateData)="updateData($event)" (changePeriodOutput)="onMightPeriodChange($event)"
+              (changePeriodOutput)="onMightPeriodChange($event)"
               [backgroundColour]="'rgb(255 230 35)'"></app-player-stats-card>
+            } @else {
+            <ng-container *ngTemplateOutlet="chartPlaceholder; context: {
+              chart: 'might',
+              title: 'Points de puissance' | translate,
+              colour: 'rgb(255 230 35)'
+            }"></ng-container>
             }
           </div>
           <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="loot">
             @if (charts['loot'] && chartVisibles.loot) {
             <app-player-stats-card [charts]="{ 'Graphique': charts['loot'] }" [data]="[]"
               [title]="'Pillage hebdomadaire' | translate" [dataName]="'Points de pillage' | translate"
-              [playerId]="playerId" [eventName]="'player_loot_history'" (updateData)="updateData($event)"
+              [playerId]="playerId" [eventName]="'player_loot_history'"
               [backgroundIconImage]="'/assets/banner-loot.png'" [backgroundColour]="'#e7a220'"></app-player-stats-card>
+            } @else {
+            <ng-container *ngTemplateOutlet="chartPlaceholder; context: {
+              chart: 'loot',
+              title: 'Pillage hebdomadaire' | translate,
+              colour: '#e7a220'
+            }"></ng-container>
             }
           </div>
         </div>
@@ -221,24 +233,40 @@
             @if (eventCharts['warRealms'] && chartVisibles.warRealms) {
             <app-player-stats-card [charts]="eventCharts['warRealms']" [data]="[]"
               [title]="'Guerre des royaumes' | translate" [playerId]="playerId"
-              [eventName]="'player_event_war_realms_history'" (updateData)="updateData($event)"
+              [eventName]="'player_event_war_realms_history'" (fullHistoryRequested)="loadFullHistory('warRealms')"
+              [scopeShown]="drawnSeriesCount('warRealms')" [scopeTotal]="totalOccurrences('warRealms')"
+              [isLoadingHistory]="seriesState['warRealms'] === 'loading'"
               [dataName]="'Points de guerre des royaumes' | translate"
               [backgroundIconImage]="'/assets/banner-realm.png'"
               [backgroundColour]="'rgb(216 182 255)'"
               [stats]="eventStats['warRealms']">
             </app-player-stats-card>
+            } @else {
+            <ng-container *ngTemplateOutlet="chartPlaceholder; context: {
+              chart: 'warRealms',
+              title: 'Guerre des royaumes' | translate,
+              colour: 'rgb(216 182 255)'
+            }"></ng-container>
             }
           </div>
           <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="bloodcrow">
             @if (eventCharts['bloodcrow'] && chartVisibles.bloodcrow) {
             <app-player-stats-card [charts]="eventCharts['bloodcrow']" [data]="[]"
               [title]="'Corbeaux de sang' | translate" [playerId]="playerId"
-              [eventName]="'player_event_bloodcrow_history'" (updateData)="updateData($event)"
+              [eventName]="'player_event_bloodcrow_history'" (fullHistoryRequested)="loadFullHistory('bloodcrow')"
+              [scopeShown]="drawnSeriesCount('bloodcrow')" [scopeTotal]="totalOccurrences('bloodcrow')"
+              [isLoadingHistory]="seriesState['bloodcrow'] === 'loading'"
               [dataName]="'Points de corbeaux de sang' | translate"
               [backgroundIconImage]="'/assets/banner-bloodcrow.png'"
               [backgroundColour]="'rgb(216 182 255)'"
               [stats]="eventStats['bloodcrow']">
             </app-player-stats-card>
+            } @else {
+            <ng-container *ngTemplateOutlet="chartPlaceholder; context: {
+              chart: 'bloodcrow',
+              title: 'Corbeaux de sang' | translate,
+              colour: 'rgb(216 182 255)'
+            }"></ng-container>
             }
           </div>
         </div>
@@ -247,22 +275,38 @@
             @if (eventCharts['berimondKingdom'] && chartVisibles.berimondKingdom) {
             <app-player-stats-card [charts]="eventCharts['berimondKingdom']" [data]="[]"
               [title]="'Bataille de Berimond' | translate" [playerId]="playerId"
-              [eventName]="'player_event_berimond_kingdom_history'" (updateData)="updateData($event)"
+              [eventName]="'player_event_berimond_kingdom_history'" (fullHistoryRequested)="loadFullHistory('berimondKingdom')"
+              [scopeShown]="drawnSeriesCount('berimondKingdom')" [scopeTotal]="totalOccurrences('berimondKingdom')"
+              [isLoadingHistory]="seriesState['berimondKingdom'] === 'loading'"
               [dataName]="'Points de Berimond' | translate" [backgroundIconImage]="'/assets/banner-berimond.png'"
               [backgroundColour]="'#00aaff'"
               [stats]="eventStats['berimondKingdom']">
             </app-player-stats-card>
+            } @else {
+            <ng-container *ngTemplateOutlet="chartPlaceholder; context: {
+              chart: 'berimondKingdom',
+              title: 'Bataille de Berimond' | translate,
+              colour: '#00aaff'
+            }"></ng-container>
             }
           </div>
           <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="nomad">
             @if (eventCharts['nomad'] && chartVisibles.nomad) {
             <app-player-stats-card [charts]="eventCharts['nomad']" [data]="[]"
               [title]="'Nomades' | translate" [dataName]="'Points de nomades' | translate" [playerId]="playerId"
-              [eventName]="'player_event_nomad_history'" (updateData)="updateData($event)"
+              [eventName]="'player_event_nomad_history'" (fullHistoryRequested)="loadFullHistory('nomad')"
+              [scopeShown]="drawnSeriesCount('nomad')" [scopeTotal]="totalOccurrences('nomad')"
+              [isLoadingHistory]="seriesState['nomad'] === 'loading'"
               [backgroundIconImage]="'/assets/banner-nomad.png'"
               [backgroundColour]="'rgb(255 130 54)'"
               [stats]="eventStats['nomad']">
             </app-player-stats-card>
+            } @else {
+            <ng-container *ngTemplateOutlet="chartPlaceholder; context: {
+              chart: 'nomad',
+              title: 'Nomades' | translate,
+              colour: 'rgb(255 130 54)'
+            }"></ng-container>
             }
           </div>
         </div>
@@ -271,11 +315,19 @@
             @if (eventCharts['samurai'] && chartVisibles.samurai) {
             <app-player-stats-card [charts]="eventCharts['samurai']" [data]="[]"
               [title]="'Samouraïs' | translate" [dataName]="'Points de samouraïs' | translate" [playerId]="playerId"
-              [eventName]="'player_event_samurai_history'" (updateData)="updateData($event)"
+              [eventName]="'player_event_samurai_history'" (fullHistoryRequested)="loadFullHistory('samurai')"
+              [scopeShown]="drawnSeriesCount('samurai')" [scopeTotal]="totalOccurrences('samurai')"
+              [isLoadingHistory]="seriesState['samurai'] === 'loading'"
               [backgroundIconImage]="'/assets/banner-samurai.png'"
               [backgroundColour]="'#58771db5'"
               [stats]="eventStats['samurai']">
             </app-player-stats-card>
+            } @else {
+            <ng-container *ngTemplateOutlet="chartPlaceholder; context: {
+              chart: 'samurai',
+              title: 'Samouraïs' | translate,
+              colour: '#58771db5'
+            }"></ng-container>
             }
           </div>
         </div>
@@ -289,7 +341,7 @@
             <app-player-stats-card [charts]="{ 'Graphique': charts['hourly-activity'] }" [data]="[]"
               [title]="'Taux d\'activité par heure' | translate" [subtitle]="'Semaine précédente' | translate"
               [dataName]="'Taux d\'activité par heure' | translate" [playerId]="playerId"
-              [eventName]="'player_loot_history'" (updateData)="updateData($event)"
+              [eventName]="'player_loot_history'"
               [backgroundIconImage]="'/assets/banner-loot.png'" [backgroundColour]="'#e7a220'"></app-player-stats-card>
             }
           </div>
@@ -300,7 +352,7 @@
             <app-player-stats-card [charts]="{ 'Graphique': charts['avg-gain-hour'] }" [data]="[]"
               [title]="'Gain moyen par heure' | translate" [subtitle]="'Semaine précédente' | translate"
               [dataName]="'Gain moyen par heure' | translate" [playerId]="playerId" [eventName]="'player_loot_history'"
-              (updateData)="updateData($event)" [backgroundIconImage]="'/assets/banner-loot.png'"
+              [backgroundIconImage]="'/assets/banner-loot.png'"
               [backgroundColour]="'#e7a220'"></app-player-stats-card>
             }
           </div>
@@ -311,17 +363,17 @@
             <app-player-stats-card [charts]="{ 'Graphique': charts['loot-heatmap'] }" [data]="[]"
               [title]="'Carte d\'activité hebdomadaire' | translate"
               [dataName]="'Carte d\'activité hebdomadaire' | translate" [playerId]="playerId"
-              [eventName]="'player_loot_history'" (updateData)="updateData($event)"
+              [eventName]="'player_loot_history'"
               [backgroundIconImage]="'/assets/banner-loot.png'" [backgroundColour]="'#e7a220'"></app-player-stats-card>
             }
           </div>
         </div>
         <div class="row mt-3">
           <div class="col-12">
-            @if (charts['loot']) {
-            <app-player-stats-card [charts]="{ 'Graphique': charts['loot'] }" [data]="[]"
+            @if (charts['loot-weeks']) {
+            <app-player-stats-card [charts]="{ 'Graphique': charts['loot-weeks'] }" [data]="[]"
               [title]="'Pillage hebdomadaire' | translate" [dataName]="'Points de pillage' | translate"
-              [playerId]="playerId" [eventName]="'player_loot_history'" (updateData)="updateData($event)"
+              [playerId]="playerId" [eventName]="'player_loot_history'"
               [backgroundIconImage]="'/assets/banner-loot.png'" [backgroundColour]="'#e7a220'"></app-player-stats-card>
             }
           </div>
@@ -941,4 +993,52 @@
     <td class="kid-{{ monument.kingdom }}">{{ getRealmName(monument.kingdom) | translate }}</td>
     <td>{{ monument.position }}</td>
   </tr>
+</ng-template>
+
+<ng-template #chartPlaceholder let-chart="chart" let-title="title" let-colour="colour">
+  <div class="chart-placeholder" [ngStyle]="{ 'border-left-color': colour }">
+    <div class="chart-placeholder-head">
+      <span class="chart-placeholder-title">{{ title }}</span>
+      @if (seriesState[chart] === 'loading') {
+      <span class="chart-placeholder-spinner" aria-hidden="true"></span>
+      }
+    </div>
+    @if (summaryFor(chart); as summary) {
+      @if (summary.row_count === 0) {
+      <p class="chart-placeholder-empty">{{ 'Aucun résultat' | translate }}</p>
+      } @else {
+      <div class="chart-placeholder-stats">
+        <div class="chart-placeholder-stat">
+          <span class="chart-placeholder-label">{{ 'Points' | translate }}</span>
+          <span class="chart-placeholder-value">{{ (summary.last_point ?? 0) | formatNumber }}</span>
+          <span class="chart-placeholder-sub">{{ summary.last_date | date: ('Date_1' | translate) }}</span>
+        </div>
+        <div class="chart-placeholder-stat">
+          <span class="chart-placeholder-label">{{ 'Record' | translate }}</span>
+          <span class="chart-placeholder-value">{{ (summary.max_point ?? 0) | formatNumber }}</span>
+          <span class="chart-placeholder-sub">{{ summary.max_point_date | date: ('Date_1' | translate) }}</span>
+        </div>
+        <div class="chart-placeholder-stat">
+          <span class="chart-placeholder-label">{{ 'Derniers 7 jours' | translate }}</span>
+          @if (summary.point_gain_7d === null) {
+          <span class="chart-placeholder-value chart-placeholder-idle">-</span>
+          } @else {
+          <span class="chart-placeholder-value"
+            [ngClass]="summary.point_gain_7d >= 0 ? 'chart-placeholder-gain' : 'chart-placeholder-loss'">
+            {{ summary.point_gain_7d >= 0 ? '+' : '' }}{{ summary.point_gain_7d | formatNumber }}
+          </span>
+          }
+          <span class="chart-placeholder-sub">{{ summary.row_count | formatNumber }} {{ 'points' | translate }}</span>
+        </div>
+      </div>
+      }
+    } @else {
+    <div class="chart-placeholder-skeleton"></div>
+    }
+    @if (seriesState[chart] === 'error') {
+    <button class="gge-btn light-yellow btn-sm mt-2" (click)="ensureSeries(chart)" (keyup.enter)="ensureSeries(chart)">
+      {{ 'Réessayer' | translate }}
+    </button>
+    }
+  </div>
 </ng-template>

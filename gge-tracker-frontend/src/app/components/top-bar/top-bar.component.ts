@@ -39,6 +39,7 @@ export class TopBarComponent implements AfterViewInit {
   public languageService = inject(LanguageService);
   public searchQuery: string = '';
   public filteredServerInput: string = '';
+  public sidebarOpen = false;
   private sidebarService = inject(SidebarService);
   private utilitiesService = inject(UtilitiesService);
   private topBarService = inject(TopBarService);
@@ -51,6 +52,14 @@ export class TopBarComponent implements AfterViewInit {
     this.utilitiesService.data$.subscribe((data) => {
       this.discordMemberCount = data?.discord_member_count || 0;
     });
+    this.sidebarService.isSidebarOpen$.subscribe((open) => {
+      this.sidebarOpen = open;
+      this.cdr.markForCheck();
+    });
+  }
+
+  public isSidebarOpen(): boolean {
+    return this.sidebarOpen;
   }
 
   public ngAfterViewInit(): void {

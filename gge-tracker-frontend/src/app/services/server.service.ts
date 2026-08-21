@@ -107,6 +107,10 @@ export class ServerService {
     globalThis.location.reload();
   }
 
+  public isE4kServer(server: string | undefined = this.currentServer?.name): boolean {
+    return server?.startsWith('E4K_') ?? false;
+  }
+
   public getFlagUrl(server: string): string {
     if (server.startsWith('E4K_')) {
       server = server.slice(4);

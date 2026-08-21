@@ -38,6 +38,7 @@
     "date-fns-tz": "^3.2.0",
     "dotenv": "^16.5.0",
     "express": "^4.22.1",
+    "https-proxy-agent": "^7.0.6",
     "morgan": "^1.11.0",
     "mysql": "^2.18.1",
     "pg": "^8.16.0",
@@ -47,7 +48,6 @@
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "^10.0.3",
-    "nodemon": "^3.1.9",
     "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",
     "@types/dotenv": "^6.1.1",
@@ -61,6 +61,7 @@
     "eslint": "^9.37.0",
     "eslint-plugin-prettier": "^5.5.3",
     "eslint-plugin-unicorn": "^61.0.2",
+    "nodemon": "^3.1.9",
     "swagger-jsdoc": "^6.2.8",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.2"

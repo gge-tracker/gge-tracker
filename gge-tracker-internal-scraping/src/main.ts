@@ -8,7 +8,6 @@
 //  Copyrights (c) 2025-2026 - gge-tracker.com & gge-tracker contributors
 //
 import axios, { AxiosError, AxiosResponse } from 'axios';
-import { ClickHouse } from 'clickhouse';
 import { format } from 'date-fns';
 import * as mysql from 'mysql2/promise';
 import pLimit from 'p-limit';
@@ -88,6 +87,24 @@ export class GenericFetchAndSaveBackend {
     'ETIMEDOUT',
     'EPIPE',
   ];
+  private static readonly CLICKHOUSE_RETRYABLE_CODES: ReadonlySet<number> = new Set([
+    159, // TIMEOUT_EXCEEDED
+    202, // TOO_MANY_SIMULTANEOUS_QUERIES
+    203, // NO_FREE_CONNECTION
+    209, // SOCKET_TIMEOUT
+    210, // NETWORK_ERROR
+    241, // MEMORY_LIMIT_EXCEEDED
+    252, // TOO_MANY_PARTS
+    394, // QUERY_WAS_CANCELLED
+    425, // SYSTEM_ERROR
+    745, // SERVER_OVERLOADED
+  ]);
+
+  private static readonly CLICKHOUSE_INSERT_CHUNK_SIZE = 50000;
+  private static readonly CLICKHOUSE_MAX_ATTEMPTS = 6;
+  private static readonly CLICKHOUSE_BASE_BACKOFF_MS = 2000;
+  private static readonly CLICKHOUSE_MAX_BACKOFF_MS = 60000;
+
   public playerRenamedList: { [key: string]: any } = {};
   public allianceRenamedList: { [key: string]: any } = {};
   public DB_UPDATES = {
@@ -156,6 +173,24 @@ export class GenericFetchAndSaveBackend {
     if (PGSQL_CONFIG) {
       this.createNewPool();
     }
+  }
+
+  private static parseClickHouseErrorCode(error: unknown): number | undefined {
+    const response = (error as AxiosError)?.response;
+    if (!response) return undefined;
+    const body = typeof response.data === 'string' ? response.data : JSON.stringify(response.data ?? '');
+    const match = body.match(/Code:\s*(\d+)/);
+    return match ? Number(match[1]) : undefined;
+  }
+
+  private static isClickHouseRetryable(error: unknown): boolean {
+    const response = (error as AxiosError)?.response;
+    if (!response) return true;
+    if (response.status === 429 || response.status === 502 || response.status === 503 || response.status === 504) {
+      return true;
+    }
+    const code = GenericFetchAndSaveBackend.parseClickHouseErrorCode(error);
+    return code !== undefined && GenericFetchAndSaveBackend.CLICKHOUSE_RETRYABLE_CODES.has(code);
   }
 
   public async sleep(numberMs: number = 1500): Promise<void> {
@@ -761,8 +796,7 @@ export class GenericFetchAndSaveBackend {
         Utils.logMessage(' [error] MariaDB database connection failed');
       }
       try {
-        const clickhouse = new ClickHouse(this.CLICKHOUSE_CONFIG as any);
-        await clickhouse.query('SELECT 1').toPromise();
+        await this.pingClickHouse();
         Utils.logMessage(' [info] ClickHouse database connection is operational');
       } catch {
         Utils.logMessage(' [error] ClickHouse database connection failed');
@@ -1360,78 +1394,29 @@ export class GenericFetchAndSaveBackend {
         item += increment;
       }
       Utils.logMessage(' Total unique player entries fetched:', playerEntries.size);
-      const clickhouseBaseUrl = (this.CLICKHOUSE_CONFIG!.url as string) + ':' + this.CLICKHOUSE_CONFIG!.port;
       try {
-        const batchSize = 5000;
-        const insertSQL = 'INSERT INTO outer_realms_ranking FORMAT JSONEachRow';
-        const clickhouseUrl =
-          clickhouseBaseUrl +
-          '/?query=' +
-          encodeURIComponent(insertSQL) +
-          '&database=' +
-          encodeURIComponent(this.CLICKHOUSE_CONFIG!.database as string);
-        const fetchDate = new Date();
         const playerArray = Array.from(playerEntries.values());
-        const clickhouseAuth = {
-          username: this.CLICKHOUSE_CONFIG!.user as string,
-          password: this.CLICKHOUSE_CONFIG!.password as string,
-        };
-
         this.DB_UPDATES.playersCreated = playerArray.length;
 
-        const fetchDateStr = new Date(fetchDate).toISOString().slice(0, 19).replace('T', ' ');
-        for (let i = 0; i < playerArray.length; i += batchSize) {
-          const batch = playerArray.slice(i, i + batchSize);
-          const payload = batch
-            .map((p) =>
-              JSON.stringify({
-                player_id: p.OID,
-                player_name: p.N,
-                server: p.server,
-                score: p.score,
-                rank: p.rank,
-                level: p.level,
-                legendary_level: p.legendaryLevel,
-                might: p.might,
-                castle_position_x: p.castlePositionX,
-                castle_position_y: p.castlePositionY,
-                fetch_date: fetchDateStr,
-              }),
-            )
-            .join('\n');
+        const fetchDateStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
+        const rows = playerArray.map((p) => ({
+          player_id: p.OID,
+          player_name: p.N,
+          server: p.server,
+          score: p.score,
+          rank: p.rank,
+          level: p.level,
+          legendary_level: p.legendaryLevel,
+          might: p.might,
+          castle_position_x: p.castlePositionX,
+          castle_position_y: p.castlePositionY,
+          fetch_date: fetchDateStr,
+        }));
 
-          try {
-            await axios.post(clickhouseUrl, payload, {
-              headers: {
-                'Content-Type': 'text/plain',
-              },
-              auth: clickhouseAuth,
-            });
-            Utils.logMessage(`Inserted ${batch.length} players`);
-            Utils.logMessage('Outer Realms data fetch and database update completed successfully');
-          } catch (error) {
-            Utils.logCritical('', error, 'Error inserting batch into ClickHouse:');
-            Utils.logMessage('Payload:', payload);
-            this.DB_UPDATES.criticalErrors++;
-          }
-        }
+        await this.insertRowsClickHouse('outer_realms_ranking', rows);
+        Utils.logMessage('Outer Realms data fetch and database update completed successfully');
 
-        const updateLatestFetchSQL = `
-          INSERT INTO latest_fetch_date (fetch_date)
-          VALUES ('${fetchDateStr}')
-        `;
-        await axios.post(
-          clickhouseBaseUrl +
-            '/?query=' +
-            encodeURIComponent(updateLatestFetchSQL) +
-            '&database=' +
-            encodeURIComponent(this.CLICKHOUSE_CONFIG!.database as string),
-          '',
-          {
-            auth: clickhouseAuth,
-            headers: { 'Content-Type': 'text/plain' },
-          },
-        );
+        await this.insertRowsClickHouse('latest_fetch_date', [{ fetch_date: fetchDateStr }]);
       } catch (error) {
         Utils.logCritical('', error, 'Error executing query:');
         this.DB_UPDATES.criticalErrors++;
@@ -1582,46 +1567,16 @@ export class GenericFetchAndSaveBackend {
           ', at time:',
           now.toISOString(),
         );
-        const clickhouseBaseUrl = (this.CLICKHOUSE_CONFIG!.url as string) + ':' + this.CLICKHOUSE_CONFIG!.port;
         try {
-          const insertSQL = `INSERT INTO wheel_unimaginable_affluence FORMAT JSONEachRow`;
-          const clickhouseUrl =
-            clickhouseBaseUrl +
-            '/?query=' +
-            encodeURIComponent(insertSQL) +
-            '&database=' +
-            encodeURIComponent(this.CLICKHOUSE_CONFIG!.database as string);
           const fetchDateStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
-          const clickhouseAuth = {
-            username: this.CLICKHOUSE_CONFIG!.user as string,
-            password: this.CLICKHOUSE_CONFIG!.password as string,
-          };
-          const batchSize = 100;
-          for (let i = 0; i < wheelData.length; i += batchSize) {
-            const batch = wheelData.slice(i, i + batchSize);
-            const payload = batch
-              .map((entry) =>
-                JSON.stringify({
-                  player_id: entry.playerId,
-                  point: entry.points,
-                  created_at: fetchDateStr,
-                }),
-              )
-              .join('\n');
-            try {
-              await axios.post(clickhouseUrl, payload, {
-                headers: {
-                  'Content-Type': 'text/plain',
-                },
-                auth: clickhouseAuth,
-              });
-              Utils.logMessage(`Inserted ${batch.length} entries into ClickHouse`);
-            } catch (error) {
-              Utils.logCritical('', error, 'Error inserting batch into ClickHouse:');
-              Utils.logMessage('Payload:', payload);
-              this.DB_UPDATES.criticalErrors++;
-            }
-          }
+          await this.insertRowsClickHouse(
+            'wheel_unimaginable_affluence',
+            wheelData.map((entry) => ({
+              player_id: entry.playerId,
+              point: entry.points,
+              created_at: fetchDateStr,
+            })),
+          );
         } catch (error) {
           Utils.logCritical('', error, 'Error executing query:');
           this.DB_UPDATES.criticalErrors++;
@@ -1648,6 +1603,108 @@ export class GenericFetchAndSaveBackend {
       }
       Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, this.server);
     }
+  }
+
+  private clickhouseBaseUrl(): string {
+    if (!this.CLICKHOUSE_CONFIG) throw new Error('ClickHouse configuration is missing.');
+    return (this.CLICKHOUSE_CONFIG.url as string) + ':' + this.CLICKHOUSE_CONFIG.port;
+  }
+
+  private clickhouseAuth(): { username: string; password: string } {
+    if (!this.CLICKHOUSE_CONFIG) throw new Error('ClickHouse configuration is missing.');
+    return {
+      username: this.CLICKHOUSE_CONFIG.user as string,
+      password: this.CLICKHOUSE_CONFIG.password as string,
+    };
+  }
+
+  private clickhouseUrl(query: string, extraParams: Record<string, string> = {}): string {
+    if (!this.CLICKHOUSE_CONFIG) throw new Error('ClickHouse configuration is missing.');
+    const params = new URLSearchParams({
+      query,
+      database: this.CLICKHOUSE_CONFIG.database as string,
+      ...extraParams,
+    });
+    return this.clickhouseBaseUrl() + '/?' + params.toString();
+  }
+
+  private async clickhousePost(
+    url: string,
+    payload: string,
+    description: string,
+    maxAttempts: number = GenericFetchAndSaveBackend.CLICKHOUSE_MAX_ATTEMPTS,
+  ): Promise<void> {
+    let delay = GenericFetchAndSaveBackend.CLICKHOUSE_BASE_BACKOFF_MS;
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await axios.post(url, payload, {
+          headers: { 'Content-Type': 'text/plain' },
+          auth: this.clickhouseAuth(),
+          timeout: 120000,
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
+        });
+        return;
+      } catch (error) {
+        const retryable = GenericFetchAndSaveBackend.isClickHouseRetryable(error);
+        if (!retryable || attempt >= maxAttempts) {
+          throw error;
+        }
+        const code = GenericFetchAndSaveBackend.parseClickHouseErrorCode(error);
+        const wait = Math.round(delay + Math.random() * delay);
+        Utils.logMessage(
+          ' [retry] ClickHouse',
+          description,
+          'failed (code',
+          code ?? 'network',
+          ') - attempt',
+          attempt + '/' + maxAttempts + ', retrying in',
+          wait + 'ms',
+        );
+        await this.sleep(wait);
+        delay = Math.min(delay * 2, GenericFetchAndSaveBackend.CLICKHOUSE_MAX_BACKOFF_MS);
+      }
+    }
+  }
+
+  /**
+   * The single entry point for every ClickHouse insert
+   *
+   * @param table Target table, optionally database-qualified
+   * @param rows Rows to insert; an empty array is a no-op
+   * @param options `chunkSize`, `database`, or a smaller `maxAttempts` budget
+   */
+  private async insertRowsClickHouse(
+    table: string,
+    rows: Array<Record<string, unknown>>,
+    options: { chunkSize?: number; database?: string; maxAttempts?: number } = {},
+  ): Promise<void> {
+    if (!this.CLICKHOUSE_CONFIG) throw new Error('ClickHouse configuration is missing.');
+    if (rows.length === 0) return;
+
+    const chunkSize = options.chunkSize ?? GenericFetchAndSaveBackend.CLICKHOUSE_INSERT_CHUNK_SIZE;
+    const extraParams: Record<string, string> = {
+      async_insert: '1',
+      wait_for_async_insert: '1',
+    };
+    if (options.database) extraParams.database = options.database;
+
+    const url = this.clickhouseUrl(`INSERT INTO ${table} FORMAT JSONEachRow`, extraParams);
+
+    for (let i = 0; i < rows.length; i += chunkSize) {
+      const chunk = rows.slice(i, i + chunkSize);
+      const payload = chunk.map((row) => JSON.stringify(row)).join('\n');
+      await this.clickhousePost(url, payload, `insert into ${table}`, options.maxAttempts);
+      Utils.logMessage(' [info] Inserted', chunk.length, 'rows into', table);
+    }
+  }
+
+  private async pingClickHouse(): Promise<void> {
+    await axios.post(this.clickhouseUrl('SELECT 1'), '', {
+      headers: { 'Content-Type': 'text/plain' },
+      auth: this.clickhouseAuth(),
+      timeout: 15000,
+    });
   }
 
   private createNewPool(): void {
@@ -2035,16 +2092,10 @@ export class GenericFetchAndSaveBackend {
     args: { lt: number; increment: number; tableName: string; query: string; levelCategorySize: number },
     date: Date,
     eventName: string,
-    successCallback: () => void,
+    successCallback: () => void | Promise<void>,
   ): Promise<void> {
     try {
       if (!this.CLICKHOUSE_CONFIG) throw new Error('ClickHouse configuration is missing.');
-      let clickhouse: any;
-      try {
-        clickhouse = new ClickHouse(this.CLICKHOUSE_CONFIG);
-      } catch (error) {
-        Utils.logCritical('006', error, 'Error while connecting to ClickHouse');
-      }
       let { lt, tableName, levelCategorySize } = args;
       let i: number;
       let j: number;
@@ -2159,45 +2210,7 @@ export class GenericFetchAndSaveBackend {
                 }
               }
             }
-            Utils.logMessage(
-              'Finished searching for this category, starting insertion into the database for',
-              eventName,
-            );
-            const batchSize = 500;
-            let batch: string[] = [];
-
-            try {
-              for (const entity of Object.values(entities)) {
-                if (entity && entity.playerId) {
-                  const ltString = lt.toString();
-                  this.playerEventPointHistoryList[entity.playerId.toString()] =
-                    this.playerEventPointHistoryList[entity.playerId.toString()] || {};
-                  this.playerEventPointHistoryList[entity.playerId.toString()][ltString] = entity.point;
-
-                  batch.push(`(${entity.playerId}, ${entity.point}, '${currentDateFormatted}')`);
-
-                  if (batch.length >= batchSize) {
-                    const clickhouseQuery = `
-                      INSERT INTO ${tableName} (player_id, point, created_at)
-                      VALUES ${batch.join(', ')}
-                    `;
-                    await clickhouse.query(clickhouseQuery).toPromise();
-                    batch = [];
-                  }
-                }
-              }
-              if (batch.length > 0) {
-                const clickhouseQuery = `
-                  INSERT INTO ${tableName} (player_id, point, created_at)
-                  VALUES ${batch.join(', ')}
-                `;
-                await clickhouse.query(clickhouseQuery).toPromise();
-              }
-            } catch (error) {
-              Utils.logCritical('004', error, 'Error while inserting into player table for', eventName);
-              console.error(error);
-              this.DB_UPDATES.criticalErrors++;
-            }
+            Utils.logMessage('Finished searching for category', levelCategory, 'for', eventName);
           } else {
             Utils.logMessage('Url :', this.BASE_API_URL + 'hgh' + `/"LT":${lt},"LID":${levelCategory},"SV":"${i}"`);
             Utils.logMessage(JSON.stringify(data));
@@ -2206,8 +2219,27 @@ export class GenericFetchAndSaveBackend {
           }
         }
       }
-      Utils.logMessage('Finished searching for all categories');
-      successCallback();
+      Utils.logMessage('Finished searching for all categories, starting insertion into the database for', eventName);
+
+      const ltString = lt.toString();
+      const rows: Array<Record<string, unknown>> = [];
+      for (const entity of Object.values(entities)) {
+        if (!entity || !entity.playerId) continue;
+        const playerKey = entity.playerId.toString();
+        this.playerEventPointHistoryList[playerKey] = this.playerEventPointHistoryList[playerKey] || {};
+        this.playerEventPointHistoryList[playerKey][ltString] = entity.point;
+        rows.push({ player_id: entity.playerId, point: entity.point, created_at: currentDateFormatted });
+      }
+
+      try {
+        await this.insertRowsClickHouse(tableName, rows);
+      } catch (error) {
+        Utils.logCritical('004', error, 'Error while inserting into player table for', eventName);
+        this.DB_UPDATES.criticalErrors++;
+        return;
+      }
+
+      await successCallback();
     } catch (error) {
       Utils.logCritical('007', error, 'Final error while processing statistics');
     }
@@ -2226,7 +2258,6 @@ export class GenericFetchAndSaveBackend {
       } = {};
       const currentDate = new Date();
       const currentDateFormatted = format(currentDate, 'yyyy-MM-dd HH:mm:ss');
-      const clickhouse = new ClickHouse(this.CLICKHOUSE_CONFIG);
       for (let levelCategory = 1; levelCategory <= levelCategorySize; levelCategory++) {
         Utils.logMessage(
           'Starting to retrieve statistics for category',
@@ -2376,37 +2407,17 @@ export class GenericFetchAndSaveBackend {
         );
         return;
       }
-      const BATCH_SIZE = 25;
-      const players = Object.values(playerList);
-      for (let i = 0; i < players.length; i += BATCH_SIZE) {
-        const batch = players.slice(i, i + BATCH_SIZE);
-        const queryValues: (string | number | Date)[] = [];
-        const clickhouseValues: string[] = [];
-        for (const player of batch) {
-          if (player && player.uid && player.name) {
-            queryValues.push(player.uid, player.mightPoints, currentDate);
-            clickhouseValues.push(`(${player.uid}, ${player.mightPoints}, '${currentDateFormatted}')`);
-          }
+      const rows: Array<Record<string, unknown>> = [];
+      for (const player of Object.values(playerList)) {
+        if (player && player.uid && player.name) {
+          rows.push({ player_id: player.uid, point: player.mightPoints, created_at: currentDateFormatted });
         }
-        try {
-          if (queryValues.length > 0) {
-            try {
-              const clickhouseQuery = `INSERT INTO player_might_history (player_id, point, created_at) VALUES ${clickhouseValues.join(', ')}`;
-              await clickhouse.query(clickhouseQuery).toPromise();
-            } catch (error) {
-              Utils.logCritical('728', error, ' [KO] Error while adding mightPoints to ClickHouse', error);
-            }
-          }
-        } catch (error) {
-          Utils.logMessage(
-            ' [KO] Another error occurred while inserting into the player_might_history table at batch level',
-            i,
-          );
-          Utils.logMessage(JSON.stringify(batch));
-          Utils.logCritical('725', error);
-          this.DB_UPDATES.criticalErrors++;
-          console.error(error);
-        }
+      }
+      try {
+        await this.insertRowsClickHouse('player_might_history', rows);
+      } catch (error) {
+        Utils.logCritical('728', error, ' [KO] Error while adding mightPoints to ClickHouse');
+        this.DB_UPDATES.criticalErrors++;
       }
     } catch (error) {
       Utils.logCritical('012', error, ' [KO] Final error occurred while processing statistics');
@@ -2449,13 +2460,6 @@ export class GenericFetchAndSaveBackend {
         };
       } = {};
       Utils.logMessage(' Database connection successful (Loot Points)');
-      let clickhouse: any;
-      try {
-        clickhouse = new ClickHouse(this.CLICKHOUSE_CONFIG);
-        Utils.logMessage(' ClickHouse connection successful');
-      } catch (error) {
-        Utils.logCritical('013', error, 'Error while connecting to ClickHouse');
-      }
       const currentDate = new Date();
       const currentDateFormatted = format(currentDate, 'yyyy-MM-dd HH:mm:ss');
 
@@ -2707,29 +2711,6 @@ export class GenericFetchAndSaveBackend {
           } catch (error) {
             Utils.logCritical('027', error, 'Error while retrieving negative loot points');
           }
-          Utils.logMessage(' Beginning insertion of loot for players into the database');
-          for (const player of Object.values(playerList)) {
-            try {
-              if (player && player.uid && player.name) {
-                try {
-                  const clickhouseQuery = `INSERT INTO player_loot_history (player_id, point, created_at) VALUES (${player.uid}, ${player.points}, '${currentDateFormatted}')`;
-                  await clickhouse.query(clickhouseQuery).toPromise();
-                } catch (error) {
-                  Utils.logCritical('726', error, ' [KO] Error while adding loot to ClickHouse', error);
-                }
-              }
-            } catch (error) {
-              Utils.logMessage(
-                ' [KO] Error while inserting into player_loot_history table for player',
-                player.uid + ' (name:',
-                player.name,
-                ')',
-              );
-              Utils.logCritical('515', error);
-              this.DB_UPDATES.criticalErrors++;
-              console.error(error);
-            }
-          }
         } else {
           Utils.logMessage('Url : ', this.BASE_API_URL + 'hgh' + `/"LT":2,"LID":${levelCategory},"SV":"${i}"`);
           Utils.logMessage(JSON.stringify(data));
@@ -2737,6 +2718,20 @@ export class GenericFetchAndSaveBackend {
         }
       }
       Utils.logMessage(' End of search for all categories for loot');
+
+      Utils.logMessage(' Beginning insertion of loot for players into the database');
+      const rows: Array<Record<string, unknown>> = [];
+      for (const player of Object.values(playerList)) {
+        if (player && player.uid && player.name) {
+          rows.push({ player_id: player.uid, point: player.points, created_at: currentDateFormatted });
+        }
+      }
+      try {
+        await this.insertRowsClickHouse('player_loot_history', rows);
+      } catch (error) {
+        Utils.logCritical('726', error, ' [KO] Error while adding loot to ClickHouse');
+        this.DB_UPDATES.criticalErrors++;
+      }
     } catch (error) {
       Utils.logCritical('018', error, ' [KO] Final error while processing statistics');
       this.DB_UPDATES.criticalErrors++;
@@ -3331,11 +3326,10 @@ export class GenericFetchAndSaveBackend {
 
   private async addEventTimestamp(date: Date, tableName: string): Promise<void> {
     if (!this.CLICKHOUSE_CONFIG) throw new Error('ClickHouse configuration is missing.');
-    let clickhouse = new ClickHouse(this.CLICKHOUSE_CONFIG);
-    const currentDateFormatted = format(date, 'yyyy-MM-dd HH:mm:ss');
-    const clickhouseQuery = `INSERT INTO event_dates (table_name, created_at) VALUES ('${tableName}', '${currentDateFormatted}')`;
     try {
-      await clickhouse.query(clickhouseQuery).toPromise();
+      await this.insertRowsClickHouse('event_dates', [
+        { table_name: tableName, created_at: format(date, 'yyyy-MM-dd HH:mm:ss') },
+      ]);
     } catch (error) {
       Utils.logCritical('467', error, 'Error while adding event timestamp for table', tableName);
       this.DB_UPDATES.criticalErrors++;
@@ -3566,33 +3560,11 @@ export class GenericFetchAndSaveBackend {
         Utils.logMessage('No player_metrics rows to insert');
         return;
       }
-      const clickhouseBaseUrl = (this.CLICKHOUSE_CONFIG.url as string) + ':' + this.CLICKHOUSE_CONFIG.port;
-      const insertSQL = `
-        INSERT INTO player_metrics
-        FORMAT JSONEachRow
-      `;
-      const clickhouseUrl =
-        clickhouseBaseUrl +
-        '/?query=' +
-        encodeURIComponent(insertSQL) +
-        '&database=' +
-        encodeURIComponent(this.CLICKHOUSE_CONFIG.database as string);
-      const clickhouseAuth = {
-        username: this.CLICKHOUSE_CONFIG.user as string,
-        password: this.CLICKHOUSE_CONFIG.password as string,
-      };
-      const payload = allRows.map((row) => JSON.stringify(row)).join('\n');
       try {
-        await axios.post(clickhouseUrl, payload, {
-          headers: {
-            'Content-Type': 'text/plain',
-          },
-          auth: clickhouseAuth,
-        });
+        await this.insertRowsClickHouse('player_metrics', allRows);
         Utils.logMessage(`Inserted ${allRows.length} player_metrics rows for ${eligiblePlayerIds.length} players`);
       } catch (error) {
-        Utils.logMessage('Error while bulk-inserting player metrics');
-        Utils.logMessage(error);
+        Utils.logCritical('104', error, 'Error while bulk-inserting player metrics');
         this.DB_UPDATES.criticalErrors++;
       }
     } catch (error) {
@@ -4657,17 +4629,24 @@ export class GenericFetchAndSaveBackend {
   }): Promise<void> {
     const durationMs = endTime.getTime() - startTime.getTime();
     try {
-      const clickhouse = new ClickHouse(this.CLICKHOUSE_CONFIG as any);
-      await clickhouse
-        .query(
-          `
-        INSERT INTO logs.scrapes
-        (server, timestamp, durationMs, playersCreated, alliancesCreated, playersAllianceUpdated, alliancesUpdated, criticalErrors, playerCount, allianceCount)
-        VALUES
-        ('${server}', '${Math.floor(endTime.getTime() / 1000)}', ${durationMs}, ${playersCreated}, ${alliancesCreated}, ${playersAllianceUpdated}, ${alliancesUpdated}, ${criticalErrors}, ${playerCount}, ${allianceCount})
-      `,
-        )
-        .toPromise();
+      await this.insertRowsClickHouse(
+        'logs.scrapes',
+        [
+          {
+            server,
+            timestamp: Math.floor(endTime.getTime() / 1000),
+            durationMs,
+            playersCreated,
+            alliancesCreated,
+            playersAllianceUpdated,
+            alliancesUpdated,
+            criticalErrors,
+            playerCount,
+            allianceCount,
+          },
+        ],
+        { maxAttempts: 2 },
+      );
     } catch (err: any) {
       console.error('ClickHouse insert error:', err.message);
     }

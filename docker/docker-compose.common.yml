@@ -70,6 +70,7 @@ services:
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - ./../database/conf/clickhouse_${CLICKHOUSE_STORAGE}.xml:/etc/clickhouse-server/config.d/s3.xml:ro
+      - ./../database/conf/clickhouse_logs.xml:/etc/clickhouse-server/config.d/logs.xml:ro
     healthcheck:
       test: ["CMD-SHELL", "clickhouse-client --user=${CLICKHOUSE_USER} --password=${CLICKHOUSE_PASSWORD} --query='SELECT 1'"]
       interval: 10s
@@ -135,6 +136,10 @@ services:
       - DECAY_FACTOR=${DECAY_FACTOR}
       - RATE_LIMIT_POINTS=${RATE_LIMIT_POINTS}
       - RATE_LIMIT_DURATION=${RATE_LIMIT_DURATION}
+      - STORE_EGRESS_HOST=${STORE_EGRESS_HOST}
+      - STORE_EGRESS_PORT=${STORE_EGRESS_PORT}
+      - STORE_EGRESS_USER=${STORE_EGRESS_USER}
+      - STORE_EGRESS_PASSWORD=${STORE_EGRESS_PASSWORD}
     depends_on:
       redis-server:
         condition: service_healthy

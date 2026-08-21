@@ -17,6 +17,7 @@ export const myIcons: Pick<
   | 'Zap'
   | 'TriangleAlert'
   | 'ArrowUpRight'
+  | 'X'
 > = {
   ChevronDown: icons.ChevronDown,
   Menu: icons.Menu,
@@ -31,6 +32,7 @@ export const myIcons: Pick<
   Zap: icons.Zap,
   TriangleAlert: icons.TriangleAlert,
   ArrowUpRight: icons.ArrowUpRight,
+  X: icons.X,
 };
 
 /**

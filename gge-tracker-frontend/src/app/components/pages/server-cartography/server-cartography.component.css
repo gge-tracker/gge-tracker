@@ -1,5 +1,6 @@
 ::ng-deep #map {
   background: #0000000f;
+  border: 1px #666666 solid;
 }
 
 ::ng-deep app-navbar.hidden {
@@ -148,7 +149,7 @@ h5 {
 }
 
 .bg-custom {
-  background: #ffffff40;
+  background: url(/assets/textures/45-degree-fabric-dark.png), #ffffff57;
   border-radius: 0 0 20px 20px;
   border: 1px #9e9e9e solid;
   box-shadow: inset 0px 0px 3px #272727;
@@ -587,8 +588,8 @@ h5 {
 
 .selected,
 .unselected {
-  background-size: 30px;
-  background-image: url(/assets/light-background-hover.png);
+  background-size: 7px;
+  background-image: url(/assets/textures/little-triangles.png);
   transition: 0.2s;
 }
 

@@ -150,16 +150,6 @@ export interface StormIsle {
   effectiveCooldownUntil: string;
 }
 
-export interface Offer {
-  startAt: string;
-  endAt: string;
-  offer: number;
-  offerType: string;
-  serverType: string;
-  worldType: string;
-  isActive: boolean;
-}
-
 export interface Movement {
   rank: number;
   player: string;
@@ -704,6 +694,38 @@ export interface ApiPlayerStatsByPlayerId {
   timezone_offset: number | null;
 }
 
+export interface ApiPlayerStatsSummaryEvent {
+  row_count: number;
+  row_count_7d: number;
+  first_date: string | null;
+  last_date: string | null;
+  last_point: number | null;
+  max_point: number | null;
+  max_point_date: string | null;
+  max_point_7d: number | null;
+  point_gain_7d: number | null;
+}
+
+export interface ApiPlayerEventOccurrence {
+  started_at: string;
+  ended_at: string;
+  point: number;
+}
+
+export interface ApiPlayerEventOccurrences {
+  event: ApiPlayerStatsType;
+  occurrences: ApiPlayerEventOccurrence[];
+}
+
+export interface ApiPlayerStatsSummary {
+  player_name: string;
+  alliance_name: string | null;
+  alliance_id: number | null;
+  events: Record<ApiPlayerStatsType, ApiPlayerStatsSummaryEvent>;
+  glory_points_100: { top: number; point: number }[];
+  timezone_offset: number | null;
+}
+
 export interface ApiPlayerStatsByAllianceId {
   diffs: Record<ApiPlayerStatsType, number>;
   points: ApiPlayerStatsForAlliance;
@@ -720,17 +742,49 @@ export interface ApiAllianceHealthResponse {
   top_might_loss_24h: { current: number; diff: number; player_id: string }[];
 }
 
-export interface ApiOffersResponse {
-  offers: ApiOffer[];
+export interface ApiOffersCatalogResponse {
+  _failed?: Record<string, unknown>;
+  [category: string]: ApiOfferCategory | Record<string, unknown> | undefined;
+}
+
+export interface ApiOfferCategory {
+  data?: {
+    offers?: ApiOffer[] | null;
+    settings?: { tooltipsEnabled?: boolean };
+    eventDetails?: { type?: string; bonus?: number; endTimeStamp?: number };
+  };
 }
 
 export interface ApiOffer {
-  end_at: string;
-  offer: number;
-  offer_type: string;
-  server_type: string;
-  start_at: string;
-  world_type: string;
+  id: string;
+  name?: string;
+  title?: string;
+  desc?: string;
+  price: number;
+  currencyCode?: string;
+  currency?: string;
+  teaserImg?: string;
+  headerImageUrl?: string;
+  bonus?: number;
+  rewards?: ApiOfferReward[];
+  hardCurrencyAmount?: number;
+  hardCurrencyOriginalAmount?: number;
+  baseHCValue?: number;
+  bonusHCValue?: number;
+  special?: boolean;
+  active?: boolean;
+  purchased?: boolean;
+  type?: string;
+}
+
+export interface ApiOfferReward {
+  id?: string;
+  type?: string;
+  qty?: number;
+  title?: string;
+  desc?: string;
+  details?: string;
+  iconUrl?: string;
 }
 
 export interface ApiEventlist {

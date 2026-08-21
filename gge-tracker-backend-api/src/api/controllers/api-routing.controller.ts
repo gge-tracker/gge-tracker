@@ -326,6 +326,14 @@ export class ApiRoutingController {
     void ApiStatistics.getStatisticsByPlayerId(request, response);
   }
 
+  public getStatisticsSummaryByPlayerId(request: express.Request, response: express.Response): void {
+    void ApiStatistics.getStatisticsSummaryByPlayerId(request, response);
+  }
+
+  public getEventOccurrencesByPlayerId(request: express.Request, response: express.Response): void {
+    void ApiStatistics.getEventOccurrencesByPlayerId(request, response);
+  }
+
   public getStatisticsByPlayerIdAndEventNameAndDuration(request: express.Request, response: express.Response): void {
     void ApiStatistics.getStatisticsByPlayerIdAndEventNameAndDuration(request, response);
   }

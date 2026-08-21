@@ -18,8 +18,9 @@ import {
   ApiAquamarineMetric,
   ApiAquamarineSnapshot,
   ApiGenericData,
-  ApiPlayerStats,
-  ApiPlayerStatsByPlayerId,
+  ApiPlayerEventOccurrence,
+  ApiPlayerStatsSummary,
+  ApiPlayerStatsSummaryEvent,
   ApiPlayerStatsType,
   ApiRankingStatsPlayer,
   ApiResponse,
@@ -208,7 +209,25 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   public eventSeriesExpanded: Record<string, boolean> = {};
   public eventCharts: Record<string, Record<string, ChartOptions>> = {};
   public eventStats: Record<string, EventStatsData> = {};
+  public eventSummary: Record<ApiPlayerStatsType, ApiPlayerStatsSummaryEvent> | null = null;
+  public eventOccurrences: Record<string, ApiPlayerEventOccurrence[]> = {};
+  public seriesState: Record<string, 'idle' | 'loading' | 'loaded' | 'empty' | 'error'> = {};
   private readonly EVENT_SERIES_DEFAULT_LIMIT = 5;
+
+  private readonly CHART_SOURCES: Record<string, { table: ApiPlayerStatsType; days: number }> = {
+    might: { table: ApiPlayerStatsType.might, days: 30 },
+    loot: { table: ApiPlayerStatsType.loot, days: 30 },
+    warRealms: { table: ApiPlayerStatsType.war_realms, days: 90 },
+    bloodcrow: { table: ApiPlayerStatsType.bloodcrow, days: 90 },
+    berimondKingdom: { table: ApiPlayerStatsType.berimond_kingdom, days: 90 },
+    nomad: { table: ApiPlayerStatsType.nomad, days: 90 },
+    samurai: { table: ApiPlayerStatsType.samurai, days: 90 },
+  };
+  private readonly LOOT_TAB_DAYS = 182;
+  private readonly LOOT_OVERVIEW_WEEKS = 5;
+  private readonly CONTINUOUS_CHARTS = new Set(['might', 'loot']);
+  private readonly FULL_HISTORY_DAYS = 1825;
+  private seriesWindow: Partial<Record<ApiPlayerStatsType, number>> = {};
 
   public get aquamarineSnapshotsForMonth(): ApiAquamarineSnapshot[] {
     return this.aquamarineSnapshots.filter((s) => s.collected_at.slice(0, 7) === this.aquamarineMonth);
@@ -273,6 +292,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
           const chartName = element.dataset['chart'] as keyof typeof this.chartVisibles;
           if (chartName) {
             this.chartVisibles[chartName] = true;
+            void this.ensureSeries(chartName);
           }
           this.observer.unobserve(element);
           this.cdr.detectChanges();
@@ -316,36 +336,61 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     )}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
   }
 
-  public initDataSegments(points: ApiPlayerStats): void {
-    this.mightPeriod = 'week';
-    this.eventSeriesTotalCount = {};
-    this.eventSeriesExpanded = {};
-    this.eventCharts = {};
-    this.eventStats = {};
-    this.data = Object.fromEntries(
-      Object.entries(points).map(([key, value]) => {
-        let filtered = value;
-        if (key === 'player_might_history') {
-          filtered = value.filter((point, index, array) => {
-            if (index === 0 || index === array.length - 1) {
-              return true;
-            }
-            const previous = array[index - 1].point;
-            const next = array[index + 1].point;
-            return !(previous === point.point && next === point.point);
-          });
-        }
-        return [
-          key,
-          filtered.map((point) => ({
-            utcDate: point.date,
-            date: this.formatLocalDate(point.date),
-            point: point.point,
-            variation: 0,
-          })),
-        ];
-      }),
-    ) as Record<ApiPlayerStatsType, EventGenericVariation[]>;
+  public async ensureSeries(chartName: string, days?: number): Promise<void> {
+    const source = this.CHART_SOURCES[chartName];
+    if (!source || !this.playerId) return;
+    if (this.eventSummary && this.eventSummary[source.table]?.row_count === 0) {
+      this.seriesState[chartName] = 'empty';
+      this.cdr.detectChanges();
+      return;
+    }
+    const wanted = days ?? source.days;
+    if ((this.seriesWindow[source.table] ?? 0) >= wanted || this.seriesState[chartName] === 'loading') return;
+    this.seriesState[chartName] = 'loading';
+    this.cdr.detectChanges();
+    const needsOccurrences = !this.CONTINUOUS_CHARTS.has(chartName) && !this.eventOccurrences[chartName];
+    const [response, occurrences] = await Promise.all([
+      this.apiRestService.getPlayerStatsSeriesByPlayerId(this.playerId, [source.table], wanted),
+      needsOccurrences
+        ? this.apiRestService.getPlayerEventOccurrencesByPlayerId(this.playerId, source.table)
+        : Promise.resolve(null),
+    ]);
+    if (!response.success) {
+      this.seriesState[chartName] = 'error';
+      this.cdr.detectChanges();
+      return;
+    }
+    if (occurrences?.success) {
+      this.eventOccurrences[chartName] = occurrences.data.occurrences;
+    }
+    this.setSeries(source.table, response.data.points[source.table] ?? []);
+    this.seriesWindow[source.table] = wanted;
+    this.buildChart(chartName);
+    this.seriesState[chartName] = 'loaded';
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * How many days of a chart's table are loaded, for the card to decide whether a period needs fetching
+   *
+   * @param chartName The chart to report on
+   * @returns The window in days, 0 when nothing is loaded yet
+   */
+  public loadedDaysFor(chartName: string): number {
+    const source = this.CHART_SOURCES[chartName];
+    return source ? (this.seriesWindow[source.table] ?? 0) : 0;
+  }
+
+  /**
+   * The headline the summary gives for a chart, shown until the series itself arrives
+   *
+   * @param chartName The chart to report on
+   * @returns The summary entry, or null before the summary has loaded
+   */
+  public summaryFor(chartName: string): ApiPlayerStatsSummaryEvent | null {
+    const source = this.CHART_SOURCES[chartName];
+    if (!source || !this.eventSummary) return null;
+    return this.eventSummary[source.table] ?? null;
   }
 
   public navigateToEvent(event: OuterEventData | WoaEventList): void {
@@ -404,31 +449,27 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       try {
         const playerId = parameters['playerId'];
         this.playerId = playerId;
-        if (this.data.player_might_history.length === 0) {
+        if (!this.eventSummary) {
           this.isInLoading = true;
           this.cdr.detectChanges();
-          const response: ApiResponse<ApiPlayerStatsByPlayerId> =
-            await this.apiRestService.getPlayerStatsByPlayerId(playerId);
+          const response: ApiResponse<ApiPlayerStatsSummary> =
+            await this.apiRestService.getPlayerStatsSummaryByPlayerId(playerId);
           if (!response || response.success === false || !playerId || Number.isNaN(playerId) || playerId <= 0) {
             throw new Error('Invalid player ID or unable to load player data');
-          } else if (!response.data.points || Object.keys(response.data.points).length === 0) {
-            throw new Error('No points data available for this player');
           }
           const data = response.data;
+          this.mightPeriod = 'week';
           this.playerName = data.player_name;
           this.timezoneOffset = data.timezone_offset;
           this.addStructuredPlayerData({
             name: this.playerName,
             url: `gge-tracker.com/player/${playerId}`,
-            alliance: data.alliance_name,
-            might:
-              data.points.player_might_history.length > 0 && data.points.player_might_history.at(-1)
-                ? data.points.player_might_history.at(-1)!.point
-                : 0,
+            alliance: data.alliance_name ?? '',
+            might: data.events[ApiPlayerStatsType.might]?.last_point ?? 0,
           });
-          this.initDataSegments(data.points);
-          this.allianceName = data.alliance_name;
-          this.allianceId = data.alliance_id;
+          this.eventSummary = data.events;
+          this.allianceName = data.alliance_name ?? undefined;
+          this.allianceId = data.alliance_id ?? undefined;
           this.top100Glory = data.glory_points_100;
         }
         const formattedFragment = this.formatFragment(fragment);
@@ -640,18 +681,47 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     this.cdr.detectChanges();
   }
 
-  public updateData(event: { eventName: string; points: ApiGenericData[] }): void {
-    this.data[event.eventName as ApiPlayerStatsType] = event.points as EventGenericVariation[];
-    if (event.eventName === 'player_might_history') {
-      this.spinnerLoadingByChart['might'] = true;
-      this.initMightHistoryData();
-    }
+  /**
+   * How many runs of an event the chart is currently drawing
+   *
+   * @param chartName The chart to report on
+   * @returns The number of series drawn
+   */
+  public drawnSeriesCount(chartName: string): number {
+    const loaded = this.eventSeriesTotalCount[chartName] ?? 0;
+    if (this.eventSeriesExpanded[chartName]) return loaded;
+    return Math.min(loaded, this.EVENT_SERIES_DEFAULT_LIMIT);
+  }
+
+  /**
+   * How many runs of an event this chart could draw a line for
+   *
+   * @param chartName The chart to report on
+   * @returns The number of runs with something to draw
+   */
+  public totalOccurrences(chartName: string): number {
+    return (this.eventOccurrences[chartName] ?? []).filter((occurrence) => Number(occurrence.point) > 0).length;
+  }
+
+  /**
+   * Widens a chart to the player's full recorded year and shows every occurrence in it
+   *
+   * @param chartName The chart to widen
+   */
+  public async loadFullHistory(chartName: string): Promise<void> {
+    this.eventSeriesExpanded[chartName] = true;
+    await this.ensureSeries(chartName, this.FULL_HISTORY_DAYS);
+    this.buildChart(chartName);
+    this.cdr.detectChanges();
   }
 
   public onMightPeriodChange(period: 'day' | 'week' | 'month' | 'year'): void {
     this.mightPeriod = period;
-    this.initMightHistoryData();
-    this.cdr.detectChanges();
+    const days: Record<typeof period, number> = { day: 1, week: 7, month: 30, year: 365 };
+    void this.ensureSeries('might', days[period]).then(() => {
+      this.initMightHistoryData();
+      this.cdr.detectChanges();
+    });
   }
 
   public getHiddenEventCount(chartName: string): number {
@@ -664,6 +734,52 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     this.eventSeriesExpanded[chartName] = true;
     this.reinitEventChart(chartName);
     this.cdr.detectChanges();
+  }
+
+  /**
+   * Stores the points of one event table, ready for the chart builders to consume
+   *
+   * @param table The event table these points belong to
+   * @param points The points as the API returned them, oldest first
+   */
+  private setSeries(table: ApiPlayerStatsType, points: ApiGenericData[]): void {
+    this.data[table] = points.map((point) => ({
+      utcDate: point.date,
+      date: this.formatLocalDate(point.date),
+      point: point.point,
+      variation: 0,
+    }));
+  }
+
+  /**
+   * Rebuilds the charts drawn from one table, after its series arrived or was widened
+   *
+   * @param chartName The chart to rebuild
+   */
+  private buildChart(chartName: string): void {
+    switch (chartName) {
+      case 'might': {
+        this.initMightHistoryData();
+        break;
+      }
+      case 'loot': {
+        this.initLootHistoryData();
+        break;
+      }
+      default: {
+        this.reinitEventChart(chartName);
+      }
+    }
+  }
+
+  /**
+   * Maps a table back to the chart it feeds, for the events a card reports against a table name
+   *
+   * @param table The event table
+   * @returns The chart name, or undefined for a table no chart draws
+   */
+  private chartNameForTable(table: string): string | undefined {
+    return Object.keys(this.CHART_SOURCES).find((name) => this.CHART_SOURCES[name].table === table);
   }
 
   private reinitEventChart(chartName: string): void {
@@ -1004,36 +1120,37 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     this.spinnerLoadingByChart[name] = false;
   }
 
-  private buildFinalScoresSeries(eventData: [number, number][][]): { data: number[]; categories: string[] } {
+  /**
+   * Builds the participation tab: one bar per run of the event, newest first
+   *
+   * @param occurrences Every run of the event, oldest first
+   * @returns The score of each run and the label to put under it, newest first
+   */
+  private buildFinalScoresSeries(occurrences: ApiPlayerEventOccurrence[]): { data: number[]; categories: string[] } {
     const locale = this.languageService.getCurrentLang();
-    const now = Date.now();
     const data: number[] = [];
     const categories: string[] = [];
-    for (const event of eventData) {
-      if (event.length === 0) continue;
-      const lastPoint = event.at(-1)!;
-      const endDate = new Date(lastPoint[0]);
-      const endWithBuffer = new Date(endDate);
-      endWithBuffer.setHours(endWithBuffer.getHours() + 3);
-      // if (endWithBuffer.getTime() >= now) continue;
-      const startLabel = new Date(event[0][0]).toLocaleDateString(locale).slice(0, -5);
-      const endLabel = endDate.toLocaleDateString(locale).slice(0, -5);
-      const score = Number(lastPoint[1]);
-      if (endWithBuffer.getTime() >= now) {
+    for (const occurrence of occurrences) {
+      const score = Number(occurrence.point);
+      if (this.isCurrentOccurrence(occurrence)) {
         categories.push(this.translateService.instant('Événement courant'));
       } else {
         categories.push(
           this.translateService.instant('Événement du 0 au 0', {
-            start: startLabel,
-            end: endLabel,
+            start: new Date(occurrence.started_at).toLocaleDateString(locale).slice(0, -5),
+            end: new Date(occurrence.ended_at).toLocaleDateString(locale).slice(0, -5),
           }) + ` (${this.getUnitByValue(score)})`,
         );
       }
       data.push(score);
     }
-    const reversedData = [...data].reverse();
-    const reversedCategories = [...categories].reverse();
-    return { data: reversedData, categories: reversedCategories };
+    return { data: [...data].reverse(), categories: [...categories].reverse() };
+  }
+
+  private isCurrentOccurrence(occurrence: ApiPlayerEventOccurrence): boolean {
+    const endWithBuffer = new Date(occurrence.ended_at);
+    endWithBuffer.setHours(endWithBuffer.getHours() + 3);
+    return endWithBuffer.getTime() >= Date.now();
   }
 
   private initFinalScoresChartOption(name: string, data: number[], categories: string[], color: string): void {
@@ -1120,17 +1237,16 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     };
   }
 
-  private buildEventStats(chartName: string, eventData: [number, number][][]): void {
-    const now = Date.now();
-    const finalScores: number[] = [];
-    for (const event of eventData) {
-      if (event.length === 0) continue;
-      const lastPoint = event.at(-1)!;
-      const endWithBuffer = new Date(lastPoint[0]);
-      endWithBuffer.setHours(endWithBuffer.getHours() + 3);
-      if (endWithBuffer.getTime() >= now) continue;
-      finalScores.push(Number(lastPoint[1]));
-    }
+  /**
+   * Builds the indicator tab: how often the player takes part in an event and what they score
+   *
+   * @param chartName The chart these indicators belong to
+   * @param occurrences Every run of the event, oldest first
+   */
+  private buildEventStats(chartName: string, occurrences: ApiPlayerEventOccurrence[]): void {
+    const finalScores: number[] = occurrences
+      .filter((occurrence) => !this.isCurrentOccurrence(occurrence))
+      .map((occurrence) => Number(occurrence.point));
     if (finalScores.length === 0) {
       delete this.eventStats[chartName];
       return;
@@ -1164,9 +1280,10 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     series.forEach((serie, index) => (serie['hidden'] = index !== series.length - 1));
     const colors = ['#d2b8f2', '#c4a1f0', '#ae81e6', '#945adb', '#7d37d4'];
     this.initChartOption('warRealms', series, colors);
-    const { data, categories } = this.buildFinalScoresSeries(eventData);
+    const occurrences = this.eventOccurrences['warRealms'] ?? [];
+    const { data, categories } = this.buildFinalScoresSeries(occurrences);
     this.initFinalScoresChartOption('warRealms-scores', data, categories, '#7d37d4');
-    this.buildEventStats('warRealms', eventData);
+    this.buildEventStats('warRealms', occurrences);
     this.buildEventCharts('warRealms', data.length);
   }
 
@@ -1179,9 +1296,10 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     const colors = new Gradient();
     colors.setColorGradient('#ffcc00', '#ff0000');
     this.initChartOption('nomad', series, colors.getColors());
-    const { data, categories } = this.buildFinalScoresSeries(eventData);
+    const occurrences = this.eventOccurrences['nomad'] ?? [];
+    const { data, categories } = this.buildFinalScoresSeries(occurrences);
     this.initFinalScoresChartOption('nomad-scores', data, categories, '#ff8800');
-    this.buildEventStats('nomad', eventData);
+    this.buildEventStats('nomad', occurrences);
     this.buildEventCharts('nomad', data.length);
   }
 
@@ -1355,21 +1473,11 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     const colors = new Gradient();
     colors.setColorGradient('#00aaff', '#00aaff');
     this.initChartOption('berimondKingdom', series, colors.getColors());
-    const { data, categories } = this.buildFinalScoresSeries(eventData);
+    const occurrences = this.eventOccurrences['berimondKingdom'] ?? [];
+    const { data, categories } = this.buildFinalScoresSeries(occurrences);
     this.initFinalScoresChartOption('berimondKingdom-scores', data, categories, '#00aaff');
-    this.buildEventStats('berimondKingdom', eventData);
+    this.buildEventStats('berimondKingdom', occurrences);
     this.buildEventCharts('berimondKingdom', data.length);
-  }
-
-  private initBerimondInvasionData(): void {
-    const berimondPoints = this.data['player_event_berimond_invasion_history'];
-    // this.setGenericVariations(berimondPoints);
-    const eventData = this.groupEventDataByTimeGaps(this.eventDataSegments['berimondInvasion'], berimondPoints);
-    const series = this.applySeriesLimit('berimondInvasion', this.generateEventSeries(eventData));
-    series.forEach((serie, index) => (serie['hidden'] = index !== series.length - 1));
-    const colors = new Gradient();
-    colors.setColorGradient('#00aaff', '#00aaff');
-    this.initChartOption('berimondInvasion', series, colors.getColors());
   }
 
   private initSamuraiHistoryData(): void {
@@ -1381,9 +1489,10 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     const colors = new Gradient();
     colors.setColorGradient('#9ED334', '#58771D');
     this.initChartOption('samurai', series, colors.getColors());
-    const { data, categories } = this.buildFinalScoresSeries(eventData);
+    const occurrences = this.eventOccurrences['samurai'] ?? [];
+    const { data, categories } = this.buildFinalScoresSeries(occurrences);
     this.initFinalScoresChartOption('samurai-scores', data, categories, '#6a9420');
-    this.buildEventStats('samurai', eventData);
+    this.buildEventStats('samurai', occurrences);
     this.buildEventCharts('samurai', data.length);
   }
 
@@ -1396,9 +1505,10 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     const colors = new Gradient();
     colors.setColorGradient('#8e5da3', '#8e5da3');
     this.initChartOption('bloodcrow', series, colors.getColors());
-    const { data, categories } = this.buildFinalScoresSeries(eventData);
+    const occurrences = this.eventOccurrences['bloodcrow'] ?? [];
+    const { data, categories } = this.buildFinalScoresSeries(occurrences);
     this.initFinalScoresChartOption('bloodcrow-scores', data, categories, '#8e5da3');
-    this.buildEventStats('bloodcrow', eventData);
+    this.buildEventStats('bloodcrow', occurrences);
     this.buildEventCharts('bloodcrow', data.length);
   }
 
@@ -1455,31 +1565,50 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     return hours;
   }
 
+  /**
+   * Lays a week's loot history out over its 168 hours, one slot per hour
+   *
+   * @param weekHours Every hour of the week, as `YYYY-MM-DD HH:mm`
+   * @param RESET_OFFSET The server's timezone offset, which decides when the weekly ranking resets
+   * @param dates The hour each known point belongs to
+   * @param points The value of each known point
+   * @returns One value per hour of the week, null only past the end of its data
+   */
   private fillLootData(
     weekHours: string[],
     RESET_OFFSET: number,
     dates: string[],
     points: number[],
   ): (number | null)[] {
-    let lastNonZeroPoint: number | null = null;
-    return weekHours.map((hour) => {
+    const valueByHour = new Map<string, number>();
+    for (const [index, hour] of dates.entries()) {
+      if (!valueByHour.has(hour)) {
+        valueByHour.set(hour, points[index]);
+      }
+    }
+    let lastKnownIndex = -1;
+    for (const [index, hour] of weekHours.entries()) {
+      if (valueByHour.has(hour)) {
+        lastKnownIndex = index;
+      }
+    }
+    let lastValue: number | null = null;
+    return weekHours.map((hour, index) => {
       const hourDate = new Date(hour + ':00Z');
       const isMondayReset = hourDate.getUTCDay() === 1 && hourDate.getUTCHours() === RESET_OFFSET + 1;
       if (isMondayReset) {
+        lastValue = 0;
         return 0;
       }
-      const index = dates.indexOf(hour);
-      if (index !== -1) {
-        const value = points[index];
-        if (value > 0) {
-          lastNonZeroPoint = value;
-        }
+      const value = valueByHour.get(hour);
+      if (value !== undefined) {
+        lastValue = value;
         return value;
       }
-      if (lastNonZeroPoint === null) {
+      if (lastValue === null) {
         return 0;
       }
-      return null;
+      return lastKnownIndex >= 0 && index > lastKnownIndex ? null : lastValue;
     });
   }
 
@@ -1592,7 +1721,8 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     // Initialize the chart 'loot-heatmap' (heatmap loot history)
     const seriesHeatmap: ApexAxisChartSeries = [];
     const allValues: number[] = [];
-    series.reverse().forEach((weekSerie) => {
+    const seriesNewestFirst = [...series].reverse();
+    seriesNewestFirst.forEach((weekSerie) => {
       if (weekSerie.data.length === 0) return;
       if (seriesHeatmap.length >= 25) return; // Limit to 25 weeks for UI performance
       const dailyMax = new Map<number, number>();
@@ -1644,7 +1774,9 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     ];
     this.initAverageGainChart('avg-gain-hour', seriesAvgGain);
     // Initialize the chart 'loot' (area loot history)
-    this.initChartOption('loot', series, colors);
+    this.initChartOption('loot', seriesNewestFirst.slice(0, this.LOOT_OVERVIEW_WEEKS), colors);
+    this.charts['loot-weeks'] = { ...this.charts['loot'], series: seriesNewestFirst };
+    this.spinnerLoadingByChart['loot-weeks'] = false;
     this.charts['loot'].xaxis.type = 'datetime';
     const weekHoursReference = allWeeksHours[0];
     for (let index = 1; index < weekHoursReference.length; index++) {
@@ -1940,34 +2072,13 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
         this.cdr.detectChanges();
       });
     }
-    if (['overview', 'loot'].includes(fragment) && this.fillDataState === 'idle') {
-      this.fillDataState = 'loading';
-      setTimeout(() => {
-        this.initMightHistoryData();
-        this.initLootHistoryData();
-      }, 500);
-      setTimeout(() => {
-        try {
-          this.initWarRealmsData();
-          this.initNomadHistoryData();
-          this.initBerimondKingdomData();
-          this.initBerimondInvasionData();
-          this.initSamuraiHistoryData();
-          this.initBloodcrowHistoryData();
-          this.fillDataState = 'loaded';
-          this.isInLoading = false;
-          this.cdr.detectChanges();
-        } catch (error) {
-          console.error('Error filling data for overview:', error);
-          this.fillDataState = 'error';
-          this.isInLoading = false;
-          this.cdr.detectChanges();
-        }
-      }, 1000);
-    } else {
-      this.isInLoading = false;
-      this.cdr.detectChanges();
+    if (fragment === 'loot') {
+      // The heatmap and the two activity charts read months of history, where the overview card reads weeks
+      void this.ensureSeries('loot', this.LOOT_TAB_DAYS);
     }
+    this.fillDataState = 'loaded';
+    this.isInLoading = false;
+    this.cdr.detectChanges();
   }
 
   private buildHeatmapRanges(maxValue: number): any[] {

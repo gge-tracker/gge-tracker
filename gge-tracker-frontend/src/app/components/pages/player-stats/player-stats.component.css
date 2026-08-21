@@ -1170,3 +1170,108 @@ img::selection {
   color: rgba(0, 229, 255, 0.3);
   font-size: 2.2rem;
 }
+
+.chart-placeholder {
+  height: 100%;
+  min-height: 180px;
+  padding: 16px 18px;
+  border-left: 4px solid transparent;
+  border-radius: 4px;
+  background: rgb(35 35 35 / 34%);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+}
+.chart-placeholder-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.chart-placeholder-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.chart-placeholder-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: chart-placeholder-spin 0.8s linear infinite;
+  flex: none;
+}
+@keyframes chart-placeholder-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.chart-placeholder-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.chart-placeholder-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.chart-placeholder-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.6);
+}
+.chart-placeholder-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chart-placeholder-sub {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+.chart-placeholder-gain {
+  color: #9ed334;
+}
+.chart-placeholder-loss {
+  color: #ef8b8b;
+}
+.chart-placeholder-idle {
+  color: rgba(255, 255, 255, 0.4);
+}
+.chart-placeholder-empty {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.5);
+}
+.chart-placeholder-skeleton {
+  height: 56px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.1) 37%,
+    rgba(255, 255, 255, 0.04) 63%
+  );
+  background-size: 400% 100%;
+  animation: chart-placeholder-shimmer 1.4s ease infinite;
+}
+@keyframes chart-placeholder-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chart-placeholder-spinner,
+  .chart-placeholder-skeleton {
+    animation: none;
+  }
+}

@@ -13,6 +13,8 @@ import {
   ApiAllianceUpdatesByPlayerId,
   ApiPlayerStatsByAllianceId,
   ApiPlayerStatsByPlayerId,
+  ApiPlayerEventOccurrences,
+  ApiPlayerStatsSummary,
   ApiCartoAlliance,
   ApiCartoMap,
   ApiMovementsResponse,
@@ -47,6 +49,7 @@ import {
   ApiDungeonsByPlayerIdResponse,
   ApiAquamarinePlayerResponse,
   ApiStormyIslesLeaderboardResponse,
+  ApiOffersCatalogResponse,
 } from '@ggetracker-interfaces/empire-ranking';
 
 @Injectable({
@@ -148,9 +151,16 @@ export class ApiRestService {
     return { success: true, data: response.data };
   }
 
-  public async getOffers(): Promise<any> {
-    const response = await fetch('/assets/offers.json');
-    return response.json();
+  public async getOffers(
+    level: number,
+    legendaryLevel: number,
+    locale: string,
+    currency: string,
+  ): Promise<ApiResponse<ApiOffersCatalogResponse>> {
+    const request = `${ApiRestService.apiUrl}offers?locale=${locale}&currency=${currency}&level=${level}&legendaryLevel=${legendaryLevel}`;
+    const response = await this.apiFetch<ApiOffersCatalogResponse>(request);
+    if (!response.success) return response;
+    return { success: true, data: response.data };
   }
 
   public async getDungeonsByPlayerId(playerId: number): Promise<ApiResponse<ApiDungeonsByPlayerIdResponse>> {
@@ -393,6 +403,63 @@ export class ApiRestService {
   public async getPlayerStatsByPlayerId(playerId: number): Promise<ApiResponse<ApiPlayerStatsByPlayerId>> {
     const response = await this.apiFetch<ApiPlayerStatsByPlayerId>(
       `${ApiRestService.apiUrl}statistics/player/${playerId}`,
+    );
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  /**
+   * Get the headline summary for a player: identity, alliance and one aggregate per event table
+   *
+   * @param playerId The ID of the player
+   * @returns A promise that resolves to the summary data
+   */
+  public async getPlayerStatsSummaryByPlayerId(playerId: number): Promise<ApiResponse<ApiPlayerStatsSummary>> {
+    const response = await this.apiFetch<ApiPlayerStatsSummary>(
+      `${ApiRestService.apiUrl}statistics/player/${playerId}/summary`,
+    );
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  /**
+   * Get the point series of specific event tables for a player, over a bounded window
+   *
+   * @param playerId The ID of the player
+   * @param events The event tables to fetch
+   * @param sinceInDays How many days back to fetch, 1 to 365
+   * @returns A promise that resolves to the statistics data, holding only the requested tables
+   */
+  public async getPlayerStatsSeriesByPlayerId(
+    playerId: number,
+    events: string[],
+    sinceInDays: number,
+  ): Promise<ApiResponse<ApiPlayerStatsByPlayerId>> {
+    const query = new URLSearchParams({
+      events: events.join(','),
+      since: String(sinceInDays),
+      dedup: '1',
+    });
+    const response = await this.apiFetch<ApiPlayerStatsByPlayerId>(
+      `${ApiRestService.apiUrl}statistics/player/${playerId}?${query.toString()}`,
+    );
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  /**
+   * Get every run of one event for a player, with the score they finished each one on
+   *
+   * @param playerId The ID of the player
+   * @param eventName The event table to report on
+   * @returns A promise that resolves to the runs, oldest first
+   */
+  public async getPlayerEventOccurrencesByPlayerId(
+    playerId: number,
+    eventName: string,
+  ): Promise<ApiResponse<ApiPlayerEventOccurrences>> {
+    const response = await this.apiFetch<ApiPlayerEventOccurrences>(
+      `${ApiRestService.apiUrl}statistics/player/${playerId}/${eventName}/occurrences`,
     );
     if (!response.success) return response;
     return { success: true, data: response.data };

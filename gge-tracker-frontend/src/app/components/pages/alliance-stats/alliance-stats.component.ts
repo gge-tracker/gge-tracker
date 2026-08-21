@@ -51,6 +51,7 @@ import {
   Flag,
   History,
   LucideAngularModule,
+  LucideIconData,
   ScrollText,
   Trophy,
   Users,
@@ -78,6 +79,8 @@ interface DescriptionChange {
 }
 
 const DESCRIPTION_DIFF_MAX_TOKENS = 600;
+const HERO_BACKDROP_URL = '/assets/8wwypaix4da0lxjeozb0dkzr135u5zy4khoqm2lmhh25grfe96mzr07jatchq7gpicb7.png';
+const HERO_BACKDROP_GRACE_MS = 1200;
 
 interface CardConfig {
   chartKey: keyof typeof ApiPlayerStatsType;
@@ -138,15 +141,9 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   public reverse = true;
   public sort = 'might_current';
   public favoriePlayers: FavoritePlayer[] = [];
-  public readonly ChartSpline = ChartSpline;
   public readonly Trophy = Trophy;
-  public readonly BriefcaseConveyorBelt = BriefcaseConveyorBelt;
-  public readonly Users = Users;
-  public readonly ScrollText = ScrollText;
   public readonly Earth = Earth;
-  public readonly Flag = Flag;
   public readonly History = History;
-  public readonly Activity = Activity;
   /**
    * Array of loading messages for the component (these are i18n keys).
    */
@@ -235,6 +232,14 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   public progressCalcFinished = false;
   public progressCalcInProgress = false;
   public selectedTab: ISelectedTab = 'members';
+  public readonly tabs: { key: ISelectedTab; label: string; icon: LucideIconData }[] = [
+    { key: 'members', label: 'Membres', icon: Users },
+    { key: 'description', label: 'Description', icon: ScrollText },
+    { key: 'movement', label: 'Arrivées et départs', icon: BriefcaseConveyorBelt },
+    { key: 'stats', label: 'Statistiques des joueurs', icon: ChartSpline },
+    { key: 'health', label: "Rythme de l'alliance", icon: Activity },
+    { key: 'movements', label: 'Mouvements', icon: Flag },
+  ];
   public actualMonth = new Date().toISOString().split('T')[0].slice(0, 7);
   public groupedUpdates: GroupedUpdatesByDate[] = [];
   public playerNameForDistance = '';
@@ -253,6 +258,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   public countQueryFinished = 0;
   public totalQuery = 0;
   public cards: Card[] = [];
+  public isHeroBackdropReady = false;
   public isInMovementLoading = false;
   public lastUpdate = '';
   public graphPages: Record<ApiPlayerStatsType, number> = {
@@ -412,12 +418,14 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   private data: ApiPlayerStatsForAlliance | null = null;
   private titleService = inject(Title);
   private timezoneOffset: number | null = null;
+  private isDestroyed = false;
 
   public ngOnInit(): void {
     this.init();
   }
 
   public ngOnDestroy(): void {
+    this.isDestroyed = true;
     clearInterval(this.intervalId as number);
   }
 
@@ -932,7 +940,24 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     return response.data;
   }
 
+  private preloadHeroBackdrop(): Promise<void> {
+    if (!this.isBrowser) {
+      return Promise.resolve();
+    }
+    const image = new Image();
+    image.src = HERO_BACKDROP_URL;
+    return image
+      .decode()
+      .catch(() => {})
+      .then(() => {
+        if (this.isDestroyed) return;
+        this.isHeroBackdropReady = true;
+        this.cdr.detectChanges();
+      });
+  }
+
   private async processAllianceInit(allianceId: number): Promise<void> {
+    const heroBackdrop = this.preloadHeroBackdrop();
     const data = await this.getAllianceMembers();
     if (!data) return;
     this.players = this.mapPlayersFromApi(data.players);
@@ -959,6 +984,10 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     const lastGlobalData = globalData.at(-1);
     if (lastGlobalData) {
       this.initCards(lastGlobalData);
+    }
+    await Promise.race([heroBackdrop, new Promise((resolve) => setTimeout(resolve, HERO_BACKDROP_GRACE_MS))]);
+    if (this.isDestroyed) {
+      return;
     }
     this.isInLoading = false;
     this.cdr.detectChanges();
@@ -1328,10 +1357,6 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       data,
       this.graphPages.player_event_berimond_kingdom_history,
     );
-    const config = this.statsCardConfigs.find((config) => config.chartKey === 'berimond_kingdom');
-    if (config) {
-      this.initStatsCardData(config, data, ApiPlayerStatsType.berimond_kingdom);
-    }
   }
 
   private initWarRealmsData(data: ApiPlayerStatsForAlliance): void {
@@ -1341,10 +1366,6 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       data,
       this.graphPages.player_event_war_realms_history,
     );
-    const config = this.statsCardConfigs.find((config) => config.chartKey === 'war_realms');
-    if (config) {
-      this.initStatsCardData(config, data, ApiPlayerStatsType.war_realms);
-    }
   }
 
   private initBloodcrowData(data: ApiPlayerStatsForAlliance): void {
@@ -1354,18 +1375,10 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       data,
       this.graphPages.player_event_bloodcrow_history,
     );
-    const config = this.statsCardConfigs.find((config) => config.chartKey === 'bloodcrow');
-    if (config) {
-      this.initStatsCardData(config, data, ApiPlayerStatsType.bloodcrow);
-    }
   }
 
   private initNomadData(data: ApiPlayerStatsForAlliance): void {
     this.initGenericEventData('nomad', ApiPlayerStatsType.nomad, data, this.graphPages.player_event_nomad_history);
-    const config = this.statsCardConfigs.find((config) => config.chartKey === 'nomad');
-    if (config) {
-      this.initStatsCardData(config, data, ApiPlayerStatsType.nomad);
-    }
   }
 
   private initSamuraiData(data: ApiPlayerStatsForAlliance): void {
@@ -1375,10 +1388,6 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       data,
       this.graphPages.player_event_samurai_history,
     );
-    const config = this.statsCardConfigs.find((config) => config.chartKey === 'samurai');
-    if (config) {
-      this.initStatsCardData(config, data, ApiPlayerStatsType.samurai);
-    }
   }
 
   private initLootHistoryData(data: ApiPlayerStatsForAlliance): void {
@@ -1779,6 +1788,10 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     this.initChartOption(chartKey, filledSeries, filledColorsMapped);
     this.constructParticipationRateChart(chartKey, filledSeries);
     this.constructRadarChart(chartKey, filledSeries);
+    const statsCardConfig = this.statsCardConfigs.find((card) => card.chartKey === chartKey);
+    if (statsCardConfig) {
+      this.initStatsCardData(statsCardConfig, selectedSegmentsMapped);
+    }
   }
 
   /**

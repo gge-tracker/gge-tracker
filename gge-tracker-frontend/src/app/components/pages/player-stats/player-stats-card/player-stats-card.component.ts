@@ -12,16 +12,9 @@ import {
   QueryList,
   ViewChildren,
 } from '@angular/core';
-import {
-  ApiGenericData,
-  ChartOptions,
-  ChartTypes,
-  EventGenericVariation,
-  EventStatsData,
-} from '@ggetracker-interfaces/empire-ranking';
+import { ChartOptions, ChartTypes, EventGenericVariation, EventStatsData } from '@ggetracker-interfaces/empire-ranking';
 import { ChartsWrapperComponent } from '@ggetracker-modules/charts-client/charts-wrapper.component';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
-import { ApiRestService } from '@ggetracker-services/api-rest.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { ChartComponent } from 'ng-apexcharts';
 import { ApexXAxis } from 'ng-apexcharts';
@@ -64,15 +57,16 @@ export class PlayerStatsCardComponent implements AfterViewInit, OnInit {
   public stats = input<EventStatsData | null>(null);
   public readonly STATS_TAB_KEY = ChartTypes.STATS;
   public period = 'week';
-  public maxLoadedPeriod = 'week';
+  public scopeShown = input<number>(0);
+  public scopeTotal = input<number>(0);
+  public isLoadingHistory = input<boolean>(false);
   public selectedTab = ChartTypes.EVOLUTION;
   public inversedData: EventGenericVariation[] = [];
   public changeTabOutput = output<ChartTypes>();
-  public updateData = output<{ eventName: string; points: ApiGenericData[] }>();
+  public fullHistoryRequested = output<void>();
   public changePeriodOutput = output<'day' | 'week' | 'month' | 'year'>();
 
   private cdr = inject(ChangeDetectorRef);
-  private apiRestService = inject(ApiRestService);
 
   public ngOnInit(): void {
     const value = Object.keys(this.charts())[0] as ChartTypes;
@@ -236,38 +230,15 @@ export class PlayerStatsCardComponent implements AfterViewInit, OnInit {
     }
   }
 
-  private checkMaxLoadedPeriod(period: 'day' | 'week' | 'month' | 'year'): boolean {
-    if (this.maxLoadedPeriod === 'year') return true;
-    if (
-      period === 'year' &&
-      (this.maxLoadedPeriod === 'day' || this.maxLoadedPeriod === 'week' || this.maxLoadedPeriod === 'month')
-    ) {
-      return false;
-    }
-    if (period === 'month' && (this.maxLoadedPeriod === 'day' || this.maxLoadedPeriod === 'week')) {
-      return false;
-    }
-    if (period === 'week' && this.maxLoadedPeriod === 'day') {
-      return false;
-    }
-    return true;
+  public get isOnSeriesTab(): boolean {
+    return this.scopeTotal() > 0 && this.selectedTab === Object.keys(this.charts())[0];
   }
 
-  private async loadData(period: 'day' | 'week' | 'month' | 'year'): Promise<void> {
-    if (!this.chartComps) return;
-    if (this.checkMaxLoadedPeriod(period)) return;
-    const eventName = this.eventName();
-    const playerId = this.playerId();
-    if (!playerId) return;
-    void this.apiRestService
-      .getPlayerStatsOnSpecificEventByPlayerId(playerId, eventName, this.getHourPeriod(period))
-      .then((response) => {
-        if (response.success) {
-          const data = response.data;
-          const points = data.points[eventName as keyof typeof data.points] as ApiGenericData[];
-          this.maxLoadedPeriod = period;
-          this.updateData.emit({ eventName, points });
-        }
-      });
+  /**
+   * Asks the page for every run of this event
+   */
+  public requestFullHistory(): void {
+    if (this.isLoadingHistory() || this.scopeShown() >= this.scopeTotal()) return;
+    this.fullHistoryRequested.emit();
   }
 }

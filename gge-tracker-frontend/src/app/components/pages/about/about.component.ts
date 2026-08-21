@@ -2,6 +2,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { ServerService } from '@ggetracker-services/server.service';
 import { TranslatePipe } from '@ngx-translate/core';
 import package_ from '../../../../../package.json';
 import { environment } from 'environments/environment';
@@ -10,6 +11,15 @@ export interface Contributor {
   name: string;
   server: string;
 }
+
+export interface ContributorLane {
+  items: Contributor[];
+  copies: number[];
+  duration: number;
+}
+
+const LANE_SECONDS_PER_ITEM = 4.5;
+const LANE_MIN_ITEMS = 16;
 
 @Component({
   selector: 'app-about',
@@ -25,7 +35,10 @@ export class AboutComponent extends GenericComponent implements OnInit {
   public currentYear = new Date().getFullYear();
   public safeTranslatedIntro1!: SafeHtml;
   public sanitizer = inject(DomSanitizer);
-  private contribs: { name: string; server: string }[] = [];
+  public contribs: Contributor[] = [];
+  public lanes: ContributorLane[] = [];
+  public rollPaused = false;
+  private serverService = inject(ServerService);
 
   constructor() {
     super();
@@ -40,7 +53,8 @@ export class AboutComponent extends GenericComponent implements OnInit {
       const response = await fetch(url);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const xml = await response.text();
-      this.contribs = this.parseContributors(xml);
+      this.contribs = this.parseContributors(xml).sort((a, b) => a.name.localeCompare(b.name));
+      this.lanes = this.buildLanes(this.contribs);
     } catch (error) {
       console.error('Failed to load contributors.xml', error);
     }
@@ -53,6 +67,36 @@ export class AboutComponent extends GenericComponent implements OnInit {
       })
       .subscribe((result: string) => {
         this.safeTranslatedIntro1 = this.sanitizer.bypassSecurityTrustHtml(result);
+      });
+  }
+
+  public flagUrl(server: string): string {
+    return this.serverService.getFlagUrl(server);
+  }
+
+  public initial(contrib: Contributor): string {
+    return contrib.name.charAt(0).toUpperCase();
+  }
+
+  public toggleRoll(): void {
+    this.rollPaused = !this.rollPaused;
+  }
+
+  private buildLanes(contribs: Contributor[]): ContributorLane[] {
+    if (contribs.length === 0) return [];
+    const lanes: Contributor[][] =
+      contribs.length > 6
+        ? [contribs.filter((_, index) => index % 2 === 0), contribs.filter((_, index) => index % 2 === 1)]
+        : [contribs];
+    return lanes
+      .filter((items) => items.length > 0)
+      .map((items) => {
+        const copies = Math.max(2, Math.ceil(LANE_MIN_ITEMS / items.length));
+        return {
+          items,
+          copies: Array.from({ length: copies }, (_, index) => index),
+          duration: Math.round(items.length * LANE_SECONDS_PER_ITEM),
+        };
       });
   }
 
@@ -87,9 +131,5 @@ export class AboutComponent extends GenericComponent implements OnInit {
     const split = version.split('-')[0];
     this.version = 'v' + split.split('.').slice(0, 2).join('.') + '.' + version.split('-')[1];
     this.shortVersion = 'v' + split;
-  }
-
-  public get orderedContribs(): { name: string; server: string }[] {
-    return this.contribs.sort((a, b) => a.name.localeCompare(b.name));
   }
 }

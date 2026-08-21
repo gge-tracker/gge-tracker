@@ -1,60 +1,59 @@
 .ct {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  left: 50%;
   position: absolute;
   top: 50%;
-  left: 50%;
   transform: translate(-50%, -50%);
-  display: inline-block;
   z-index: 1000;
 }
+
 .loader {
-  --s: 50px;
-  --g: 20px;
-  width: calc(3 * (1.353 * var(--s) + var(--g)));
-  display: grid;
-  justify-items: end;
-  aspect-ratio: 3;
-  overflow: hidden;
-  --_m: linear-gradient(90deg, #0000, #000 15px calc(100% - 15px), #0000);
-  -webkit-mask: var(--_m);
-  mask: var(--_m);
-}
-.loader:before {
-  content: "";
-  width: 200%;
+  animation: loader-spin 900ms linear infinite;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  width: 46px;
   background:
-    linear-gradient(90deg, #667a2d 50%, #859138 0),
-    conic-gradient(
-      from -90deg at var(--s) calc(0.353 * var(--s)),
-      #fff 135deg,
-      #666 0 270deg,
-      #aaa 0
-    );
-  background-blend-mode: multiply;
-  --_m:
-    linear-gradient(
-      to bottom right,
-      #0000 calc(0.25 * var(--s)),
-      #000 0 calc(100% - calc(0.25 * var(--s)) - 1.414 * var(--g)),
-      #0000 0
-    ),
-    conic-gradient(
-      from -90deg at right var(--g) bottom var(--g),
-      #000 90deg,
-      #0000 0
-    );
-  -webkit-mask: var(--_m);
-  mask: var(--_m);
-  background-size:
-    calc(100% / 3) 100%,
-    calc(100% / 6) 100%;
-  -webkit-mask-size: calc(100% / 6) 100%;
-  mask-size: calc(100% / 6) 100%;
-  -webkit-mask-composite: source-in;
-  mask-composite: intersect;
-  animation: l10 1s infinite linear;
+    conic-gradient(from 90deg, rgba(251, 191, 36, 0) 0%, rgba(251, 191, 36, 0.18) 45%, #fbbf24 100%),
+    rgba(255, 255, 255, 0.09);
+  mask: radial-gradient(farthest-side, #0000 calc(100% - 4px), #000 calc(100% - 4px));
+  -webkit-mask: radial-gradient(farthest-side, #0000 calc(100% - 4px), #000 calc(100% - 4px));
 }
-@keyframes l10 {
+
+.loader-label {
+  color: #94a3b8;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  animation: loader-label-breathe 1.8s ease-in-out infinite;
+}
+
+@keyframes loader-spin {
   to {
-    transform: translate(calc(100% / 3));
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes loader-label-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loader {
+    animation-duration: 2.4s;
+  }
+
+  .loader-label {
+    animation: none;
+    opacity: 0.8;
   }
 }

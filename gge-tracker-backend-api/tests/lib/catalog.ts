@@ -296,6 +296,9 @@ export const CATALOG: Endpoint[] = [
   { id: 'castle-search', method: 'GET', scope: 'protected', path: (s) => `/castle/search/${encodeURIComponent(s.castlePlayerName ?? s.playerName ?? 'a')}`, okStatuses: [200, 400, 404], needs: ['server', 'castlePlayer'], fuzzPathParamIndex: 3 },
   { id: 'castle-random', snapshot: 'none', method: 'GET', scope: 'protected', path: () => '/castle/random', okStatuses: [200, 404], needs: ['server'] },
 
+  // Offers (protected)
+  { id: 'offers-catalog', snapshot: 'none', method: 'GET', scope: 'protected', path: () => '/offers' + q({ locale: 'en', currency: 'EUR', level: 70, legendaryLevel: 950 }), okStatuses: [200, 400, 500], needs: ['server'], fuzzQuery: ['locale', 'currency', 'level', 'legendaryLevel'] },
+
   // Alliances (mixed)
   {
     id: 'alliances-list',
@@ -405,6 +408,12 @@ export const CATALOG: Endpoint[] = [
   { id: 'stats-alliance-pulse', method: 'GET', scope: 'public', path: (s) => `/statistics/alliance/${s.allianceId ?? '1'}/pulse`, okStatuses: [200, 400, 404], needs: ['server', 'alliance'] },
   { id: 'stats-ranking-player', method: 'GET', scope: 'public', path: (s) => `/statistics/ranking/player/${s.playerId ?? '1'}`, okStatuses: [200, 400, 404], needs: ['server', 'player'] },
   { id: 'stats-player-event-duration', method: 'GET', scope: 'public', path: (s) => `/statistics/player/${s.playerId ?? '1'}/player_event_nomad_history/30`, okStatuses: [200, 400, 404], needs: ['server', 'player'] },
+  { id: 'stats-player-trimmed', snapshot: 'fields', method: 'GET', scope: 'public', path: (s) => `/statistics/player/${s.playerId ?? '1'}` + q({ events: 'player_might_history,player_loot_history', since: 30, limit: 50, dedup: 1 }), okStatuses: [200, 400, 404], needs: ['server', 'player'], fuzzQuery: ['events', 'since', 'limit', 'dedup'] },
+  { id: 'stats-player-summary', snapshot: 'shape', method: 'GET', scope: 'public', path: (s) => `/statistics/player/${s.playerId ?? '1'}/summary`, okStatuses: [200, 400, 404], needs: ['server', 'player'] },
+  { id: 'stats-player-event-occurrences', method: 'GET', scope: 'public', path: (s) => `/statistics/player/${s.playerId ?? '1'}/player_event_nomad_history/occurrences`, okStatuses: [200, 400, 404], needs: ['server', 'player'], cases: [
+    { label: 'rejects an unknown event', path: (s) => `/statistics/player/${s.playerId ?? '1'}/not_an_event/occurrences`, expect: [400] },
+    { label: 'rejects a continuously sampled table', path: (s) => `/statistics/player/${s.playerId ?? '1'}/player_might_history/occurrences`, expect: [400] },
+  ] },
 
   // Live ranking (public)
   { id: 'live-outer-realms', method: 'GET', scope: 'public', path: () => '/live-ranking/outer-realms' + q({ page: 1 }), okStatuses: [200, 400, 403], fuzzQuery: ['player_name'] },

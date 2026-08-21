@@ -1,0 +1,23 @@
+<clickhouse>
+    <text_log remove="1"/>
+    <processors_profile_log remove="1"/>
+    <trace_log remove="1"/>
+    <metric_log remove="1"/>
+    <latency_log remove="1"/>
+    <query_metric_log remove="1"/>
+    <asynchronous_metric_log remove="1"/>
+
+    <query_log>
+        <ttl>event_date + INTERVAL 14 DAY DELETE</ttl>
+    </query_log>
+    <part_log>
+        <ttl>event_date + INTERVAL 14 DAY DELETE</ttl>
+    </part_log>
+    <error_log>
+        <ttl>event_date + INTERVAL 14 DAY DELETE</ttl>
+    </error_log>
+    <logger>
+        <level>information</level>
+    </logger>
+
+</clickhouse>

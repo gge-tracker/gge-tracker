@@ -17,32 +17,51 @@
   <div class="section">
     <p>{{ 'about.host' | translate }}</p>
   </div>
-  <h1 class="text-center mb-4 mt-5">{{ 'about.contributors-title' | translate }}</h1>
-  <span>
-    {{ 'about.contributors-thanks' | translate }}
-  </span>
-  <div class="section">
-    <ng-container *ngTemplateOutlet="contributors"></ng-container>
+  <div class="contrib-heading mt-5">
+    <h1 class="text-center mb-0">{{ 'about.contributors-title' | translate }}</h1>
+    @if (contribs.length) {
+      <span class="contrib-count">{{ contribs.length }}</span>
+    }
   </div>
+  <p class="contrib-thanks text-center">
+    {{ 'about.contributors-thanks' | translate }}
+  </p>
+  <ng-container *ngTemplateOutlet="contributors"></ng-container>
   <div class="footer mb-2 text-center">
     <p style="font-size: 0.7rem">&copy; {{ currentYear }} gge-tracker.com</p>
   </div>
 </div>
 
 <ng-template #contributors>
-  <div class="container contrib-container">
-    <div class="row justify-content-left">
-      @for (contrib of orderedContribs; track contrib) {
-        <div class="col-6 col-sm-4 col-md-3 col-lg-2 text-center mb-4">
-          <div class="contrib-avatar mx-auto mb-2">
-            <span class="server-badge">{{ contrib.server }}</span>
-            <span class="initials">{{ contrib.name.charAt(0).toUpperCase() }}</span>
+  @if (lanes.length) {
+    <div class="roll" [class.roll-paused]="rollPaused" (click)="toggleRoll()">
+      @for (lane of lanes; track $index) {
+        <div class="lane">
+          <div
+            class="lane-track"
+            [class.lane-track-reverse]="$odd"
+            [style.animationDuration.s]="lane.duration"
+            [style.--lane-copies]="lane.copies.length"
+          >
+            @for (copy of lane.copies; track copy) {
+              @for (contrib of lane.items; track contrib.name) {
+                <div class="seal" [attr.aria-hidden]="copy > 0 ? 'true' : null">
+                  <span class="seal-medal">
+                    <span class="seal-initial">{{ initial(contrib) }}</span>
+                    <img class="seal-flag" [src]="flagUrl(contrib.server)" [alt]="contrib.server" loading="lazy" />
+                  </span>
+                  <span class="seal-text">
+                    <span class="seal-name">{{ contrib.name }}</span>
+                    <span class="seal-server">{{ contrib.server }}</span>
+                  </span>
+                </div>
+              }
+            }
           </div>
-          <div class="fw-bold contrib-name">{{ contrib.name }}</div>
         </div>
       }
     </div>
-  </div>
+  }
 </ng-template>
 
 <ng-template #apiLink let-message="message">

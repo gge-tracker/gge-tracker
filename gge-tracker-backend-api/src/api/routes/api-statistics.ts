@@ -4,6 +4,13 @@ import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { NodeClickHouseClient } from '@clickhouse/client/dist/client';
 
+interface PlayerStatisticsOptions {
+  events: string[] | null;
+  since: number | null;
+  limit: number | null;
+  dedup: boolean;
+}
+
 /**
  * Abstract class providing API endpoints and helper methods for retrieving and processing
  * player and alliance statistics in the Empire Rankings backend
@@ -22,6 +29,11 @@ import { NodeClickHouseClient } from '@clickhouse/client/dist/client';
  * @abstract
  */
 export abstract class ApiStatistics implements ApiHelper {
+  /**
+   * The two histories that are sampled continuously rather than run as events
+   */
+  private static readonly CONTINUOUS_TABLES = new Set(['player_might_history', 'player_loot_history']);
+
   /**
    * Handles the HTTP request to retrieve statistics for a specific alliance by its ID
    *
@@ -136,14 +148,23 @@ export abstract class ApiStatistics implements ApiHelper {
       }
 
       /* ---------------------------------
+       * Optional response narrowing
+       * --------------------------------- */
+      const options = this.parsePlayerStatisticsOptions(request);
+      if ('error' in options) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: options.error });
+        return;
+      }
+
+      /* ---------------------------------
        * Cache validation
        * --------------------------------- */
       const language = ApiHelper.ggeTrackerManager.getServerNameFromRequestId(playerId);
       const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${language}`)) || '1';
-      const cacheKey = `statistics:players:${language}:${cacheVersion}:${playerId}`;
+      const cacheKey = `statistics:players:${language}:${cacheVersion}:${playerId}${this.buildFetchCacheSuffix(options)}`;
       const cachedData = await ApiHelper.redisClient.get(cacheKey);
       if (cachedData) {
-        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        response.status(ApiHelper.HTTP_OK).send(this.trimPlayerStatistics(JSON.parse(cachedData), options));
         return;
       }
 
@@ -169,13 +190,7 @@ export abstract class ApiStatistics implements ApiHelper {
       /* ---------------------------------
        * Glory points cache key
        * --------------------------------- */
-      const gloryPointsCacheKey = `leaderboard:glory:${language}:${cacheVersion}:top100:${code}`;
-      const cachedGloryPoints = await ApiHelper.redisClient.get(gloryPointsCacheKey);
-      let code100GloryPoints = cachedGloryPoints ? JSON.parse(cachedGloryPoints) : null;
-      if (!cachedGloryPoints || true) {
-        code100GloryPoints = await this.getTop100GloryPointsByCountryCode(code);
-        void ApiHelper.updateCache(gloryPointsCacheKey, code100GloryPoints, 4000);
-      }
+      const code100GloryPoints = await this.getTop100GloryPoints(language, cacheVersion, code);
 
       /* ---------------------------------
        * Execute database query
@@ -199,13 +214,13 @@ export abstract class ApiStatistics implements ApiHelper {
       }
 
       try {
-        let basicTables = ApiHelper.ggeTrackerManager.getOlapEventTables();
+        const requestedTables = options.events ?? ApiHelper.ggeTrackerManager.getOlapEventTables();
         const olapDatabaseName = ApiHelper.ggeTrackerManager.getOlapDatabaseFromRequestId(Number(playerId));
         const { diffs, points } = await this.getPlayerEventStatistics(
           playerId,
           olapDatabaseName,
-          undefined,
-          basicTables,
+          options.since ?? undefined,
+          requestedTables,
         );
         const timezoneOffset = ApiHelper.ggeTrackerManager.getTimezoneOffsetByCode(
           ApiHelper.getCountryCode(String(playerId)) || '',
@@ -220,7 +235,7 @@ export abstract class ApiStatistics implements ApiHelper {
           timezone_offset: timezoneOffset,
         };
         void ApiHelper.updateCache(cacheKey, data);
-        response.status(ApiHelper.HTTP_OK).send(data);
+        response.status(ApiHelper.HTTP_OK).send(this.trimPlayerStatistics(data, options));
         return;
       } catch {
         response
@@ -232,6 +247,161 @@ export abstract class ApiStatistics implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getStatisticsByPlayerId', request);
+      return;
+    }
+  }
+
+  /**
+   * Handles the HTTP request to retrieve a headline summary of a player's event statistics
+   *
+   * @param request The Express request object, expected to contain `playerId` in the route parameters
+   * @param response The Express response object used to send the result or error
+   * @returns A promise that resolves when the response is sent
+   */
+  public static async getStatisticsSummaryByPlayerId(
+    request: express.Request,
+    response: express.Response,
+  ): Promise<void> {
+    try {
+      /* ---------------------------------
+       * Validate parameters
+       * --------------------------------- */
+      const playerId = ApiHelper.verifyIdWithCountryCode(request.params.playerId);
+      if (playerId === false || playerId === undefined) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
+        return;
+      }
+      const pool = ApiHelper.ggeTrackerManager.getPgSqlPoolFromRequestId(playerId);
+      const code = ApiHelper.getCountryCode(String(playerId));
+      if (!pool || !code) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
+        return;
+      }
+
+      /* ---------------------------------
+       * Cache validation
+       * --------------------------------- */
+      const language = ApiHelper.ggeTrackerManager.getServerNameFromRequestId(playerId);
+      const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${language}`)) || '1';
+      const cacheKey = `statistics:players:${language}:${cacheVersion}:${playerId}:summary`;
+      const cachedData = await ApiHelper.redisClient.get(cacheKey);
+      if (cachedData) {
+        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        return;
+      }
+
+      /* ---------------------------------
+       * Resolve the player and their alliance
+       * --------------------------------- */
+      const query = `
+        SELECT
+          players.name AS player_name,
+          alliances.name AS alliance_name,
+          alliances.id AS alliance_id
+        FROM players LEFT JOIN alliances
+        ON players.alliance_id = alliances.id
+        WHERE players.id = $1`;
+      const player: any = await new Promise((resolve, reject) => {
+        pool.query(query, [ApiHelper.removeCountryCode(playerId)], (error, results) => {
+          if (error) {
+            ApiHelper.logError(error, 'getStatisticsSummaryByPlayerId_query', request);
+            reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
+          } else {
+            resolve(results.rows[0]);
+          }
+        });
+      });
+      if (!player?.player_name) {
+        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.PlayerNotFound });
+        return;
+      }
+
+      /* ---------------------------------
+       * Aggregate every event table
+       * --------------------------------- */
+      const olapDatabaseName = ApiHelper.ggeTrackerManager.getOlapDatabaseFromRequestId(Number(playerId));
+      const [events, code100GloryPoints] = await Promise.all([
+        this.getPlayerEventSummary(playerId, olapDatabaseName),
+        this.getTop100GloryPoints(language, cacheVersion, code),
+      ]);
+      const data = {
+        player_name: player.player_name,
+        alliance_name: player.alliance_name,
+        alliance_id: ApiHelper.addCountryCode(player.alliance_id, code),
+        events,
+        glory_points_100: code100GloryPoints,
+        timezone_offset: ApiHelper.ggeTrackerManager.getTimezoneOffsetByCode(code),
+      };
+      void ApiHelper.updateCache(cacheKey, data);
+      response.status(ApiHelper.HTTP_OK).send(data);
+      return;
+    } catch (error) {
+      const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
+      response.status(code).send({ error: message });
+      ApiHelper.logError(error, 'getStatisticsSummaryByPlayerId', request);
+      return;
+    }
+  }
+
+  /**
+   * Handles the HTTP request to retrieve one row per run of an event, with the score the player
+   * finished it on
+   *
+   * @param request - The Express request object, expected to contain `playerId` and `eventName`
+   * @param response - The Express response object used to send the result or error
+   * @returns A promise that resolves when the response is sent
+   */
+  public static async getEventOccurrencesByPlayerId(
+    request: express.Request,
+    response: express.Response,
+  ): Promise<void> {
+    try {
+      /* ---------------------------------
+       * Validate parameters
+       * --------------------------------- */
+      const playerId = ApiHelper.verifyIdWithCountryCode(request.params.playerId);
+      if (playerId === false || playerId === undefined) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
+        return;
+      }
+      const eventName = request.params.eventName;
+      if (
+        !ApiHelper.ggeTrackerManager.getOlapEventTables().includes(eventName) ||
+        this.CONTINUOUS_TABLES.has(eventName)
+      ) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventName });
+        return;
+      }
+      const olapDatabaseName = ApiHelper.ggeTrackerManager.getOlapDatabaseFromRequestId(Number(playerId));
+      if (!olapDatabaseName) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
+        return;
+      }
+
+      /* ---------------------------------
+       * Cache validation
+       * --------------------------------- */
+      const language = ApiHelper.ggeTrackerManager.getServerNameFromRequestId(playerId);
+      const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${language}`)) || '1';
+      const cacheKey = `statistics:players:${language}:${cacheVersion}:${playerId}:occurrences:${eventName}`;
+      const cachedData = await ApiHelper.redisClient.get(cacheKey);
+      if (cachedData) {
+        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        return;
+      }
+
+      /* ---------------------------------
+       * Group the event dates into runs
+       * --------------------------------- */
+      const occurrences = await this.getPlayerEventOccurrences(playerId, olapDatabaseName, eventName);
+      const data = { event: eventName, occurrences };
+      void ApiHelper.updateCache(cacheKey, data);
+      response.status(ApiHelper.HTTP_OK).send(data);
+      return;
+    } catch (error) {
+      const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
+      response.status(code).send({ error: message });
+      ApiHelper.logError(error, 'getEventOccurrencesByPlayerId', request);
       return;
     }
   }
@@ -714,7 +884,7 @@ export abstract class ApiStatistics implements ApiHelper {
         const diff = dates_stop[table].getTime() - dates_start[table].getTime();
         diffs[table] = diff / 1000;
       }
-      return { diffs, points };
+      return { diffs, points: this.orderByTable(points, ApiHelper.ggeTrackerManager.getOlapEventTables()) };
     } catch {
       return { error: RouteErrorMessagesEnum.GenericInternalServerError };
     }
@@ -746,6 +916,281 @@ export abstract class ApiStatistics implements ApiHelper {
       points[table] = limit === null || !Array.isArray(rows) ? rows : rows.slice(0, limit);
     }
     return { ...data, points };
+  }
+
+  /**
+   * Reads the optional narrowing parameters of the player statistics route
+   *
+   * @param request The Express request carrying the query string
+   * @returns The parsed options, or an object holding the error message to answer with a 400
+   */
+  private static parsePlayerStatisticsOptions(request: express.Request): PlayerStatisticsOptions | { error: string } {
+    /* ---------------------------------
+     * events: the tables to query
+     * --------------------------------- */
+    const eventTables = ApiHelper.ggeTrackerManager.getOlapEventTables();
+    const requestedEvents = ApiHelper.getParsedString(request.query.events)
+      ?.split(',')
+      .map((event) => event.trim())
+      .filter((event) => event.length > 0);
+    if (requestedEvents?.some((event) => !eventTables.includes(event))) {
+      return { error: RouteErrorMessagesEnum.InvalidEventName };
+    }
+    const events = requestedEvents?.length ? [...new Set(requestedEvents)].sort() : null;
+
+    /* ---------------------------------
+     * since: how many days back to query
+     * --------------------------------- */
+    let since: number | null = null;
+    const rawSince = ApiHelper.getParsedString(request.query.since);
+    if (rawSince !== null) {
+      if (!/^\d+$/.test(rawSince)) {
+        return { error: RouteErrorMessagesEnum.InvalidDuration };
+      }
+      since = Number.parseInt(rawSince, 10);
+      // The ceiling is five years
+      if (since < 1 || since > 1825) {
+        return { error: RouteErrorMessagesEnum.InvalidDuration };
+      }
+    }
+
+    /* ---------------------------------
+     * limit and dedup: presentation only
+     * --------------------------------- */
+    const parsedLimit = Number.parseInt(String(request.query.limit ?? ''), 10);
+    const limit = Number.isInteger(parsedLimit) && parsedLimit >= 0 ? parsedLimit : null;
+    const rawDedup = ApiHelper.getParsedString(request.query.dedup);
+    const dedup = rawDedup === '1' || rawDedup === 'true';
+
+    return { events, since, limit, dedup };
+  }
+
+  /**
+   * Builds the cache key suffix that distinguishes one fetched window from another
+   *
+   * @param options The parsed query options
+   * @returns The suffix to append to the cache key, empty when nothing was narrowed
+   */
+  private static buildFetchCacheSuffix(options: PlayerStatisticsOptions): string {
+    const parts: string[] = [];
+    if (options.events) parts.push(`e=${options.events.join('+')}`);
+    if (options.since !== null) parts.push(`d=${options.since}`);
+    return parts.length > 0 ? `:${parts.join(':')}` : '';
+  }
+
+  /**
+   * Narrows a player statistics payload to the rows the caller asked to be given
+   *
+   * @param data The full statistics payload, freshly queried or read back from the cache
+   * @param options The parsed query options
+   * @returns The payload with `points` narrowed accordingly
+   */
+  private static trimPlayerStatistics(data: any, options: PlayerStatisticsOptions): any {
+    if (!options.dedup && options.limit === null) return data;
+    const points: any = {};
+    for (const [table, rows] of Object.entries(data?.points ?? {})) {
+      if (!Array.isArray(rows)) {
+        points[table] = rows;
+        continue;
+      }
+      let kept = rows;
+      if (options.dedup) {
+        kept = this.CONTINUOUS_TABLES.has(table) ? this.dropFlatRuns(kept) : this.dropUnplayedEvents(kept);
+      }
+      points[table] = options.limit === null ? kept : kept.slice(Math.max(0, kept.length - options.limit));
+    }
+    return { ...data, points };
+  }
+
+  /**
+   * Drops the interior of every flat run, keeping the point that enters it and the point that leaves
+   *
+   * @param rows The point rows of one table, in chronological order
+   * @returns The rows with the redundant interior points removed
+   */
+  private static dropFlatRuns(rows: any[]): any[] {
+    if (rows.length <= 2) return rows;
+    return rows.filter((row, index) => {
+      if (index === 0 || index === rows.length - 1) return true;
+      return !(rows[index - 1].point === row.point && rows[index + 1].point === row.point);
+    });
+  }
+
+  /**
+   * Drops the event occurrences the player did not take part in, and the zeroes that lead into the
+   * ones they did
+   *
+   * @param rows The point rows of one event table, in chronological order
+   * @returns The rows with unplayed occurrences and redundant leading zeroes removed
+   */
+  private static dropUnplayedEvents(rows: any[]): any[] {
+    const EVENT_GAP_MS = 24 * 60 * 60 * 1000;
+    const kept: any[] = [];
+    let occurrence: any[] = [];
+    const flush = (): void => {
+      if (occurrence.length === 0) return;
+      const firstScored = occurrence.findIndex((row) => Number(row.point) > 0);
+      if (firstScored !== -1) {
+        kept.push(...occurrence.slice(Math.max(0, firstScored - 1)));
+      }
+      occurrence = [];
+    };
+    for (const row of rows) {
+      const previous = occurrence.at(-1);
+      if (previous && new Date(row.date).getTime() - new Date(previous.date).getTime() > EVENT_GAP_MS) {
+        flush();
+      }
+      occurrence.push(row);
+    }
+    flush();
+    return kept;
+  }
+
+  /**
+   * Groups an event's dates into runs and reports what the player finished each one on
+   *
+   * @param playerId The player, with their country code still attached
+   * @param olapDatabase The OLAP database holding this server's history
+   * @param eventTable The event table to group
+   * @returns One entry per run, oldest first
+   */
+  private static async getPlayerEventOccurrences(
+    playerId: number,
+    olapDatabase: string,
+    eventTable: string,
+  ): Promise<Array<{ started_at: string; ended_at: string; point: number }>> {
+    const clickhouseClient: NodeClickHouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
+    const query = `
+      SELECT
+        min(created_at) AS started_at,
+        max(created_at) AS ended_at,
+        toUInt64(argMax(point, created_at)) AS point
+      FROM (
+        SELECT
+          created_at,
+          point,
+          sum(is_new_occurrence) OVER (ORDER BY created_at ASC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+            AS occurrence
+        FROM (
+          SELECT
+            ed.created_at AS created_at,
+            COALESCE(pe.point, 0) AS point,
+            if(
+              dateDiff('second', lagInFrame(ed.created_at, 1, ed.created_at) OVER (ORDER BY ed.created_at ASC), ed.created_at) > 86400,
+              1,
+              0
+            ) AS is_new_occurrence
+          FROM ${olapDatabase}.event_dates AS ed
+          LEFT JOIN ${olapDatabase}.${eventTable} AS pe
+            ON ed.created_at = pe.created_at AND pe.player_id = {playerId:UInt32}
+          WHERE ed.table_name = {eventTable:String}
+        )
+      )
+      GROUP BY occurrence
+      ORDER BY started_at ASC
+    `;
+    const clickhouseQuery = await clickhouseClient.query({
+      query,
+      query_params: { playerId: ApiHelper.removeCountryCode(playerId), eventTable },
+    });
+    const result = await clickhouseQuery.json();
+    return result.data.map((row: any) => ({
+      started_at: new Date(row.started_at).toISOString(),
+      ended_at: new Date(row.ended_at).toISOString(),
+      point: Number(row.point),
+    }));
+  }
+
+  /**
+   * Aggregates each event table down to the handful of numbers a player card displays
+   *
+   * @param playerId The player, with their country code still attached
+   * @param olapDatabase The OLAP database holding this server's history
+   * @returns A map of event table to its summary
+   */
+  private static async getPlayerEventSummary(playerId: number, olapDatabase: string): Promise<any> {
+    const clickhouseClient: NodeClickHouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
+    const tables = ApiHelper.ggeTrackerManager.getOlapEventTables();
+    const summaries = await Promise.all(
+      tables.map(async (table) => {
+        const query = `
+          SELECT
+            count() AS row_count,
+            toUInt64(countIf(created_at >= now() - INTERVAL 7 DAY)) AS row_count_7d,
+            min(created_at) AS first_date,
+            max(created_at) AS last_date,
+            toUInt64(argMax(point, created_at)) AS last_point,
+            toUInt64(max(point)) AS max_point,
+            argMax(created_at, point) AS max_point_date,
+            toUInt64(maxIf(point, created_at >= now() - INTERVAL 7 DAY)) AS max_point_7d,
+            toInt64(argMaxIf(point, created_at, created_at >= now() - INTERVAL 7 DAY)) -
+              toInt64(argMinIf(point, created_at, created_at >= now() - INTERVAL 7 DAY)) AS point_gain_7d
+          FROM ${olapDatabase}.${table}
+          WHERE player_id = {playerId:UInt32}
+        `;
+        const clickhouseQuery = await clickhouseClient.query({
+          query,
+          query_params: { playerId: ApiHelper.removeCountryCode(playerId) },
+        });
+        const result = await clickhouseQuery.json();
+        const row: any = result.data[0];
+        const rowCount = Number(row?.row_count ?? 0);
+        if (rowCount === 0) {
+          return [
+            table,
+            {
+              row_count: 0,
+              row_count_7d: 0,
+              first_date: null,
+              last_date: null,
+              last_point: null,
+              max_point: null,
+              max_point_date: null,
+              max_point_7d: null,
+              point_gain_7d: null,
+            },
+          ];
+        }
+        return [
+          table,
+          {
+            row_count: rowCount,
+            row_count_7d: Number(row.row_count_7d ?? 0),
+            first_date: new Date(row.first_date).toISOString(),
+            last_date: new Date(row.last_date).toISOString(),
+            last_point: Number(row.last_point),
+            max_point: Number(row.max_point),
+            max_point_date: new Date(row.max_point_date).toISOString(),
+            max_point_7d: Number(row.row_count_7d ?? 0) > 0 ? Number(row.max_point_7d) : null,
+            point_gain_7d: Number(row.row_count_7d ?? 0) > 0 ? Number(row.point_gain_7d) : null,
+          },
+        ];
+      }),
+    );
+    return Object.fromEntries(summaries);
+  }
+
+  /**
+   * Returns the fame milestones of a server's top 100, reading through the cache
+   *
+   * @param language The server name, used to scope the cache entry
+   * @param cacheVersion The current fill version of that server
+   * @param code The 3-char server code to rank
+   * @returns The fame value at ranks 1, 10, 50 and 100
+   */
+  private static async getTop100GloryPoints(
+    language: string,
+    cacheVersion: string,
+    code: string,
+  ): Promise<Array<{ top: number; point: number }>> {
+    const cacheKey = `leaderboard:glory:${language}:${cacheVersion}:top100:${code}`;
+    const cached = await ApiHelper.redisClient.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+    const gloryPoints = await this.getTop100GloryPointsByCountryCode(code);
+    void ApiHelper.updateCache(cacheKey, gloryPoints, 4000);
+    return gloryPoints;
   }
 
   /**
@@ -1113,10 +1558,26 @@ export abstract class ApiStatistics implements ApiHelper {
         const diff = dates_stop[table].getTime() - dates_start[table].getTime();
         diffs[table] = diff / 1000;
       }
-      return { diffs, points };
+      return { diffs, points: this.orderByTable(points, eventTables) };
     } catch {
       return { error: RouteErrorMessagesEnum.GenericInternalServerError };
     }
+  }
+
+  /**
+   * Rebuilds a per-table map in the order the tables are declared rather than the order their
+   * queries happened to finish in
+   *
+   * @param points The per-table map as the parallel queries filled it
+   * @param tables The event tables, in their declared order
+   * @returns The same entries, keyed in declared order
+   */
+  private static orderByTable(points: Record<string, any>, tables: string[]): Record<string, any> {
+    const ordered: Record<string, any> = {};
+    for (const table of tables) {
+      if (table in points) ordered[table] = points[table];
+    }
+    return ordered;
   }
 
   /**
