@@ -127,6 +127,27 @@ export abstract class ApiDungeons implements ApiHelper {
     }
   }
 
+  /**
+   * Returns when the dungeons of the current server were last scanned
+   */
+  public static async getDungeonsMeta(request: express.Request, response: express.Response): Promise<void> {
+    try {
+      if (!this.validateRequest(request, response)) return;
+      const rows = await this.executePgQuery(
+        request['pg_pool'] as pg.Pool,
+        `SELECT updated_at FROM parameters WHERE identifier = 'dungeons_scan' LIMIT 1`,
+        [],
+        'getDungeonsMeta',
+        request,
+      );
+      response.status(ApiHelper.HTTP_OK).send({ last_scan_at: rows.length === 0 ? null : rows[0].updated_at });
+    } catch (error) {
+      const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
+      response.status(code).send({ error: message });
+      ApiHelper.logError(error, 'getDungeonsMeta', request);
+    }
+  }
+
   public static async getDungeonsByPlayer(request: express.Request, response: express.Response): Promise<void> {
     try {
       /* ---------------------------------

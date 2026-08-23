@@ -1,7 +1,7 @@
 {
   "fixture": "80bf5e064c8b1db8",
   "server": "FR1",
-  "recordedAt": "2026-07-30T12:56:06.815Z",
+  "recordedAt": "2026-08-23T12:27:13.378Z",
   "entries": {
     "GET alliance-by-id": {
       "status": 200,
@@ -212,9 +212,16 @@
     "GET assets-image": {
       "status": 200,
       "contentType": "image/png",
-      "bytes": 596441,
+      "bytes": 312463,
       "kind": "binary",
-      "hash": "6f3e55eceddf9efe"
+      "hash": "4862302d11027ed8"
+    },
+    "GET assets-image-variant": {
+      "status": 200,
+      "contentType": "image/png",
+      "bytes": 48407,
+      "kind": "binary",
+      "hash": "453b2a8a3e719f4d"
     },
     "GET assets-items": {
       "status": 200,
@@ -363,7 +370,7 @@
     "GET docs": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 233791,
+      "bytes": 255193,
       "kind": "object",
       "count": 1,
       "keys": [
@@ -378,7 +385,7 @@
         "description",
         "url"
       ],
-      "hash": "219e5292377a0b13"
+      "hash": "5932a3c613d9ebde"
     },
     "GET dungeons": {
       "status": 200,
@@ -450,6 +457,15 @@
         "pagination"
       ],
       "hash": "8e019bc47e15c21e"
+    },
+    "GET dungeons-meta": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 21,
+      "kind": "object",
+      "keys": [
+        "last_scan_at"
+      ]
     },
     "GET dungeons-player": {
       "status": 200,
@@ -657,7 +673,7 @@
     "GET languages": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 3123851,
+      "bytes": 3127979,
       "kind": "object",
       "keys": [
         "@metadata",
@@ -1663,27 +1679,21 @@
         "advisor_Berimond_JoinFirst",
         "advisor_attack",
         "advisor_attackInfo",
-        "advisor_baron_activate_text",
         "advisor_baron_activate_title",
+        "advisor_baron_bonus_banner",
         "advisor_baron_characterName",
         "advisor_baron_characterTitle",
         "advisor_baron_countdown_label",
-        "advisor_baron_effect_autosell",
-        "advisor_baron_effect_gold",
-        "advisor_baron_effect_morale",
-        "advisor_baron_effect_xp",
         "advisor_baron_expiry_cta",
         "advisor_baron_expiry_text",
         "advisor_baron_expiry_title",
         "advisor_baron_igs_free",
         "advisor_baron_igs_paid",
-        "advisor_baron_info_text",
-        "advisor_baron_info_title",
         "advisor_baron_offer_headline",
         "advisor_baron_overview_allKingdoms",
         "advisor_baron_travelText",
-        "advisor_baron_webshop_banner",
         "advisor_berimond_morale_banner",
+        "advisor_speechBubble_baron",
         "advisor_speechBubble_berimond",
         "advisor_speechBubble_nomad",
         "advisor_speechBubble_samurai",
@@ -2244,6 +2254,7 @@
         "butchershop_name",
         "butchershop_short_info",
         "butchershop_upgrade_info",
+        "button_SelectCamp_baron",
         "button_SelectCamp_berimond",
         "button_SelectCamp_nomad",
         "button_SelectCamp_samurai",
@@ -2473,6 +2484,8 @@
         "ci_appearance_AnniversaryGranary_flavor",
         "ci_appearance_AnniversaryHoL2",
         "ci_appearance_AnniversaryHoL2_flavor",
+        "ci_appearance_AnniversaryKeep15",
+        "ci_appearance_AnniversaryKeep15_flavor",
         "ci_appearance_AnniversaryMilitaryDistrict",
         "ci_appearance_AnniversaryMilitaryDistrict_flavor",
         "ci_appearance_AnniversaryOffWorkshop",
@@ -3044,6 +3057,7 @@
         "ci_effect_componentQueueBoost_tt",
         "ci_effect_decoPoints",
         "ci_effect_decoPoints_tt",
+        "ci_effect_decosUnboostedFoodProductionBonusBaronEconomyCapped",
         "ci_effect_defenseBonusNotMainCastle",
         "ci_effect_defenseBoostFlank",
         "ci_effect_defenseBoostFront",
@@ -3123,6 +3137,7 @@
         "ci_effect_recruitCostReduction_tt",
         "ci_effect_recruitSpeedBoost",
         "ci_effect_recruitSpeedBoost_tt",
+        "ci_effect_recruitmentSpeedBoost",
         "ci_effect_recruitmentSpeedBoostAll",
         "ci_effect_recruitmentSpeedBoostAllCapped",
         "ci_effect_reduceResearchResourceCosts",
@@ -3168,6 +3183,10 @@
         "ci_effect_xpBoostBuildBuildings_tt",
         "ci_level",
         "ci_primarySlot",
+        "ci_primary_AnniversaryFood",
+        "ci_primary_AnniversaryKeepStrength",
+        "ci_primary_AnniversaryStorage15",
+        "ci_primary_AnniversaryTradeDistrictPrimary",
         "ci_primary_BeefCapacityBonus_premium",
         "ci_primary_BeefCapacityIncrease_premium",
         "ci_primary_BeefProductionIncrease",
@@ -3226,6 +3245,7 @@
         "ci_primary_woodProduction",
         "ci_primary_xpBoostBuildBuildings",
         "ci_secondarySlot",
+        "ci_secondary_AnniversaryTradeDistrictSecondary",
         "ci_secondary_BeefCapacityBonus_premium",
         "ci_secondary_FoodDistrict",
         "ci_secondary_MilitaryDistrict",
@@ -3471,7 +3491,6 @@
         "currency_description_5HourSkip",
         "currency_description_5MinSkip",
         "currency_description_60MinSkip",
-        "currency_description_79",
         "currency_description_AdvisorFreeToken",
         "currency_description_AllianceCoin",
         "currency_description_AllianceInfluence",
@@ -3479,6 +3498,7 @@
         "currency_description_ApprenticeToken",
         "currency_description_AshiraToken",
         "currency_description_BarinToken",
+        "currency_description_BaronAdvisorToken",
         "currency_description_BastionDoubloon",
         "currency_description_BeadBowlBoosterKey",
         "currency_description_Beads",
@@ -3672,7 +3692,6 @@
         "currency_name_5HourSkip",
         "currency_name_5MinSkip",
         "currency_name_60MinSkip",
-        "currency_name_79",
         "currency_name_AdvisorFreeToken",
         "currency_name_AllianceCoin",
         "currency_name_AllianceInfluence",
@@ -3680,6 +3699,7 @@
         "currency_name_ApprenticeToken",
         "currency_name_AshiraToken",
         "currency_name_BarinToken",
+        "currency_name_BaronAdvisorToken",
         "currency_name_BastionDoubloon",
         "currency_name_BeadBowlBoosterKey",
         "currency_name_Beads",
@@ -3935,6 +3955,7 @@
         "deco_AnniversaryCake_name",
         "deco_AnniversaryCrown_name",
         "deco_AnniversaryDecoWithEffect_name",
+        "deco_AnniversaryGateway_name",
         "deco_AnniversaryMonument10_name",
         "deco_AnniversaryMonument2_name",
         "deco_AnniversaryMonument3_name",
@@ -3988,6 +4009,7 @@
         "deco_ExaltedForgingOfFurysBlade_name",
         "deco_ExaltedGreenAnniversaryBalloon_name",
         "deco_ExaltedGreenAnniversaryCake_name",
+        "deco_ExaltedGreenAnniversaryGateway_name",
         "deco_ExaltedGreenCarnivalCanal_name",
         "deco_ExaltedGreenCaveoftheWinterFox_name",
         "deco_ExaltedGreenCaveoftheWinterPolarBear_name",
@@ -4044,6 +4066,7 @@
         "deco_ExaltedPedestalOfPassionateLove_name",
         "deco_ExaltedPurpleAnniversaryBalloon_name",
         "deco_ExaltedPurpleAnniversaryCake_name",
+        "deco_ExaltedPurpleAnniversaryGateway_name",
         "deco_ExaltedPurpleCarnivalCanal_name",
         "deco_ExaltedPurpleCaveoftheWinterFox_name",
         "deco_ExaltedPurpleCaveoftheWinterPolarBear_name",
@@ -4086,6 +4109,7 @@
         "deco_ExaltedPurpleWatermelonSwing_name",
         "deco_ExaltedRedAnniversaryBalloon_name",
         "deco_ExaltedRedAnniversaryCake_name",
+        "deco_ExaltedRedAnniversaryGateway_name",
         "deco_ExaltedRedCarnivalCanal_name",
         "deco_ExaltedRedCaveoftheWinterFox_name",
         "deco_ExaltedRedCaveoftheWinterPolarBear_name",
@@ -4562,6 +4586,7 @@
         "deleted_Player",
         "demolish_process",
         "depletion_influence_tt",
+        "description_advisorInformation_baron",
         "description_advisorInformation_berimond",
         "description_advisorInformation_nomad",
         "description_advisorInformation_samurai",
@@ -13513,6 +13538,9 @@
         "equip_effect_description_LootCapacity",
         "equip_effect_description_MeadProductionIncrease",
         "equip_effect_description_ReturnTravelBoost",
+        "equip_effect_description_RobberBaronAdvisorAttackBonus",
+        "equip_effect_description_RobberBaronAdvisorCoinBoost",
+        "equip_effect_description_RobberBaronAdvisorXPBoost",
         "equip_effect_description_SightRadiusBonus",
         "equip_effect_description_SurvivalBoost",
         "equip_effect_description_TemporaryCommonAttackBonus",
@@ -17002,6 +17030,10 @@
         "equipment_unique_1587_desc",
         "equipment_unique_1588",
         "equipment_unique_1588_desc",
+        "equipment_unique_1589",
+        "equipment_unique_1589_desc",
+        "equipment_unique_1590",
+        "equipment_unique_1590_desc",
         "equipment_unique_15_desc",
         "equipment_unique_16",
         "equipment_unique_16_desc",
@@ -22064,6 +22096,8 @@
         "instructor_short_info",
         "instructor_title",
         "internalAllianceContest",
+        "intro_advisor_baron",
+        "intro_advisor_baron_short",
         "intro_advisor_berimond",
         "intro_advisor_berimond_short",
         "intro_advisor_nomad",
@@ -29070,6 +29104,7 @@
         "title_advisor_AttackOverview",
         "title_advisor_AttackSummary",
         "title_advisor_activate",
+        "title_advisor_baron",
         "title_advisor_berimond",
         "title_advisor_buyToken",
         "title_advisor_freeToken",
@@ -29578,6 +29613,9 @@
         "webshop_ARE_WallDebuffPremium_desc",
         "webshop_ARE_infectionRateBaseMalus_desc",
         "webshop_AnniversaryEstateTCI_220_desc",
+        "webshop_AnniversaryFood_1283_desc",
+        "webshop_AnniversaryKeepStrength_1282_desc",
+        "webshop_AnniversaryStorage15_1284_desc",
         "webshop_BeefProduction_VIP_name",
         "webshop_BeefProduction_extraLarge_name",
         "webshop_BeefProduction_giant_name",
@@ -29874,6 +29912,7 @@
         "webshop_conversion_medium_name",
         "webshop_conversion_small_name",
         "webshop_crane_description",
+        "webshop_currency_description_BaronAdvisorToken",
         "webshop_currency_description_BerimondAdvisorToken",
         "webshop_currency_description_BerimondAdvisorTokenGift",
         "webshop_cyberMonday_VIP_name",
@@ -30668,7 +30707,7 @@
         "zombiemarksman_name",
         "zombiemarksman_short_info"
       ],
-      "hash": "36701ffb773b6671"
+      "hash": "898b31e8f0e032e2"
     },
     "GET live-outer-realms": {
       "status": 403,
@@ -30968,73 +31007,34 @@
       "status": 200,
       "contentType": "application/json",
       "bytes": 0,
-      "kind": "array",
-      "rowKeys": [
-        "alliance_count",
-        "alliances_changed_name",
-        "avg_honor",
-        "avg_level",
-        "avg_loot",
-        "avg_might",
-        "created_at",
-        "event_berimond_invasion_players",
-        "event_berimond_invasion_points",
-        "event_berimond_kingdom_players",
-        "event_berimond_kingdom_points",
-        "event_bloodcrow_players",
-        "event_bloodcrow_points",
-        "event_nomad_players",
-        "event_nomad_points",
-        "event_samurai_players",
-        "event_samurai_points",
-        "event_war_realms_players",
-        "event_war_realms_points",
-        "events_count",
-        "events_participation_rate",
-        "events_top_3_names",
-        "id",
-        "max_loot",
-        "max_loot_player_id",
-        "max_might",
-        "max_might_player_id",
-        "players_count",
-        "players_in_peace",
-        "players_who_changed_alliance",
-        "players_who_changed_name",
-        "total_honor",
-        "total_loot",
-        "total_might",
-        "variation_honor",
-        "variation_loot",
-        "variation_might"
-      ]
+      "kind": "array"
     },
     "GET servers": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 392,
+      "bytes": 413,
       "kind": "array",
-      "count": 51,
-      "hash": "e9eb7909c850dbcf"
+      "count": 53,
+      "hash": "b14c1f279b35c1ca"
     },
     "GET stats-alliance": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 3384,
+      "bytes": 620,
       "kind": "object",
       "keys": [
         "diffs",
         "points",
         "timezoneOffset"
       ],
-      "hash": "c49120b878622955"
+      "hash": "75e7e6478bb654ad"
     },
     "GET stats-alliance-pulse": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 2323,
+      "bytes": 170,
       "kind": "object",
-      "count": 2,
+      "count": 0,
       "keys": [
         "daily_avg_might_change",
         "might_intra_variation",
@@ -31044,16 +31044,23 @@
         "top_might_loss_24h",
         "top_might_loss_7d"
       ],
-      "rowKeys": [
-        "avg_diff",
-        "date"
-      ],
-      "hash": "01486f3b91547f1c"
+      "hash": "5b9d3740e2ebf8c7"
+    },
+    "GET stats-alliance-trimmed": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 0,
+      "kind": "object",
+      "keys": [
+        "diffs",
+        "points",
+        "timezoneOffset"
+      ]
     },
     "GET stats-player": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 39178,
+      "bytes": 39177,
       "kind": "object",
       "count": 4,
       "keys": [
@@ -31069,12 +31076,12 @@
         "point",
         "top"
       ],
-      "hash": "13fcbfe87191155c"
+      "hash": "50308875e0c0d764"
     },
     "GET stats-player-event-duration": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 13878,
+      "bytes": 3606,
       "kind": "object",
       "keys": [
         "alliance_id",
@@ -31083,7 +31090,62 @@
         "player_name",
         "points"
       ],
-      "hash": "318023460e0c7a3e"
+      "hash": "4474518cf854d047"
+    },
+    "GET stats-player-event-occurrences": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 504,
+      "kind": "object",
+      "count": 5,
+      "keys": [
+        "event",
+        "occurrences"
+      ],
+      "rowKeys": [
+        "ended_at",
+        "point",
+        "started_at"
+      ],
+      "hash": "7e8702c1151ee731"
+    },
+    "GET stats-player-summary": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 1824,
+      "kind": "object",
+      "count": 4,
+      "keys": [
+        "alliance_id",
+        "alliance_name",
+        "events",
+        "glory_points_100",
+        "player_name",
+        "timezone_offset"
+      ],
+      "rowKeys": [
+        "point",
+        "top"
+      ]
+    },
+    "GET stats-player-trimmed": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 0,
+      "kind": "object",
+      "keys": [
+        "alliance_id",
+        "alliance_name",
+        "diffs",
+        "glory_points_100",
+        "player_name",
+        "points",
+        "timezone_offset"
+      ],
+      "rowKeys": [
+        "point",
+        "top"
+      ]
     },
     "GET stats-ranking-player": {
       "status": 200,
@@ -31543,13 +31605,20 @@
     "GET woa-events-player": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 13,
+      "bytes": 1763,
       "kind": "object",
-      "count": 0,
+      "count": 24,
       "keys": [
-        "events"
+        "coverage",
+        "events",
+        "player"
       ],
-      "hash": "24de1c4a19c43ad4"
+      "rowKeys": [
+        "date",
+        "point",
+        "rank"
+      ],
+      "hash": "ec9d44507f2e3edf"
     },
     "POST minigame-guess": {
       "status": 200,

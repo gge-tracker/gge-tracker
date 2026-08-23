@@ -17,6 +17,7 @@ import { ChartsWrapperComponent } from '@ggetracker-modules/charts-client/charts
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { TranslateModule } from '@ngx-translate/core';
 import { ChartComponent } from 'ng-apexcharts';
+import { StatsPanelComponent } from '../stats-panel/stats-panel.component';
 import { ApexXAxis } from 'ng-apexcharts';
 
 @Component({
@@ -32,6 +33,7 @@ import { ApexXAxis } from 'ng-apexcharts';
     TranslateModule,
     NgTemplateOutlet,
     NgStyle,
+    StatsPanelComponent,
   ],
   templateUrl: './player-stats-card.component.html',
   styleUrl: './player-stats-card.component.css',

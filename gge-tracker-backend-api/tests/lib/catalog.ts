@@ -24,6 +24,7 @@ export interface Endpoint {
   /** Query param names the security suite should inject malicious text into */
   fuzzQuery?: string[];
   cases?: EndpointCase[];
+  upstream?: { status: number; what: string };
   /** What the semantic suite can assert about the CONTENT of a 200 */
   semantic?: SemanticSpec;
   snapshot?: SnapshotMode;
@@ -114,6 +115,7 @@ export const CATALOG: Endpoint[] = [
   // Assets (public, rate-limit bypass)
   { id: 'assets-items', method: 'GET', scope: 'public', bypass: true, path: () => '/assets/items', okStatuses: [200], kind: 'any' },
   { id: 'assets-image', method: 'GET', scope: 'public', bypass: true, path: () => '/assets/images/keepbuildinglevel8.png', okStatuses: [200, 404], kind: 'any', fuzzPathParamIndex: 3 },
+  { id: 'assets-image-variant', method: 'GET', scope: 'public', bypass: true, path: () => '/assets/images/castlewall.png' + q({ level: '3', type: 'gate', quality: 'basic' }), okStatuses: [200, 404], kind: 'any', fuzzQuery: ['level', 'type', 'quality'] },
   { id: 'assets-common', method: 'GET', scope: 'public', bypass: true, path: () => '/assets/common/keepbuildinglevel8.json', okStatuses: [200, 404], kind: 'any', fuzzPathParamIndex: 3 },
   { id: 'assets-update', method: 'PUT', scope: 'public', token: true, path: () => '/assets/update/not-a-valid-token', okStatuses: [400, 401, 403, 404] },
 
@@ -218,6 +220,7 @@ export const CATALOG: Endpoint[] = [
       ],
     },
   },
+  { id: 'dungeons-meta', snapshot: 'shape', method: 'GET', scope: 'protected', path: () => '/dungeons/meta', okStatuses: [200, 400], shapeKeys: ['last_scan_at'], needs: ['server'] },
   { id: 'dungeons-filtered', method: 'GET', scope: 'protected', path: (s) => '/dungeons' + q({ page: 1, size: 15, filterByKid: '[1,2,3]', filterByAttackCooldown: 1, filterByPlayerName: s.castlePlayerName ?? s.playerName ?? 'a', nearPlayerName: s.castlePlayerName ?? s.playerName ?? 'a' }), okStatuses: [200, 400], needs: ['server', 'player'] },
   { id: 'dungeons-at-position', method: 'GET', scope: 'protected', path: () => '/dungeons' + q({ page: 1, positionX: 640, positionY: 640 }), okStatuses: [200, 400], needs: ['server'] },
   { id: 'dungeons-player', method: 'GET', scope: 'public', path: (s) => `/dungeons/player/${s.playerId ?? '1'}`, okStatuses: [200, 400, 404], needs: ['server', 'player'], fuzzQuery: ['lastDays'] },
@@ -297,7 +300,7 @@ export const CATALOG: Endpoint[] = [
   { id: 'castle-random', snapshot: 'none', method: 'GET', scope: 'protected', path: () => '/castle/random', okStatuses: [200, 404], needs: ['server'] },
 
   // Offers (protected)
-  { id: 'offers-catalog', snapshot: 'none', method: 'GET', scope: 'protected', path: () => '/offers' + q({ locale: 'en', currency: 'EUR', level: 70, legendaryLevel: 950 }), okStatuses: [200, 400, 500], needs: ['server'], fuzzQuery: ['locale', 'currency', 'level', 'legendaryLevel'] },
+  { id: 'offers-catalog', snapshot: 'none', method: 'GET', scope: 'protected', path: () => '/offers' + q({ locale: 'en', currency: 'EUR', level: 70, legendaryLevel: 950 }), okStatuses: [200, 400, 503], needs: ['server'], fuzzQuery: ['locale', 'currency', 'level', 'legendaryLevel'], upstream: { status: 503, what: 'the official Goodgame Empire store' } },
 
   // Alliances (mixed)
   {
@@ -467,7 +470,20 @@ export const CATALOG: Endpoint[] = [
       { label: 'filtered by alliance', path: (s) => `/woa/events/id/${s.woaEventId ?? '1'}` + q({ page: 1, alliance_name: s.allianceName ?? 'a' }), expect: [200, 400, 404] },
     ],
   },
-  { id: 'woa-events-player', method: 'GET', scope: 'public', path: (s) => `/woa/events/player/${s.playerId ?? '1'}`, okStatuses: [200, 400, 404], needs: ['server', 'player'] },
+  {
+    id: 'woa-events-player',
+    method: 'GET',
+    scope: 'public',
+    path: (s) => `/woa/events/player/${s.woaPlayerId ?? s.playerId ?? '1'}`,
+    okStatuses: [200, 400, 404],
+    shapeKeys: ['events', 'player', 'coverage'],
+    needs: ['server', 'player'],
+    fuzzPathParamIndex: 4,
+    cases: [
+      { label: 'player with no WoA history', path: (s) => `/woa/events/player/${s.playerId ?? '1'}`, expect: [200] },
+      { label: 'unparseable player id', path: () => '/woa/events/player/not-an-id', expect: [400] },
+    ],
+  },
 
   {
     id: 'storms-meta',

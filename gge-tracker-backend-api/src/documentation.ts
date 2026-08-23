@@ -126,6 +126,22 @@ export const options = {
             },
           },
         },
+        ServiceUnavailable: {
+          description: 'A third-party service this route depends on did not answer.',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  error: {
+                    type: 'string',
+                    example: 'The offers store is unreachable right now. Please try again later.',
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     },
   },

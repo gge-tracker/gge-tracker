@@ -24,6 +24,12 @@ export class UtilitiesService {
     this.loadLastUpdates();
   }
 
+  public toLocalDayKey(date: Date): string {
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${date.getFullYear()}-${month}-${day}`;
+  }
+
   public escapeCsv(value: string | null | undefined): string {
     if (value == null) return '';
     return `"${value.replaceAll('"', '""')}"`;

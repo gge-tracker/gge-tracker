@@ -4,7 +4,7 @@
 import { Report, Section } from '../lib/report';
 import { Seeds } from '../lib/bootstrap';
 import { CATALOG, Endpoint } from '../lib/catalog';
-import { callable, headersFor } from '../lib/endpoints';
+import { callable, headersFor, upstreamReason, upstreamUnavailable } from '../lib/endpoints';
 import { request } from '../lib/http';
 import { noServerError, noLeak, statusIn } from '../lib/assert';
 import { SQL_INJECTION, XSS, PATH_TRAVERSAL, OVERSIZED, CONTROL_AND_ODD, MALICIOUS_BULK_BODIES } from '../lib/payloads';
@@ -28,8 +28,9 @@ function injectQueryParam(ep: Endpoint, seeds: Seeds, param: string, payload: st
   return `${pathPart}?${param}=${encodeURIComponent(payload)}`;
 }
 
-async function checkHostileResponse(section: Section, label: string, res: any, payload: string): Promise<void> {
-  section.expect(`${label} no 5xx`, noServerError(res));
+async function checkHostileResponse(section: Section, ep: Endpoint, label: string, res: any, payload: string): Promise<void> {
+  if (upstreamUnavailable(ep, res)) section.skip(`${label} no 5xx`, upstreamReason(ep));
+  else section.expect(`${label} no 5xx`, noServerError(res));
   section.expect(`${label} no leak`, noLeak(res));
   if (XSS_REFLECT.includes(payload)) {
     const reflected = typeof res.raw === 'string' && res.raw.includes(payload);
@@ -82,14 +83,14 @@ export async function runSecurity(report: Report, seeds: Seeds): Promise<void> {
     if (ep.fuzzPathParamIndex !== undefined) {
       for (const payload of SAMPLE) {
         const res = await request({ method: ep.method, path: injectPathSegment(ep, seeds, ep.fuzzPathParamIndex, payload), headers });
-        await checkHostileResponse(section, `${base} path-inject`, res, payload);
+        await checkHostileResponse(section, ep, `${base} path-inject`, res, payload);
       }
     }
 
     for (const param of ep.fuzzQuery ?? []) {
       for (const payload of SAMPLE) {
         const res = await request({ method: ep.method, path: injectQueryParam(ep, seeds, param, payload), headers });
-        await checkHostileResponse(section, `${base} query[${param}]`, res, payload);
+        await checkHostileResponse(section, ep, `${base} query[${param}]`, res, payload);
       }
     }
   }

@@ -20,6 +20,7 @@ import { runRobustness } from './suites/robustness';
 import { runRateLimit } from './suites/ratelimit';
 import { runTiming } from './suites/timing';
 import { runLoad } from './suites/load';
+import { runResetOffset } from './suites/reset-offset';
 
 const SUITES: Record<string, (r: Report, s: Awaited<ReturnType<typeof bootstrap>>) => Promise<void>> = {
   openapi: runOpenApi,
@@ -33,6 +34,7 @@ const SUITES: Record<string, (r: Report, s: Awaited<ReturnType<typeof bootstrap>
   ratelimit: runRateLimit,
   timing: runTiming,
   load: runLoad,
+  'reset-offset': runResetOffset,
 };
 
 const ALL_SUITES = Object.keys(SUITES);

@@ -47,6 +47,7 @@ import {
   ApiWoaEventDataResponse,
   ApiWoaEventPlayerDataResponse,
   ApiDungeonsByPlayerIdResponse,
+  ApiDungeonsMetaResponse,
   ApiAquamarinePlayerResponse,
   ApiStormyIslesLeaderboardResponse,
   ApiOffersCatalogResponse,
@@ -167,6 +168,12 @@ export class ApiRestService {
     const response = await this.apiFetch<ApiDungeonsByPlayerIdResponse>(
       `${ApiRestService.apiUrl}dungeons/player/${playerId}`,
     );
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  public async getDungeonsMeta(): Promise<ApiResponse<ApiDungeonsMetaResponse>> {
+    const response = await this.apiFetch<ApiDungeonsMetaResponse>(`${ApiRestService.apiUrl}dungeons/meta`);
     if (!response.success) return response;
     return { success: true, data: response.data };
   }

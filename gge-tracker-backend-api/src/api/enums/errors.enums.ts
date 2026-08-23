@@ -6,6 +6,7 @@ export enum RouteErrorMessagesEnum {
   GenericInternalServerError = 'An internal server error occurred. Please try again later.',
   GenericNotFound = 'Not Found',
   GenericOk = 'OK',
+  GenericServiceUnavailable = 'Service Unavailable',
   GenericUnauthorized = 'Unauthorized',
   GenericUnknownStatus = 'Unknown Status',
   // Specific Messages
@@ -37,6 +38,7 @@ export enum RouteErrorMessagesEnum {
   InvalidSubdivisionId = 'Invalid subdivision ID',
   MissingLanguage = 'Language parameter is required',
   MissingParameter = 'Missing required parameter',
+  OffersStoreUnavailable = 'The offers store is unreachable right now. Please try again later.',
   PlayerNotFound = 'Player not found',
   RouteMustBeNonEmpty = 'Route must be a non-empty string',
   UnavailableForSpecialServers = 'This feature is unavailable for this server',

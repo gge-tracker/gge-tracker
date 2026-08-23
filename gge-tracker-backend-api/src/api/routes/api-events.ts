@@ -1,3 +1,4 @@
+import { NodeClickHouseClient } from '@clickhouse/client/dist/client';
 import { formatInTimeZone } from 'date-fns-tz';
 import * as express from 'express';
 import * as pg from 'pg';
@@ -5,6 +6,7 @@ import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { EventTypes } from '../enums/event-types.enums';
 import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
 import { ApiHelper } from '../helper/api-helper';
+import { CacheKeyBuilder } from '../helper/cache/cache-key-builder';
 import { qFlag, qNumber } from '../helper/parse-query';
 import { ApiInputErrorType, ApiInvalidInputType } from '../types/parameter.types';
 import { TEMP_SERVER_SETTINGS } from '../interfaces/temporary-server-events.config';
@@ -29,6 +31,34 @@ interface StormyIslesClickhouseRow {
   latest_collected_at: string;
 }
 
+interface WoaPlayerEventRow {
+  point: number;
+  created_at: string;
+  rank: string;
+}
+
+interface WoaCoverageRow {
+  first_tracked_event: string;
+  tracked_events_count: string;
+  tracked_events_since_player: string;
+}
+
+interface WoaPlayerTotals {
+  total_points: number;
+  events_count: number;
+  first_event: string | null;
+  best_point: number;
+  best_point_date: string | null;
+  best_rank: number | null;
+  best_rank_date: string | null;
+}
+
+interface WoaTrackingCoverage {
+  first_tracked_event: string | null;
+  tracked_events_count: number;
+  tracked_events_since_player: number;
+}
+
 /**
  * Abstract class providing API endpoints for event-related data (BTH, OR, GT, ...)
  *
@@ -46,6 +76,9 @@ export abstract class ApiEvents implements ApiHelper {
   private static readonly AQUAMARINE_CACHE_TTL_LEADERBOARD = 60 * 60;
   private static readonly AQUAMARINE_CACHE_TTL_PLAYER = 10 * 60;
   private static readonly AQUAMARINE_ALLOWED_ORDER_DIRS = new Set(['ASC', 'DESC']);
+
+  private static readonly WOA_PLAYER_EVENTS_LIMIT = 100;
+  private static readonly WOA_CACHE_TTL = 60 * 60;
 
   private static readonly SMALLINT_MAX = 32_767;
   private static readonly STORMY_ISLES_ITEMS_PER_PAGE = 15;
@@ -1401,10 +1434,21 @@ export abstract class ApiEvents implements ApiHelper {
         return;
       }
       const realPlayerId = ApiHelper.removeCountryCode(playerId);
+      const code = ApiHelper.getCountryCode(String(playerId));
       const clickhouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
       const database = ApiHelper.ggeTrackerManager.getOlapDatabaseFromRequestId(playerId);
       if (!database) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
+        return;
+      }
+
+      /* ---------------------------------
+       * Cache check
+       * --------------------------------- */
+      const cachedKey = new CacheKeyBuilder('woa_player_events').with(code).with(realPlayerId).build();
+      const cachedData = await ApiHelper.redisClient.get(cachedKey);
+      if (cachedData) {
+        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
         return;
       }
 
@@ -1422,7 +1466,6 @@ export abstract class ApiEvents implements ApiHelper {
         FROM ${database}.${ApiEvents.CLICKHOUSE_WOA_TABLE_NAME}
         QUALIFY player_id = {playerId:UInt32}
         ORDER BY created_at DESC
-        LIMIT 100
       `;
       const rawResult = await clickhouseClient.query({
         query,
@@ -1431,16 +1474,26 @@ export abstract class ApiEvents implements ApiHelper {
         },
       });
       const json = await rawResult.json();
+      const history = json.data as WoaPlayerEventRow[];
 
       /* ---------------------------------
        * Format results
        * --------------------------------- */
-      const events = json.data.map((row: any) => ({
+      const events = history.slice(0, ApiEvents.WOA_PLAYER_EVENTS_LIMIT).map((row) => ({
         point: row.point,
         date: new Date(row.created_at).toISOString(),
         rank: row.rank,
       }));
-      response.status(ApiHelper.HTTP_OK).send({ events });
+      const player = this.aggregateWoaPlayerHistory(history);
+      const coverage = await this.fetchWoaTrackingCoverage(
+        clickhouseClient,
+        database,
+        code,
+        history.at(-1)?.created_at ?? null,
+      );
+      const payload = { events, player, coverage };
+      void ApiHelper.updateCache(cachedKey, payload, ApiEvents.WOA_CACHE_TTL);
+      response.status(ApiHelper.HTTP_OK).send(payload);
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
@@ -2278,6 +2331,89 @@ export abstract class ApiEvents implements ApiHelper {
    * @param response express.Response object to send the response in case of errors
    * @returns An object containing the parsed parameters or null if validation fails
    */
+  private static aggregateWoaPlayerHistory(history: WoaPlayerEventRow[]): WoaPlayerTotals {
+    return history.reduce<WoaPlayerTotals>(
+      (totals, row) => {
+        const point = Number(row.point);
+        const rank = Number(row.rank);
+        const date = new Date(row.created_at).toISOString();
+        totals.total_points += point;
+        totals.events_count += 1;
+        totals.first_event = date;
+        if (point >= totals.best_point) {
+          totals.best_point = point;
+          totals.best_point_date = date;
+        }
+        if (totals.best_rank === null || rank <= totals.best_rank) {
+          totals.best_rank = rank;
+          totals.best_rank_date = date;
+        }
+        return totals;
+      },
+      {
+        total_points: 0,
+        events_count: 0,
+        first_event: null,
+        best_point: 0,
+        best_point_date: null,
+        best_rank: null,
+        best_rank_date: null,
+      },
+    );
+  }
+
+  private static async fetchWoaTrackingCoverage(
+    clickhouseClient: NodeClickHouseClient,
+    database: string,
+    code: string,
+    playerFirstEvent: string | null,
+  ): Promise<WoaTrackingCoverage> {
+    /* ---------------------------------
+     * Cache check
+     * --------------------------------- */
+    const cachedKey = new CacheKeyBuilder('woa_coverage')
+      .with(code)
+      .withParams({ since: playerFirstEvent ?? undefined })
+      .build();
+    const cachedData = await ApiHelper.redisClient.get(cachedKey);
+    if (cachedData) {
+      return JSON.parse(cachedData) as WoaTrackingCoverage;
+    }
+
+    /* ---------------------------------
+     * Query database for the tracking window of the server
+     * --------------------------------- */
+    const trackedSincePlayer = playerFirstEvent
+      ? 'uniqExactIf(created_at, created_at >= toDateTime({since:String}))'
+      : '0';
+    const rawResult = await clickhouseClient.query({
+      query: `
+        SELECT
+          min(created_at) AS first_tracked_event,
+          uniqExact(created_at) AS tracked_events_count,
+          ${trackedSincePlayer} AS tracked_events_since_player
+        FROM ${database}.${ApiEvents.CLICKHOUSE_WOA_TABLE_NAME}
+      `,
+      query_params: {
+        since: playerFirstEvent ?? '',
+      },
+    });
+    const json = await rawResult.json();
+
+    /* ---------------------------------
+     * Format results
+     * --------------------------------- */
+    const row = (json.data as WoaCoverageRow[])[0];
+    const trackedEventsCount = row ? Number(row.tracked_events_count) : 0;
+    const coverage: WoaTrackingCoverage = {
+      first_tracked_event: trackedEventsCount > 0 ? new Date(row.first_tracked_event).toISOString() : null,
+      tracked_events_count: trackedEventsCount,
+      tracked_events_since_player: row ? Number(row.tracked_events_since_player) : 0,
+    };
+    void ApiHelper.updateCache(cachedKey, coverage, ApiEvents.WOA_CACHE_TTL);
+    return coverage;
+  }
+
   private static parseWoaEventSharedParams(
     request: express.Request,
     response: express.Response,

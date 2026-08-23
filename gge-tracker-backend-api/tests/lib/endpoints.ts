@@ -37,6 +37,14 @@ export function seedsSatisfied(ep: Endpoint, seeds: Seeds): boolean {
   return (ep.needs ?? []).every((need) => available[need]);
 }
 
+export function upstreamUnavailable(ep: Endpoint, res: { status: number }): boolean {
+  return ep.upstream !== undefined && res.status === ep.upstream.status;
+}
+
+export function upstreamReason(ep: Endpoint): string {
+  return `${ep.upstream?.what ?? 'the upstream'} did not answer - the fixture stack cannot stand in for it`;
+}
+
 export function uncallableReason(ep: Endpoint): string {
   return (ep.needs ?? []).includes('specialServer')
     ? 'no server supporting this route discovered - it is limited to special servers'

@@ -5,7 +5,7 @@ import { config } from '../config';
 import { Report } from '../lib/report';
 import { Seeds } from '../lib/bootstrap';
 import { CATALOG } from '../lib/catalog';
-import { callable, headersFor, seedsSatisfied, uncallableReason } from '../lib/endpoints';
+import { callable, headersFor, seedsSatisfied, uncallableReason, upstreamReason, upstreamUnavailable } from '../lib/endpoints';
 import { request } from '../lib/http';
 import { reachable, noServerError, noLeak, statusIn, bodyHasKeys } from '../lib/assert';
 import { matchesSchema, responseSchemaFor, specification } from '../lib/response-schema';
@@ -31,7 +31,8 @@ export async function runFunctional(report: Report, seeds: Seeds): Promise<void>
     });
 
     section.expect(`${label} reachable`, reachable(res), res.ms);
-    section.expect(`${label} no 5xx`, noServerError(res));
+    if (upstreamUnavailable(ep, res)) section.skip(`${label} no 5xx`, upstreamReason(ep));
+    else section.expect(`${label} no 5xx`, noServerError(res));
     section.expect(`${label} no leak`, noLeak(res));
 
     if (seedsSatisfied(ep, seeds)) {

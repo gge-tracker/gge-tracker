@@ -1036,6 +1036,7 @@ export class GenericFetchAndSaveBackend {
           }
         }
       }
+      await this.upsertParameter('dungeons_scan', dungeonsToUpdate.length);
       try {
         const updateValues: (Date | number)[] = [];
         const updatePlaceholders: string[] = [];
@@ -4207,6 +4208,20 @@ export class GenericFetchAndSaveBackend {
       SET value = NULL
     `;
     await this.pgSqlQuery(pgQuery);
+  }
+
+  /**
+   * Records a parameter whose row is not part of the seeded set, creating it on first run
+   */
+  private async upsertParameter(identifier: string, value: number): Promise<void> {
+    const pgQuery = `
+      INSERT INTO parameters (id, identifier, value, updated_at)
+      SELECT COALESCE(MAX(id), 0) + 1, $1, $2, NOW() FROM parameters
+      ON CONFLICT (identifier)
+      DO UPDATE SET value = EXCLUDED.value,
+        updated_at = NOW()
+    `;
+    await this.pgSqlQuery(pgQuery, [identifier, value]);
   }
 
   private async updateParameter(identifier: string, value: number): Promise<void> {

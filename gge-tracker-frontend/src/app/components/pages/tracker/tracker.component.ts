@@ -10,6 +10,7 @@ import { ModalTableComponent } from '@ggetracker-components/modal-table/modal-ta
 import { ChartsWrapperComponent } from '@ggetracker-modules/charts-client/charts-wrapper.component';
 import {
   ApiDungeonsAttackHistory,
+  ApiDungeonsMetaResponse,
   ApiDungeonsResponse,
   ChartAdvancedOptions,
   Dungeon,
@@ -77,6 +78,7 @@ export class TrackerComponent extends GenericComponent {
   public page = 1;
   public headers: [string, string, string, boolean][] = [];
   public dungeons: Dungeon[] = [];
+  public dungeonsMeta: ApiDungeonsMetaResponse | null = null;
   public filterByPlayerName: string | null = null;
   public filterByAttackCooldown: number | null = null;
   public positionX: number | null = null;
@@ -310,6 +312,11 @@ export class TrackerComponent extends GenericComponent {
     void this.getData();
   }
 
+  private async getMeta(): Promise<void> {
+    const response = await this.apiRestService.getDungeonsMeta();
+    this.dungeonsMeta = response.success ? response.data : null;
+  }
+
   private async getData(): Promise<void> {
     if (this.serverService.currentServer && !this.allowedServers.includes(this.serverService.currentServer.name)) {
       this.isInLoading = false;
@@ -323,6 +330,7 @@ export class TrackerComponent extends GenericComponent {
       this.refreshDataAnimationSpinner = false;
       return;
     }
+    void this.getMeta();
     this.getGenericData()
       .then((dungeons) => {
         this.responseTime = dungeons.response;

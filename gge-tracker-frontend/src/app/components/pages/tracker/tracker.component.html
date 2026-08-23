@@ -79,6 +79,12 @@
           </div>
         </div>
         }
+        @if (dungeonsMeta && dungeonsMeta.last_scan_at) {
+        <div class="dungeons-status">
+          <i class="fa-solid fa-satellite-dish"></i>
+          <span>{{ 'Dernier scan' | translate }} : {{ dungeonsMeta.last_scan_at | date:'short' }}</span>
+        </div>
+        }
         <div class="flex flex-col justify-between gap-6 mt-2">
           <app-table [sort]="''" [reverse]="false" [isInLoading]="isInLoading" [maxPage]="maxPage!" [page]="page"
             [search]="''" [headers]="headers" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()"

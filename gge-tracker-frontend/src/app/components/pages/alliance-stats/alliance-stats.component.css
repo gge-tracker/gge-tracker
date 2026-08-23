@@ -912,3 +912,165 @@ div[after] {
   }
 }
 
+
+.gge-skeleton {
+  --skeleton-base: rgba(0, 0, 0, 0.34);
+  --skeleton-sheen: rgba(255, 251, 230, 0.18);
+  animation: gge-skeleton-sheen 1.6s ease-in-out infinite;
+  background:
+    linear-gradient(
+      100deg,
+      rgba(255, 255, 255, 0) 34%,
+      var(--skeleton-sheen) 50%,
+      rgba(255, 255, 255, 0) 66%
+    )
+      0 0 / 260% 100%,
+    var(--skeleton-base);
+  border-radius: 6px;
+  display: block;
+}
+
+.gge-skeleton--parchment {
+  --skeleton-base: rgba(120, 96, 52, 0.22);
+  --skeleton-sheen: rgba(255, 251, 230, 0.75);
+}
+
+.alliance-hero--skeleton .alliance-stats-container {
+  cursor: default;
+  padding-top: 1.5rem;
+}
+
+.alliance-skeleton-title {
+  height: 2rem;
+  margin: 0 auto;
+  width: min(320px, 60%);
+}
+
+.alliance-skeleton-badge {
+  height: 1.1rem;
+  margin: 0.9rem auto 0;
+  width: min(240px, 48%);
+}
+
+.stat-card--skeleton {
+  pointer-events: none;
+}
+
+.stat-card--skeleton .stat-card-content {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.alliance-skeleton-icon {
+  border-radius: 50%;
+  height: 35px;
+  width: 35px;
+}
+
+.alliance-skeleton-value {
+  height: 1.5rem;
+  width: 70%;
+}
+
+.alliance-skeleton-change {
+  height: 0.9rem;
+  width: 45%;
+}
+
+.alliance-skeleton-label {
+  height: 0.9rem;
+  width: 60%;
+}
+
+.alliance-tabs--skeleton {
+  pointer-events: none;
+}
+
+.alliance-tab--skeleton {
+  cursor: default;
+}
+
+.alliance-skeleton-tab {
+  height: 1rem;
+  width: 74px;
+}
+
+.alliance-skeleton-line {
+  height: 1.05rem;
+  margin-bottom: 0.75rem;
+  width: 100%;
+}
+
+.alliance-skeleton-line:nth-child(3n + 2) {
+  width: 86%;
+}
+
+.alliance-skeleton-line:nth-child(3n + 3) {
+  width: 93%;
+}
+
+.alliance-skeleton-subtitle {
+  height: 1.4rem;
+  margin: 0 auto 1rem;
+  width: min(280px, 70%);
+}
+
+.pulse-skeleton-table {
+  background: rgba(255, 251, 230, 0.35);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+}
+
+.alliance-skeleton-chart {
+  height: 320px;
+  width: 100%;
+}
+
+.table-skeleton-row {
+  pointer-events: none;
+}
+
+.table-skeleton-cell {
+  --skeleton-base: rgba(120, 96, 52, 0.3);
+  --skeleton-sheen: rgba(255, 251, 230, 0.42);
+  height: 0.95rem;
+  min-width: 40px;
+}
+
+.table-skeleton-row:nth-child(2n) .table-skeleton-cell {
+  animation-delay: 0.1s;
+}
+
+.table-skeleton-row:nth-child(3n) .table-skeleton-cell {
+  animation-delay: 0.2s;
+}
+
+@keyframes gge-skeleton-sheen {
+  from {
+    background-position: 190% 0;
+  }
+
+  to {
+    background-position: -70% 0;
+  }
+}
+
+@keyframes gge-skeleton-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gge-skeleton {
+    animation: gge-skeleton-breathe 2.4s ease-in-out infinite;
+    background: var(--skeleton-base);
+  }
+}

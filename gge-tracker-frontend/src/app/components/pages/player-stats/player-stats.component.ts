@@ -24,6 +24,8 @@ import {
   ApiPlayerStatsType,
   ApiRankingStatsPlayer,
   ApiResponse,
+  ApiWoaEventPlayerAggregates,
+  ApiWoaEventPlayerCoverage,
   CastleQuantity,
   CastleType,
   ChartOptions,
@@ -39,6 +41,7 @@ import {
   RankingFameTitle,
   Top3EventPlayers,
   WoaEventList,
+  WoaPlayerSummary,
 } from '@ggetracker-interfaces/empire-ranking';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { LevelPipe } from '@ggetracker-pipes/level.pipe';
@@ -49,9 +52,18 @@ import Gradient from 'javascript-color-gradient';
 import { ApexAxisChartSeries } from 'ng-apexcharts';
 import { ModalTableComponent } from '@ggetracker-components/modal-table/modal-table.component';
 import { PlayerStatsCardComponent } from './player-stats-card/player-stats-card.component';
+import { StatsPanelComponent } from './stats-panel/stats-panel.component';
 import { combineLatest, firstValueFrom } from 'rxjs';
 import { CalendarCheck, LucideAngularModule, SquareUser } from 'lucide-angular';
 import { EventCardComponent } from '@ggetracker-pages/events/event-card/event-card.component';
+
+const MS_PER_HOUR = 3_600_000;
+const HOURS_PER_WEEK = 168;
+const DEFAULT_RESET_OFFSET = -1;
+// Below three recorded runs the card list already says everything a summary could
+const WOA_SUMMARY_MIN_EVENTS = 3;
+const WOA_TREND_MIN_EVENTS = 4;
+const WOA_TREND_WINDOW = 3;
 
 @Component({
   selector: 'app-player-stats',
@@ -71,6 +83,7 @@ import { EventCardComponent } from '@ggetracker-pages/events/event-card/event-ca
     NgStyle,
     EventCardComponent,
     ModalTableComponent,
+    StatsPanelComponent,
   ],
   standalone: true,
   templateUrl: './player-stats.component.html',
@@ -170,6 +183,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     patriarch: 0,
   };
   public woaHistory: WoaEventList[] = [];
+  public woaSummary: WoaPlayerSummary | null = null;
   public monumentsList: Monument[] = [];
   public aquamarineSnapshots: ApiAquamarineSnapshot[] = [];
   public aquamarineLoadState: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
@@ -409,6 +423,16 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     }
   }
 
+  public get viewerTimeZoneLabel(): string {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const minutes = -new Date().getTimezoneOffset();
+    const sign = minutes < 0 ? '-' : '+';
+    const absolute = Math.abs(minutes);
+    const hours = String(Math.floor(absolute / 60)).padStart(2, '0');
+    const rest = String(absolute % 60).padStart(2, '0');
+    return `${zone}, UTC${sign}${hours}:${rest}`;
+  }
+
   public getMonthNameByDate(date: string): string {
     const [year, month] = date.split('-');
     return this.translateService.instant(this.monthNames[Number(month) - 1]) + ' ' + year;
@@ -607,6 +631,30 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       item.owner.toLowerCase().includes(term)
     );
   };
+
+  public get castleKinds(): { icon: string; label: string; count: number }[] {
+    return [
+      { icon: '/assets/castle1.png', label: 'Chateau principal', count: this.quantity.castle },
+      { icon: '/assets/castle4.png', label: 'Avant-poste', count: this.quantity.outpost },
+      { icon: '/assets/monument.png', label: 'Monument', count: this.quantity.monument },
+      { icon: '/assets/labo.png', label: 'Laboratoire', count: this.quantity.laboratory },
+      { icon: '/assets/tour-royale.png', label: 'Tour royale', count: this.quantity.royalTower },
+      { icon: '/assets/capitale.png', label: 'Capitale', count: this.quantity.capital },
+      { icon: '/assets/cite-marchande.png', label: 'Cité marchande', count: this.quantity.city },
+    ];
+  }
+
+  public get castlesByRealm(): { kingdom: number; name: string; count: number }[] {
+    const counts = new Map<number, number>();
+    for (const monument of this.monumentsList) {
+      const kingdom = monument.kingdom ?? 0;
+      counts.set(kingdom, (counts.get(kingdom) ?? 0) + 1);
+    }
+    return this.worlds
+      .filter((world) => counts.has(world.id))
+      .map((world) => ({ kingdom: world.id, name: world.name, count: counts.get(world.id) ?? 0 }))
+      .sort((a, b) => b.count - a.count);
+  }
 
   public getRealmName(realmName?: number): string {
     if (realmName === undefined) return 'Unknown';
@@ -1272,6 +1320,50 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     };
   }
 
+  /**
+   * Condenses the wheel of affluence history into what the card list cannot show at a glance:
+   * one ticket spun costs one ticket and scores one point, so the points a player accumulated
+   * over an event are the tickets they spent on it
+   *
+   * @param recentEvents The events the API returned as cards, newest first
+   * @param player The exact aggregates over the player's whole tracked history
+   * @param coverage How far back the WoA scraper reaches on this server
+   */
+  private buildWoaSummary(
+    recentEvents: WoaEventList[],
+    player: ApiWoaEventPlayerAggregates,
+    coverage: ApiWoaEventPlayerCoverage,
+  ): WoaPlayerSummary | null {
+    const eventCount = Number(player.events_count);
+    if (eventCount < WOA_SUMMARY_MIN_EVENTS) return null;
+    const totalTickets = Number(player.total_points);
+    const averageTickets = eventCount > 0 ? Math.round(totalTickets / eventCount) : 0;
+    const coverageStartIso = player.first_event ?? coverage.first_tracked_event;
+    let trendPercent: number | null = null;
+    if (recentEvents.length >= WOA_TREND_MIN_EVENTS && averageTickets > 0) {
+      const chronological = [...recentEvents].sort((a, b) => a.date.getTime() - b.date.getTime());
+      const recent = chronological.slice(-WOA_TREND_WINDOW);
+      const recentAverage = recent.reduce((total, event) => total + Number(event.point), 0) / recent.length;
+      trendPercent = Math.round((recentAverage / averageTickets - 1) * 100);
+    }
+    return {
+      totalTickets,
+      eventCount,
+      averageTickets,
+      bestEvent: {
+        value: Number(player.best_point),
+        date: player.best_point_date ? new Date(player.best_point_date) : null,
+      },
+      bestRankEvent: {
+        value: Number(player.best_rank),
+        date: player.best_rank_date ? new Date(player.best_rank_date) : null,
+      },
+      trendPercent,
+      coverageStart: coverageStartIso ? new Date(coverageStartIso) : null,
+      trackedEvents: Number(coverage.tracked_events_since_player),
+    };
+  }
+
   private initWarRealmsData(): void {
     const warRealms = this.data['player_event_war_realms_history'];
     // this.setGenericVariations(warRealms);
@@ -1555,6 +1647,20 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     this.initChartOption('aquamarine', series, colors);
   }
 
+  private weekResetInstant(date: Date, resetOffset: number): Date {
+    const monday = new Date(date);
+    const dow = monday.getUTCDay();
+    monday.setUTCDate(monday.getUTCDate() - (dow === 0 ? 6 : dow - 1));
+    monday.setUTCHours(0, 0, 0, 0);
+    const candidate = monday.getTime() + (resetOffset - 1) * MS_PER_HOUR;
+    const week = HOURS_PER_WEEK * MS_PER_HOUR;
+    return new Date(candidate + Math.floor((date.getTime() - candidate) / week) * week);
+  }
+
+  private localHourOfSlot(startInstant: Date, index: number): number {
+    return new Date(startInstant.getTime() + index * MS_PER_HOUR).getHours();
+  }
+
   private generateWeekHours(start: Date, end: Date): string[] {
     const hours: string[] = [];
     const current = new Date(start);
@@ -1565,21 +1671,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     return hours;
   }
 
-  /**
-   * Lays a week's loot history out over its 168 hours, one slot per hour
-   *
-   * @param weekHours Every hour of the week, as `YYYY-MM-DD HH:mm`
-   * @param RESET_OFFSET The server's timezone offset, which decides when the weekly ranking resets
-   * @param dates The hour each known point belongs to
-   * @param points The value of each known point
-   * @returns One value per hour of the week, null only past the end of its data
-   */
-  private fillLootData(
-    weekHours: string[],
-    RESET_OFFSET: number,
-    dates: string[],
-    points: number[],
-  ): (number | null)[] {
+  private fillLootData(weekHours: string[], dates: string[], points: number[]): (number | null)[] {
     const valueByHour = new Map<string, number>();
     for (const [index, hour] of dates.entries()) {
       if (!valueByHour.has(hour)) {
@@ -1594,9 +1686,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     }
     let lastValue: number | null = null;
     return weekHours.map((hour, index) => {
-      const hourDate = new Date(hour + ':00Z');
-      const isMondayReset = hourDate.getUTCDay() === 1 && hourDate.getUTCHours() === RESET_OFFSET + 1;
-      if (isMondayReset) {
+      if (index === 0) {
         lastValue = 0;
         return 0;
       }
@@ -1626,25 +1716,17 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     lootPoints.sort((a, b) => {
       return new Date(a.date).getTime() - new Date(b.date).getTime();
     });
-    const RESET_OFFSET = this.timezoneOffset ?? 0;
+    const RESET_OFFSET = this.timezoneOffset ?? DEFAULT_RESET_OFFSET;
     const firstPointDate = new Date(lootPoints[0].date);
-    const firstMonday = new Date(firstPointDate);
-    const dow = firstMonday.getUTCDay();
-    firstMonday.setUTCDate(firstMonday.getUTCDate() - (dow === 0 ? 6 : dow - 1));
-
-    firstMonday.setUTCHours(-1 + RESET_OFFSET, 0, 0, 0);
+    const firstMonday = this.weekResetInstant(firstPointDate, RESET_OFFSET);
     const currentMonday = new Date(firstMonday);
     const currentDate = new Date();
     const allWeeksHours: string[][] = [];
 
     while (currentMonday.getTime() <= currentDate.getTime()) {
-      const weekEnd = new Date(currentMonday);
-      weekEnd.setUTCDate(weekEnd.getUTCDate() + 7);
-      weekEnd.setUTCHours(RESET_OFFSET, 0, 0, 0);
-      weekEnd.setUTCHours(weekEnd.getUTCHours() - 2);
-
+      const weekEnd = new Date(currentMonday.getTime() + (HOURS_PER_WEEK - 1) * MS_PER_HOUR);
       allWeeksHours.push(this.generateWeekHours(currentMonday, weekEnd));
-      currentMonday.setUTCDate(currentMonday.getUTCDate() + 7);
+      currentMonday.setTime(currentMonday.getTime() + HOURS_PER_WEEK * MS_PER_HOUR);
     }
 
     const dates = lootPoints.map((p) => {
@@ -1653,11 +1735,10 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       return d.toISOString().slice(0, 16).replace('T', ' ');
     });
     const points = lootPoints.map((p) => Number(p.point));
-    const allWeeksData = allWeeksHours.map((weekHours) => this.fillLootData(weekHours, RESET_OFFSET, dates, points));
+    const allWeeksData = allWeeksHours.map((weekHours) => this.fillLootData(weekHours, dates, points));
     const colors = ['#bfb58f', '#cc9a12'];
     const series = allWeeksData.map((weekData, index) => {
-      const weekStartDate = new Date(firstMonday);
-      weekStartDate.setUTCDate(firstMonday.getUTCDate() + index * 7);
+      const weekStartDate = new Date(firstMonday.getTime() + index * HOURS_PER_WEEK * MS_PER_HOUR);
       if (weekData.length > allWeeksData[0].length) {
         weekData = weekData.slice(0, allWeeksData[0].length);
       }
@@ -1721,6 +1802,11 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     // Initialize the chart 'loot-heatmap' (heatmap loot history)
     const seriesHeatmap: ApexAxisChartSeries = [];
     const allValues: number[] = [];
+    const lastWeekStart = firstMonday.getTime() + Math.max(0, allWeeksData.length - 1) * HOURS_PER_WEEK * MS_PER_HOUR;
+    const dayLabels = Array.from(
+      { length: 7 },
+      (_, dayIndex) => days[new Date(lastWeekStart + (dayIndex * 24 + 12) * MS_PER_HOUR).getDay()],
+    );
     const seriesNewestFirst = [...series].reverse();
     seriesNewestFirst.forEach((weekSerie) => {
       if (weekSerie.data.length === 0) return;
@@ -1738,7 +1824,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       });
       const heatmapData: { x: string; y: number }[] = [];
       dailyMax.forEach((maxValue, dayIndex) => {
-        const xLabel = days[dayIndex + 1 > 6 ? 0 : dayIndex + 1];
+        const xLabel = dayLabels[dayIndex] ?? days[0];
         heatmapData.push({
           x: xLabel,
           y: maxValue,
@@ -1756,7 +1842,10 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     this.charts['loot-heatmap'].plotOptions.heatmap!.colorScale!.ranges = this.buildHeatmapRanges(maxValue);
     // Initialize the hourly activity rate chart 'loot-activity' (hourly activity rate loot history)
     const lastWeeksData = allWeeksData.slice(-2);
-    const hourlyActivity = this.computeHourlyActivityRate(lastWeeksData.flat());
+    const lastWeeksStart = new Date(
+      firstMonday.getTime() + Math.max(0, allWeeksData.length - 2) * HOURS_PER_WEEK * MS_PER_HOUR,
+    );
+    const hourlyActivity = this.computeHourlyActivityRate(lastWeeksData.flat(), lastWeeksStart);
     const seriesHourlyActivity: ApexAxisChartSeries = [
       {
         name: this.translateService.instant("Taux d'activité par heure"),
@@ -1765,7 +1854,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     ];
     this.initHourlyActivityChart('hourly-activity', seriesHourlyActivity);
     // Initialize the average gain per hour chart 'loot-average-gain' (average gain per hour loot history)
-    const avgGainPerHour = this.computeAverageGainPerHour(lastWeeksData.flat());
+    const avgGainPerHour = this.computeAverageGainPerHour(lastWeeksData.flat(), lastWeeksStart);
     const seriesAvgGain: ApexAxisChartSeries = [
       {
         name: this.translateService.instant('Gain moyen par heure'),
@@ -1779,7 +1868,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     this.spinnerLoadingByChart['loot-weeks'] = false;
     this.charts['loot'].xaxis.type = 'datetime';
     const weekHoursReference = allWeeksHours[0];
-    for (let index = 1; index < weekHoursReference.length; index++) {
+    for (let index = 1; index < allWeeksHours.length; index++) {
       allWeeksHours[index] = weekHoursReference;
     }
     this.charts['loot'].xaxis.categories = allWeeksHours.flat();
@@ -1797,36 +1886,14 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     const needPMFormat = this.languageService.getCurrentLang() === 'en';
     const tooltipX = this.charts['loot'].tooltip.x;
     if (!tooltipX) return;
-    const offsetHours = this.timezoneOffset ?? 0;
-    tooltipX.formatter = function (value): string {
-      const date = new Date(value);
-      const dayName = days[date.getDay()];
-      const hours = date.getHours().toString().padStart(2, '0');
-      const minutes = date.getMinutes().toString().padStart(2, '0');
-      if (needPMFormat) {
-        const ampm = Number(hours) >= 12 ? 'PM' : 'AM';
-        const hourIn12Format = Number(hours) % 12 || 12;
-        return `${dayName} ${hourIn12Format}:${minutes} ${ampm}`;
-      }
-      return `${dayName} ${hours}h${minutes}`;
-    };
     tooltipX.formatter = function (_value, { dataPointIndex }): string {
-      const now = new Date();
-      const monday = new Date(now);
-      const day = monday.getDay() || 7;
-      monday.setDate(monday.getDate() - day + 1);
-      monday.setHours(offsetHours + 1, 0, 0, 0);
-      const pointDate = new Date(monday);
-      pointDate.setHours(pointDate.getHours() + dataPointIndex + 1);
-      const dayName = days[pointDate.getDay()];
-      const hours = pointDate.getHours().toString().padStart(2, '0');
-      const minutes = pointDate.getMinutes().toString().padStart(2, '0');
+      const dayName = days[(Math.floor(dataPointIndex / 24) + 1) % 7];
+      const hour = dataPointIndex % 24;
       if (needPMFormat) {
-        const ampm = Number(hours) >= 12 ? 'PM' : 'AM';
-        const hourIn12Format = Number(hours) % 12 || 12;
-        return `${dayName} ${hourIn12Format}:${minutes} ${ampm}`;
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        return `${dayName} ${hour % 12 || 12}:00 ${ampm}`;
       }
-      return `${dayName} ${hours}h${minutes}`;
+      return `${dayName} ${hour.toString().padStart(2, '0')}h00`;
     };
     this.charts['loot'].chart.animations = {
       enabled: false,
@@ -1843,14 +1910,14 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
    * @param data An array of numbers (or nulls) representing the data points for which to compute the hourly activity rate
    * @returns An array of hourly activity rates for each hour of the day (0-23) expressed as percentages
    */
-  private computeHourlyActivityRate(data: (number | null)[]): number[] {
+  private computeHourlyActivityRate(data: (number | null)[], startInstant: Date): number[] {
     const activityCount: number[] = Array.from({ length: 24 }, () => 0);
     const totalCount: number[] = Array.from({ length: 24 }, () => 0);
     for (let index = 1; index < data.length; index++) {
       const current = data[index];
       const previous = data[index - 1];
       if (current === null || previous === null) continue;
-      const hour = index % 24;
+      const hour = this.localHourOfSlot(startInstant, index - 1);
       totalCount[hour]++;
       if (current > previous) {
         activityCount[hour]++;
@@ -1868,7 +1935,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
    * @param data An array of numbers (or nulls) representing the data points for which to compute the average gain per hour
    * @returns An array of average gains for each hour of the day (0-23)
    */
-  private computeAverageGainPerHour(data: (number | null)[]): number[] {
+  private computeAverageGainPerHour(data: (number | null)[], startInstant: Date): number[] {
     const gains: number[] = Array.from({ length: 24 }, () => 0);
     const counts: number[] = Array.from({ length: 24 }, () => 0);
     for (let index = 1; index < data.length; index++) {
@@ -1877,7 +1944,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       if (current === null || previous === null) continue;
 
       if (current > previous) {
-        const hour = index % 24;
+        const hour = this.localHourOfSlot(startInstant, index - 1);
         gains[hour] += current - previous;
         counts[hour]++;
       }
@@ -2045,8 +2112,10 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
             from: this.utilitiesService.calculateWoaEventBeginTime(new Date(event.date)),
             to: this.utilitiesService.calculateWoaEventEndTime(new Date(event.date)),
           }));
+          this.woaSummary = this.buildWoaSummary(this.woaHistory, data.player, data.coverage);
           this.woaLoadState = 'loaded';
         } else {
+          this.woaSummary = null;
           this.woaLoadState = 'error';
         }
         this.cdr.detectChanges();

@@ -22,6 +22,7 @@
     "test:api:static": "ts-node --project tests/tsconfig.json tests/run.ts openapi coverage",
     "test:api:openapi": "ts-node --project tests/tsconfig.json tests/run.ts openapi",
     "test:api:coverage": "ts-node --project tests/tsconfig.json tests/run.ts coverage",
+    "test:api:reset-offset": "ts-node --project tests/tsconfig.json tests/run.ts reset-offset",
     "test:api:security": "ts-node --project tests/tsconfig.json tests/run.ts security",
     "test:api:load": "ts-node --project tests/tsconfig.json tests/run.ts timing load",
     "test:api:full": "ts-node --project tests/tsconfig.json tests/run.ts all",

@@ -452,8 +452,26 @@ export interface ApiWoaEventPlayerData {
   date: string;
   rank: number;
 }
+export interface ApiWoaEventPlayerAggregates {
+  total_points: number;
+  events_count: number;
+  first_event: string | null;
+  best_point: number;
+  best_point_date: string | null;
+  best_rank: number;
+  best_rank_date: string | null;
+}
+
+export interface ApiWoaEventPlayerCoverage {
+  first_tracked_event: string | null;
+  tracked_events_count: number;
+  tracked_events_since_player: number;
+}
+
 export interface ApiWoaEventPlayerDataResponse {
   events: ApiWoaEventPlayerData[];
+  player: ApiWoaEventPlayerAggregates;
+  coverage: ApiWoaEventPlayerCoverage;
 }
 
 export interface ApiLiveRanking {
@@ -555,6 +573,10 @@ export interface ApiDungeonsByPlayerIdResponse extends ApiGenericResponse {
 
 export interface ApiDungeonsResponse extends ApiGenericResponse {
   dungeons: ApiDungeonsResource[];
+}
+
+export interface ApiDungeonsMetaResponse {
+  last_scan_at: string | null;
 }
 
 export interface ApiStormFort {
@@ -975,6 +997,22 @@ export interface WoaEventList {
   rank: number;
   from: Date;
   to: Date;
+}
+
+export interface WoaSummaryHighlight {
+  value: number;
+  date: Date | null;
+}
+
+export interface WoaPlayerSummary {
+  totalTickets: number;
+  eventCount: number;
+  averageTickets: number;
+  bestEvent: WoaSummaryHighlight;
+  bestRankEvent: WoaSummaryHighlight;
+  trendPercent: number | null;
+  coverageStart: Date | null;
+  trackedEvents: number;
 }
 
 export interface ApiGrandTournamentAlliancesSearchResponse {

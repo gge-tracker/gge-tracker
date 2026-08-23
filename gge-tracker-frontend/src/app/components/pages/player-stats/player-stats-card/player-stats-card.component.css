@@ -12,11 +12,6 @@ i.fas.fa-spinner.fa-spin {
   height: 365px;
   overflow-y: scroll;
 }
-.cover-might {
-  background-position-y: center !important;
-  border: 1px white solid;
-  color: white;
-}
 .bar {
   max-height: 450px;
   overflow-y: auto;
@@ -34,9 +29,6 @@ i.fas.fa-spinner.fa-spin {
   position: absolute;
   top: 60%;
   transform: translate(-50%, -50%);
-}
-.stats-container {
-  min-height: 40vh;
 }
 .table-scroll thead th {
   position: sticky;
@@ -94,8 +86,9 @@ button.event-scope:disabled {
   opacity: 0.7;
 }
 .event-scope i {
-  font-size: 0.72rem;
-  opacity: 0.75;
+  font-size: 0.72rem !important;
+  margin: 0 !important;
+  opacity: 0.75 !important;
 }
 .event-scope-count {
   font-weight: 600;

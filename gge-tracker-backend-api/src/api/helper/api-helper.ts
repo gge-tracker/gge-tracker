@@ -35,6 +35,7 @@ export abstract class ApiHelper {
   public static readonly HTTP_FORBIDDEN = Status.FORBIDDEN;
   public static readonly HTTP_NOT_FOUND = Status.NOT_FOUND;
   public static readonly HTTP_INTERNAL_SERVER_ERROR = Status.INTERNAL_SERVER_ERROR;
+  public static readonly HTTP_SERVICE_UNAVAILABLE = Status.SERVICE_UNAVAILABLE;
   public static readonly GGE_BASE_URL = 'https://empire-html5.goodgamestudios.com';
   public static readonly ASSETS_BASE_URL = this.GGE_BASE_URL + '/default';
   public static readonly CONFIG_BASE_URL = this.GGE_BASE_URL + '/config';
@@ -91,6 +92,7 @@ export abstract class ApiHelper {
     [Status.FORBIDDEN]: RouteErrorMessagesEnum.GenericForbidden,
     [Status.NOT_FOUND]: RouteErrorMessagesEnum.GenericNotFound,
     [Status.INTERNAL_SERVER_ERROR]: RouteErrorMessagesEnum.GenericInternalServerError,
+    [Status.SERVICE_UNAVAILABLE]: RouteErrorMessagesEnum.GenericServiceUnavailable,
   };
 
   private static _file: Buffer | null = null;
@@ -200,6 +202,41 @@ export abstract class ApiHelper {
     const path = await import('node:path');
     this.file = await fs.promises.readFile(path.join(__dirname, './../assets/assets.json'));
     return this.file;
+  }
+
+  public static invalidateAssets(): void {
+    this._file = null;
+  }
+
+  /**
+   * Identifier of the Goodgame Empire build the cached assets belong to
+   */
+  public static async getGgeBuildVersion(): Promise<string> {
+    const cached = await this.redisClient?.get(this.REDIS_KEY_GGE_VERSION).catch(() => null);
+    if (cached) return cached;
+    try {
+      const fs = await import('node:fs');
+      // eslint-disable-next-line unicorn/import-style
+      const path = await import('node:path');
+      const raw = await fs.promises.readFile(path.join(__dirname, './../assets/BUILD_VERSION'));
+      const stored = raw.toString().trim();
+      if (stored) {
+        await this.redisClient?.set(this.REDIS_KEY_GGE_VERSION, stored).catch(() => null);
+        return stored;
+      }
+    } catch {}
+    return '0';
+  }
+
+  public static async setGgeBuildVersion(version: string): Promise<void> {
+    const fs = await import('node:fs');
+    // eslint-disable-next-line unicorn/import-style
+    const path = await import('node:path');
+    const directory = path.join(__dirname, './../assets/');
+    await fs.promises.mkdir(directory, { recursive: true });
+    await fs.promises.writeFile(path.join(directory, 'BUILD_VERSION'), version);
+    // Deliberately without a TTL: an expiry would silently reset the version to "0"
+    await this.redisClient?.set(this.REDIS_KEY_GGE_VERSION, version).catch(() => null);
   }
 
   public static async getCacheVersion(redis: RedisClientType<any>, language: string): Promise<string> {

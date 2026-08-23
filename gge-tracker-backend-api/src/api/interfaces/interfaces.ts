@@ -17,7 +17,7 @@ export interface IApiToken {
   zoneId?: number;
   code: string;
   zone: string;
-  timezoneOffset?: number;
+  serverResetOffset?: number;
 }
 
 export interface ILimitedApiToken {

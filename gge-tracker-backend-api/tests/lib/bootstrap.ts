@@ -20,6 +20,7 @@ export interface Seeds {
   eventPlayerName?: string;
   woaEventId?: string;
   woaEventDate?: string;
+  woaPlayerId?: string;
   movementPlayerName?: string;
   renamePlayerName?: string;
   stormOccupierName?: string;
@@ -94,6 +95,12 @@ export async function bootstrap(): Promise<Seeds> {
     const woaEvent = woaRes.body?.events?.[0];
     if (woaEvent?.id) seeds.woaEventId = String(woaEvent.id);
     if (woaEvent?.date) seeds.woaEventDate = String(woaEvent.date).slice(0, 10);
+
+    if (seeds.woaEventId) {
+      const woaParticipants = await request({ path: `/woa/events/id/${seeds.woaEventId}?page=1`, headers: header });
+      const participant = woaParticipants.body?.players?.[0];
+      if (participant?.player_id) seeds.woaPlayerId = String(participant.player_id);
+    }
 
     const movementsRes = await request({ path: '/server/movements?page=1', headers: header });
     seeds.movementPlayerName = movementsRes.body?.movements?.[0]?.player_name ?? undefined;
@@ -177,6 +184,6 @@ export function describeSeeds(s: Seeds): string {
     `player=${s.playerId ?? '-'}/${s.playerName ?? '-'}`,
     `alliance=${s.allianceId ?? '-'}/${s.allianceName ?? '-'}`,
     `castle=${s.castleId ?? '-'}/${s.castlePlayerName ?? '-'}`,
-    `woa=${s.woaEventId ?? '-'}@${s.woaEventDate ?? '-'}`,
+    `woa=${s.woaEventId ?? '-'}@${s.woaEventDate ?? '-'}/player=${s.woaPlayerId ?? '-'}`,
   ].join('  ');
 }

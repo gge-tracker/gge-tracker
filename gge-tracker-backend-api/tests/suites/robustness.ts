@@ -4,7 +4,7 @@
 import { Report, Section } from '../lib/report';
 import { Seeds } from '../lib/bootstrap';
 import { CATALOG } from '../lib/catalog';
-import { callable, headersFor } from '../lib/endpoints';
+import { callable, headersFor, upstreamReason, upstreamUnavailable } from '../lib/endpoints';
 import { request } from '../lib/http';
 import { noServerError, noLeak, statusIn } from '../lib/assert';
 import { NUMERIC_ABUSE, UNEXPECTED_METHODS, MALFORMED_JSON_BODIES, HOSTILE_SERVER_HEADERS } from '../lib/payloads';
@@ -41,7 +41,8 @@ export async function runRobustness(report: Report, seeds: Seeds): Promise<void>
       for (const payload of NUMERIC_ABUSE) {
         const res = await request({ method: 'GET', path: replaceSegment(built, index, payload), headers });
         const base = `GET ${ep.id} seg[${index}]="${payload}"`;
-        section.expect(`${base} no 5xx`, noServerError(res));
+        if (upstreamUnavailable(ep, res)) section.skip(`${base} no 5xx`, upstreamReason(ep));
+        else section.expect(`${base} no 5xx`, noServerError(res));
         section.expect(`${base} no leak`, noLeak(res));
       }
     }
@@ -53,7 +54,8 @@ export async function runRobustness(report: Report, seeds: Seeds): Promise<void>
     for (const payload of NUMERIC_ABUSE) {
       const res = await request({ method: 'GET', path: withQueryParam(built, 'page', payload), headers });
       const base = `GET ${ep.id} page="${payload}"`;
-      section.expect(`${base} no 5xx`, noServerError(res));
+      if (upstreamUnavailable(ep, res)) section.skip(`${base} no 5xx`, upstreamReason(ep));
+      else section.expect(`${base} no 5xx`, noServerError(res));
       section.expect(`${base} no leak`, noLeak(res));
     }
   }
@@ -74,7 +76,8 @@ export async function runRobustness(report: Report, seeds: Seeds): Promise<void>
     const headers = headersFor(ep, seeds);
     for (const method of UNEXPECTED_METHODS) {
       const res = await request({ method, path: ep.path(seeds), headers });
-      section.expect(`${method} ${ep.id} handled (no 5xx)`, noServerError(res));
+      if (upstreamUnavailable(ep, res)) section.skip(`${method} ${ep.id} handled (no 5xx)`, upstreamReason(ep));
+      else section.expect(`${method} ${ep.id} handled (no 5xx)`, noServerError(res));
     }
   }
   {

@@ -1,6 +1,6 @@
 {
   "verbose": true,
-  "ignore": ["dist", "node_modules", "src/assets", "tests"],
+  "ignore": ["dist", "node_modules", "src/assets", "tests", "src/api/assets/cache"],
   "ext": "ts",
   "exec": "ts-node ./src/api/main.ts"
 }

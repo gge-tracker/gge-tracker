@@ -279,6 +279,9 @@ services:
       - CLICKHOUSE_USER=${CLICKHOUSE_USER}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
       - GF_INSTALL_PLUGINS=grafana-clickhouse-datasource
+      - GF_RENDERING_SERVER_URL=http://grafana-image-renderer:8081/render
+      - GF_RENDERING_CALLBACK_URL=http://grafana:3000
+      - GF_RENDERING_RENDERER_TOKEN=${GF_RENDERER_TOKEN}
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/health || exit 1"]
       interval: 10s
@@ -286,6 +289,60 @@ services:
       retries: 12
       start_period: 20s
     restart: "no"
+
+  grafana-image-renderer:
+    image: grafana/grafana-image-renderer:v5.12.1
+    container_name: grafana-image-renderer
+    mem_limit: 1500m
+    cpu_quota: 100000
+    cpu_period: 100000
+    networks:
+      - backend
+    environment:
+      - AUTH_TOKEN=${GF_RENDERER_TOKEN}
+      - LOG_LEVEL=${GF_RENDERER_LOG_LEVEL:-warn}
+      - TZ=${RECAP_RENDER_TZ:-UTC}
+      - GOMEMLIMIT=${GF_RENDERER_GOMEMLIMIT:-192MiB}
+      - BROWSER_READINESS_TIMEOUT=${GF_RENDERER_READINESS_TIMEOUT:-120s}
+      - API_SILENCE_REQUEST_LOG_PATH=/healthz
+    restart: always
+
+  grafana-weekly-recap:
+    image: alpine:3.20
+    container_name: grafana-weekly-recap
+    mem_limit: 128m
+    cpu_quota: 20000
+    cpu_period: 100000
+    depends_on:
+      grafana:
+        condition: service_healthy
+    networks:
+      - backend
+    volumes:
+      - ./../monitoring/grafana/reporting:/scripts:ro
+    environment:
+      - TZ=${RECAP_TZ:-UTC}
+      - GF_URL=http://grafana:3000
+      - GF_USERNAME=${GF_USERNAME}
+      - GF_PASSWORD=${GF_PASSWORD}
+      - PROM_URL=http://prometheus:9090
+      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      - RECAP_WEBHOOK_URL=${RECAP_WEBHOOK_URL:-}
+      - RECAP_SCHEDULE=${RECAP_SCHEDULE:-0 9 * * 1}
+      - RECAP_WINDOW_DAYS=${RECAP_WINDOW_DAYS:-7}
+      - RECAP_RENDER_TZ=${RECAP_RENDER_TZ:-UTC}
+      - RECAP_THEME=${RECAP_THEME:-dark}
+      - RECAP_IMAGE_SCALE=${RECAP_IMAGE_SCALE:-2}
+      - RECAP_RENDER_TIMEOUT=${RECAP_RENDER_TIMEOUT:-180}
+      - RECAP_USERNAME=${RECAP_USERNAME:-gge-tracker}
+      - RECAP_EMBED_COLOR=${RECAP_EMBED_COLOR:-3447003}
+      - RECAP_CF_ZONE=${RECAP_CF_ZONE:-}
+      - RECAP_RUN_ON_START=${RECAP_RUN_ON_START:-0}
+    entrypoint: ["sh", "/scripts/entrypoint.sh"]
+    restart: always
 
   grafana-provisioner:
     image: alpine:3.20

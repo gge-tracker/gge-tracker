@@ -92,6 +92,10 @@ interface CardConfig {
   backgroundIconImage: string;
   eventTitleKey: keyof typeof ApiPlayerStatsType;
 }
+const MS_PER_HOUR = 3_600_000;
+const HOURS_PER_WEEK = 168;
+const DEFAULT_RESET_OFFSET = -1;
+
 @Component({
   selector: 'app-alliance-stats',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -260,6 +264,10 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   public cards: Card[] = [];
   public isHeroBackdropReady = false;
   public isInMovementLoading = false;
+  public readonly skeletonStatCards = Array.from({ length: 13 });
+  public readonly skeletonRows = Array.from({ length: 8 });
+  public readonly skeletonCells = Array.from({ length: 8 });
+  public readonly skeletonPulseTables = Array.from({ length: 4 });
   public lastUpdate = '';
   public graphPages: Record<ApiPlayerStatsType, number> = {
     player_might_history: -1,
@@ -1051,7 +1059,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
 
       const eventDate = new Date(update.created_at);
       eventDate.setHours(eventDate.getHours(), 0, 0, 0);
-      const eventDateString = eventDate.toISOString().split('T')[0];
+      const eventDateString = this.utilitiesService.toLocalDayKey(eventDate);
       if (!groupedByDate.has(eventDateString)) {
         groupedByDate.set(eventDateString, {
           date: eventDate.toISOString(),
@@ -1229,6 +1237,8 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   }
 
   private async initMovements(): Promise<void> {
+    this.isInMovementLoading = true;
+    this.cdr.detectChanges();
     try {
       this.page = 1;
       this.search = this.allianceId.toString();
@@ -1240,6 +1250,9 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       this.movementsResponseTime = data.response;
     } catch {
       this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
+    } finally {
+      this.isInMovementLoading = false;
+      this.cdr.detectChanges();
     }
   }
 
@@ -1395,19 +1408,14 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     const serieChoosen = this.graphPages.player_loot_history;
     const playerMap = new Map<number, { playerName: string; segments: [number, number][] }>();
     const now = new Date();
-    const currentMonday = new Date(now);
-    currentMonday.setUTCDate(currentMonday.getUTCDate() - ((currentMonday.getUTCDay() + 6) % 7));
-    currentMonday.setUTCHours(1 + (timezoneOffset ?? 0), 0, 0, 0);
-    const startOfWeek = new Date(currentMonday);
-    const endOfWeek = new Date(currentMonday);
-    endOfWeek.setUTCDate(endOfWeek.getUTCDate() + 7);
-    endOfWeek.setUTCHours(timezoneOffset ?? 0, 0, 0, 0);
-    startOfWeek.setUTCDate(startOfWeek.getUTCDate() - serieChoosen * 7);
-    endOfWeek.setUTCDate(endOfWeek.getUTCDate() - serieChoosen * 7);
-    const weekHours = this.generateWeekHours(startOfWeek, endOfWeek);
-    const timestampsByHour = weekHours.map((hour) => new Date(hour).getTime());
-    const showedEndOfWeek = new Date(endOfWeek);
-    showedEndOfWeek.setUTCDate(showedEndOfWeek.getUTCDate() - 1);
+    const currentMonday = this.weekResetInstant(now, timezoneOffset ?? DEFAULT_RESET_OFFSET);
+    const startOfWeek = new Date(currentMonday.getTime() - serieChoosen * HOURS_PER_WEEK * MS_PER_HOUR);
+    const endOfWeek = new Date(startOfWeek.getTime() + (HOURS_PER_WEEK - 1) * MS_PER_HOUR);
+    const timestampsByHour = Array.from(
+      { length: HOURS_PER_WEEK },
+      (_, index) => startOfWeek.getTime() + index * MS_PER_HOUR,
+    );
+    const showedEndOfWeek = new Date(endOfWeek.getTime() - 24 * MS_PER_HOUR);
     if (startOfWeek.getTime() < 1_737_349_200_000) {
       this.graphPages[ApiPlayerStatsType.loot] = serieChoosen - 1;
       return;
@@ -1513,7 +1521,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
           hidden: boolean;
         } = {
           name: `${playerName} 💤`,
-          data: weekHours.map((hour) => [new Date(hour).getTime(), -1]),
+          data: timestampsByHour.map((hourTimestamp) => [hourTimestamp, -1] as [number, number | null]),
           lastValue,
           hidden: true,
         };
@@ -1860,17 +1868,6 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     return `rgb(${r}, ${g}, ${b})`;
   }
 
-  private getCurrentMonday(): Date {
-    const currentDate = new Date();
-    const dayOfWeek = currentDate.getDay();
-    const currentMonday = new Date(currentDate);
-    // Set the date to the most recent Monday (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
-    currentMonday.setDate(currentDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1));
-    // Set the time to 00:00:00.000 UTC
-    currentMonday.setUTCHours(0, 0, 0, 0);
-    return currentMonday;
-  }
-
   private getDefaultTableDistanceEntry(): [string, string, (string | undefined)?, (boolean | undefined)?] {
     return ['distance', 'Distance (m)', undefined, undefined];
   }
@@ -1888,29 +1885,13 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     }
   }
 
-  private getCurrentSunday(): Date {
-    const currentMonday = this.getCurrentMonday();
-    const currentSunday = new Date(currentMonday);
-    currentSunday.setDate(currentMonday.getDate() + 6);
-    currentSunday.setUTCHours(23, 0, 0, 0);
-    return currentSunday;
-  }
-
-  private getPreviousMonday(): Date {
-    const currentMonday = this.getCurrentMonday();
-    const previousMonday = new Date(currentMonday);
-    previousMonday.setDate(currentMonday.getDate() - 7);
-    return previousMonday;
-  }
-
-  private generateWeekHours(start: Date, end: Date): string[] {
-    const dates = [];
-    const current = new Date(start);
-    while (current <= end) {
-      dates.push(current.toISOString().replace('T', ' ').slice(0, 16));
-      current.setHours(current.getHours() + 1);
-    }
-    return dates;
+  private weekResetInstant(date: Date, resetOffset: number): Date {
+    const monday = new Date(date);
+    monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
+    monday.setUTCHours(0, 0, 0, 0);
+    const candidate = monday.getTime() + (resetOffset - 1) * MS_PER_HOUR;
+    const week = HOURS_PER_WEEK * MS_PER_HOUR;
+    return new Date(candidate + Math.floor((date.getTime() - candidate) / week) * week);
   }
 
   private initChartOption(name: keyof typeof ApiPlayerStatsType, data: ApexAxisChartSeries, color: string[]): void {
@@ -2499,7 +2480,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         return;
       }
       playersData = response.data.points;
-      this.timezoneOffset = response.data.timezoneOffset ?? -1;
+      this.timezoneOffset = response.data.timezoneOffset ?? DEFAULT_RESET_OFFSET;
     } catch {
       this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
       return;

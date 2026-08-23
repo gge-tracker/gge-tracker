@@ -3,7 +3,6 @@ import { RedisClientType } from 'redis';
 import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { ApiGgeTrackerManager } from '../managers/api.manager';
-import { puppeteerManagerInstance } from '../managers/puperteer.manager';
 import { ApiAlliances } from '../routes/api-alliances';
 import { ApiAssets } from '../routes/api-assets';
 import { ApiCartography } from '../routes/api-cartography';
@@ -78,10 +77,6 @@ export class ApiRoutingController {
     this.redisClient = redisClient;
     ApiHelper.setRedisClient(this.redisClient);
     ApiHelper.setGgeTrackerManager(this.apiGgeTrackerManager);
-  }
-
-  public async initBrowser(): Promise<void> {
-    await puppeteerManagerInstance.getBrowser();
   }
 
   public getDocumentation(request: express.Request, response: express.Response): void {
@@ -225,6 +220,10 @@ export class ApiRoutingController {
 
   public getDungeons(request: express.Request, response: express.Response): void {
     void ApiDungeons.getDungeons(request, response);
+  }
+
+  public getDungeonsMeta(request: express.Request, response: express.Response): void {
+    void ApiDungeons.getDungeonsMeta(request, response);
   }
 
   public getDungeonsByPlayerId(request: express.Request, response: express.Response): void {

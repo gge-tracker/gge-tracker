@@ -117,7 +117,7 @@ setInterval(() => void ggeTrackerApiGuardActivity.flushLogs(), ggeTrackerApiGuar
 app.use(
   morgan((tokens, request, response) => {
     ggeTrackerApiGuardActivity.recordMorganRequest(tokens, request, response);
-    return '';
+    return null;
   }),
 );
 
@@ -139,7 +139,9 @@ publicRoutes.put('/assets/update/:token', routingInstance.updateAssets.bind(rout
  * /assets/images/{asset}:
  *   get:
  *     summary: Get a specific rendered image for a Goodgame Empire asset
- *     description: Returns the rendered image for the specified Goodgame Empire asset
+ *     description: >
+ *       Returns the rendered image for the specified Goodgame Empire asset. WebP is returned when the
+ *       request accepts it and PNG otherwise, so the response varies on the Accept header
  *     tags:
  *       - Assets
  *     parameters:
@@ -150,9 +152,35 @@ publicRoutes.put('/assets/update/:token', routingInstance.updateAssets.bind(rout
  *         example: "keepbuildinglevel8.png"
  *         schema:
  *           type: string
+ *       - in: query
+ *         name: level
+ *         required: false
+ *         description: The level of the asset to render
+ *         example: "3"
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: type
+ *         required: false
+ *         description: The variant family to render
+ *         example: "gate"
+ *         schema:
+ *           type: string
+ *           enum: [gate, defence, tower]
+ *       - in: query
+ *         name: quality
+ *         required: false
+ *         description: The variant within the family, as named by the game data
+ *         example: "basic"
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: Successful response with the requested image. The image will be returned in PNG or WebP format
+ *       400:
+ *         description: The asset name or one of the variant parameters is invalid
+ *       404:
+ *         description: No renderable asset matches the requested name and variant
  */
 publicRoutes.get('/assets/images/:asset', routingInstance.getGeneratedImage.bind(routingInstance));
 
@@ -1390,6 +1418,34 @@ publicRoutes.get(
  *                   $ref: '#/components/schemas/Pagination'
  */
 protectedRoutes.get('/dungeons', routingInstance.getDungeons.bind(routingInstance));
+
+/**
+ * @openapi
+ * /dungeons/meta:
+ *   get:
+ *     summary: Retrieve the freshness of the dungeons data
+ *     description: >
+ *       Returns when the dungeons of the requested server were last scanned by the collector
+ *     tags:
+ *       - Dungeons
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *     responses:
+ *       200:
+ *         description: Successful response with the dungeons scan metadata
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 last_scan_at:
+ *                   type: string
+ *                   nullable: true
+ *                   description: When the dungeons were last scanned, or null when no scan has been recorded yet
+ *       400:
+ *         description: The requested server does not support dungeons
+ */
+protectedRoutes.get('/dungeons/meta', routingInstance.getDungeonsMeta.bind(routingInstance));
 
 /**
  * @openapi
@@ -4562,14 +4618,15 @@ protectedRoutes.get('/woa/events/id/:id', routingInstance.getWoaEventDataById.bi
  *     summary: Retrieve WOA event history for a specific player
  *     description: |
  *       Returns the last 100 Wheel of Affluence (WOA) event entries for the given player,
- *       including their rank within each event's snapshot
+ *       including their rank within each event's snapshot, plus exact lifetime aggregates
+ *       and the tracking coverage window those aggregates are computed over
  *     tags:
  *       - Wheel of Affluence
  *     parameters:
  *       - $ref: '#/components/parameters/PlayerId'
  *     responses:
  *       200:
- *         description: Player's WOA event history
+ *         description: Player's WOA event history, lifetime aggregates and tracking coverage
  *         content:
  *           application/json:
  *             schema:
@@ -4590,6 +4647,65 @@ protectedRoutes.get('/woa/events/id/:id', routingInstance.getWoaEventDataById.bi
  *                       rank:
  *                         type: integer
  *                         example: 42
+ *                 player:
+ *                   type: object
+ *                   description: |
+ *                     aggregates over the player's whole stored history
+ *                   properties:
+ *                     total_points:
+ *                       type: integer
+ *                       description: Tickets the player has spent across their stored history
+ *                       example: 12345
+ *                     events_count:
+ *                       type: integer
+ *                       description: Number of events the player scored in
+ *                       example: 137
+ *                     first_event:
+ *                       type: string
+ *                       nullable: true
+ *                       description: The player's first tracked event entry, or null if they have none
+ *                       example: "2026-05-02T07:58:03.000Z"
+ *                     best_point:
+ *                       type: integer
+ *                       description: The player's highest single-event score
+ *                       example: 412
+ *                     best_point_date:
+ *                       type: string
+ *                       nullable: true
+ *                       description: When the highest single-event score was recorded, or null if none
+ *                       example: "2026-07-14T07:58:03.000Z"
+ *                     best_rank:
+ *                       type: integer
+ *                       nullable: true
+ *                       description: The player's best rank in any tracked event (1 is best), or null if none
+ *                       example: 3
+ *                     best_rank_date:
+ *                       type: string
+ *                       nullable: true
+ *                       description: When the best rank was achieved, or null if none
+ *                       example: "2026-08-22T19:58:03.000Z"
+ *                 coverage:
+ *                   type: object
+ *                   description: The window on this server that the player aggregates above actually cover
+ *                   properties:
+ *                     first_tracked_event:
+ *                       type: string
+ *                       nullable: true
+ *                       description: |
+ *                         Earliest event tracked on this server, i.e. when WOA collection started
+ *                         for it, not when the in-game event first existed. Null when the server
+ *                         has no WOA data
+ *                       example: "2026-05-02T07:58:03.000Z"
+ *                     tracked_events_count:
+ *                       type: integer
+ *                       description: Distinct events tracked on this server
+ *                       example: 226
+ *                     tracked_events_since_player:
+ *                       type: integer
+ *                       description: |
+ *                         Distinct events tracked at or after the player's first entry, the honest
+ *                         denominator for a participation ratio. 0 when the player has no history
+ *                       example: 226
  *       400:
  *         $ref: '#/components/responses/BadRequest'
  *       500:
@@ -5095,6 +5211,8 @@ publicRoutes.get('/dungeons/player/:playerId', routingInstance.getDungeonsByPlay
  *         $ref: '#/components/responses/BadRequest'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
+ *       503:
+ *         $ref: '#/components/responses/ServiceUnavailable'
  */
 protectedRoutes.get('/offers', routingInstance.getOffers.bind(routingInstance));
 
@@ -5150,16 +5268,12 @@ app.use('/api/v1', protectedRoutes);
 publicRoutes.use(ggeServerMiddleware);
 
 /**
- * Main function to start the Express server and initialize the Puppeteer browser
+ * Main function to start the Express server
  * This is the entrypoint of the application
  */
 async function main(): Promise<void> {
   app
-    .listen(APPLICATION_PORT, async () => {
-      await routingInstance.initBrowser().catch((error) => {
-        console.error('Error initializing browser:', error);
-        throw new Error('Error initializing browser');
-      });
+    .listen(APPLICATION_PORT, () => {
       void printHeader();
     })
     .on('error', (error) => {

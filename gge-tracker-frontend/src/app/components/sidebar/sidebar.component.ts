@@ -164,11 +164,6 @@ export class SidebarComponent implements AfterViewInit, OnDestroy {
     this.sidebarService.closeSidebar();
   }
 
-  /**
-   * Deep-linking to a page low in the menu leaves its highlighted row below the fold,
-   * with nothing on screen saying where you are. Centre it in the scroller instead —
-   * without touching the page scroll, which scrollIntoView() would drag along.
-   */
   private revealActiveItem(): void {
     const container = this.scroll?.nativeElement;
     const active = container?.querySelector<HTMLElement>('.active-nav');

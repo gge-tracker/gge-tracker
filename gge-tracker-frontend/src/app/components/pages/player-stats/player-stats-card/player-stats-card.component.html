@@ -1,12 +1,5 @@
-<div class="bg-white p-1 rounded shadow stats-container position-relative h-100">
-
-  <div class="text-center pt-3 cover-might position-relative"
-    [style]="'background-color: ' + backgroundColour() + ';background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, .8)), url('  + backgroundIconImage() + ');'">
-    <ng-content select="[before]"></ng-content>
-    <h1 class="title">{{ title() }}</h1>
-    <p class="text-light"><small>{{ subtitle() }}</small></p>
-    <ng-content select="[after]"></ng-content>
-  </div>
+<app-stats-panel [title]="title()" [subtitle]="subtitle() ?? ''" [accent]="backgroundColour()"
+  [bannerImage]="backgroundIconImage()">
   <ul class="nav nav-tabs mt-3 ps-3 align-items-center">
     @for (chart of charts() | keyvalue: originalOrder; track chart.key) {
       <li class="nav-item">
@@ -201,7 +194,7 @@
   }
 
   <ng-content></ng-content>
-</div>
+</app-stats-panel>
 
 
 <ng-template #loadingChart>

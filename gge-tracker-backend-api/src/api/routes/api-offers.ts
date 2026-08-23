@@ -117,8 +117,8 @@ export abstract class ApiOffers implements ApiHelper {
       });
       if (!data) {
         response
-          .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
-          .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
+          .status(ApiHelper.HTTP_SERVICE_UNAVAILABLE)
+          .send({ error: RouteErrorMessagesEnum.OffersStoreUnavailable });
         return;
       }
 
@@ -151,6 +151,7 @@ export abstract class ApiOffers implements ApiHelper {
     legendaryLevel: number,
   ): Promise<unknown | null> {
     const expected = region.toUpperCase();
+    if (!this.getEgressRoute(region)) return null;
     for (const serverName of this.CATALOG_SERVERS) {
       const server = ApiHelper.ggeTrackerManager.get(serverName);
       if (!server?.zone || !server?.zoneId) continue;
@@ -161,12 +162,12 @@ export abstract class ApiOffers implements ApiHelper {
       let answered = false;
       for (let attempt = 0; attempt < this.REGION_SYNC_ATTEMPTS && Date.now() < deadline; attempt++) {
         if (attempt > 0) await this.wait(this.REGION_SYNC_DELAY);
-        let catalog = await this.fetchCatalog(apiUrl, token, region);
+        let catalog = await this.fetchCatalog(apiUrl, token, region, deadline);
         if (catalog?.status === ApiHelper.HTTP_UNAUTHORIZED || catalog?.status === ApiHelper.HTTP_FORBIDDEN) {
           const refreshed = await this.getBearerToken(server.zone, true);
           if (!refreshed) break;
           token = refreshed;
-          catalog = await this.fetchCatalog(apiUrl, token, region);
+          catalog = await this.fetchCatalog(apiUrl, token, region, deadline);
         }
         if (catalog?.status !== ApiHelper.HTTP_OK || !catalog.data) continue;
         answered = true;
@@ -259,9 +260,13 @@ export abstract class ApiOffers implements ApiHelper {
     apiUrl: string,
     token: string,
     region: string,
+    deadline: number,
   ): Promise<AxiosResponse<unknown> | null> {
     const route = this.getEgressRoute(region);
-    if (!route) return null;
+    // The proxy is a third party on the other side of the world: without this the last
+    // attempt of a run could still hang for a full CATALOG_TIMEOUT past the budget
+    const timeout = Math.min(this.CATALOG_TIMEOUT, deadline - Date.now());
+    if (!route || timeout <= 0) return null;
     try {
       return await axios.get(apiUrl, {
         headers: {
@@ -271,7 +276,7 @@ export abstract class ApiOffers implements ApiHelper {
         },
         httpsAgent: route,
         proxy: false,
-        timeout: this.CATALOG_TIMEOUT,
+        timeout,
         validateStatus: () => true,
       });
     } catch {

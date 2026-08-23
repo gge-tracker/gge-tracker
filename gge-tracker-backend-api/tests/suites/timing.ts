@@ -5,7 +5,7 @@ import { Report } from '../lib/report';
 import { Seeds } from '../lib/bootstrap';
 import { config } from '../config';
 import { CATALOG } from '../lib/catalog';
-import { callable, headersFor } from '../lib/endpoints';
+import { callable, headersFor, upstreamReason, upstreamUnavailable } from '../lib/endpoints';
 import { request } from '../lib/http';
 
 function percentile(sorted: number[], p: number): number {
@@ -22,11 +22,18 @@ export async function runTiming(report: Report, seeds: Seeds): Promise<void> {
     const headers = headersFor(ep, seeds);
     const times: number[] = [];
     let serverError = false;
+    let upstreamMisses = 0;
 
     for (let i = 0; i < samples; i++) {
       const res = await request({ method: 'GET', path: ep.path(seeds), headers });
-      if (res.status === 0 || res.status >= 500) serverError = true;
+      if (upstreamUnavailable(ep, res)) upstreamMisses++;
+      else if (res.status === 0 || res.status >= 500) serverError = true;
       times.push(res.ms);
+    }
+
+    if (upstreamMisses === samples) {
+      section.skip(`GET ${ep.id} p95 within budget`, upstreamReason(ep));
+      continue;
     }
 
     times.sort((a, b) => a - b);

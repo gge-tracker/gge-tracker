@@ -98,7 +98,7 @@ export abstract class ApiStatistics implements ApiHelper {
         const data = {
           diffs,
           points,
-          timezoneOffset: ApiHelper.ggeTrackerManager.getTimezoneOffsetByCode(
+          timezoneOffset: ApiHelper.ggeTrackerManager.getServerResetOffsetByCode(
             ApiHelper.getCountryCode(String(allianceId)) || '',
           ),
         };
@@ -222,7 +222,7 @@ export abstract class ApiStatistics implements ApiHelper {
           options.since ?? undefined,
           requestedTables,
         );
-        const timezoneOffset = ApiHelper.ggeTrackerManager.getTimezoneOffsetByCode(
+        const serverResetOffset = ApiHelper.ggeTrackerManager.getServerResetOffsetByCode(
           ApiHelper.getCountryCode(String(playerId)) || '',
         );
         const data = {
@@ -232,7 +232,7 @@ export abstract class ApiStatistics implements ApiHelper {
           alliance_id: allianceId,
           points,
           glory_points_100: code100GloryPoints,
-          timezone_offset: timezoneOffset,
+          timezone_offset: serverResetOffset,
         };
         void ApiHelper.updateCache(cacheKey, data);
         response.status(ApiHelper.HTTP_OK).send(this.trimPlayerStatistics(data, options));
@@ -330,7 +330,7 @@ export abstract class ApiStatistics implements ApiHelper {
         alliance_id: ApiHelper.addCountryCode(player.alliance_id, code),
         events,
         glory_points_100: code100GloryPoints,
-        timezone_offset: ApiHelper.ggeTrackerManager.getTimezoneOffsetByCode(code),
+        timezone_offset: ApiHelper.ggeTrackerManager.getServerResetOffsetByCode(code),
       };
       void ApiHelper.updateCache(cacheKey, data);
       response.status(ApiHelper.HTTP_OK).send(data);

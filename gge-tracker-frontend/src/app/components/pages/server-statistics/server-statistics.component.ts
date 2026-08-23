@@ -468,7 +468,7 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
         const groupedData: Record<string, number> = {};
         data.forEach((d) => {
           const date = new Date(d.x);
-          const dateString = date.toISOString().split('T')[0];
+          const dateString = this.utilitiesService.toLocalDayKey(date);
           if (!groupedData[dateString]) {
             groupedData[dateString] = 0;
           }
