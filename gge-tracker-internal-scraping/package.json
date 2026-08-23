@@ -1,6 +1,6 @@
 {
   "name": "gge-tracker-internal-scraping",
-  "version": "26.06.02-beta",
+  "version": "26.08.23-beta",
   "engines": {
     "node": ">=24"
   },

@@ -155,13 +155,12 @@ td, th {
 
 .dungeons-status {
   align-items: center;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.62);
   display: flex;
   font-size: 0.78rem;
   gap: 0.45rem;
   margin-top: 0.5rem;
   padding-top: 0.5rem;
-  border-top: 1px solid #e2e8f0;
 }
 
 .special-bg {

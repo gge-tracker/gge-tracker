@@ -42,8 +42,7 @@ img,
   opacity: .5;
 }
 
-.badge-bot {
-  background: #5865f2;
+.badge-tag {
   border-radius: 4px;
   color: #fff;
   font-size: 0.6rem;
@@ -53,18 +52,34 @@ img,
   margin-left: auto;
   padding: 3px 5px;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
-.badge-bot + .badge-frequency {
+.badge-bot {
+  background: #5865f2;
+}
+
+.badge-extension {
+  background: #4285f4;
+}
+
+.badge-tag + .badge-frequency {
   margin-left: 0;
 }
 
 .icon-glyph {
   align-items: center;
-  color: #7289da;
   display: inline-flex;
   font-size: 15px;
   justify-content: center;
+}
+
+.icon-glyph .fa-discord {
+  color: #7289da;
+}
+
+.icon-glyph .fa-chrome {
+  color: #4285f4;
 }
 
 .img-icon {
