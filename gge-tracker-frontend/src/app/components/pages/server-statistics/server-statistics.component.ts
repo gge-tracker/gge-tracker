@@ -298,12 +298,11 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
   public openModal(identifier: keyof ApiServerStats, card: Card): void {
     if (identifier === 'events_participation_rate') return;
     this.selectedCard = card;
-    const specialIdentifier = identifier == 'alliances_changed_name' || identifier == 'players_who_changed_name';
-    const curveStroke = specialIdentifier ? 'straight' : 'straight';
+    const curveStroke = 'straight';
     const chart: ChartOptions = {
       series: [],
       chart: {
-        type: specialIdentifier ? 'area' : 'area',
+        type: 'area',
         locales: this.rankingService.CHART_LOCALES,
         defaultLocale: this.languageService.getCurrentLang(),
         zoom: {

@@ -52,7 +52,6 @@ a:visited {
   color: white;
   font-size: 0.9rem;
   font-weight: 500;
-  margin-bottom: 0.5rem;
   margin: 10px 5%;
   padding: 0.5rem 0.75rem;
   transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;

@@ -139,9 +139,9 @@ td, th {
   font-family: monospace;
 }
 .btn.btn-warning {
+  background: url(/assets/light-background-hover.png), #dda969;
   background-position: center;
   background-size: 24px;
-  background: url(/assets/light-background-hover.png), #dda969;
   transition: all 0.3s ease;
 }
 

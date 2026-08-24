@@ -199,8 +199,6 @@
 
 .castle-card-placeholder .placeholder-shimmer {
   animation: loading 1s infinite;
-  background-image: -moz-linear-gradient(to left, rgba(251,251,251,.05), rgba(251,251,251,.1), rgba(251,251,251,.2), rgba(251,251,251,.1), rgba(251,251,251,.05));
-  background-image: -webkit-linear-gradient(to left, rgba(251,251,251,.05), rgba(251,251,251,.1), rgba(251,251,251,.2), rgba(251,251,251,.1), rgba(251,251,251,.05));
   background-image: linear-gradient(to left, rgba(251,251,251,.05), rgba(251,251,251,.1), rgba(251,251,251,.2), rgba(251,251,251,.1), rgba(251,251,251,.05));
   height: 100%;
   left: -45%;
@@ -1590,20 +1588,18 @@
   box-shadow: -2px 0px 0px #010507;
   background: rgba(38,198,218,0.08) !important;
   border-bottom-right-radius: 0 !important;
-  border-color: rgba(38,198,218,0.22) !important;
+  border: 1px solid rgba(38,198,218,0.22) !important;
   border-right: none !important;
   border-top-right-radius: 0 !important;
-  border: 1px solid rgba(38,198,218,0.22) !important;
   color: #26c6da !important;
 }
 
 .filters-modal-body ::ng-deep .input-group.modern-search-input-wrapper .search-input {
   background: rgba(255,255,255,0.05) !important;
   border-bottom-left-radius: 0 !important;
-  border-color: rgba(38,198,218,0.22) !important;
+  border: 1px solid rgba(38,198,218,0.22) !important;
   border-left: none !important;
   border-top-left-radius: 0 !important;
-  border: 1px solid rgba(38,198,218,0.22) !important;
   color: #e9edf1 !important;
 }
 

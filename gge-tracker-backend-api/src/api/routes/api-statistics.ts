@@ -927,7 +927,7 @@ export abstract class ApiStatistics implements ApiHelper {
     if (requestedEvents?.some((event) => !eventTables.includes(event))) {
       return { error: RouteErrorMessagesEnum.InvalidEventName };
     }
-    const events = requestedEvents?.length ? [...new Set(requestedEvents)].sort() : null;
+    const events = requestedEvents?.length ? [...new Set(requestedEvents)].sort((a, b) => a.localeCompare(b)) : null;
 
     /* ---------------------------------
      * since: how many days back to query

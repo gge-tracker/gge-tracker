@@ -519,21 +519,24 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   }
 
   public getCurrentFameTitle(): RankingFameTitle {
+    const fallback = this.fameTitles.at(-1) || {
+      titleID: 'unknown',
+      type: 'FAME',
+      displayType: 'DEFAULT',
+      mightValue: '0',
+      decay: 0,
+      threshold: 0,
+    };
     try {
-      return this.fameTitles
-        .filter((title) => title.threshold && Number(title.threshold) < this.stats!.currentFame)
-        .reduce((max, t) => (Number(t.threshold) > Number(max.threshold) ? t : max));
-    } catch {
-      return (
-        this.fameTitles.at(-1) || {
-          titleID: 'unknown',
-          type: 'FAME',
-          displayType: 'DEFAULT',
-          mightValue: '0',
-          decay: 0,
-          threshold: 0,
-        }
+      const eligible = this.fameTitles.filter(
+        (title) => title.threshold && Number(title.threshold) < this.stats!.currentFame,
       );
+      return eligible.reduce(
+        (max, t) => (Number(t.threshold) > Number(max.threshold) ? t : max),
+        eligible[0] ?? fallback,
+      );
+    } catch {
+      return fallback;
     }
   }
 

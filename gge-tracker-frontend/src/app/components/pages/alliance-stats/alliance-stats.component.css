@@ -8,7 +8,7 @@
 }
 
 .alliance-description {
-  font-family: _Bodyfont;
+  font-family: _Bodyfont, sans-serif;
   font-size: 18px;
   margin: auto;
   width: 576px;

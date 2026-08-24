@@ -557,8 +557,8 @@ select.form-select, .modal-content input[type="text"], .modal-content input[type
 }
 
 .modern-scroll::-webkit-scrollbar-thumb {
-  background-clip: padding-box;
   background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.08));
+  background-clip: padding-box;
   border-radius: 10px;
   border: 2px solid transparent;
 }

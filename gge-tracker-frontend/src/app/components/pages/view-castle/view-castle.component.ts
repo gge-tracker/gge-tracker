@@ -1242,9 +1242,9 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       publicOrder: this.getPublicOrderOfBuilding(data),
       translatedName: this.capitalizeFirstLetter(this.getBuildingNameFromData(data)),
       effects: JSON.stringify(effects),
-      totalwidth: (Number(data['width']) ?? 0) * (Number(data['height']) ?? 0),
+      totalwidth: (Number(data['width']) || 0) * (Number(data['height']) || 0),
       buildingGroundType: String(this.languageJsonData[String(data['buildingGroundType'])] ?? '-'),
-      originalBuildingGroundType: String(data['buildingGroundType']) ?? '-',
+      originalBuildingGroundType: String(data['buildingGroundType'] ?? '-'),
     };
   }
 
