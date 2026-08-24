@@ -174,9 +174,9 @@ export abstract class ApiStatistics implements ApiHelper {
       let parameterIndex = 1;
       const query = `
         SELECT
-            players.name AS player_name,
-            alliances.name AS alliance_name,
-            alliances.id AS alliance_id
+          players.name AS player_name,
+          alliances.name AS alliance_name,
+          alliances.id AS alliance_id
         FROM players LEFT JOIN alliances
         ON players.alliance_id = alliances.id
         WHERE players.id = $${parameterIndex++} `;
@@ -717,6 +717,8 @@ export abstract class ApiStatistics implements ApiHelper {
       if (region.startsWith('partner_')) {
         region = region.slice(8);
         region = region.replaceAll(/([A-Za-z])(\d)/g, '$1_$2');
+      } else if (region === 'arab1') {
+        region = 'ar1';
       }
       const p2 = new Promise((resolve, reject) => {
         globalPool.query(query_global_rank, [ApiHelper.removeCountryCode(playerId), region], (error, results) => {
