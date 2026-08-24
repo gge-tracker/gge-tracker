@@ -145,7 +145,7 @@ export class GenericFetchAndSaveBackend {
   private customPlayersAttributesList: { [key: string]: any } = {};
   private currentPlayers: PlayerDatabase[] = [];
   private currentAlliances: AllianceDatabase[] = [];
-  private isE4KServer: boolean = false;
+  private readonly isE4KServer: boolean = false;
   private readonly ENV_LT = {
     war_realms: 44,
     samurai: 51,
@@ -164,11 +164,11 @@ export class GenericFetchAndSaveBackend {
     server: string | undefined,
   ) {
     this.BASE_API_URL = BASE_API_URL;
-    this.CLICKHOUSE_CONFIG = CLICKHOUSE_CONFIG ? CLICKHOUSE_CONFIG : undefined;
+    this.CLICKHOUSE_CONFIG = CLICKHOUSE_CONFIG || undefined;
     if (PGSQL_CONFIG) {
       this.PGSQL_CONFIG = PGSQL_CONFIG;
     }
-    this.server = server ? server : 'unknown';
+    this.server = server || 'unknown';
     this.isE4KServer = String(server).toLowerCase().startsWith('e4k');
     if (PGSQL_CONFIG) {
       this.createNewPool();
@@ -179,7 +179,7 @@ export class GenericFetchAndSaveBackend {
     const response = (error as AxiosError)?.response;
     if (!response) return undefined;
     const body = typeof response.data === 'string' ? response.data : JSON.stringify(response.data ?? '');
-    const match = body.match(/Code:\s*(\d+)/);
+    const match = /Code:\s*(\d+)/.exec(body);
     return match ? Number(match[1]) : undefined;
   }
 
@@ -334,7 +334,7 @@ export class GenericFetchAndSaveBackend {
             while (tryCount < 3) {
               try {
                 response = await axios.get(url);
-                if (response.data.content && response.data.content.L) {
+                if (response.data.content?.L) {
                   break;
                 } else {
                   tryCount++;
@@ -349,7 +349,7 @@ export class GenericFetchAndSaveBackend {
               }
             }
             const data = response?.data;
-            if (data.content && data.content.L) {
+            if (data.content?.L) {
               const results = data.content.L || [];
               for (const result of results) {
                 const SIelements = String(result.SI).trim().split('-');
@@ -625,7 +625,7 @@ export class GenericFetchAndSaveBackend {
         try {
           const response = await axios.get(url);
           const data = response.data;
-          if (data && data['return_code'] == '0') {
+          if (data?.['return_code'] == '0') {
             const dungeons = data.content?.AI ?? [];
             for (const dungeon of dungeons) {
               if (dungeon[0] == '11') {
@@ -644,7 +644,7 @@ export class GenericFetchAndSaveBackend {
             // We retry once if the response is invalid, as it can be a temporary issue
             const retryResponse = await axios.get(url);
             const retryData = retryResponse.data;
-            if (retryData && retryData['return_code'] == '0') {
+            if (retryData?.['return_code'] == '0') {
               const dungeons = retryData.content?.AI ?? [];
               for (const dungeon of dungeons) {
                 if (dungeon[0] == '11') {
@@ -898,7 +898,7 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('Number of critical errors:', this.DB_UPDATES.criticalErrors);
       Utils.logMessage('=====================================');
       Utils.logMessage('.');
-      return;
+      
     } catch (error) {
       Utils.logCritical('999', error, ' [CRITICAL] Unhandled error occurred while processing fills');
     } finally {
@@ -969,7 +969,7 @@ export class GenericFetchAndSaveBackend {
             const response = await axios.get(url);
             const currentTime = new Date();
             const data = response.data;
-            if (data && data['return_code'] == '0') {
+            if (data?.['return_code'] == '0') {
               const dungeons = data.content?.AI ?? [];
               for (const dungeon of dungeons) {
                 if (dungeon[0] == '11') {
@@ -1807,13 +1807,13 @@ export class GenericFetchAndSaveBackend {
   private async fetchStormArea(url: string): Promise<any[]> {
     try {
       const response = await axios.get(url);
-      if (response.data && response.data['return_code'] == '0') {
+      if (response.data?.['return_code'] == '0') {
         return response.data.content?.AI ?? [];
       }
       console.error('Invalid storm response for URL:', url, response.data);
       await this.sleep(3000);
       const retryResponse = await axios.get(url);
-      if (retryResponse.data && retryResponse.data['return_code'] == '0') {
+      if (retryResponse.data?.['return_code'] == '0') {
         return retryResponse.data.content?.AI ?? [];
       }
       console.error('Storm retry failed for URL:', url, retryResponse.data);
@@ -2119,21 +2119,21 @@ export class GenericFetchAndSaveBackend {
         c = true;
         j = 0;
         let data = await this.fetchDataAndReturn(lt, levelCategory, 1);
-        if (!data || data['return_code'] != '0') {
+        if (data?.['return_code'] != '0') {
           if (j === 0 && levelCategory == 1) {
             Utils.logMessage(' [info] No event active (0)');
             return;
           } else {
             const attempts = 3;
             let k = 0;
-            while (k < attempts && (!data || data['return_code'] != '0')) {
+            while (k < attempts && (data?.['return_code'] != '0')) {
               await new Promise((resolve) => setTimeout(resolve, 3000));
               data = await this.fetchDataAndReturn(lt, levelCategory, 1);
               k++;
             }
           }
         }
-        if (!data || data['return_code'] != '0' || !data?.content?.LR) {
+        if (data?.['return_code'] != '0' || !data?.content?.LR) {
           /*
            * [PATCH #2512091]
            * In some cases, levelCategorySize can start at 2 (issue observed with bloodcrows)
@@ -2159,7 +2159,7 @@ export class GenericFetchAndSaveBackend {
               let fetchData = p?.content?.L ?? [];
               const attempts = 7;
               let currentTry = 0;
-              while (currentTry < attempts && (!p || p['return_code'] != '0' || !fetchData || fetchData.length === 0)) {
+              while (currentTry < attempts && (p?.['return_code'] != '0' || !fetchData || fetchData.length === 0)) {
                 await new Promise((resolve) => setTimeout(resolve, 2000));
                 p = await this.fetchDataAndReturn(lt, levelCategory, i);
                 fetchData = p?.content?.L ?? [];
@@ -2225,7 +2225,7 @@ export class GenericFetchAndSaveBackend {
       const ltString = lt.toString();
       const rows: Array<Record<string, unknown>> = [];
       for (const entity of Object.values(entities)) {
-        if (!entity || !entity.playerId) continue;
+        if (!entity?.playerId) continue;
         const playerKey = entity.playerId.toString();
         this.playerEventPointHistoryList[playerKey] = this.playerEventPointHistoryList[playerKey] || {};
         this.playerEventPointHistoryList[playerKey][ltString] = entity.point;
@@ -2268,15 +2268,15 @@ export class GenericFetchAndSaveBackend {
         j = 0;
         i = increment / 2;
         let data = await this.fetchDataAndReturn(6, levelCategory, i);
-        if (!data || data['return_code'] != '0') {
+        if (data?.['return_code'] != '0') {
           const attempts = 10;
           let k = 0;
-          while (k < attempts && (!data || data['return_code'] != '0')) {
+          while (k < attempts && (data?.['return_code'] != '0')) {
             await new Promise((resolve) => setTimeout(resolve, 10000));
             data = await this.fetchDataAndReturn(6, levelCategory, i);
             k++;
           }
-          if (!data || data['return_code'] != '0') {
+          if (data?.['return_code'] != '0') {
             Utils.logMessage(' [KO] Request failed for category', levelCategory);
             const identifier = '008';
             const messages = [
@@ -2295,7 +2295,7 @@ export class GenericFetchAndSaveBackend {
             let players = p?.content?.L ?? [];
             const attempts = 10;
             let k = 0;
-            while (k < attempts && (!p || p['return_code'] != '0' || !players || players.length === 0)) {
+            while (k < attempts && (p?.['return_code'] != '0' || !players || players.length === 0)) {
               await new Promise((resolve) => setTimeout(resolve, 10000));
               p = await this.fetchDataAndReturn(6, levelCategory, i);
               players = p?.content?.L ?? [];
@@ -2481,7 +2481,7 @@ export class GenericFetchAndSaveBackend {
             let players = p?.content?.L ?? [];
             const attempts = 10;
             let k = 0;
-            while (k < attempts && (!p || p['return_code'] != '0' || !players || players.length === 0)) {
+            while (k < attempts && (p?.['return_code'] != '0' || !players || players.length === 0)) {
               if (this.CURRENT_ENV === 'development') Utils.logMessage('Debug:');
               if (this.CURRENT_ENV === 'development')
                 Utils.logMessage('Try n°', k + 1, 'for category', levelCategory, 'with i =', i);
@@ -2572,8 +2572,7 @@ export class GenericFetchAndSaveBackend {
               }
               if (
                 players.length <= 0 ||
-                !players[players.length - 1] ||
-                !players[players.length - 1][1] ||
+                !players[players.length - 1]?.[1] ||
                 players[players.length - 1][1] == 0
               ) {
                 c = false;
@@ -2594,17 +2593,17 @@ export class GenericFetchAndSaveBackend {
             c = true;
             let data = await this.fetchDataAndReturn(2, levelCategory, 1);
             let maxNegative = data?.content?.LR;
-            if (!data || data['return_code'] != '0') {
+            if (data?.['return_code'] != '0') {
               const attempts = 3;
               let k = 0;
-              while (k < attempts && (!data || data['return_code'] != '0')) {
+              while (k < attempts && (data?.['return_code'] != '0')) {
                 await new Promise((resolve) => setTimeout(resolve, 3000));
                 data = await this.fetchDataAndReturn(2, levelCategory, 1);
                 k++;
               }
             }
             maxNegative = data?.content?.LR;
-            if (!data || data['return_code'] != '0' || !maxNegative) {
+            if (data?.['return_code'] != '0' || !maxNegative) {
               Utils.logMessage(
                 'Url : ',
                 this.BASE_API_URL + 'hgh' + `/"LT":2,"LID":${levelCategory},"SV":"${maxNegative}"`,
@@ -2619,7 +2618,7 @@ export class GenericFetchAndSaveBackend {
               let players = data?.content?.L ?? [];
               const attempts = 3;
               let k = 0;
-              while (k < attempts && (!data || data['return_code'] != '0' || !players || players.length === 0)) {
+              while (k < attempts && (data?.['return_code'] != '0' || !players || players.length === 0)) {
                 await new Promise((resolve) => setTimeout(resolve, 3000));
                 data = await this.fetchDataAndReturn(2, levelCategory, maxNegative);
                 players = data?.content?.L ?? [];
@@ -2893,7 +2892,7 @@ export class GenericFetchAndSaveBackend {
       // 1. Update player castles
       try {
         const parsedCurrentCastles: Castle[] = currentCastles;
-        const parsedNewCastles: Castle[] = castles ? castles : [];
+        const parsedNewCastles: Castle[] = castles || [];
         await this.updatePlayerCastles(playerId, parsedCurrentCastles, parsedNewCastles);
       } catch (error) {
         Utils.logMessage('PlayerId:', playerId);
@@ -3218,8 +3217,7 @@ export class GenericFetchAndSaveBackend {
       const currentAlliance = currentAlliancesMap.get(allianceId);
 
       if (
-        !currentAlliance ||
-        currentAlliance.auto_join_enabled !== autoJoinEnabled ||
+        currentAlliance?.auto_join_enabled !== autoJoinEnabled ||
         currentAlliance.description !== allianceDescription ||
         currentAlliance.language !== allianceLanguage ||
         currentAlliance.is_island_king !== isIslandKingAlliance ||
@@ -3710,9 +3708,9 @@ export class GenericFetchAndSaveBackend {
           const url: string = encodeURI(this.BASE_API_URL + 'gdi' + `/"PID":${id}`);
           const response = await axios.get(url);
           const data = response.data;
-          if (data && data.content && data.content) {
+          if (data?.content && data.content) {
             const player = data.content;
-            if (player && player['O']) {
+            if (player?.['O']) {
               const allianceId = player['O']['AID'] || null;
               const allianceName = player['O']['AN'] || null;
               const might_current = player['O']['MP'] || 0;
@@ -3776,7 +3774,7 @@ export class GenericFetchAndSaveBackend {
             } else {
               await this.removePlayerFromDatabase(id);
             }
-          } else if (data && data.error === 'Timeout') {
+          } else if (data?.error === 'Timeout') {
             // Player is not found, remove from database
             Utils.logMessage(' [Info] Player data timeout, removing player from database', id);
             await this.removePlayerFromDatabase(id);
@@ -4267,21 +4265,21 @@ export class GenericFetchAndSaveBackend {
       const entities: Record<string, any> = {};
       let c = true;
       let data = await this.fetchDataAndReturn(lt, levelCategory, i);
-      if (!data || data['return_code'] != '0') {
+      if (data?.['return_code'] != '0') {
         if (i < 10) {
           Utils.logMessage(' [info] Invalid event');
           return -1;
         } else {
           const attempts = 3;
           let k = 0;
-          while (k < attempts && (!data || data['return_code'] != '0')) {
+          while (k < attempts && (data?.['return_code'] != '0')) {
             await new Promise((resolve) => setTimeout(resolve, 3000));
             data = await this.fetchDataAndReturn(lt, levelCategory, i);
             k++;
           }
         }
       }
-      if (!data || data['return_code'] != '0' || !data?.content?.LR) {
+      if (data?.['return_code'] != '0' || !data?.content?.LR) {
         Utils.logMessage(' [info] Invalid event');
         return -1;
       }
@@ -4314,7 +4312,7 @@ export class GenericFetchAndSaveBackend {
             let fetchData = p?.content?.L ?? [];
             const attempts = 7;
             let currentTry = 0;
-            while (currentTry < attempts && (!p || p['return_code'] != '0' || !fetchData || fetchData.length === 0)) {
+            while (currentTry < attempts && (p?.['return_code'] != '0' || !fetchData || fetchData.length === 0)) {
               await new Promise((resolve) => setTimeout(resolve, 2000));
               p = await this.fetchDataAndReturn(lt, levelCategory, i);
               fetchData = p?.content?.L ?? [];

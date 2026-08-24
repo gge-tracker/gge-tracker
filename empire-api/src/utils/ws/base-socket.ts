@@ -332,7 +332,7 @@ class BaseSocket extends Log {
     if (
       !this.connected.isSet ||
       this.socketState !== SocketState.CONNECTED ||
-      (!this.socket && (!this.ws || this.ws.readyState !== WebSocket.OPEN)) ||
+      (!this.socket && (this.ws?.readyState !== WebSocket.OPEN)) ||
       (this.socket && this.socket.destroyed)
     ) {
       this.warn(

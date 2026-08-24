@@ -117,14 +117,14 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
   private alliances: ApiCartoMap[] = [];
   private toggledAllianceCastles: string[] = [];
   private L!: typeof Leaflet;
-  private cdr = inject(ChangeDetectorRef);
-  private windowService = inject(WindowService);
-  private serverService = inject(ServerService);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly windowService = inject(WindowService);
+  private readonly serverService = inject(ServerService);
   private allianceName: string | null = null;
   private filteredCastles: Castle[] = [];
   private playerLayers: Record<string, L.LayerGroup> = {};
   private selectedPolylines: L.Polyline[] = [];
-  private containerSize: number = WorldSizeDimensions.X.MAX;
+  private readonly containerSize: number = WorldSizeDimensions.X.MAX;
   private selectedPlayer: string | null = null;
 
   public async ngAfterViewInit(): Promise<void> {
@@ -172,7 +172,6 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
             void this.initWithSpecificAlliance(parsedParameter, WatchModeStats.ALL_ALLIANCES, parsedColors);
           } catch {
             this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
-            return;
           }
         } else {
           this.allianceName = alliance;
@@ -355,7 +354,7 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
         if (_ === CastleType.LABORATORY || _ === CastleType.MONUMENT || _ === CastleType.ROYAL_TOWER) return;
         const row = Math.floor(y / this.resolution);
         const col = Math.floor(x / this.resolution);
-        if (this.heatmap[row] && this.heatmap[row][col] !== undefined) {
+        if (this.heatmap[row]?.[col] !== undefined) {
           const nbCastles = player.castles.filter(
             (castle) =>
               castle[2] !== CastleType.MONUMENT &&

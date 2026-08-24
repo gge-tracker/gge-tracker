@@ -18,11 +18,11 @@ export class LanguageService {
   ];
 
   // @ts-expect-error Property 'userLanguage' does not exist on type 'Navigator'.
-  private language = (navigator.language || navigator['userLanguage']).toLowerCase();
-  private localStorage = inject(LocalStorageService);
+  private readonly language = (navigator.language || navigator['userLanguage']).toLowerCase();
+  private readonly localStorage = inject(LocalStorageService);
   private readonly defaultLang = 'en';
 
-  constructor(private translate: TranslateService) {
+  constructor(private readonly translate: TranslateService) {
     if (!this.localStorage.getItem('lang')) {
       this.localStorage.setItem('lang', this.getPreferredLanguage());
     }

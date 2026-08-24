@@ -98,7 +98,7 @@ async function createOuterRealmsInstance(): Promise<void> {
     const statusResponse = await generic.fetchUrl(statusUrl, 'GET', null);
     const realtimeRedisStatus = await generic.getRedisValue('outerRealmsDataFetchError');
     let lastTSIDValue: string | null = process.env.INITIAL_TSID_VALUE || null;
-    if (!statusResponse.data || statusResponse.data['EmpireEx_42'] !== true || realtimeRedisStatus) {
+    if (statusResponse.data?.['EmpireEx_42'] !== true || realtimeRedisStatus) {
       const lastCheckTime = await generic.getRedisValue('outerRealmsLastCheckTime');
       lastTSIDValue = await generic.getRedisValue('temporaryServerData');
       const now = Date.now();
@@ -133,7 +133,7 @@ async function createOuterRealmsInstance(): Promise<void> {
       await new Promise((resolve) => setTimeout(resolve, 5000));
       console.log('Outer Realms server might be connected. Verifying...');
       const verifyResponse = await generic.fetchUrl(statusUrl, 'GET', null);
-      if (verifyResponse.data && verifyResponse.data['EmpireEx_42'] === true) {
+      if (verifyResponse.data?.['EmpireEx_42'] === true) {
         console.log('Outer Realms server is successfully connected!');
       } else {
         console.error('Failed to connect Outer Realms server, exiting.');
@@ -171,7 +171,7 @@ async function createOuterRealmsInstance(): Promise<void> {
     }
   } catch (error) {
     console.error('Error fetching Empire API Realtime status:', error);
-    return;
+    
   }
 }
 

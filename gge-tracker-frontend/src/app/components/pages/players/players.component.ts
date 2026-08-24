@@ -169,9 +169,9 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     fame: { min: 'minFame', max: 'maxFame' },
     castleCount: { min: 'castleCountMin', max: 'castleCountMax' },
   };
-  private cdr = inject(ChangeDetectorRef);
-  private localStorage = inject(LocalStorageService);
-  private formatNumberPipe = inject(FormatNumberPipe);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly localStorage = inject(LocalStorageService);
+  private readonly formatNumberPipe = inject(FormatNumberPipe);
 
   constructor() {
     super();

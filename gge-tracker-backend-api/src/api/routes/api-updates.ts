@@ -130,7 +130,6 @@ export abstract class ApiUpdates implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getPlayersUpdatesByAlliance', request);
-      return;
     }
   }
 
@@ -225,7 +224,6 @@ export abstract class ApiUpdates implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getNamesUpdates', request);
-      return;
     }
   }
 
@@ -336,7 +334,6 @@ export abstract class ApiUpdates implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getNamesUpdates', request);
-      return;
     }
   }
 }

@@ -275,10 +275,10 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   }
 
   private animationFrames: Partial<Record<keyof IRankingStatsPlayer, number>> = {};
-  private localStorage = inject(LocalStorageService);
-  private languageService = inject(LanguageService);
-  private cdr = inject(ChangeDetectorRef);
-  private worlds = [
+  private readonly localStorage = inject(LocalStorageService);
+  private readonly languageService = inject(LanguageService);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly worlds = [
     { name: 'Le Grand Empire', id: 0 },
     { name: 'Le Glacier éternel', id: 2 },
     { name: 'Les Sables brûlants', id: 1 },
@@ -286,7 +286,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     { name: 'Les Îles orageuses', id: 4 },
   ];
   private observer!: IntersectionObserver;
-  @ViewChildren('chartContainer', { read: ElementRef }) private chartContainers!: QueryList<ElementRef>;
+  @ViewChildren('chartContainer', { read: ElementRef }) private readonly chartContainers!: QueryList<ElementRef>;
 
   constructor() {
     super();
@@ -561,7 +561,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       this.fameTitles = fameTitles.filter((title) => title.topX === undefined);
       const currentFameTitle = this.getCurrentFameTitle();
       const currentFameTopXTitle = this.fameTitlesTopX.find(
-        (title) => title.topX && this.stats!.playerCurrentFameRank <= title.topX!,
+        (title) => title.topX && this.stats!.playerCurrentFameRank <= title.topX,
       );
 
       if (currentFameTopXTitle) {

@@ -192,7 +192,6 @@ export abstract class ApiAlliances implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getAllianceByAllianceId', request);
-      return;
     }
   }
 
@@ -308,7 +307,6 @@ export abstract class ApiAlliances implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getAllianceByAllianceName', request);
-      return;
     }
   }
 
@@ -529,7 +527,6 @@ export abstract class ApiAlliances implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getAlliances', request);
-      return;
     }
   }
 

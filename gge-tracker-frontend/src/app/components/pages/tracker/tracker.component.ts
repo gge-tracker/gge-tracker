@@ -95,7 +95,7 @@ export class TrackerComponent extends GenericComponent {
   public displayedStates: { label: string; value: string }[] = [];
   public selectedRealm: string[] = ['2'];
   public filterByKid: string[] = ['2'];
-  private localStorage = inject(LocalStorageService);
+  private readonly localStorage = inject(LocalStorageService);
 
   constructor() {
     super();

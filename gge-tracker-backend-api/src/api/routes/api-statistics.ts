@@ -236,18 +236,15 @@ export abstract class ApiStatistics implements ApiHelper {
         };
         void ApiHelper.updateCache(cacheKey, data);
         response.status(ApiHelper.HTTP_OK).send(this.trimPlayerStatistics(data, options));
-        return;
       } catch {
         response
           .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
           .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
-        return;
       }
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getStatisticsByPlayerId', request);
-      return;
     }
   }
 
@@ -334,12 +331,10 @@ export abstract class ApiStatistics implements ApiHelper {
       };
       void ApiHelper.updateCache(cacheKey, data);
       response.status(ApiHelper.HTTP_OK).send(data);
-      return;
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getStatisticsSummaryByPlayerId', request);
-      return;
     }
   }
 
@@ -397,12 +392,10 @@ export abstract class ApiStatistics implements ApiHelper {
       const data = { event: eventName, occurrences };
       void ApiHelper.updateCache(cacheKey, data);
       response.status(ApiHelper.HTTP_OK).send(data);
-      return;
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getEventOccurrencesByPlayerId', request);
-      return;
     }
   }
 
@@ -507,13 +500,11 @@ export abstract class ApiStatistics implements ApiHelper {
         const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
         response.status(code).send({ error: message });
         ApiHelper.logError(error, 'getStatisticsByPlayerIdAndEventNameAndDuration', request);
-        return;
       }
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getStatisticsByPlayerIdAndEventNameAndDuration', request);
-      return;
     }
   }
 
@@ -587,7 +578,6 @@ export abstract class ApiStatistics implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getPulsedStatisticsByAllianceId', request);
-      return;
     }
   }
 
@@ -772,7 +762,6 @@ export abstract class ApiStatistics implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getRankingByPlayerId', request);
-      return;
     }
   }
 

@@ -99,8 +99,8 @@ export class ServerService {
     'TR1',
     'US1',
   ];
-  private languageService = inject(LanguageService);
-  private localStorage = inject(LocalStorageService);
+  private readonly languageService = inject(LanguageService);
+  private readonly localStorage = inject(LocalStorageService);
 
   public changeServer(server: string): void {
     this.localStorage.setItem('server', server);
@@ -163,7 +163,7 @@ export class ServerService {
     const nodes = [...(document.querySelectorAll('root > servers > server') as unknown as Iterable<Element>)];
     return nodes.map((node) => {
       const enabled = node.querySelector('enabled')?.textContent?.trim() === 'true';
-      const featured = node.querySelector('featured')?.textContent?.trim() === 'false' ? false : true;
+      const featured = node.querySelector('featured')?.textContent?.trim() !== 'false';
       const ggeServerName = node.querySelector('gge-server-name')?.textContent?.trim() ?? '';
       const name = node.querySelector('name')?.textContent?.trim() ?? '';
       const flagUrl = this.getFlagUrl(name);

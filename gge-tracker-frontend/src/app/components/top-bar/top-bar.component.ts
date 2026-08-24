@@ -40,13 +40,13 @@ export class TopBarComponent implements AfterViewInit {
   public searchQuery: string = '';
   public filteredServerInput: string = '';
   public sidebarOpen = false;
-  private sidebarService = inject(SidebarService);
-  private utilitiesService = inject(UtilitiesService);
-  private topBarService = inject(TopBarService);
-  private injector = inject(Injector);
-  private appRef = inject(ApplicationRef);
+  private readonly sidebarService = inject(SidebarService);
+  private readonly utilitiesService = inject(UtilitiesService);
+  private readonly topBarService = inject(TopBarService);
+  private readonly injector = inject(Injector);
+  private readonly appRef = inject(ApplicationRef);
   private listener?: (event: PointerEvent) => void;
-  private cdr = inject(ChangeDetectorRef);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   constructor() {
     this.utilitiesService.data$.subscribe((data) => {

@@ -1,6 +1,6 @@
 class AsyncEvent {
   public isSet: boolean = false;
-  private target: EventTarget;
+  private readonly target: EventTarget;
 
   constructor() {
     this.target = new EventTarget();

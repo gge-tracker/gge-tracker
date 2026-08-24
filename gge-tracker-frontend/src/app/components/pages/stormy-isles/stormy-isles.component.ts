@@ -55,7 +55,7 @@ type MetricFilterField = `metric${SortableMetricId}`;
 const FILTERABLE_METRICS: { id: SortableMetricId; field: MetricFilterField; label: string; icon: string }[] =
   SORTABLE_METRIC_IDS.map((id) => ({
     id,
-    field: `metric${id}` as MetricFilterField,
+    field: `metric${id}`,
     label: METRIC_SHORT_LABELS[id],
     icon: `/assets/aquamarine_${id}.webp`,
   }));
@@ -187,9 +187,9 @@ export class StormyIslesComponent extends GenericComponent implements OnInit {
     ) as Record<MetricFilterField, { min: string; max: string }>),
   };
 
-  private cdr = inject(ChangeDetectorRef);
-  private localStorage = inject(LocalStorageService);
-  private formatNumberPipe = inject(FormatNumberPipe);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly localStorage = inject(LocalStorageService);
+  private readonly formatNumberPipe = inject(FormatNumberPipe);
 
   constructor() {
     super();

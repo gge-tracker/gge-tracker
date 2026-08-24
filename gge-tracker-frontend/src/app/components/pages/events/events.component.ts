@@ -114,8 +114,8 @@ export class EventsComponent extends GenericComponent {
   };
   public translations: Record<string, string> = {};
   private eventId: number | null = null;
-  private languageService = inject(LanguageService);
-  private cdr = inject(ChangeDetectorRef);
+  private readonly languageService = inject(LanguageService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   constructor() {
     super();

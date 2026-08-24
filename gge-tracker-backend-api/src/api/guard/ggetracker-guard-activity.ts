@@ -375,7 +375,7 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
       const ts = `${logEntry.timestamp}000000`;
       const value = JSON.stringify(logEntry.line);
       if (streams.has(key)) {
-        streams.get(key)!.values.push([ts, value]);
+        streams.get(key).values.push([ts, value]);
       } else {
         streams.set(key, { stream: logEntry.labels, values: [[ts, value]] });
       }

@@ -11,7 +11,7 @@ import { ApiRestService } from '@ggetracker-services/api-rest.service';
   standalone: true,
 })
 export class MaintenanceComponent {
-  private apiRest = inject(ApiRestService);
+  private readonly apiRest = inject(ApiRestService);
 
   constructor() {
     this.waitLastUpdate();

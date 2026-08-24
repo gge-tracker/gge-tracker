@@ -60,10 +60,10 @@ export class ChartsWrapperComponent implements OnInit {
   public chartComponentOutput = output<ChartComponentInstance>();
   public component?: ChartComponentInstance;
 
-  @ViewChild('container', { read: ViewContainerRef, static: true }) private vcr!: ViewContainerRef;
-  private platformId = inject(PLATFORM_ID);
+  @ViewChild('container', { read: ViewContainerRef, static: true }) private readonly vcr!: ViewContainerRef;
+  private readonly platformId = inject(PLATFORM_ID);
 
-  constructor(private injector: Injector) {}
+  constructor(private readonly injector: Injector) {}
 
   public async ngOnInit(): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) return;

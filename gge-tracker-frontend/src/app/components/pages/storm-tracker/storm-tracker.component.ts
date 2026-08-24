@@ -136,8 +136,8 @@ export class StormTrackerComponent extends GenericComponent {
   public nearPlayerName: string | null = null;
   public maxDistance: number | null = null;
 
-  private localStorage = inject(LocalStorageService);
-  private cdr = inject(ChangeDetectorRef);
+  private readonly localStorage = inject(LocalStorageService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   constructor() {
     super();

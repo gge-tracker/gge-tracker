@@ -133,7 +133,7 @@ export abstract class ApiHelper {
   public static getHttpMessageResponse(status: number): { code: number; message: string } {
     return {
       code: status,
-      message: this.HTTP_MESSAGE[status as Status] || RouteErrorMessagesEnum.GenericUnknownStatus,
+      message: this.HTTP_MESSAGE[status] || RouteErrorMessagesEnum.GenericUnknownStatus,
     };
   }
 

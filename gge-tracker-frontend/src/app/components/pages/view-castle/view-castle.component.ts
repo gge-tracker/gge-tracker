@@ -223,8 +223,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     'Objets de construction': '',
   };
   private _filteredBuildings: IMappedBuildingWithGround[] = [];
-  private cdr = inject(ChangeDetectorRef);
-  private serverService = inject(ServerService);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly serverService = inject(ServerService);
 
   constructor() {
     super();
@@ -297,7 +297,6 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     this.drawMiniMaps();
     this.loadItemPlaceholder = false;
     this.cdr.detectChanges();
-    return;
   }
 
   public formatValue(value: number | string | number | boolean | null): string {
@@ -360,7 +359,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
         break;
       }
     }
-    if (displayEquipment && castle.equipment && castle.equipment?.name) {
+    if (displayEquipment && castle.equipment?.name) {
       const cleanName = castle.equipment?.name.toLowerCase().trim().replaceAll('\-_', '');
       // Special case for sand outpost which has a specific icon in the game assets
       const suffix = castle.type === CastleType.OUTPOST && cleanName === 'sand' ? 'sand802icon' : cleanName;
@@ -565,7 +564,6 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     await this.router.navigate([], { queryParams: { analysis: cid, kid: castleData.kingdomId } });
     await this.fetchCastleData(+cid, +(castleData.kingdomId || 0));
     this.cdr.detectChanges();
-    return;
   }
 
   public async onBackButtonClick(): Promise<void> {
@@ -574,7 +572,6 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     this.clearAllParameters();
     this.cdr.detectChanges();
     await this.searchPlayer(search);
-    return;
   }
 
   public getSumBuildingSpecificItem(item: string): number {
@@ -1320,7 +1317,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
         const [effectId, effectValue] = splittedEffect ? splittedEffect.split('&') : [null, null];
         let effectCode = this.effects.find((effect) => effect['effectID'] === effectId);
         if (splittedEffect && effectValue !== null) {
-          const key = effectCode && effectCode['name'];
+          const key = effectCode?.['name'];
           const name = this.languageJsonData[('equip_effect_description_' + key).toUpperCase()];
           if (name) {
             effects.push({
@@ -1392,19 +1389,16 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
 
       return {
         ...data,
-        isPremium: data['isPremium'] === '1' ? true : false,
+        isPremium: data['isPremium'] === '1',
         slotTypeName: this.getSlotTypeName(data['slotTypeID']),
         slotTypeID: Number(data['slotTypeID']) || 0,
         level: String(data['slotTypeID']) === '0' ? '1' : Number(data['level']),
         rarenessName: String(
           this.languageJsonData[
-            (
-              'equipment_rarity_' + RARENESS_NAMES[Number(data['rarenessID']) as keyof typeof RARENESS_NAMES] ||
-              'unknown'
-            ).toUpperCase()
+            ('equipment_rarity_' + RARENESS_NAMES[Number(data['rarenessID'])] || 'unknown').toUpperCase()
           ],
         ),
-        rarenessColor: this.toHex(RARENESS_COLORS[Number(data['rarenessID']) as keyof typeof RARENESS_COLORS] || 0),
+        rarenessColor: this.toHex(RARENESS_COLORS[Number(data['rarenessID'])] || 0),
         translatedName: String(
           this.languageJsonData[
             (this.getBaseNameTextId(String(data['slotTypeID'])) + '_' + data['name'] || 'unknown').toUpperCase()
@@ -1606,7 +1600,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
           console.warn(`Effect name for ${findEffect['name']} not found in language data.`, searchType, data, value);
         }
       }
-      return effects.filter((effect: string | null) => effect !== null && effect !== undefined) as string[];
+      return effects.filter((effect: string | null) => effect !== null && effect !== undefined);
     }
   }
 }

@@ -424,7 +424,6 @@ export abstract class ApiPlayers implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getPlayers', request);
-      return;
     }
   }
 
@@ -511,7 +510,6 @@ export abstract class ApiPlayers implements ApiHelper {
           response
             .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
             .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
-          return;
         } else {
           if (!results.rows || results.rows.length === 0) {
             // Trick: we return 200 for frontend compatibility, but with an error message
@@ -583,7 +581,6 @@ export abstract class ApiPlayers implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getPlayersByPlayerName', request);
-      return;
     }
   }
 
@@ -656,7 +653,6 @@ export abstract class ApiPlayers implements ApiHelper {
           response
             .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
             .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
-          return;
         } else {
           const topPlayers = results.rows.map((result: any) => {
             const utcDate = toDate(result['created_at']);
@@ -678,7 +674,6 @@ export abstract class ApiPlayers implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getTopPlayersByPlayerId', request);
-      return;
     }
   }
 
@@ -824,7 +819,6 @@ export abstract class ApiPlayers implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getPlayerBulkData', request);
-      return;
     }
   }
 }

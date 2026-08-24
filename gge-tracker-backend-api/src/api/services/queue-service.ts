@@ -26,8 +26,11 @@ export class QueueService {
    * - `res`: The Express `Response` object used to send a response back to the client
    * - `handler`: An asynchronous function that processes the request and response
    */
-  private queue: { req: Request; res: Response; handler: (request: Request, response: Response) => Promise<any> }[] =
-    [];
+  private readonly queue: {
+    req: Request;
+    res: Response;
+    handler: (request: Request, response: Response) => Promise<any>;
+  }[] = [];
 
   /**
    * Adds a new request, response, and handler function to the processing queue and triggers the next queue execution

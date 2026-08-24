@@ -126,12 +126,10 @@ export abstract class ApiOffers implements ApiHelper {
        * Send response
        * --------------------------------- */
       response.status(ApiHelper.HTTP_OK).send(data);
-      return;
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getOffers', request);
-      return;
     }
   }
 

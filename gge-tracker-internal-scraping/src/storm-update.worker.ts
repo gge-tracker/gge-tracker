@@ -62,7 +62,7 @@ export function parseServersConf(): ServerConfig[] {
 
     if (line.startsWith('[')) {
       if (isValidServer(current)) {
-        servers.push(current as ServerConfig);
+        servers.push(current);
       }
       current = { name: line.slice(1, -1) };
       continue;
@@ -72,7 +72,7 @@ export function parseServersConf(): ServerConfig[] {
     applyConfig(current, key, value);
   }
   if (isValidServer(current)) {
-    servers.push(current as ServerConfig);
+    servers.push(current);
   }
 
   logInfo(`Loaded ${servers.length} servers from config`);
@@ -116,8 +116,8 @@ async function processServer(server: ServerConfig, index: string, total: number)
     {},
     {
       host: 'postgres',
-      user: process.env.SQL_USER!,
-      password: process.env.SQL_PASSWORD!,
+      user: process.env.SQL_USER,
+      password: process.env.SQL_PASSWORD,
       database: server.sql,
       port: 5432,
       max: 1,

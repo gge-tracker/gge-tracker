@@ -1,14 +1,14 @@
 import { GgeServerType } from './base-socket.js';
 
 export class Log {
-  private _serverHeader: string;
-  private _serverType: GgeServerType;
+  private readonly _serverHeader: string;
+  private readonly _serverType: GgeServerType;
 
-  private gray = this.color(90);
-  private bold = this.color(1);
-  private green = this.color(32);
-  private yellow = this.color(33);
-  private blue = this.color(34);
+  private readonly gray = this.color(90);
+  private readonly bold = this.color(1);
+  private readonly green = this.color(32);
+  private readonly yellow = this.color(33);
+  private readonly blue = this.color(34);
 
   constructor(serverHeader: string, serverType: GgeServerType) {
     this._serverHeader = serverHeader;

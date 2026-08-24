@@ -5,7 +5,7 @@ import { Observable, of } from 'rxjs';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
 
 export class LocalStorageTranslateLoader implements TranslateLoader {
-  private localStorage = inject(LocalStorageService);
+  private readonly localStorage = inject(LocalStorageService);
 
   public getTranslation(): Observable<TranslationObject> {
     const localLang = this.localStorage.getItem('lang_dev');

@@ -42,10 +42,10 @@ export class RenamesComponent extends GenericComponent implements AfterViewInit,
     movementType: null,
     isFiltered: false,
   };
-  private topBarService = inject(TopBarService);
-  private cdr = inject(ChangeDetectorRef);
+  private readonly topBarService = inject(TopBarService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
-  constructor(private injector: Injector) {
+  constructor(private readonly injector: Injector) {
     super();
     this.isInLoading = true;
     this.route.paramMap.subscribe((parameters) => {

@@ -210,12 +210,10 @@ export abstract class ApiCastle implements ApiHelper {
        * --------------------------------- */
       void ApiHelper.updateCache(cachedKey, responseContent, 360);
       response.status(ApiHelper.HTTP_OK).send(responseContent);
-      return;
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getCastleById', request);
-      return;
     }
   }
 
@@ -320,7 +318,6 @@ export abstract class ApiCastle implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getCastleByPlayerName', request);
-      return;
     }
   }
 
@@ -402,7 +399,6 @@ export abstract class ApiCastle implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getRandomCastle', request);
-      return;
     }
   }
 }

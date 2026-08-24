@@ -32,8 +32,8 @@ export class GenericComponent {
   public meta = inject(Meta);
   public translateService = inject(TranslateService);
 
-  private renderer = inject(Renderer2);
-  private rendererFactory = inject(RendererFactory2);
+  private readonly renderer = inject(Renderer2);
+  private readonly rendererFactory = inject(RendererFactory2);
 
   constructor() {
     this.isBrowser = isPlatformBrowser(this.platformId);

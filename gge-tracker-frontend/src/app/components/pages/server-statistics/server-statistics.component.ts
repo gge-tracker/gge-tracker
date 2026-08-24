@@ -37,10 +37,10 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
   public selectedTab: 'graph' | 'table' = 'graph';
   public serverService = inject(ServerService);
 
-  private cdr = inject(ChangeDetectorRef);
-  private windowService = inject(WindowService);
-  private languageService = inject(LanguageService);
-  private data: AllianceStatsData[] = [];
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly windowService = inject(WindowService);
+  private readonly languageService = inject(LanguageService);
+  private readonly data: AllianceStatsData[] = [];
 
   public ngOnInit(): void {
     const lastUpdate = this.utilitiesService.data$.subscribe((data) => {

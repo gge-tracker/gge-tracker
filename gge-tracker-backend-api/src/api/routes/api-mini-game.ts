@@ -250,7 +250,7 @@ export abstract class ApiMiniGame implements ApiHelper {
         },
         isProtection: {
           guess: isGuessedPlayerInProtection,
-          status: isGuessedPlayerInProtection === miniGameData.is_protection ? true : false,
+          status: isGuessedPlayerInProtection === miniGameData.is_protection,
         },
         might: {
           guess: guessedPlayer.might_current,
@@ -393,6 +393,5 @@ export abstract class ApiMiniGame implements ApiHelper {
       player.name,
     ];
     await pgPool.query(insertQuery, insertValues);
-    return;
   }
 }

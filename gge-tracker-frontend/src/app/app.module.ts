@@ -19,7 +19,7 @@ registerLocaleData(localeRo, 'ro-RO');
 registerLocaleData(localeDe, 'de-DE');
 
 export class CustomHttpLoader implements TranslateLoader {
-  constructor(private http: HttpClient) {}
+  constructor(private readonly http: HttpClient) {}
 
   public getTranslation(lang: string): Observable<any> {
     if (localStorage.getItem('lang_dev')) {

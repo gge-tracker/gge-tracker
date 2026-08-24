@@ -100,7 +100,7 @@ export abstract class SocketService {
       return null;
     }
     const creds = SocketService.credentials[header];
-    if (!creds || !creds.USERNAME || !creds.PASSWORD || !creds.SERVER_ID) {
+    if (!creds?.USERNAME || !creds.PASSWORD || !creds.SERVER_ID) {
       console.warn(`[${header}] Missing or incomplete credentials.`);
       return null;
     }

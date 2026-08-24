@@ -162,16 +162,16 @@ export class OffersComponent extends GenericComponent implements AfterViewInit, 
     subscriptions: 'Abonnements',
   };
 
-  @ViewChildren('cardContent') private cardContents!: QueryList<ElementRef<HTMLElement>>;
-  @ViewChildren('cardFlow') private cardFlows!: QueryList<ElementRef<HTMLElement>>;
+  @ViewChildren('cardContent') private readonly cardContents!: QueryList<ElementRef<HTMLElement>>;
+  @ViewChildren('cardFlow') private readonly cardFlows!: QueryList<ElementRef<HTMLElement>>;
 
   private allOffers: OfferCard[] = [];
   private tabStrip?: HTMLElement;
   private tabsObserver?: ResizeObserver;
 
-  private localStorage = inject(LocalStorageService);
-  private serverService = inject(ServerService);
-  private cdr = inject(ChangeDetectorRef);
+  private readonly localStorage = inject(LocalStorageService);
+  private readonly serverService = inject(ServerService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private flowObserver?: ResizeObserver;
   private measureScheduled = false;
 

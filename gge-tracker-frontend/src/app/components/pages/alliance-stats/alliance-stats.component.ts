@@ -416,15 +416,15 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     ['', '', undefined, true],
   ];
   public defaultMembersTableHeaderSize = this.membersTableHeader.length;
-  private windowService = inject(WindowService);
-  private languageService = inject(LanguageService);
-  private cdr = inject(ChangeDetectorRef);
-  private localStorage = inject(LocalStorageService);
+  private readonly windowService = inject(WindowService);
+  private readonly languageService = inject(LanguageService);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly localStorage = inject(LocalStorageService);
   private playersColors: Record<string, string> = {};
   private statsFinished = false;
   private statsInProgress = false;
   private data: ApiPlayerStatsForAlliance | null = null;
-  private titleService = inject(Title);
+  private readonly titleService = inject(Title);
   private timezoneOffset: number | null = null;
   private isDestroyed = false;
 
@@ -1033,7 +1033,6 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
         this.isInLoading = false;
         void this.router.navigate(['/']);
-        return;
       }
     });
   }
@@ -1547,7 +1546,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       return name.slice(0, -2);
     } else {
       const regex = /\s\(([\d,.]+[A-Za-z]{0,1})\)$/;
-      const match = name.match(regex);
+      const match = regex.exec(name);
       if (match) {
         return name.replace(regex, '');
       }

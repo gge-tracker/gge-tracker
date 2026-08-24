@@ -104,8 +104,8 @@ export class MovementsComponent extends GenericComponent {
     fame: { min: 'minFame', max: 'maxFame' },
     castleCount: { min: 'castleCountMin', max: 'castleCountMax' },
   };
-  private formatNumberPipe = inject(FormatNumberPipe);
-  private activatedRoute = inject(ActivatedRoute);
+  private readonly formatNumberPipe = inject(FormatNumberPipe);
+  private readonly activatedRoute = inject(ActivatedRoute);
 
   constructor() {
     super();

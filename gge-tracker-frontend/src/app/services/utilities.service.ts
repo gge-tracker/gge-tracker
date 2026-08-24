@@ -16,9 +16,9 @@ export class UtilitiesService {
   public lastUpdate?: string;
   public dataSubject = new BehaviorSubject<ApiLastUpdates | null>(null);
   public data$ = this.dataSubject.asObservable();
-  private apiRestService = inject(ApiRestService);
-  private toastService = inject(ToastService);
-  private translateService = inject(TranslateService);
+  private readonly apiRestService = inject(ApiRestService);
+  private readonly toastService = inject(ToastService);
+  private readonly translateService = inject(TranslateService);
 
   constructor() {
     this.loadLastUpdates();

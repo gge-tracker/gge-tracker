@@ -10,9 +10,9 @@ import { firstValueFrom } from 'rxjs';
 @Injectable({ providedIn: 'root' })
 export class PlayerStatsResolver implements Resolve<Promise<ApiResponse<ApiRankingStatsPlayer>>> {
   constructor(
-    private apiRestService: ApiRestService,
-    private translateService: TranslateService,
-    private titleService: Title,
+    private readonly apiRestService: ApiRestService,
+    private readonly translateService: TranslateService,
+    private readonly titleService: Title,
   ) {}
 
   public async resolve(route: ActivatedRouteSnapshot): Promise<ApiResponse<ApiRankingStatsPlayer>> {

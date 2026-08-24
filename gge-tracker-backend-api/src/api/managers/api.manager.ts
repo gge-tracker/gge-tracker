@@ -28,18 +28,18 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    * Each key corresponds to a specific database or configuration, allowing for efficient management
    * and reuse of multiple MySQL connection pools within the application
    */
-  private mysqlPools: { [key: string]: mysql.Pool } = {};
+  private readonly mysqlPools: { [key: string]: mysql.Pool } = {};
   /**
    * A mapping of unique string keys to PostgreSQL connection pools
    * Each key represents a distinct database configuration or tenant,
    * allowing the service to manage multiple database connections efficiently
    */
-  private postgresPools: { [key: string]: pg.Pool } = {};
+  private readonly postgresPools: { [key: string]: pg.Pool } = {};
 
   /**
    * Configuration settings for connecting to the ClickHouse OLAP database
    */
-  private configuration = {
+  private readonly configuration = {
     clickhouse: {
       scheme: 'http',
       port: 8123,
@@ -51,7 +51,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
   /**
    * Instance of ClickHouse client for OLAP database interactions
    */
-  private clickhouseClient: NodeClickHouseClient;
+  private readonly clickhouseClient: NodeClickHouseClient;
 
   /**
    * A mapping of all supported GGE Tracker servers to their respective API token configurations
@@ -719,7 +719,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    * @returns An array of `IApiToken` objects representing the activated servers
    */
   public getActivatedServerValues(): IApiToken[] {
-    return Object.values(this.servers).filter((server) => 'code' in server) as IApiToken[];
+    return Object.values(this.servers).filter((server) => 'code' in server);
   }
 
   /**

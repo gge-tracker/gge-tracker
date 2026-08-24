@@ -69,7 +69,7 @@ export class CurrencyPickerComponent {
 
   private readonly searchField = viewChild<ElementRef<HTMLInputElement>>('searchField');
   private readonly optionElements = viewChild<ElementRef<HTMLElement>>('optionList');
-  private host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   constructor() {
     effect(() => this.searchField()?.nativeElement.focus());

@@ -218,7 +218,7 @@ export class ViewCastleUtilities {
       if (length === 3 || length === 4 || length === 6 || length === 8)
         return [h(length, 0), h(length, 1), h(length, 2)];
     }
-    const m = color.match(/rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+    const m = /rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i.exec(color);
     if (m) return [Number(m[1]), Number(m[2]), Number(m[3])];
     return [128, 128, 128];
   }

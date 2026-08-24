@@ -269,7 +269,6 @@ export abstract class ApiServer implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getMovements', request);
-      return;
     }
   }
 
@@ -503,7 +502,6 @@ export abstract class ApiServer implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getRenames', request);
-      return;
     }
   }
 
@@ -553,7 +551,6 @@ export abstract class ApiServer implements ApiHelper {
           response
             .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
             .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
-          return;
         } else {
           /* ---------------------------------
            * Process results
@@ -628,7 +625,6 @@ export abstract class ApiServer implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getStatistics', request);
-      return;
     }
   }
 }

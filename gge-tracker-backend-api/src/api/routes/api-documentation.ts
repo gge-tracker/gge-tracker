@@ -35,7 +35,6 @@ export abstract class ApiDocumentation implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getDocumentation', request);
-      return;
     }
   }
 }

@@ -73,7 +73,6 @@ export abstract class ApiAssets implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'updateAssets', request);
-      return;
     }
   }
 
@@ -128,12 +127,10 @@ export abstract class ApiAssets implements ApiHelper {
       await ApiHelper.updateCache(cachedKey, filteredItems, 60 * 60 * 24 * 7);
       response.set('Cache-Control', 'public, max-age=7200');
       response.status(ApiHelper.HTTP_OK).json(filteredItems);
-      return;
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getItems', request);
-      return;
     }
   }
 
@@ -195,7 +192,6 @@ export abstract class ApiAssets implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getLanguage', request);
-      return;
     }
   }
 
@@ -272,7 +268,6 @@ export abstract class ApiAssets implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getAsset', request);
-      return;
     }
   }
 

@@ -68,7 +68,7 @@ export class PlayerStatsCardComponent implements AfterViewInit, OnInit {
   public fullHistoryRequested = output<void>();
   public changePeriodOutput = output<'day' | 'week' | 'month' | 'year'>();
 
-  private cdr = inject(ChangeDetectorRef);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   public ngOnInit(): void {
     const value = Object.keys(this.charts())[0] as ChartTypes;

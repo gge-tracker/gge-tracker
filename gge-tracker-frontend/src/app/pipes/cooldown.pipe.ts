@@ -12,15 +12,15 @@ export interface CooldownTarget {
   pure: false,
 })
 export class CooldownPipe implements PipeTransform, OnDestroy {
-  private translateService = inject(TranslateService);
+  private readonly translateService = inject(TranslateService);
   private timer: ReturnType<typeof setInterval> | null = null;
   private now = Date.now();
 
   private translations: Record<string, string> = {};
 
   constructor(
-    private reference: ChangeDetectorRef,
-    private zone: NgZone,
+    private readonly reference: ChangeDetectorRef,
+    private readonly zone: NgZone,
   ) {
     this.zone.runOutsideAngular(() => {
       this.timer = setInterval(() => {

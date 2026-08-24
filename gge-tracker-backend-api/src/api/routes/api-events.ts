@@ -232,7 +232,6 @@ export abstract class ApiEvents implements ApiHelper {
           response
             .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
             .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
-          return;
         } else {
           /* ---------------------------------
            * Format results
@@ -261,7 +260,6 @@ export abstract class ApiEvents implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getEvents', request);
-      return;
     }
   }
 
@@ -333,7 +331,6 @@ export abstract class ApiEvents implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getGrandTournamentEventDates', request);
-      return;
     }
   }
 
@@ -449,7 +446,6 @@ export abstract class ApiEvents implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getGrandTournamentAllianceAnalysis', request);
-      return;
     }
   }
 
@@ -586,7 +582,6 @@ export abstract class ApiEvents implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'searchGrandTournamentDataByAllianceName', request);
-      return;
     }
   }
 
@@ -788,7 +783,6 @@ export abstract class ApiEvents implements ApiHelper {
             .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
             .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
           ApiHelper.logError(error, 'getEventByPlayerId', request);
-          return;
         } else {
           const events = results.rows.map((result: any) => ({
             type: result.type || eventType,
@@ -805,7 +799,6 @@ export abstract class ApiEvents implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getEventByPlayerId', request);
-      return;
     }
   }
 
@@ -978,7 +971,6 @@ export abstract class ApiEvents implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getEventPlayers', request);
-      return;
     }
   }
 
@@ -1205,7 +1197,6 @@ export abstract class ApiEvents implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getDataEventType', request);
-      return;
     }
   }
 
@@ -1301,7 +1292,6 @@ export abstract class ApiEvents implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getLiveOuterRealmsRankingSpecificPlayer', request);
-      return;
     }
   }
 
@@ -1421,7 +1411,6 @@ export abstract class ApiEvents implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getLiveOuterRealmsRanking', request);
-      return;
     }
   }
 
@@ -1500,7 +1489,6 @@ export abstract class ApiEvents implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getWoaEventsByPlayerId', request);
-      return;
     }
   }
 
@@ -1736,7 +1724,7 @@ export abstract class ApiEvents implements ApiHelper {
       for (const row of json.data as Array<{ metric_id: number; value: number; collected_at: string }>) {
         const ts = new Date(row.collected_at).toISOString();
         if (!snapshotMap.has(ts)) snapshotMap.set(ts, []);
-        snapshotMap.get(ts)!.push({ metric_id: Number(row.metric_id), value: Number(row.value) });
+        snapshotMap.get(ts).push({ metric_id: Number(row.metric_id), value: Number(row.value) });
       }
       const snapshots = [...snapshotMap.entries()].map(([collected_at, metrics]) => ({
         collected_at,
@@ -2005,7 +1993,7 @@ export abstract class ApiEvents implements ApiHelper {
        * (player_name, level, might_current, alliance_might, ...)
        * --------------------------------- */
       if (sortsOnPgColumn) {
-        const totalItems = (eligiblePlayerIds as number[]).length;
+        const totalItems = eligiblePlayerIds.length;
         const pgPageResult = await pgPool.query(
           `SELECT ${ApiEvents.STORMY_ISLES_PG_COLUMNS}
             FROM players P
@@ -2217,7 +2205,7 @@ export abstract class ApiEvents implements ApiHelper {
     collectedAt: string | null,
     fallbackPlayerId?: number,
   ): object {
-    const playerId = pgRow ? Number(pgRow.id) : (fallbackPlayerId as number);
+    const playerId = pgRow ? Number(pgRow.id) : fallbackPlayerId;
     return {
       rank,
       player_id: ApiHelper.addCountryCode(String(playerId), code),

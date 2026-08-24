@@ -112,7 +112,6 @@ export abstract class ApiCartography implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getCartographyByAllianceId', request);
-      return;
     }
   }
 
@@ -230,7 +229,6 @@ export abstract class ApiCartography implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getCartographyByAllianceName', request);
-      return;
     }
   }
 
@@ -329,7 +327,6 @@ export abstract class ApiCartography implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getCartographyByAllianceId', request);
-      return;
     }
   }
 }

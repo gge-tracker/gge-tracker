@@ -73,7 +73,7 @@ export class GuessDailyPlayerComponent extends GenericComponent implements OnIni
     NW: '↖️',
   };
   public isInputFocused: boolean = false;
-  private searchSubject = new Subject<string>();
+  private readonly searchSubject = new Subject<string>();
 
   public async ngOnInit(): Promise<void> {
     try {
@@ -107,7 +107,7 @@ export class GuessDailyPlayerComponent extends GenericComponent implements OnIni
       const savedGuesses = localStorage.getItem('miniGameGuesses');
       if (savedGuesses) {
         const parsed = JSON.parse(savedGuesses) as { gameId: string; guesses: GuessResult[] };
-        if (parsed.gameId === this.dailyTarget!.id) {
+        if (parsed.gameId === this.dailyTarget.id) {
           this.guesses = parsed.guesses;
           if (this.guesses.some((g) => g.win)) {
             this.isWin = true;
@@ -122,7 +122,7 @@ export class GuessDailyPlayerComponent extends GenericComponent implements OnIni
           if (item) {
             try {
               const parsed = JSON.parse(item) as { gameId: string; guesses: GuessResult[] };
-              if (parsed.gameId !== this.dailyTarget!.id || parsed.guesses.length > this.maxAttempts) {
+              if (parsed.gameId !== this.dailyTarget.id || parsed.guesses.length > this.maxAttempts) {
                 localStorage.removeItem(key);
               }
             } catch {

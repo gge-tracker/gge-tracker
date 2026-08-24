@@ -17,9 +17,9 @@ export class RenamesSwitcherComponent implements AfterViewInit, OnDestroy {
   public current = inject(CURRENT, { optional: true });
   public currentViewType?: 'players' | 'alliances';
 
-  private destroy$ = new Subject<void>();
-  private router = inject(Router);
-  private cdr = inject(ChangeDetectorRef);
+  private readonly destroy$ = new Subject<void>();
+  private readonly router = inject(Router);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   public ngAfterViewInit(): void {
     const inValue = this.current;

@@ -46,7 +46,7 @@ export default function createApp(sockets: {
 
   app.delete('/server/:server', async (request, response) => {
     try {
-      const { server } = request.params as { server: string };
+      const { server } = request.params;
       if (!server) {
         response.status(400).json({ error: 'Missing parameters' });
         return;
@@ -70,7 +70,7 @@ export default function createApp(sockets: {
 
   app.post('/server/:server/reconnect', async (request, response) => {
     try {
-      const { server } = request.params as { server: string };
+      const { server } = request.params;
       if (!server) {
         response.status(400).json({ error: 'Missing parameters' });
         return;

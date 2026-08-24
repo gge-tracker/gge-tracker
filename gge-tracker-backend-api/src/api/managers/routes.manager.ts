@@ -14,11 +14,11 @@ export class RoutesManager {
   /**
    * The route string to be matched against incoming requests
    */
-  private route: string;
+  private readonly route: string;
   /**
    * The type of match to perform (Exact, Prefix, or RegExp)
    */
-  private type: MatchType;
+  private readonly type: MatchType;
   /**
    * Indicates whether the route is subject to rate limiting
    */
@@ -155,7 +155,7 @@ export class RoutesManager {
    */
   private static guessRegExpFromString(s: string): RegExp {
     const slashStyle = /^\/(.+)\/([gimsuy]*)$/;
-    const m = s.match(slashStyle);
+    const m = slashStyle.exec(s);
     if (m) {
       return new RegExp(m[1], m[2]);
     }

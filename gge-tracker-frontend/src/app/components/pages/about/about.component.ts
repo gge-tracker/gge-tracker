@@ -38,7 +38,7 @@ export class AboutComponent extends GenericComponent implements OnInit {
   public contribs: Contributor[] = [];
   public lanes: ContributorLane[] = [];
   public rollPaused = false;
-  private serverService = inject(ServerService);
+  private readonly serverService = inject(ServerService);
 
   constructor() {
     super();

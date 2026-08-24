@@ -68,7 +68,7 @@ export class ChartsClientComponent implements AfterViewInit {
   public chartComponentOutput = output<ChartComponent>();
 
   @ViewChildren('componentRef')
-  private chartComponent!: QueryList<ChartComponent>;
+  private readonly chartComponent!: QueryList<ChartComponent>;
 
   public ngAfterViewInit(): void {
     // After the view initializes, we can access the chart component if needed.

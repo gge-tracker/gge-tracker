@@ -107,12 +107,10 @@ export abstract class ApiStatus implements ApiHelper {
       };
       response.status(ApiHelper.HTTP_OK).send(data);
       await ApiHelper.updateCache(cachedKey, data, 300);
-      return;
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getStatus', request);
-      return;
     }
   }
 
@@ -154,7 +152,6 @@ export abstract class ApiStatus implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getServers', request);
-      return;
     }
   }
 }
