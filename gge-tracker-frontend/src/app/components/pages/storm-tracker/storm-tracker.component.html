@@ -310,7 +310,7 @@
 
           <app-modal-form-group [label]="'Attaques restantes minimum' | translate">
             <input field type="number" [(ngModel)]="minAttacksLeft" [placeholder]="'Attaques restantes' | translate"
-              min="0" [attr.max]="maxVictories" />
+              min="0" [attr.max]="maxVictories"  [attr.aria-label]="'Attaques restantes' | translate"/>
             <button action search data-bs-dismiss="modal" (click)="onMinAttacksLeftChange(minAttacksLeft)">
               {{ 'Rechercher' | translate }}
             </button>
@@ -377,9 +377,9 @@
 
           <app-modal-form-group [label]="'Plus proche d\'une position' | translate">
             <span field prefix>X</span>
-            <input field type="number" [(ngModel)]="positionX" [placeholder]="'Position X' | translate" />
+            <input field type="number" [(ngModel)]="positionX" [placeholder]="'Position X' | translate"  [attr.aria-label]="'Position X' | translate"/>
             <span field prefix>Y</span>
-            <input field type="number" [(ngModel)]="positionY" [placeholder]="'Position Y' | translate" />
+            <input field type="number" [(ngModel)]="positionY" [placeholder]="'Position Y' | translate"  [attr.aria-label]="'Position Y' | translate"/>
             <button action search data-bs-dismiss="modal" (click)="onPositionChange(positionX, positionY)">
               {{ 'Rechercher' | translate }}
             </button>
@@ -390,7 +390,7 @@
 
           <app-modal-form-group [label]="'Plus proche d\'un joueur' | translate">
             <span field prefix>{{ 'Joueur' | translate }}</span>
-            <input field type="text" [(ngModel)]="nearPlayerName" [placeholder]="'Nom du joueur' | translate" />
+            <input field type="text" [(ngModel)]="nearPlayerName" [placeholder]="'Nom du joueur' | translate"  [attr.aria-label]="'Nom du joueur' | translate"/>
             <button action search data-bs-dismiss="modal" (click)="onPositionChangePlayerName(nearPlayerName)">
               {{ 'Rechercher' | translate }}
             </button>
@@ -401,7 +401,7 @@
 
           <app-modal-form-group [label]="'Distance maximale (cases)' | translate">
             <input field type="number" [(ngModel)]="maxDistance" [placeholder]="'Distance maximale' | translate"
-              min="1" />
+              min="1"  [attr.aria-label]="'Distance maximale' | translate"/>
             <button action search data-bs-dismiss="modal" (click)="onMaxDistanceChange(maxDistance)">
               {{ 'Rechercher' | translate }}
             </button>
@@ -413,7 +413,7 @@
           @if (activeTab === 'forts') {
           <app-modal-form-group [label]="'Attaques restantes minimum' | translate">
             <input field type="number" [(ngModel)]="minAttacksLeft"
-              [placeholder]="'Attaques restantes' | translate" min="0" [attr.max]="maxVictories" />
+              [placeholder]="'Attaques restantes' | translate" min="0" [attr.max]="maxVictories"  [attr.aria-label]="'Attaques restantes' | translate"/>
             <button action search data-bs-dismiss="modal" (click)="onMinAttacksLeftChange(minAttacksLeft)">
               {{ 'Rechercher' | translate }}
             </button>
@@ -441,7 +441,7 @@
         <div class="modal-body">
           <app-modal-form-group [label]="'Nombre de résultats par page' | translate">
             <input field type="number" [(ngModel)]="pageSize" [placeholder]="'Nombre de résultats' | translate"
-              min="0" />
+              min="0"  [attr.aria-label]="'Nombre de résultats' | translate"/>
             <button action search data-bs-dismiss="modal" (click)="onPageSizeChange(pageSize)">
               {{ 'Rechercher' | translate }}
             </button>

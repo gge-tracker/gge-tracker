@@ -9,7 +9,7 @@
         type="text"
         class="search-input"
         [(ngModel)]="search"
-        />
+         [attr.aria-label]="inputTip()"/>
       <datalist id="search-list">
         @for (search of getSearchHistory('all'); track search) {
           <option [value]="search"></option>

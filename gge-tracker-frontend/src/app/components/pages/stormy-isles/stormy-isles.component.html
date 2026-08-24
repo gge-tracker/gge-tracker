@@ -59,11 +59,11 @@
                   <input field type="text" id="mightMin" name="mightMin" [value]="displayFormValues.might.min"
                     (focus)="onGenericFocus('min', 'might')" (blur)="onGenericBlur('min', 'might')"
                     (input)="onGenericInput('min', 'might', $event)" [title]="formFilters.minMight"
-                    [placeholder]="'Puissance min' | translate">
+                    [placeholder]="'Puissance min' | translate" [attr.aria-label]="'Puissance min' | translate">
                   <input field type="text" id="mightMax" name="mightMax" [value]="displayFormValues.might.max"
                     (focus)="onGenericFocus('max', 'might')" (blur)="onGenericBlur('max', 'might')"
                     (input)="onGenericInput('max', 'might', $event)" [title]="formFilters.maxMight"
-                    [placeholder]="'Puissance max' | translate">
+                    [placeholder]="'Puissance max' | translate" [attr.aria-label]="'Puissance max' | translate">
                 </app-modal-form-group>
               </div>
               <!-- Player level -->
@@ -76,11 +76,11 @@
                   <input field type="text" id="levelMin" name="levelMin" [value]="displayFormValues.level.min"
                     (focus)="onGenericFocus('min', 'level')" (blur)="onGenericBlur('min', 'level')"
                     (input)="onGenericInput('min', 'level', $event)" [title]="formFilters.minLevel"
-                    [placeholder]="'Niveau min' | translate">
+                    [placeholder]="'Niveau min' | translate" [attr.aria-label]="'Niveau min' | translate">
                   <input field type="text" id="levelMax" name="levelMax" [value]="displayFormValues.level.max"
                     (focus)="onGenericFocus('max', 'level')" (blur)="onGenericBlur('max', 'level')"
                     (input)="onGenericInput('max', 'level', $event)" [title]="formFilters.maxLevel"
-                    [placeholder]="'Niveau max' | translate">
+                    [placeholder]="'Niveau max' | translate" [attr.aria-label]="'Niveau max' | translate">
                 </app-modal-form-group>
               </div>
             </div>
@@ -98,12 +98,12 @@
                     [value]="displayFormValues.allianceMight.min" (focus)="onGenericFocus('min', 'allianceMight')"
                     (blur)="onGenericBlur('min', 'allianceMight')"
                     (input)="onGenericInput('min', 'allianceMight', $event)" [title]="formFilters.minAllianceMight"
-                    [placeholder]="('Puissance min' | translate) + ' (' + ('Alliance' | translate) + ')'">
+                    [placeholder]="('Puissance min' | translate) + ' (' + ('Alliance' | translate) + ')'" [attr.aria-label]="('Puissance min' | translate) + ' (' + ('Alliance' | translate) + ')'">
                   <input field type="text" id="allianceMightMax" name="allianceMightMax"
                     [value]="displayFormValues.allianceMight.max" (focus)="onGenericFocus('max', 'allianceMight')"
                     (blur)="onGenericBlur('max', 'allianceMight')"
                     (input)="onGenericInput('max', 'allianceMight', $event)" [title]="formFilters.maxAllianceMight"
-                    [placeholder]="('Puissance max' | translate) + ' (' + ('Alliance' | translate) + ')'">
+                    [placeholder]="('Puissance max' | translate) + ' (' + ('Alliance' | translate) + ')'" [attr.aria-label]="('Puissance max' | translate) + ' (' + ('Alliance' | translate) + ')'">
                 </app-modal-form-group>
               </div>
               <!-- Alliance member count -->
@@ -118,12 +118,12 @@
                     [value]="displayFormValues.alliancePlayers.min" (focus)="onGenericFocus('min', 'alliancePlayers')"
                     (blur)="onGenericBlur('min', 'alliancePlayers')"
                     (input)="onGenericInput('min', 'alliancePlayers', $event)" [title]="formFilters.minAlliancePlayers"
-                    [placeholder]="'Nombre de membres min.' | translate">
+                    [placeholder]="'Nombre de membres min.' | translate" [attr.aria-label]="'Nombre de membres min.' | translate">
                   <input field type="text" id="alliancePlayersMax" name="alliancePlayersMax"
                     [value]="displayFormValues.alliancePlayers.max" (focus)="onGenericFocus('max', 'alliancePlayers')"
                     (blur)="onGenericBlur('max', 'alliancePlayers')"
                     (input)="onGenericInput('max', 'alliancePlayers', $event)" [title]="formFilters.maxAlliancePlayers"
-                    [placeholder]="'Nombre de membres max.' | translate">
+                    [placeholder]="'Nombre de membres max.' | translate" [attr.aria-label]="'Nombre de membres max.' | translate">
                 </app-modal-form-group>
               </div>
             </div>
@@ -141,11 +141,11 @@
                     <input field type="text" [id]="metric.field + 'Min'" [name]="metric.field + 'Min'"
                       [value]="displayFormValues[metric.field].min" (focus)="onGenericFocus('min', metric.field)"
                       (blur)="onGenericBlur('min', metric.field)" (input)="onGenericInput('min', metric.field, $event)"
-                      [placeholder]="(metric.label | translate) + ' (min)'">
+                      [placeholder]="(metric.label | translate) + ' (min)'" [attr.aria-label]="(metric.label | translate) + ' (min)'">
                     <input field type="text" [id]="metric.field + 'Max'" [name]="metric.field + 'Max'"
                       [value]="displayFormValues[metric.field].max" (focus)="onGenericFocus('max', metric.field)"
                       (blur)="onGenericBlur('max', metric.field)" (input)="onGenericInput('max', metric.field, $event)"
-                      [placeholder]="(metric.label | translate) + ' (max)'">
+                      [placeholder]="(metric.label | translate) + ' (max)'" [attr.aria-label]="(metric.label | translate) + ' (max)'">
                   </app-modal-form-group>
                 </div>
               }

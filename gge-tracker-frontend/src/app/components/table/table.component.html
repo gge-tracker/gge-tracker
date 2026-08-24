@@ -16,10 +16,10 @@
 
       <thead>
         <tr>
-          <th>#</th>
+          <th scope="col">#</th>
           @for (header of headers(); track $index) {
             <th (click)="header[3] ?? sortAlliances(header[0])"
-              [ngClass]="{ 'pointer': !header[3] }">
+              [ngClass]="{ 'pointer': !header[3] }" scope="col" tabindex="0" (keydown.enter)="header[3] ?? sortAlliances(header[0])">
               @if (header[1] && !header[2]) {
                 <span>{{ header[1] | translate }}</span>
               }

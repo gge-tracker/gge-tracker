@@ -305,42 +305,42 @@
                       <table class="modern-table w-100">
                         <thead class="sticky-top">
                           <tr>
-                            <!-- <th class="sticky-col w-100px" (click)="sortBy('building.wodID')" scope="col">
+                            <!-- <th class="sticky-col w-100px" (click)="sortBy('building.wodID')" scope="col" tabindex="0" (keydown.enter)="sortBy('building.wodID')">
                               #
                               @if (sortColumn === 'building.wodID') {
                                 <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
                                 [class.fa-arrow-down]="!sortAsc"></i>
                               }
                             </th> -->
-                            <th (click)="sortBy('data.translatedName')" scope="col" class="name-col">
+                            <th (click)="sortBy('data.translatedName')" scope="col" class="name-col" tabindex="0" (keydown.enter)="sortBy('data.translatedName')">
                               {{ 'Nom' | translate }}
                               @if (sortColumn === 'data.translatedName') {
                                 <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
                                 [class.fa-arrow-down]="!sortAsc"></i>
                               }
                             </th>
-                            <th (click)="sortBy('data.level')" scope="col" class="ct-show-sm w-ch-10">
+                            <th (click)="sortBy('data.level')" scope="col" class="ct-show-sm w-ch-10" tabindex="0" (keydown.enter)="sortBy('data.level')">
                               {{ 'Niveau' | translate }}
                               @if (sortColumn === 'data.level') {
                                 <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
                                 [class.fa-arrow-down]="!sortAsc"></i>
                               }
                             </th>
-                            <th (click)="sortBy('data.mightValue')" scope="col" class="ct-show-md">
+                            <th (click)="sortBy('data.mightValue')" scope="col" class="ct-show-md" tabindex="0" (keydown.enter)="sortBy('data.mightValue')">
                               {{ 'Puissance' | translate }}
                               @if (sortColumn === 'data.mightValue') {
                                 <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
                                 [class.fa-arrow-down]="!sortAsc"></i>
                               }
                             </th>
-                            <th (click)="sortBy('data.burnable')" scope="col" class="ct-show-lg w-ch-10">
+                            <th (click)="sortBy('data.burnable')" scope="col" class="ct-show-lg w-ch-10" tabindex="0" (keydown.enter)="sortBy('data.burnable')">
                               {{ 'Brûlable' | translate }}
                               @if (sortColumn === 'data.burnable') {
                                 <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"
                                 [class.fa-arrow-down]="!sortAsc"></i>
                               }
                             </th>
-                            <th (click)="sortBy('data.publicOrder')" scope="col" class="ct-show-lg">
+                            <th (click)="sortBy('data.publicOrder')" scope="col" class="ct-show-lg" tabindex="0" (keydown.enter)="sortBy('data.publicOrder')">
                               {{ 'Ordre public' | translate }}
                               @if (sortColumn === 'data.publicOrder') {
                                 <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc"

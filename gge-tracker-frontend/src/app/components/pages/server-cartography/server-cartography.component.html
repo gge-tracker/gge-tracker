@@ -274,7 +274,7 @@
           {{ 'Ajouter une alliance' | translate }}
         </h5>
         <div class="input-group px-2 mb-3">
-          <input type="text" #allianceAddName class="form-control" [placeholder]="'Ajouter une alliance' | translate">
+          <input type="text" #allianceAddName class="form-control" [placeholder]="'Ajouter une alliance' | translate" [attr.aria-label]="'Ajouter une alliance' | translate">
           <button class="gge-btn search" type="button"
             (click)="loadNewAlliance(allianceAddName.value); allianceAddName.value=''">
             <i class="fas fa-search"></i>
@@ -322,19 +322,19 @@
 
 <ng-template #patriarchMonumentsHeader let-sortBy="sortBy" let-sortColumn="sortColumn" let-sortAsc="sortAsc">
   <tr>
-    <th (click)="sortBy('type')">
+    <th (click)="sortBy('type')" scope="col" tabindex="0" (keydown.enter)="sortBy('type')">
       {{ 'Type de patrimoine' | translate }}
       @if (sortColumn === 'type') {
       <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc" [class.fa-arrow-down]="!sortAsc"></i>
       }
     </th>
-    <th (click)="sortBy('position')">
+    <th (click)="sortBy('position')" scope="col" tabindex="0" (keydown.enter)="sortBy('position')">
       {{ 'Position' | translate }}
       @if (sortColumn === 'position') {
       <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc" [class.fa-arrow-down]="!sortAsc"></i>
       }
     </th>
-    <th (click)="sortBy('owner')">
+    <th (click)="sortBy('owner')" scope="col" tabindex="0" (keydown.enter)="sortBy('owner')">
       {{ 'Propriétaire' | translate }}
       @if (sortColumn === 'owner') {
       <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc" [class.fa-arrow-down]="!sortAsc"></i>

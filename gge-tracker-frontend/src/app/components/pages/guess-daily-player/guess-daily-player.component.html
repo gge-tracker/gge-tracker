@@ -50,7 +50,7 @@
                     </span>
                     <input type="text" class="form-control bg-transparent border-0 text-white" [(ngModel)]="search" name="guess"
                       (input)="autoCompletePlayerNames($event)" [placeholder]="'Rechercher un joueur' | translate"
-                      autocomplete="off" (blur)="updateInputFocusState(false)" (focus)="updateInputFocusState(true)">
+                      autocomplete="off" (blur)="updateInputFocusState(false)" (focus)="updateInputFocusState(true)" [attr.aria-label]="'Rechercher un joueur' | translate">
                   </div>
                   <button type="submit" class="btn btn-action" [disabled]="isSubmitting || !search || !canGuess()">
                     <i class="fas fa-arrow-right"></i>

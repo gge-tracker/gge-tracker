@@ -150,7 +150,7 @@
             type="text"
             class="distance-input"
             [placeholder]="'Pseudonyme' | translate"
-            [(ngModel)]="playerNameForDistance">
+            [(ngModel)]="playerNameForDistance" [attr.aria-label]="'Pseudonyme' | translate">
           <div class="world-selector-group">
             @for (world of availableWorlds; track world.id) {
               <button

@@ -27,7 +27,7 @@
         @if (isServerMenuOpen()) {
           <div class="server-dropdown">
             <input type="text" #searchServerInput id="searchServerInput" name="searchServerInput" class="form-control"
-              placeholder="{{ 'Rechercher' | translate }}" [(ngModel)]="filteredServerInput">
+              placeholder="{{ 'Rechercher' | translate }}" [(ngModel)]="filteredServerInput" aria-label="{{ 'Rechercher' | translate }}">
             <div class="separator"></div>
             @for (srv of serverService.xmlServers; track srv) {
               <button
