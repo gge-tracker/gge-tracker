@@ -1,25 +1,11 @@
-<div class="bg-white p-1 rounded shadow stats-container position-relative h-100">
-
-  <div class="text-center pt-3 cover-might position-relative"
-    [style]="'background-color: ' + backgroundColour() + ';background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, .8)), url('  + backgroundIconImage() + ');'">
-    <ng-content select="[before]"></ng-content>
-    <h1 class="title">{{ title() }}</h1>
-    <p class="text-light"><small>{{ subtitle() }}</small></p>
-    <ng-content select="[after]"></ng-content>
-  </div>
+<app-stats-panel [title]="title()" [subtitle]="subtitle() ?? ''" [accent]="backgroundColour()"
+  [bannerImage]="backgroundIconImage()">
   <ul class="nav nav-tabs mt-3 ps-3 align-items-center">
-    @for (chart of charts() | keyvalue: originalOrder; track chart) {
+    @for (chart of charts() | keyvalue: originalOrder; track chart.key) {
       <li class="nav-item">
         <button class="nav-link" (click)="changeTab(chart.key) " [ngClass]="selectedTab === chart.key ? 'active' : ''">
           <i [ngClass]="getIcon(chart.key)"></i>
         {{ chart.key | translate}}</button>
-      </li>
-    }
-    @if (data.length > 0) {
-      <li class="nav-item">
-        <button class="nav-link" (click)="changeTab('table')" [ngClass]="selectedTab === 'Données' ? 'active' : ''">
-          <i class="fas fa-table"></i>
-        {{ 'Données' | translate }}</button>
       </li>
     }
     @if (stats()) {
@@ -30,8 +16,31 @@
         </button>
       </li>
     }
+    @if (isOnSeriesTab) {
+      <li class="nav-item ms-auto pe-3" [style.--event-scope-accent]="backgroundColour()">
+        @if (scopeShown() < scopeTotal()) {
+          <button type="button" class="event-scope" (click)="requestFullHistory()"
+            (keyup.enter)="requestFullHistory()" [disabled]="isLoadingHistory()"
+            [title]="'Afficher toutes les séries' | translate"
+            [attr.aria-label]="'Afficher toutes les séries' | translate">
+            @if (isLoadingHistory()) {
+              <i class="fas fa-spinner fa-spin"></i>
+            } @else {
+              <i class="fas fa-clock-rotate-left"></i>
+            }
+            <span class="event-scope-count">{{ scopeShown() }}</span>
+            <span class="event-scope-total">/ {{ scopeTotal() }}</span>
+          </button>
+        } @else {
+          <span class="event-scope event-scope-complete" [title]="'Événements' | translate">
+            <i class="fas fa-check"></i>
+            <span class="event-scope-count">{{ scopeTotal() }}</span>
+          </span>
+        }
+      </li>
+    }
   </ul>
-  @for (chart of charts() | keyvalue; track chart) {
+  @for (chart of charts() | keyvalue; track chart.key) {
     <div class="mx-3" [class]="chart.value?.chart?.type ?? ''"
       [ngClass]="selectedTab === chart.key ? 'd-block' : 'd-none'">
       @if (!isReady) {
@@ -80,7 +89,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (entry of data(); track entry; let i = $index) {
+            @for (entry of data(); track $index; let i = $index) {
               <tr>
                 <td>{{ i + 1 }}</td>
                 <td>{{ entry.date | date: ('Date_2' | translate) }}</td>
@@ -115,7 +124,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (entry of data(); track entry; let i = $index) {
+            @for (entry of data(); track $index; let i = $index) {
               <tr>
                 <td>{{ i + 1 }}</td>
                 <td [ngStyle]="{'color': getPlayerColor(entry) }">{{ entry.playerName }}</td>
@@ -185,7 +194,7 @@
   }
 
   <ng-content></ng-content>
-</div>
+</app-stats-panel>
 
 
 <ng-template #loadingChart>

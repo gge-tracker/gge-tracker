@@ -1,33 +1,263 @@
-<div class="container">
-  <div class="category-switch">
-    @for (category of categories | keyvalue; track category) {
-      <button class="category-button" (click)="onCategoryChange(category.key)">
-        {{ category.key }} {{ category.value }}
-      </button>
-    }
-  </div>
+<div class="container my-3 offers">
   <div class="row">
-    @for (offer of selectedCategoryOffer; track offer) {
-      <div class="offer-card col-4">
-        <img [src]="offer.teaserImg" alt="{{ offer.name }}" class="offer-image" width="200" />
-        <div class="offer-details">
-          <h3 class="offer-name">{{ offer.name }}</h3>
-          <p class="offer-price">{{ offer.formattedPrice }} {{ offer.currencyCode }}</p>
-          <p class="offer-description">{{ offer.description }}</p>
-        </div>
-        <div class="offer-rewards">
-          @for (reward of offer.rewards; track reward) {
-            <div class="reward-item">
-              @if (reward.iconUrl) {
-                <img [src]="reward.iconUrl" alt="{{ reward.title }}" class="reward-image" width="50" />
-              }
-              <span class="reward-quantity">&nbsp;x{{ reward.qty }}</span>
-              <h5 class="reward-title">{{ reward.title }}</h5>
-              <span class="reward-desc">{{ reward.desc }}</span>
+    <div class="col-12" [ngClass]="{'loading': isInLoading}" [attr.aria-busy]="isBusy ? 'true' : null">
+      <div class="search container-fluid mb-2">
+
+        <header class="offers-header">
+          <div class="offers-intro">
+            <h1 class="offers-title">
+              {{ 'Boutique' | translate }}
+            </h1>
+            <p class="offers-subtitle">
+              {{ "Aperçu des offres" | translate }}
+            </p>
+          </div>
+
+          @if (isE4kServer) {
+          <aside class="offers-banner" role="note">
+            <lucide-icon class="lucide offers-banner__icon" [img]="Smartphone" [size]="20"></lucide-icon>
+            <div class="offers-banner__body">
+              <p class="offers-banner__title">{{ 'Boutique indisponible sur les serveurs E4K' | translate }}</p>
+              <p class="offers-banner__text">{{ 'offers-e4k-unavailable' | translate }}</p>
             </div>
+          </aside>
+          } @else {
+
+          <div class="offers-toolbar">
+            <div class="offers-toolbar__group offers-toolbar__group--profile">
+              <div class="offers-field offers-field--level">
+                <app-search-bar [attrListInput]="[]" [searchInput]="level" [inputType]="'number'" [name]="'offer-level'"
+                  [min]="1" [max]="maxLevel" [placeholderInput]="'Niveau' | translate" [hasContent]="true"
+                  (searchEmitter)="onLevelChange($event)">
+                  {{ 'Niveau' | translate }}
+                </app-search-bar>
+              </div>
+              <div class="offers-field offers-field--legend">
+                <app-search-bar [attrListInput]="[]" [searchInput]="legendaryLevel" [inputType]="'number'"
+                  [name]="'offer-legend-level'" [min]="0" [max]="maxLegendaryLevel"
+                  [placeholderInput]="'Niveau légendaire' | translate" [hasContent]="true"
+                  (searchEmitter)="onLegendLevelChange($event)">
+                  {{ 'Niveau légendaire' | translate }}
+                </app-search-bar>
+              </div>
+              <div class="offers-field offers-field--currency">
+                <app-currency-picker [items]="currencyOptions" [selected]="currency" [suggested]="serverCurrency"
+                  [disabled]="isBusy" (selectEmitter)="changeCurrency($event)"></app-currency-picker>
+              </div>
+              <button class="offers-btn offers-btn--accent" [disabled]="isBusy" (click)="refresh()">
+                <lucide-icon class="lucide" [img]="RefreshCw" [ngClass]="{'spin': refreshDataAnimationSpinner}">
+                </lucide-icon>
+                <span>{{ 'Actualiser' | translate }}</span>
+              </button>
+            </div>
+
+            <div class="offers-toolbar__group offers-toolbar__group--filters">
+              <div class="offers-field offers-field--search">
+                <app-search-bar [attrListInput]="[]" [searchInput]="search" [inputType]="'string'"
+                  [name]="'offer-search'" [placeholderInput]="'Rechercher' | translate" [hasContent]="true"
+                  (searchEmitter)="onSearchChange($event)">
+                  <lucide-icon class="lucide" [img]="Search"></lucide-icon>
+                </app-search-bar>
+                @if (search) {
+                <button class="offers-icon-btn" [title]="'Réinitialiser' | translate" (click)="resetSearch()">
+                  <lucide-icon class="lucide" [img]="X"></lucide-icon>
+                </button>
+                }
+              </div>
+              <div class="offers-field offers-field--sort">
+                <app-select [items]="sorts" [name]="'offer-sort'" [selectedItem]="orderBy"
+                  (selectEmitter)="changeSort($event)"></app-select>
+              </div>
+            </div>
+          </div>
+
+          @if (failedCategories.length > 0) {
+          <div class="offers-notice">
+            <i class="fa-solid fa-circle-info"></i>
+            <em>{{ 'La boutique n\'a pas répondu pour certaines catégories' | translate }} : {{
+              failedCategories.join(', ') }}</em>
+          </div>
+          }
+
+          }
+        </header>
+
+        @if (!isE4kServer) {
+
+        @if (tabs.length > 0) {
+        <div class="offers-tabs" [class.offers-tabs--overflow-start]="canScrollTabsBack"
+          [class.offers-tabs--overflow-end]="canScrollTabsForward">
+          <button type="button" class="offers-tabs__arrow offers-tabs__arrow--prev" [title]="'Précédent' | translate"
+            [attr.aria-label]="'Précédent' | translate" [attr.aria-hidden]="canScrollTabsBack ? null : 'true'"
+            [attr.tabindex]="canScrollTabsBack ? null : -1" (click)="scrollTabs(-1)">
+            <lucide-icon class="lucide" [img]="ChevronLeft" [size]="16"></lucide-icon>
+          </button>
+
+          <nav #tabStrip class="offers-segmented" role="tablist" (scroll)="updateTabsOverflow()">
+            @for (tab of tabs; track tab.key) {
+            <button class="offers-segment" role="tab" [attr.aria-selected]="selectedCategory === tab.key"
+              [class.offers-segment--on]="selectedCategory === tab.key" (click)="selectCategory(tab.key, $event)">
+              @if (tab.special) {
+                <i class="fa-solid fa-star special-tab"></i>
+              }
+              <span class="offers-segment__label">{{ tab.label | translate }}</span>
+              <span class="offers-count">{{ tab.count }}</span>
+            </button>
+            }
+          </nav>
+
+          <button type="button" class="offers-tabs__arrow offers-tabs__arrow--next" [title]="'Suivant' | translate"
+            [attr.aria-label]="'Suivant' | translate" [attr.aria-hidden]="canScrollTabsForward ? null : 'true'"
+            [attr.tabindex]="canScrollTabsForward ? null : -1" (click)="scrollTabs(1)">
+            <lucide-icon class="lucide" [img]="ChevronRight" [size]="16"></lucide-icon>
+          </button>
+        </div>
+        }
+
+        @if (isRefreshing) {
+        <div class="offers-grid offers-grid--skeleton" role="status" [attr.aria-label]="'Chargement' | translate">
+          @for (placeholder of skeletonCards; track $index) {
+          <div class="offer-card offer-card--skeleton" aria-hidden="true">
+            <div class="offer-card__media">
+              <span class="skeleton-block skeleton-block--media"></span>
+            </div>
+            <div class="offer-card__body">
+              <span class="skeleton-block skeleton-block--title"></span>
+              <span class="skeleton-block skeleton-block--price"></span>
+              <span class="skeleton-block skeleton-block--ratio"></span>
+              <div class="skeleton-rewards">
+                @for (line of placeholder.lines; track $index) {
+                <span class="skeleton-block skeleton-block--reward"></span>
+                }
+              </div>
+            </div>
+          </div>
           }
         </div>
+        } @else {
+
+        @if (!isInLoading && categories.length === 0) {
+        <div class="offers-empty">
+          <i class="fa-solid fa-store-slash"></i>
+          <span>{{ 'Aucune offre disponible' | translate }}</span>
+        </div>
+        } @else if (!isInLoading && displayedOffers.length === 0) {
+        <div class="offers-empty">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <span>{{ 'Aucun résultat' | translate }}</span>
+        </div>
+        }
+
+        <div class="offers-grid" #grid>
+          @for (offer of displayedOffers; track offer.id) {
+          <article class="offer-card" [class.offer-card--purchased]="offer.isPurchased"
+            [class.offer-card--expanded]="isExpanded(offer.id)" [class.offer-card--clipped]="isClipped(offer.id)">
+            <div class="offer-card__media">
+              @if (offer.image) {
+              <img [src]="offer.image" [alt]="offer.name" class="offer-card__image" loading="lazy" decoding="async">
+              } @else {
+              <div class="offer-card__image offer-card__image--empty">
+                <i class="fa-solid fa-gift"></i>
+              </div>
+              }
+              <div class="offer-card__badges">
+                @if (offer.bonusPercent) {
+                <span class="offer-badge offer-badge--bonus">+{{ offer.bonusPercent }}%</span>
+                }
+                @if (offer.isSpecial) {
+                <span class="offer-badge offer-badge--special">{{ 'Spécial' | translate }}</span>
+                }
+                @if (offer.isPurchased) {
+                <span class="offer-badge">{{ 'Acheté' | translate }}</span>
+                }
+              </div>
+            </div>
+
+            <div class="offer-card__body">
+              <h2 class="offer-card__name" [title]="offer.name">{{ offer.name }}</h2>
+
+              <div class="offer-card__price-row">
+                <span class="offer-price" [class.offer-price--free]="offer.isFree">{{ offer.formattedPrice }}</span>
+              </div>
+
+              @if (offer.rubiesPerUnit) {
+              <div class="offer-card__ratio" [title]="'Rubis par unité de devise' | translate">
+                {{ offer.rubiesPerUnit | formatNumber:'visual' }} {{ 'rubis' | translate }} / {{ offer.currency }}
+              </div>
+              }
+
+              <div class="offer-card__content" #cardContent [attr.data-offer]="offer.id">
+                <div class="offer-card__flow" #cardFlow [attr.data-offer]="offer.id">
+                @if (offer.description) {
+                <p class="offer-card__description">{{ offer.description }}</p>
+                }
+
+                @if (offer.rewards.length > 0) {
+                <ul class="offer-rewards">
+                  @for (reward of offer.rewards; track $index) {
+                @if (reward.isDetailed) {
+                <li class="offer-reward offer-reward--detailed">
+                  <div class="offer-reward__head">
+                    @if (reward.iconUrl) {
+                    <img [src]="reward.iconUrl" [alt]="reward.title" class="offer-reward__icon" loading="lazy"
+                      decoding="async">
+                    }
+                    <span class="offer-reward__title">{{ reward.title }}</span>
+                    @if (reward.size) {
+                    <span class="offer-reward__size" [title]="'Taille du bâtiment' | translate">{{ reward.size }}</span>
+                    }
+                    @if (reward.quantity) {
+                    <span class="offer-reward__qty">{{ reward.quantity }}</span>
+                    }
+                  </div>
+                  <div class="offer-effects">
+                    @for (effect of reward.effects; track $index) {
+                    <span class="offer-effect__value">{{ effect.value }}</span>
+                    <span class="offer-effect__label">{{ effect.label }}</span>
+                    <span class="offer-effect__cap">{{ effect.cap }}</span>
+                    }
+                  </div>
+                  @if (reward.notes.length > 0) {
+                  <p class="offer-reward__notes">{{ reward.notes.join(' · ') }}</p>
+                  }
+                </li>
+                } @else {
+                <li class="offer-reward" [title]="reward.description ?? reward.title">
+                  @if (reward.iconUrl) {
+                  <img [src]="reward.iconUrl" [alt]="reward.title" class="offer-reward__icon" loading="lazy"
+                    decoding="async">
+                  }
+                  <span class="offer-reward__title">{{ reward.title }}</span>
+                  @if (reward.quantity) {
+                  <span class="offer-reward__qty">{{ reward.quantity }}</span>
+                  }
+                </li>
+                  }
+                  }
+                </ul>
+                }
+                </div>
+              </div>
+
+              @if (isClipped(offer.id)) {
+              <button class="offer-card__more" (click)="toggleCard(offer.id)">
+                @if (isExpanded(offer.id)) {
+                {{ 'Voir moins' | translate }}
+                } @else {
+                {{ 'Voir tout' | translate }} ({{ offer.rewards.length }})
+                }
+              </button>
+              }
+            </div>
+          </article>
+          }
+        </div>
+
+        }
+
+        }
+
       </div>
-    }
+    </div>
   </div>
 </div>

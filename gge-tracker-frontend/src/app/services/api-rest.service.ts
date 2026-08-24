@@ -13,6 +13,8 @@ import {
   ApiAllianceUpdatesByPlayerId,
   ApiPlayerStatsByAllianceId,
   ApiPlayerStatsByPlayerId,
+  ApiPlayerEventOccurrences,
+  ApiPlayerStatsSummary,
   ApiCartoAlliance,
   ApiCartoMap,
   ApiMovementsResponse,
@@ -23,6 +25,9 @@ import {
   ApiUpdateAlliancePlayersResponse,
   ErrorType,
   ApiDungeonsResponse,
+  ApiStormFortsResponse,
+  ApiStormIslesResponse,
+  ApiStormMetaResponse,
   ApiAllianceHealthResponse,
   ApiEventlist,
   ApiOuterRealmEvent,
@@ -42,8 +47,10 @@ import {
   ApiWoaEventDataResponse,
   ApiWoaEventPlayerDataResponse,
   ApiDungeonsByPlayerIdResponse,
+  ApiDungeonsMetaResponse,
   ApiAquamarinePlayerResponse,
   ApiStormyIslesLeaderboardResponse,
+  ApiOffersCatalogResponse,
 } from '@ggetracker-interfaces/empire-ranking';
 
 @Injectable({
@@ -145,15 +152,28 @@ export class ApiRestService {
     return { success: true, data: response.data };
   }
 
-  public async getOffers(): Promise<any> {
-    const response = await fetch('/assets/offers.json');
-    return response.json();
+  public async getOffers(
+    level: number,
+    legendaryLevel: number,
+    locale: string,
+    currency: string,
+  ): Promise<ApiResponse<ApiOffersCatalogResponse>> {
+    const request = `${ApiRestService.apiUrl}offers?locale=${locale}&currency=${currency}&level=${level}&legendaryLevel=${legendaryLevel}`;
+    const response = await this.apiFetch<ApiOffersCatalogResponse>(request);
+    if (!response.success) return response;
+    return { success: true, data: response.data };
   }
 
   public async getDungeonsByPlayerId(playerId: number): Promise<ApiResponse<ApiDungeonsByPlayerIdResponse>> {
     const response = await this.apiFetch<ApiDungeonsByPlayerIdResponse>(
       `${ApiRestService.apiUrl}dungeons/player/${playerId}`,
     );
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  public async getDungeonsMeta(): Promise<ApiResponse<ApiDungeonsMetaResponse>> {
+    const response = await this.apiFetch<ApiDungeonsMetaResponse>(`${ApiRestService.apiUrl}dungeons/meta`);
     if (!response.success) return response;
     return { success: true, data: response.data };
   }
@@ -183,6 +203,92 @@ export class ApiRestService {
     if (positionY !== null) request += `&positionY=${positionY}`;
     if (nearPlayerName) request += `&nearPlayerName=${nearPlayerName}`;
     const response = await this.apiFetch<ApiDungeonsResponse>(request);
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  /**
+   * Get the live state of the Storm Islands forts
+   * @param page The page number to fetch
+   * @param size The number of items per page
+   * @param filterByAvailability Optional filter on availability (1 now, 2 < 5min, 3 < 1h)
+   * @param minAttacksLeft Optional filter keeping only forts with at least this many attacks left
+   * @param positionX Optional X coordinate used as the distance sort origin
+   * @param positionY Optional Y coordinate used as the distance sort origin
+   * @param nearPlayerName Optional player whose storm castle is used as the distance sort origin
+   * @param maxDistance Optional radius in tiles around the sort origin
+   * @returns A promise that resolves to the storm forts data
+   */
+  public async getStormFortsList(
+    page: number,
+    size: number,
+    filterByAvailability: number | null = null,
+    minAttacksLeft: number | null = null,
+    positionX: number | null = null,
+    positionY: number | null = null,
+    nearPlayerName: string | null = null,
+    maxDistance: number | null = null,
+    filterByIsleIds: number[] | null = null,
+    orderBy: string | null = null,
+    orderDirection: 'asc' | 'desc' | null = null,
+  ): Promise<ApiResponse<ApiStormFortsResponse>> {
+    let request = `${ApiRestService.apiUrl}storms/forts?page=${page}&size=${size}`;
+    if (filterByAvailability) request += `&filterByAvailability=${filterByAvailability}`;
+    if (minAttacksLeft !== null) request += `&minAttacksLeft=${minAttacksLeft}`;
+    if (filterByIsleIds !== null) request += `&filterByIsleIds=${JSON.stringify(filterByIsleIds)}`;
+    if (orderBy) request += `&orderBy=${orderBy}`;
+    if (orderDirection) request += `&orderDirection=${orderDirection}`;
+    if (positionX !== null) request += `&positionX=${positionX}`;
+    if (positionY !== null) request += `&positionY=${positionY}`;
+    if (nearPlayerName) request += `&nearPlayerName=${nearPlayerName}`;
+    if (maxDistance !== null) request += `&maxDistance=${maxDistance}`;
+    const response = await this.apiFetch<ApiStormFortsResponse>(request);
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  /**
+   * Get the live state of the Storm Islands resource isles
+   * @param page The page number to fetch
+   * @param size The number of items per page
+   * @param filterByState Optional filter on the isle state (1 free, 2 occupied, 3 respawning)
+   * @param filterByOccupierName Optional filter keeping only isles held by this player
+   * @param positionX Optional X coordinate used as the distance sort origin
+   * @param positionY Optional Y coordinate used as the distance sort origin
+   * @param nearPlayerName Optional player whose storm castle is used as the distance sort origin
+   * @param maxDistance Optional radius in tiles around the sort origin
+   * @returns A promise that resolves to the storm isles data
+   */
+  public async getStormIslesList(
+    page: number,
+    size: number,
+    filterByState: number | null = null,
+    filterByOccupierName: string | null = null,
+    positionX: number | null = null,
+    positionY: number | null = null,
+    nearPlayerName: string | null = null,
+    maxDistance: number | null = null,
+    filterByIsleIds: number[] | null = null,
+    orderBy: string | null = null,
+    orderDirection: 'asc' | 'desc' | null = null,
+  ): Promise<ApiResponse<ApiStormIslesResponse>> {
+    let request = `${ApiRestService.apiUrl}storms/isles?page=${page}&size=${size}`;
+    if (filterByState) request += `&filterByState=${filterByState}`;
+    if (filterByOccupierName) request += `&filterByOccupierName=${filterByOccupierName}`;
+    if (filterByIsleIds !== null) request += `&filterByIsleIds=${JSON.stringify(filterByIsleIds)}`;
+    if (orderBy) request += `&orderBy=${orderBy}`;
+    if (orderDirection) request += `&orderDirection=${orderDirection}`;
+    if (positionX !== null) request += `&positionX=${positionX}`;
+    if (positionY !== null) request += `&positionY=${positionY}`;
+    if (nearPlayerName) request += `&nearPlayerName=${nearPlayerName}`;
+    if (maxDistance !== null) request += `&maxDistance=${maxDistance}`;
+    const response = await this.apiFetch<ApiStormIslesResponse>(request);
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  public async getStormMeta(): Promise<ApiResponse<ApiStormMetaResponse>> {
+    const response = await this.apiFetch<ApiStormMetaResponse>(`${ApiRestService.apiUrl}storms/meta`);
     if (!response.success) return response;
     return { success: true, data: response.data };
   }
@@ -304,6 +410,63 @@ export class ApiRestService {
   public async getPlayerStatsByPlayerId(playerId: number): Promise<ApiResponse<ApiPlayerStatsByPlayerId>> {
     const response = await this.apiFetch<ApiPlayerStatsByPlayerId>(
       `${ApiRestService.apiUrl}statistics/player/${playerId}`,
+    );
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  /**
+   * Get the headline summary for a player: identity, alliance and one aggregate per event table
+   *
+   * @param playerId The ID of the player
+   * @returns A promise that resolves to the summary data
+   */
+  public async getPlayerStatsSummaryByPlayerId(playerId: number): Promise<ApiResponse<ApiPlayerStatsSummary>> {
+    const response = await this.apiFetch<ApiPlayerStatsSummary>(
+      `${ApiRestService.apiUrl}statistics/player/${playerId}/summary`,
+    );
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  /**
+   * Get the point series of specific event tables for a player, over a bounded window
+   *
+   * @param playerId The ID of the player
+   * @param events The event tables to fetch
+   * @param sinceInDays How many days back to fetch, 1 to 365
+   * @returns A promise that resolves to the statistics data, holding only the requested tables
+   */
+  public async getPlayerStatsSeriesByPlayerId(
+    playerId: number,
+    events: string[],
+    sinceInDays: number,
+  ): Promise<ApiResponse<ApiPlayerStatsByPlayerId>> {
+    const query = new URLSearchParams({
+      events: events.join(','),
+      since: String(sinceInDays),
+      dedup: '1',
+    });
+    const response = await this.apiFetch<ApiPlayerStatsByPlayerId>(
+      `${ApiRestService.apiUrl}statistics/player/${playerId}?${query.toString()}`,
+    );
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
+  /**
+   * Get every run of one event for a player, with the score they finished each one on
+   *
+   * @param playerId The ID of the player
+   * @param eventName The event table to report on
+   * @returns A promise that resolves to the runs, oldest first
+   */
+  public async getPlayerEventOccurrencesByPlayerId(
+    playerId: number,
+    eventName: string,
+  ): Promise<ApiResponse<ApiPlayerEventOccurrences>> {
+    const response = await this.apiFetch<ApiPlayerEventOccurrences>(
+      `${ApiRestService.apiUrl}statistics/player/${playerId}/${eventName}/occurrences`,
     );
     if (!response.success) return response;
     return { success: true, data: response.data };
@@ -473,7 +636,7 @@ export class ApiRestService {
     kingdomId: number = 0,
   ): Promise<ApiResponse<ApiAlliancePlayersSearchResponse>> {
     const response = await this.apiFetch<ApiAlliancePlayersSearchResponse>(
-      `${ApiRestService.apiUrl}alliances/id/${allianceId}?playerNameForDistance=${playerNameForDistance}&kingdomId=${kingdomId}`,
+      `${ApiRestService.apiUrl}alliances/id/${allianceId}${playerNameForDistance ? `?playerNameForDistance=${playerNameForDistance}&kingdomId=${kingdomId}` : ''}`,
     );
     if (!response.success) return response;
     return { success: true, data: response.data };
@@ -759,12 +922,20 @@ export class ApiRestService {
     orderDirection?: string,
     playerName?: string,
     allianceName?: string,
+    filters?: Record<string, string | number>,
   ): Promise<ApiResponse<ApiStormyIslesLeaderboardResponse>> {
-    let request = `${ApiRestService.apiUrl}stormy-isles?page=${page}`;
+    let request = `${ApiRestService.apiUrl}stormy-isles?size=10&page=${page}`;
     if (orderBy !== undefined) request += `&order_by=${orderBy}`;
     if (orderDirection !== undefined) request += `&order_dir=${orderDirection}`;
     if (playerName) request += `&player_name=${encodeURIComponent(playerName)}`;
     if (allianceName) request += `&alliance_name=${encodeURIComponent(allianceName)}`;
+    if (filters) {
+      for (const key in filters) {
+        if (filters[key] !== undefined) {
+          request += `&${key}=${encodeURIComponent(filters[key])}`;
+        }
+      }
+    }
     const response = await this.apiFetch<ApiStormyIslesLeaderboardResponse>(request);
     if (!response.success) return response;
     return { success: true, data: response.data };

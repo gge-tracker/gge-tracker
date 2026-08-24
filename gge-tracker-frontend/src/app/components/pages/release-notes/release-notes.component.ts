@@ -17,6 +17,32 @@ export enum EnumTypeReleaseNote {
 export class ReleaseNotesComponent {
   public readonly releaseNotes = [
     {
+      version: 'v26-08-23',
+      type: EnumTypeReleaseNote.MAJOR,
+      date: '2026-08-23',
+      items: [
+        '📦 [Server] Added new servers: E4K-INT4, E4K-NL1, E4K-SKN1, E4K-PT1',
+        '📦 [Server] Added EP-SKN1, EP-SK1 and E4K-GB1 to advanced tools (realtime fortress tracker + castle visualizer across kingdoms)',
+        '🛠️ [Tools] Added new tool: Storm Islands tracker : realtime storm forts and resource isles, with occupant, garrison, remaining attacks and distance filters',
+        '🛠️ [Tools] Added new tool: Shop : browse the in-game offers catalog in your own currency, with reward details and rubies per currency unit',
+        '🛠️ [Aquamarine Ranking] Renamed from "Stormy Isles" and added an advanced filter panel (might, level, alliance might, member count, aquamarine metrics, alliance state) with sorting and saved filters',
+        '🛠️ [Alliance Analysis] Added new tab: alliance description with its full change history',
+        '🛠️ [Alliance List] Added the current Stormlord indicator',
+        '🛠️ [Fortress] Displaying the last scan time',
+        '✨ [Player Analysis] Complete redesign of the page',
+        "✨ [Player Analysis] Charts are now loaded on demand, so the page opens much faster, and every event chart can be expanded to the player's full recorded history",
+        '✨ [Player Analysis] "Wheel of Unimaginable Affluence" tab now shows total tickets, average, record, best ranking and recent trend',
+        '✨ [Player Analysis] "Storm Islands" tab now supports month by month navigation',
+        '✨ [Player Analysis] Glory tab now displays the top-X glory titles ladder',
+        '✨ [Miscellaneous] In-game item and building images are now rendered server side (offer rewards, castle buildings)',
+        '✨ [Miscellaneous] Restyled sidebar, loaders, skeleton screens and dropdowns',
+        "✨ [Miscellaneous] New 'worth a look' section on the sidebar",
+        '🐞 [Bugfix] Fixed castle view returning a cached castle from another kingdom',
+        '🐞 [Bugfix] Fixed weekly loot charts starting the week on the wrong hour on several servers',
+        '🐞 [Bugfix] Fixed server statistics grouping days in UTC instead of local time',
+      ],
+    },
+    {
       version: 'v26-06-02',
       type: EnumTypeReleaseNote.MAJOR,
       date: '2026-06-02',

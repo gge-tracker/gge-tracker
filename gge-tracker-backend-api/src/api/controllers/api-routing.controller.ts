@@ -3,7 +3,6 @@ import { RedisClientType } from 'redis';
 import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { ApiGgeTrackerManager } from '../managers/api.manager';
-import { puppeteerManagerInstance } from '../managers/puperteer.manager';
 import { ApiAlliances } from '../routes/api-alliances';
 import { ApiAssets } from '../routes/api-assets';
 import { ApiCartography } from '../routes/api-cartography';
@@ -16,6 +15,7 @@ import { ApiPlayers } from '../routes/api-players';
 import { ApiServer } from '../routes/api-server';
 import { ApiStatistics } from '../routes/api-statistics';
 import { ApiStatus } from '../routes/api-status';
+import { ApiStorms } from '../routes/api-storms';
 import { ApiUpdates } from '../routes/api-updates';
 import { QueueService } from '../services/queue-service';
 import { ApiMiniGame } from '../routes/api-mini-game';
@@ -32,7 +32,7 @@ import { ApiMiniGame } from '../routes/api-mini-game';
  *
  * @remarks
  * - This class should be instantiated with the required dependencies and used to register route handlers.
- * - Some endpoints are temporarily disabled and will return a 501 status.
+ * - Some endpoints are temporarily disabled and will return a 404 status.
  *
  * @see ApiGgeTrackerManager
  * @see RedisClientType
@@ -77,10 +77,6 @@ export class ApiRoutingController {
     this.redisClient = redisClient;
     ApiHelper.setRedisClient(this.redisClient);
     ApiHelper.setGgeTrackerManager(this.apiGgeTrackerManager);
-  }
-
-  public async initBrowser(): Promise<void> {
-    await puppeteerManagerInstance.getBrowser();
   }
 
   public getDocumentation(request: express.Request, response: express.Response): void {
@@ -226,8 +222,24 @@ export class ApiRoutingController {
     void ApiDungeons.getDungeons(request, response);
   }
 
+  public getDungeonsMeta(request: express.Request, response: express.Response): void {
+    void ApiDungeons.getDungeonsMeta(request, response);
+  }
+
   public getDungeonsByPlayerId(request: express.Request, response: express.Response): void {
     void ApiDungeons.getDungeonsByPlayer(request, response);
+  }
+
+  public getStormForts(request: express.Request, response: express.Response): void {
+    void ApiStorms.getStormForts(request, response);
+  }
+
+  public getStormIsles(request: express.Request, response: express.Response): void {
+    void ApiStorms.getStormIsles(request, response);
+  }
+
+  public getStormMeta(request: express.Request, response: express.Response): void {
+    void ApiStorms.getStormMeta(request, response);
   }
 
   public getServerMovements(request: express.Request, response: express.Response): void {
@@ -282,7 +294,7 @@ export class ApiRoutingController {
 
   public getTopPlayersByPlayerId(request: express.Request, response: express.Response): void {
     // Legacy endpoint, disabled for now. May be re-enabled in the future if needed.
-    response.status(501).send({ error: 'This endpoint is temporarily disabled.' });
+    response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: 'This endpoint is not available.' });
   }
 
   public getPlayers(request: express.Request, response: express.Response): void {
@@ -311,6 +323,14 @@ export class ApiRoutingController {
 
   public getStatisticsByPlayerId(request: express.Request, response: express.Response): void {
     void ApiStatistics.getStatisticsByPlayerId(request, response);
+  }
+
+  public getStatisticsSummaryByPlayerId(request: express.Request, response: express.Response): void {
+    void ApiStatistics.getStatisticsSummaryByPlayerId(request, response);
+  }
+
+  public getEventOccurrencesByPlayerId(request: express.Request, response: express.Response): void {
+    void ApiStatistics.getEventOccurrencesByPlayerId(request, response);
   }
 
   public getStatisticsByPlayerIdAndEventNameAndDuration(request: express.Request, response: express.Response): void {

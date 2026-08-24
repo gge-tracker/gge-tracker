@@ -13,6 +13,7 @@ import { Title } from '@angular/platform-browser';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
 import {
+  ApiAllianceDescriptionHistory,
   ApiAlliancePlayersSearchResponse,
   ApiGenericData,
   ApiMovementsResponse,
@@ -48,7 +49,10 @@ import {
   Download,
   Earth,
   Flag,
+  History,
   LucideAngularModule,
+  LucideIconData,
+  ScrollText,
   Trophy,
   Users,
 } from 'lucide-angular';
@@ -56,11 +60,27 @@ import { ApexAxisChartSeries, XAxisAnnotations } from 'ng-apexcharts';
 import { PlayerStatsCardComponent } from '../player-stats/player-stats-card/player-stats-card.component';
 import { StatsCardContentComponent } from './stats-card-content/stats-card-content.component';
 import { PlayerTableContentComponent } from '@ggetracker-pages/players/player-table-content/player-table-content.component';
+import { DecodeHtmlPipe } from '../../../pipes/decode-html.pipe';
 
 enum ChartTypeHeights {
   DEFAULT = 450,
   LARGE = 650,
 }
+
+interface DescriptionSegment {
+  text: string;
+  changed: boolean;
+}
+
+interface DescriptionChange {
+  createdAt: string;
+  previousHtml: string;
+  currentHtml: string;
+}
+
+const DESCRIPTION_DIFF_MAX_TOKENS = 600;
+const HERO_BACKDROP_URL = '/assets/8wwypaix4da0lxjeozb0dkzr135u5zy4khoqm2lmhh25grfe96mzr07jatchq7gpicb7.png';
+const HERO_BACKDROP_GRACE_MS = 1200;
 
 interface CardConfig {
   chartKey: keyof typeof ApiPlayerStatsType;
@@ -72,6 +92,10 @@ interface CardConfig {
   backgroundIconImage: string;
   eventTitleKey: keyof typeof ApiPlayerStatsType;
 }
+const MS_PER_HOUR = 3_600_000;
+const HOURS_PER_WEEK = 168;
+const DEFAULT_RESET_OFFSET = -1;
+
 @Component({
   selector: 'app-alliance-stats',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -89,6 +113,7 @@ interface CardConfig {
     FormatNumberPipe,
     StatsCardContentComponent,
     TranslateModule,
+    DecodeHtmlPipe,
   ],
   standalone: true,
   templateUrl: './alliance-stats.component.html',
@@ -120,13 +145,9 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   public reverse = true;
   public sort = 'might_current';
   public favoriePlayers: FavoritePlayer[] = [];
-  public readonly ChartSpline = ChartSpline;
   public readonly Trophy = Trophy;
-  public readonly BriefcaseConveyorBelt = BriefcaseConveyorBelt;
-  public readonly Users = Users;
   public readonly Earth = Earth;
-  public readonly Flag = Flag;
-  public readonly Activity = Activity;
+  public readonly History = History;
   /**
    * Array of loading messages for the component (these are i18n keys).
    */
@@ -215,6 +236,14 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   public progressCalcFinished = false;
   public progressCalcInProgress = false;
   public selectedTab: ISelectedTab = 'members';
+  public readonly tabs: { key: ISelectedTab; label: string; icon: LucideIconData }[] = [
+    { key: 'members', label: 'Membres', icon: Users },
+    { key: 'description', label: 'Description', icon: ScrollText },
+    { key: 'movement', label: 'Arrivées et départs', icon: BriefcaseConveyorBelt },
+    { key: 'stats', label: 'Statistiques des joueurs', icon: ChartSpline },
+    { key: 'health', label: "Rythme de l'alliance", icon: Activity },
+    { key: 'movements', label: 'Mouvements', icon: Flag },
+  ];
   public actualMonth = new Date().toISOString().split('T')[0].slice(0, 7);
   public groupedUpdates: GroupedUpdatesByDate[] = [];
   public playerNameForDistance = '';
@@ -227,11 +256,18 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     { id: 4, name: 'Les Îles orageuses' },
   ];
   public allianceName = '';
+  public allianceData?: ApiAlliancePlayersSearchResponse;
+  public descriptionHistory: DescriptionChange[] = [];
   public updatesPlayers: ApiUpdateAlliancePlayers[] = [];
   public countQueryFinished = 0;
   public totalQuery = 0;
   public cards: Card[] = [];
+  public isHeroBackdropReady = false;
   public isInMovementLoading = false;
+  public readonly skeletonStatCards = Array.from({ length: 13 });
+  public readonly skeletonRows = Array.from({ length: 8 });
+  public readonly skeletonCells = Array.from({ length: 8 });
+  public readonly skeletonPulseTables = Array.from({ length: 4 });
   public lastUpdate = '';
   public graphPages: Record<ApiPlayerStatsType, number> = {
     player_might_history: -1,
@@ -390,12 +426,14 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   private data: ApiPlayerStatsForAlliance | null = null;
   private titleService = inject(Title);
   private timezoneOffset: number | null = null;
+  private isDestroyed = false;
 
   public ngOnInit(): void {
     this.init();
   }
 
   public ngOnDestroy(): void {
+    this.isDestroyed = true;
     clearInterval(this.intervalId as number);
   }
 
@@ -910,7 +948,24 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     return response.data;
   }
 
+  private preloadHeroBackdrop(): Promise<void> {
+    if (!this.isBrowser) {
+      return Promise.resolve();
+    }
+    const image = new Image();
+    image.src = HERO_BACKDROP_URL;
+    return image
+      .decode()
+      .catch(() => {})
+      .then(() => {
+        if (this.isDestroyed) return;
+        this.isHeroBackdropReady = true;
+        this.cdr.detectChanges();
+      });
+  }
+
   private async processAllianceInit(allianceId: number): Promise<void> {
+    const heroBackdrop = this.preloadHeroBackdrop();
     const data = await this.getAllianceMembers();
     if (!data) return;
     this.players = this.mapPlayersFromApi(data.players);
@@ -919,6 +974,8 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     }
     this.addPageTitle(data.alliance_name);
     this.allianceName = data.alliance_name;
+    this.allianceData = data;
+    this.descriptionHistory = this.buildDescriptionHistory(data.description_history);
     const updatesPlayers = await this.apiRestService.getUpdatePlayersAlliance(allianceId);
     if (updatesPlayers.success === false) {
       this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
@@ -935,6 +992,10 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     const lastGlobalData = globalData.at(-1);
     if (lastGlobalData) {
       this.initCards(lastGlobalData);
+    }
+    await Promise.race([heroBackdrop, new Promise((resolve) => setTimeout(resolve, HERO_BACKDROP_GRACE_MS))]);
+    if (this.isDestroyed) {
+      return;
     }
     this.isInLoading = false;
     this.cdr.detectChanges();
@@ -998,7 +1059,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
 
       const eventDate = new Date(update.created_at);
       eventDate.setHours(eventDate.getHours(), 0, 0, 0);
-      const eventDateString = eventDate.toISOString().split('T')[0];
+      const eventDateString = this.utilitiesService.toLocalDayKey(eventDate);
       if (!groupedByDate.has(eventDateString)) {
         groupedByDate.set(eventDateString, {
           date: eventDate.toISOString(),
@@ -1176,6 +1237,8 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   }
 
   private async initMovements(): Promise<void> {
+    this.isInMovementLoading = true;
+    this.cdr.detectChanges();
     try {
       this.page = 1;
       this.search = this.allianceId.toString();
@@ -1187,6 +1250,9 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       this.movementsResponseTime = data.response;
     } catch {
       this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
+    } finally {
+      this.isInMovementLoading = false;
+      this.cdr.detectChanges();
     }
   }
 
@@ -1304,10 +1370,6 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       data,
       this.graphPages.player_event_berimond_kingdom_history,
     );
-    const config = this.statsCardConfigs.find((config) => config.chartKey === 'berimond_kingdom');
-    if (config) {
-      this.initStatsCardData(config, data, ApiPlayerStatsType.berimond_kingdom);
-    }
   }
 
   private initWarRealmsData(data: ApiPlayerStatsForAlliance): void {
@@ -1317,10 +1379,6 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       data,
       this.graphPages.player_event_war_realms_history,
     );
-    const config = this.statsCardConfigs.find((config) => config.chartKey === 'war_realms');
-    if (config) {
-      this.initStatsCardData(config, data, ApiPlayerStatsType.war_realms);
-    }
   }
 
   private initBloodcrowData(data: ApiPlayerStatsForAlliance): void {
@@ -1330,18 +1388,10 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       data,
       this.graphPages.player_event_bloodcrow_history,
     );
-    const config = this.statsCardConfigs.find((config) => config.chartKey === 'bloodcrow');
-    if (config) {
-      this.initStatsCardData(config, data, ApiPlayerStatsType.bloodcrow);
-    }
   }
 
   private initNomadData(data: ApiPlayerStatsForAlliance): void {
     this.initGenericEventData('nomad', ApiPlayerStatsType.nomad, data, this.graphPages.player_event_nomad_history);
-    const config = this.statsCardConfigs.find((config) => config.chartKey === 'nomad');
-    if (config) {
-      this.initStatsCardData(config, data, ApiPlayerStatsType.nomad);
-    }
   }
 
   private initSamuraiData(data: ApiPlayerStatsForAlliance): void {
@@ -1351,10 +1401,6 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       data,
       this.graphPages.player_event_samurai_history,
     );
-    const config = this.statsCardConfigs.find((config) => config.chartKey === 'samurai');
-    if (config) {
-      this.initStatsCardData(config, data, ApiPlayerStatsType.samurai);
-    }
   }
 
   private initLootHistoryData(data: ApiPlayerStatsForAlliance): void {
@@ -1362,19 +1408,14 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     const serieChoosen = this.graphPages.player_loot_history;
     const playerMap = new Map<number, { playerName: string; segments: [number, number][] }>();
     const now = new Date();
-    const currentMonday = new Date(now);
-    currentMonday.setUTCDate(currentMonday.getUTCDate() - ((currentMonday.getUTCDay() + 6) % 7));
-    currentMonday.setUTCHours(1 + (timezoneOffset ?? 0), 0, 0, 0);
-    const startOfWeek = new Date(currentMonday);
-    const endOfWeek = new Date(currentMonday);
-    endOfWeek.setUTCDate(endOfWeek.getUTCDate() + 7);
-    endOfWeek.setUTCHours(timezoneOffset ?? 0, 0, 0, 0);
-    startOfWeek.setUTCDate(startOfWeek.getUTCDate() - serieChoosen * 7);
-    endOfWeek.setUTCDate(endOfWeek.getUTCDate() - serieChoosen * 7);
-    const weekHours = this.generateWeekHours(startOfWeek, endOfWeek);
-    const timestampsByHour = weekHours.map((hour) => new Date(hour).getTime());
-    const showedEndOfWeek = new Date(endOfWeek);
-    showedEndOfWeek.setUTCDate(showedEndOfWeek.getUTCDate() - 1);
+    const currentMonday = this.weekResetInstant(now, timezoneOffset ?? DEFAULT_RESET_OFFSET);
+    const startOfWeek = new Date(currentMonday.getTime() - serieChoosen * HOURS_PER_WEEK * MS_PER_HOUR);
+    const endOfWeek = new Date(startOfWeek.getTime() + (HOURS_PER_WEEK - 1) * MS_PER_HOUR);
+    const timestampsByHour = Array.from(
+      { length: HOURS_PER_WEEK },
+      (_, index) => startOfWeek.getTime() + index * MS_PER_HOUR,
+    );
+    const showedEndOfWeek = new Date(endOfWeek.getTime() - 24 * MS_PER_HOUR);
     if (startOfWeek.getTime() < 1_737_349_200_000) {
       this.graphPages[ApiPlayerStatsType.loot] = serieChoosen - 1;
       return;
@@ -1480,7 +1521,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
           hidden: boolean;
         } = {
           name: `${playerName} 💤`,
-          data: weekHours.map((hour) => [new Date(hour).getTime(), -1]),
+          data: timestampsByHour.map((hourTimestamp) => [hourTimestamp, -1] as [number, number | null]),
           lastValue,
           hidden: true,
         };
@@ -1755,6 +1796,10 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     this.initChartOption(chartKey, filledSeries, filledColorsMapped);
     this.constructParticipationRateChart(chartKey, filledSeries);
     this.constructRadarChart(chartKey, filledSeries);
+    const statsCardConfig = this.statsCardConfigs.find((card) => card.chartKey === chartKey);
+    if (statsCardConfig) {
+      this.initStatsCardData(statsCardConfig, selectedSegmentsMapped);
+    }
   }
 
   /**
@@ -1823,17 +1868,6 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     return `rgb(${r}, ${g}, ${b})`;
   }
 
-  private getCurrentMonday(): Date {
-    const currentDate = new Date();
-    const dayOfWeek = currentDate.getDay();
-    const currentMonday = new Date(currentDate);
-    // Set the date to the most recent Monday (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
-    currentMonday.setDate(currentDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1));
-    // Set the time to 00:00:00.000 UTC
-    currentMonday.setUTCHours(0, 0, 0, 0);
-    return currentMonday;
-  }
-
   private getDefaultTableDistanceEntry(): [string, string, (string | undefined)?, (boolean | undefined)?] {
     return ['distance', 'Distance (m)', undefined, undefined];
   }
@@ -1851,29 +1885,13 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     }
   }
 
-  private getCurrentSunday(): Date {
-    const currentMonday = this.getCurrentMonday();
-    const currentSunday = new Date(currentMonday);
-    currentSunday.setDate(currentMonday.getDate() + 6);
-    currentSunday.setUTCHours(23, 0, 0, 0);
-    return currentSunday;
-  }
-
-  private getPreviousMonday(): Date {
-    const currentMonday = this.getCurrentMonday();
-    const previousMonday = new Date(currentMonday);
-    previousMonday.setDate(currentMonday.getDate() - 7);
-    return previousMonday;
-  }
-
-  private generateWeekHours(start: Date, end: Date): string[] {
-    const dates = [];
-    const current = new Date(start);
-    while (current <= end) {
-      dates.push(current.toISOString().replace('T', ' ').slice(0, 16));
-      current.setHours(current.getHours() + 1);
-    }
-    return dates;
+  private weekResetInstant(date: Date, resetOffset: number): Date {
+    const monday = new Date(date);
+    monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
+    monday.setUTCHours(0, 0, 0, 0);
+    const candidate = monday.getTime() + (resetOffset - 1) * MS_PER_HOUR;
+    const week = HOURS_PER_WEEK * MS_PER_HOUR;
+    return new Date(candidate + Math.floor((date.getTime() - candidate) / week) * week);
   }
 
   private initChartOption(name: keyof typeof ApiPlayerStatsType, data: ApexAxisChartSeries, color: string[]): void {
@@ -2462,7 +2480,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         return;
       }
       playersData = response.data.points;
-      this.timezoneOffset = response.data.timezoneOffset ?? -1;
+      this.timezoneOffset = response.data.timezoneOffset ?? DEFAULT_RESET_OFFSET;
     } catch {
       this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
       return;
@@ -2635,5 +2653,86 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         avg: '',
       },
     );
+  }
+
+  private buildDescriptionHistory(history: ApiAllianceDescriptionHistory[] | undefined): DescriptionChange[] {
+    const decoder = new DecodeHtmlPipe();
+
+    return (history ?? []).map((entry) => {
+      const previousTokens = this.tokenizeDescription(decoder.transform(entry.old_description));
+      const currentTokens = this.tokenizeDescription(decoder.transform(entry.new_description));
+      const { previousSegments, currentSegments } = this.diffDescriptions(previousTokens, currentTokens);
+      return {
+        createdAt: entry.created_at,
+        previousHtml: this.renderSegments(previousSegments, 'description-removed'),
+        currentHtml: this.renderSegments(currentSegments, 'description-added'),
+      };
+    });
+  }
+
+  private tokenizeDescription(description: string): string[] {
+    return description.split(/(<[^>]*>|\s+)/).filter((token) => token !== '');
+  }
+
+  private renderSegments(segments: DescriptionSegment[], highlightClass: string): string {
+    return segments
+      .map((segment) => (segment.changed ? `<span class="${highlightClass}">${segment.text}</span>` : segment.text))
+      .join('');
+  }
+
+  private diffDescriptions(
+    previousTokens: string[],
+    currentTokens: string[],
+  ): { previousSegments: DescriptionSegment[]; currentSegments: DescriptionSegment[] } {
+    const previousSegments: DescriptionSegment[] = [];
+    const currentSegments: DescriptionSegment[] = [];
+    const previousLength = previousTokens.length;
+    const currentLength = currentTokens.length;
+    if (previousLength > DESCRIPTION_DIFF_MAX_TOKENS || currentLength > DESCRIPTION_DIFF_MAX_TOKENS) {
+      for (const token of previousTokens) this.pushSegment(previousSegments, token, false);
+      for (const token of currentTokens) this.pushSegment(currentSegments, token, false);
+      return { previousSegments, currentSegments };
+    }
+    const width = currentLength + 1;
+    const lcs = new Int32Array((previousLength + 1) * width);
+    for (let previousIndex = previousLength - 1; previousIndex >= 0; previousIndex--) {
+      for (let currentIndex = currentLength - 1; currentIndex >= 0; currentIndex--) {
+        lcs[previousIndex * width + currentIndex] =
+          previousTokens[previousIndex] === currentTokens[currentIndex]
+            ? lcs[(previousIndex + 1) * width + currentIndex + 1] + 1
+            : Math.max(lcs[(previousIndex + 1) * width + currentIndex], lcs[previousIndex * width + currentIndex + 1]);
+      }
+    }
+
+    let previousIndex = 0;
+    let currentIndex = 0;
+    while (previousIndex < previousLength && currentIndex < currentLength) {
+      if (previousTokens[previousIndex] === currentTokens[currentIndex]) {
+        this.pushSegment(previousSegments, previousTokens[previousIndex++], false);
+        this.pushSegment(currentSegments, currentTokens[currentIndex++], false);
+      } else if (lcs[(previousIndex + 1) * width + currentIndex] >= lcs[previousIndex * width + currentIndex + 1]) {
+        this.pushSegment(previousSegments, previousTokens[previousIndex++], true);
+      } else {
+        this.pushSegment(currentSegments, currentTokens[currentIndex++], true);
+      }
+    }
+    while (previousIndex < previousLength) {
+      this.pushSegment(previousSegments, previousTokens[previousIndex++], true);
+    }
+    while (currentIndex < currentLength) {
+      this.pushSegment(currentSegments, currentTokens[currentIndex++], true);
+    }
+
+    return { previousSegments, currentSegments };
+  }
+
+  private pushSegment(segments: DescriptionSegment[], text: string, changed: boolean): void {
+    const isChanged = changed && text.trim() !== '' && !/^<[^>]*>$/.test(text);
+    const previous = segments.at(-1);
+    if (previous?.changed === isChanged) {
+      previous.text += text;
+      return;
+    }
+    segments.push({ text, changed: isChanged });
   }
 }

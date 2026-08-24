@@ -30,6 +30,16 @@
   gap: 6px;
 }
 
+.filters-section-title {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding-bottom: 4px;
+  text-transform: uppercase;
+}
+
 .si-response-time {
   background: rgba(255, 255, 255, 0.06);
   border-radius: 4px;

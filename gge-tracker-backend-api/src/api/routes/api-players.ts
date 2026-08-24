@@ -332,7 +332,9 @@ export abstract class ApiPlayers implements ApiHelper {
        * --------------------------------- */
       (request['pg_pool'] as pg.Pool).query(query, parameters, async (error, results) => {
         if (error) {
-          response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+          response
+            .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
         } else {
           const pagination = {
             current_page: page,
@@ -651,7 +653,9 @@ export abstract class ApiPlayers implements ApiHelper {
        * --------------------------------- */
       pool.query(query, [code], (error, results) => {
         if (error) {
-          response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+          response
+            .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
           return;
         } else {
           const topPlayers = results.rows.map((result: any) => {
@@ -723,7 +727,7 @@ export abstract class ApiPlayers implements ApiHelper {
         ...new Set(
           body
             .map((v) => Number.parseInt(ApiHelper.removeCountryCode(String(v)), 10))
-            .filter((n) => !Number.isNaN(n) && n > 0),
+            .filter((n) => Number.isSafeInteger(n) && n > 0),
         ),
       ];
       if (ids.length === 0) {
@@ -787,6 +791,8 @@ export abstract class ApiPlayers implements ApiHelper {
           response
             .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
             .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
+          ApiHelper.logError(error, 'getPlayerBulkData', request);
+          return;
         }
 
         const players = results.rows.map((row: any) => ({

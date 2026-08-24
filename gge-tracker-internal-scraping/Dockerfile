@@ -11,7 +11,7 @@
 #                                                                                    #
 ######################################################################################
 
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 
@@ -21,7 +21,6 @@ COPY tsconfig.json ./
 RUN npm install
 
 COPY src/ ./src/
-COPY config/ ./config/
 
 RUN npx tsc
 

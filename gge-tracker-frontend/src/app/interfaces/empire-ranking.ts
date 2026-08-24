@@ -109,14 +109,45 @@ export interface Dungeon {
   availabilityExceeded?: boolean;
 }
 
-export interface Offer {
-  startAt: string;
-  endAt: string;
-  offer: number;
-  offerType: string;
-  serverType: string;
-  worldType: string;
-  isActive: boolean;
+export enum StormIsleState {
+  FREE = 0,
+  OCCUPIED = 1,
+  RESPAWNING = 2,
+}
+
+export interface StormFort {
+  rank: number;
+  position: string;
+  positionX: number;
+  positionY: number;
+  isleId: number;
+  victoryCount: number;
+  attacksLeft: number;
+  isVisible: boolean;
+  availableAt: string;
+  updatedAt: string;
+  distance?: number | null;
+  effectiveCooldownUntil: string;
+}
+
+export interface StormIsle {
+  rank: number;
+  position: string;
+  positionX: number;
+  positionY: number;
+  objectId: number;
+  isleId: number;
+  state: StormIsleState;
+  occupierId?: number | null;
+  occupierName?: string | null;
+  occupierMight?: number | null;
+  occupierLevel?: number | null;
+  occupierLegendaryLevel?: number | null;
+  occupierAllianceName?: string | null;
+  availableAt: string;
+  updatedAt: string;
+  distance?: number | null;
+  effectiveCooldownUntil: string;
 }
 
 export interface Movement {
@@ -169,6 +200,10 @@ export interface Alliance {
   lootAllTime: number;
   currentFame: number;
   highestFame: number;
+  autoJoinEnabled: boolean;
+  description: string;
+  isIslandKing: boolean;
+  isSearchingPlayers: boolean;
 }
 
 export interface FavoritePlayer {
@@ -417,8 +452,26 @@ export interface ApiWoaEventPlayerData {
   date: string;
   rank: number;
 }
+export interface ApiWoaEventPlayerAggregates {
+  total_points: number;
+  events_count: number;
+  first_event: string | null;
+  best_point: number;
+  best_point_date: string | null;
+  best_rank: number;
+  best_rank_date: string | null;
+}
+
+export interface ApiWoaEventPlayerCoverage {
+  first_tracked_event: string | null;
+  tracked_events_count: number;
+  tracked_events_since_player: number;
+}
+
 export interface ApiWoaEventPlayerDataResponse {
   events: ApiWoaEventPlayerData[];
+  player: ApiWoaEventPlayerAggregates;
+  coverage: ApiWoaEventPlayerCoverage;
 }
 
 export interface ApiLiveRanking {
@@ -445,10 +498,25 @@ export interface ApiAllianceSearchResponse {
   current_fame: number;
   highest_fame: number;
   active_player_count: number;
+  auto_join_enabled: boolean;
+  description: string;
+  is_island_king: boolean;
+  is_searching_players: boolean;
+}
+
+export interface ApiAllianceDescriptionHistory {
+  created_at: string;
+  old_description: string;
+  new_description: string;
 }
 
 export interface ApiAlliancePlayersSearchResponse {
   alliance_name: string;
+  auto_join_enabled: boolean;
+  description: string;
+  is_island_king: boolean;
+  description_history: ApiAllianceDescriptionHistory[];
+  is_searching_players: boolean;
   players: ApiPlayerSearchResponse[];
 }
 
@@ -468,7 +536,7 @@ export interface ApiUpdateAlliancePlayers {
   player_name: string;
 }
 
-export type ISelectedTab = 'movement' | 'stats' | 'progress' | 'members' | 'movements' | 'health';
+export type ISelectedTab = 'movement' | 'description' | 'stats' | 'progress' | 'members' | 'movements' | 'health';
 
 export interface GroupedUpdatesByDate {
   date: string;
@@ -505,6 +573,57 @@ export interface ApiDungeonsByPlayerIdResponse extends ApiGenericResponse {
 
 export interface ApiDungeonsResponse extends ApiGenericResponse {
   dungeons: ApiDungeonsResource[];
+}
+
+export interface ApiDungeonsMetaResponse {
+  last_scan_at: string | null;
+}
+
+export interface ApiStormFort {
+  kid: number;
+  position_x: number;
+  position_y: number;
+  isle_id: number;
+  victory_count: number;
+  attacks_left: number;
+  is_visible: boolean;
+  available_at: string;
+  updated_at: string;
+  distance?: number | null;
+}
+
+export interface ApiStormIsle {
+  kid: number;
+  position_x: number;
+  position_y: number;
+  object_id: number;
+  isle_id: number;
+  state: number;
+  occupier_id: number | null;
+  occupier_name: string | null;
+  occupier_might: number | null;
+  occupier_level: number | null;
+  occupier_legendary_level: number | null;
+  occupier_alliance_name: string | null;
+  available_at: string;
+  updated_at: string;
+  distance?: number | null;
+}
+
+export interface ApiStormFortsResponse extends ApiGenericResponse {
+  forts: ApiStormFort[];
+}
+
+export interface ApiStormIslesResponse extends ApiGenericResponse {
+  isles: ApiStormIsle[];
+}
+
+export interface ApiStormMetaResponse {
+  season_started_at: string | null;
+  scan_radius: number;
+  last_scan_at: string | null;
+  forts_count: number;
+  isles_count: number;
 }
 
 export interface ApiPlayersResponse extends ApiGenericResponse {
@@ -597,6 +716,38 @@ export interface ApiPlayerStatsByPlayerId {
   timezone_offset: number | null;
 }
 
+export interface ApiPlayerStatsSummaryEvent {
+  row_count: number;
+  row_count_7d: number;
+  first_date: string | null;
+  last_date: string | null;
+  last_point: number | null;
+  max_point: number | null;
+  max_point_date: string | null;
+  max_point_7d: number | null;
+  point_gain_7d: number | null;
+}
+
+export interface ApiPlayerEventOccurrence {
+  started_at: string;
+  ended_at: string;
+  point: number;
+}
+
+export interface ApiPlayerEventOccurrences {
+  event: ApiPlayerStatsType;
+  occurrences: ApiPlayerEventOccurrence[];
+}
+
+export interface ApiPlayerStatsSummary {
+  player_name: string;
+  alliance_name: string | null;
+  alliance_id: number | null;
+  events: Record<ApiPlayerStatsType, ApiPlayerStatsSummaryEvent>;
+  glory_points_100: { top: number; point: number }[];
+  timezone_offset: number | null;
+}
+
 export interface ApiPlayerStatsByAllianceId {
   diffs: Record<ApiPlayerStatsType, number>;
   points: ApiPlayerStatsForAlliance;
@@ -613,17 +764,49 @@ export interface ApiAllianceHealthResponse {
   top_might_loss_24h: { current: number; diff: number; player_id: string }[];
 }
 
-export interface ApiOffersResponse {
-  offers: ApiOffer[];
+export interface ApiOffersCatalogResponse {
+  _failed?: Record<string, unknown>;
+  [category: string]: ApiOfferCategory | Record<string, unknown> | undefined;
+}
+
+export interface ApiOfferCategory {
+  data?: {
+    offers?: ApiOffer[] | null;
+    settings?: { tooltipsEnabled?: boolean };
+    eventDetails?: { type?: string; bonus?: number; endTimeStamp?: number };
+  };
 }
 
 export interface ApiOffer {
-  end_at: string;
-  offer: number;
-  offer_type: string;
-  server_type: string;
-  start_at: string;
-  world_type: string;
+  id: string;
+  name?: string;
+  title?: string;
+  desc?: string;
+  price: number;
+  currencyCode?: string;
+  currency?: string;
+  teaserImg?: string;
+  headerImageUrl?: string;
+  bonus?: number;
+  rewards?: ApiOfferReward[];
+  hardCurrencyAmount?: number;
+  hardCurrencyOriginalAmount?: number;
+  baseHCValue?: number;
+  bonusHCValue?: number;
+  special?: boolean;
+  active?: boolean;
+  purchased?: boolean;
+  type?: string;
+}
+
+export interface ApiOfferReward {
+  id?: string;
+  type?: string;
+  qty?: number;
+  title?: string;
+  desc?: string;
+  details?: string;
+  iconUrl?: string;
 }
 
 export interface ApiEventlist {
@@ -814,6 +997,22 @@ export interface WoaEventList {
   rank: number;
   from: Date;
   to: Date;
+}
+
+export interface WoaSummaryHighlight {
+  value: number;
+  date: Date | null;
+}
+
+export interface WoaPlayerSummary {
+  totalTickets: number;
+  eventCount: number;
+  averageTickets: number;
+  bestEvent: WoaSummaryHighlight;
+  bestRankEvent: WoaSummaryHighlight;
+  trendPercent: number | null;
+  coverageStart: Date | null;
+  trackedEvents: number;
 }
 
 export interface ApiGrandTournamentAlliancesSearchResponse {
@@ -1055,6 +1254,8 @@ export interface ApiStormyIslesPlayer {
   might_all_time: number;
   level: number;
   legendary_level: number;
+  alliance_might: number;
+  alliance_player_count: number;
   metrics: Record<number, number>;
   collected_at: string;
 }

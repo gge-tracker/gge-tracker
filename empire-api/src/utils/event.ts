@@ -27,6 +27,7 @@ class AsyncEvent {
     return new Promise((resolve) => {
       const onSet = (): void => {
         clearTimeout(timeoutId);
+        this.target.removeEventListener('set', onSet);
         resolve(true);
       };
       const timeoutId = setTimeout(() => {
@@ -34,7 +35,7 @@ class AsyncEvent {
         resolve(false);
       }, timeout);
 
-      this.target.addEventListener('set', onSet);
+      this.target.addEventListener('set', onSet, { once: true });
     });
   }
 }

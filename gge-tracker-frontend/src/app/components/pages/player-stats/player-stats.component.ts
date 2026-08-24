@@ -18,11 +18,14 @@ import {
   ApiAquamarineMetric,
   ApiAquamarineSnapshot,
   ApiGenericData,
-  ApiPlayerStats,
-  ApiPlayerStatsByPlayerId,
+  ApiPlayerEventOccurrence,
+  ApiPlayerStatsSummary,
+  ApiPlayerStatsSummaryEvent,
   ApiPlayerStatsType,
   ApiRankingStatsPlayer,
   ApiResponse,
+  ApiWoaEventPlayerAggregates,
+  ApiWoaEventPlayerCoverage,
   CastleQuantity,
   CastleType,
   ChartOptions,
@@ -38,6 +41,7 @@ import {
   RankingFameTitle,
   Top3EventPlayers,
   WoaEventList,
+  WoaPlayerSummary,
 } from '@ggetracker-interfaces/empire-ranking';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { LevelPipe } from '@ggetracker-pipes/level.pipe';
@@ -48,9 +52,18 @@ import Gradient from 'javascript-color-gradient';
 import { ApexAxisChartSeries } from 'ng-apexcharts';
 import { ModalTableComponent } from '@ggetracker-components/modal-table/modal-table.component';
 import { PlayerStatsCardComponent } from './player-stats-card/player-stats-card.component';
+import { StatsPanelComponent } from './stats-panel/stats-panel.component';
 import { combineLatest, firstValueFrom } from 'rxjs';
 import { CalendarCheck, LucideAngularModule, SquareUser } from 'lucide-angular';
 import { EventCardComponent } from '@ggetracker-pages/events/event-card/event-card.component';
+
+const MS_PER_HOUR = 3_600_000;
+const HOURS_PER_WEEK = 168;
+const DEFAULT_RESET_OFFSET = -1;
+// Below three recorded runs the card list already says everything a summary could
+const WOA_SUMMARY_MIN_EVENTS = 3;
+const WOA_TREND_MIN_EVENTS = 4;
+const WOA_TREND_WINDOW = 3;
 
 @Component({
   selector: 'app-player-stats',
@@ -70,6 +83,7 @@ import { EventCardComponent } from '@ggetracker-pages/events/event-card/event-ca
     NgStyle,
     EventCardComponent,
     ModalTableComponent,
+    StatsPanelComponent,
   ],
   standalone: true,
   templateUrl: './player-stats.component.html',
@@ -169,6 +183,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     patriarch: 0,
   };
   public woaHistory: WoaEventList[] = [];
+  public woaSummary: WoaPlayerSummary | null = null;
   public monumentsList: Monument[] = [];
   public aquamarineSnapshots: ApiAquamarineSnapshot[] = [];
   public aquamarineLoadState: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
@@ -208,7 +223,25 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   public eventSeriesExpanded: Record<string, boolean> = {};
   public eventCharts: Record<string, Record<string, ChartOptions>> = {};
   public eventStats: Record<string, EventStatsData> = {};
+  public eventSummary: Record<ApiPlayerStatsType, ApiPlayerStatsSummaryEvent> | null = null;
+  public eventOccurrences: Record<string, ApiPlayerEventOccurrence[]> = {};
+  public seriesState: Record<string, 'idle' | 'loading' | 'loaded' | 'empty' | 'error'> = {};
   private readonly EVENT_SERIES_DEFAULT_LIMIT = 5;
+
+  private readonly CHART_SOURCES: Record<string, { table: ApiPlayerStatsType; days: number }> = {
+    might: { table: ApiPlayerStatsType.might, days: 30 },
+    loot: { table: ApiPlayerStatsType.loot, days: 30 },
+    warRealms: { table: ApiPlayerStatsType.war_realms, days: 90 },
+    bloodcrow: { table: ApiPlayerStatsType.bloodcrow, days: 90 },
+    berimondKingdom: { table: ApiPlayerStatsType.berimond_kingdom, days: 90 },
+    nomad: { table: ApiPlayerStatsType.nomad, days: 90 },
+    samurai: { table: ApiPlayerStatsType.samurai, days: 90 },
+  };
+  private readonly LOOT_TAB_DAYS = 182;
+  private readonly LOOT_OVERVIEW_WEEKS = 5;
+  private readonly CONTINUOUS_CHARTS = new Set(['might', 'loot']);
+  private readonly FULL_HISTORY_DAYS = 1825;
+  private seriesWindow: Partial<Record<ApiPlayerStatsType, number>> = {};
 
   public get aquamarineSnapshotsForMonth(): ApiAquamarineSnapshot[] {
     return this.aquamarineSnapshots.filter((s) => s.collected_at.slice(0, 7) === this.aquamarineMonth);
@@ -273,6 +306,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
           const chartName = element.dataset['chart'] as keyof typeof this.chartVisibles;
           if (chartName) {
             this.chartVisibles[chartName] = true;
+            void this.ensureSeries(chartName);
           }
           this.observer.unobserve(element);
           this.cdr.detectChanges();
@@ -316,36 +350,61 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     )}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
   }
 
-  public initDataSegments(points: ApiPlayerStats): void {
-    this.mightPeriod = 'week';
-    this.eventSeriesTotalCount = {};
-    this.eventSeriesExpanded = {};
-    this.eventCharts = {};
-    this.eventStats = {};
-    this.data = Object.fromEntries(
-      Object.entries(points).map(([key, value]) => {
-        let filtered = value;
-        if (key === 'player_might_history') {
-          filtered = value.filter((point, index, array) => {
-            if (index === 0 || index === array.length - 1) {
-              return true;
-            }
-            const previous = array[index - 1].point;
-            const next = array[index + 1].point;
-            return !(previous === point.point && next === point.point);
-          });
-        }
-        return [
-          key,
-          filtered.map((point) => ({
-            utcDate: point.date,
-            date: this.formatLocalDate(point.date),
-            point: point.point,
-            variation: 0,
-          })),
-        ];
-      }),
-    ) as Record<ApiPlayerStatsType, EventGenericVariation[]>;
+  public async ensureSeries(chartName: string, days?: number): Promise<void> {
+    const source = this.CHART_SOURCES[chartName];
+    if (!source || !this.playerId) return;
+    if (this.eventSummary && this.eventSummary[source.table]?.row_count === 0) {
+      this.seriesState[chartName] = 'empty';
+      this.cdr.detectChanges();
+      return;
+    }
+    const wanted = days ?? source.days;
+    if ((this.seriesWindow[source.table] ?? 0) >= wanted || this.seriesState[chartName] === 'loading') return;
+    this.seriesState[chartName] = 'loading';
+    this.cdr.detectChanges();
+    const needsOccurrences = !this.CONTINUOUS_CHARTS.has(chartName) && !this.eventOccurrences[chartName];
+    const [response, occurrences] = await Promise.all([
+      this.apiRestService.getPlayerStatsSeriesByPlayerId(this.playerId, [source.table], wanted),
+      needsOccurrences
+        ? this.apiRestService.getPlayerEventOccurrencesByPlayerId(this.playerId, source.table)
+        : Promise.resolve(null),
+    ]);
+    if (!response.success) {
+      this.seriesState[chartName] = 'error';
+      this.cdr.detectChanges();
+      return;
+    }
+    if (occurrences?.success) {
+      this.eventOccurrences[chartName] = occurrences.data.occurrences;
+    }
+    this.setSeries(source.table, response.data.points[source.table] ?? []);
+    this.seriesWindow[source.table] = wanted;
+    this.buildChart(chartName);
+    this.seriesState[chartName] = 'loaded';
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * How many days of a chart's table are loaded, for the card to decide whether a period needs fetching
+   *
+   * @param chartName The chart to report on
+   * @returns The window in days, 0 when nothing is loaded yet
+   */
+  public loadedDaysFor(chartName: string): number {
+    const source = this.CHART_SOURCES[chartName];
+    return source ? (this.seriesWindow[source.table] ?? 0) : 0;
+  }
+
+  /**
+   * The headline the summary gives for a chart, shown until the series itself arrives
+   *
+   * @param chartName The chart to report on
+   * @returns The summary entry, or null before the summary has loaded
+   */
+  public summaryFor(chartName: string): ApiPlayerStatsSummaryEvent | null {
+    const source = this.CHART_SOURCES[chartName];
+    if (!source || !this.eventSummary) return null;
+    return this.eventSummary[source.table] ?? null;
   }
 
   public navigateToEvent(event: OuterEventData | WoaEventList): void {
@@ -362,6 +421,16 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
         queryParams: { date: event.date.toISOString(), page: calculatedPage },
       });
     }
+  }
+
+  public get viewerTimeZoneLabel(): string {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const minutes = -new Date().getTimezoneOffset();
+    const sign = minutes < 0 ? '-' : '+';
+    const absolute = Math.abs(minutes);
+    const hours = String(Math.floor(absolute / 60)).padStart(2, '0');
+    const rest = String(absolute % 60).padStart(2, '0');
+    return `${zone}, UTC${sign}${hours}:${rest}`;
   }
 
   public getMonthNameByDate(date: string): string {
@@ -404,31 +473,27 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       try {
         const playerId = parameters['playerId'];
         this.playerId = playerId;
-        if (this.data.player_might_history.length === 0) {
+        if (!this.eventSummary) {
           this.isInLoading = true;
           this.cdr.detectChanges();
-          const response: ApiResponse<ApiPlayerStatsByPlayerId> =
-            await this.apiRestService.getPlayerStatsByPlayerId(playerId);
+          const response: ApiResponse<ApiPlayerStatsSummary> =
+            await this.apiRestService.getPlayerStatsSummaryByPlayerId(playerId);
           if (!response || response.success === false || !playerId || Number.isNaN(playerId) || playerId <= 0) {
             throw new Error('Invalid player ID or unable to load player data');
-          } else if (!response.data.points || Object.keys(response.data.points).length === 0) {
-            throw new Error('No points data available for this player');
           }
           const data = response.data;
+          this.mightPeriod = 'week';
           this.playerName = data.player_name;
           this.timezoneOffset = data.timezone_offset;
           this.addStructuredPlayerData({
             name: this.playerName,
             url: `gge-tracker.com/player/${playerId}`,
-            alliance: data.alliance_name,
-            might:
-              data.points.player_might_history.length > 0 && data.points.player_might_history.at(-1)
-                ? data.points.player_might_history.at(-1)!.point
-                : 0,
+            alliance: data.alliance_name ?? '',
+            might: data.events[ApiPlayerStatsType.might]?.last_point ?? 0,
           });
-          this.initDataSegments(data.points);
-          this.allianceName = data.alliance_name;
-          this.allianceId = data.alliance_id;
+          this.eventSummary = data.events;
+          this.allianceName = data.alliance_name ?? undefined;
+          this.allianceId = data.alliance_id ?? undefined;
           this.top100Glory = data.glory_points_100;
         }
         const formattedFragment = this.formatFragment(fragment);
@@ -567,6 +632,30 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     );
   };
 
+  public get castleKinds(): { icon: string; label: string; count: number }[] {
+    return [
+      { icon: '/assets/castle1.png', label: 'Chateau principal', count: this.quantity.castle },
+      { icon: '/assets/castle4.png', label: 'Avant-poste', count: this.quantity.outpost },
+      { icon: '/assets/monument.png', label: 'Monument', count: this.quantity.monument },
+      { icon: '/assets/labo.png', label: 'Laboratoire', count: this.quantity.laboratory },
+      { icon: '/assets/tour-royale.png', label: 'Tour royale', count: this.quantity.royalTower },
+      { icon: '/assets/capitale.png', label: 'Capitale', count: this.quantity.capital },
+      { icon: '/assets/cite-marchande.png', label: 'Cité marchande', count: this.quantity.city },
+    ];
+  }
+
+  public get castlesByRealm(): { kingdom: number; name: string; count: number }[] {
+    const counts = new Map<number, number>();
+    for (const monument of this.monumentsList) {
+      const kingdom = monument.kingdom ?? 0;
+      counts.set(kingdom, (counts.get(kingdom) ?? 0) + 1);
+    }
+    return this.worlds
+      .filter((world) => counts.has(world.id))
+      .map((world) => ({ kingdom: world.id, name: world.name, count: counts.get(world.id) ?? 0 }))
+      .sort((a, b) => b.count - a.count);
+  }
+
   public getRealmName(realmName?: number): string {
     if (realmName === undefined) return 'Unknown';
     return this.worlds.find((w) => w.id === realmName)?.name || 'Unknown';
@@ -640,18 +729,47 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     this.cdr.detectChanges();
   }
 
-  public updateData(event: { eventName: string; points: ApiGenericData[] }): void {
-    this.data[event.eventName as ApiPlayerStatsType] = event.points as EventGenericVariation[];
-    if (event.eventName === 'player_might_history') {
-      this.spinnerLoadingByChart['might'] = true;
-      this.initMightHistoryData();
-    }
+  /**
+   * How many runs of an event the chart is currently drawing
+   *
+   * @param chartName The chart to report on
+   * @returns The number of series drawn
+   */
+  public drawnSeriesCount(chartName: string): number {
+    const loaded = this.eventSeriesTotalCount[chartName] ?? 0;
+    if (this.eventSeriesExpanded[chartName]) return loaded;
+    return Math.min(loaded, this.EVENT_SERIES_DEFAULT_LIMIT);
+  }
+
+  /**
+   * How many runs of an event this chart could draw a line for
+   *
+   * @param chartName The chart to report on
+   * @returns The number of runs with something to draw
+   */
+  public totalOccurrences(chartName: string): number {
+    return (this.eventOccurrences[chartName] ?? []).filter((occurrence) => Number(occurrence.point) > 0).length;
+  }
+
+  /**
+   * Widens a chart to the player's full recorded year and shows every occurrence in it
+   *
+   * @param chartName The chart to widen
+   */
+  public async loadFullHistory(chartName: string): Promise<void> {
+    this.eventSeriesExpanded[chartName] = true;
+    await this.ensureSeries(chartName, this.FULL_HISTORY_DAYS);
+    this.buildChart(chartName);
+    this.cdr.detectChanges();
   }
 
   public onMightPeriodChange(period: 'day' | 'week' | 'month' | 'year'): void {
     this.mightPeriod = period;
-    this.initMightHistoryData();
-    this.cdr.detectChanges();
+    const days: Record<typeof period, number> = { day: 1, week: 7, month: 30, year: 365 };
+    void this.ensureSeries('might', days[period]).then(() => {
+      this.initMightHistoryData();
+      this.cdr.detectChanges();
+    });
   }
 
   public getHiddenEventCount(chartName: string): number {
@@ -664,6 +782,52 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     this.eventSeriesExpanded[chartName] = true;
     this.reinitEventChart(chartName);
     this.cdr.detectChanges();
+  }
+
+  /**
+   * Stores the points of one event table, ready for the chart builders to consume
+   *
+   * @param table The event table these points belong to
+   * @param points The points as the API returned them, oldest first
+   */
+  private setSeries(table: ApiPlayerStatsType, points: ApiGenericData[]): void {
+    this.data[table] = points.map((point) => ({
+      utcDate: point.date,
+      date: this.formatLocalDate(point.date),
+      point: point.point,
+      variation: 0,
+    }));
+  }
+
+  /**
+   * Rebuilds the charts drawn from one table, after its series arrived or was widened
+   *
+   * @param chartName The chart to rebuild
+   */
+  private buildChart(chartName: string): void {
+    switch (chartName) {
+      case 'might': {
+        this.initMightHistoryData();
+        break;
+      }
+      case 'loot': {
+        this.initLootHistoryData();
+        break;
+      }
+      default: {
+        this.reinitEventChart(chartName);
+      }
+    }
+  }
+
+  /**
+   * Maps a table back to the chart it feeds, for the events a card reports against a table name
+   *
+   * @param table The event table
+   * @returns The chart name, or undefined for a table no chart draws
+   */
+  private chartNameForTable(table: string): string | undefined {
+    return Object.keys(this.CHART_SOURCES).find((name) => this.CHART_SOURCES[name].table === table);
   }
 
   private reinitEventChart(chartName: string): void {
@@ -1004,36 +1168,37 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     this.spinnerLoadingByChart[name] = false;
   }
 
-  private buildFinalScoresSeries(eventData: [number, number][][]): { data: number[]; categories: string[] } {
+  /**
+   * Builds the participation tab: one bar per run of the event, newest first
+   *
+   * @param occurrences Every run of the event, oldest first
+   * @returns The score of each run and the label to put under it, newest first
+   */
+  private buildFinalScoresSeries(occurrences: ApiPlayerEventOccurrence[]): { data: number[]; categories: string[] } {
     const locale = this.languageService.getCurrentLang();
-    const now = Date.now();
     const data: number[] = [];
     const categories: string[] = [];
-    for (const event of eventData) {
-      if (event.length === 0) continue;
-      const lastPoint = event.at(-1)!;
-      const endDate = new Date(lastPoint[0]);
-      const endWithBuffer = new Date(endDate);
-      endWithBuffer.setHours(endWithBuffer.getHours() + 3);
-      // if (endWithBuffer.getTime() >= now) continue;
-      const startLabel = new Date(event[0][0]).toLocaleDateString(locale).slice(0, -5);
-      const endLabel = endDate.toLocaleDateString(locale).slice(0, -5);
-      const score = Number(lastPoint[1]);
-      if (endWithBuffer.getTime() >= now) {
+    for (const occurrence of occurrences) {
+      const score = Number(occurrence.point);
+      if (this.isCurrentOccurrence(occurrence)) {
         categories.push(this.translateService.instant('Événement courant'));
       } else {
         categories.push(
           this.translateService.instant('Événement du 0 au 0', {
-            start: startLabel,
-            end: endLabel,
+            start: new Date(occurrence.started_at).toLocaleDateString(locale).slice(0, -5),
+            end: new Date(occurrence.ended_at).toLocaleDateString(locale).slice(0, -5),
           }) + ` (${this.getUnitByValue(score)})`,
         );
       }
       data.push(score);
     }
-    const reversedData = [...data].reverse();
-    const reversedCategories = [...categories].reverse();
-    return { data: reversedData, categories: reversedCategories };
+    return { data: [...data].reverse(), categories: [...categories].reverse() };
+  }
+
+  private isCurrentOccurrence(occurrence: ApiPlayerEventOccurrence): boolean {
+    const endWithBuffer = new Date(occurrence.ended_at);
+    endWithBuffer.setHours(endWithBuffer.getHours() + 3);
+    return endWithBuffer.getTime() >= Date.now();
   }
 
   private initFinalScoresChartOption(name: string, data: number[], categories: string[], color: string): void {
@@ -1120,17 +1285,16 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     };
   }
 
-  private buildEventStats(chartName: string, eventData: [number, number][][]): void {
-    const now = Date.now();
-    const finalScores: number[] = [];
-    for (const event of eventData) {
-      if (event.length === 0) continue;
-      const lastPoint = event.at(-1)!;
-      const endWithBuffer = new Date(lastPoint[0]);
-      endWithBuffer.setHours(endWithBuffer.getHours() + 3);
-      if (endWithBuffer.getTime() >= now) continue;
-      finalScores.push(Number(lastPoint[1]));
-    }
+  /**
+   * Builds the indicator tab: how often the player takes part in an event and what they score
+   *
+   * @param chartName The chart these indicators belong to
+   * @param occurrences Every run of the event, oldest first
+   */
+  private buildEventStats(chartName: string, occurrences: ApiPlayerEventOccurrence[]): void {
+    const finalScores: number[] = occurrences
+      .filter((occurrence) => !this.isCurrentOccurrence(occurrence))
+      .map((occurrence) => Number(occurrence.point));
     if (finalScores.length === 0) {
       delete this.eventStats[chartName];
       return;
@@ -1156,6 +1320,50 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     };
   }
 
+  /**
+   * Condenses the wheel of affluence history into what the card list cannot show at a glance:
+   * one ticket spun costs one ticket and scores one point, so the points a player accumulated
+   * over an event are the tickets they spent on it
+   *
+   * @param recentEvents The events the API returned as cards, newest first
+   * @param player The exact aggregates over the player's whole tracked history
+   * @param coverage How far back the WoA scraper reaches on this server
+   */
+  private buildWoaSummary(
+    recentEvents: WoaEventList[],
+    player: ApiWoaEventPlayerAggregates,
+    coverage: ApiWoaEventPlayerCoverage,
+  ): WoaPlayerSummary | null {
+    const eventCount = Number(player.events_count);
+    if (eventCount < WOA_SUMMARY_MIN_EVENTS) return null;
+    const totalTickets = Number(player.total_points);
+    const averageTickets = eventCount > 0 ? Math.round(totalTickets / eventCount) : 0;
+    const coverageStartIso = player.first_event ?? coverage.first_tracked_event;
+    let trendPercent: number | null = null;
+    if (recentEvents.length >= WOA_TREND_MIN_EVENTS && averageTickets > 0) {
+      const chronological = [...recentEvents].sort((a, b) => a.date.getTime() - b.date.getTime());
+      const recent = chronological.slice(-WOA_TREND_WINDOW);
+      const recentAverage = recent.reduce((total, event) => total + Number(event.point), 0) / recent.length;
+      trendPercent = Math.round((recentAverage / averageTickets - 1) * 100);
+    }
+    return {
+      totalTickets,
+      eventCount,
+      averageTickets,
+      bestEvent: {
+        value: Number(player.best_point),
+        date: player.best_point_date ? new Date(player.best_point_date) : null,
+      },
+      bestRankEvent: {
+        value: Number(player.best_rank),
+        date: player.best_rank_date ? new Date(player.best_rank_date) : null,
+      },
+      trendPercent,
+      coverageStart: coverageStartIso ? new Date(coverageStartIso) : null,
+      trackedEvents: Number(coverage.tracked_events_since_player),
+    };
+  }
+
   private initWarRealmsData(): void {
     const warRealms = this.data['player_event_war_realms_history'];
     // this.setGenericVariations(warRealms);
@@ -1164,9 +1372,10 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     series.forEach((serie, index) => (serie['hidden'] = index !== series.length - 1));
     const colors = ['#d2b8f2', '#c4a1f0', '#ae81e6', '#945adb', '#7d37d4'];
     this.initChartOption('warRealms', series, colors);
-    const { data, categories } = this.buildFinalScoresSeries(eventData);
+    const occurrences = this.eventOccurrences['warRealms'] ?? [];
+    const { data, categories } = this.buildFinalScoresSeries(occurrences);
     this.initFinalScoresChartOption('warRealms-scores', data, categories, '#7d37d4');
-    this.buildEventStats('warRealms', eventData);
+    this.buildEventStats('warRealms', occurrences);
     this.buildEventCharts('warRealms', data.length);
   }
 
@@ -1179,9 +1388,10 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     const colors = new Gradient();
     colors.setColorGradient('#ffcc00', '#ff0000');
     this.initChartOption('nomad', series, colors.getColors());
-    const { data, categories } = this.buildFinalScoresSeries(eventData);
+    const occurrences = this.eventOccurrences['nomad'] ?? [];
+    const { data, categories } = this.buildFinalScoresSeries(occurrences);
     this.initFinalScoresChartOption('nomad-scores', data, categories, '#ff8800');
-    this.buildEventStats('nomad', eventData);
+    this.buildEventStats('nomad', occurrences);
     this.buildEventCharts('nomad', data.length);
   }
 
@@ -1355,21 +1565,11 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     const colors = new Gradient();
     colors.setColorGradient('#00aaff', '#00aaff');
     this.initChartOption('berimondKingdom', series, colors.getColors());
-    const { data, categories } = this.buildFinalScoresSeries(eventData);
+    const occurrences = this.eventOccurrences['berimondKingdom'] ?? [];
+    const { data, categories } = this.buildFinalScoresSeries(occurrences);
     this.initFinalScoresChartOption('berimondKingdom-scores', data, categories, '#00aaff');
-    this.buildEventStats('berimondKingdom', eventData);
+    this.buildEventStats('berimondKingdom', occurrences);
     this.buildEventCharts('berimondKingdom', data.length);
-  }
-
-  private initBerimondInvasionData(): void {
-    const berimondPoints = this.data['player_event_berimond_invasion_history'];
-    // this.setGenericVariations(berimondPoints);
-    const eventData = this.groupEventDataByTimeGaps(this.eventDataSegments['berimondInvasion'], berimondPoints);
-    const series = this.applySeriesLimit('berimondInvasion', this.generateEventSeries(eventData));
-    series.forEach((serie, index) => (serie['hidden'] = index !== series.length - 1));
-    const colors = new Gradient();
-    colors.setColorGradient('#00aaff', '#00aaff');
-    this.initChartOption('berimondInvasion', series, colors.getColors());
   }
 
   private initSamuraiHistoryData(): void {
@@ -1381,9 +1581,10 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     const colors = new Gradient();
     colors.setColorGradient('#9ED334', '#58771D');
     this.initChartOption('samurai', series, colors.getColors());
-    const { data, categories } = this.buildFinalScoresSeries(eventData);
+    const occurrences = this.eventOccurrences['samurai'] ?? [];
+    const { data, categories } = this.buildFinalScoresSeries(occurrences);
     this.initFinalScoresChartOption('samurai-scores', data, categories, '#6a9420');
-    this.buildEventStats('samurai', eventData);
+    this.buildEventStats('samurai', occurrences);
     this.buildEventCharts('samurai', data.length);
   }
 
@@ -1396,9 +1597,10 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     const colors = new Gradient();
     colors.setColorGradient('#8e5da3', '#8e5da3');
     this.initChartOption('bloodcrow', series, colors.getColors());
-    const { data, categories } = this.buildFinalScoresSeries(eventData);
+    const occurrences = this.eventOccurrences['bloodcrow'] ?? [];
+    const { data, categories } = this.buildFinalScoresSeries(occurrences);
     this.initFinalScoresChartOption('bloodcrow-scores', data, categories, '#8e5da3');
-    this.buildEventStats('bloodcrow', eventData);
+    this.buildEventStats('bloodcrow', occurrences);
     this.buildEventCharts('bloodcrow', data.length);
   }
 
@@ -1445,6 +1647,20 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     this.initChartOption('aquamarine', series, colors);
   }
 
+  private weekResetInstant(date: Date, resetOffset: number): Date {
+    const monday = new Date(date);
+    const dow = monday.getUTCDay();
+    monday.setUTCDate(monday.getUTCDate() - (dow === 0 ? 6 : dow - 1));
+    monday.setUTCHours(0, 0, 0, 0);
+    const candidate = monday.getTime() + (resetOffset - 1) * MS_PER_HOUR;
+    const week = HOURS_PER_WEEK * MS_PER_HOUR;
+    return new Date(candidate + Math.floor((date.getTime() - candidate) / week) * week);
+  }
+
+  private localHourOfSlot(startInstant: Date, index: number): number {
+    return new Date(startInstant.getTime() + index * MS_PER_HOUR).getHours();
+  }
+
   private generateWeekHours(start: Date, end: Date): string[] {
     const hours: string[] = [];
     const current = new Date(start);
@@ -1455,31 +1671,34 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     return hours;
   }
 
-  private fillLootData(
-    weekHours: string[],
-    RESET_OFFSET: number,
-    dates: string[],
-    points: number[],
-  ): (number | null)[] {
-    let lastNonZeroPoint: number | null = null;
-    return weekHours.map((hour) => {
-      const hourDate = new Date(hour + ':00Z');
-      const isMondayReset = hourDate.getUTCDay() === 1 && hourDate.getUTCHours() === RESET_OFFSET + 1;
-      if (isMondayReset) {
+  private fillLootData(weekHours: string[], dates: string[], points: number[]): (number | null)[] {
+    const valueByHour = new Map<string, number>();
+    for (const [index, hour] of dates.entries()) {
+      if (!valueByHour.has(hour)) {
+        valueByHour.set(hour, points[index]);
+      }
+    }
+    let lastKnownIndex = -1;
+    for (const [index, hour] of weekHours.entries()) {
+      if (valueByHour.has(hour)) {
+        lastKnownIndex = index;
+      }
+    }
+    let lastValue: number | null = null;
+    return weekHours.map((hour, index) => {
+      if (index === 0) {
+        lastValue = 0;
         return 0;
       }
-      const index = dates.indexOf(hour);
-      if (index !== -1) {
-        const value = points[index];
-        if (value > 0) {
-          lastNonZeroPoint = value;
-        }
+      const value = valueByHour.get(hour);
+      if (value !== undefined) {
+        lastValue = value;
         return value;
       }
-      if (lastNonZeroPoint === null) {
+      if (lastValue === null) {
         return 0;
       }
-      return null;
+      return lastKnownIndex >= 0 && index > lastKnownIndex ? null : lastValue;
     });
   }
 
@@ -1497,25 +1716,17 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     lootPoints.sort((a, b) => {
       return new Date(a.date).getTime() - new Date(b.date).getTime();
     });
-    const RESET_OFFSET = this.timezoneOffset ?? 0;
+    const RESET_OFFSET = this.timezoneOffset ?? DEFAULT_RESET_OFFSET;
     const firstPointDate = new Date(lootPoints[0].date);
-    const firstMonday = new Date(firstPointDate);
-    const dow = firstMonday.getUTCDay();
-    firstMonday.setUTCDate(firstMonday.getUTCDate() - (dow === 0 ? 6 : dow - 1));
-
-    firstMonday.setUTCHours(-1 + RESET_OFFSET, 0, 0, 0);
+    const firstMonday = this.weekResetInstant(firstPointDate, RESET_OFFSET);
     const currentMonday = new Date(firstMonday);
     const currentDate = new Date();
     const allWeeksHours: string[][] = [];
 
     while (currentMonday.getTime() <= currentDate.getTime()) {
-      const weekEnd = new Date(currentMonday);
-      weekEnd.setUTCDate(weekEnd.getUTCDate() + 7);
-      weekEnd.setUTCHours(RESET_OFFSET, 0, 0, 0);
-      weekEnd.setUTCHours(weekEnd.getUTCHours() - 2);
-
+      const weekEnd = new Date(currentMonday.getTime() + (HOURS_PER_WEEK - 1) * MS_PER_HOUR);
       allWeeksHours.push(this.generateWeekHours(currentMonday, weekEnd));
-      currentMonday.setUTCDate(currentMonday.getUTCDate() + 7);
+      currentMonday.setTime(currentMonday.getTime() + HOURS_PER_WEEK * MS_PER_HOUR);
     }
 
     const dates = lootPoints.map((p) => {
@@ -1524,11 +1735,10 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       return d.toISOString().slice(0, 16).replace('T', ' ');
     });
     const points = lootPoints.map((p) => Number(p.point));
-    const allWeeksData = allWeeksHours.map((weekHours) => this.fillLootData(weekHours, RESET_OFFSET, dates, points));
+    const allWeeksData = allWeeksHours.map((weekHours) => this.fillLootData(weekHours, dates, points));
     const colors = ['#bfb58f', '#cc9a12'];
     const series = allWeeksData.map((weekData, index) => {
-      const weekStartDate = new Date(firstMonday);
-      weekStartDate.setUTCDate(firstMonday.getUTCDate() + index * 7);
+      const weekStartDate = new Date(firstMonday.getTime() + index * HOURS_PER_WEEK * MS_PER_HOUR);
       if (weekData.length > allWeeksData[0].length) {
         weekData = weekData.slice(0, allWeeksData[0].length);
       }
@@ -1592,7 +1802,13 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     // Initialize the chart 'loot-heatmap' (heatmap loot history)
     const seriesHeatmap: ApexAxisChartSeries = [];
     const allValues: number[] = [];
-    series.reverse().forEach((weekSerie) => {
+    const lastWeekStart = firstMonday.getTime() + Math.max(0, allWeeksData.length - 1) * HOURS_PER_WEEK * MS_PER_HOUR;
+    const dayLabels = Array.from(
+      { length: 7 },
+      (_, dayIndex) => days[new Date(lastWeekStart + (dayIndex * 24 + 12) * MS_PER_HOUR).getDay()],
+    );
+    const seriesNewestFirst = [...series].reverse();
+    seriesNewestFirst.forEach((weekSerie) => {
       if (weekSerie.data.length === 0) return;
       if (seriesHeatmap.length >= 25) return; // Limit to 25 weeks for UI performance
       const dailyMax = new Map<number, number>();
@@ -1608,7 +1824,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       });
       const heatmapData: { x: string; y: number }[] = [];
       dailyMax.forEach((maxValue, dayIndex) => {
-        const xLabel = days[dayIndex + 1 > 6 ? 0 : dayIndex + 1];
+        const xLabel = dayLabels[dayIndex] ?? days[0];
         heatmapData.push({
           x: xLabel,
           y: maxValue,
@@ -1626,7 +1842,10 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     this.charts['loot-heatmap'].plotOptions.heatmap!.colorScale!.ranges = this.buildHeatmapRanges(maxValue);
     // Initialize the hourly activity rate chart 'loot-activity' (hourly activity rate loot history)
     const lastWeeksData = allWeeksData.slice(-2);
-    const hourlyActivity = this.computeHourlyActivityRate(lastWeeksData.flat());
+    const lastWeeksStart = new Date(
+      firstMonday.getTime() + Math.max(0, allWeeksData.length - 2) * HOURS_PER_WEEK * MS_PER_HOUR,
+    );
+    const hourlyActivity = this.computeHourlyActivityRate(lastWeeksData.flat(), lastWeeksStart);
     const seriesHourlyActivity: ApexAxisChartSeries = [
       {
         name: this.translateService.instant("Taux d'activité par heure"),
@@ -1635,7 +1854,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     ];
     this.initHourlyActivityChart('hourly-activity', seriesHourlyActivity);
     // Initialize the average gain per hour chart 'loot-average-gain' (average gain per hour loot history)
-    const avgGainPerHour = this.computeAverageGainPerHour(lastWeeksData.flat());
+    const avgGainPerHour = this.computeAverageGainPerHour(lastWeeksData.flat(), lastWeeksStart);
     const seriesAvgGain: ApexAxisChartSeries = [
       {
         name: this.translateService.instant('Gain moyen par heure'),
@@ -1644,10 +1863,12 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     ];
     this.initAverageGainChart('avg-gain-hour', seriesAvgGain);
     // Initialize the chart 'loot' (area loot history)
-    this.initChartOption('loot', series, colors);
+    this.initChartOption('loot', seriesNewestFirst.slice(0, this.LOOT_OVERVIEW_WEEKS), colors);
+    this.charts['loot-weeks'] = { ...this.charts['loot'], series: seriesNewestFirst };
+    this.spinnerLoadingByChart['loot-weeks'] = false;
     this.charts['loot'].xaxis.type = 'datetime';
     const weekHoursReference = allWeeksHours[0];
-    for (let index = 1; index < weekHoursReference.length; index++) {
+    for (let index = 1; index < allWeeksHours.length; index++) {
       allWeeksHours[index] = weekHoursReference;
     }
     this.charts['loot'].xaxis.categories = allWeeksHours.flat();
@@ -1665,36 +1886,14 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     const needPMFormat = this.languageService.getCurrentLang() === 'en';
     const tooltipX = this.charts['loot'].tooltip.x;
     if (!tooltipX) return;
-    const offsetHours = this.timezoneOffset ?? 0;
-    tooltipX.formatter = function (value): string {
-      const date = new Date(value);
-      const dayName = days[date.getDay()];
-      const hours = date.getHours().toString().padStart(2, '0');
-      const minutes = date.getMinutes().toString().padStart(2, '0');
-      if (needPMFormat) {
-        const ampm = Number(hours) >= 12 ? 'PM' : 'AM';
-        const hourIn12Format = Number(hours) % 12 || 12;
-        return `${dayName} ${hourIn12Format}:${minutes} ${ampm}`;
-      }
-      return `${dayName} ${hours}h${minutes}`;
-    };
     tooltipX.formatter = function (_value, { dataPointIndex }): string {
-      const now = new Date();
-      const monday = new Date(now);
-      const day = monday.getDay() || 7;
-      monday.setDate(monday.getDate() - day + 1);
-      monday.setHours(offsetHours + 1, 0, 0, 0);
-      const pointDate = new Date(monday);
-      pointDate.setHours(pointDate.getHours() + dataPointIndex + 1);
-      const dayName = days[pointDate.getDay()];
-      const hours = pointDate.getHours().toString().padStart(2, '0');
-      const minutes = pointDate.getMinutes().toString().padStart(2, '0');
+      const dayName = days[(Math.floor(dataPointIndex / 24) + 1) % 7];
+      const hour = dataPointIndex % 24;
       if (needPMFormat) {
-        const ampm = Number(hours) >= 12 ? 'PM' : 'AM';
-        const hourIn12Format = Number(hours) % 12 || 12;
-        return `${dayName} ${hourIn12Format}:${minutes} ${ampm}`;
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        return `${dayName} ${hour % 12 || 12}:00 ${ampm}`;
       }
-      return `${dayName} ${hours}h${minutes}`;
+      return `${dayName} ${hour.toString().padStart(2, '0')}h00`;
     };
     this.charts['loot'].chart.animations = {
       enabled: false,
@@ -1711,14 +1910,14 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
    * @param data An array of numbers (or nulls) representing the data points for which to compute the hourly activity rate
    * @returns An array of hourly activity rates for each hour of the day (0-23) expressed as percentages
    */
-  private computeHourlyActivityRate(data: (number | null)[]): number[] {
+  private computeHourlyActivityRate(data: (number | null)[], startInstant: Date): number[] {
     const activityCount: number[] = Array.from({ length: 24 }, () => 0);
     const totalCount: number[] = Array.from({ length: 24 }, () => 0);
     for (let index = 1; index < data.length; index++) {
       const current = data[index];
       const previous = data[index - 1];
       if (current === null || previous === null) continue;
-      const hour = index % 24;
+      const hour = this.localHourOfSlot(startInstant, index - 1);
       totalCount[hour]++;
       if (current > previous) {
         activityCount[hour]++;
@@ -1736,7 +1935,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
    * @param data An array of numbers (or nulls) representing the data points for which to compute the average gain per hour
    * @returns An array of average gains for each hour of the day (0-23)
    */
-  private computeAverageGainPerHour(data: (number | null)[]): number[] {
+  private computeAverageGainPerHour(data: (number | null)[], startInstant: Date): number[] {
     const gains: number[] = Array.from({ length: 24 }, () => 0);
     const counts: number[] = Array.from({ length: 24 }, () => 0);
     for (let index = 1; index < data.length; index++) {
@@ -1745,7 +1944,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       if (current === null || previous === null) continue;
 
       if (current > previous) {
-        const hour = index % 24;
+        const hour = this.localHourOfSlot(startInstant, index - 1);
         gains[hour] += current - previous;
         counts[hour]++;
       }
@@ -1913,8 +2112,10 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
             from: this.utilitiesService.calculateWoaEventBeginTime(new Date(event.date)),
             to: this.utilitiesService.calculateWoaEventEndTime(new Date(event.date)),
           }));
+          this.woaSummary = this.buildWoaSummary(this.woaHistory, data.player, data.coverage);
           this.woaLoadState = 'loaded';
         } else {
+          this.woaSummary = null;
           this.woaLoadState = 'error';
         }
         this.cdr.detectChanges();
@@ -1940,34 +2141,13 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
         this.cdr.detectChanges();
       });
     }
-    if (['overview', 'loot'].includes(fragment) && this.fillDataState === 'idle') {
-      this.fillDataState = 'loading';
-      setTimeout(() => {
-        this.initMightHistoryData();
-        this.initLootHistoryData();
-      }, 500);
-      setTimeout(() => {
-        try {
-          this.initWarRealmsData();
-          this.initNomadHistoryData();
-          this.initBerimondKingdomData();
-          this.initBerimondInvasionData();
-          this.initSamuraiHistoryData();
-          this.initBloodcrowHistoryData();
-          this.fillDataState = 'loaded';
-          this.isInLoading = false;
-          this.cdr.detectChanges();
-        } catch (error) {
-          console.error('Error filling data for overview:', error);
-          this.fillDataState = 'error';
-          this.isInLoading = false;
-          this.cdr.detectChanges();
-        }
-      }, 1000);
-    } else {
-      this.isInLoading = false;
-      this.cdr.detectChanges();
+    if (fragment === 'loot') {
+      // The heatmap and the two activity charts read months of history, where the overview card reads weeks
+      void this.ensureSeries('loot', this.LOOT_TAB_DAYS);
     }
+    this.fillDataState = 'loaded';
+    this.isInLoading = false;
+    this.cdr.detectChanges();
   }
 
   private buildHeatmapRanges(maxValue: number): any[] {

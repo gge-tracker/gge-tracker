@@ -49,7 +49,7 @@ export abstract class ApiCastle implements ApiHelper {
        * Cache check
        * --------------------------------- */
       const globalCastleId = ApiHelper.removeCountryCode(castleId);
-      const cachedKey = '/castle/analysis/' + globalCastleId;
+      const cachedKey = '/castle/analysis/' + globalCastleId + '/' + kingdomId;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));

@@ -14,9 +14,10 @@ export interface IApiToken {
     olap: string;
   };
   outer_name: string;
+  zoneId?: number;
   code: string;
   zone: string;
-  timezoneOffset?: number;
+  serverResetOffset?: number;
 }
 
 export interface ILimitedApiToken {

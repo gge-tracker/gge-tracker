@@ -1,0 +1,52 @@
+<div class="currency-picker" [class.currency-picker--open]="isOpen()" (keydown)="onKeydown($event)">
+  <button type="button" class="currency-trigger" [disabled]="disabled()" [attr.aria-expanded]="isOpen()"
+    [attr.aria-label]="('Devise' | translate) + ' : ' + (current()?.name ?? '')" aria-haspopup="listbox"
+    (click)="toggle()">
+    <span class="currency-symbol" aria-hidden="true">{{ current()?.symbol }}</span>
+    <span class="currency-trigger__text">
+      <span class="currency-trigger__code">{{ current()?.code }}</span>
+      <span class="currency-trigger__name">{{ current()?.name }}</span>
+    </span>
+    <lucide-icon class="lucide currency-caret" [img]="ChevronDown" [size]="16"></lucide-icon>
+  </button>
+
+  @if (isOpen()) {
+  <div class="currency-panel">
+    <div class="currency-search">
+      <lucide-icon class="lucide currency-search__icon" [img]="Search" [size]="15"></lucide-icon>
+      <input #searchField type="text" class="currency-search__input" autocomplete="off" role="combobox"
+        aria-controls="currency-list" [attr.aria-expanded]="true" [attr.aria-activedescendant]="activeOptionId()"
+        [attr.aria-label]="'Rechercher une devise' | translate" [value]="query()"
+        [placeholder]="'Rechercher une devise' | translate" (input)="onQueryChange($any($event.target).value)">
+    </div>
+
+    <ul #optionList id="currency-list" class="currency-list" role="listbox">
+      @for (item of filtered(); track item.code; let index = $index) {
+      <li>
+        <button type="button" role="option" class="currency-option" [id]="'currency-option-' + item.code"
+          [class.currency-option--on]="item.code === selected()" [class.currency-option--active]="index === activeIndex()"
+          [attr.aria-selected]="item.code === selected()" (mousemove)="activeIndex.set(index)" (click)="pick(item.code)">
+          <span class="currency-symbol currency-symbol--sm" aria-hidden="true">{{ item.symbol }}</span>
+          <span class="currency-option__text">
+            <span class="currency-option__head">
+              <span class="currency-option__code">{{ item.code }}</span>
+              @if (item.code === suggested()) {
+              <span class="currency-tag">{{ 'Serveur' | translate }}</span>
+              }
+              <span class="currency-option__sample">{{ item.sample }}</span>
+            </span>
+            <span class="currency-option__name">{{ item.name }}</span>
+          </span>
+          <lucide-icon class="lucide currency-option__check" [class.currency-option__check--on]="item.code === selected()"
+            [img]="Check" [size]="15" aria-hidden="true"></lucide-icon>
+        </button>
+      </li>
+      } @empty {
+      <li class="currency-empty">{{ 'Aucun résultat' | translate }}</li>
+      }
+    </ul>
+
+    <p class="currency-hint">{{ 'Les prix de la boutique changent avec la devise' | translate }}</p>
+  </div>
+  }
+</div>

@@ -1,4 +1,4 @@
-<div class="ct text-center">
-  <div class="loader"></div>
-  <span><small>{{ 'Chargement' | translate }}</small></span>
+<div class="ct text-center" role="status" [attr.aria-label]="'Chargement' | translate">
+  <div class="loader" aria-hidden="true"></div>
+  <span class="loader-label"><small>{{ 'Chargement' | translate }}</small></span>
 </div>

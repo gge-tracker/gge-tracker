@@ -1,30 +1,39 @@
-<aside class="sidebar" [class.closed]="!isSidebarOpen()" [ngClass]="{'mobile-view': sidebarService.isMobileView }">
+<aside #panel id="app-sidebar-panel" class="sidebar" [class.closed]="!isSidebarOpen()"
+  [ngClass]="{'mobile-view': sidebarService.isMobileView }" [attr.inert]="isSidebarOpen() ? null : ''">
   <div class="sidebar-header" (click)="closeSidebar()">
     <div class="sidebar-header-img"></div>
   </div>
 
-  <div class="sidebar-scroll">
+  <div #scroll class="sidebar-scroll">
     @for (section of menuStructure; track section) {
       <div>
-        <h3 class="sidebar-section-title">{{ section.title | translate }}</h3>
+        <h3 class="sidebar-section-title" [style.--i]="section.order">{{ section.title | translate }}</h3>
         @for (item of section.items; track item) {
           @if (!item.url) {
-            <button class="nav-item" [class.active-nav]="isActive(item.id || 'no-active')"
+            <button class="nav-item" [class.active-nav]="isActive(item.id || 'no-active')" [style.--i]="item.order"
               [routerLink]="item.id" [title]="item.label | translate | titlecase">
               @if (item.iconUrl) {
                 <img [src]="item.iconUrl" alt="{{ item.label | translate | titlecase }}" class="img-icon" />
               }
-              <span>{{ item.label | translate | titlecase }}</span>
+              <span>{{ item.label | translate }}</span>
               @if (item.frequency) {
                 <span class="badge-frequency">{{ item.frequency | translate }}</span>
               }
             </button>
           } @else {
-            <a class="nav-item" [href]="item.url" target="_blank" rel="noopener noreferrer" [title]="item.label | translate | titlecase">
+            <a class="nav-item" [href]="item.url" target="_blank" rel="noopener noreferrer" [style.--i]="item.order"
+              [title]="item.label">
               @if (item.iconUrl) {
-                <img [src]="item.iconUrl" alt="{{ item.label | translate | titlecase }}" class="img-icon" />
+                <img [src]="item.iconUrl" [alt]="item.label" class="img-icon" />
+              } @else if (item.iconClass) {
+                <span class="img-icon icon-glyph" aria-hidden="true">
+                  <i [class]="item.iconClass"></i>
+                </span>
               }
-              <span>{{ item.label | translate | titlecase }}</span>
+              <span>{{ item.label }}</span>
+              @if (item.tag) {
+                <span class="badge-tag" [ngClass]="'badge-' + item.tag">{{ item.tag | translate }}</span>
+              }
               <span class="badge-frequency">
                 <i class="fa-solid fa-arrow-up-right-from-square"></i>
               </span>

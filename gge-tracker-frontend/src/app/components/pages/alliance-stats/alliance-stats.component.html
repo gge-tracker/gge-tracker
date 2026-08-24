@@ -1,5 +1,46 @@
+@if (isInLoading) {
+  <section class="alliance-hero alliance-hero--skeleton" role="status"
+    [attr.aria-label]="'Chargement' | translate">
+    <div class="alliance-hero-backdrop" aria-hidden="true"></div>
+    <div class="container-fluid container-xxl alliance-stats-container mb-5 mb-lg-3" aria-hidden="true">
+      <span class="gge-skeleton alliance-skeleton-title"></span>
+      <span class="gge-skeleton alliance-skeleton-badge"></span>
+      <div class="stats-grid">
+        @for (placeholder of skeletonStatCards; track $index) {
+          <div class="stat-card stat-card--skeleton" [style.--i]="$index">
+            <div class="stat-card-content">
+              <span class="gge-skeleton gge-skeleton--parchment alliance-skeleton-icon"></span>
+              <span class="gge-skeleton gge-skeleton--parchment alliance-skeleton-value"></span>
+              <span class="gge-skeleton gge-skeleton--parchment alliance-skeleton-change"></span>
+              <span class="gge-skeleton gge-skeleton--parchment alliance-skeleton-label"></span>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+  <nav class="alliance-tabs alliance-tabs--skeleton mt-5" aria-hidden="true">
+    <div class="alliance-tabs-scroller">
+      @for (tab of tabs; track tab.key) {
+        <span class="alliance-tab alliance-tab--skeleton">
+          <span class="gge-skeleton alliance-skeleton-tab"></span>
+        </span>
+      }
+    </div>
+  </nav>
+  <div class="alliances-stats-content pb-3 pt-3" aria-hidden="true">
+    <div class="container pt-3">
+      @for (placeholder of skeletonRows; track $index) {
+        <span class="gge-skeleton gge-skeleton--parchment alliance-skeleton-line"></span>
+      }
+    </div>
+  </div>
+}
+
 @if (!isInLoading) {
-  <div class="container-fluid container-xxl alliance-stats-container mb-5 mb-lg-3">
+  <section class="alliance-hero">
+    <div class="alliance-hero-backdrop" [class.is-ready]="isHeroBackdropReady" aria-hidden="true"></div>
+    <div class="container-fluid container-xxl alliance-stats-container mb-5 mb-lg-3">
     <h2 class="title">{{ allianceName }}</h2>
     <span class="badge bg-custom-font mt-3" [ngClass]="{ 'd-none': !lastUpdate }">
       <i class="fas fa-sync-alt"></i>
@@ -7,8 +48,8 @@
       }}</em>
     </span>
     <div class="stats-grid">
-      @for (card of cards; track card) {
-        <div class="stat-card pointer">
+      @for (card of cards; track card; let i = $index) {
+        <div class="stat-card pointer" [style.--i]="i">
           <div class="stat-card-content">
             <img [src]="card.logo" class="icon" [alt]="card.label | translate">
             <div class="value">{{ card.value }}</div>
@@ -21,43 +62,29 @@
         </div>
       }
     </div>
-  </div>
+    </div>
+  </section>
 }
 
 
 @if (!isInLoading) {
-  <ul class="nav nav-tabs pt-3 ps-3 mt-5">
-    <li class="nav-item">
-      <button class="nav-link" (click)="changeTab('members')" [ngClass]="selectedTab === 'members' ? 'active' : ''" title="{{ 'Membres' | translate }}">
-        <lucide-icon class="users" [img]="Users"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Membres' | translate }}</span>
-      </button>
-    </li>
-    <li class="nav-item">
-      <button class="nav-link" (click)="changeTab('movement')" [ngClass]="selectedTab === 'movement' ? 'active' : ''" title="{{ 'Arrivées et départs' | translate }}">
-        <lucide-icon class="briefcaseConveyorBelt" [img]="BriefcaseConveyorBelt"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Arrivées et départs' | translate }}</span>
-      </button>
-    </li>
-    <li class="nav-item">
-      <button class="nav-link" (click)="changeTab('stats')" [ngClass]="selectedTab === 'stats' ? 'active' : ''" title="{{ 'Statistiques des joueurs' | translate }}">
-        <lucide-icon class="chartSpline" [img]="ChartSpline"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Statistiques des joueurs' | translate }}</span>
-      </button>
-    </li>
-    <li class="nav-item">
-      <button class="nav-link" (click)="changeTab('health')" [ngClass]="selectedTab === 'health' ? 'active' : ''" title="{{ 'Rythme de l\'alliance' | translate }}">
-        <lucide-icon class="activity" [img]="Activity"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Rythme de l\'alliance' | translate }}</span>
-      </button>
-    </li>
-    <li class="nav-item">
-      <button class="nav-link" (click)="changeTab('movements')" [ngClass]="selectedTab === 'movements' ? 'active' : ''" title="{{ 'Mouvements' | translate }}">
-        <lucide-icon class="flag" [img]="Flag"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Mouvements' | translate }}</span>
-      </button>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" [href]="'/map/' + allianceId" target="_blank" title="{{ 'Carte' | translate }}">
-        <lucide-icon class="earth" [img]="Earth"></lucide-icon><span class="d-none d-lg-inline-block">&nbsp;{{ 'Carte' | translate}} <small><sup><i  class="fa-solid fa-external-link"></i></sup></small></span>
+  <nav class="alliance-tabs mt-5" role="tablist" [attr.aria-label]="'Alliance' | translate">
+    <div class="alliance-tabs-scroller">
+      @for (tab of tabs; track tab.key) {
+        <button type="button" class="alliance-tab" role="tab" [class.active]="selectedTab === tab.key"
+          [attr.aria-selected]="selectedTab === tab.key" (click)="changeTab(tab.key)" title="{{ tab.label | translate }}">
+          <lucide-icon class="alliance-tab-icon" [img]="tab.icon" [size]="18"></lucide-icon>
+          <span class="alliance-tab-label">{{ tab.label | translate }}</span>
+        </button>
+      }
+      <a class="alliance-tab alliance-tab-link" [href]="'/map/' + allianceId" target="_blank" rel="noopener"
+        title="{{ 'Carte' | translate }}">
+        <lucide-icon class="alliance-tab-icon" [img]="Earth" [size]="18"></lucide-icon>
+        <span class="alliance-tab-label">{{ 'Carte' | translate }}</span>
+        <i class="fa-solid fa-arrow-up-right-from-square alliance-tab-external"></i>
       </a>
-    </li>
-  </ul>
+    </div>
+  </nav>
 }
 
 @if (!isInLoading) {
@@ -74,6 +101,15 @@
       ['positionOld', 'Description' | translate, '', true],
       ['date', 'Date' | translate, '', true],
     ]" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
+        @if (isInMovementLoading) {
+          @for (row of skeletonRows; track $index) {
+            <tr class="table-skeleton-row" aria-hidden="true">
+              @for (cell of skeletonCells; track $index) {
+                <td><span class="gge-skeleton gge-skeleton--parchment table-skeleton-cell"></span></td>
+              }
+            </tr>
+          }
+        }
         @if (movements.length === 0 && !isInMovementLoading) {
           <tr>
             <td colspan="10">
@@ -167,11 +203,55 @@
       </div>
     </div>
   </div>
-}
+  <div [ngClass]="selectedTab === 'description' ? 'd-block' : 'd-none'" class="alliances-stats-content pb-3 pt-3">
+    <div class="description-current">
+      <div class="description-current-label">{{ 'alliance_description' | translate }}</div>
+      <div class="alliance-description">
+        <span [innerHTML]="allianceData?.description | decodeHtml"></span>
+      </div>
+    </div>
 
-@if (!isInLoading) {
-  <div [ngClass]="selectedTab === 'movement' ? 'd-block' : 'd-none'" class="alliances-stats-content pb-3 pt-3"
-    >
+    @if (descriptionHistory.length) {
+      <div class="description-history container-fluid mt-4">
+        <div class="description-history-title">
+          <lucide-icon [img]="History"></lucide-icon>
+          <span>{{ 'Historique des descriptions' | translate }}</span>
+          <span class="description-history-count">{{ descriptionHistory.length }}</span>
+        </div>
+        @for (change of descriptionHistory; track $index) {
+          <article class="description-change">
+            <header class="description-change-header">
+              <span class="description-change-date">
+                <i class="fas fa-clock"></i>
+                {{ change.createdAt | date: ('Date_5' | translate) }}
+              </span>
+              <span class="description-change-index">#{{ descriptionHistory.length - $index }}</span>
+            </header>
+            <div class="description-change-body">
+              <div class="description-version old">
+                <div class="description-version-label">{{ 'Ancienne description' | translate }}</div>
+                <div class="alliance-description fluid">
+                  <span [innerHTML]="change.previousHtml"></span>
+                </div>
+              </div>
+              <div class="description-change-arrow" aria-hidden="true">
+                <i class="fas fa-arrow-right"></i>
+              </div>
+              <div class="description-version new">
+                <div class="description-version-label">{{ 'Nouvelle description' | translate }}</div>
+                <div class="alliance-description fluid">
+                  <span [innerHTML]="change.currentHtml"></span>
+                </div>
+              </div>
+            </div>
+          </article>
+        }
+      </div>
+    } @else {
+      <div class="description-history-empty mt-4">{{ 'Aucune modification trouvée' | translate }}</div>
+    }
+  </div>
+  <div [ngClass]="selectedTab === 'movement' ? 'd-block' : 'd-none'" class="alliances-stats-content pb-3 pt-3">
     <div class="timeline-section container pt-3">
       <div class="timeline-header text-center mb-3">
         <div class="row">
@@ -482,6 +562,26 @@
                 </div>
               </app-player-stats-card>
             }
+          </div>
+        </div>
+      </div>
+    } @else {
+      <div class="container-fluid pt-3 pb-3" role="status" [attr.aria-label]="'Chargement' | translate">
+        <div class="row" aria-hidden="true">
+          @for (placeholder of skeletonPulseTables; track $index) {
+            <div class="col-12 col-lg-6 mt-4">
+              <span class="gge-skeleton gge-skeleton--parchment alliance-skeleton-subtitle"></span>
+              <div class="pulse-skeleton-table">
+                @for (row of skeletonRows; track $index) {
+                  <span class="gge-skeleton gge-skeleton--parchment alliance-skeleton-line"></span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+        <div class="row mt-3" aria-hidden="true">
+          <div class="col-12">
+            <span class="gge-skeleton gge-skeleton--parchment alliance-skeleton-chart"></span>
           </div>
         </div>
       </div>

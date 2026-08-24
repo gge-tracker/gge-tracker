@@ -2,25 +2,14 @@ import axios from 'axios';
 import * as express from 'express';
 import * as fs from 'node:fs';
 import path from 'node:path';
-import { Page } from 'puppeteer';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
-import { puppeteerManagerInstance } from '../managers/puperteer.manager';
+import { AssetFileCache } from '../services/asset-file-cache';
+import { AssetImageVariant, AssetImageRenderer } from '../services/asset-image-renderer';
 
-declare global {
-  /**
-   * Extends the global Window interface to include optional properties used for asset loading and library management
-   *
-   * @property {any} [AssetLoader] - Optional property for handling asset loading functionality
-   * @property {any} [createjs] - Optional property for referencing the CreateJS library
-   * @property {any} [Library] - Optional property for referencing a custom or external library
-   */
-  interface Window {
-    AssetLoader?: any;
-    createjs?: any;
-    Library?: any;
-  }
-}
+const IMAGE_CACHE_CONTROL = 'public, max-age=2592000, immutable';
+const MISSING_ASSET_TTL_SECONDS = 60 * 60;
+const WARM_CONCURRENCY = Number(process.env.ASSET_WARM_CONCURRENCY) || 3;
 
 /**
  * Provides static API endpoints for managing and serving game assets, items, and language data
@@ -30,15 +19,13 @@ declare global {
  * - Serving filtered item data, with Redis caching for performance
  * - Fetching and caching language translation files for supported languages
  * - Serving individual asset files (images, JSON, JS) with type validation, caching, and content-type handling
- * - Dynamically generating and serving PNG images of assets using Puppeteer and CreateJS/EaselJS
- *
- * Private helper methods are included for:
- * - Fetching all asset-related files (image, JSON, JS) for a given asset
- * - Updating the local asset mapping and item data from remote sources
+ * - Serving rendered images of assets, generated with Puppeteer and CreateJS/EaselJS
  *
  * @abstract
  */
 export abstract class ApiAssets implements ApiHelper {
+  private static warming = false;
+
   /**
    * Handles the update of Goodgame Empire assets and items
    *
@@ -68,13 +55,20 @@ export abstract class ApiAssets implements ApiHelper {
       await this.updateGameAssets();
       await this.updateItems();
       /* ---------------------------------
-       * Update cache version
+       * Update cache version and drop the previous build's cached files
        * --------------------------------- */
-      await ApiHelper.updateCache(ApiHelper.REDIS_KEY_GGE_VERSION, Date.now().toString(), 60 * 60 * 24 * 7);
+      const version = Date.now().toString();
+      await ApiHelper.setGgeBuildVersion(version);
+      await AssetFileCache.pruneOtherVersions(version);
+      /* ---------------------------------
+       * Re-render the image corpus in the background
+       * --------------------------------- */
+      const warming = request.query.warm !== '0';
+      if (warming) void this.warmGeneratedImages(version);
       /* ---------------------------------
        * Send success response
        * --------------------------------- */
-      response.status(ApiHelper.HTTP_OK).json({ message: 'Assets updated successfully', success: true });
+      response.status(ApiHelper.HTTP_OK).json({ message: 'Assets updated successfully', success: true, warming });
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
@@ -102,7 +96,7 @@ export abstract class ApiAssets implements ApiHelper {
       /* ---------------------------------
        * Check Redis cache for items data
        * --------------------------------- */
-      const languageCacheBuildVersion = (await ApiHelper.redisClient.get(ApiHelper.REDIS_KEY_GGE_VERSION)) || '0';
+      const languageCacheBuildVersion = await ApiHelper.getGgeBuildVersion();
       const cachedKey = `assets_items_${languageCacheBuildVersion}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
@@ -176,7 +170,7 @@ export abstract class ApiAssets implements ApiHelper {
       /* ---------------------------------
        * Check Redis cache for language data
        * --------------------------------- */
-      const languageCacheBuildVersion = (await ApiHelper.redisClient.get(ApiHelper.REDIS_KEY_GGE_VERSION)) || '0';
+      const languageCacheBuildVersion = await ApiHelper.getGgeBuildVersion();
       const cachedKey = `assets_lang_${languageCacheBuildVersion}_${lang}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
@@ -241,79 +235,39 @@ export abstract class ApiAssets implements ApiHelper {
       /* ---------------------------------
        * Fetch asset mapping file
        * --------------------------------- */
-      let file: Buffer;
-      try {
-        file = await ApiHelper.getAssets();
-      } catch {
-        try {
-          /* ---------------------------------
-           * Update assets and items
-           * --------------------------------- */
-          await this.updateGameAssets();
-          await this.updateItems();
-          /* ---------------------------------
-           * Update cache version
-           * --------------------------------- */
-          await ApiHelper.updateCache(ApiHelper.REDIS_KEY_GGE_VERSION, Date.now().toString(), 60 * 60 * 24 * 7);
-        } catch {
-          response
-            .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
-            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
-          return;
-        }
+      const mapping = await this.readAssetMapping();
+      if (!mapping) {
+        response
+          .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+          .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
+        return;
       }
-      const json = JSON.parse(file.toString());
       const assetWithoutExtension = asset.replace(/\.[^./]+$/, '');
-      const url = json[assetWithoutExtension];
-      const languageCacheBuildVersion = (await ApiHelper.redisClient.get(ApiHelper.REDIS_KEY_GGE_VERSION)) || '0';
+      const url = mapping[assetWithoutExtension];
+      const version = await ApiHelper.getGgeBuildVersion();
       /* ---------------------------------
-       * Check Redis cache for asset
+       * Serve the upstream file from the on-disk cache when it is already there
        * --------------------------------- */
-      const cachedKey = `assets_asset_${languageCacheBuildVersion}_${asset}`;
-      const cachedData = await ApiHelper.redisClient.get(cachedKey);
-      if (cachedData) {
-        // If cached, serve from cache based on type, with a cache-control of 30 days
-        response.setHeader('Cache-Control', 'public, max-age=2592000');
-        switch (extension) {
-          case '.png': {
-            response.setHeader('Content-Type', 'image/png');
-            const pngBuffer = Buffer.from(cachedData, 'base64');
-            response.status(ApiHelper.HTTP_OK).send(pngBuffer);
-            return;
-          }
-          case '.webp': {
-            response.setHeader('Content-Type', 'image/webp');
-            const imgBuffer = Buffer.from(cachedData, 'base64');
-            response.status(ApiHelper.HTTP_OK).send(imgBuffer);
-            return;
-          }
-          case '.json': {
-            response.setHeader('Content-Type', 'application/json');
-            response.status(ApiHelper.HTTP_OK).json(JSON.parse(cachedData));
-            return;
-          }
-          case '.js': {
-            response.setHeader('Content-Type', 'application/javascript');
-            response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
-            return;
-          }
-        }
+      const cacheName = `common_${asset}`;
+      const cached = await AssetFileCache.read(version, cacheName);
+      if (cached) {
+        this.sendCommonAsset(extension, cached, assetWithoutExtension, currentDomainUri, response);
+        return;
       }
       if (!url) {
         response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.AssetNotFound });
         return;
       }
       /* ---------------------------------
-       * Fetch asset from remote source and serve it
+       * Fetch asset from remote source, cache it and serve it
        * --------------------------------- */
-      await this.handleFetchExtensionAsset(
-        extension,
-        url,
-        cachedKey,
-        assetWithoutExtension,
-        currentDomainUri,
-        response,
-      );
+      const fetched = await this.fetchCommonAsset(extension, url);
+      if (!fetched) {
+        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.AssetNotFound });
+        return;
+      }
+      await AssetFileCache.write(version, cacheName, fetched);
+      this.sendCommonAsset(extension, fetched, assetWithoutExtension, currentDomainUri, response);
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
@@ -323,42 +277,27 @@ export abstract class ApiAssets implements ApiHelper {
   }
 
   /**
-   * Handles the generation and retrieval of a PNG image for a specified asset
+   * Serves the rendered image of a game asset, generating it on first request
    *
-   * This method attempts to serve a cached image if available. If not cached, it dynamically generates
-   * the image using Puppeteer and CreateJS libraries by rendering the asset on a headless browser canvas
-   * The generated image is then cached for future requests
+   * Renders are kept on the volume rather than in Redis and are keyed by the game build, so a warm
+   * request is a file read. WebP is preferred when the client accepts it: rendering to the symbol's
+   * own bounds instead of the spritesheet's largest frame already cuts the payload, and the WebP
+   * encode takes a ~650 KB keep down to a few tens of kilobytes
    *
-   * Query Parameters:
-   * - `level` (optional): The level of the asset to render (used for certain asset types)
-   * - `type` (optional): The type of asset variant to render (e.g., "gate", "defence", "tower")
-   *
-   * Path Parameters:
-   * - `asset`: The asset identifier (must be alphanumeric, underscores, or hyphens, max 100 chars)
-   *
-   * Response:
-   * - 200: Returns the PNG image of the requested asset
-   * - 400: If the asset parameter is invalid
-   * - 404: If the asset JSON is not found
-   * - 500: On server or rendering errors
-   *
-   * Caching:
-   * - Uses Redis to cache generated images for improved performance
-   * - Sets HTTP cache headers for 30 days
+   * Query parameters:
+   * - `level` the level of the asset to render
+   * - `type` the variant family to render (`gate`, `defence`, `tower`)
+   * - `quality` the variant within that family (`basic`, `guard`, `palisadegate`, …)
    *
    * @param request - Express request object containing asset parameters and query
-   * @param response - Express response object used to send the PNG image or error
-   * @returns Promise<void>
+   * @param response - Express response object used to send the image or error
    */
   public static async getGeneratedImage(request: express.Request, response: express.Response): Promise<void> {
-    let page: Page;
     try {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const { level, type } = request.query;
-      const currentDomainUri = this.getCurrentDomainUri();
-      let asset = String(request.params.asset)
+      const asset = String(request.params.asset)
         .trim()
         .toLowerCase()
         .replace(/\.[^./]+$/, '');
@@ -366,174 +305,47 @@ export abstract class ApiAssets implements ApiHelper {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAssetName });
         return;
       }
-      /* ---------------------------------
-       * Check Redis cache for generated image
-       * --------------------------------- */
-      const languageCacheBuildVersion = (await ApiHelper.redisClient.get(ApiHelper.REDIS_KEY_GGE_VERSION)) || '0';
-      const cachedKey = `assets_image_${languageCacheBuildVersion}_${asset}_${level}_${type}`;
-      const cachedData = await ApiHelper.redisClient.get(cachedKey);
-      if (cachedData) {
-        response.setHeader('Content-Type', 'image/png');
-        response.setHeader('Cache-Control', 'public, max-age=2592000');
-        response.status(ApiHelper.HTTP_OK).send(Buffer.from(cachedData, 'base64'));
+      const variant = this.parseVariant(request.query);
+      if (!variant) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAssetName });
         return;
       }
       /* ---------------------------------
-       * Fetch asset JSON data
+       * Serve from the on-disk cache
        * --------------------------------- */
-      const jsonResp = await ApiHelper.fetchWithFallback(currentDomainUri + `/api/v1/assets/common/${asset}.json`);
-      if (!jsonResp.ok) {
+      const version = await ApiHelper.getGgeBuildVersion();
+      const wantsWebp = String(request.headers.accept || '').includes('image/webp');
+      const served = await this.sendCachedImage(version, asset, variant, wantsWebp, response);
+      if (served) return;
+      /* ---------------------------------
+       * Skip assets already known to be unrenderable
+       * --------------------------------- */
+      const missingKey = `assets_image_missing_${version}_${AssetImageRenderer.variantKey(asset, variant)}`;
+      if (await ApiHelper.redisClient.get(missingKey)) {
         response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.AssetNotFound });
         return;
       }
-      // Now, generate the image using Puppeteer and CreateJS
-      const jsonData = JSON.parse(await jsonResp.text());
-      const frames: number[][] = jsonData.frames;
-      const w = Math.max(...frames.map((frame) => frame[2] - frame[0]));
-      const h = Math.max(...frames.map((frame) => frame[3] - frame[1]));
-      page = await puppeteerManagerInstance.createPage();
-      await page.addScriptTag({ path: path.join(__dirname, './../lib/createjs/createjs.min.js') });
-      await page.addScriptTag({ path: path.join(__dirname, './../lib/createjs/easeljs.min.js') });
-      await page.addScriptTag({ path: path.join(__dirname, './../lib/createjs/tweenjs.min.js') });
-      await page.addScriptTag({ url: currentDomainUri + `/api/v1/assets/common/${asset}.js` });
-      const name = await page.evaluate(() => {
-        if (!globalThis.Library) return;
-        return Object.keys(globalThis.Library)[0];
-      });
-      page.on('pageerror', (error) => {
-        console.error('[Browser pageerror]', error);
-      });
-      page.on('requestfailed', (request_) => {
-        console.error('[Browser requestfailed]', request_.url(), request_.failure()?.errorText);
-      });
-      await page.evaluate(
-        (name, asset, w, h, level, type) => {
-          return new Promise((resolve, reject) => {
-            const canvas = globalThis.document.createElement('canvas');
-            canvas.width = w;
-            canvas.height = h;
-            canvas.id = 'canvas';
-            globalThis.document.body.append(canvas);
-            const stage = new globalThis.createjs.Stage(canvas);
-            const loader = globalThis.AssetLoader;
-            if (!loader) {
-              return reject(new Error('AssetLoader not found'));
-            }
-            loader.maintainScriptOrder = true;
-            loader.setCrossOrigin?.('anonymous');
-            loader.on('complete', () => {
-              try {
-                let building;
-                if (globalThis.Library[name][name]) {
-                  building = new globalThis.Library[name][name]();
-                } else if (type) {
-                  // Special handling for certain building types. This is a bit hacky but works for now
-                  // This is retried from the original GGE code
-                  const l = 'Level' + level;
-                  switch (type) {
-                    case 'gate': {
-                      const n = `Basic_Gate_${l}`;
-                      building = new globalThis.Library[name][n]();
-                      break;
-                    }
-                    case 'defence': {
-                      const n = `Castlewall_Defence_${l}`;
-                      building = new globalThis.Library[name][n]();
-                      break;
-                    }
-                    case 'tower': {
-                      const n = `Guard_Tower_${l}`;
-                      building = new globalThis.Library[name][n]();
-                      break;
-                    }
-                    default: {
-                      resolve(false);
-                    }
-                  }
-                } else if (globalThis.Library[name]) {
-                  const l = 'Level' + level;
-                  const names = name.split('_');
-                  const lastPart = names.at(-1);
-                  names.pop();
-                  const baseName = names.join('_');
-                  const n = baseName + '_' + l + '_' + lastPart;
-                  building = new globalThis.Library[name][n]();
-                } else {
-                  resolve(false);
-                }
-                // Center and scale the building on the canvas
-                const canvasWidth = canvas.width;
-                const canvasHeight = canvas.height;
-                stage.addChild(building);
-                stage.update();
-                const bounds = building.getBounds() || building.nominalBounds;
-                if (!bounds) {
-                  return reject(new Error(`An error occurred while generating the image`));
-                }
-                const centerX = bounds.x + bounds.width / 2;
-                const centerY = bounds.y + bounds.height / 2;
-                // Calculate scale to fit the canvas
-                const scale = Math.min(canvasWidth / bounds.width, canvasHeight / bounds.height);
-                building.scaleX = building.scaleY = scale;
-                building.regX = centerX;
-                building.regY = centerY;
-                building.x = canvasWidth / 2;
-                building.y = canvasHeight / 2;
-                stage.update();
-                resolve(true);
-              } catch (error) {
-                reject(error);
-              }
-            });
-            loader.on('error', (error: { message?: string; target?: any }) => {
-              console.error('Preload error', error);
-              reject(new Error('Loader error: ' + JSON.stringify(error)));
-            });
-            // Here, we can use local loading from our server to avoid CORS and bandwidth issues
-            // We assume the assets are served from /api/v1/assets/common/ endpoint
-            // This is a bit hacky but works for now
-            loader.loadFile({
-              id: name,
-              type: 'spritesheet',
-              src: `http://localhost:3000/api/v1/assets/common/${asset}.json`,
-              crossOrigin: 'anonymous',
-            });
-          });
-        },
-        name,
-        asset,
-        w,
-        h,
-        level,
-        type,
-      );
-      const pngBuffer = await page
-        .evaluate(async () => {
-          const canvas = document.querySelector('#canvas');
-          if (!(canvas instanceof HTMLCanvasElement)) {
-            throw new TypeError('Canvas element not found or invalid');
-          }
-          return canvas.toDataURL('image/png');
-        })
-        .then((dataUrl) => {
-          const base64 = dataUrl.split(',')[1];
-          return Buffer.from(base64, 'base64');
-        });
       /* ---------------------------------
-       * Send response and update cache
+       * Render, cache and serve
        * --------------------------------- */
-      response.setHeader('Content-Type', 'image/png');
-      response.setHeader('Cache-Control', 'public, max-age=2592000');
-      await ApiHelper.updateCache(cachedKey, pngBuffer.toString('base64'), 60 * 60 * 24, true);
-      response.send(pngBuffer);
+      const rendered = await this.renderAndCache(version, asset, variant);
+      if (!rendered) {
+        // Only a genuinely absent sprite sheet is remembered, and only for an hour. Without it every
+        // request for an asset that has none pays three upstream retries, and the castle view can ask
+        // for hundreds. A render that threw is left uncached so a timeout cannot blacklist a good asset
+        await ApiHelper.updateCache(missingKey, '1', MISSING_ASSET_TTL_SECONDS, true);
+        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.AssetNotFound });
+        return;
+      }
+      const useWebp = wantsWebp && Boolean(rendered.webp);
+      response.setHeader('Content-Type', useWebp ? 'image/webp' : 'image/png');
+      response.setHeader('Cache-Control', IMAGE_CACHE_CONTROL);
+      response.setHeader('Vary', 'Accept');
+      response.status(ApiHelper.HTTP_OK).send(useWebp ? rendered.webp : rendered.png);
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getGeneratedImage', request);
-    } finally {
-      if (page) {
-        await page.close();
-      }
     }
   }
 
@@ -591,62 +403,215 @@ export abstract class ApiAssets implements ApiHelper {
       path.join(__dirname, './../assets/VERSION'),
       `Last update: ${new Date().toISOString()}`,
     );
+    ApiHelper.invalidateAssets();
   }
 
   private static getCurrentDomainUri(): string {
     return process.env.BACKEND_API_URI || 'https://api.gge-tracker.com';
   }
 
-  private static async handleFetchExtensionAsset(
+  /**
+   * Base URL the headless browser uses to pull the sprite files it renders
+   * The browser shares the container with the API, so going through the public hostname would send
+   * every render out to the proxy and back for files this process can serve over the loopback
+   */
+  private static getInternalApiBaseUrl(): string {
+    return process.env.INTERNAL_API_BASE_URL || `http://127.0.0.1:${process.env.PORT || 3000}/api/v1`;
+  }
+
+  private static async readAssetMapping(): Promise<Record<string, string> | null> {
+    try {
+      const mapping = await ApiHelper.getAssets();
+      return JSON.parse(mapping.toString());
+    } catch {
+      try {
+        await this.updateGameAssets();
+        await this.updateItems();
+        await ApiHelper.setGgeBuildVersion(Date.now().toString());
+        const refreshed = await ApiHelper.getAssets();
+        return JSON.parse(refreshed.toString());
+      } catch {
+        return null;
+      }
+    }
+  }
+
+  /**
+   * Rejects anything that is not a short alphanumeric token, since these values become both a cache
+   * key and a file name
+   */
+  private static parseVariant(query: express.Request['query']): AssetImageVariant | null {
+    const fields: (keyof AssetImageVariant)[] = ['level', 'type', 'quality'];
+    const variant: AssetImageVariant = {};
+    for (const field of fields) {
+      const raw = query[field];
+      if (raw === undefined) continue;
+      if (typeof raw !== 'string') return null;
+      const value = raw.trim().toLowerCase();
+      if (value === '') continue;
+      if (!/^[\da-z]{1,32}$/.test(value)) return null;
+      variant[field] = value;
+    }
+    return variant;
+  }
+
+  private static imageCacheName(asset: string, variant: AssetImageVariant, extension: string): string {
+    return `image_${AssetImageRenderer.variantKey(asset, variant)}${extension}`;
+  }
+
+  private static async sendCachedImage(
+    version: string,
+    asset: string,
+    variant: AssetImageVariant,
+    wantsWebp: boolean,
+    response: express.Response,
+  ): Promise<boolean> {
+    const order = wantsWebp ? ['.webp', '.png'] : ['.png', '.webp'];
+    for (const extension of order) {
+      const cached = await AssetFileCache.read(version, this.imageCacheName(asset, variant, extension));
+      if (!cached) continue;
+      response.setHeader('Content-Type', extension === '.webp' ? 'image/webp' : 'image/png');
+      response.setHeader('Cache-Control', IMAGE_CACHE_CONTROL);
+      response.setHeader('Vary', 'Accept');
+      response.status(ApiHelper.HTTP_OK).send(cached);
+      return true;
+    }
+    return false;
+  }
+
+  private static async renderAndCache(
+    version: string,
+    asset: string,
+    variant: AssetImageVariant,
+  ): Promise<{ webp: Buffer | null; png: Buffer } | null> {
+    const baseUrl = this.getInternalApiBaseUrl();
+    const spritesheet = await ApiHelper.fetchWithFallback(`${baseUrl}/assets/common/${asset}.json`).catch(() => null);
+    if (!spritesheet?.ok) return null;
+    const rendered = await AssetImageRenderer.render(asset, variant, baseUrl);
+    await AssetFileCache.write(version, this.imageCacheName(asset, variant, '.png'), rendered.png);
+    if (rendered.webp) {
+      await AssetFileCache.write(version, this.imageCacheName(asset, variant, '.webp'), rendered.webp);
+    }
+    return rendered;
+  }
+
+  private static async fetchCommonAsset(extension: string, url: string): Promise<Buffer | null> {
+    const target = extension === '.png' || extension === '.webp' ? url : url.replace(/\.[^./]+$/, extension);
+    const resource = await ApiHelper.fetchWithFallback(target).catch(() => null);
+    if (!resource?.ok) return null;
+    return Buffer.from(await resource.arrayBuffer());
+  }
+
+  private static sendCommonAsset(
     extension: string,
-    url: string,
-    cachedKey: string,
+    data: Buffer,
     assetWithoutExtension: string,
     currentDomainUri: string,
     response: express.Response,
-  ): Promise<void> {
+  ): void {
+    response.setHeader('Cache-Control', IMAGE_CACHE_CONTROL);
     switch (extension) {
       case '.png':
       case '.webp': {
-        const imageResp = await ApiHelper.fetchWithFallback(url);
-        if (!imageResp.ok) {
-          response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.AssetNotFound });
-          return;
-        }
-        const spriteBuf = Buffer.from(await imageResp.arrayBuffer());
-        const finalBuffer = Buffer.concat([spriteBuf]);
-        if (extension === '.png') response.setHeader('Content-Type', 'image/png');
-        else response.setHeader('Content-Type', 'image/webp');
-        response.setHeader('Cache-Control', 'public, max-age=2592000');
-        await ApiHelper.updateCache(cachedKey, finalBuffer.toString('base64'), 60 * 60 * 24);
-        response.status(ApiHelper.HTTP_OK).send(finalBuffer);
+        response.setHeader('Content-Type', extension === '.png' ? 'image/png' : 'image/webp');
+        response.status(ApiHelper.HTTP_OK).send(data);
         return;
       }
       case '.json': {
-        const jsonUrl = url.replace(/\.[^./]+$/, '.json');
-        const jsonResp = await ApiHelper.fetchWithFallback(jsonUrl);
-        const jsonData = JSON.parse(await jsonResp.text());
-        jsonData.images[0] = currentDomainUri + '/api/v1/assets/common/' + assetWithoutExtension + '.webp';
+        const spritesheet = JSON.parse(data.toString());
+        spritesheet.images[0] = `${currentDomainUri}/api/v1/assets/common/${assetWithoutExtension}.webp`;
         response.setHeader('Content-Type', 'application/json');
-        response.setHeader('Cache-Control', 'public, max-age=2592000');
-        await ApiHelper.updateCache(cachedKey, jsonData, 60 * 60 * 24);
-        response.status(ApiHelper.HTTP_OK).send(jsonData);
+        response.status(ApiHelper.HTTP_OK).json(spritesheet);
         return;
       }
       case '.js': {
-        const jsUrl = url.replace(/\.[^./]+$/, '.js');
-        const jsResp = await ApiHelper.fetchWithFallback(jsUrl);
-        const jsData = await jsResp.text();
         response.setHeader('Content-Type', 'application/javascript');
-        response.setHeader('Cache-Control', 'public, max-age=2592000');
-        await ApiHelper.updateCache(cachedKey, JSON.stringify(jsData), 60 * 60 * 24, true);
-        response.status(ApiHelper.HTTP_OK).send(jsData);
+        response.status(ApiHelper.HTTP_OK).send(data.toString());
         return;
       }
       default: {
         throw new Error('Unsupported asset extension');
       }
     }
+  }
+
+  /**
+   * Renders every image the castle view can ask for, so the corpus is ready before the first visitor
+   * The variants are derived from `items.json` the same way the frontend builds its image URLs.
+   * Concurrency stays low on purpose: each render pulls a sprite sheet through the CDN proxy, and a
+   * game update is the only thing that triggers this
+   */
+  private static async warmGeneratedImages(version: string): Promise<void> {
+    if (this.warming) return;
+    this.warming = true;
+    const started = Date.now();
+    let rendered = 0;
+    let failed = 0;
+    try {
+      const variants = await this.enumerateImageVariants();
+      ApiHelper.logInfo('warmGeneratedImages', `rendering ${variants.length} images for build ${version}`);
+      const queue = [...variants];
+      const workers = Array.from({ length: WARM_CONCURRENCY }, async () => {
+        while (queue.length > 0) {
+          const next = queue.pop();
+          if (!next) return;
+          const cached = await AssetFileCache.has(version, this.imageCacheName(next.asset, next.variant, '.png'));
+          if (cached) continue;
+          try {
+            const result = await this.renderAndCache(version, next.asset, next.variant);
+            if (result) rendered++;
+            else failed++;
+          } catch {
+            failed++;
+          }
+        }
+      });
+      await Promise.all(workers);
+      const seconds = Math.round((Date.now() - started) / 1000);
+      ApiHelper.logInfo('warmGeneratedImages', `rendered ${rendered}, skipped ${failed}, in ${seconds}s`);
+    } catch (error) {
+      ApiHelper.logError(error, 'warmGeneratedImages');
+    } finally {
+      this.warming = false;
+    }
+  }
+
+  /**
+   * Mirrors the URL the frontend builds in `getBuildingAssetUrl`, so the warm pass covers exactly
+   * the images the castle view requests
+   */
+  private static async enumerateImageVariants(): Promise<{ asset: string; variant: AssetImageVariant }[]> {
+    const raw = await fs.promises.readFile(path.join(__dirname, './../assets/items.json'));
+    const buildings = JSON.parse(raw.toString()).buildings ?? [];
+    const seen = new Map<string, { asset: string; variant: AssetImageVariant }>();
+    for (const building of buildings) {
+      const name = String(building?.name ?? '')
+        .trim()
+        .toLowerCase();
+      const group = String(building?.group ?? '')
+        .trim()
+        .toLowerCase();
+      const type = String(building?.type ?? '')
+        .trim()
+        .toLowerCase();
+      if (!name || !type) continue;
+      const level = type.replace('level', '');
+      let asset: string;
+      let variant: AssetImageVariant;
+      if (group === 'gate' || name === 'castlewall' || group === 'tower') {
+        asset = 'castlewall';
+        variant = { level, type: group, quality: name };
+      } else if (name === 'basic' || name === 'premium') {
+        asset = `${name}${group}classic`;
+        variant = { level };
+      } else {
+        asset = `${name}${group}${type}`;
+        variant = {};
+      }
+      if (!/^[\d_a-z-]+$/.test(asset)) continue;
+      seen.set(AssetImageRenderer.variantKey(asset, variant), { asset, variant });
+    }
+    return [...seen.values()];
   }
 
   /**

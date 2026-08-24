@@ -117,7 +117,7 @@ setInterval(() => void ggeTrackerApiGuardActivity.flushLogs(), ggeTrackerApiGuar
 app.use(
   morgan((tokens, request, response) => {
     ggeTrackerApiGuardActivity.recordMorganRequest(tokens, request, response);
-    return '';
+    return null;
   }),
 );
 
@@ -136,23 +136,51 @@ publicRoutes.put('/assets/update/:token', routingInstance.updateAssets.bind(rout
 
 /**
  * @swagger
- * /assets/images/{image}:
+ * /assets/images/{asset}:
  *   get:
  *     summary: Get a specific rendered image for a Goodgame Empire asset
- *     description: Returns the rendered image for the specified Goodgame Empire asset
+ *     description: >
+ *       Returns the rendered image for the specified Goodgame Empire asset. WebP is returned when the
+ *       request accepts it and PNG otherwise, so the response varies on the Accept header
  *     tags:
  *       - Assets
  *     parameters:
  *       - in: path
- *         name: image
+ *         name: asset
  *         required: true
  *         description: The name of the Goodgame Empire image to retrieve
  *         example: "keepbuildinglevel8.png"
  *         schema:
  *           type: string
+ *       - in: query
+ *         name: level
+ *         required: false
+ *         description: The level of the asset to render
+ *         example: "3"
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: type
+ *         required: false
+ *         description: The variant family to render
+ *         example: "gate"
+ *         schema:
+ *           type: string
+ *           enum: [gate, defence, tower]
+ *       - in: query
+ *         name: quality
+ *         required: false
+ *         description: The variant within the family, as named by the game data
+ *         example: "basic"
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: Successful response with the requested image. The image will be returned in PNG or WebP format
+ *       400:
+ *         description: The asset name or one of the variant parameters is invalid
+ *       404:
+ *         description: No renderable asset matches the requested name and variant
  */
 publicRoutes.get('/assets/images/:asset', routingInstance.getGeneratedImage.bind(routingInstance));
 
@@ -512,7 +540,7 @@ publicRoutes.get('/servers', routingInstance.getServers.bind(routingInstance));
  *         description: Filter events by type. If omitted, all event types are returned
  *         schema:
  *           type: string
- *           enum: [outer_realms, beyond_the_horizon]
+ *           enum: [outer-realms, beyond-the-horizon]
  *       - name: page
  *         in: query
  *         required: false
@@ -1108,7 +1136,6 @@ publicRoutes.get('/events/player/:playerId', routingInstance.getEventByPlayerId.
  *     tags:
  *       - Updates
  *     parameters:
- *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - $ref: '#/components/parameters/AllianceId'
  *     responses:
  *       200:
@@ -1176,7 +1203,6 @@ publicRoutes.get(
  *     tags:
  *       - Updates
  *     parameters:
- *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - $ref: '#/components/parameters/PlayerId'
  *     responses:
  *       200:
@@ -1215,7 +1241,6 @@ publicRoutes.get('/updates/players/:playerId/names', routingInstance.getNamesUpd
  *     tags:
  *       - Updates
  *     parameters:
- *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - $ref: '#/components/parameters/PlayerId'
  *     responses:
  *       200:
@@ -1393,6 +1418,342 @@ publicRoutes.get(
  *                   $ref: '#/components/schemas/Pagination'
  */
 protectedRoutes.get('/dungeons', routingInstance.getDungeons.bind(routingInstance));
+
+/**
+ * @openapi
+ * /dungeons/meta:
+ *   get:
+ *     summary: Retrieve the freshness of the dungeons data
+ *     description: >
+ *       Returns when the dungeons of the requested server were last scanned by the collector
+ *     tags:
+ *       - Dungeons
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *     responses:
+ *       200:
+ *         description: Successful response with the dungeons scan metadata
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 last_scan_at:
+ *                   type: string
+ *                   nullable: true
+ *                   description: When the dungeons were last scanned, or null when no scan has been recorded yet
+ *       400:
+ *         description: The requested server does not support dungeons
+ */
+protectedRoutes.get('/dungeons/meta', routingInstance.getDungeonsMeta.bind(routingInstance));
+
+/**
+ * @openapi
+ * /storms/forts:
+ *   get:
+ *     summary: Retrieve the live state of the Storm Islands forts
+ *     description: >
+ *       Returns the current state of every storm fort of the running monthly event, including
+ *       whether it is on the map, how many attacks it can still take before sinking, and when it
+ *       reappears
+ *     tags:
+ *       - Storms
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - in: query
+ *         name: page
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The page number to retrieve
+ *       - in: query
+ *         name: filterByAvailability
+ *         schema:
+ *           type: string
+ *         description: >
+ *           Filter forts by availability. Possible values:
+ *           `1` attackable now, `2` back on the map within 5 minutes, `3` within 1 hour
+ *       - in: query
+ *         name: minAttacksLeft
+ *         schema:
+ *           type: integer
+ *         description: Only return forts that can still take at least this many attacks (0-10)
+ *       - in: query
+ *         name: positionX
+ *         schema:
+ *           type: integer
+ *         description: X coordinate used as the origin for distance sorting
+ *       - in: query
+ *         name: positionY
+ *         schema:
+ *           type: integer
+ *         description: Y coordinate used as the origin for distance sorting
+ *       - in: query
+ *         name: nearPlayerName
+ *         schema:
+ *           type: string
+ *         description: >
+ *           Sort by distance to this player's Storm Islands castle. Returns an error when the
+ *           player has not entered the Storm Islands this month
+ *       - in: query
+ *         name: maxDistance
+ *         schema:
+ *           type: number
+ *         description: Only return forts within this many tiles of the sort origin
+ *       - in: query
+ *         name: size
+ *         schema:
+ *           type: integer
+ *         description: Number of results per page (default 15, max 4000)
+ *       - in: query
+ *         name: filterByIsleIds
+ *         schema:
+ *           type: string
+ *         description: >
+ *           JSON array of isle ids to restrict the result to, e.g. `[1,2,3]` (max 50 ids).
+ *           An empty array matches nothing
+ *       - in: query
+ *         name: orderBy
+ *         schema:
+ *           type: string
+ *           enum: [distance, availability, attacksLeft, position]
+ *         description: >
+ *           Sort key. Defaults to the most actionable first (on the map and attackable, then by
+ *           shortest wait), or by distance when a sort origin is given. `distance` is ignored
+ *           without a sort origin
+ *       - in: query
+ *         name: orderDirection
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *         description: Direction of `orderBy` (default `asc`)
+ *     responses:
+ *       200:
+ *         description: Successful response with the current state of the storm forts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 forts:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       kid:
+ *                         type: integer
+ *                         description: Always 4, the kingdom hosting the Storm Islands
+ *                       position_x:
+ *                         type: integer
+ *                         description: The X position of the fort on the map
+ *                       position_y:
+ *                         type: integer
+ *                         description: The Y position of the fort on the map
+ *                       isle_id:
+ *                         type: integer
+ *                         description: The fort type, used to resolve its level and rewards
+ *                       victory_count:
+ *                         type: integer
+ *                         description: How many times the fort has been beaten (it sinks at 10)
+ *                       attacks_left:
+ *                         type: integer
+ *                         description: How many attacks the fort can still take before sinking
+ *                       is_visible:
+ *                         type: boolean
+ *                         description: Whether the fort is currently on the map
+ *                       available_at:
+ *                         type: string
+ *                         description: When the fort is attackable, or when it reappears if hidden
+ *                       updated_at:
+ *                         type: string
+ *                         description: When this row was last refreshed by the scan
+ *                       distance:
+ *                         type: number
+ *                         description: (Optional) Distance to the sort origin, in tiles
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ */
+protectedRoutes.get('/storms/forts', routingInstance.getStormForts.bind(routingInstance));
+
+/**
+ * @openapi
+ * /storms/isles:
+ *   get:
+ *     summary: Retrieve the live state of the Storm Islands resource isles
+ *     description: >
+ *       Returns the current state of every resource isle of the running monthly event. An isle is
+ *       either free (capturable now), occupied by a single player until it sinks, or already
+ *       harvested and waiting to reappear at the same spot
+ *     tags:
+ *       - Storms
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - in: query
+ *         name: page
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The page number to retrieve
+ *       - in: query
+ *         name: filterByState
+ *         schema:
+ *           type: string
+ *         description: >
+ *           Filter isles by state. Possible values:
+ *           `1` free, `2` occupied, `3` harvested and waiting to respawn
+ *       - in: query
+ *         name: filterByOccupierName
+ *         schema:
+ *           type: string
+ *         description: Only return isles currently held by this player
+ *       - in: query
+ *         name: positionX
+ *         schema:
+ *           type: integer
+ *         description: X coordinate used as the origin for distance sorting
+ *       - in: query
+ *         name: positionY
+ *         schema:
+ *           type: integer
+ *         description: Y coordinate used as the origin for distance sorting
+ *       - in: query
+ *         name: nearPlayerName
+ *         schema:
+ *           type: string
+ *         description: Sort by distance to this player's Storm Islands castle
+ *       - in: query
+ *         name: maxDistance
+ *         schema:
+ *           type: number
+ *         description: Only return isles within this many tiles of the sort origin
+ *       - in: query
+ *         name: size
+ *         schema:
+ *           type: integer
+ *         description: Number of results per page (default 15, max 4000)
+ *       - in: query
+ *         name: filterByIsleIds
+ *         schema:
+ *           type: string
+ *         description: >
+ *           JSON array of isle ids to restrict the result to, e.g. `[1,2,3]` (max 50 ids).
+ *           An empty array matches nothing
+ *       - in: query
+ *         name: orderBy
+ *         schema:
+ *           type: string
+ *           enum: [distance, availability, attacksLeft, position]
+ *         description: >
+ *           Sort key. Defaults to free isles first, then by shortest wait, or by distance when a
+ *           sort origin is given. `distance` is ignored without a sort origin
+ *       - in: query
+ *         name: orderDirection
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *         description: Direction of `orderBy` (default `asc`)
+ *     responses:
+ *       200:
+ *         description: Successful response with the current state of the resource isles
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 isles:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       kid:
+ *                         type: integer
+ *                         description: Always 4, the kingdom hosting the Storm Islands
+ *                       position_x:
+ *                         type: integer
+ *                         description: The X position of the isle on the map
+ *                       position_y:
+ *                         type: integer
+ *                         description: The Y position of the isle on the map
+ *                       object_id:
+ *                         type: integer
+ *                         description: Game side object id, regenerated every time the isle respawns
+ *                       isle_id:
+ *                         type: integer
+ *                         description: The isle type, used to resolve which resource it yields
+ *                       state:
+ *                         type: integer
+ *                         description: '0 free, 1 occupied, 2 harvested and waiting to respawn'
+ *                       occupier_id:
+ *                         type: string
+ *                         description: The player currently holding the isle, null when free
+ *                       occupier_name:
+ *                         type: string
+ *                         description: The name of the player currently holding the isle
+ *                       occupier_might:
+ *                         type: integer
+ *                         description: The might of the player currently holding the isle
+ *                       occupier_level:
+ *                         type: integer
+ *                         description: The level of the player currently holding the isle
+ *                       occupier_legendary_level:
+ *                         type: integer
+ *                         description: The legendary level of the player currently holding the isle
+ *                       occupier_alliance_name:
+ *                         type: string
+ *                         description: The alliance of the player currently holding the isle
+ *                       available_at:
+ *                         type: string
+ *                         description: >
+ *                           When the isle becomes capturable: now if free, when it sinks if
+ *                           occupied, or when it reappears if it has been harvested
+ *                       updated_at:
+ *                         type: string
+ *                         description: When this row was last refreshed by the scan
+ *                       distance:
+ *                         type: number
+ *                         description: (Optional) Distance to the sort origin, in tiles
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ */
+protectedRoutes.get('/storms/isles', routingInstance.getStormIsles.bind(routingInstance));
+
+/**
+ * @openapi
+ * /storms/meta:
+ *   get:
+ *     summary: Retrieve the freshness of the Storm Islands data
+ *     description: >
+ *       Returns when the storm map was last scanned, how far the scan currently reaches and how
+ *       many objects are tracked
+ *     tags:
+ *       - Storms
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *     responses:
+ *       200:
+ *         description: Successful response with the storm scan metadata
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 season_started_at:
+ *                   type: string
+ *                   description: Start of the monthly event currently being tracked
+ *                 scan_radius:
+ *                   type: integer
+ *                   description: Radius in map cells currently covered by the scan
+ *                 last_scan_at:
+ *                   type: string
+ *                   description: When the map was last scanned
+ *                 forts_count:
+ *                   type: integer
+ *                   description: Number of storm forts currently tracked
+ *                 isles_count:
+ *                   type: integer
+ *                   description: Number of resource isles currently tracked
+ */
+protectedRoutes.get('/storms/meta', routingInstance.getStormMeta.bind(routingInstance));
 
 /**
  * @openapi
@@ -1835,8 +2196,19 @@ protectedRoutes.get('/server/statistics', routingInstance.getServerStatistics.bi
  *                     type: string
  *                     description: Name of the player
  *                   castles:
- *                     type: string
- *                     description: A JSON string representing the player's castles' coordinates
+ *                     type: array
+ *                     description: Castle positions in the Great Kingdom, each as [x, y, castle type]
+ *                     items:
+ *                       type: array
+ *                       items:
+ *                         type: integer
+ *                   castles_realm:
+ *                     type: array
+ *                     description: Castle positions in the outer realms, each as [kingdom ID, x, y, castle type]
+ *                     items:
+ *                       type: array
+ *                       items:
+ *                         type: integer
  *                   might_current:
  *                     type: integer
  *                     description: The current might of the player
@@ -1881,8 +2253,19 @@ protectedRoutes.get('/cartography/size/:size', routingInstance.getCartographyByS
  *                     type: string
  *                     description: Name of the player
  *                   castles:
- *                     type: string
- *                     description: A JSON string representing the player's castles' coordinates
+ *                     type: array
+ *                     description: Castle positions in the Great Kingdom, each as [x, y, castle type]
+ *                     items:
+ *                       type: array
+ *                       items:
+ *                         type: integer
+ *                   castles_realm:
+ *                     type: array
+ *                     description: Castle positions in the outer realms, each as [kingdom ID, x, y, castle type]
+ *                     items:
+ *                       type: array
+ *                       items:
+ *                         type: integer
  *                   might_current:
  *                     type: integer
  *                     description: The current might of the player
@@ -1907,69 +2290,78 @@ protectedRoutes.get(
  *         description: The ID of the castle to retrieve data for
  *         schema:
  *           type: integer
+ *       - in: query
+ *         name: kingdomId
+ *         required: false
+ *         description: >
+ *           Kingdom to read the castle from (0 the Great Empire, 1 Everwinter Glacier,
+ *           2 Burning Sands, 3 Fire Peaks). Only the main kingdom is available on special servers
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 3
+ *           default: 0
  *     responses:
  *       '200':
  *         description: Successfully retrieved the castle information for the specified castle
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   playerName:
- *                     type: string
- *                     description: The name of the player who owns the castle
- *                   castleName:
- *                     type: string
- *                     description: The name of the castle
- *                   castleType:
- *                     type: integer
- *                     description: The type of the castle
- *                   level:
- *                     type: integer
- *                     description: The level of the player who owns the castle
- *                   legendaryLevel:
- *                     type: integer
- *                     description: The legendary level of the player who owns the castle
- *                   positionX:
- *                     type: integer
- *                     description: The X position of the castle
- *                   positionY:
- *                     type: integer
- *                     description: The Y position of the castle
- *                   data:
- *                     type: object
- *                     description: The data related to the castle
- *                     properties:
- *                       buildings:
- *                         type: array
- *                         description: The buildings within the castle
- *                         items:
- *                           type: object
- *                       towers:
- *                         type: array
- *                         description: The towers within the castle
- *                         items:
- *                           type: object
- *                       defenses:
- *                         type: array
- *                         description: The defenses within the castle (e.g. moat, walls)
- *                         items:
- *                           type: object
- *                       gates:
- *                         type: array
- *                         description: The gate within the castle
- *                         items:
- *                           type: object
- *                       grounds:
- *                         type: array
- *                         description: The castle expansions of the castle
- *                         items:
- *                           type: object
- *                   constructionItems:
- *                     type: object
- *                     description: The construction items for the castle
+ *               type: object
+ *               properties:
+ *                 playerName:
+ *                   type: string
+ *                   description: The name of the player who owns the castle
+ *                 castleName:
+ *                   type: string
+ *                   description: The name of the castle
+ *                 castleType:
+ *                   type: integer
+ *                   description: The type of the castle
+ *                 level:
+ *                   type: integer
+ *                   description: The level of the player who owns the castle
+ *                 legendaryLevel:
+ *                   type: integer
+ *                   description: The legendary level of the player who owns the castle
+ *                 positionX:
+ *                   type: integer
+ *                   description: The X position of the castle
+ *                 positionY:
+ *                   type: integer
+ *                   description: The Y position of the castle
+ *                 data:
+ *                   type: object
+ *                   description: The data related to the castle
+ *                   properties:
+ *                     buildings:
+ *                       type: array
+ *                       description: The buildings within the castle
+ *                       items:
+ *                         type: object
+ *                     towers:
+ *                       type: array
+ *                       description: The towers within the castle
+ *                       items:
+ *                         type: object
+ *                     defenses:
+ *                       type: array
+ *                       description: The defenses within the castle (e.g. moat, walls)
+ *                       items:
+ *                         type: object
+ *                     gates:
+ *                       type: array
+ *                       description: The gate within the castle
+ *                       items:
+ *                         type: object
+ *                     grounds:
+ *                       type: array
+ *                       description: The castle expansions of the castle
+ *                       items:
+ *                         type: object
+ *                 constructionItems:
+ *                   type: object
+ *                   description: The construction items for the castle
  */
 publicRoutes.get('/castle/analysis/:castleId', routingInstance.getCastleById.bind(routingInstance));
 
@@ -2088,7 +2480,6 @@ protectedRoutes.get('/castle/random', routingInstance.getRandomCastle.bind(routi
  *     tags:
  *       - Cartography
  *     parameters:
- *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - $ref: '#/components/parameters/AllianceId'
  *     responses:
  *       '200':
@@ -2104,11 +2495,28 @@ protectedRoutes.get('/castle/random', routingInstance.getRandomCastle.bind(routi
  *                     type: string
  *                     description: Name of the player
  *                   castles:
- *                     type: string
- *                     description: A JSON string representing the player's castles' coordinates
+ *                     type: array
+ *                     description: Castle positions in the Great Kingdom, each as [x, y, castle type]
+ *                     items:
+ *                       type: array
+ *                       items:
+ *                         type: integer
+ *                   castles_realm:
+ *                     type: array
+ *                     description: Castle positions in the outer realms, each as [kingdom ID, x, y, castle type]
+ *                     items:
+ *                       type: array
+ *                       items:
+ *                         type: integer
  *                   might_current:
  *                     type: integer
  *                     description: The current might of the player
+ *                   alliance_id:
+ *                     type: integer
+ *                     description: The ID of the player's alliance
+ *                   alliance_name:
+ *                     type: string
+ *                     description: The name of the player's alliance
  */
 publicRoutes.get('/cartography/id/:allianceId', routingInstance.getCartographyByAllianceId.bind(routingInstance));
 
@@ -2123,7 +2531,6 @@ publicRoutes.get('/cartography/id/:allianceId', routingInstance.getCartographyBy
  *     tags:
  *       - Alliances
  *     parameters:
- *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - $ref: '#/components/parameters/AllianceId'
  *       - in: query
  *         name: playerNameForDistance
@@ -2143,6 +2550,47 @@ publicRoutes.get('/cartography/id/:allianceId', routingInstance.getCartographyBy
  *                 alliance_name:
  *                   type: string
  *                   description: The name of the alliance
+ *                 ggetracker_server_name:
+ *                   type: string
+ *                   description: Internal server name
+ *                 ggetracker_server_id:
+ *                   type: string
+ *                   description: Internal server identifier
+ *                 ggetracker_timezone_offset:
+ *                   type: string
+ *                   description: Internal server timezone offset
+ *                 ggetracker_zone:
+ *                   type: string
+ *                   description: Internal server zone identifier
+ *                 is_island_king:
+ *                   type: boolean
+ *                   description: True if the alliance is island King
+ *                 is_searching_players:
+ *                   type: boolean
+ *                   description: True if the alliance is searching new players
+ *                 auto_join_enabled:
+ *                   type: boolean
+ *                   description: True if anyone can instant join the alliance
+ *                 language:
+ *                   type: string
+ *                   description: Alliance language
+ *                 description:
+ *                   type: string
+ *                   description: Alliance description
+ *                 description_history:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       created_at:
+ *                         type: string
+ *                         description: Timestamp of the description update
+ *                       new_description:
+ *                         type: string
+ *                         description: New description content
+ *                       old_description:
+ *                         type: integer
+ *                         description: Previous description content
  *                 players:
  *                   type: array
  *                   items:
@@ -2349,7 +2797,6 @@ protectedRoutes.get('/alliances', routingInstance.getAlliances.bind(routingInsta
  *     tags:
  *       - Players
  *     parameters:
- *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - $ref: '#/components/parameters/PlayerId'
  *     responses:
  *       '200':
@@ -2888,8 +3335,41 @@ protectedRoutes.get('/players/:playerName', routingInstance.getPlayersByPlayerNa
  *     tags:
  *       - Statistics
  *     parameters:
- *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - $ref: '#/components/parameters/AllianceId'
+ *       - name: events
+ *         in: query
+ *         required: false
+ *         style: form
+ *         explode: false
+ *         description: |
+ *           Comma-separated list of event tables to return in `points`. Any name outside this list
+ *           is rejected with a 400. When omitted, every event table is returned
+ *         schema:
+ *           type: array
+ *           default:
+ *             - player_might_history
+ *           items:
+ *             type: string
+ *             enum:
+ *               - player_event_berimond_invasion_history
+ *               - player_event_berimond_kingdom_history
+ *               - player_event_bloodcrow_history
+ *               - player_event_nomad_history
+ *               - player_event_samurai_history
+ *               - player_event_war_realms_history
+ *               - player_loot_history
+ *               - player_might_history
+ *       - name: limit
+ *         in: query
+ *         required: false
+ *         description: |
+ *           Maximum number of point rows to return per event table, most recent first. When omitted,
+ *           every row in the window is returned
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           default: 50
+ *           example: 50
  *     responses:
  *       '200':
  *         description: Successfully retrieved alliance statistics
@@ -3244,20 +3724,67 @@ publicRoutes.get(
  *     description: |
  *       This endpoint retrieves event statistics for a specific player, including their name, alliance information, and points history
  *       The player ID must be a valid identifier, and if the player is not found, an error message is returned
- *       Due to optimization, the generic endpoint applies the following time limits:
- *         berimond invasion: no limit
- *         berimond kingdom: no limit
- *         bloodcrow: no limit
- *         nomad: no limit
- *         samurai: no limit
- *         war realms: no limit
- *         loot: 60 days
- *         might: 7 days
+ *
+ *       Called without query parameters it returns every recorded point of every event table, which for
+ *       an established player is tens of thousands of rows covering their whole history. A client that
+ *       draws a few recent points per chart should narrow the response with `events`, `since`, `limit`
+ *       and `dedup`, or read `/statistics/player/{playerId}/summary` first and fetch each series on demand
  *     tags:
  *       - Statistics
  *     parameters:
- *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - $ref: '#/components/parameters/PlayerId'
+ *       - name: events
+ *         in: query
+ *         required: false
+ *         style: form
+ *         explode: false
+ *         description: |
+ *           Comma-separated list of event tables to query and return in `points`. Any name outside this
+ *           list is rejected with a 400. When omitted, every event table is queried
+ *         schema:
+ *           type: array
+ *           items:
+ *             type: string
+ *             enum:
+ *               - player_event_berimond_invasion_history
+ *               - player_event_berimond_kingdom_history
+ *               - player_event_bloodcrow_history
+ *               - player_event_nomad_history
+ *               - player_event_samurai_history
+ *               - player_event_war_realms_history
+ *               - player_loot_history
+ *               - player_might_history
+ *       - name: since
+ *         in: query
+ *         required: false
+ *         description: |
+ *           How many days back to query, applied to every requested table. When omitted, the whole
+ *           recorded history is returned
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 1825
+ *           example: 30
+ *       - name: limit
+ *         in: query
+ *         required: false
+ *         description: |
+ *           Maximum number of point rows to return per event table, keeping the most recent ones in
+ *           chronological order. Applied after `dedup`. When omitted, every row in the window is returned
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           example: 200
+ *       - name: dedup
+ *         in: query
+ *         required: false
+ *         description: |
+ *           Drops the rows that do not change a chart: for `player_might_history` and
+ *           `player_loot_history`, points equal to both of their neighbours; for the event tables, the
+ *           occurrences the player sat out and the leading zeroes of the ones they played
+ *         schema:
+ *           type: boolean
+ *           example: true
  *     responses:
  *       '200':
  *         description: Successful response with player statistics
@@ -3333,6 +3860,211 @@ publicRoutes.get('/statistics/player/:playerId', routingInstance.getStatisticsBy
 
 /**
  * @swagger
+ * /statistics/player/{playerId}/summary:
+ *   get:
+ *     summary: Retrieve a headline summary of a player's event statistics
+ *     description: |
+ *       This endpoint returns one aggregate per event table instead of the points themselves: how many
+ *       rows exist, the window they cover, the latest value, the peak and when it was reached, and the
+ *       same over the last seven days
+ *     tags:
+ *       - Statistics
+ *     parameters:
+ *       - $ref: '#/components/parameters/PlayerId'
+ *     responses:
+ *       '200':
+ *         description: Successful response with the player summary
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 player_name:
+ *                   type: string
+ *                   example: "PlayerOne"
+ *                 alliance_name:
+ *                   type: string
+ *                   nullable: true
+ *                   example: "AllianceName"
+ *                 alliance_id:
+ *                   type: string
+ *                   nullable: true
+ *                   example: "1001"
+ *                 timezone_offset:
+ *                   type: integer
+ *                   nullable: true
+ *                   example: 2
+ *                 glory_points_100:
+ *                   type: array
+ *                   description: Fame value at ranks 1, 10, 50 and 100 of the player's server
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       top:
+ *                         type: integer
+ *                         example: 10
+ *                       point:
+ *                         type: integer
+ *                         example: 125000
+ *                 events:
+ *                   type: object
+ *                   description: One entry per event table, keyed by table name
+ *                   additionalProperties:
+ *                     type: object
+ *                     properties:
+ *                       row_count:
+ *                         type: integer
+ *                         example: 10405
+ *                       row_count_7d:
+ *                         type: integer
+ *                         example: 177
+ *                       first_date:
+ *                         type: string
+ *                         nullable: true
+ *                         example: "2025-06-01T16:00:00.000Z"
+ *                       last_date:
+ *                         type: string
+ *                         nullable: true
+ *                         example: "2026-08-15T09:00:00.000Z"
+ *                       last_point:
+ *                         type: integer
+ *                         nullable: true
+ *                         example: 1000
+ *                       max_point:
+ *                         type: integer
+ *                         nullable: true
+ *                         example: 1500
+ *                       max_point_date:
+ *                         type: string
+ *                         nullable: true
+ *                         example: "2026-07-02T11:00:00.000Z"
+ *                       max_point_7d:
+ *                         type: integer
+ *                         nullable: true
+ *                         example: 1200
+ *                       point_gain_7d:
+ *                         type: integer
+ *                         nullable: true
+ *                         description: |
+ *                           Points gained over the last seven days. Negative where the table resets on a
+ *                           cycle, as the weekly loot ranking does. Null when the player has no rows in
+ *                           that window
+ *                         example: 340
+ *       '400':
+ *         description: Bad request, invalid player ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Invalid user id"
+ *       '404':
+ *         description: Player not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Player not found"
+ *       '500':
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "An error occurred during the request"
+ */
+publicRoutes.get(
+  '/statistics/player/:playerId/summary',
+  routingInstance.getStatisticsSummaryByPlayerId.bind(routingInstance),
+);
+
+/**
+ * @swagger
+ * /statistics/player/{playerId}/{eventName}/occurrences:
+ *   get:
+ *     summary: Retrieve one entry per run of an event, with the score the player finished it on
+ *     description: |
+ *       This endpoint reports how an event has gone for a player across its whole history: one entry per
+ *       run of the event, holding when it started, when it ended, and the score the player finished it on
+ *     tags:
+ *       - Statistics
+ *     parameters:
+ *       - $ref: '#/components/parameters/PlayerId'
+ *       - name: eventName
+ *         in: path
+ *         required: true
+ *         description: The event table to group into runs
+ *         schema:
+ *           type: string
+ *           enum:
+ *             - player_event_berimond_invasion_history
+ *             - player_event_berimond_kingdom_history
+ *             - player_event_bloodcrow_history
+ *             - player_event_nomad_history
+ *             - player_event_samurai_history
+ *             - player_event_war_realms_history
+ *     responses:
+ *       '200':
+ *         description: Successful response with one entry per run, oldest first
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 event:
+ *                   type: string
+ *                   example: "player_event_nomad_history"
+ *                 occurrences:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       started_at:
+ *                         type: string
+ *                         example: "2026-07-25T08:09:20.000Z"
+ *                       ended_at:
+ *                         type: string
+ *                         example: "2026-07-28T07:09:06.000Z"
+ *                       point:
+ *                         type: integer
+ *                         description: The score the player finished this run on, 0 if they did not take part
+ *                         example: 1065656
+ *       '400':
+ *         description: Bad request, invalid player ID or event name
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Invalid event name"
+ *       '500':
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "An error occurred during the request"
+ */
+publicRoutes.get(
+  '/statistics/player/:playerId/:eventName/occurrences',
+  routingInstance.getEventOccurrencesByPlayerId.bind(routingInstance),
+);
+
+/**
+ * @swagger
  * /statistics/player/{playerId}/{eventName}/{duration}:
  *   get:
  *     summary: Retrieve event statistics for a specific player in a specific event, with a specified duration
@@ -3343,7 +4075,6 @@ publicRoutes.get('/statistics/player/:playerId', routingInstance.getStatisticsBy
  *     tags:
  *       - Statistics
  *     parameters:
- *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - $ref: '#/components/parameters/PlayerId'
  *       - name: eventName
  *         in: path
@@ -3887,14 +4618,15 @@ protectedRoutes.get('/woa/events/id/:id', routingInstance.getWoaEventDataById.bi
  *     summary: Retrieve WOA event history for a specific player
  *     description: |
  *       Returns the last 100 Wheel of Affluence (WOA) event entries for the given player,
- *       including their rank within each event's snapshot
+ *       including their rank within each event's snapshot, plus exact lifetime aggregates
+ *       and the tracking coverage window those aggregates are computed over
  *     tags:
  *       - Wheel of Affluence
  *     parameters:
  *       - $ref: '#/components/parameters/PlayerId'
  *     responses:
  *       200:
- *         description: Player's WOA event history
+ *         description: Player's WOA event history, lifetime aggregates and tracking coverage
  *         content:
  *           application/json:
  *             schema:
@@ -3915,6 +4647,65 @@ protectedRoutes.get('/woa/events/id/:id', routingInstance.getWoaEventDataById.bi
  *                       rank:
  *                         type: integer
  *                         example: 42
+ *                 player:
+ *                   type: object
+ *                   description: |
+ *                     aggregates over the player's whole stored history
+ *                   properties:
+ *                     total_points:
+ *                       type: integer
+ *                       description: Tickets the player has spent across their stored history
+ *                       example: 12345
+ *                     events_count:
+ *                       type: integer
+ *                       description: Number of events the player scored in
+ *                       example: 137
+ *                     first_event:
+ *                       type: string
+ *                       nullable: true
+ *                       description: The player's first tracked event entry, or null if they have none
+ *                       example: "2026-05-02T07:58:03.000Z"
+ *                     best_point:
+ *                       type: integer
+ *                       description: The player's highest single-event score
+ *                       example: 412
+ *                     best_point_date:
+ *                       type: string
+ *                       nullable: true
+ *                       description: When the highest single-event score was recorded, or null if none
+ *                       example: "2026-07-14T07:58:03.000Z"
+ *                     best_rank:
+ *                       type: integer
+ *                       nullable: true
+ *                       description: The player's best rank in any tracked event (1 is best), or null if none
+ *                       example: 3
+ *                     best_rank_date:
+ *                       type: string
+ *                       nullable: true
+ *                       description: When the best rank was achieved, or null if none
+ *                       example: "2026-08-22T19:58:03.000Z"
+ *                 coverage:
+ *                   type: object
+ *                   description: The window on this server that the player aggregates above actually cover
+ *                   properties:
+ *                     first_tracked_event:
+ *                       type: string
+ *                       nullable: true
+ *                       description: |
+ *                         Earliest event tracked on this server, i.e. when WOA collection started
+ *                         for it, not when the in-game event first existed. Null when the server
+ *                         has no WOA data
+ *                       example: "2026-05-02T07:58:03.000Z"
+ *                     tracked_events_count:
+ *                       type: integer
+ *                       description: Distinct events tracked on this server
+ *                       example: 226
+ *                     tracked_events_since_player:
+ *                       type: integer
+ *                       description: |
+ *                         Distinct events tracked at or after the player's first entry, the honest
+ *                         denominator for a participation ratio. 0 when the player has no history
+ *                       example: 226
  *       400:
  *         $ref: '#/components/responses/BadRequest'
  *       500:
@@ -4052,6 +4843,267 @@ publicRoutes.get('/aquamarine/player/:playerId', routingInstance.getAquamarinePo
  */
 protectedRoutes.get('/aquamarine', routingInstance.getAquamarinePointsData.bind(routingInstance));
 
+/**
+ * @openapi
+ * /stormy-isles:
+ *   get:
+ *     summary: Stormy Isles leaderboard
+ *     description: |
+ *       Returns a paginated leaderboard of the players taking part in the Stormy Isles event, with
+ *       their latest aquamarine metric values and their alliance aggregates.
+ *       Rows can be narrowed on the player (name, might, level), on their alliance (name, total
+ *       might, member count) and on any aquamarine metric through the
+ *       `min_metric_<id>` / `max_metric_<id>` bounds
+ *     tags:
+ *       - Stormy Isles
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - name: page
+ *         in: query
+ *         required: false
+ *         description: Page number for pagination (default 1)
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - name: size
+ *         in: query
+ *         required: false
+ *         description: Number of results per page (default 15, must stay below 9999)
+ *         schema:
+ *           type: integer
+ *           default: 15
+ *       - name: order_by
+ *         in: query
+ *         required: false
+ *         description: |
+ *           Column to sort by: an aquamarine metric id (`15`, `16`, `17`, `18`, `19`, `20`, `100`)
+ *           or one of `player_name`, `level`, `might_current`, `might_all_time`, `alliance_name`,
+ *           `alliance_might`, `alliance_player_count`. Anything else falls back to `100`
+ *         schema:
+ *           type: string
+ *           default: "100"
+ *       - name: order_dir
+ *         in: query
+ *         required: false
+ *         description: Sort direction (default DESC)
+ *         schema:
+ *           type: string
+ *           enum: [ASC, DESC]
+ *           default: DESC
+ *       - name: player_name
+ *         in: query
+ *         required: false
+ *         description: Only players whose name contains this text
+ *         schema:
+ *           type: string
+ *       - name: alliance_name
+ *         in: query
+ *         required: false
+ *         description: Only players whose alliance name contains this text
+ *         schema:
+ *           type: string
+ *       - name: alliance_filter
+ *         in: query
+ *         required: false
+ *         description: "`1` only players in an alliance, `0` only players without one"
+ *         schema:
+ *           type: integer
+ *           enum: [0, 1]
+ *       - name: min_might
+ *         in: query
+ *         required: false
+ *         description: Lower bound on the current might of the player
+ *         schema:
+ *           type: integer
+ *       - name: max_might
+ *         in: query
+ *         required: false
+ *         description: Upper bound on the current might of the player
+ *         schema:
+ *           type: integer
+ *       - name: min_level
+ *         in: query
+ *         required: false
+ *         description: Lower bound on the level of the player, legendary levels included
+ *         schema:
+ *           type: integer
+ *       - name: max_level
+ *         in: query
+ *         required: false
+ *         description: Upper bound on the level of the player, legendary levels included
+ *         schema:
+ *           type: integer
+ *       - name: min_alliance_might
+ *         in: query
+ *         required: false
+ *         description: Lower bound on the summed might of the player's alliance
+ *         schema:
+ *           type: integer
+ *       - name: max_alliance_might
+ *         in: query
+ *         required: false
+ *         description: Upper bound on the summed might of the player's alliance
+ *         schema:
+ *           type: integer
+ *       - name: min_alliance_players
+ *         in: query
+ *         required: false
+ *         description: Lower bound on the member count of the player's alliance
+ *         schema:
+ *           type: integer
+ *       - name: max_alliance_players
+ *         in: query
+ *         required: false
+ *         description: Upper bound on the member count of the player's alliance
+ *         schema:
+ *           type: integer
+ *       - name: min_metric_15
+ *         in: query
+ *         required: false
+ *         description: Lower bound on the aquamarine metric 15
+ *         schema:
+ *           type: integer
+ *       - name: max_metric_15
+ *         in: query
+ *         required: false
+ *         description: Upper bound on the aquamarine metric 15
+ *         schema:
+ *           type: integer
+ *       - name: min_metric_16
+ *         in: query
+ *         required: false
+ *         description: Lower bound on the aquamarine metric 16
+ *         schema:
+ *           type: integer
+ *       - name: max_metric_16
+ *         in: query
+ *         required: false
+ *         description: Upper bound on the aquamarine metric 16
+ *         schema:
+ *           type: integer
+ *       - name: min_metric_17
+ *         in: query
+ *         required: false
+ *         description: Lower bound on the aquamarine metric 17
+ *         schema:
+ *           type: integer
+ *       - name: max_metric_17
+ *         in: query
+ *         required: false
+ *         description: Upper bound on the aquamarine metric 17
+ *         schema:
+ *           type: integer
+ *       - name: min_metric_18
+ *         in: query
+ *         required: false
+ *         description: Lower bound on the aquamarine metric 18
+ *         schema:
+ *           type: integer
+ *       - name: max_metric_18
+ *         in: query
+ *         required: false
+ *         description: Upper bound on the aquamarine metric 18
+ *         schema:
+ *           type: integer
+ *       - name: min_metric_19
+ *         in: query
+ *         required: false
+ *         description: Lower bound on the aquamarine metric 19
+ *         schema:
+ *           type: integer
+ *       - name: max_metric_19
+ *         in: query
+ *         required: false
+ *         description: Upper bound on the aquamarine metric 19
+ *         schema:
+ *           type: integer
+ *       - name: min_metric_20
+ *         in: query
+ *         required: false
+ *         description: Lower bound on the aquamarine metric 20
+ *         schema:
+ *           type: integer
+ *       - name: max_metric_20
+ *         in: query
+ *         required: false
+ *         description: Upper bound on the aquamarine metric 20
+ *         schema:
+ *           type: integer
+ *       - name: min_metric_100
+ *         in: query
+ *         required: false
+ *         description: Lower bound on the aquamarine cargo points (metric 100)
+ *         schema:
+ *           type: integer
+ *       - name: max_metric_100
+ *         in: query
+ *         required: false
+ *         description: Upper bound on the aquamarine cargo points (metric 100)
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Paginated leaderboard with the latest metric values per player
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 players:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       rank:
+ *                         type: integer
+ *                         example: 1
+ *                       player_id:
+ *                         type: string
+ *                         example: "12345678"
+ *                       player_name:
+ *                         type: string
+ *                         nullable: true
+ *                       alliance_id:
+ *                         type: string
+ *                         nullable: true
+ *                       alliance_name:
+ *                         type: string
+ *                         nullable: true
+ *                       might_current:
+ *                         type: integer
+ *                       might_all_time:
+ *                         type: integer
+ *                       level:
+ *                         type: integer
+ *                       legendary_level:
+ *                         type: integer
+ *                       alliance_might:
+ *                         type: integer
+ *                         description: Summed might of every member of the player's alliance
+ *                       alliance_player_count:
+ *                         type: integer
+ *                         description: Number of members in the player's alliance
+ *                       metrics:
+ *                         type: object
+ *                         additionalProperties:
+ *                           type: number
+ *                         description: Map of metric_id to latest value
+ *                         example: { "100": 4200, "15": 300 }
+ *                       collected_at:
+ *                         type: string
+ *                         nullable: true
+ *                         example: "2026-01-01T10:00:00.000Z"
+ *                 snapshot_date:
+ *                   type: string
+ *                   nullable: true
+ *                   description: Date of the metric snapshot the leaderboard is built from
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
 protectedRoutes.get('/stormy-isles', routingInstance.getStormyIslesLeaderboard.bind(routingInstance));
 
 /**
@@ -4108,6 +5160,63 @@ protectedRoutes.get('/stormy-isles', routingInstance.getStormyIslesLeaderboard.b
 publicRoutes.get('/dungeons/player/:playerId', routingInstance.getDungeonsByPlayerId.bind(routingInstance));
 
 /**
+ * @swagger
+ * /offers:
+ *   get:
+ *     summary: Retrieve the current cash offers catalog
+ *     description: >
+ *       Returns the cash offers the official Goodgame Empire store would show to a player of the given
+ *       keep level and legendary level
+ *     tags:
+ *       - Offers
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - in: query
+ *         name: locale
+ *         required: false
+ *         description: The locale the offers are translated in. Defaults to 'en'
+ *         example: "en"
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: currency
+ *         required: false
+ *         description: The currency the offers are priced in. Defaults to 'EUR'
+ *         example: "EUR"
+ *         schema:
+ *           type: string
+ *           enum: [EUR, USD, GBP, BRL, TRY, PLN, CZK, HUF, RON, SEK, AUD, JPY, KRW, INR, SAR, AED, TWD]
+ *       - in: query
+ *         name: level
+ *         required: false
+ *         description: The level of the player the offers are computed for (1-70). Defaults to 70
+ *         example: 70
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: legendaryLevel
+ *         required: false
+ *         description: The legendary level of the player the offers are computed for. Defaults to 950
+ *         example: 950
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved the cash offers catalog, as returned by the GGS API
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ *       503:
+ *         $ref: '#/components/responses/ServiceUnavailable'
+ */
+protectedRoutes.get('/offers', routingInstance.getOffers.bind(routingInstance));
+
+/**
  * Express middleware that validates the presence and validity of the 'gge-server' header in incoming requests
  *
  * - Checks if the 'gge-server' header is provided; responds with 400 if missing
@@ -4159,16 +5268,12 @@ app.use('/api/v1', protectedRoutes);
 publicRoutes.use(ggeServerMiddleware);
 
 /**
- * Main function to start the Express server and initialize the Puppeteer browser
+ * Main function to start the Express server
  * This is the entrypoint of the application
  */
 async function main(): Promise<void> {
   app
-    .listen(APPLICATION_PORT, async () => {
-      await routingInstance.initBrowser().catch((error) => {
-        console.error('Error initializing browser:', error);
-        throw new Error('Error initializing browser');
-      });
+    .listen(APPLICATION_PORT, () => {
       void printHeader();
     })
     .on('error', (error) => {

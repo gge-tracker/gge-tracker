@@ -200,7 +200,6 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   private minX = 0;
   private minY = 0;
   private maxX = 0;
-  private buildingsAssetMapped: Record<string, number[]> = {};
   private maxY = 0;
   private cellSize = 0;
   private offsetX = 0;
@@ -316,22 +315,6 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       server: this.serverService.currentServer?.name,
     });
     this.toastService.add(message, 15_000, 'error');
-  }
-
-  public async updateJsonImageDimension(entry: IMappedBuildingWithGround): Promise<void> {
-    this.buildingsAssetMapped[entry.building.objectID] = [1, 1, 1, 1];
-    const name = String(entry?.data?.['name']).trim().toLowerCase();
-    const level = String(entry?.data?.['type']).trim().toLowerCase();
-    const category = String(entry?.data?.['group']).trim().toLowerCase();
-    const basePath = ApiRestService.apiUrl + '/assets/images/data/';
-    const ressource = `${basePath}${name}${category}${level}`;
-    const response = await fetch(`${ressource}.json`);
-    if (!response.ok) {
-      console.error('Failed to fetch building data:', response);
-      return;
-    }
-    const json = await response.json();
-    this.buildingsAssetMapped[entry.building.objectID] = [json[0], json[1], json[2], json[3]];
   }
 
   /**

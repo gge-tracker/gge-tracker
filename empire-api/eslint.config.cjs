@@ -144,7 +144,7 @@ module.exports = [
     },
   },
   {
-    ignores: ["**/dist"],
+    ignores: ["**/dist", "tests/**"],
   },
   {
     files: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],

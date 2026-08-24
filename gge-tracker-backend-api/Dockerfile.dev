@@ -11,7 +11,7 @@
 #                                                                                    #
 ######################################################################################
 
-FROM node:20
+FROM node:24
 
 WORKDIR /app
 
@@ -29,9 +29,11 @@ RUN apt-get update && apt-get install -y \
     libxss-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY package*.json ./
-RUN npm install \
-    && npx puppeteer browsers install chrome
+ENV PUPPETEER_CACHE_DIR=/opt/puppeteer
+
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund \
+    && node_modules/.bin/puppeteer browsers install chrome
 
 ENV REDIS_URL=redis://redis-server:6379
 EXPOSE 3000

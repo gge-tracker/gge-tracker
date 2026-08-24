@@ -8,7 +8,6 @@
 //  Copyrights (c) 2025-2026 - gge-tracker.com & gge-tracker contributors
 //
 import axios, { AxiosError, AxiosResponse } from 'axios';
-import { ClickHouse } from 'clickhouse';
 import { format } from 'date-fns';
 import * as mysql from 'mysql2/promise';
 import pLimit from 'p-limit';
@@ -18,7 +17,18 @@ import { createClient } from 'redis';
 import { HIGHSCORES_CONFIG } from './definitions/highest_scores.config';
 import { SWAP_RANK_POINTS_TABLE } from './definitions/swap-rank-points.config';
 import { TEMP_SERVER_SETTINGS } from './definitions/temp-server-events.config';
-import { Castle, CastleMovement, DungeonMap, HighScoreKey, PlayerDatabase } from './interfaces';
+import {
+  AllianceDatabase,
+  Castle,
+  CastleMovement,
+  DungeonMap,
+  HighScoreKey,
+  PlayerDatabase,
+  StormFort,
+  StormIsle,
+  StormIsleState,
+  StormScanResult,
+} from './interfaces';
 import Utils from './utils';
 
 export interface DiscordApiMessageBody {
@@ -66,6 +76,35 @@ export interface DiscordApiMessageBody {
  * Comments and logs should be standardized to English.
  */
 export class GenericFetchAndSaveBackend {
+  private static readonly PG_TRANSIENT_ERRORS = [
+    'Connection terminated unexpectedly',
+    'Connection terminated due to connection timeout',
+    'timeout exceeded when trying to connect',
+    'sorry, too many clients already',
+    'the database system is starting up',
+    'ECONNRESET',
+    'ECONNREFUSED',
+    'ETIMEDOUT',
+    'EPIPE',
+  ];
+  private static readonly CLICKHOUSE_RETRYABLE_CODES: ReadonlySet<number> = new Set([
+    159, // TIMEOUT_EXCEEDED
+    202, // TOO_MANY_SIMULTANEOUS_QUERIES
+    203, // NO_FREE_CONNECTION
+    209, // SOCKET_TIMEOUT
+    210, // NETWORK_ERROR
+    241, // MEMORY_LIMIT_EXCEEDED
+    252, // TOO_MANY_PARTS
+    394, // QUERY_WAS_CANCELLED
+    425, // SYSTEM_ERROR
+    745, // SERVER_OVERLOADED
+  ]);
+
+  private static readonly CLICKHOUSE_INSERT_CHUNK_SIZE = 50000;
+  private static readonly CLICKHOUSE_MAX_ATTEMPTS = 6;
+  private static readonly CLICKHOUSE_BASE_BACKOFF_MS = 2000;
+  private static readonly CLICKHOUSE_MAX_BACKOFF_MS = 60000;
+
   public playerRenamedList: { [key: string]: any } = {};
   public allianceRenamedList: { [key: string]: any } = {};
   public DB_UPDATES = {
@@ -78,11 +117,25 @@ export class GenericFetchAndSaveBackend {
   public connection!: mysql.Pool;
   public pgSqlConnection!: pg.Pool;
   public allianceUpdated: { [key: string]: boolean } = {};
+  private pgSqlPoolEnded: boolean = false;
   private readonly WEBHOOK_URL: string = process.env.WEBHOOK_URL || '';
   private readonly CURRENT_ENV: string = process.env.ENVIRONMENT || 'development';
   private readonly DISCORD_OR_CHANNEL_ID: string = process.env.DISCORD_OR_CHANNEL_ID || '';
   private readonly DISCORD_OR_API_URL: string = process.env.DISCORD_OR_API_URL || '';
   private readonly MAP_SIZE = 1286;
+  private readonly STORM_KID = 4;
+  private readonly STORM_CENTER_X = 644;
+  private readonly STORM_CENTER_Y = 644;
+  private readonly STORM_TILE_SPAN = 100;
+  private readonly STORM_TILE_HALF_SPAN = 50;
+  private readonly STORM_TILE_SPACING = 101;
+  private readonly STORM_MAX_RINGS = 5;
+  private readonly STORM_FORT_OBJECT_ID = 25;
+  private readonly STORM_ISLE_OBJECT_ID = 24;
+  private readonly STORM_BORDER_OBJECT_ID = 31;
+  private readonly STORM_RESET_HOUR_UTC = 0;
+  private readonly STORM_RESET_MINUTE_UTC = 30;
+  private readonly STORM_CHUNK_SIZE = 500;
   private readonly BASE_API_URL: string;
   private readonly CLICKHOUSE_CONFIG: { [key: string]: string | number | undefined } | undefined;
   private readonly PGSQL_CONFIG: pg.PoolConfig | undefined;
@@ -91,6 +144,7 @@ export class GenericFetchAndSaveBackend {
   private playerEventPointHistoryList: { [key: string]: { [key: string]: number | null } } = {};
   private customPlayersAttributesList: { [key: string]: any } = {};
   private currentPlayers: PlayerDatabase[] = [];
+  private currentAlliances: AllianceDatabase[] = [];
   private isE4KServer: boolean = false;
   private readonly ENV_LT = {
     war_realms: 44,
@@ -121,8 +175,36 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
+  private static parseClickHouseErrorCode(error: unknown): number | undefined {
+    const response = (error as AxiosError)?.response;
+    if (!response) return undefined;
+    const body = typeof response.data === 'string' ? response.data : JSON.stringify(response.data ?? '');
+    const match = body.match(/Code:\s*(\d+)/);
+    return match ? Number(match[1]) : undefined;
+  }
+
+  private static isClickHouseRetryable(error: unknown): boolean {
+    const response = (error as AxiosError)?.response;
+    if (!response) return true;
+    if (response.status === 429 || response.status === 502 || response.status === 503 || response.status === 504) {
+      return true;
+    }
+    const code = GenericFetchAndSaveBackend.parseClickHouseErrorCode(error);
+    return code !== undefined && GenericFetchAndSaveBackend.CLICKHOUSE_RETRYABLE_CODES.has(code);
+  }
+
   public async sleep(numberMs: number = 1500): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, numberMs));
+  }
+
+  public async closePool(): Promise<void> {
+    if (!this.pgSqlConnection || this.pgSqlPoolEnded) {
+      return;
+    }
+    this.pgSqlPoolEnded = true;
+    await this.pgSqlConnection.end().catch((error) => {
+      Utils.logMessage('An error occurred while closing the PostgreSQL pool:', error);
+    });
   }
 
   public async getOuterRealmsCode(): Promise<{
@@ -342,7 +424,7 @@ export class GenericFetchAndSaveBackend {
           try {
             await this.pgSqlQuery(queryText, values);
           } catch (error) {
-            Utils.logMessage('Error executing query:', error);
+            Utils.logCritical('', error, 'Error executing query:');
             Utils.logMessage('Query text:', queryText);
             Utils.logMessage('Values:', values);
             this.DB_UPDATES.criticalErrors++;
@@ -370,18 +452,12 @@ export class GenericFetchAndSaveBackend {
       for (let i = 0; i < 9; i++) {
         Utils.logMessage('.');
       }
-      await this.pgSqlConnection.end();
-      Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, this.server);
     } catch (error) {
-      Utils.logMessage('Error refreshing Grand Tournament results');
-      Utils.logMessage('========= BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 411');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('411', error, 'Error refreshing Grand Tournament results');
       this.DB_UPDATES.criticalErrors++;
     }
-    await this.pgSqlConnection.end();
-    Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, this.server);
+    await this.closePool();
+    Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, this.server);
 
     await this.logToLoki({
       job: 'grand-tournament',
@@ -411,11 +487,7 @@ export class GenericFetchAndSaveBackend {
       await this.pgSqlQuery('REFRESH MATERIALIZED VIEW CONCURRENTLY global_ranking;');
       Utils.logMessage('Global rankings refreshed successfully');
     } catch (error) {
-      Utils.logMessage('Error refreshing global rankings');
-      Utils.logMessage('========= BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 100');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('100', error, 'Error refreshing global rankings');
       this.DB_UPDATES.criticalErrors++;
     }
     const end = new Date();
@@ -425,8 +497,8 @@ export class GenericFetchAndSaveBackend {
     for (let i = 0; i < 9; i++) {
       Utils.logMessage('.');
     }
-    await this.pgSqlConnection.end();
-    Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, this.server);
+    await this.closePool();
+    Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, 'GLOBAL_RANKING');
     await this.logToLoki({
       job: 'global-rankings-refresh',
       data: {
@@ -449,9 +521,8 @@ export class GenericFetchAndSaveBackend {
    * @returns A Promise that resolves when the dungeon list has been retrieved and stored.
    */
   public async getDungeonsList(worldNumber: number): Promise<void> {
-    const pgPool = new pg.Pool(this.PGSQL_CONFIG);
     const pgSqlPlayerCastles = 'SELECT castles_realm FROM players WHERE castles IS NOT NULL';
-    const pgSqlPlayerCastlesResult = await pgPool.query(pgSqlPlayerCastles);
+    const pgSqlPlayerCastlesResult = await this.pgSqlQuery(pgSqlPlayerCastles);
     if (!pgSqlPlayerCastlesResult.rows || pgSqlPlayerCastlesResult.rows.length === 0) {
       Utils.logMessage('No castles found in the database. Aborting dungeon retrieval.');
       return;
@@ -487,7 +558,7 @@ export class GenericFetchAndSaveBackend {
       if (y > maxY) maxY = y;
     }
 
-    const step = 12;
+    const step = 100;
     const zone = step + 1;
     const margin = zone * 2;
 
@@ -646,8 +717,8 @@ export class GenericFetchAndSaveBackend {
         })
         .join(', ');
 
-      await this.pgSqlConnection.query(
-        `INSERT INTO dungeons (kid, position_x, position_y, global_available_at) VALUES ${placeholders}`,
+      await this.pgSqlQuery(
+        `INSERT INTO dungeons (kid, position_x, position_y, global_available_at) VALUES ${placeholders} ON CONFLICT DO NOTHING`,
         values,
       );
     }
@@ -688,17 +759,15 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('=====================================');
       Utils.logMessage('.');
     } catch (error) {
-      Utils.logMessage('Error occurred while executing the event history for Outer Realms + Beyond the Horizon');
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 101');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical(
+        '101',
+        error,
+        'Error occurred while executing the event history for Outer Realms + Beyond the Horizon',
+      );
       this.DB_UPDATES.criticalErrors++;
     } finally {
       if (!dryRunInsertOR || !dryRunInsertBTH) {
-        await this.pgSqlConnection.end().catch((error) => {
-          Utils.logMessage('Error closing PostgreSQL connection:', error);
-        });
+        await this.closePool();
         await this.logToLoki({
           job: 'outer-realms-and-beyond-the-horizon-event-history',
           data: {
@@ -707,7 +776,7 @@ export class GenericFetchAndSaveBackend {
             durationMs: new Date().getTime() - start.getTime(),
           },
         });
-        Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, 'OUTER_REALMS_AND_BEYOND_THE_HORIZON_EVENT_HISTORY');
+        Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, 'OUTER_REALMS_AND_BEYOND_THE_HORIZON_EVENT_HISTORY');
       }
     }
   }
@@ -715,7 +784,7 @@ export class GenericFetchAndSaveBackend {
   public async executeHealthCheck(): Promise<void> {
     try {
       try {
-        await this.pgSqlConnection.query('SELECT 1');
+        await this.getPool().query('SELECT 1');
         Utils.logMessage(' [info] PostgreSQL database connection is operational');
       } catch {
         Utils.logMessage(' [error] PostgreSQL database connection failed');
@@ -727,8 +796,7 @@ export class GenericFetchAndSaveBackend {
         Utils.logMessage(' [error] MariaDB database connection failed');
       }
       try {
-        const clickhouse = new ClickHouse(this.CLICKHOUSE_CONFIG as any);
-        await clickhouse.query('SELECT 1').toPromise();
+        await this.pingClickHouse();
         Utils.logMessage(' [info] ClickHouse database connection is operational');
       } catch {
         Utils.logMessage(' [error] ClickHouse database connection failed');
@@ -740,11 +808,7 @@ export class GenericFetchAndSaveBackend {
         Utils.logMessage(' [error] Data retrieval failed');
       }
     } catch (error) {
-      Utils.logMessage(' [error] Database connection failed');
-      Utils.logMessage('=========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 000');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('000', error, ' [error] Database connection failed');
       this.DB_UPDATES.criticalErrors++;
     }
   }
@@ -762,7 +826,9 @@ export class GenericFetchAndSaveBackend {
       // Request a full clear of parameters
       await this.clearParameters();
       Utils.logMessage(' [info] Retrieving player data from the database...');
-      this.currentPlayers = await this.getDatabasePlayers();
+      const { players, alliances } = await this.getDatabasePlayers();
+      this.currentPlayers = players;
+      this.currentAlliances = alliances;
       Utils.logMessage('* Processing loot (1/9)');
       await this.updateParameter('is_currently_updating', 1);
       await this.fillLootHistory();
@@ -834,11 +900,7 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('.');
       return;
     } catch (error) {
-      Utils.logMessage(' [CRITICAL] Unhandled error occurred while processing fills');
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 999');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('999', error, ' [CRITICAL] Unhandled error occurred while processing fills');
     } finally {
       const end = new Date();
       try {
@@ -865,8 +927,8 @@ export class GenericFetchAndSaveBackend {
       this.customPlayersAttributesList = {};
       this.playerEventPointHistoryList = {};
       this.currentPlayers = [];
-      await this.pgSqlConnection.end();
-      Utils.logsAllInFile(criticalErrors, this.server);
+      await this.closePool();
+      Utils.flushRunSummary(criticalErrors, this.server);
     }
   }
 
@@ -874,7 +936,7 @@ export class GenericFetchAndSaveBackend {
     const squares: { [key: string]: { AX1: number; AY1: number; AX2: number; AY2: number } } = {};
     const mapSize = this.MAP_SIZE;
     const start = new Date();
-    const pgPool = new pg.Pool(this.PGSQL_CONFIG);
+    const pgPool = this.getPool();
     let done = 0;
     try {
       console.log('Connection to the database successful');
@@ -974,6 +1036,7 @@ export class GenericFetchAndSaveBackend {
           }
         }
       }
+      await this.upsertParameter('dungeons_scan', dungeonsToUpdate.length);
       try {
         const updateValues: (Date | number)[] = [];
         const updatePlaceholders: string[] = [];
@@ -1090,7 +1153,7 @@ export class GenericFetchAndSaveBackend {
       console.error('Error while updating dungeons list:', error);
       this.DB_UPDATES.criticalErrors++;
     } finally {
-      await pgPool.end();
+      await this.closePool();
       const end = new Date();
       const elapsedTime = end.getTime() - start.getTime();
       const elapsedTimeInSeconds = Math.floor(elapsedTime / 1000);
@@ -1112,6 +1175,48 @@ export class GenericFetchAndSaveBackend {
           durationMs: elapsedTime,
           squaresCount: Object.keys(squares).length,
           dungeonsUpdated: this.DB_UPDATES.playersCreated,
+        },
+      });
+    }
+  }
+
+  /**
+   * Scans the Storm Islands kingdom and refreshes the current state of every storm fort and
+   * resource isle for this server
+   *
+   * @returns A Promise that resolves once the storm state has been persisted.
+   */
+  public async updateStormMap(): Promise<void> {
+    const start = new Date();
+    try {
+      await this.applyStormSeasonRolloverIfNeeded();
+
+      const { rows: metaRows } = await this.pgSqlQuery('SELECT scan_radius FROM storm_meta WHERE id = TRUE');
+      const knownRadius = metaRows.length > 0 ? Number(metaRows[0].scan_radius) : this.STORM_TILE_HALF_SPAN;
+
+      const scan = await this.scanStormMap(knownRadius);
+      console.log(
+        `Storm scan done for ${this.server}: ${scan.forts.length} forts, ${scan.isles.length} isles, ` +
+          `radius ${scan.radius}${scan.borderReached ? ' (border reached)' : ''}`,
+      );
+
+      await this.persistStormForts(scan.forts);
+      await this.persistStormIsles(scan.isles);
+      await this.pgSqlQuery('UPDATE storm_meta SET scan_radius = $1, last_scan_at = NOW() WHERE id = TRUE', [
+        scan.radius,
+      ]);
+    } catch (error) {
+      console.error('Error while updating the storm map:', error);
+      this.DB_UPDATES.criticalErrors++;
+      throw error;
+    } finally {
+      const elapsedTime = Date.now() - start.getTime();
+      await this.logToLoki({
+        job: 'update-storm-map',
+        data: {
+          server: this.server,
+          criticalErrors: this.DB_UPDATES.criticalErrors,
+          durationMs: elapsedTime,
         },
       });
     }
@@ -1290,84 +1395,35 @@ export class GenericFetchAndSaveBackend {
         item += increment;
       }
       Utils.logMessage(' Total unique player entries fetched:', playerEntries.size);
-      const clickhouseBaseUrl = (this.CLICKHOUSE_CONFIG!.url as string) + ':' + this.CLICKHOUSE_CONFIG!.port;
       try {
-        const batchSize = 5000;
-        const insertSQL = 'INSERT INTO outer_realms_ranking FORMAT JSONEachRow';
-        const clickhouseUrl =
-          clickhouseBaseUrl +
-          '/?query=' +
-          encodeURIComponent(insertSQL) +
-          '&database=' +
-          encodeURIComponent(this.CLICKHOUSE_CONFIG!.database as string);
-        const fetchDate = new Date();
         const playerArray = Array.from(playerEntries.values());
-        const clickhouseAuth = {
-          username: this.CLICKHOUSE_CONFIG!.user as string,
-          password: this.CLICKHOUSE_CONFIG!.password as string,
-        };
-
         this.DB_UPDATES.playersCreated = playerArray.length;
 
-        const fetchDateStr = new Date(fetchDate).toISOString().slice(0, 19).replace('T', ' ');
-        for (let i = 0; i < playerArray.length; i += batchSize) {
-          const batch = playerArray.slice(i, i + batchSize);
-          const payload = batch
-            .map((p) =>
-              JSON.stringify({
-                player_id: p.OID,
-                player_name: p.N,
-                server: p.server,
-                score: p.score,
-                rank: p.rank,
-                level: p.level,
-                legendary_level: p.legendaryLevel,
-                might: p.might,
-                castle_position_x: p.castlePositionX,
-                castle_position_y: p.castlePositionY,
-                fetch_date: fetchDateStr,
-              }),
-            )
-            .join('\n');
+        const fetchDateStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
+        const rows = playerArray.map((p) => ({
+          player_id: p.OID,
+          player_name: p.N,
+          server: p.server,
+          score: p.score,
+          rank: p.rank,
+          level: p.level,
+          legendary_level: p.legendaryLevel,
+          might: p.might,
+          castle_position_x: p.castlePositionX,
+          castle_position_y: p.castlePositionY,
+          fetch_date: fetchDateStr,
+        }));
 
-          try {
-            await axios.post(clickhouseUrl, payload, {
-              headers: {
-                'Content-Type': 'text/plain',
-              },
-              auth: clickhouseAuth,
-            });
-            Utils.logMessage(`Inserted ${batch.length} players`);
-            Utils.logMessage('Outer Realms data fetch and database update completed successfully');
-          } catch (error) {
-            Utils.logMessage('Error inserting batch into ClickHouse:', error);
-            Utils.logMessage('Payload:', payload);
-            this.DB_UPDATES.criticalErrors++;
-          }
-        }
+        await this.insertRowsClickHouse('outer_realms_ranking', rows);
+        Utils.logMessage('Outer Realms data fetch and database update completed successfully');
 
-        const updateLatestFetchSQL = `
-          INSERT INTO latest_fetch_date (fetch_date)
-          VALUES ('${fetchDateStr}')
-        `;
-        await axios.post(
-          clickhouseBaseUrl +
-            '/?query=' +
-            encodeURIComponent(updateLatestFetchSQL) +
-            '&database=' +
-            encodeURIComponent(this.CLICKHOUSE_CONFIG!.database as string),
-          '',
-          {
-            auth: clickhouseAuth,
-            headers: { 'Content-Type': 'text/plain' },
-          },
-        );
+        await this.insertRowsClickHouse('latest_fetch_date', [{ fetch_date: fetchDateStr }]);
       } catch (error) {
-        Utils.logMessage('Error executing query:', error);
+        Utils.logCritical('', error, 'Error executing query:');
         this.DB_UPDATES.criticalErrors++;
       }
     } catch (error) {
-      Utils.logMessage('Error during Outer Realms data fetch:', error);
+      Utils.logCritical('', error, 'Error during Outer Realms data fetch:');
       this.DB_UPDATES.criticalErrors++;
     } finally {
       const end = new Date();
@@ -1377,7 +1433,7 @@ export class GenericFetchAndSaveBackend {
       for (let i = 0; i < 9; i++) {
         Utils.logMessage('.');
       }
-      Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, this.server);
+      Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, 'LIVE_OUTER_REALMS');
       await this.logToLoki({
         job: 'outer-realms-data-fetch',
         data: {
@@ -1512,48 +1568,18 @@ export class GenericFetchAndSaveBackend {
           ', at time:',
           now.toISOString(),
         );
-        const clickhouseBaseUrl = (this.CLICKHOUSE_CONFIG!.url as string) + ':' + this.CLICKHOUSE_CONFIG!.port;
         try {
-          const insertSQL = `INSERT INTO wheel_unimaginable_affluence FORMAT JSONEachRow`;
-          const clickhouseUrl =
-            clickhouseBaseUrl +
-            '/?query=' +
-            encodeURIComponent(insertSQL) +
-            '&database=' +
-            encodeURIComponent(this.CLICKHOUSE_CONFIG!.database as string);
           const fetchDateStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
-          const clickhouseAuth = {
-            username: this.CLICKHOUSE_CONFIG!.user as string,
-            password: this.CLICKHOUSE_CONFIG!.password as string,
-          };
-          const batchSize = 100;
-          for (let i = 0; i < wheelData.length; i += batchSize) {
-            const batch = wheelData.slice(i, i + batchSize);
-            const payload = batch
-              .map((entry) =>
-                JSON.stringify({
-                  player_id: entry.playerId,
-                  point: entry.points,
-                  created_at: fetchDateStr,
-                }),
-              )
-              .join('\n');
-            try {
-              await axios.post(clickhouseUrl, payload, {
-                headers: {
-                  'Content-Type': 'text/plain',
-                },
-                auth: clickhouseAuth,
-              });
-              Utils.logMessage(`Inserted ${batch.length} entries into ClickHouse`);
-            } catch (error) {
-              Utils.logMessage('Error inserting batch into ClickHouse:', error);
-              Utils.logMessage('Payload:', payload);
-              this.DB_UPDATES.criticalErrors++;
-            }
-          }
+          await this.insertRowsClickHouse(
+            'wheel_unimaginable_affluence',
+            wheelData.map((entry) => ({
+              player_id: entry.playerId,
+              point: entry.points,
+              created_at: fetchDateStr,
+            })),
+          );
         } catch (error) {
-          Utils.logMessage('Error executing query:', error);
+          Utils.logCritical('', error, 'Error executing query:');
           this.DB_UPDATES.criticalErrors++;
         }
       } else {
@@ -1566,7 +1592,7 @@ export class GenericFetchAndSaveBackend {
         await this.insertWheelOfUnimaginableAffluenceData(retry + 1);
         return;
       }
-      Utils.logMessage('Error fetching Wheel of Unimaginable Affluence data:', error);
+      Utils.logCritical('', error, 'Error fetching Wheel of Unimaginable Affluence data:');
       this.DB_UPDATES.criticalErrors++;
     } finally {
       Utils.logMessage('Finished processing Wheel of Unimaginable Affluence data.');
@@ -1576,17 +1602,433 @@ export class GenericFetchAndSaveBackend {
           this.DB_UPDATES.criticalErrors,
         );
       }
-      Utils.logsAllInFile(this.DB_UPDATES.criticalErrors, this.server);
+      Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, this.server);
     }
   }
 
-  private createNewPool(): void {
-    if (this.pgSqlConnection) {
-      this.pgSqlConnection.end().catch((error) => {
-        Utils.logMessage('An error occurred while closing the previous PostgreSQL connection:', error);
-      });
+  private clickhouseBaseUrl(): string {
+    if (!this.CLICKHOUSE_CONFIG) throw new Error('ClickHouse configuration is missing.');
+    return (this.CLICKHOUSE_CONFIG.url as string) + ':' + this.CLICKHOUSE_CONFIG.port;
+  }
+
+  private clickhouseAuth(): { username: string; password: string } {
+    if (!this.CLICKHOUSE_CONFIG) throw new Error('ClickHouse configuration is missing.');
+    return {
+      username: this.CLICKHOUSE_CONFIG.user as string,
+      password: this.CLICKHOUSE_CONFIG.password as string,
+    };
+  }
+
+  private clickhouseUrl(query: string, extraParams: Record<string, string> = {}): string {
+    if (!this.CLICKHOUSE_CONFIG) throw new Error('ClickHouse configuration is missing.');
+    const params = new URLSearchParams({
+      query,
+      database: this.CLICKHOUSE_CONFIG.database as string,
+      ...extraParams,
+    });
+    return this.clickhouseBaseUrl() + '/?' + params.toString();
+  }
+
+  private async clickhousePost(
+    url: string,
+    payload: string,
+    description: string,
+    maxAttempts: number = GenericFetchAndSaveBackend.CLICKHOUSE_MAX_ATTEMPTS,
+  ): Promise<void> {
+    let delay = GenericFetchAndSaveBackend.CLICKHOUSE_BASE_BACKOFF_MS;
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await axios.post(url, payload, {
+          headers: { 'Content-Type': 'text/plain' },
+          auth: this.clickhouseAuth(),
+          timeout: 120000,
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
+        });
+        return;
+      } catch (error) {
+        const retryable = GenericFetchAndSaveBackend.isClickHouseRetryable(error);
+        if (!retryable || attempt >= maxAttempts) {
+          throw error;
+        }
+        const code = GenericFetchAndSaveBackend.parseClickHouseErrorCode(error);
+        const wait = Math.round(delay + Math.random() * delay);
+        Utils.logMessage(
+          ' [retry] ClickHouse',
+          description,
+          'failed (code',
+          code ?? 'network',
+          ') - attempt',
+          attempt + '/' + maxAttempts + ', retrying in',
+          wait + 'ms',
+        );
+        await this.sleep(wait);
+        delay = Math.min(delay * 2, GenericFetchAndSaveBackend.CLICKHOUSE_MAX_BACKOFF_MS);
+      }
     }
-    this.pgSqlConnection = new pg.Pool(this.PGSQL_CONFIG);
+  }
+
+  /**
+   * The single entry point for every ClickHouse insert
+   *
+   * @param table Target table, optionally database-qualified
+   * @param rows Rows to insert; an empty array is a no-op
+   * @param options `chunkSize`, `database`, or a smaller `maxAttempts` budget
+   */
+  private async insertRowsClickHouse(
+    table: string,
+    rows: Array<Record<string, unknown>>,
+    options: { chunkSize?: number; database?: string; maxAttempts?: number } = {},
+  ): Promise<void> {
+    if (!this.CLICKHOUSE_CONFIG) throw new Error('ClickHouse configuration is missing.');
+    if (rows.length === 0) return;
+
+    const chunkSize = options.chunkSize ?? GenericFetchAndSaveBackend.CLICKHOUSE_INSERT_CHUNK_SIZE;
+    const extraParams: Record<string, string> = {
+      async_insert: '1',
+      wait_for_async_insert: '1',
+    };
+    if (options.database) extraParams.database = options.database;
+
+    const url = this.clickhouseUrl(`INSERT INTO ${table} FORMAT JSONEachRow`, extraParams);
+
+    for (let i = 0; i < rows.length; i += chunkSize) {
+      const chunk = rows.slice(i, i + chunkSize);
+      const payload = chunk.map((row) => JSON.stringify(row)).join('\n');
+      await this.clickhousePost(url, payload, `insert into ${table}`, options.maxAttempts);
+      Utils.logMessage(' [info] Inserted', chunk.length, 'rows into', table);
+    }
+  }
+
+  private async pingClickHouse(): Promise<void> {
+    await axios.post(this.clickhouseUrl('SELECT 1'), '', {
+      headers: { 'Content-Type': 'text/plain' },
+      auth: this.clickhouseAuth(),
+      timeout: 15000,
+    });
+  }
+
+  private createNewPool(): void {
+    this.pgSqlConnection = new pg.Pool({
+      idleTimeoutMillis: 10_000,
+      connectionTimeoutMillis: 15_000,
+      allowExitOnIdle: true,
+      ...this.PGSQL_CONFIG,
+    });
+    this.pgSqlPoolEnded = false;
+    this.pgSqlConnection.on('error', (error) => {
+      Utils.logMessage(' [WARN] Idle PostgreSQL client discarded by the pool:', error.message);
+    });
+  }
+
+  private getPool(): pg.Pool {
+    if (!this.pgSqlConnection || this.pgSqlPoolEnded) {
+      this.createNewPool();
+    }
+    return this.pgSqlConnection;
+  }
+
+  /**
+   * Sweeps the storm kingdom ring by ring from the centre and parses every storm object found
+   *
+   * @param knownRadius Radius in map cells reached by the previous scan, used as the starting size
+   * @returns The forts and isles found, the radius actually covered and whether the map border was met
+   */
+  private async scanStormMap(knownRadius: number): Promise<StormScanResult> {
+    const forts = new Map<string, StormFort>();
+    const isles = new Map<string, StormIsle>();
+    const knownRings = this.stormRadiusToRings(knownRadius);
+    let borderReached = false;
+    let ring = 0;
+    let reachedRings = knownRings;
+    let done = 0;
+
+    while (ring <= this.STORM_MAX_RINGS) {
+      const tiles = this.getStormRingTiles(ring);
+      let ringHasObjects = false;
+      for (const tile of tiles) {
+        const json = `"KID":${this.STORM_KID},"AX1":${tile.AX1},"AY1":${tile.AY1},"AX2":${tile.AX2},"AY2":${tile.AY2}`;
+        console.log('Fetching zone: ' + json);
+        const url: string = encodeURI(this.BASE_API_URL + 'gaa/' + json);
+        const areaInfos = await this.fetchStormArea(url);
+        const currentTime = new Date();
+
+        for (const object of areaInfos) {
+          const objectType = Number(object[0]);
+          if (objectType === this.STORM_BORDER_OBJECT_ID) {
+            borderReached = true;
+            continue;
+          }
+          if (objectType === this.STORM_FORT_OBJECT_ID) {
+            const fort = this.parseStormFort(object, currentTime);
+            forts.set(`${fort.positionX}:${fort.positionY}`, fort);
+            ringHasObjects = true;
+          } else if (objectType === this.STORM_ISLE_OBJECT_ID) {
+            const isle = this.parseStormIsle(object, currentTime);
+            isles.set(`${isle.positionX}:${isle.positionY}`, isle);
+            ringHasObjects = true;
+          }
+        }
+
+        done++;
+        await this.sleep(30);
+        if (done % 5 === 0) {
+          await this.sleep(1000);
+        }
+      }
+
+      if (ringHasObjects && ring > reachedRings) {
+        reachedRings = ring;
+      }
+      // Keep growing only while the frontier still yields
+      // storm objects and the edge is not met
+      if (ring >= knownRings && (!ringHasObjects || borderReached)) {
+        console.log('Border reached for current ring, stopping scan.');
+        break;
+      }
+      ring++;
+    }
+
+    return {
+      forts: [...forts.values()],
+      isles: [...isles.values()],
+      radius: this.stormRingsToRadius(reachedRings),
+      borderReached,
+    };
+  }
+
+  /**
+   * Performs a single gaa call on the storm kingdom,
+   * retrying once on an invalid payload
+   *
+   * @param url The gaa URL
+   * @returns The AI array of the area
+   */
+  private async fetchStormArea(url: string): Promise<any[]> {
+    try {
+      const response = await axios.get(url);
+      if (response.data && response.data['return_code'] == '0') {
+        return response.data.content?.AI ?? [];
+      }
+      console.error('Invalid storm response for URL:', url, response.data);
+      await this.sleep(3000);
+      const retryResponse = await axios.get(url);
+      if (retryResponse.data && retryResponse.data['return_code'] == '0') {
+        return retryResponse.data.content?.AI ?? [];
+      }
+      console.error('Storm retry failed for URL:', url, retryResponse.data);
+      this.DB_UPDATES.criticalErrors++;
+      return [];
+    } catch (error: AxiosError | any) {
+      console.error('Error on storm URL:', url, error instanceof AxiosError ? error.message : error);
+      this.DB_UPDATES.criticalErrors++;
+      if (this.DB_UPDATES.criticalErrors >= 10) {
+        throw new Error('Too many errors encountered while scanning the storm map.');
+      }
+      return [];
+    }
+  }
+
+  /**
+   * Parses a raw AI row of type 25 into a storm fort
+   *
+   * @param row The raw AI entry
+   * @param observedAt Timestamp of the scan
+   */
+  private parseStormFort(row: any[], observedAt: Date): StormFort {
+    const cooldownSeconds = Number(row[6]) || 0;
+    return {
+      positionX: Number(row[1]),
+      positionY: Number(row[2]),
+      isleId: Number(row[5]),
+      victoryCount: Number(row[7]) || 0,
+      isVisible: Number(row[8]) === 0,
+      availableAt: cooldownSeconds > 0 ? new Date(observedAt.getTime() + cooldownSeconds * 1000) : observedAt,
+    };
+  }
+
+  /**
+   * Parses a raw AI row of type 24 into a resource isle
+   *
+   * @param row The raw AI entry
+   * @param observedAt Timestamp of the scan
+   */
+  private parseStormIsle(row: any[], observedAt: Date): StormIsle {
+    const occupierId = Number(row[4]);
+    const remainingSeconds = Number(row[9]) || 0;
+    const isOccupied = occupierId > 0;
+    const state = isOccupied
+      ? StormIsleState.OCCUPIED
+      : remainingSeconds > 0
+        ? StormIsleState.RESPAWNING
+        : StormIsleState.FREE;
+
+    return {
+      positionX: Number(row[1]),
+      positionY: Number(row[2]),
+      objectId: Number(row[3]),
+      isleId: Number(row[8]),
+      occupierId: isOccupied ? occupierId : null,
+      state,
+      availableAt: remainingSeconds > 0 ? new Date(observedAt.getTime() + remainingSeconds * 1000) : observedAt,
+    };
+  }
+
+  /**
+   * Upserts the scanned forts, refreshing existing coordinates in place
+   *
+   * @param forts The forts collected by the scan
+   */
+  private async persistStormForts(forts: StormFort[]): Promise<void> {
+    if (forts.length === 0) return;
+    for (const chunk of this.chunkArray(forts, this.STORM_CHUNK_SIZE)) {
+      const values: (number | boolean | Date)[] = [];
+      const placeholders = chunk
+        .map((fort, index) => {
+          const offset = index * 6;
+          values.push(fort.positionX, fort.positionY, fort.isleId, fort.victoryCount, fort.isVisible, fort.availableAt);
+          return `($${offset + 1}::smallint, $${offset + 2}::smallint, $${offset + 3}::smallint,
+                  $${offset + 4}::smallint, $${offset + 5}::boolean, $${offset + 6}::timestamptz)`;
+        })
+        .join(', ');
+
+      await this.pgSqlQuery(
+        `INSERT INTO storm_forts (position_x, position_y, isle_id, victory_count, is_visible, available_at)
+        VALUES ${placeholders}
+        ON CONFLICT (position_x, position_y) DO UPDATE SET
+          isle_id       = EXCLUDED.isle_id,
+          victory_count = EXCLUDED.victory_count,
+          is_visible    = EXCLUDED.is_visible,
+          available_at  = EXCLUDED.available_at,
+          updated_at    = NOW()`,
+        values,
+      );
+    }
+  }
+
+  /**
+   * Upserts the scanned resource isles, refreshing existing coordinates in place
+   *
+   * @param isles - The isles collected by the scan.
+   */
+  private async persistStormIsles(isles: StormIsle[]): Promise<void> {
+    if (isles.length === 0) return;
+    for (const chunk of this.chunkArray(isles, this.STORM_CHUNK_SIZE)) {
+      const values: (number | Date | null)[] = [];
+      const placeholders = chunk
+        .map((isle, index) => {
+          const offset = index * 7;
+          values.push(
+            isle.positionX,
+            isle.positionY,
+            isle.objectId,
+            isle.isleId,
+            isle.occupierId,
+            isle.state,
+            isle.availableAt,
+          );
+          return `($${offset + 1}::smallint, $${offset + 2}::smallint, $${offset + 3}::integer,
+                  $${offset + 4}::smallint, $${offset + 5}::integer, $${offset + 6}::smallint,
+                  $${offset + 7}::timestamptz)`;
+        })
+        .join(', ');
+
+      await this.pgSqlQuery(
+        `INSERT INTO storm_isles (position_x, position_y, object_id, isle_id, occupier_id, state, available_at)
+        VALUES ${placeholders}
+        ON CONFLICT (position_x, position_y) DO UPDATE SET
+          object_id    = EXCLUDED.object_id,
+          isle_id      = EXCLUDED.isle_id,
+          occupier_id  = EXCLUDED.occupier_id,
+          state        = EXCLUDED.state,
+          available_at = EXCLUDED.available_at,
+          updated_at   = NOW()`,
+        values,
+      );
+    }
+  }
+
+  private async applyStormSeasonRolloverIfNeeded(): Promise<void> {
+    const boundary = this.getLastStormSeasonBoundary();
+    const { rows } = await this.pgSqlQuery('SELECT season_started_at FROM storm_meta WHERE id = TRUE');
+    if (rows.length > 0 && new Date(rows[0].season_started_at) >= boundary) {
+      return;
+    }
+
+    console.log(`New storm season detected for ${this.server}, wiping the previous map...`);
+    const pool = this.getPool();
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('TRUNCATE storm_forts, storm_isles');
+      await client.query(
+        `INSERT INTO storm_meta (id, season_started_at, scan_radius, last_scan_at)
+        VALUES (TRUE, $1, $2, NULL)
+        ON CONFLICT (id) DO UPDATE SET
+          season_started_at = EXCLUDED.season_started_at,
+          scan_radius       = EXCLUDED.scan_radius,
+          last_scan_at      = NULL`,
+        [boundary, this.STORM_TILE_HALF_SPAN],
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+    // Enter in storm islands event
+    const kscContent = await axios.get(encodeURI(this.BASE_API_URL + 'ksc/' + '"ID":16,"D":0,"PWR":0,"OC2":0,"SID":4'));
+    if (kscContent.data.return_code === 0) {
+      console.log('Success: player entered island');
+      await this.sleep(1000);
+    } else {
+      console.log('Info: player already entered island. Continue...');
+    }
+  }
+
+  private getLastStormSeasonBoundary(): Date {
+    const now = new Date();
+    const boundary = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        1,
+        this.STORM_RESET_HOUR_UTC,
+        this.STORM_RESET_MINUTE_UTC,
+        0,
+        0,
+      ),
+    );
+    if (now < boundary) {
+      boundary.setUTCMonth(boundary.getUTCMonth() - 1);
+    }
+    return boundary;
+  }
+
+  private getStormRingTiles(ring: number): { AX1: number; AY1: number; AX2: number; AY2: number }[] {
+    const tiles: { AX1: number; AY1: number; AX2: number; AY2: number }[] = [];
+    for (let tileY = -ring; tileY <= ring; tileY++) {
+      for (let tileX = -ring; tileX <= ring; tileX++) {
+        if (ring > 0 && Math.abs(tileX) !== ring && Math.abs(tileY) !== ring) continue;
+        const AX1 = this.STORM_CENTER_X - this.STORM_TILE_HALF_SPAN + tileX * this.STORM_TILE_SPACING;
+        const AY1 = this.STORM_CENTER_Y - this.STORM_TILE_HALF_SPAN + tileY * this.STORM_TILE_SPACING;
+        const AX2 = AX1 + this.STORM_TILE_SPAN;
+        const AY2 = AY1 + this.STORM_TILE_SPAN;
+        if (AX1 < 0 || AY1 < 0 || AX2 > this.MAP_SIZE || AY2 > this.MAP_SIZE) continue;
+        tiles.push({ AX1, AY1, AX2, AY2 });
+      }
+    }
+    return tiles;
+  }
+
+  private stormRadiusToRings(radius: number): number {
+    const rings = Math.ceil((radius - this.STORM_TILE_HALF_SPAN) / this.STORM_TILE_SPACING);
+    return Math.min(Math.max(rings, 0), this.STORM_MAX_RINGS);
+  }
+
+  private stormRingsToRadius(rings: number): number {
+    return this.STORM_TILE_HALF_SPAN + rings * this.STORM_TILE_SPACING;
   }
 
   private async getCorrespondingSquare(
@@ -1651,20 +2093,10 @@ export class GenericFetchAndSaveBackend {
     args: { lt: number; increment: number; tableName: string; query: string; levelCategorySize: number },
     date: Date,
     eventName: string,
-    successCallback: () => void,
+    successCallback: () => void | Promise<void>,
   ): Promise<void> {
     try {
       if (!this.CLICKHOUSE_CONFIG) throw new Error('ClickHouse configuration is missing.');
-      let clickhouse: any;
-      try {
-        clickhouse = new ClickHouse(this.CLICKHOUSE_CONFIG);
-      } catch (error) {
-        Utils.logMessage('Error while connecting to ClickHouse');
-        Utils.logMessage('========== BEGIN STACK TRACE ============');
-        Utils.logMessage('Identifier: 006');
-        Utils.logMessage(error);
-        Utils.logMessage('=========== END STACK TRACE =============');
-      }
       let { lt, tableName, levelCategorySize } = args;
       let i: number;
       let j: number;
@@ -1734,13 +2166,10 @@ export class GenericFetchAndSaveBackend {
                 currentTry++;
               }
               if (!fetchData || fetchData.length === 0) {
-                Utils.logMessage('/!\\ No players found, but status is OK');
-                Utils.logMessage('========== BEGIN STACK TRACE ============');
-                Utils.logMessage('Identifier: 002-' + eventName);
                 Utils.logMessage('Url :', this.BASE_API_URL + 'hgh' + `/"LT":${lt},"LID":${levelCategory},"SV":"${i}"`);
                 Utils.logMessage('Nb:', j + ' players found on', max);
                 Utils.logMessage('p:', JSON.stringify(p));
-                Utils.logMessage('=========== END STACK TRACE =============');
+                Utils.logCritical('002-' + eventName, undefined, '/!\\ No players found, but status is OK');
                 this.DB_UPDATES.criticalErrors++;
                 return;
               } else {
@@ -1782,68 +2211,38 @@ export class GenericFetchAndSaveBackend {
                 }
               }
             }
-            Utils.logMessage(
-              'Finished searching for this category, starting insertion into the database for',
-              eventName,
-            );
-            const batchSize = 500;
-            let batch: string[] = [];
-
-            try {
-              for (const entity of Object.values(entities)) {
-                if (entity && entity.playerId) {
-                  const ltString = lt.toString();
-                  this.playerEventPointHistoryList[entity.playerId.toString()] =
-                    this.playerEventPointHistoryList[entity.playerId.toString()] || {};
-                  this.playerEventPointHistoryList[entity.playerId.toString()][ltString] = entity.point;
-
-                  batch.push(`(${entity.playerId}, ${entity.point}, '${currentDateFormatted}')`);
-
-                  if (batch.length >= batchSize) {
-                    const clickhouseQuery = `
-                      INSERT INTO ${tableName} (player_id, point, created_at)
-                      VALUES ${batch.join(', ')}
-                    `;
-                    await clickhouse.query(clickhouseQuery).toPromise();
-                    batch = [];
-                  }
-                }
-              }
-              if (batch.length > 0) {
-                const clickhouseQuery = `
-                  INSERT INTO ${tableName} (player_id, point, created_at)
-                  VALUES ${batch.join(', ')}
-                `;
-                await clickhouse.query(clickhouseQuery).toPromise();
-              }
-            } catch (error) {
-              Utils.logMessage('Error while inserting into player table for', eventName);
-              Utils.logMessage('========== BEGIN STACK TRACE ============');
-              Utils.logMessage('Identifier: 004');
-              Utils.logMessage(error);
-              Utils.logMessage('=========== END STACK TRACE =============');
-              console.error(error);
-              this.DB_UPDATES.criticalErrors++;
-            }
+            Utils.logMessage('Finished searching for category', levelCategory, 'for', eventName);
           } else {
-            Utils.logMessage('No players found for category', levelCategory);
-            Utils.logMessage('========== BEGIN STACK TRACE ============');
-            Utils.logMessage('Identifier: 005');
             Utils.logMessage('Url :', this.BASE_API_URL + 'hgh' + `/"LT":${lt},"LID":${levelCategory},"SV":"${i}"`);
             Utils.logMessage(JSON.stringify(data));
-            Utils.logMessage('=========== END STACK TRACE =============');
+            Utils.logCritical('005', undefined, 'No players found for category', levelCategory);
             this.DB_UPDATES.criticalErrors++;
           }
         }
       }
-      Utils.logMessage('Finished searching for all categories');
-      successCallback();
+      Utils.logMessage('Finished searching for all categories, starting insertion into the database for', eventName);
+
+      const ltString = lt.toString();
+      const rows: Array<Record<string, unknown>> = [];
+      for (const entity of Object.values(entities)) {
+        if (!entity || !entity.playerId) continue;
+        const playerKey = entity.playerId.toString();
+        this.playerEventPointHistoryList[playerKey] = this.playerEventPointHistoryList[playerKey] || {};
+        this.playerEventPointHistoryList[playerKey][ltString] = entity.point;
+        rows.push({ player_id: entity.playerId, point: entity.point, created_at: currentDateFormatted });
+      }
+
+      try {
+        await this.insertRowsClickHouse(tableName, rows);
+      } catch (error) {
+        Utils.logCritical('004', error, 'Error while inserting into player table for', eventName);
+        this.DB_UPDATES.criticalErrors++;
+        return;
+      }
+
+      await successCallback();
     } catch (error) {
-      Utils.logMessage('Final error while processing statistics');
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 007');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('007', error, 'Final error while processing statistics');
     }
   }
 
@@ -1860,7 +2259,6 @@ export class GenericFetchAndSaveBackend {
       } = {};
       const currentDate = new Date();
       const currentDateFormatted = format(currentDate, 'yyyy-MM-dd HH:mm:ss');
-      const clickhouse = new ClickHouse(this.CLICKHOUSE_CONFIG);
       for (let levelCategory = 1; levelCategory <= levelCategorySize; levelCategory++) {
         Utils.logMessage(
           'Starting to retrieve statistics for category',
@@ -1904,15 +2302,13 @@ export class GenericFetchAndSaveBackend {
               k++;
             }
             if (!players || players.length === 0) {
-              Utils.logMessage(' [KO] No players found, but status is OK');
-              Utils.logMessage('========== BEGIN STACK TRACE ============');
-              Utils.logMessage('Identifier: 009');
               Utils.logMessage('Url : ', this.BASE_API_URL + 'hgh' + `/"LT":6,"LID":${levelCategory},"SV":"${i}"`);
               Utils.logMessage('Nb:', j + 'players found out of', max);
               if (players) Utils.logMessage('Players.length:' + players.length);
               Utils.logMessage(JSON.stringify(p));
-              Utils.logMessage('=========== END STACK TRACE =============');
+              Utils.logCritical('009', undefined, ' [KO] No players found, but status is OK');
               this.DB_UPDATES.criticalErrors++;
+              c = false;
             } else {
               const ids: number[] = [];
               for (const player of players) {
@@ -1967,11 +2363,12 @@ export class GenericFetchAndSaveBackend {
                     this.playerLootAndMightPointHistoryList[uid.toString()][15] = infos['AR'];
                   }
                 } catch (error) {
-                  Utils.logMessage(' [KO] Error while storing in playerMightHistoryList', JSON.stringify(player));
-                  Utils.logMessage('========== BEGIN STACK TRACE ============');
-                  Utils.logMessage('Identifier: 052');
-                  Utils.logMessage(error);
-                  Utils.logMessage('=========== END STACK TRACE =============');
+                  Utils.logCritical(
+                    '052',
+                    error,
+                    ' [KO] Error while storing in playerMightHistoryList',
+                    JSON.stringify(player),
+                  );
                   this.DB_UPDATES.criticalErrors++;
                 }
                 j++;
@@ -1989,14 +2386,16 @@ export class GenericFetchAndSaveBackend {
                 await new Promise((resolve) => setTimeout(resolve, 100));
               }
             }
+            // Specific issue on IN1 : server is not cleaned at all, so low players aren't taken into account
+            if (levelCategory === 1 && this.server === 'IN1' && players.length > 0 && players[0][2]['MP'] <= 35) {
+              Utils.logMessage('Search stopped for IN1, level=' + levelCategory);
+              c = false;
+            }
           }
         } else {
-          Utils.logMessage(' [KO] No players found for category', levelCategory);
-          Utils.logMessage('========== BEGIN STACK TRACE ============');
-          Utils.logMessage('Identifier: 011');
           Utils.logMessage('Url : ', this.BASE_API_URL + 'hgh' + `/"LT":6,"LID":${levelCategory},"SV":"${i}"`);
           Utils.logMessage(JSON.stringify(data));
-          Utils.logMessage('=========== END STACK TRACE =============');
+          Utils.logCritical('011', undefined, ' [KO] No players found for category', levelCategory);
         }
       }
       Utils.logMessage('Finished searching for all categories for might points, starting insertion into database');
@@ -2009,51 +2408,20 @@ export class GenericFetchAndSaveBackend {
         );
         return;
       }
-      const BATCH_SIZE = 25;
-      const players = Object.values(playerList);
-      for (let i = 0; i < players.length; i += BATCH_SIZE) {
-        const batch = players.slice(i, i + BATCH_SIZE);
-        const queryValues: (string | number | Date)[] = [];
-        const clickhouseValues: string[] = [];
-        for (const player of batch) {
-          if (player && player.uid && player.name) {
-            queryValues.push(player.uid, player.mightPoints, currentDate);
-            clickhouseValues.push(`(${player.uid}, ${player.mightPoints}, '${currentDateFormatted}')`);
-          }
-        }
-        try {
-          if (queryValues.length > 0) {
-            try {
-              const clickhouseQuery = `INSERT INTO player_might_history (player_id, point, created_at) VALUES ${clickhouseValues.join(', ')}`;
-              await clickhouse.query(clickhouseQuery).toPromise();
-            } catch (error) {
-              Utils.logMessage(' [KO] Error while adding mightPoints to ClickHouse', error);
-              Utils.logMessage('========== BEGIN STACK TRACE ============');
-              Utils.logMessage('Identifier: 728');
-              Utils.logMessage(error);
-              Utils.logMessage('=========== END STACK TRACE =============');
-            }
-          }
-        } catch (error) {
-          Utils.logMessage(
-            ' [KO] Another error occurred while inserting into the player_might_history table at batch level',
-            i,
-          );
-          Utils.logMessage('========== BEGIN STACK TRACE ============');
-          Utils.logMessage('Identifier: 725');
-          Utils.logMessage(JSON.stringify(batch));
-          Utils.logMessage(error);
-          Utils.logMessage('=========== END STACK TRACE =============');
-          this.DB_UPDATES.criticalErrors++;
-          console.error(error);
+      const rows: Array<Record<string, unknown>> = [];
+      for (const player of Object.values(playerList)) {
+        if (player && player.uid && player.name) {
+          rows.push({ player_id: player.uid, point: player.mightPoints, created_at: currentDateFormatted });
         }
       }
+      try {
+        await this.insertRowsClickHouse('player_might_history', rows);
+      } catch (error) {
+        Utils.logCritical('728', error, ' [KO] Error while adding mightPoints to ClickHouse');
+        this.DB_UPDATES.criticalErrors++;
+      }
     } catch (error) {
-      Utils.logMessage(' [KO] Final error occurred while processing statistics');
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 012');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('012', error, ' [KO] Final error occurred while processing statistics');
       this.DB_UPDATES.criticalErrors++;
     }
   }
@@ -2093,17 +2461,6 @@ export class GenericFetchAndSaveBackend {
         };
       } = {};
       Utils.logMessage(' Database connection successful (Loot Points)');
-      let clickhouse: any;
-      try {
-        clickhouse = new ClickHouse(this.CLICKHOUSE_CONFIG);
-        Utils.logMessage(' ClickHouse connection successful');
-      } catch (error) {
-        Utils.logMessage('Error while connecting to ClickHouse');
-        Utils.logMessage('========== BEGIN STACK TRACE ============');
-        Utils.logMessage('Identifier: 013');
-        Utils.logMessage(error);
-        Utils.logMessage('=========== END STACK TRACE =============');
-      }
       const currentDate = new Date();
       const currentDateFormatted = format(currentDate, 'yyyy-MM-dd HH:mm:ss');
 
@@ -2138,12 +2495,9 @@ export class GenericFetchAndSaveBackend {
               k++;
             }
             if (!players || players.length === 0) {
-              Utils.logMessage(' /!\\ There are no players found, but the status is OK');
-              Utils.logMessage('========== BEGIN STACK TRACE ============');
-              Utils.logMessage('Identifier: 014');
               Utils.logMessage('Url : ', this.BASE_API_URL + 'hgh' + `/"LT":2,"LID":${levelCategory},"SV":"${i}"`);
               Utils.logMessage(JSON.stringify(p));
-              Utils.logMessage('=========== END STACK TRACE =============');
+              Utils.logCritical('014', undefined, ' /!\\ There are no players found, but the status is OK');
               this.DB_UPDATES.criticalErrors++;
               return;
             } else {
@@ -2206,11 +2560,12 @@ export class GenericFetchAndSaveBackend {
                     this.playerLootAndMightPointHistoryList[uid.toString()][15] = infos['AR'];
                   }
                 } catch (error) {
-                  Utils.logMessage(' [KO] Error while storing in playerLootHistoryList', JSON.stringify(player));
-                  Utils.logMessage('========== BEGIN STACK TRACE ============');
-                  Utils.logMessage('Identifier: 063');
-                  Utils.logMessage(error);
-                  Utils.logMessage('=========== END STACK TRACE =============');
+                  Utils.logCritical(
+                    '063',
+                    error,
+                    ' [KO] Error while storing in playerLootHistoryList',
+                    JSON.stringify(player),
+                  );
                   this.DB_UPDATES.criticalErrors++;
                 }
                 j++;
@@ -2250,15 +2605,12 @@ export class GenericFetchAndSaveBackend {
             }
             maxNegative = data?.content?.LR;
             if (!data || data['return_code'] != '0' || !maxNegative) {
-              Utils.logMessage(' [KO] The request failed for category', levelCategory);
-              Utils.logMessage('========== BEGIN STACK TRACE ============');
-              Utils.logMessage('Identifier: 026');
               Utils.logMessage(
                 'Url : ',
                 this.BASE_API_URL + 'hgh' + `/"LT":2,"LID":${levelCategory},"SV":"${maxNegative}"`,
               );
               Utils.logMessage(JSON.stringify(data));
-              Utils.logMessage('=========== END STACK TRACE =============');
+              Utils.logCritical('026', undefined, ' [KO] The request failed for category', levelCategory);
               console.error('[KO] The request failed for category', levelCategory);
               c = false;
             }
@@ -2275,15 +2627,12 @@ export class GenericFetchAndSaveBackend {
               }
               if (!players || players.length === 0) {
                 c = false;
-                Utils.logMessage(' [KO] No players found');
-                Utils.logMessage('========== BEGIN STACK TRACE ============');
-                Utils.logMessage('Identifier: 023');
                 Utils.logMessage(
                   'Url : ',
                   this.BASE_API_URL + 'hgh' + `/"LT":2,"LID":${levelCategory},"SV":"${maxNegative}"`,
                 );
                 Utils.logMessage(JSON.stringify(data));
-                Utils.logMessage('=========== END STACK TRACE =============');
+                Utils.logCritical('023', undefined, ' [KO] No players found');
               } else {
                 const ids: number[] = [];
                 const OVERFLOW_OFFSET = 2 ** 32;
@@ -2349,69 +2698,43 @@ export class GenericFetchAndSaveBackend {
                       Utils.logMessage('Stopping search for negative loot due to player with 0 points: ', j);
                     }
                   } catch (error) {
-                    Utils.logMessage(' [KO] Error while storing in playerLootHistoryList', JSON.stringify(player));
-                    Utils.logMessage('========== BEGIN STACK TRACE ============');
-                    Utils.logMessage('Identifier: 064');
-                    Utils.logMessage(error);
-                    Utils.logMessage('=========== END STACK TRACE =============');
+                    Utils.logCritical(
+                      '064',
+                      error,
+                      ' [KO] Error while storing in playerLootHistoryList',
+                      JSON.stringify(player),
+                    );
                   }
                 }
                 maxNegative -= increment;
               }
             }
           } catch (error) {
-            Utils.logMessage('Error while retrieving negative loot points');
-            Utils.logMessage('========== BEGIN STACK TRACE ============');
-            Utils.logMessage('Identifier: 027');
-            Utils.logMessage(error);
-            Utils.logMessage('=========== END STACK TRACE =============');
-          }
-          Utils.logMessage(' Beginning insertion of loot for players into the database');
-          for (const player of Object.values(playerList)) {
-            try {
-              if (player && player.uid && player.name) {
-                try {
-                  const clickhouseQuery = `INSERT INTO player_loot_history (player_id, point, created_at) VALUES (${player.uid}, ${player.points}, '${currentDateFormatted}')`;
-                  await clickhouse.query(clickhouseQuery).toPromise();
-                } catch (error) {
-                  Utils.logMessage(' [KO] Error while adding loot to ClickHouse', error);
-                  Utils.logMessage('========== BEGIN STACK TRACE ============');
-                  Utils.logMessage('Identifier: 726');
-                  Utils.logMessage(error);
-                  Utils.logMessage('=========== END STACK TRACE =============');
-                }
-              }
-            } catch (error) {
-              Utils.logMessage(
-                ' [KO] Error while inserting into player_loot_history table for player',
-                player.uid + ' (name:',
-                player.name,
-                ')',
-              );
-              Utils.logMessage('========== BEGIN STACK TRACE ============');
-              Utils.logMessage('Identifier: 515');
-              Utils.logMessage(error);
-              Utils.logMessage('=========== END STACK TRACE =============');
-              this.DB_UPDATES.criticalErrors++;
-              console.error(error);
-            }
+            Utils.logCritical('027', error, 'Error while retrieving negative loot points');
           }
         } else {
-          Utils.logMessage(' [KO] No players found for category', levelCategory);
-          Utils.logMessage('========== BEGIN STACK TRACE ============');
-          Utils.logMessage('Identifier: 017');
           Utils.logMessage('Url : ', this.BASE_API_URL + 'hgh' + `/"LT":2,"LID":${levelCategory},"SV":"${i}"`);
           Utils.logMessage(JSON.stringify(data));
-          Utils.logMessage('=========== END STACK TRACE =============');
+          Utils.logCritical('017', undefined, ' [KO] No players found for category', levelCategory);
         }
       }
       Utils.logMessage(' End of search for all categories for loot');
+
+      Utils.logMessage(' Beginning insertion of loot for players into the database');
+      const rows: Array<Record<string, unknown>> = [];
+      for (const player of Object.values(playerList)) {
+        if (player && player.uid && player.name) {
+          rows.push({ player_id: player.uid, point: player.points, created_at: currentDateFormatted });
+        }
+      }
+      try {
+        await this.insertRowsClickHouse('player_loot_history', rows);
+      } catch (error) {
+        Utils.logCritical('726', error, ' [KO] Error while adding loot to ClickHouse');
+        this.DB_UPDATES.criticalErrors++;
+      }
     } catch (error) {
-      Utils.logMessage(' [KO] Final error while processing statistics');
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 018');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('018', error, ' [KO] Final error while processing statistics');
       this.DB_UPDATES.criticalErrors++;
     }
   }
@@ -2433,11 +2756,7 @@ export class GenericFetchAndSaveBackend {
       await this.pgSqlQuery(pgSqlQuery, [playerId]);
       Utils.logMessage(' [OK] Player deletion successful', playerId);
     } catch (error) {
-      Utils.logMessage(' [KO] Error while deleting player', playerId);
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 019');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('019', error, ' [KO] Error while deleting player', playerId);
     }
   }
 
@@ -2549,13 +2868,9 @@ export class GenericFetchAndSaveBackend {
             ]);
             this.DB_UPDATES.playersCreated++;
           } catch (error) {
-            Utils.logMessage(' [KO] Error while adding player', playerId, '(name :', playerName, ')');
-            Utils.logMessage('========== BEGIN STACK TRACE ============');
-            Utils.logMessage('Identifier: 838');
             Utils.logMessage('PlayerId:', playerId);
             Utils.logMessage('PlayerName:', playerName);
-            Utils.logMessage(error);
-            Utils.logMessage('=========== END STACK TRACE =============');
+            Utils.logCritical('838', error, ' [KO] Error while adding player', playerId, '(name :', playerName, ')');
             this.DB_UPDATES.criticalErrors++;
           }
         }
@@ -2581,15 +2896,19 @@ export class GenericFetchAndSaveBackend {
         const parsedNewCastles: Castle[] = castles ? castles : [];
         await this.updatePlayerCastles(playerId, parsedCurrentCastles, parsedNewCastles);
       } catch (error) {
-        Utils.logMessage(' [KO] Error while updating player castles', playerId, '(name :', playerName, ')');
-        Utils.logMessage('========== BEGIN STACK TRACE ============');
-        Utils.logMessage('Identifier: 077');
         Utils.logMessage('PlayerId:', playerId);
         Utils.logMessage('PlayerName:', playerName);
         Utils.logMessage('currentCastles:', currentCastles);
         Utils.logMessage('castles:', castles);
-        Utils.logMessage(error);
-        Utils.logMessage('=========== END STACK TRACE =============');
+        Utils.logCritical(
+          '077',
+          error,
+          ' [KO] Error while updating player castles',
+          playerId,
+          '(name :',
+          playerName,
+          ')',
+        );
         this.DB_UPDATES.criticalErrors++;
       }
       // 2. Update player name if it has changed
@@ -2617,14 +2936,18 @@ export class GenericFetchAndSaveBackend {
             this.customPlayersAttributesList['player_name_update_count'] || 0;
           this.customPlayersAttributesList['player_name_update_count']++;
         } catch (error) {
-          Utils.logMessage(' [KO] Error while updating player name', playerId, '(name :', playerName, ')');
-          Utils.logMessage('========== BEGIN STACK TRACE ============');
-          Utils.logMessage('Identifier: 010');
           Utils.logMessage('PlayerId:', playerId);
           Utils.logMessage('PlayerName:', playerName);
           Utils.logMessage('currentPlayerName:', currentPlayerName);
-          Utils.logMessage(error);
-          Utils.logMessage('=========== END STACK TRACE =============');
+          Utils.logCritical(
+            '010',
+            error,
+            ' [KO] Error while updating player name',
+            playerId,
+            '(name :',
+            playerName,
+            ')',
+          );
           this.DB_UPDATES.criticalErrors++;
         }
       }
@@ -2658,28 +2981,36 @@ export class GenericFetchAndSaveBackend {
               if (error.code !== 'ER_NO_REFERENCED_ROW_2' && error.code !== '23503') {
                 // Do nothing
               } else {
-                Utils.logMessage(' [KO] Error while updating player alliance', playerId, '(name :', playerName, ')');
-                Utils.logMessage('========== BEGIN STACK TRACE ============');
-                Utils.logMessage('Identifier: 091');
                 Utils.logMessage('PlayerId:', playerId);
                 Utils.logMessage('PlayerName:', playerName);
                 Utils.logMessage('OldAllianceId:', currentAllianceId);
                 Utils.logMessage('NewAllianceId:', allianceId);
-                Utils.logMessage(error);
-                Utils.logMessage('=========== END STACK TRACE =============');
+                Utils.logCritical(
+                  '091',
+                  error,
+                  ' [KO] Error while updating player alliance',
+                  playerId,
+                  '(name :',
+                  playerName,
+                  ')',
+                );
               }
             }
           } else {
             this.DB_UPDATES.criticalErrors++;
-            Utils.logMessage(' [KO] Error while updating player alliance', playerId, '(name :', playerName, ')');
-            Utils.logMessage('========== BEGIN STACK TRACE ============');
-            Utils.logMessage('Identifier: 019');
             Utils.logMessage('PlayerId:', playerId);
             Utils.logMessage('PlayerName:', playerName);
             Utils.logMessage('OldAllianceId:', currentAllianceId);
             Utils.logMessage('NewAllianceId:', allianceId);
-            Utils.logMessage(error);
-            Utils.logMessage('=========== END STACK TRACE =============');
+            Utils.logCritical(
+              '019',
+              error,
+              ' [KO] Error while updating player alliance',
+              playerId,
+              '(name :',
+              playerName,
+              ')',
+            );
           }
         }
       }
@@ -2703,17 +3034,21 @@ export class GenericFetchAndSaveBackend {
           );
           await this.updateAllianceName(allianceId, allianceName, currentAllianceName);
         } catch (error) {
-          Utils.logMessage(' [KO] Error while updating alliance name', playerId, '(name :', playerName, ')');
-          Utils.logMessage('========== BEGIN STACK TRACE ============');
-          Utils.logMessage('Identifier: 020');
           Utils.logMessage('PlayerId:', playerId);
           Utils.logMessage('PlayerName:', playerName);
           Utils.logMessage('currentAllianceId:', currentAllianceId);
           Utils.logMessage('allianceId:', allianceId);
           Utils.logMessage('currentAllianceName:', currentAllianceName);
           Utils.logMessage('allianceName:', allianceName);
-          Utils.logMessage(error);
-          Utils.logMessage('=========== END STACK TRACE =============');
+          Utils.logCritical(
+            '020',
+            error,
+            ' [KO] Error while updating alliance name',
+            playerId,
+            '(name :',
+            playerName,
+            ')',
+          );
           this.DB_UPDATES.criticalErrors++;
         }
       }
@@ -2727,11 +3062,15 @@ export class GenericFetchAndSaveBackend {
     } catch (error: any) {
       if (error.code != '23505') {
         this.DB_UPDATES.criticalErrors++;
-        Utils.logMessage(' [KO] Error while inserting alliance', allianceId, '(name :', allianceName, ')');
-        Utils.logMessage('========== BEGIN STACK TRACE ============');
-        Utils.logMessage('Identifier: 021');
-        Utils.logMessage(error);
-        Utils.logMessage('=========== END STACK TRACE =============');
+        Utils.logCritical(
+          '021',
+          error,
+          ' [KO] Error while inserting alliance',
+          allianceId,
+          '(name :',
+          allianceName,
+          ')',
+        );
       }
     }
   }
@@ -2829,6 +3168,140 @@ export class GenericFetchAndSaveBackend {
     await this.genericFillHistory(args, date, 'berimond kingdoms', successCallback);
   }
 
+  /**
+   * Fetches the details of a single alliance
+   *
+   * @param allianceId - The alliance to fetch
+   * @returns The `ain` response, or null if every attempt failed
+   */
+  private async fetchAllianceInfo(allianceId: number): Promise<AxiosResponse<any> | null> {
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await this.genericFetchData('ain', { AID: allianceId });
+      } catch (error) {
+        Utils.logMessage(
+          ' [KO] Error fetching alliance',
+          allianceId,
+          '- attempt',
+          attempt + '/' + maxAttempts,
+          ':',
+          String(error),
+        );
+        if (attempt === maxAttempts) {
+          return null;
+        }
+        await this.sleep(1000 * attempt);
+      }
+    }
+    return null;
+  }
+
+  private async bulkUpdateAlliance(allianceIds: Set<number>): Promise<void> {
+    Utils.logMessage('Starting bulkUpdateAlliance insertions...');
+    const allianceToUpdates = [];
+    const batchSize = 25;
+    const currentAlliancesMap = new Map(this.currentAlliances.map((a) => [a.allianceId, a]));
+
+    for (const allianceId of allianceIds) {
+      const response = await this.fetchAllianceInfo(allianceId);
+      if (!response?.data?.content?.A) {
+        Utils.logMessage(' [KO] No alliance data for alliance', allianceId);
+        continue;
+      }
+      const data = response.data.content.A;
+      const allianceDescription: string = data.D;
+      const allianceLanguage: string = data.ALL;
+      const autoJoinEnabled: boolean = data.IA !== 0;
+      const isIslandKingAlliance: boolean = data.KA !== 0;
+      const isSearchingAlliance: boolean = data.IS !== 0;
+      const currentAlliance = currentAlliancesMap.get(allianceId);
+
+      if (
+        !currentAlliance ||
+        currentAlliance.auto_join_enabled !== autoJoinEnabled ||
+        currentAlliance.description !== allianceDescription ||
+        currentAlliance.language !== allianceLanguage ||
+        currentAlliance.is_island_king !== isIslandKingAlliance ||
+        currentAlliance.is_searching_alliance !== isSearchingAlliance
+      ) {
+        allianceToUpdates.push({
+          allianceId,
+          oldDescription: currentAlliance?.description ?? null,
+          new: !currentAlliance,
+          autoJoinEnabled,
+          isIslandKingAlliance,
+          isSearchingAlliance,
+          allianceLanguage,
+          allianceDescription,
+        });
+      }
+    }
+
+    const createdAt = new Date();
+
+    Utils.logMessage('Preparing database bulk insertion of ' + allianceToUpdates.length + 'items...');
+
+    for (let i = 0; i < allianceToUpdates.length; i += batchSize) {
+      const batch = allianceToUpdates.slice(i, i + batchSize);
+      try {
+        Utils.logMessage('[bulkUpdateAlliance] : Insert new batch : ' + i);
+        await Promise.all(
+          batch.map(async (allianceToUpdate) => {
+            const pgSqlAllianceUpdateQuery = `
+              UPDATE alliances
+              SET
+                is_searching_alliance = $1,
+                auto_join_enabled = $2,
+                is_island_king = $3,
+                language = $4,
+                description = $5
+              WHERE id = $6
+            `;
+
+            await this.pgSqlQuery(pgSqlAllianceUpdateQuery, [
+              allianceToUpdate.isSearchingAlliance,
+              allianceToUpdate.autoJoinEnabled,
+              allianceToUpdate.isIslandKingAlliance,
+              allianceToUpdate.allianceLanguage,
+              allianceToUpdate.allianceDescription,
+              allianceToUpdate.allianceId,
+            ]);
+
+            if (
+              currentAlliancesMap.get(allianceToUpdate.allianceId) &&
+              allianceToUpdate.oldDescription !== allianceToUpdate.allianceDescription
+            ) {
+              const pgSqlAllianceHistoryQuery = `
+                INSERT INTO alliance_description_history
+                (
+                  alliance_id,
+                  old_description,
+                  new_description,
+                  created_at
+                )
+                VALUES
+                ($1, $2, $3, $4)
+              `;
+
+              await this.pgSqlQuery(pgSqlAllianceHistoryQuery, [
+                allianceToUpdate.allianceId,
+                allianceToUpdate.oldDescription,
+                allianceToUpdate.allianceDescription,
+                createdAt,
+              ]);
+            }
+          }),
+        );
+      } catch (error) {
+        Utils.logMessage('Error during bulkUpdateAlliance : ' + error);
+        Utils.logMessage('Skipping');
+      }
+    }
+
+    Utils.logMessage('Finished bulkUpdateAlliance insertions');
+  }
+
   private async fillBloodcrowHistory(): Promise<void> {
     if (this.DB_UPDATES.criticalErrors > 0) {
       Utils.logMessage(' [KO] There are critical errors, stopping process');
@@ -2854,17 +3327,12 @@ export class GenericFetchAndSaveBackend {
 
   private async addEventTimestamp(date: Date, tableName: string): Promise<void> {
     if (!this.CLICKHOUSE_CONFIG) throw new Error('ClickHouse configuration is missing.');
-    let clickhouse = new ClickHouse(this.CLICKHOUSE_CONFIG);
-    const currentDateFormatted = format(date, 'yyyy-MM-dd HH:mm:ss');
-    const clickhouseQuery = `INSERT INTO event_dates (table_name, created_at) VALUES ('${tableName}', '${currentDateFormatted}')`;
     try {
-      await clickhouse.query(clickhouseQuery).toPromise();
+      await this.insertRowsClickHouse('event_dates', [
+        { table_name: tableName, created_at: format(date, 'yyyy-MM-dd HH:mm:ss') },
+      ]);
     } catch (error) {
-      Utils.logMessage('Error while adding event timestamp for table', tableName);
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 467');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('467', error, 'Error while adding event timestamp for table', tableName);
       this.DB_UPDATES.criticalErrors++;
     }
   }
@@ -3093,41 +3561,15 @@ export class GenericFetchAndSaveBackend {
         Utils.logMessage('No player_metrics rows to insert');
         return;
       }
-      const clickhouseBaseUrl = (this.CLICKHOUSE_CONFIG.url as string) + ':' + this.CLICKHOUSE_CONFIG.port;
-      const insertSQL = `
-        INSERT INTO player_metrics
-        FORMAT JSONEachRow
-      `;
-      const clickhouseUrl =
-        clickhouseBaseUrl +
-        '/?query=' +
-        encodeURIComponent(insertSQL) +
-        '&database=' +
-        encodeURIComponent(this.CLICKHOUSE_CONFIG.database as string);
-      const clickhouseAuth = {
-        username: this.CLICKHOUSE_CONFIG.user as string,
-        password: this.CLICKHOUSE_CONFIG.password as string,
-      };
-      const payload = allRows.map((row) => JSON.stringify(row)).join('\n');
       try {
-        await axios.post(clickhouseUrl, payload, {
-          headers: {
-            'Content-Type': 'text/plain',
-          },
-          auth: clickhouseAuth,
-        });
+        await this.insertRowsClickHouse('player_metrics', allRows);
         Utils.logMessage(`Inserted ${allRows.length} player_metrics rows for ${eligiblePlayerIds.length} players`);
       } catch (error) {
-        Utils.logMessage('Error while bulk-inserting player metrics');
-        Utils.logMessage(error);
+        Utils.logCritical('104', error, 'Error while bulk-inserting player metrics');
         this.DB_UPDATES.criticalErrors++;
       }
     } catch (error) {
-      Utils.logMessage('Error updating player aquamarine data');
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 103');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('103', error, 'Error updating player aquamarine data');
 
       this.DB_UPDATES.criticalErrors++;
     }
@@ -3155,11 +3597,13 @@ export class GenericFetchAndSaveBackend {
       const limit = pLimit(targetLimit);
       const insertionPromises: Promise<void>[] = [];
       const updates: Record<number, any[]> = {};
+      const allianceIds: Set<number> = new Set<number>();
       for (const key of keys) {
         const playerId = Number(key);
         const loot_current = this.playerLootAndMightPointHistoryList[key][0] || 0;
         const might_current = this.playerLootAndMightPointHistoryList[key][1] || 0;
         const allianceId = this.playerLootAndMightPointHistoryList[key][2] || null;
+        allianceIds.add(allianceId);
         const allianceName = this.playerLootAndMightPointHistoryList[key][3] || null;
         let ap = this.playerLootAndMightPointHistoryList[key][4] || null;
         let realmAp = this.playerLootAndMightPointHistoryList[key][13] || null;
@@ -3230,12 +3674,10 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('Player updates completed successfully!');
       Utils.logMessage('Power and loot points updates completed successfully');
       Utils.logMessage('Number of players updated:', j);
+      Utils.logMessage('Updating alliance history...');
+      await this.bulkUpdateAlliance(allianceIds);
     } catch (error) {
-      Utils.logMessage('Error updating player power and loot points');
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 099');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('099', error, 'Error updating player power and loot points');
       this.DB_UPDATES.criticalErrors++;
     }
   }
@@ -3251,11 +3693,13 @@ export class GenericFetchAndSaveBackend {
       }
 
       Utils.logMessage(' Database connection successful');
+      const pgPoolForIn1 = this.server === 'IN1' ? 'AND might_current > 35' : '';
       const pgSqlQuery = `
         SELECT id
         FROM players
         WHERE updated_at < NOW() - INTERVAL '24 hours'
         AND castles IS NOT NULL
+        ${pgPoolForIn1}
       `;
       const result = await this.pgSqlQuery(pgSqlQuery);
       //const ids = rows.map((row) => row.id);
@@ -3338,11 +3782,7 @@ export class GenericFetchAndSaveBackend {
             await this.removePlayerFromDatabase(id);
           }
         } catch (error) {
-          Utils.logMessage(' [KO] Error', id);
-          Utils.logMessage('========== BEGIN STACK TRACE ============');
-          Utils.logMessage('Identifier: 104');
-          Utils.logMessage(error);
-          Utils.logMessage('=========== END STACK TRACE =============');
+          Utils.logCritical('104', error, ' [KO] Error', id);
           const pgSqlQuery = `
             UPDATE players
             SET
@@ -3354,21 +3794,13 @@ export class GenericFetchAndSaveBackend {
           try {
             await this.pgSqlQuery(pgSqlQuery, [id]);
           } catch (error) {
-            Utils.logMessage(' [KO] Error while updating player', id);
-            Utils.logMessage('========== BEGIN STACK TRACE ============');
-            Utils.logMessage('Identifier: 105');
-            Utils.logMessage(error);
-            Utils.logMessage('=========== END STACK TRACE =============');
+            Utils.logCritical('105', error, ' [KO] Error while updating player', id);
             this.DB_UPDATES.criticalErrors++;
           }
         }
       }
     } catch (error) {
-      Utils.logMessage('Error updating inactive players');
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 100');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('100', error, 'Error updating inactive players');
       this.DB_UPDATES.criticalErrors++;
     }
   }
@@ -3603,15 +4035,10 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('maxLootPlayerId:', maxLootPlayerId);
       Utils.logMessage('[end debug] Server statistics params');
       //await this.connection.execute(ServerStatsQuery, params);
-      Utils.logMessage('MariaDB: Updating server statistics...');
       await this.pgSqlQuery(pgServerStatsQuery, params);
       Utils.logMessage('PostgreSQL: Updating server statistics...');
     } catch (error) {
-      Utils.logMessage('Error updating server statistics');
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 103');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('103', error, 'Error updating server statistics');
       this.DB_UPDATES.criticalErrors++;
     }
   }
@@ -3713,43 +4140,64 @@ export class GenericFetchAndSaveBackend {
         ]);
       }
     } catch (error) {
-      Utils.logMessage('Error inserting castle movements');
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 104');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('104', error, 'Error inserting castle movements');
       this.DB_UPDATES.criticalErrors++;
     }
   }
 
-  private async getDatabasePlayers(): Promise<PlayerDatabase[]> {
+  private async getDatabasePlayers(): Promise<{ players: PlayerDatabase[]; alliances: AllianceDatabase[] }> {
     if (this.DB_UPDATES.criticalErrors > 0) {
       Utils.logMessage(' [KO] There are critical errors, stopping the process getDatabasePlayers');
-      return [];
+      return { players: [], alliances: [] };
     }
     Utils.logMessage('Database connection successful');
     const pgQuery = `
-      SELECT P.id as player_id, P.alliance_id, P.name AS player_name, A.name AS alliance_name, P.castles
-      FROM players P LEFT JOIN alliances A
+      SELECT
+        P.id as player_id,
+        P.alliance_id,
+        P.name AS player_name,
+        P.castles,
+        A.name AS alliance_name,
+        A.is_searching_alliance,
+        A.auto_join_enabled,
+        A.is_island_king,
+        A.language,
+        A.description
+      FROM players P
+      LEFT JOIN alliances A
       ON P.alliance_id = A.id
     `;
+
     const result = await this.pgSqlQuery(pgQuery);
     const rows = result.rows;
-    return rows.map((row: { player_id: any; alliance_id: any; player_name: any; alliance_name: any; castles: any }) => {
-      const playerId = row.player_id;
-      const allianceId = row.alliance_id;
-      const playerName = row.player_name;
-      const allianceName = row.alliance_name;
-      const castles = row.castles;
-      const parsedCastles: Castle[] = castles ?? [];
-      return {
-        playerId: playerId,
-        allianceId: allianceId,
-        playerName: playerName,
-        allianceName: allianceName,
-        castles: parsedCastles,
-      };
+
+    const players: PlayerDatabase[] = [];
+    const alliancesMap = new Map<number, AllianceDatabase>();
+
+    rows.forEach((row: any) => {
+      // Player
+      players.push({
+        playerId: row.player_id,
+        allianceId: row.alliance_id,
+        playerName: row.player_name,
+        allianceName: row.alliance_name,
+        castles: row.castles ?? [],
+      });
+
+      // Alliance
+      if (row.alliance_id !== null && !alliancesMap.has(row.alliance_id)) {
+        alliancesMap.set(row.alliance_id, {
+          allianceId: row.alliance_id,
+          is_searching_alliance: row.is_searching_alliance,
+          auto_join_enabled: row.auto_join_enabled,
+          language: row.language,
+          description: row.description,
+          is_island_king: row.is_island_king,
+        });
+      }
     });
+    const alliances = Array.from(alliancesMap.values());
+    return { players, alliances };
   }
 
   private async clearParameters(): Promise<void> {
@@ -3760,6 +4208,20 @@ export class GenericFetchAndSaveBackend {
       SET value = NULL
     `;
     await this.pgSqlQuery(pgQuery);
+  }
+
+  /**
+   * Records a parameter whose row is not part of the seeded set, creating it on first run
+   */
+  private async upsertParameter(identifier: string, value: number): Promise<void> {
+    const pgQuery = `
+      INSERT INTO parameters (id, identifier, value, updated_at)
+      SELECT COALESCE(MAX(id), 0) + 1, $1, $2, NOW() FROM parameters
+      ON CONFLICT (identifier)
+      DO UPDATE SET value = EXCLUDED.value,
+        updated_at = NOW()
+    `;
+    await this.pgSqlQuery(pgQuery, [identifier, value]);
   }
 
   private async updateParameter(identifier: string, value: number): Promise<void> {
@@ -3859,13 +4321,10 @@ export class GenericFetchAndSaveBackend {
               currentTry++;
             }
             if (!fetchData || fetchData.length === 0) {
-              Utils.logMessage('/!\\ No players found, but status OK');
-              Utils.logMessage('========== BEGIN STACK TRACE ============');
-              Utils.logMessage('Identifier: 002-' + eventName);
               Utils.logMessage('Url :', this.BASE_API_URL + 'hgh' + `/"LT":${lt},"LID":${levelCategory},"SV":"${i}"`);
               Utils.logMessage('Nb:', j + 'players found on', max);
               Utils.logMessage('p:', JSON.stringify(p));
-              Utils.logMessage('=========== END STACK TRACE =============');
+              Utils.logCritical('002-' + eventName, undefined, '/!\\ No players found, but status OK');
               this.DB_UPDATES.criticalErrors++;
               return -1;
             } else {
@@ -3926,11 +4385,12 @@ export class GenericFetchAndSaveBackend {
             }
             for (const [server, entitiesForServer] of serverEntities.entries()) {
               let dbConn: pg.Pool | null = null;
+              let tempPool: pg.Pool | null = null;
               let dbName = '';
               Utils.logMessage(' [info] Processing server:', server);
               switch (server) {
                 case 'FR1':
-                  dbConn = this.pgSqlConnection;
+                  dbConn = this.getPool();
                   break;
                 case 'WLD1':
                 case 'LIVE':
@@ -3946,33 +4406,42 @@ export class GenericFetchAndSaveBackend {
                 default:
                   dbName = `empire-ranking-${server.toLowerCase()}`;
               }
-              if (!dbConn) {
-                const exists = await this.pgSqlQuery('SELECT 1 FROM pg_database WHERE datname=$1', [dbName]);
-                if (!exists.rowCount) continue; // skip if nonexistent
-                // Create a temporary connection (or use a global pool if already created)
-                dbConn = new pg.Pool({
-                  user: this.PGSQL_CONFIG.user,
-                  password: this.PGSQL_CONFIG.password,
-                  host: this.PGSQL_CONFIG.host,
-                  port: this.PGSQL_CONFIG.port,
-                  database: dbName,
-                });
-                await dbConn.connect();
-                Utils.logMessage(' [info] Connected to database for server:', server);
-              }
-              // Retrieve all real player_ids at once
-              const names = entitiesForServer.map((e: { playerName: any }) => e.playerName);
-              Utils.logMessage(' [info] Count: ' + names.length + ' players to process for server ' + server);
-              const res = await dbConn.query(
-                `SELECT n AS name, MIN(p.id) AS id FROM unnest($1::text[]) n LEFT JOIN players p ON p.name = n GROUP BY n;`,
-                [names],
-              );
-              Utils.logMessage(' [info] Retrieval of real player_ids completed');
-              const nameToId = new Map(res.rows.map((r) => [r.name, r.id]));
-              Utils.logMessage(' [info] Number of real player_ids retrieved:', nameToId.size);
-              // Update each entity with the real player_id
-              for (const entity of entitiesForServer) {
-                entity.realPlayerId = nameToId.get(entity.playerName);
+              try {
+                if (!dbConn) {
+                  const exists = await this.pgSqlQuery('SELECT 1 FROM pg_database WHERE datname=$1', [dbName]);
+                  if (!exists.rowCount) continue; // skip if nonexistent
+                  tempPool = new pg.Pool({
+                    user: this.PGSQL_CONFIG.user,
+                    password: this.PGSQL_CONFIG.password,
+                    host: this.PGSQL_CONFIG.host,
+                    port: this.PGSQL_CONFIG.port,
+                    database: dbName,
+                    max: 1,
+                    idleTimeoutMillis: 10_000,
+                    connectionTimeoutMillis: 15_000,
+                    allowExitOnIdle: true,
+                  });
+                  dbConn = tempPool;
+                  Utils.logMessage(' [info] Connected to database for server:', server);
+                }
+                const names = entitiesForServer.map((e: { playerName: any }) => e.playerName);
+                Utils.logMessage(' [info] Count: ' + names.length + ' players to process for server ' + server);
+                const res = await dbConn.query(
+                  `SELECT n AS name, MIN(p.id) AS id FROM unnest($1::text[]) n LEFT JOIN players p ON p.name = n GROUP BY n;`,
+                  [names],
+                );
+                Utils.logMessage(' [info] Retrieval of real player_ids completed');
+                const nameToId = new Map(res.rows.map((r) => [r.name, r.id]));
+                Utils.logMessage(' [info] Number of real player_ids retrieved:', nameToId.size);
+                for (const entity of entitiesForServer) {
+                  entity.realPlayerId = nameToId.get(entity.playerName);
+                }
+              } finally {
+                if (tempPool) {
+                  await tempPool.end().catch((error) => {
+                    Utils.logMessage(' [WARN] Error closing temporary PostgreSQL pool for ' + server + ':', error);
+                  });
+                }
               }
             }
           }
@@ -4060,11 +4529,7 @@ export class GenericFetchAndSaveBackend {
         return -1;
       }
     } catch (error) {
-      Utils.logMessage('Error while filling event history for ' + eventName);
-      Utils.logMessage('========== BEGIN STACK TRACE ============');
-      Utils.logMessage('Identifier: 099');
-      Utils.logMessage(error);
-      Utils.logMessage('=========== END STACK TRACE =============');
+      Utils.logCritical('099', error, 'Error while filling event history for ' + eventName);
       this.DB_UPDATES.criticalErrors++;
       return -1;
     }
@@ -4098,41 +4563,34 @@ export class GenericFetchAndSaveBackend {
     return true; // All entries match
   }
 
-  private async pgSqlQuery(query: string, params: any[] = []): Promise<any> {
-    try {
-      if (!this.pgSqlConnection) {
-        this.createNewPool();
-      }
-      return await this.pgSqlConnection.query(query, params);
-    } catch (error: any) {
-      const message = error?.message || '';
-      if (
-        message.includes('Connection terminated unexpectedly') ||
-        message.includes('ECONNRESET') ||
-        message.includes('timeout')
-      ) {
-        try {
-          Utils.logMessage(' [WARN] Lost connection to PostgreSQL, attempting to reconnect...');
-          await new Promise((resolve) => setTimeout(resolve, 5000));
-          this.createNewPool();
-        } catch {
-          try {
-            await new Promise((resolve) => setTimeout(resolve, 20000));
-            this.createNewPool();
-          } catch (err) {
-            Utils.logMessage(' [CRITICAL] Error occurred while reconnecting to the database');
-            Utils.logMessage('========== BEGIN STACK TRACE ============');
-            Utils.logMessage('Identifier: 999');
-            Utils.logMessage(err);
-            Utils.logMessage('=========== END STACK TRACE =============');
-            this.DB_UPDATES.criticalErrors++;
-            throw new Error(`Error occurred while executing PostgreSQL query: ${error}`);
-          }
+  private isTransientPgError(error: any): boolean {
+    const message = String(error?.message ?? '');
+    return GenericFetchAndSaveBackend.PG_TRANSIENT_ERRORS.some((pattern) => message.includes(pattern));
+  }
+
+  private async pgSqlQuery(query: string, params: any[] = [], attempts: number = 3): Promise<any> {
+    let lastError: any;
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+      try {
+        return await this.getPool().query(query, params);
+      } catch (error: any) {
+        lastError = error;
+        if (!this.isTransientPgError(error) || attempt === attempts) {
+          break;
         }
-      } else {
-        throw error;
+        const delayMs = 5000 * attempt;
+        Utils.logMessage(
+          ` [WARN] Transient PostgreSQL error (attempt ${attempt}/${attempts}), retrying in ${delayMs}ms:`,
+          error.message,
+        );
+        await this.sleep(delayMs);
       }
     }
+    if (this.isTransientPgError(lastError)) {
+      Utils.logCritical('999', lastError, ' [CRITICAL] PostgreSQL query failed after all retries');
+      this.DB_UPDATES.criticalErrors++;
+    }
+    throw lastError;
   }
 
   private generateTraceId(): string {
@@ -4186,17 +4644,24 @@ export class GenericFetchAndSaveBackend {
   }): Promise<void> {
     const durationMs = endTime.getTime() - startTime.getTime();
     try {
-      const clickhouse = new ClickHouse(this.CLICKHOUSE_CONFIG as any);
-      await clickhouse
-        .query(
-          `
-        INSERT INTO logs.scrapes
-        (server, timestamp, durationMs, playersCreated, alliancesCreated, playersAllianceUpdated, alliancesUpdated, criticalErrors, playerCount, allianceCount)
-        VALUES
-        ('${server}', '${Math.floor(endTime.getTime() / 1000)}', ${durationMs}, ${playersCreated}, ${alliancesCreated}, ${playersAllianceUpdated}, ${alliancesUpdated}, ${criticalErrors}, ${playerCount}, ${allianceCount})
-      `,
-        )
-        .toPromise();
+      await this.insertRowsClickHouse(
+        'logs.scrapes',
+        [
+          {
+            server,
+            timestamp: Math.floor(endTime.getTime() / 1000),
+            durationMs,
+            playersCreated,
+            alliancesCreated,
+            playersAllianceUpdated,
+            alliancesUpdated,
+            criticalErrors,
+            playerCount,
+            allianceCount,
+          },
+        ],
+        { maxAttempts: 2 },
+      );
     } catch (err: any) {
       console.error('ClickHouse insert error:', err.message);
     }
@@ -4302,14 +4767,11 @@ export class GenericFetchAndSaveBackend {
   }
 
   private async stackTraceError(identifier: string, criticalError = false, error: string | string[]): Promise<void> {
-    Utils.logMessage('========== BEGIN STACK TRACE ============');
-    Utils.logMessage('Identifier: ' + identifier);
     if (Array.isArray(error)) {
       error.forEach((err) => Utils.logMessage(err));
     } else {
-      Utils.logMessage(error);
     }
-    Utils.logMessage('=========== END STACK TRACE =============');
+    Utils.logCritical('' + identifier, error);
     if (criticalError) this.DB_UPDATES.criticalErrors++;
   }
 }

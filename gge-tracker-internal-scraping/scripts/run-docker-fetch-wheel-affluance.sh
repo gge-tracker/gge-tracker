@@ -36,6 +36,5 @@ docker run --rm --network backend --env-file=$BASE_SCRIPT_DIR/.env \
     -e CLICKHOUSE_DB=$CLICKHOUSE_DB \
     -e LOG_SUFFIX=AFFLUENCE-WHEEL-$LOG_SUFFIX \
     -e CONNECTION_LIMIT=$CONNECTION_LIMIT \
-    -v $BASE_SCRIPT_DIR/logs:/app/logs \
     --cpus="1" \
     gge-tracker-internal-scraping dist/fetch-and-save-wheel-affluence.js

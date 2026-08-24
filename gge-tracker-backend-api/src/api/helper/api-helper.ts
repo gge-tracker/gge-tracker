@@ -35,10 +35,11 @@ export abstract class ApiHelper {
   public static readonly HTTP_FORBIDDEN = Status.FORBIDDEN;
   public static readonly HTTP_NOT_FOUND = Status.NOT_FOUND;
   public static readonly HTTP_INTERNAL_SERVER_ERROR = Status.INTERNAL_SERVER_ERROR;
+  public static readonly HTTP_SERVICE_UNAVAILABLE = Status.SERVICE_UNAVAILABLE;
   public static readonly GGE_BASE_URL = 'https://empire-html5.goodgamestudios.com';
   public static readonly ASSETS_BASE_URL = this.GGE_BASE_URL + '/default';
   public static readonly CONFIG_BASE_URL = this.GGE_BASE_URL + '/config';
-  public static readonly API_VERSION = require('../../../package.json').version;
+  public static readonly API_VERSION = require('/app/package.json').version;
   public static readonly API_VERSION_RELEASE_DATE = this.formatReleaseDate(this.API_VERSION);
 
   /**
@@ -91,6 +92,7 @@ export abstract class ApiHelper {
     [Status.FORBIDDEN]: RouteErrorMessagesEnum.GenericForbidden,
     [Status.NOT_FOUND]: RouteErrorMessagesEnum.GenericNotFound,
     [Status.INTERNAL_SERVER_ERROR]: RouteErrorMessagesEnum.GenericInternalServerError,
+    [Status.SERVICE_UNAVAILABLE]: RouteErrorMessagesEnum.GenericServiceUnavailable,
   };
 
   private static _file: Buffer | null = null;
@@ -202,6 +204,41 @@ export abstract class ApiHelper {
     return this.file;
   }
 
+  public static invalidateAssets(): void {
+    this._file = null;
+  }
+
+  /**
+   * Identifier of the Goodgame Empire build the cached assets belong to
+   */
+  public static async getGgeBuildVersion(): Promise<string> {
+    const cached = await this.redisClient?.get(this.REDIS_KEY_GGE_VERSION).catch(() => null);
+    if (cached) return cached;
+    try {
+      const fs = await import('node:fs');
+      // eslint-disable-next-line unicorn/import-style
+      const path = await import('node:path');
+      const raw = await fs.promises.readFile(path.join(__dirname, './../assets/BUILD_VERSION'));
+      const stored = raw.toString().trim();
+      if (stored) {
+        await this.redisClient?.set(this.REDIS_KEY_GGE_VERSION, stored).catch(() => null);
+        return stored;
+      }
+    } catch {}
+    return '0';
+  }
+
+  public static async setGgeBuildVersion(version: string): Promise<void> {
+    const fs = await import('node:fs');
+    // eslint-disable-next-line unicorn/import-style
+    const path = await import('node:path');
+    const directory = path.join(__dirname, './../assets/');
+    await fs.promises.mkdir(directory, { recursive: true });
+    await fs.promises.writeFile(path.join(directory, 'BUILD_VERSION'), version);
+    // Deliberately without a TTL: an expiry would silently reset the version to "0"
+    await this.redisClient?.set(this.REDIS_KEY_GGE_VERSION, version).catch(() => null);
+  }
+
   public static async getCacheVersion(redis: RedisClientType<any>, language: string): Promise<string> {
     return (await cacheVersion.getCacheVersion(redis, language)) || '1';
   }
@@ -252,10 +289,16 @@ export abstract class ApiHelper {
    */
   public static verifyIdWithCountryCode(id: unknown): false | number {
     if (typeof id !== 'string' && typeof id !== 'number') return false;
-    if (Number.isNaN(Number(id)) || Number(id) < 0 || Number(id) > 99_999_999_999 || String(id).length <= 3) {
+    const raw = String(id).trim();
+    // Only plain decimal integers are valid IDs. This rejects hex ("0x1F"), exponential ("1e5"),
+    // floats ("1.5"), signs, and "Infinity"/"NaN" - all of which would otherwise reach the DB and
+    // trigger an integer-cast 5xx (or, after country-code stripping, an empty-string cast error)
+    if (!/^\d+$/.test(raw)) return false;
+    const value = Number(raw);
+    if (!Number.isSafeInteger(value) || value <= 0 || value > 99_999_999_999 || raw.length <= 3) {
       return false;
     }
-    return Number(id);
+    return value;
   }
 
   /**

@@ -70,6 +70,7 @@ services:
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - ./../database/conf/clickhouse_${CLICKHOUSE_STORAGE}.xml:/etc/clickhouse-server/config.d/s3.xml:ro
+      - ./../database/conf/clickhouse_logs.xml:/etc/clickhouse-server/config.d/logs.xml:ro
     healthcheck:
       test: ["CMD-SHELL", "clickhouse-client --user=${CLICKHOUSE_USER} --password=${CLICKHOUSE_PASSWORD} --query='SELECT 1'"]
       interval: 10s
@@ -135,6 +136,10 @@ services:
       - DECAY_FACTOR=${DECAY_FACTOR}
       - RATE_LIMIT_POINTS=${RATE_LIMIT_POINTS}
       - RATE_LIMIT_DURATION=${RATE_LIMIT_DURATION}
+      - STORE_EGRESS_HOST=${STORE_EGRESS_HOST}
+      - STORE_EGRESS_PORT=${STORE_EGRESS_PORT}
+      - STORE_EGRESS_USER=${STORE_EGRESS_USER}
+      - STORE_EGRESS_PASSWORD=${STORE_EGRESS_PASSWORD}
     depends_on:
       redis-server:
         condition: service_healthy
@@ -163,8 +168,7 @@ services:
     networks:
       - backend
     volumes:
-      - ./../gge-tracker-internal-scraping/config/servers.conf:/app/config/servers.conf:ro
-      - ./../gge-tracker-internal-scraping/logs:/app/logs
+      - ./../gge-tracker-internal-scraping/config:/app/config
     command: ["dist/dungeon-update.worker.js"]
     environment:
       - INTERVAL_MS=${DUNGEON_UPDATE_INTERVAL_MS:-120000}
@@ -175,12 +179,46 @@ services:
         limits:
           cpus: "0.2"
           memory: 300M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  storm-update-worker:
+    build:
+      context: ./../gge-tracker-internal-scraping
+      dockerfile: Dockerfile
+    container_name: storm-update-worker
+    restart: unless-stopped
+    networks:
+      - backend
+    volumes:
+      - ./../gge-tracker-internal-scraping/config:/app/config
+    command: ["dist/storm-update.worker.js"]
+    environment:
+      - INTERVAL_MS=${STORM_UPDATE_INTERVAL_MS:-120000}
+      - SQL_USER=${SQL_USER}
+      - SQL_PASSWORD=${SQL_PASSWORD}
+    deploy:
+      resources:
+        limits:
+          cpus: "0.2"
+          memory: 300M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   empire-api:
     build:
       context: ./../empire-api
       dockerfile: Dockerfile
     container_name: empire-api-container
+    volumes:
+      - ./../empire-api/src/data:/app/data
+      - ./../empire-api/src/config:/app/config:ro
     environment:
       NODE_ENV: production
     networks:
@@ -191,9 +229,10 @@ services:
     build:
       context: ./../empire-api
       dockerfile: Dockerfile
-      args:
-        API_TYPE: realtime
     container_name: empire-api-container-realtime
+    volumes:
+      - ./../empire-api/src/data:/app/data
+      - ./../empire-api/src/config:/app/config:ro
     environment:
       NODE_ENV: production
       API_TYPE: realtime
@@ -235,10 +274,97 @@ services:
       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
       - GF_PLUGINS_PREINSTALL=grafana-clickhouse-datasource
       - GF_LOG_LEVEL=${GF_LOG_LEVEL}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
       - CLICKHOUSE_HOST=${CLICKHOUSE_HOST}
       - CLICKHOUSE_USER=${CLICKHOUSE_USER}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
       - GF_INSTALL_PLUGINS=grafana-clickhouse-datasource
+      - GF_RENDERING_SERVER_URL=http://grafana-image-renderer:8081/render
+      - GF_RENDERING_CALLBACK_URL=http://grafana:3000
+      - GF_RENDERING_RENDERER_TOKEN=${GF_RENDERER_TOKEN}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: "no"
+
+  grafana-image-renderer:
+    image: grafana/grafana-image-renderer:v5.12.1
+    container_name: grafana-image-renderer
+    mem_limit: 1500m
+    cpu_quota: 100000
+    cpu_period: 100000
+    networks:
+      - backend
+    environment:
+      - AUTH_TOKEN=${GF_RENDERER_TOKEN}
+      - LOG_LEVEL=${GF_RENDERER_LOG_LEVEL:-warn}
+      - TZ=${RECAP_RENDER_TZ:-UTC}
+      - GOMEMLIMIT=${GF_RENDERER_GOMEMLIMIT:-192MiB}
+      - BROWSER_READINESS_TIMEOUT=${GF_RENDERER_READINESS_TIMEOUT:-120s}
+      - API_SILENCE_REQUEST_LOG_PATH=/healthz
+    restart: always
+
+  grafana-weekly-recap:
+    image: alpine:3.20
+    container_name: grafana-weekly-recap
+    mem_limit: 128m
+    cpu_quota: 20000
+    cpu_period: 100000
+    depends_on:
+      grafana:
+        condition: service_healthy
+    networks:
+      - backend
+    volumes:
+      - ./../monitoring/grafana/reporting:/scripts:ro
+    environment:
+      - TZ=${RECAP_TZ:-UTC}
+      - GF_URL=http://grafana:3000
+      - GF_USERNAME=${GF_USERNAME}
+      - GF_PASSWORD=${GF_PASSWORD}
+      - PROM_URL=http://prometheus:9090
+      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+      - DISCORD_WEBHOOK_URL=${DISCORD_MONITORING_WEBHOOK_URL}
+      - RECAP_WEBHOOK_URL=${RECAP_WEBHOOK_URL:-}
+      - RECAP_SCHEDULE=${RECAP_SCHEDULE:-0 9 * * 1}
+      - RECAP_WINDOW_DAYS=${RECAP_WINDOW_DAYS:-7}
+      - RECAP_RENDER_TZ=${RECAP_RENDER_TZ:-UTC}
+      - RECAP_THEME=${RECAP_THEME:-dark}
+      - RECAP_IMAGE_SCALE=${RECAP_IMAGE_SCALE:-2}
+      - RECAP_RENDER_TIMEOUT=${RECAP_RENDER_TIMEOUT:-180}
+      - RECAP_USERNAME=${RECAP_USERNAME:-gge-tracker}
+      - RECAP_EMBED_COLOR=${RECAP_EMBED_COLOR:-3447003}
+      - RECAP_CF_ZONE=${RECAP_CF_ZONE:-}
+      - RECAP_RUN_ON_START=${RECAP_RUN_ON_START:-0}
+    entrypoint: ["sh", "/scripts/entrypoint.sh"]
+    restart: always
+
+  grafana-provisioner:
+    image: alpine:3.20
+    container_name: grafana-provisioner
+    depends_on:
+      grafana:
+        condition: service_healthy
+    networks:
+      - backend
+    volumes:
+      - ./../monitoring/grafana/provisioning/scripts:/scripts:ro
+    environment:
+      - GF_URL=http://grafana:3000
+      - GF_USERNAME=${GF_USERNAME}
+      - GF_PASSWORD=${GF_PASSWORD}
+      - GF_ADMIN_VIEWER_USER=${GF_ADMIN_VIEWER_USER}
+      - GF_ADMIN_VIEWER_PASSWORD=${GF_ADMIN_VIEWER_PASSWORD}
+      - GF_ADMIN_VIEWER_EMAIL=${GF_ADMIN_VIEWER_EMAIL:-}
+      - GF_MOD_VIEWER_USER=${GF_MOD_VIEWER_USER}
+      - GF_MOD_VIEWER_PASSWORD=${GF_MOD_VIEWER_PASSWORD}
+      - GF_MOD_VIEWER_EMAIL=${GF_MOD_VIEWER_EMAIL:-}
+    entrypoint: ["sh", "-c", "apk add --no-cache curl jq >/dev/null && sh /scripts/provision-users.sh"]
     restart: "no"
 
   tempo:
@@ -277,6 +403,48 @@ services:
     container_name: node-exporter
     networks:
       - backend
+    restart: always
+
+  cloudflare-exporter:
+    image: ghcr.io/lablabs/cloudflare_exporter@sha256:6bf84a81725c6d75b14fb584135ccfe5f8aff89d23c36b04511d22b1c6cc10cb
+    mem_limit: 128m
+    cpu_quota: 10000
+    cpu_period: 100000
+    container_name: cloudflare-exporter
+    networks:
+      - backend
+    environment:
+      - CF_API_TOKEN=${CF_API_TOKEN}
+      - CF_ZONES=${CF_ZONE_ID}
+      - FREE_TIER=true
+      - LISTEN=:8080
+      - SCRAPE_DELAY=${CF_SCRAPE_DELAY:-300}
+      - LOG_LEVEL=${CF_LOG_LEVEL:-error}
+    restart: always
+
+  cloudflare-zone-exporter:
+    image: python:3.13-alpine
+    mem_limit: 128m
+    cpu_quota: 10000
+    cpu_period: 100000
+    container_name: cloudflare-zone-exporter
+    command: ["python", "-u", "/app/exporter.py"]
+    volumes:
+      - ./../monitoring/cloudflare-zone-exporter:/app:ro
+    networks:
+      - backend
+    environment:
+      - CF_API_TOKEN=${CF_API_TOKEN}
+      - CF_ZONES=${CF_ZONE_ID}
+      - CF_ACCOUNTS=${CF_ACCOUNT_ID}
+      - LISTEN_PORT=8081
+      - SCRAPE_INTERVAL=${CF_SCRAPE_INTERVAL:-300}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8081/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     restart: always
 
   promtail:
@@ -345,8 +513,8 @@ services:
 
   loki:
     image: grafana/loki:2.9.2
-    mem_limit: 250m
-    cpu_quota: 30000
+    mem_limit: 1g
+    cpu_quota: 200000
     cpu_period: 100000
     container_name: loki
     volumes:

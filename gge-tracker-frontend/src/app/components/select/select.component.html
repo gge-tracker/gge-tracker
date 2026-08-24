@@ -1,6 +1,10 @@
 <div class="modern-select-wrapper">
   <select class="modern-select" [(ngModel)]="currentItem" [attr.name]="name()" (ngModelChange)="onSelectChange()">
-    @for (item of listItems; track item) {
+    <button>
+      <selectedcontent></selectedcontent>
+      <i class="fa-solid fa-chevron-down select-icon"></i>
+    </button>
+    @for (item of listItems; track item.label) {
       <option [value]="item.value">
         {{ item.label }}
       </option>

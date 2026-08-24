@@ -84,10 +84,6 @@ services:
       - ./gge-tracker-backend-api:/app
       - /app/node_modules
     depends_on:
-      mariadb:
-        condition: service_healthy
-      redis-server:
-        condition: service_healthy
       postgres:
         condition: service_healthy
       # database-migrate:
@@ -117,6 +113,20 @@ services:
     ports:
       - "8080:8080"
 
+  cloudflare-exporter:
+    extends:
+      service: cloudflare-exporter
+      file: docker/docker-compose.common.yml
+    ports:
+      - "8082:8080"
+
+  cloudflare-zone-exporter:
+    extends:
+      service: cloudflare-zone-exporter
+      file: docker/docker-compose.common.yml
+    ports:
+      - "8081:8081"
+
   # Grafana for data visualization and dashboarding
   grafana:
     extends:
@@ -124,6 +134,27 @@ services:
       file: docker/docker-compose.common.yml
     ports:
       - "3001:3000"
+
+  grafana-image-renderer:
+    extends:
+      service: grafana-image-renderer
+      file: docker/docker-compose.common.yml
+
+  grafana-weekly-recap:
+    extends:
+      service: grafana-weekly-recap
+      file: docker/docker-compose.common.yml
+    depends_on:
+      grafana:
+        condition: service_healthy
+
+  grafana-provisioner:
+    extends:
+      service: grafana-provisioner
+      file: docker/docker-compose.common.yml
+    depends_on:
+      grafana:
+        condition: service_healthy
 
   # database-migrate:
   #   extends:

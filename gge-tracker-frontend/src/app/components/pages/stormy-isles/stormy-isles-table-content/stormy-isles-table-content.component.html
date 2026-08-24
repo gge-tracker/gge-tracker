@@ -50,6 +50,16 @@
           (click)="clickOnAlliance.emit(player.alliance_name)" (keydown.enter)="clickOnAlliance.emit(player.alliance_name)">
           {{ player.alliance_name }}
         </a>
+        <div class="alliance-stats">
+          <span [title]="'Puissance de l\'alliance' | translate">
+            <img src="/assets/pp1.png" [alt]="'Puissance de l\'alliance' | translate">
+            {{ player.alliance_might | formatNumber }}
+          </span>
+          <span [title]="'Nombre de joueurs' | translate">
+            <img src="/assets/players.png" [alt]="'Nombre de joueurs' | translate">
+            {{ player.alliance_player_count }}
+          </span>
+        </div>
       } @else {
         -
       }

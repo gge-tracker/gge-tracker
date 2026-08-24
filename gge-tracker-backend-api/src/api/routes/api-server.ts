@@ -219,14 +219,16 @@ export abstract class ApiServer implements ApiHelper {
         query += ` ${where}`;
       }
       let parameterIndex = qb.getLastParameterIndex();
-      query += ` ORDER BY M.created_at DESC LIMIT $${parameterIndex++} OFFSET $${parameterIndex++};`;
+      query += ` ORDER BY M.created_at DESC, M.id LIMIT $${parameterIndex++} OFFSET $${parameterIndex++};`;
 
       /* ---------------------------------
        * Execute main query
        * --------------------------------- */
       (request['pg_pool'] as pg.Pool).query(query, values, (error, results) => {
         if (error) {
-          response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+          response
+            .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
         } else {
           /* ---------------------------------
            * Process results
@@ -456,14 +458,16 @@ export abstract class ApiServer implements ApiHelper {
       if (conditions.length > 0) {
         query += ` WHERE ` + conditions.join(' AND ');
       }
-      query += ` ORDER BY R.created_at DESC LIMIT $${parameterIndex++} OFFSET $${parameterIndex++};`;
+      query += ` ORDER BY R.created_at DESC, R.id LIMIT $${parameterIndex++} OFFSET $${parameterIndex++};`;
 
       /* ---------------------------------
        * Execute query
        * --------------------------------- */
       (request['pg_pool'] as pg.Pool).query(query, values, (error, results) => {
         if (error) {
-          response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+          response
+            .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
         } else {
           /* ---------------------------------
            * Process results
@@ -546,7 +550,9 @@ export abstract class ApiServer implements ApiHelper {
         `;
       (request['pg_pool'] as pg.Pool).query(query, async (error, results) => {
         if (error) {
-          response.status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR).send({ error: error.message });
+          response
+            .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
           return;
         } else {
           /* ---------------------------------

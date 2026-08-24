@@ -23,9 +23,6 @@ COPY tsconfig.json ./
 
 RUN npx tsc
 
-COPY src/config ./dist/config
-COPY src/data ./dist/data
-
 FROM node:24-slim
 
 WORKDIR /app
@@ -35,12 +32,6 @@ COPY --from=builder /app/dist ./dist
 COPY package*.json ./
 
 RUN npm ci --omit=dev
-
-ARG API_TYPE
-RUN if [ "$API_TYPE" = "realtime" ]; then \
-    cp dist/config/credentials_gbl.json dist/config/credentials.json && \
-    cp dist/config/instances_gbl.json dist/config/instances.json; \
-fi
 
 RUN mv dist/* . && rm -rf dist
 

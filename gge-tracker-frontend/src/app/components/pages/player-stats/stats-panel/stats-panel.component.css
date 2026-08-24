@@ -1,0 +1,20 @@
+.stats-panel {
+  min-height: 40vh;
+}
+.stats-panel-head {
+  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.8)),
+    var(--ps-head-layer, #495057);
+  background-position-y: center !important;
+  border: 1px white solid;
+  color: white;
+}
+@supports (color: color-mix(in srgb, red 50%, white)) {
+  .stats-panel-head--tinted {
+    background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.8)),
+      linear-gradient(
+        color-mix(in srgb, var(--ps-accent) 70%, transparent),
+        color-mix(in srgb, var(--ps-accent) 70%, transparent)
+      ),
+      var(--ps-head-layer, #495057);
+  }
+}

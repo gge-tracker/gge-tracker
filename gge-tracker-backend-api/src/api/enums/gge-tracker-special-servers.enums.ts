@@ -14,6 +14,8 @@ export enum AuthorizedSpecialServersEnum {
   GR1 = 'GR1',
   ES1 = 'ES1',
   HU1 = 'HU1',
+  SKN1 = 'SKN1',
+  SK1 = 'SK1',
   INT3 = 'INT3',
   PARTNER_SP3 = 'PARTNER_SP3',
   BG1 = 'BG1',
@@ -26,6 +28,7 @@ export enum AuthorizedSpecialServersEnum {
   ASIA = 'ASIA',
   E4K_INT2 = 'E4K_INT2',
   E4K_FR1 = 'E4K_FR1',
+  E4K_GB1 = 'E4K_GB1',
   E4K_DE1 = 'E4K_DE1',
   E4K_DE2 = 'E4K_DE2',
 }
