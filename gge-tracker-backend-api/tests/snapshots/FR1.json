@@ -1,7 +1,7 @@
 {
   "fixture": "80bf5e064c8b1db8",
   "server": "FR1",
-  "recordedAt": "2026-08-23T12:27:13.378Z",
+  "recordedAt": "2026-08-24T19:25:11.954Z",
   "entries": {
     "GET alliance-by-id": {
       "status": 200,
@@ -461,7 +461,7 @@
     "GET dungeons-meta": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 21,
+      "bytes": 43,
       "kind": "object",
       "keys": [
         "last_scan_at"
@@ -31060,7 +31060,7 @@
     "GET stats-player": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 39177,
+      "bytes": 39178,
       "kind": "object",
       "count": 4,
       "keys": [
@@ -31081,7 +31081,7 @@
     "GET stats-player-event-duration": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 3606,
+      "bytes": 0,
       "kind": "object",
       "keys": [
         "alliance_id",
@@ -31089,8 +31089,7 @@
         "diffs",
         "player_name",
         "points"
-      ],
-      "hash": "4474518cf854d047"
+      ]
     },
     "GET stats-player-event-occurrences": {
       "status": 200,

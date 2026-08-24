@@ -59,6 +59,11 @@ interface WoaTrackingCoverage {
   tracked_events_since_player: number;
 }
 
+const EVENT_TABLE_PREFIXES: Record<string, string> = {
+  [EventTypes.OUTER_REALMS]: 'outer_realms',
+  [EventTypes.BEYOND_THE_HORIZON]: 'beyond_the_horizon',
+};
+
 /**
  * Abstract class providing API endpoints for event-related data (BTH, OR, GT, ...)
  *
@@ -767,10 +772,11 @@ export abstract class ApiEvents implements ApiHelper {
           ORDER BY collect_date DESC
         `;
       } else {
+        const tablePrefix = EVENT_TABLE_PREFIXES[eventType];
         query = `
           SELECT O.event_num, O.collect_date, R.rank, R.point, R.server
-          FROM ${eventType.trim().replaceAll('-', '_')}_event O
-          INNER JOIN ${eventType.trim().replaceAll('-', '_')}_ranking R
+          FROM ${tablePrefix}_event O
+          INNER JOIN ${tablePrefix}_ranking R
             ON O.event_num = R.event_num
           WHERE R.player_id = $1
           ORDER BY O.collect_date DESC
@@ -838,9 +844,7 @@ export abstract class ApiEvents implements ApiHelper {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventType });
         return;
       }
-      // Trick: we convert event type to match table name, e.g. "outer-realms" -> "outer_realms_ranking"
-      // This needs to be upgraded if we add more event types in the future
-      const sqlTable = eventType.trim().replaceAll('-', '_') + '_ranking';
+      const sqlTable = EVENT_TABLE_PREFIXES[eventType] + '_ranking';
       if (!id) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventId });
         return;
@@ -1008,9 +1012,7 @@ export abstract class ApiEvents implements ApiHelper {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventType });
         return;
       }
-      // Trick: we convert event type to match table name, e.g. "outer-realms" -> "outer_realms_ranking"
-      // This needs to be upgraded if we add more event types in the future
-      const sqlTable = eventType.trim().replaceAll('-', '_') + '_ranking';
+      const sqlTable = EVENT_TABLE_PREFIXES[eventType] + '_ranking';
       const id = request.params.id;
       if (!/^\d+$/.test(id) || Number(id) <= 0 || Number(id) > 2_147_483_647) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventId });
@@ -1020,7 +1022,7 @@ export abstract class ApiEvents implements ApiHelper {
       /* ---------------------------------
        * Cache check
        * --------------------------------- */
-      const cachedKey = `events:outer-realms:${id}:data`;
+      const cachedKey = `events:${eventType}:${id}:data`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));

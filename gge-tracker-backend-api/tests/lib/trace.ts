@@ -212,7 +212,8 @@ function renderMarkdown(report: Report, context: RunContext, results: CheckResul
     out.push('| # | Suite | Check | Expected | Actual |');
     out.push('|---|---|---|---|---|');
     for (const f of failures) {
-      const cell = (text: string): string => text.replace(/\|/g, '\\|').replace(/\n/g, ' ').slice(0, 200);
+      const cell = (text: string): string =>
+        text.replace(/\n/g, ' ').slice(0, 200).replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
       out.push(
         `| ${results.indexOf(f) + 1} | ${f.suite} | ${cell(f.name)} | ${cell(f.expected ?? '-')} | ${cell(f.actual ?? f.detail ?? '-')} |`,
       );
