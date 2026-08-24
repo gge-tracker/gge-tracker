@@ -74,8 +74,8 @@ const EVENT_TABLE_PREFIXES: Record<string, string> = {
  * @implements {ApiHelper}
  */
 export abstract class ApiEvents implements ApiHelper {
-  public static CLICKHOUSE_WOA_TABLE_NAME = 'wheel_unimaginable_affluence';
-  public static CLICKHOUSE_PLAYER_METRICS_TABLE_NAME = 'player_metrics';
+  public static readonly CLICKHOUSE_WOA_TABLE_NAME = 'wheel_unimaginable_affluence';
+  public static readonly CLICKHOUSE_PLAYER_METRICS_TABLE_NAME = 'player_metrics';
 
   private static readonly AQUAMARINE_ITEMS_PER_PAGE = 15;
   private static readonly AQUAMARINE_CACHE_TTL_LEADERBOARD = 60 * 60;

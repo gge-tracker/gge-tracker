@@ -7,7 +7,7 @@
 //
 //  Copyrights (c) 2026 - gge-tracker.com & gge-tracker contributors
 //
-import * as path from 'path';
+import * as path from 'node:path';
 import { pino, destination, stdTimeFunctions, Logger } from 'pino';
 
 const isDevelopment: boolean = process.env.ENVIRONMENT === 'development';

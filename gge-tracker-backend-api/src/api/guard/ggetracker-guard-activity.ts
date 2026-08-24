@@ -41,8 +41,8 @@ interface LogEntryRow {
  *
  */
 export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaultParameters {
-  public static gzip = promisify(zlib.gzip);
-  public static NODE_ENV = process.env.NODE_ENV || 'development';
+  public static readonly gzip = promisify(zlib.gzip);
+  public static readonly NODE_ENV = process.env.NODE_ENV || 'development';
 
   private static instance: GgeTrackerApiGuardActivity;
   private logBuffer: LogEntry[] = [];

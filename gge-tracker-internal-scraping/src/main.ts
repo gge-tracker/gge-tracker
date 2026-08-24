@@ -12,7 +12,7 @@ import { format } from 'date-fns';
 import * as mysql from 'mysql2/promise';
 import pLimit from 'p-limit';
 import * as pg from 'pg';
-import * as readline from 'readline';
+import * as readline from 'node:readline';
 import { createClient } from 'redis';
 import { HIGHSCORES_CONFIG } from './definitions/highest_scores.config';
 import { SWAP_RANK_POINTS_TABLE } from './definitions/swap-rank-points.config';

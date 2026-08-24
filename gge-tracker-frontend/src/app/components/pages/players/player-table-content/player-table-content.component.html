@@ -130,12 +130,13 @@
       <td class="col-actions">
         <div class="action-buttons">
           <a [routerLink]="['/', 'player', player.playerId]">
-            <img src="/assets/icon_analyze.png" class="btn-icon">
+            <img src="/assets/icon_analyze.png" class="btn-icon" alt="">
           </a>
           <a [routerLink]="['/', 'castles']" [queryParams]="{ search: player.playerName }">
-            <img src="/assets/icon_castles.png" class="btn-icon">
+            <img src="/assets/icon_castles.png" class="btn-icon" alt="">
           </a>
           <img [src]="'/assets/icon_friends' + (player.isFavorite ? '2' : '') + '.png'" (click)="toggleFavorite.emit(player)"
+            (keydown.enter)="toggleFavorite.emit(player)" tabindex="0" [alt]="'Favori' | translate"
             class="btn-icon btn-favorite" [ngClass]="player.isFavorite ? 'is-favorite' : ''">
         </div>
       </td>

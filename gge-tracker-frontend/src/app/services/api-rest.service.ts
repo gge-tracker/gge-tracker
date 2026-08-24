@@ -69,7 +69,7 @@ import {
  *
  */
 export class ApiRestService {
-  public static apiUrl = environment.apiUrl;
+  public static readonly apiUrl = environment.apiUrl;
   public responseMs = 0;
   public serverService = inject(ServerService);
   public toastService = inject(ToastService);

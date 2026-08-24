@@ -7,7 +7,7 @@
           <nav class="storm-segmented w-100" role="tablist">
             <button class="storm-segment" role="tab" [attr.aria-selected]="activeTab === 'forts'"
               [class.storm-segment--on]="activeTab === 'forts'" (click)="switchTab('forts')">
-              <img src="/assets/storm-tracker/fort.png" class="storm-menu-icon">
+              <img src="/assets/storm-tracker/fort.png" class="storm-menu-icon" alt="">
               <span class="storm-segment__label">{{ 'Forteresses des tempêtes' | translate }}</span>
               @if (stormMeta) {
               <span class="storm-count">{{ stormMeta.forts_count }}</span>
@@ -15,7 +15,7 @@
             </button>
             <button class="storm-segment" role="tab" [attr.aria-selected]="activeTab === 'isles'"
               [class.storm-segment--on]="activeTab === 'isles'" (click)="switchTab('isles')">
-              <img src="/assets/storm-tracker/village/6.png" class="storm-menu-icon">
+              <img src="/assets/storm-tracker/village/6.png" class="storm-menu-icon" alt="">
               <span class="storm-segment__label">{{ 'Îles de ressources' | translate }}</span>
               @if (stormMeta) {
               <span class="storm-count">{{ stormMeta.isles_count }}</span>
@@ -253,12 +253,12 @@
                   @if (isle.definition) {
                   <span class="storm-loot storm-resource-{{ isle.definition.resource }} storm-id-{{ isle.isleId }}">
                     {{ isle.definition.fixedLoot | number }}
-                    <img src="/assets/storm-tracker/aquamarine.webp" style="width: 20px">
+                    <img src="/assets/storm-tracker/aquamarine.webp" style="width: 20px" alt="">
                   </span>
                   @if (isle.definition.cargoPoints) {
                   <div class="storm-sub">
                     {{ isle.definition.cargoPoints | number }}
-                    <img src="/assets/aquamarine_100.webp"  style="width: 15px">
+                    <img src="/assets/aquamarine_100.webp"  style="width: 15px" alt="">
                   </div>
                   }
                   } @else {
