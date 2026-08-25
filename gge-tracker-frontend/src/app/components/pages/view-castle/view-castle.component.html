@@ -45,7 +45,7 @@
                 <div class="data-item">
                   @if (castle.wallLevel && castle.wallLevel > 0) {
                     <img
-                      [src]="'/assets/object/wall_level_' + castle.wallLevel + '.png'" alt="Wall image">
+                      [src]="'/assets/object/wall_level_' + castle.wallLevel + '.png'" alt="Wall">
                     } @else {
                       <div class="level-tag-0 wall"></div>
                     }
@@ -54,7 +54,7 @@
                   <div class="data-item">
                     @if (castle.gateLevel && castle.gateLevel > 0) {
                       <img
-                        [src]="'/assets/object/gate_level_' + castle.gateLevel + '.png'" alt="Gate image">
+                        [src]="'/assets/object/gate_level_' + castle.gateLevel + '.png'" alt="Gate">
                       } @else {
                         <div class="level-tag-0 gate"></div>
                       }
@@ -63,7 +63,7 @@
                     <div class="data-item">
                       @if (castle.towerLevel && castle.towerLevel > 0) {
                         <img
-                          [src]="'/assets/object/tower_level_' + castle.towerLevel + '.png'" alt="Tower image">
+                          [src]="'/assets/object/tower_level_' + castle.towerLevel + '.png'" alt="Tower">
                         } @else {
                           <div class="level-tag-0 tower"></div>
                         }
@@ -72,7 +72,7 @@
                       <div class="data-item">
                         @if (castle.moatLevel && castle.moatLevel > 0) {
                           <img
-                            [src]="'/assets/object/moat_classic_level_' + (castle.moatLevel > 4 ? castle.moatLevel - 4 : castle.moatLevel) + '.png'" alt="Moat image">
+                            [src]="'/assets/object/moat_classic_level_' + (castle.moatLevel > 4 ? castle.moatLevel - 4 : castle.moatLevel) + '.png'" alt="Moat">
                           } @else {
                             <div class="level-tag-0 moat"></div>
                           }

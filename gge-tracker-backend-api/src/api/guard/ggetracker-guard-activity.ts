@@ -125,8 +125,14 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
     bypassRules: RoutesManager[],
   ): Promise<void> {
     const xff = request.headers['x-forwarded-for'];
-    const ip =
-      typeof xff === 'string' ? xff.split(',')[0].trim() : Array.isArray(xff) ? xff[0] : request.ip || 'unknown';
+    let ip: string;
+    if (typeof xff === 'string') {
+      ip = xff.split(',')[0].trim();
+    } else if (Array.isArray(xff)) {
+      ip = xff[0];
+    } else {
+      ip = request.ip || 'unknown';
+    }
     const normalizedIp = ip.replace(/^::ffff:/, '');
 
     try {
@@ -314,7 +320,7 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
    * @param batchIndex - The index of the current batch (used for logging purposes).
    * @returns A promise that resolves to null on success or an error object if all retry attempts fail.
    */
-  private async sendWithRetry(payload: string, baseUrl: string, batchIndex: number): Promise<any | null> {
+  private async sendWithRetry(payload: string, baseUrl: string, batchIndex: number): Promise<any> {
     const maxRetries = 3;
     const baseDelayMs = 200;
     let lastError: any = null;

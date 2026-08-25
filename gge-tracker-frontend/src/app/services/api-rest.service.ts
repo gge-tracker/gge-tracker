@@ -635,8 +635,11 @@ export class ApiRestService {
     playerNameForDistance: string,
     kingdomId: number = 0,
   ): Promise<ApiResponse<ApiAlliancePlayersSearchResponse>> {
+    const distanceQuery = playerNameForDistance
+      ? `?playerNameForDistance=${playerNameForDistance}&kingdomId=${kingdomId}`
+      : '';
     const response = await this.apiFetch<ApiAlliancePlayersSearchResponse>(
-      `${ApiRestService.apiUrl}alliances/id/${allianceId}${playerNameForDistance ? `?playerNameForDistance=${playerNameForDistance}&kingdomId=${kingdomId}` : ''}`,
+      `${ApiRestService.apiUrl}alliances/id/${allianceId}${distanceQuery}`,
     );
     if (!response.success) return response;
     return { success: true, data: response.data };
@@ -673,9 +676,8 @@ export class ApiRestService {
    * @returns A promise that resolves to the outer realms list data
    */
   public async getEventList(page: number, filterByEventType?: string): Promise<ApiResponse<ApiEventlist>> {
-    const response = await this.apiFetch<ApiEventlist>(
-      `${ApiRestService.apiUrl}events/list?page=${page}${filterByEventType ? `&type=${filterByEventType}` : ''}`,
-    );
+    const typeQuery = filterByEventType ? `&type=${filterByEventType}` : '';
+    const response = await this.apiFetch<ApiEventlist>(`${ApiRestService.apiUrl}events/list?page=${page}${typeQuery}`);
     if (!response.success) return response;
     return { success: true, data: response.data };
   }

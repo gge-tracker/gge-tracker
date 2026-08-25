@@ -365,7 +365,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       const suffix = castle.type === CastleType.OUTPOST && cleanName === 'sand' ? 'sand802icon' : cleanName;
       return `${basePath}${eqName ?? path}special${suffix}.png`;
     }
-    return `${basePath}${path}${level ? `level${level}.png` : 'basic.png'}`;
+    const leaf = level ? `level${level}.png` : 'basic.png';
+    return `${basePath}${path}${leaf}`;
   }
 
   public async updateFilters(): Promise<void> {
@@ -1540,15 +1541,16 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
                 ] as string;
               } else if (name.includes('{0}')) {
                 currentName = String(name).replace('{0}', value);
+              } else if (
+                String(findEffect['name']).includes('Unboosted') ||
+                String(findEffect['name']).includes('Amount')
+              ) {
+                const isPositive = Number(value) > 0;
+                const sign = isPositive ? '+' : '-';
+                currentName = String(name) + ' : ' + sign + value;
               } else {
-                if (String(findEffect['name']).includes('Unboosted') || String(findEffect['name']).includes('Amount')) {
-                  const isPositive = Number(value) > 0;
-                  const sign = isPositive ? '+' : '-';
-                  currentName = String(name) + ' : ' + sign + value;
-                } else {
-                  const isPositive = Number(value) > 0;
-                  currentName = String(name) + ' : ' + (isPositive ? '+' : '-') + value + '%';
-                }
+                const isPositive = Number(value) > 0;
+                currentName = String(name) + ' : ' + (isPositive ? '+' : '-') + value + '%';
               }
             }
           }

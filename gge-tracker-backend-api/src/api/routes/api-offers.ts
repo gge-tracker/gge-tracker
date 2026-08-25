@@ -147,7 +147,7 @@ export abstract class ApiOffers implements ApiHelper {
     region: string,
     level: number,
     legendaryLevel: number,
-  ): Promise<unknown | null> {
+  ): Promise<unknown> {
     const expected = region.toUpperCase();
     if (!this.getEgressRoute(region)) return null;
     for (const serverName of this.CATALOG_SERVERS) {

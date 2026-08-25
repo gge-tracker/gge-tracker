@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, input, OnInit, output } from '@angular/core';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
-import { ChartAdvancedOptions } from '@ggetracker-interfaces/empire-ranking';
 import { ChartsWrapperComponent } from '@ggetracker-modules/charts-client/charts-wrapper.component';
 import { LanguageService } from '@ggetracker-services/language.service';
 import { TranslateModule } from '@ngx-translate/core';
@@ -33,7 +32,7 @@ export class GrandTournamentAnalyzeComponent extends GenericComponent implements
   public tournamentAllianceData = input.required<{ alliance_id: number; alliance_name: string; server: string }>();
   public exitEmitter = output<void>();
   public readonly XCircle = XCircle;
-  public charts: Record<string, ChartAdvancedOptions | any> = {};
+  public charts: Record<string, any> = {};
   public languageService = inject(LanguageService);
 
   public get entriesWithDifference(): any[] {

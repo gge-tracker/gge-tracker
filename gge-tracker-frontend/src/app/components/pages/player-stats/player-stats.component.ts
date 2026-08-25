@@ -2045,10 +2045,8 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
         eventDataSegmentsReference = [];
       }
       eventDataSegmentsReference.push(currentEvent);
-    } else {
-      if (!eventDataSegmentsReference) {
-        eventDataSegmentsReference = [];
-      }
+    } else if (!eventDataSegmentsReference) {
+      eventDataSegmentsReference = [];
     }
     return eventDataSegmentsReference.map((event) => {
       return event.map((event) => {

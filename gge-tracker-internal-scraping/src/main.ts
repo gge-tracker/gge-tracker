@@ -1026,7 +1026,7 @@ export class GenericFetchAndSaveBackend {
               process.stdout.cursorTo(0);
               process.stdout.write(bar);
             }
-          } catch (err: AxiosError | any) {
+          } catch (err: any) {
             if (err instanceof AxiosError) {
               console.error('Axios error on URL:', url, err.message);
               throw new Error(`Fetch error: ${err.message}`);
@@ -1819,7 +1819,7 @@ export class GenericFetchAndSaveBackend {
       console.error('Storm retry failed for URL:', url, retryResponse.data);
       this.DB_UPDATES.criticalErrors++;
       return [];
-    } catch (error: AxiosError | any) {
+    } catch (error: any) {
       console.error('Error on storm URL:', url, error instanceof AxiosError ? error.message : error);
       this.DB_UPDATES.criticalErrors++;
       if (this.DB_UPDATES.criticalErrors >= 10) {
@@ -2059,7 +2059,8 @@ export class GenericFetchAndSaveBackend {
     if (parameters) {
       const paramEntries = Object.entries(parameters);
       paramEntries.forEach(([key, value], index) => {
-        paramString += `"${key}":${typeof value === 'string' ? `"${value}"` : value}`;
+        const serialized = typeof value === 'string' ? `"${value}"` : value;
+        paramString += `"${key}":${serialized}`;
         if (index < paramEntries.length - 1) {
           paramString += ',';
         }

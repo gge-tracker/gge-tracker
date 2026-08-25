@@ -7,7 +7,6 @@ import { LeafletLayerGroup, LeafletMap } from '@ggetracker-interfaces/leaflet-ty
   standalone: true,
   imports: [],
   templateUrl: './map.component.html',
-  styleUrl: './map.component.css',
 })
 export class MapComponent {
   public map = input.required<LeafletMap>();

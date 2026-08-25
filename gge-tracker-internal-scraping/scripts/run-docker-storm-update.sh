@@ -21,6 +21,7 @@ get_conf_value() {
         /^\[/ {in_section=0}
         in_section && $1 == key {gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2; exit}
     ' "$CONF_FILE"
+    return
 }
 
 ID_SERVER=$(get_conf_value "$SERVER" "zone")

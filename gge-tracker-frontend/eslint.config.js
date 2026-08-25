@@ -5,8 +5,8 @@ import prettierPlugin from "eslint-plugin-prettier";
 import eslintPluginUnicorn from "eslint-plugin-unicorn";
 import angularTemplateParser from "@angular-eslint/template-parser";
 import tsParser from "@typescript-eslint/parser";
-import { fileURLToPath } from "url";
-import path from "path";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

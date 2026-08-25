@@ -38,11 +38,10 @@ export class Log {
     const typeColor = this.getColorForServerType(this._serverType);
     const headerColor = this.getColorForServerHeader(this._serverHeader);
 
-    const output =
-      `${this.gray(`[${timestamp}]`)} ` +
-      `${this.bold(typeColor(`[${this._serverType}]`))}` +
-      `${this.bold(headerColor(`[${this._serverHeader}]`))} ` +
-      `${message}`;
+    const timeTag = this.gray(`[${timestamp}]`);
+    const typeTag = this.bold(typeColor(`[${this._serverType}]`));
+    const headerTag = this.bold(headerColor(`[${this._serverHeader}]`));
+    const output = `${timeTag} ${typeTag}${headerTag} ${message}`;
 
     console.log(output, ...arguments_);
   }

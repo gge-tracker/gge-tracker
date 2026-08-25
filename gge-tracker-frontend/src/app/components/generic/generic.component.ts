@@ -16,7 +16,6 @@ import { firstValueFrom } from 'rxjs';
   selector: 'app-generic',
   imports: [],
   templateUrl: './generic.component.html',
-  styleUrl: './generic.component.css',
   standalone: true,
 })
 export class GenericComponent {

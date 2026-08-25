@@ -63,7 +63,14 @@ export abstract class ApiDungeons implements ApiHelper {
       if (isSorted === null) return;
 
       const MAX_NUMBER = 4000;
-      const viewPerPage = size === '0' ? MAX_NUMBER : size === null ? 15 : Number.parseInt(size);
+      let viewPerPage: number;
+      if (size === '0') {
+        viewPerPage = MAX_NUMBER;
+      } else if (size === null) {
+        viewPerPage = 15;
+      } else {
+        viewPerPage = Number.parseInt(size);
+      }
 
       /* ---------------------------------
        * Resolve filterByPlayerName to a

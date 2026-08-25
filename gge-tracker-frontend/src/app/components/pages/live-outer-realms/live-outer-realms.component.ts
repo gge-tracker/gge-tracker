@@ -4,12 +4,7 @@ import { RouterModule } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
-import {
-  ApiLiveRanking,
-  ChartAdvancedOptions,
-  IOuterRealmEvent,
-  PlayerLiveRankingExtended,
-} from '@ggetracker-interfaces/empire-ranking';
+import { ApiLiveRanking, IOuterRealmEvent, PlayerLiveRankingExtended } from '@ggetracker-interfaces/empire-ranking';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { ServerService } from '@ggetracker-services/server.service';
 import { TranslateModule } from '@ngx-translate/core';
@@ -46,7 +41,7 @@ interface GenericChartConfig {
 export class LiveOuterRealmsComponent extends GenericComponent {
   public players: ApiLiveRanking[] = [];
   public eventNotActive = false;
-  public charts: Record<string, ChartAdvancedOptions | any> = {};
+  public charts: Record<string, any> = {};
   public currentEvent: IOuterRealmEvent | null = null;
   public player: PlayerLiveRankingExtended | null = null;
   public isDataLoading = false;

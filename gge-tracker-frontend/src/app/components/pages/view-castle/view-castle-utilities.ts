@@ -171,7 +171,8 @@ export class ViewCastleUtilities {
     context.restore();
   }
 
-  public static edgeKey = (sx: number, sy: number, ex: number, ey: number): string => `${sx},${sy}->${ex},${ey}`;
+  public static readonly edgeKey = (sx: number, sy: number, ex: number, ey: number): string =>
+    `${sx},${sy}->${ex},${ey}`;
 
   public static getItemColor(name: string): [string, string] {
     if (name === 'Castle') {
@@ -222,7 +223,7 @@ export class ViewCastleUtilities {
     if (m) return [Number(m[1]), Number(m[2]), Number(m[3])];
     return [128, 128, 128];
   }
-  public static rgbString = (r: number, g: number, b: number): string => `rgb(${r},${g},${b})`;
+  public static readonly rgbString = (r: number, g: number, b: number): string => `rgb(${r},${g},${b})`;
 
   public static roundedTo2Decimals(value: number): number {
     return Math.round(value * 100) / 100;

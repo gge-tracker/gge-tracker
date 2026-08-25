@@ -34,20 +34,24 @@ function getTimestamp(): string {
   return new Date().toISOString().replace('T', ' ').substring(0, 19);
 }
 
+function timestampTag(): string {
+  return colors.gray(`[${getTimestamp()}]`);
+}
+
 function logInfo(msg: string): void {
-  console.log(`${colors.gray(`[${getTimestamp()}]`)} ${colors.green('[INFO]')} ${msg}`);
+  console.log(`${timestampTag()} ${colors.green('[INFO]')} ${msg}`);
 }
 
 function logWarn(msg: string): void {
-  console.log(`${colors.gray(`[${getTimestamp()}]`)} ${colors.yellow('[WARN]')} ${msg}`);
+  console.log(`${timestampTag()} ${colors.yellow('[WARN]')} ${msg}`);
 }
 
 function logError(msg: string): void {
-  console.log(`${colors.gray(`[${getTimestamp()}]`)} ${colors.red('[ERROR]')} ${msg}`);
+  console.log(`${timestampTag()} ${colors.red('[ERROR]')} ${msg}`);
 }
 
 function logStep(msg: string): void {
-  console.log(`${colors.gray(`[${getTimestamp()}]`)} ${colors.cyan('[STEP]')} ${msg}`);
+  console.log(`${timestampTag()} ${colors.cyan('[STEP]')} ${msg}`);
 }
 
 export function parseServersConf(): ServerConfig[] {

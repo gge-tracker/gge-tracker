@@ -1168,11 +1168,9 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
       let color: string;
       if (one) {
         color = this.getPlayerColor(player.name);
-      } else {
-        if (player.alliance_name !== undefined) {
-          if (!colors[player.alliance_name]) colors[player.alliance_name] = this.getPlayerColor(player.alliance_name);
-          color = colors[player.alliance_name];
-        }
+      } else if (player.alliance_name !== undefined) {
+        if (!colors[player.alliance_name]) colors[player.alliance_name] = this.getPlayerColor(player.alliance_name);
+        color = colors[player.alliance_name];
       }
       const playerLayer = this.L.layerGroup();
       player.castles.forEach((castle: number[]) => {
@@ -1187,16 +1185,14 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
       if (watchModeAlliance === WatchModeStats.SPECIFIC_ALLIANCE) {
         playerLayer.addTo(this.map);
         this.playerLayers[player.name] = playerLayer;
-      } else {
-        if (player.alliance_name) {
-          if (this.playerLayers[player.alliance_name]) {
-            this.playerLayers[player.alliance_name].addLayer(playerLayer);
-          } else {
-            const allianceLayer = this.L.layerGroup();
-            allianceLayer.addLayer(playerLayer);
-            allianceLayer.addTo(this.map);
-            this.playerLayers[player.alliance_name] = allianceLayer;
-          }
+      } else if (player.alliance_name) {
+        if (this.playerLayers[player.alliance_name]) {
+          this.playerLayers[player.alliance_name].addLayer(playerLayer);
+        } else {
+          const allianceLayer = this.L.layerGroup();
+          allianceLayer.addLayer(playerLayer);
+          allianceLayer.addTo(this.map);
+          this.playerLayers[player.alliance_name] = allianceLayer;
         }
       }
     });
