@@ -24,6 +24,8 @@ export abstract class ApiHelper {
   public static readonly API_PUBLIC_TOKEN = 0x5F_37_59_DFn;
   public static readonly PRIME = 11_400_714_819_323_198_485n;
   public static readonly PAGINATION_LIMIT = 15;
+  public static readonly RATE_LIMIT_POINTS = Number(process.env.RATE_LIMIT_POINTS) || 30;
+  public static readonly RATE_LIMIT_DURATION_SECONDS = Number(process.env.RATE_LIMIT_DURATION) || 5;
   public static readonly REDIS_KEY_GGE_VERSION = 'gge_build_version';
   public static readonly MAX_RESULT_PAGE = 999_999_999;
   public static readonly MAX_BIG_VALUE = 999_999_999_999;

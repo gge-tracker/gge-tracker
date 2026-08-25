@@ -1,7 +1,7 @@
 {
   "fixture": "80bf5e064c8b1db8",
   "server": "FR1",
-  "recordedAt": "2026-08-24T19:25:11.954Z",
+  "recordedAt": "2026-08-25T19:33:12.693Z",
   "entries": {
     "GET alliance-by-id": {
       "status": 200,
@@ -370,7 +370,7 @@
     "GET docs": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 255193,
+      "bytes": 266300,
       "kind": "object",
       "count": 1,
       "keys": [
@@ -385,7 +385,7 @@
         "description",
         "url"
       ],
-      "hash": "5932a3c613d9ebde"
+      "hash": "e1ee15ad3bb15e28"
     },
     "GET dungeons": {
       "status": 200,
@@ -31020,7 +31020,7 @@
     "GET stats-alliance": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 620,
+      "bytes": 616,
       "kind": "object",
       "keys": [
         "diffs",
@@ -31060,7 +31060,7 @@
     "GET stats-player": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 39178,
+      "bytes": 39177,
       "kind": "object",
       "count": 4,
       "keys": [
@@ -31179,19 +31179,28 @@
     "GET status-root": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 602,
+      "bytes": 0,
       "kind": "object",
       "keys": [
         "api_url",
+        "data",
+        "dataset",
         "discord_member_count",
         "discord_url",
+        "documentation_url",
+        "generated_at",
         "last_update",
+        "platform",
+        "polling",
+        "rate_limit",
         "release_version",
         "server",
         "server_code",
         "update_in_progress",
         "version",
-        "website_url"
+        "website_url",
+        "weekly_loot_reset",
+        "zone"
       ]
     },
     "GET storms-forts": {

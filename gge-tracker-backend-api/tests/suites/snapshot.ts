@@ -82,13 +82,26 @@ export async function runSnapshot(report: Report, seeds: Seeds): Promise<void> {
   }
 
   if (UPDATE) {
-    const path = saveBaseline({ fixture, server, recordedAt: new Date().toISOString(), entries });
-    console.log(`  recorded ${Object.keys(entries).length} routes to ${path}`);
+    const write = saveBaseline({ fixture, server, recordedAt: new Date().toISOString(), entries });
+    const moved = [
+      write.changed.length ? `${write.changed.length} changed` : undefined,
+      write.added.length ? `${write.added.length} added` : undefined,
+      write.removed.length ? `${write.removed.length} removed` : undefined,
+    ]
+      .filter(Boolean)
+      .join(', ');
+    const summary = write.written
+      ? `${Object.keys(entries).length} routes recorded to ${write.path}${moved ? ` (${moved})` : ''}`
+      : `${Object.keys(entries).length} routes answered exactly as recorded - ${write.path} left untouched`;
+    console.log(`  ${summary}`);
+    if (write.changed.length) console.log(`  changed: ${write.changed.join(', ')}`);
+    if (write.added.length) console.log(`  added:   ${write.added.join(', ')}`);
+    if (write.removed.length) console.log(`  removed: ${write.removed.join(', ')}`);
     section.expect('baseline recorded', {
       ok: true,
-      detail: `${Object.keys(entries).length} routes -> ${path}`,
-      expected: 'a fresh baseline written for review',
-      actual: `${Object.keys(entries).length} routes recorded`,
+      detail: summary,
+      expected: 'a baseline rewritten only where the recorded answer moved',
+      actual: summary,
     });
     return;
   }

@@ -660,13 +660,18 @@ export interface ApiRenames {
 
 export interface ApiLastUpdates {
   api_url: string;
+  documentation_url: string;
   discord_url: string;
   discord_member_count?: number;
   release_version: string;
   website_url: string;
   server: string;
+  server_code: string;
+  zone: string;
+  platform: 'EP' | 'E4K' | 'PARTNER';
   version: string;
-  players: number;
+  generated_at: string;
+  update_in_progress: boolean;
   last_update: {
     berimond_invasion: string;
     berimond_kingdom: string;
@@ -677,6 +682,34 @@ export interface ApiLastUpdates {
     samurai: string;
     war_realms: string;
   };
+  data: {
+    version: number;
+    state: 'idle' | 'updating';
+    age_seconds: number | null;
+    stale: boolean;
+    last_fill_started_at: string | null;
+    last_fill_completed_at: string | null;
+    last_fill_duration_seconds: number | null;
+    fill_interval_seconds: number;
+    next_fill_estimated_at: string | null;
+    next_data_estimated_at: string | null;
+    steps: { name: string; completed_at: string; completed_in_last_fill: boolean }[];
+  };
+  dataset: { players: number | null; alliances: number | null; snapshot_at: string } | null;
+  weekly_loot_reset: {
+    offset_hours: number;
+    last_reset_at: string;
+    next_reset_at: string;
+    seconds_until_next_reset: number;
+  } | null;
+  polling: {
+    recommended_interval_seconds: number;
+    poll_after: string | null;
+    cache_ttl_seconds: number;
+    etag: string;
+    instructions: string;
+  };
+  rate_limit: { requests: number; window_seconds: number; applies_to_this_route: boolean };
 }
 
 export enum ApiPlayerStatsType {

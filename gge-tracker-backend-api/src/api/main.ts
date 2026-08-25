@@ -67,6 +67,7 @@ app.use(
   cors({
     origin: '*',
     methods: ['GET'],
+    exposedHeaders: ['ETag', 'X-Data-Version'],
   }),
 );
 app.use((error: unknown, request: express.Request, response: express.Response, next: express.NextFunction) => {
@@ -86,8 +87,8 @@ app.set('trust proxy', true);
  * ------------------------------------------------ */
 const rateLimiter = new RateLimiterRedis({
   storeClient: redisClient,
-  points: Number(process.env.RATE_LIMIT_POINTS) || 30,
-  duration: Number(process.env.RATE_LIMIT_DURATION) || 5,
+  points: ApiHelper.RATE_LIMIT_POINTS,
+  duration: ApiHelper.RATE_LIMIT_DURATION_SECONDS,
   insuranceLimiter: new RateLimiterRedis({
     storeClient: redisClient,
     points: 100,
@@ -445,15 +446,36 @@ publicRoutes.get('/languages/:lang', routingInstance.getLanguage.bind(routingIns
  * @swagger
  * /:
  *   get:
- *     summary: Get gge-tracker API status and some basic info
- *     description: Returns the current status of the gge-tracker API, including server information, API version, release version, and last update timestamps for various data categories. This endpoint can be used to check if the API is running and to get insights into the freshness of the data being served
+ *     summary: Get the API status, the state of the data collection and how to poll it
+ *     description: |
+ *       Front door of the API. It describes the addressed Goodgame Empire server, the freshness of
+ *       the data being served, and the schedule a client should follow to see new data as soon as it lands
  *     tags:
  *       - Status
  *     parameters:
  *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - name: If-None-Match
+ *         in: header
+ *         required: false
+ *         description: ETag returned by a previous call. A matching value answers 304 with an empty body
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
- *         description: Successful response with server info and updates
+ *         description: Server description, collection state and polling guidance
+ *         headers:
+ *           ETag:
+ *             description: Changes only when a new collection completes
+ *             schema:
+ *               type: string
+ *           Last-Modified:
+ *             description: End of the last completed collection
+ *             schema:
+ *               type: string
+ *           X-Data-Version:
+ *             description: Same counter as `data.version`, readable without parsing the body
+ *             schema:
+ *               type: integer
  *         content:
  *           application/json:
  *             schema:
@@ -461,41 +483,182 @@ publicRoutes.get('/languages/:lang', routingInstance.getLanguage.bind(routingIns
  *               properties:
  *                 server:
  *                   type: string
- *                   description: Server information
+ *                   description: The addressed server, as sent in the gge-server header
+ *                   example: FR1
+ *                 server_code:
+ *                   type: string
+ *                   description: Three-character code prefixing every player and alliance id of this server
+ *                   example: "051"
+ *                 zone:
+ *                   type: string
+ *                   description: The Goodgame Empire zone this server maps to
+ *                   example: EmpireEx_3
+ *                 platform:
+ *                   type: string
+ *                   enum: [EP, E4K, PARTNER]
+ *                   description: Which game this server belongs to - Empire (EP), Empire Four Kingdoms (E4K) or other (PARTNER)
+ *                 website_url:
+ *                   type: string
+ *                 api_url:
+ *                   type: string
+ *                 documentation_url:
+ *                   type: string
+ *                   description: This OpenAPI specification
+ *                 discord_url:
+ *                   type: string
+ *                 discord_member_count:
+ *                   type: integer
  *                 version:
  *                   type: string
  *                   description: API version
  *                   example: "01.02.03-beta"
  *                 release_version:
  *                   type: string
- *                   description: Stable release version of the API
- *                   example: "01.02.00"
+ *                   description: Release date of that version
+ *                 generated_at:
+ *                   type: string
+ *                   format: date-time
+ *                   description: API clock when this body was produced - use it to correct any drift on your side
  *                 update_in_progress:
  *                   type: boolean
- *                   description: Indicates if an update (data collection) is currently in progress
- *                 discord_member_count:
- *                   type: integer
- *                   description: The number of members in the official GGE Tracker Discord server
- *                 discord_url:
- *                   type: string
- *                   description: The URL of the official GGE Tracker Discord server
- *                 website_url:
- *                   type: string
- *                   description: The URL of the official GGE Tracker website
+ *                   description: (legacy) Kept for backwards compatibility, mirrors `data.state`
  *                 last_update:
  *                   type: object
- *                   description: Last update timestamps by category
+ *                   description: Kept for backwards compatibility, same timestamps as `data.steps`
  *                   additionalProperties:
  *                     type: string
- *                   example:
- *                     might: string
- *                     nomad: string
- *                     bloodcrow: string
- *                     berimond_kingdom: string
- *                     samurai: string
- *                     war_realms: string
- *                     loot: string
- *                     berimond_invasion: string
+ *                     format: date-time
+ *                 data:
+ *                   type: object
+ *                   description: State of the hourly collection for this server
+ *                   properties:
+ *                     version:
+ *                       type: integer
+ *                       description: |
+ *                         Incremented once per completed collection. The only field that proves new data
+ *                         is available - compare it with the one you stored, and query the collections you
+ *                         watch only when it has moved
+ *                       example: 48213
+ *                     state:
+ *                       type: string
+ *                       enum: [idle, updating]
+ *                       description: A collection reading `updating` is writing right now, values may still move
+ *                     age_seconds:
+ *                       type: integer
+ *                       nullable: true
+ *                       description: Seconds since the last collection completed
+ *                     stale:
+ *                       type: boolean
+ *                       description: True when more than two collection intervals passed without one completing
+ *                     last_fill_started_at:
+ *                       type: string
+ *                       format: date-time
+ *                       nullable: true
+ *                     last_fill_completed_at:
+ *                       type: string
+ *                       format: date-time
+ *                       nullable: true
+ *                       description: End of the last complete collection - the instant the served data describes
+ *                     last_fill_duration_seconds:
+ *                       type: integer
+ *                       nullable: true
+ *                     fill_interval_seconds:
+ *                       type: integer
+ *                       description: Measured cadence between the last collections, nominally 3600
+ *                     next_fill_estimated_at:
+ *                       type: string
+ *                       format: date-time
+ *                       nullable: true
+ *                       description: Estimate. When the next collection should start
+ *                     next_data_estimated_at:
+ *                       type: string
+ *                       format: date-time
+ *                       nullable: true
+ *                       description: |
+ *                         Estimate, derived from the launch cadence plus the last observed duration. A slow run
+ *                         lands later than this, which is why `data.version` and not this field decides
+ *                     steps:
+ *                       type: array
+ *                       description: The collection pipeline, in the order it runs
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           name:
+ *                             type: string
+ *                             example: might
+ *                           completed_at:
+ *                             type: string
+ *                             format: date-time
+ *                           completed_in_last_fill:
+ *                             type: boolean
+ *                             description: |
+ *                               False while a collection has not reached that step yet, and permanently false
+ *                               for a step that is no longer collected - its `completed_at` then stays far in the past
+ *                 dataset:
+ *                   type: object
+ *                   nullable: true
+ *                   description: Size of what is tracked on this server, as of the last collection
+ *                   properties:
+ *                     players:
+ *                       type: integer
+ *                       nullable: true
+ *                     alliances:
+ *                       type: integer
+ *                       nullable: true
+ *                     snapshot_at:
+ *                       type: string
+ *                       format: date-time
+ *                 weekly_loot_reset:
+ *                   type: object
+ *                   nullable: true
+ *                   description: |
+ *                     When the weekly loot ranking reset on this server
+ *                   properties:
+ *                     offset_hours:
+ *                       type: integer
+ *                     last_reset_at:
+ *                       type: string
+ *                       format: date-time
+ *                     next_reset_at:
+ *                       type: string
+ *                       format: date-time
+ *                     seconds_until_next_reset:
+ *                       type: integer
+ *                 polling:
+ *                   type: object
+ *                   description: How to follow this server without polling blindly
+ *                   properties:
+ *                     recommended_interval_seconds:
+ *                       type: integer
+ *                     poll_after:
+ *                       type: string
+ *                       format: date-time
+ *                       nullable: true
+ *                       description: Earliest moment new data is expected, same value as `data.next_data_estimated_at`
+ *                     cache_ttl_seconds:
+ *                       type: integer
+ *                       description: How long this body is cached, so polling faster than this cannot show anything new
+ *                     etag:
+ *                       type: string
+ *                       description: Same value as the ETag response header, escaped as JSON requires
+ *                     instructions:
+ *                       type: string
+ *                 rate_limit:
+ *                   type: object
+ *                   description: The limiter applied to the rest of the API
+ *                   properties:
+ *                     requests:
+ *                       type: integer
+ *                     window_seconds:
+ *                       type: integer
+ *                     applies_to_this_route:
+ *                       type: boolean
+ *       304:
+ *         description: The If-None-Match ETag still matches - no collection completed since, empty body
+ *       400:
+ *         description: Missing or invalid gge-server header
+ *       500:
+ *         description: The collection state could not be read
  */
 protectedRoutes.get('/', routingInstance.getStatus.bind(routingInstance));
 
@@ -5251,6 +5414,7 @@ const ggeServerMiddleware = (request: Request, response: Response, next: NextFun
     });
     return;
   }
+  response.vary('gge-server');
   // Attach some useful info to the request object
   // This will be used in the controllers
   // to get the right database connection
