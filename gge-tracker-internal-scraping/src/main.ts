@@ -353,7 +353,7 @@ export class GenericFetchAndSaveBackend {
               const results = data.content.L || [];
               for (const result of results) {
                 const SIelements = String(result.SI).trim().split('-');
-                const allianceId = Number.parseInt(String(SIelements[SIelements.length - 1]));
+                const allianceId = Number.parseInt(String(SIelements.at(-1)));
                 const token = String(allianceId) + '_' + String(result.I);
                 if (allianceId && !alliances[token]) {
                   alliances[token] = {
@@ -466,7 +466,7 @@ export class GenericFetchAndSaveBackend {
         grandTournamentRecordsInserted:
           Object.keys(this.DB_UPDATES).length > 0 ? Object.values(this.DB_UPDATES).length : 0,
         criticalErrors: this.DB_UPDATES.criticalErrors,
-        durationMs: new Date().getTime() - start.getTime(),
+        durationMs: Date.now() - start.getTime(),
       },
     });
   }
@@ -504,7 +504,7 @@ export class GenericFetchAndSaveBackend {
       data: {
         server: this.server,
         criticalErrors: this.DB_UPDATES.criticalErrors,
-        durationMs: new Date().getTime() - start.getTime(),
+        durationMs: Date.now() - start.getTime(),
       },
     });
   }
@@ -773,7 +773,7 @@ export class GenericFetchAndSaveBackend {
           data: {
             server: this.server,
             criticalErrors: this.DB_UPDATES.criticalErrors,
-            durationMs: new Date().getTime() - start.getTime(),
+            durationMs: Date.now() - start.getTime(),
           },
         });
         Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, 'OUTER_REALMS_AND_BEYOND_THE_HORIZON_EVENT_HISTORY');
@@ -898,7 +898,6 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('Number of critical errors:', this.DB_UPDATES.criticalErrors);
       Utils.logMessage('=====================================');
       Utils.logMessage('.');
-      
     } catch (error) {
       Utils.logCritical('999', error, ' [CRITICAL] Unhandled error occurred while processing fills');
     } finally {
@@ -1352,7 +1351,7 @@ export class GenericFetchAndSaveBackend {
             const OID = Number(playerData.OID);
             if (!playerEntries.has(OID)) {
               const parts = String(playerData.N).split('_');
-              const server = parts[parts.length - 1];
+              const server = parts.at(-1);
               const playerName = parts.slice(0, -1).join('_');
               const castleEntry = playerData.AP.find((ap: number[]) => ap[0] === 0 && ap[4] === 1);
               let rank: number, score: number | undefined;
@@ -2127,7 +2126,7 @@ export class GenericFetchAndSaveBackend {
           } else {
             const attempts = 3;
             let k = 0;
-            while (k < attempts && (data?.['return_code'] != '0')) {
+            while (k < attempts && data?.['return_code'] != '0') {
               await new Promise((resolve) => setTimeout(resolve, 3000));
               data = await this.fetchDataAndReturn(lt, levelCategory, 1);
               k++;
@@ -2170,7 +2169,7 @@ export class GenericFetchAndSaveBackend {
                 Utils.logMessage('Url :', this.BASE_API_URL + 'hgh' + `/"LT":${lt},"LID":${levelCategory},"SV":"${i}"`);
                 Utils.logMessage('Nb:', j + ' players found on', max);
                 Utils.logMessage('p:', JSON.stringify(p));
-                Utils.logCritical('002-' + eventName, undefined, '/!\\ No players found, but status is OK');
+                Utils.logCritical('002-' + eventName, undefined, String.raw`/!\ No players found, but status is OK`);
                 this.DB_UPDATES.criticalErrors++;
                 return;
               } else {
@@ -2272,7 +2271,7 @@ export class GenericFetchAndSaveBackend {
         if (data?.['return_code'] != '0') {
           const attempts = 10;
           let k = 0;
-          while (k < attempts && (data?.['return_code'] != '0')) {
+          while (k < attempts && data?.['return_code'] != '0') {
             await new Promise((resolve) => setTimeout(resolve, 10000));
             data = await this.fetchDataAndReturn(6, levelCategory, i);
             k++;
@@ -2428,17 +2427,14 @@ export class GenericFetchAndSaveBackend {
   }
 
   private transformServerNameToEmoji(serverName: string): string {
-    const server = serverName
-      .toLowerCase()
-      .trim()
-      .replace(/[0-9]*/g, '');
+    const server = serverName.toLowerCase().trim().replace(/\d*/g, '');
     return Utils.getDiscordEmojis().find((flagName) => flagName === ':flag_' + server + ':') || '(' + serverName + ')';
   }
 
   private formatValueForDiscord(value?: string | number): string {
     if (value === undefined || value === null) return '';
     const strValue = value.toString();
-    return strValue.replace(/([\\_*~`>|@\#])/g, '\\$1');
+    return strValue.replace(/([\\_*~`>|@#])/g, '\\$1');
   }
 
   private async fillLootHistory(): Promise<void> {
@@ -2498,7 +2494,7 @@ export class GenericFetchAndSaveBackend {
             if (!players || players.length === 0) {
               Utils.logMessage('Url : ', this.BASE_API_URL + 'hgh' + `/"LT":2,"LID":${levelCategory},"SV":"${i}"`);
               Utils.logMessage(JSON.stringify(p));
-              Utils.logCritical('014', undefined, ' /!\\ There are no players found, but the status is OK');
+              Utils.logCritical('014', undefined, String.raw` /!\ There are no players found, but the status is OK`);
               this.DB_UPDATES.criticalErrors++;
               return;
             } else {
@@ -2571,11 +2567,7 @@ export class GenericFetchAndSaveBackend {
                 }
                 j++;
               }
-              if (
-                players.length <= 0 ||
-                !players[players.length - 1]?.[1] ||
-                players[players.length - 1][1] == 0
-              ) {
+              if (players.length <= 0 || !players[players.length - 1]?.[1] || players[players.length - 1][1] == 0) {
                 c = false;
                 Utils.logMessage('Search for loot stopped due to a player with 0 points, players: ', j);
               }
@@ -2597,7 +2589,7 @@ export class GenericFetchAndSaveBackend {
             if (data?.['return_code'] != '0') {
               const attempts = 3;
               let k = 0;
-              while (k < attempts && (data?.['return_code'] != '0')) {
+              while (k < attempts && data?.['return_code'] != '0') {
                 await new Promise((resolve) => setTimeout(resolve, 3000));
                 data = await this.fetchDataAndReturn(2, levelCategory, 1);
                 k++;
@@ -2768,14 +2760,12 @@ export class GenericFetchAndSaveBackend {
     this.allianceUpdated[allianceId] = true;
     this.DB_UPDATES.alliancesUpdated++;
     const pgSqlQueryUpdateAllianceName = 'UPDATE alliances SET name = $1 WHERE id = $2';
-    await Promise.all([this.pgSqlQuery(pgSqlQueryUpdateAllianceName, [allianceName, allianceId])]);
+    await this.pgSqlQuery(pgSqlQueryUpdateAllianceName, [allianceName, allianceId]);
     const pgSqlQueryInsertAllianceUpdateHistory = `
       INSERT INTO alliance_update_history (alliance_id, old_name, new_name)
       VALUES ($1, $2, $3)
     `;
-    await Promise.all([
-      this.pgSqlQuery(pgSqlQueryInsertAllianceUpdateHistory, [allianceId, currentAllianceName, allianceName]),
-    ]);
+    await this.pgSqlQuery(pgSqlQueryInsertAllianceUpdateHistory, [allianceId, currentAllianceName, allianceName]);
     this.customPlayersAttributesList['alliance_name_update_count'] =
       this.customPlayersAttributesList['alliance_name_update_count'] || 0;
     this.customPlayersAttributesList['alliance_name_update_count']++;
@@ -2789,7 +2779,7 @@ export class GenericFetchAndSaveBackend {
     currentAllianceName: any,
   ): Promise<void> {
     const pgSqlQueryUpdatePlayerAlliance = 'UPDATE players SET alliance_id = $1 WHERE id = $2';
-    await Promise.all([this.pgSqlQuery(pgSqlQueryUpdatePlayerAlliance, [allianceId, playerId])]);
+    await this.pgSqlQuery(pgSqlQueryUpdatePlayerAlliance, [allianceId, playerId]);
     const pgSqlQueryInsertAllianceUpdateHistory = `
             INSERT INTO player_alliance_update (player_id, old_alliance_id, new_alliance_id, old_alliance_name, new_alliance_name)
             VALUES ($1, $2, $3, $4, $5)
@@ -3058,7 +3048,7 @@ export class GenericFetchAndSaveBackend {
   private async addAllianceInDatabase(allianceId: any, allianceName: any): Promise<void> {
     const pgSqlQueryAlliance = 'INSERT INTO alliances (id, name) VALUES ($1, $2)';
     try {
-      await Promise.all([this.pgSqlQuery(pgSqlQueryAlliance, [allianceId, allianceName])]);
+      await this.pgSqlQuery(pgSqlQueryAlliance, [allianceId, allianceName]);
     } catch (error: any) {
       if (error.code != '23505') {
         this.DB_UPDATES.criticalErrors++;
@@ -3415,8 +3405,7 @@ export class GenericFetchAndSaveBackend {
       const currentFame = data[11] || 0;
       const remainingRelocationTime = data[12] || 0;
       const peaceDisabledAt = Number(remaining_peace_time) > 0 ? (data[14] ?? null) : null;
-      const alliance_rank =
-        Number(data[15]) >= 0 && Number(data[15]) <= 100 ? Number(data[15]) : null;
+      const alliance_rank = Number(data[15]) >= 0 && Number(data[15]) <= 100 ? Number(data[15]) : null;
       insertValues.push([
         playerId,
         might_current,
@@ -3444,9 +3433,7 @@ export class GenericFetchAndSaveBackend {
       const valuesClause = chunk
         .map((_, rowIndex) => {
           const start = rowIndex * nbColumns + 1;
-          const placeholders = Array(nbColumns)
-            .fill(0)
-            .map((_, colIndex) => `$${start + colIndex}`);
+          const placeholders = new Array(nbColumns).fill(0).map((_, colIndex) => `$${start + colIndex}`);
           return `(${placeholders.join(', ')})`;
         })
         .join(', ');
@@ -3894,7 +3881,7 @@ export class GenericFetchAndSaveBackend {
           .sort((a, b) => (b.point ?? 0) - (a.point ?? 0));
         const p: { id: string; point: number }[] = eventPlayers.slice(0, 3).map((player) => ({
           id: player.id,
-          point: player.point === null ? 0 : player.point,
+          point: player.point ?? 0,
         }));
         eventsTop3Names[event] = p;
       }
@@ -4273,7 +4260,7 @@ export class GenericFetchAndSaveBackend {
         } else {
           const attempts = 3;
           let k = 0;
-          while (k < attempts && (data?.['return_code'] != '0')) {
+          while (k < attempts && data?.['return_code'] != '0') {
             await new Promise((resolve) => setTimeout(resolve, 3000));
             data = await this.fetchDataAndReturn(lt, levelCategory, i);
             k++;
@@ -4323,7 +4310,7 @@ export class GenericFetchAndSaveBackend {
               Utils.logMessage('Url :', this.BASE_API_URL + 'hgh' + `/"LT":${lt},"LID":${levelCategory},"SV":"${i}"`);
               Utils.logMessage('Nb:', j + 'players found on', max);
               Utils.logMessage('p:', JSON.stringify(p));
-              Utils.logCritical('002-' + eventName, undefined, '/!\\ No players found, but status OK');
+              Utils.logCritical('002-' + eventName, undefined, String.raw`/!\ No players found, but status OK`);
               this.DB_UPDATES.criticalErrors++;
               return -1;
             } else {
@@ -4335,7 +4322,7 @@ export class GenericFetchAndSaveBackend {
                   const playerId = singleData[2]['OID'];
                   const point = singleData[1];
                   const parts = String(singleData[2]['N']).split('_');
-                  const server = parts[parts.length - 1];
+                  const server = parts.at(-1);
                   const playerName = parts.slice(0, -1).join('_');
                   const rank = singleData[0];
                   entities[playerId.toString()] = {
@@ -4768,7 +4755,6 @@ export class GenericFetchAndSaveBackend {
   private async stackTraceError(identifier: string, criticalError = false, error: string | string[]): Promise<void> {
     if (Array.isArray(error)) {
       error.forEach((err) => Utils.logMessage(err));
-    } else {
     }
     Utils.logCritical('' + identifier, error);
     if (criticalError) this.DB_UPDATES.criticalErrors++;

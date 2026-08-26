@@ -19,7 +19,7 @@
 }
 
 .alliance-description.fluid {
-  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .description-current {

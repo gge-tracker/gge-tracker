@@ -256,7 +256,8 @@
             <span class="fw-medium">{{ legend.name === '1' ? ('Sans alliance' | translate) : legend.name }}</span>
             <div class="d-flex align-items-center gap-2">
               <input type="color" class="form-control form-control-color p-0 shadow-none"
-                [value]="rgbToHex(legend.color)" (change)="changeItemColor(legend.name, $event.target)">
+                [value]="rgbToHex(legend.color)" (change)="changeItemColor(legend.name, $event.target)"
+                [attr.aria-label]="legend.name">
               @if (watchModeAlliance !== 'one') {
               <button class="btn btn-outline-danger btn-sm"
                 [title]="('Supprimer' | translate) + ' ' + (legend.name === '1' ? ('Sans alliance' | translate) : legend.name)"
@@ -285,7 +286,8 @@
           {{ 'Nombre d\'alliances à afficher' | translate}}
         </h5>
         <div class="input-group px-2 mb-3">
-          <input type="number" class="form-control" min="1" [(ngModel)]="alliancesQuantity">
+          <input type="number" class="form-control" min="1" [(ngModel)]="alliancesQuantity"
+            [attr.aria-label]="'Nombre d\'alliances à afficher' | translate">
           <button class="gge-btn search" type="button" (click)="changeMapSize(false)">
             <i class="fas fa-search"></i>
           </button>

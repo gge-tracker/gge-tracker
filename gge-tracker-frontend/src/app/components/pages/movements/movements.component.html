@@ -102,7 +102,7 @@
                     <img [src]="'/assets/castle' + formFilters.castleType + '.png'"
                       [attr.alt]="'Type de position' | translate" [title]="'Type de position' | translate">
                   </span>
-                  <select field [(ngModel)]="formFilters.castleType">
+                  <select field [(ngModel)]="formFilters.castleType" [attr.aria-label]="'Type de position' | translate">
                     <option value="null">{{ 'Tous' | translate }}</option>
                     <option value="1">{{ 'Chateau principal' | translate }}</option>
                     <option value="3">{{ 'Capitale' | translate }}</option>
@@ -125,7 +125,7 @@
                       '/assets/moving.png'"
                       [attr.alt]="'Type de mouvement' | translate" [title]="'Type de mouvement' | translate">
                   </span>
-                  <select field [(ngModel)]="formFilters.movementType">
+                  <select field [(ngModel)]="formFilters.movementType" [attr.aria-label]="'Type de mouvement' | translate">
                     <option value="null">{{ 'Tous' | translate }}</option>
                     <option value="1">{{ 'Apparition' | translate }}</option>
                     <option value="2">{{ 'Disparition' | translate }}</option>

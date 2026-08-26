@@ -16,9 +16,8 @@ import { ChartOptions, ChartTypes, EventGenericVariation, EventStatsData } from 
 import { ChartsWrapperComponent } from '@ggetracker-modules/charts-client/charts-wrapper.component';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { TranslateModule } from '@ngx-translate/core';
-import { ChartComponent } from 'ng-apexcharts';
+import { ApexXAxis, ChartComponent } from 'ng-apexcharts';
 import { StatsPanelComponent } from '../stats-panel/stats-panel.component';
-import { ApexXAxis } from 'ng-apexcharts';
 
 @Component({
   selector: 'app-player-stats-card',

@@ -26,14 +26,9 @@
 .icon-wrapper.validated .base {
   opacity: 0;
   transform: scale(0.5) rotate(90deg);
-}
-
-.icon-wrapper.validated .check {
+}.icon-wrapper.validated .check {
   opacity: 1;
   transform: scale(1) rotate(0);
-}
-
-.icon-wrapper.validated .check {
   animation: pop 0.3s ease;
 }
 

@@ -1,5 +1,7 @@
 import { QueryField } from '../interfaces/interfaces';
 
+type QueryFlagValue = 0 | 1 | undefined;
+
 export const qNumber = (
   options: {
     min?: number;
@@ -36,7 +38,7 @@ export const qLowerString = (): QueryField<string | undefined> => ({
   },
 });
 
-export const qFlag = (): QueryField<0 | 1 | undefined> => ({
+export const qFlag = (): QueryField<QueryFlagValue> => ({
   parse: (value) => (value === '0' || value === 0 ? 0 : value === '1' || value === 1 ? 1 : undefined),
 });
 
@@ -123,10 +125,10 @@ export interface QuerySchema {
   castleCountMin: QueryField<number | undefined>;
   castleCountMax: QueryField<number | undefined>;
   orderBy: QueryField<string | undefined>;
-  allianceFilter: QueryField<0 | 1 | undefined>;
-  protectionFilter: QueryField<0 | 1 | undefined>;
-  banFilter: QueryField<0 | 1 | undefined>;
-  inactiveFilter: QueryField<0 | 1 | undefined>;
+  allianceFilter: QueryField<QueryFlagValue>;
+  protectionFilter: QueryField<QueryFlagValue>;
+  banFilter: QueryField<QueryFlagValue>;
+  inactiveFilter: QueryField<QueryFlagValue>;
   playerNameForDistance: QueryField<string | undefined>;
   allianceRankFilter: QueryField<number[] | undefined>;
   orderType: QueryField<string | undefined>;

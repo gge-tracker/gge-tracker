@@ -65,6 +65,8 @@ const WOA_SUMMARY_MIN_EVENTS = 3;
 const WOA_TREND_MIN_EVENTS = 4;
 const WOA_TREND_WINDOW = 3;
 
+type FillDataState = 'idle' | 'loading' | 'loaded' | 'error';
+
 @Component({
   selector: 'app-player-stats',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -148,8 +150,8 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   public timezoneOffset: number | null = null;
   public allianceName?: string;
   public allianceId?: number;
-  public fillDataState: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
-  public fillPlayerHistoryState: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
+  public fillDataState: FillDataState = 'idle';
+  public fillPlayerHistoryState: FillDataState = 'idle';
   public favories: Record<number, string> = {};
   public activeOptionButton = '';
   public currentSemaine?: string;
@@ -186,11 +188,11 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   public woaSummary: WoaPlayerSummary | null = null;
   public monumentsList: Monument[] = [];
   public aquamarineSnapshots: ApiAquamarineSnapshot[] = [];
-  public aquamarineLoadState: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
+  public aquamarineLoadState: FillDataState = 'idle';
   public aquamarineMonth = new Date().toISOString().slice(0, 7);
-  public eventsLoadState: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
-  public woaLoadState: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
-  public gloryLoadState: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
+  public eventsLoadState: FillDataState = 'idle';
+  public woaLoadState: FillDataState = 'idle';
+  public gloryLoadState: FillDataState = 'idle';
   public readonly currentI18nTitleKey = 'titles.playerTitle_';
   public tabs: { key: PlayerStatsTabs; label: string; assetIcon?: string }[] = [
     { key: 'overview', label: "Vue d'ensemble", assetIcon: 'players.png' },

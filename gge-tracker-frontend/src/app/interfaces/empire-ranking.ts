@@ -18,13 +18,13 @@ import {
 } from 'ng-apexcharts';
 
 export interface ChartAdvancedOptions {
-  series?: ApexAxisChartSeries | ApexNonAxisChartSeries | undefined;
+  series?: ApexAxisChartSeries | ApexNonAxisChartSeries;
   chart: ApexChart;
-  xaxis?: ApexXAxis | ApexXAxis[] | undefined;
+  xaxis?: ApexXAxis | ApexXAxis[];
   colors?: string[];
   fill?: ApexFill;
   plotOptions?: ApexPlotOptions;
-  yaxis?: ApexYAxis | ApexYAxis[] | undefined;
+  yaxis?: ApexYAxis | ApexYAxis[];
   dataLabels?: ApexDataLabels;
   labels?: string[];
   grid?: ApexGrid;

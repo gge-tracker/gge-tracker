@@ -714,9 +714,7 @@ select.form-select, .modal-content input[type="text"], .modal-content input[type
   color: #495057;
   opacity: 0.4;
   cursor: default;
-}
-
-.page-indicator {
+}.page-indicator {
   font-size: 0.75rem;
   font-weight: 500;
   color: #dee2e6;
@@ -724,9 +722,6 @@ select.form-select, .modal-content input[type="text"], .modal-content input[type
   user-select: none;
   letter-spacing: 0.3px;
   font-family: 'Segoe UI', Roboto, sans-serif;
-}
-
-.page-indicator {
   border-left: 1px solid rgba(255, 255, 255, 0.1);
   border-right: 1px solid rgba(255, 255, 255, 0.1);
   padding: 0 12px;

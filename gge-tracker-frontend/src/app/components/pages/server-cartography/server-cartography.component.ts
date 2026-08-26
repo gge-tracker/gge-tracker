@@ -911,7 +911,7 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
 
   private getBackgroundColor(): string {
     const colors = ['green', '#E3D191', '#F3F2F2', '#46362A', '#0E98B9'];
-    return colors[(this.selectedWorld === undefined ? 0 : this.selectedWorld) % colors.length];
+    return colors[(this.selectedWorld ?? 0) % colors.length];
   }
 
   /**

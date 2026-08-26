@@ -147,15 +147,10 @@ h5.event-desc {
   border-radius: 10px;
   outline-offset: 4px;
   outline: 3px solid rgba(242,165,74,0.18);
-}
-
-.ei-card {
+}.ei-card {
   animation: ei-entrance .6s cubic-bezier(.2,.9,.3,1) .06s forwards;
   opacity: 0;
   transform: translateY(10px);
-}
-
-.ei-card {
   align-items: center;
   backdrop-filter: blur(14px) saturate(130%);
   background: linear-gradient(180deg, rgba(255,255,255,0.025), rgba(0,0,0,0.18));

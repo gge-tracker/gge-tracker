@@ -37,6 +37,8 @@ import { Castle, LucideAngularModule } from 'lucide-angular';
 import { BuildingImgComponent } from './app-building-img/building-img.component';
 import { ViewCastleUtilities } from './view-castle-utilities';
 
+type CastleFilterValue = number | string | null;
+
 @Component({
   selector: 'app-view-castle',
   imports: [
@@ -114,16 +116,16 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     hasMaxLevel: boolean;
     upgradable: boolean;
     burnable: boolean;
-    minLevel: number | string | null;
-    maxLevel: number | string | null;
-    sellPriceMin: number | string | null;
-    sellPriceMax: number | string | null;
-    mightMin: number | string | null;
-    mightMax: number | string | null;
-    fireDamageMin: number | string | null;
-    fireDamageMax: number | string | null;
-    publicOrderMin: number | string | null;
-    publicOrderMax: number | string | null;
+    minLevel: CastleFilterValue;
+    maxLevel: CastleFilterValue;
+    sellPriceMin: CastleFilterValue;
+    sellPriceMax: CastleFilterValue;
+    mightMin: CastleFilterValue;
+    mightMax: CastleFilterValue;
+    fireDamageMin: CastleFilterValue;
+    fireDamageMax: CastleFilterValue;
+    publicOrderMin: CastleFilterValue;
+    publicOrderMax: CastleFilterValue;
     constructionType: string | null;
     constructionItemsSlot1: string | null;
     constructionItemsSlot2: string | null;
@@ -299,7 +301,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
-  public formatValue(value: number | string | number | boolean | null): string {
+  public formatValue(value: number | string | boolean | null): string {
     const regex = /\B(?=(\d{3})+(?!\d))/g;
     if (typeof value === 'number') {
       value = Math.ceil(value);
@@ -360,7 +362,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       }
     }
     if (displayEquipment && castle.equipment?.name) {
-      const cleanName = castle.equipment?.name.toLowerCase().trim().replaceAll('\-_', '');
+      const cleanName = castle.equipment?.name.toLowerCase().trim().replaceAll('-_', '');
       // Special case for sand outpost which has a specific icon in the game assets
       const suffix = castle.type === CastleType.OUTPOST && cleanName === 'sand' ? 'sand802icon' : cleanName;
       return `${basePath}${eqName ?? path}special${suffix}.png`;

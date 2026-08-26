@@ -1213,14 +1213,12 @@
   container-type: inline-size;
   display: flex;
   flex-direction: column;
-  /* max-height: calc(100vh - 210px); */
   overflow-y: auto;
   scrollbar-color: rgba(255,255,255,0.1) transparent;
   scrollbar-width: thin;
 }
 
 .castle-split-table .table-responsive {
-  /* flex: 1 1 auto; */
   overflow-x: auto;
 }
 
@@ -1381,7 +1379,7 @@
 }
 
 .bg-badge-max {
-  background: rgba(234,179,8,.85);
+  background: rgba(147,113,5,.85);
   border-radius: 0 0 0 5px;
   color: #fff;
   right: 0;

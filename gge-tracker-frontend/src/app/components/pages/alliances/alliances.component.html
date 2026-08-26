@@ -240,7 +240,7 @@
               <div class="container-fluid">
                 <div class="col-12">
                   <app-modal-form-group [label]="'Trier les résultats' | translate">
-                    <select field [(ngModel)]="sort">
+                    <select field [(ngModel)]="sort" [attr.aria-label]="'Trier les résultats' | translate">
                       @for (option of sortByOptions; track option) {
                         <option [value]="option.value">{{ option.label | translate }}</option>
                       }

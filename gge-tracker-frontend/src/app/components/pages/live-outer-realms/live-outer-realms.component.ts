@@ -83,10 +83,13 @@ export class LiveOuterRealmsComponent extends GenericComponent {
       this.isInLoading = false;
       return;
     }
-    this.player = Object.assign({}, response.data.player, {
-      level: response.data.player.data[0]?.level || 0,
-      legendary_level: response.data.player.data[0]?.legendary_level || 0,
-    });
+    this.player = Object.assign(
+      { ...response.data.player },
+      {
+        level: response.data.player.data[0]?.level || 0,
+        legendary_level: response.data.player.data[0]?.legendary_level || 0,
+      },
+    );
     const scoreSeries = [
       {
         name: this.translateService.instant('Score'),
@@ -311,7 +314,7 @@ export class LiveOuterRealmsComponent extends GenericComponent {
       },
       yaxis: {
         reversed: reversed || false,
-        min: minValue === undefined ? undefined : minValue,
+        min: minValue,
         labels: {
           style: { colors: 'rgba(255,255,255,0.65)' },
           formatter: (value: number) =>

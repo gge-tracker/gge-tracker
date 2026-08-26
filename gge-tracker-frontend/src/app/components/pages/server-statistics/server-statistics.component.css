@@ -199,13 +199,8 @@
   height: 48px;
   place-items: center;
   width: 48px;
-}
-
-.gge-stat-inner {
+}.gge-stat-inner {
   min-height: 120px;
-}
-
-.gge-stat-inner {
   background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.04)), rgba(18,20,22,0.62);
   border-radius: 18px;
   border: 1px solid rgba(255,255,255,0.04);

@@ -52,8 +52,8 @@
   function resolveConstructor(container, libraryName, options) {
     if (typeof container[libraryName] === 'function') return container[libraryName];
     var names = variantNames(libraryName, options);
-    for (var index = 0; index < names.length; index++) {
-      var found = lookupLoose(container, names[index]);
+    for (const name of names) {
+      var found = lookupLoose(container, name);
       if (found) return found;
     }
     return null;

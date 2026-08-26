@@ -165,8 +165,6 @@ export abstract class ApiEvents implements ApiHelper {
         whereClause = `WHERE type = 'outer_realms'`;
       } else if (eventType === EventTypes.BEYOND_THE_HORIZON) {
         whereClause = `WHERE type = 'beyond_the_horizon'`;
-      } else {
-        whereClause = '';
       }
 
       const countQuery = `
@@ -372,7 +370,7 @@ export abstract class ApiEvents implements ApiHelper {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceId });
         return;
       }
-      let replacedZone = zone.replaceAll(new RegExp('EmpireEx_?', 'g'), '');
+      let replacedZone = zone.replaceAll(/EmpireEx_?/g, '');
       if (replacedZone === '') {
         replacedZone = '1';
       }
