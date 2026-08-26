@@ -535,11 +535,10 @@ export class OffersComponent extends GenericComponent implements AfterViewInit, 
       const offerId = element.dataset['offer'];
       const window = offerId ? windows.get(offerId) : undefined;
       if (!offerId || !window) continue;
-      if (this.expandedOffers.has(offerId)) {
-        if (this.overflowingOffers.has(offerId)) overflowing.add(offerId);
-      } else if (element.offsetHeight - window.clientHeight > 2) {
-        overflowing.add(offerId);
-      }
+      const clipped = this.expandedOffers.has(offerId)
+        ? this.overflowingOffers.has(offerId)
+        : element.offsetHeight - window.clientHeight > 2;
+      if (clipped) overflowing.add(offerId);
     }
     if (overflowing.size === this.overflowingOffers.size && [...overflowing].every((id) => this.isClipped(id))) {
       return;

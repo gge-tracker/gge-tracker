@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { LanguageService } from './language.service';
 import { LocalStorageService } from './local-storage.service';
 import { environment } from 'environments/environment';
+import { stripTrailingDigits } from './text-format.utilities';
 
 export interface ServerEntry {
   enabled: boolean;
@@ -117,8 +118,7 @@ export class ServerService {
     } else if (server.startsWith('PARTNER_')) {
       server = 'SP';
     }
-    const regex = /\d+$/g;
-    server = server.replaceAll(regex, '');
+    server = stripTrailingDigits(server);
     return this.flagsUrl[server] || '/assets/int_flag.png';
   }
 

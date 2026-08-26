@@ -35,10 +35,8 @@ export interface SqlCondition {
   value?: SqlValue;
 }
 
-export type QueryValue = unknown;
-
 export type ParsedValue = number | string | boolean | number[] | string[] | undefined;
 
 export interface QueryField<T> {
-  parse: (value: QueryValue) => T;
+  parse: (value: unknown) => T;
 }

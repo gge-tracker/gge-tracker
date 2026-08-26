@@ -148,7 +148,7 @@ export class UtilitiesService {
 
         const context = canvas.getContext('2d');
         if (!context) {
-          reject('Canvas context not available');
+          reject(new Error('Canvas context not available'));
           return;
         }
 
@@ -162,7 +162,7 @@ export class UtilitiesService {
       });
 
       img.addEventListener('error', (error) => {
-        reject(error);
+        reject(new Error(`Failed to load image ${url}`, { cause: error }));
       });
     });
   }

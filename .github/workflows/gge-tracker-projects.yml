@@ -38,8 +38,8 @@ jobs:
         run: npm run lint
       - name: Build TypeScript + Swagger
         run: |
-          npx tsc
-          npx swagger-jsdoc -d ./src/documentation.js
+          node_modules/.bin/tsc
+          node_modules/.bin/swagger-jsdoc -d ./src/documentation.js
       - name: Docker Build (check only)
         run: docker build --target build -t backend-check -f Dockerfile.prod .
   # ---------------------------

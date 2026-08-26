@@ -21,7 +21,7 @@ RUN npm ci
 COPY src ./src
 COPY tsconfig.json ./
 
-RUN npx tsc
+RUN node_modules/.bin/tsc
 
 FROM node:24-slim
 
@@ -31,8 +31,8 @@ ENV NODE_ENV=production
 COPY --from=builder /app/dist ./dist
 COPY package*.json ./
 
-RUN npm ci --omit=dev
-
-RUN mv dist/* . && rm -rf dist
+RUN npm ci --omit=dev \
+    && mv dist/* . \
+    && rm -rf dist
 
 CMD ["node", "server.js"]

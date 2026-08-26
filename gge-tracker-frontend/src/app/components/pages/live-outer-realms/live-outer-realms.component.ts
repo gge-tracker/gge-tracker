@@ -6,6 +6,7 @@ import { SearchFormComponent } from '@ggetracker-components/search-form/search-f
 import { TableComponent } from '@ggetracker-components/table/table.component';
 import { ApiLiveRanking, IOuterRealmEvent, PlayerLiveRankingExtended } from '@ggetracker-interfaces/empire-ranking';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
+import { formatThousands } from '@ggetracker-services/text-format.utilities';
 import { ServerService } from '@ggetracker-services/server.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { ApexAxisChartSeries, ApexChart, ApexNonAxisChartSeries, ApexOptions, ApexPlotOptions } from 'ng-apexcharts';
@@ -83,13 +84,11 @@ export class LiveOuterRealmsComponent extends GenericComponent {
       this.isInLoading = false;
       return;
     }
-    this.player = Object.assign(
-      { ...response.data.player },
-      {
-        level: response.data.player.data[0]?.level || 0,
-        legendary_level: response.data.player.data[0]?.legendary_level || 0,
-      },
-    );
+    this.player = {
+      ...response.data.player,
+      level: response.data.player.data[0]?.level || 0,
+      legendary_level: response.data.player.data[0]?.legendary_level || 0,
+    };
     const scoreSeries = [
       {
         name: this.translateService.instant('Score'),
@@ -291,8 +290,7 @@ export class LiveOuterRealmsComponent extends GenericComponent {
         y: {
           formatter:
             tooltipYFormatter ||
-            ((value: number): string =>
-              value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',')),
+            ((value: number): string => (value === null ? '?' : formatThousands(value.toString()))),
         },
       },
       dataLabels: {
@@ -317,8 +315,7 @@ export class LiveOuterRealmsComponent extends GenericComponent {
         min: minValue,
         labels: {
           style: { colors: 'rgba(255,255,255,0.65)' },
-          formatter: (value: number) =>
-            value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ','),
+          formatter: (value: number) => (value === null ? '?' : formatThousands(value.toString())),
         },
         logarithmic: logarithmic || false,
         forceNiceScale: true,

@@ -20,15 +20,6 @@ import { QueryFilterBuilder } from '../helper/filters/impl/query-filter-builder'
  * @abstract
  */
 export abstract class ApiAlliances implements ApiHelper {
-  /**
-   * Handles the request to retrieve alliance information by alliance ID, including player statistics and optional distance calculation
-   *
-   * @param request - The Express request object. Expects `allianceId` as a route parameter and optionally `playerNameForDistance` as a query parameter
-   * @param response - The Express response object used to send the result or error
-   * @returns A Promise that resolves when the response is sent
-   *
-   * @throws Sends a 500 response if an unexpected error occurs during processing
-   */
   public static async getAllianceByAllianceId(request: express.Request, response: express.Response): Promise<void> {
     try {
       /* ---------------------------------
@@ -87,41 +78,13 @@ export abstract class ApiAlliances implements ApiHelper {
       let playerX = null;
       let playerY = null;
       if (ApiHelper.isValidInput(playerNameForDistance)) {
-        const column = kingdomId > 0 ? 'castles_realm' : 'castles';
-        const playerQuery = `SELECT ${column} FROM players WHERE LOWER(name) = LOWER($1) LIMIT 1`;
-        const playerResults: any[] = await new Promise((resolve, reject) => {
-          pool.query(playerQuery, [playerNameForDistance], (error, results) => {
-            if (error) {
-              ApiHelper.logError(error, 'getAllianceByAllianceId', request);
-              reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
-            } else {
-              resolve(results.rows);
-            }
-          });
-        });
-        if (playerResults.length === 0) {
-          response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
+        const located = await ApiAlliances.locateDistanceOrigin(pool, playerNameForDistance, kingdomId, request);
+        if ('error' in located) {
+          response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: located.error });
           return;
         }
-        if (kingdomId > 0) {
-          // castles_realm: [[kingdomId, x, y, castleType], ...]  castleType=12 is realm main castle
-          const realmCastles: number[][] = playerResults[0].castles_realm ?? [];
-          const mainRealmCastle = realmCastles.find((c) => c[0] === kingdomId && c[3] === 12);
-          if (!mainRealmCastle) {
-            response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.PlayerNotInRealm });
-            return;
-          }
-          playerX = mainRealmCastle[1];
-          playerY = mainRealmCastle[2];
-        } else {
-          // castles: [[x, y, castleType], ...]  castleType=1 is main castle
-          const castles: number[][] = playerResults[0].castles ?? [];
-          const mainCastle = castles.filter((kid) => kid[2] === 1);
-          if (mainCastle && mainCastle.length > 0) {
-            playerX = mainCastle[0][0];
-            playerY = mainCastle[0][1];
-          }
-        }
+        playerX = located.x;
+        playerY = located.y;
       }
       /* ---------------------------------
        * Build and execute main query
@@ -368,6 +331,8 @@ export abstract class ApiAlliances implements ApiHelper {
           maxFame,
           minPlayerCount,
           maxPlayerCount,
+          minActivePlayerCount,
+          maxActivePlayerCount,
         })
         .build();
       const cachedData = await ApiHelper.redisClient.get(cacheKey);
@@ -382,29 +347,31 @@ export abstract class ApiAlliances implements ApiHelper {
       qb.player().activity(1);
       const { where, values } = qb.build();
       let parameterIndex = qb.getLastParameterIndex();
+      // One list drives both the placeholders and the values, so the two cannot drift apart
+      const aggregateFilters: [number | undefined, string][] = [
+        [minMight, 'SUM(P.might_current) >='],
+        [maxMight, 'SUM(P.might_current) <='],
+        [minLoot, 'SUM(P.loot_current) >='],
+        [maxLoot, 'SUM(P.loot_current) <='],
+        [minFame, 'SUM(P.current_fame) >='],
+        [maxFame, 'SUM(P.current_fame) <='],
+        [minPlayerCount, 'COUNT(P.id) >='],
+        [maxPlayerCount, 'COUNT(P.id) <='],
+        [minActivePlayerCount, 'COUNT(P.id) FILTER (WHERE P.loot_current > 0) >='],
+        [maxActivePlayerCount, 'COUNT(P.id) FILTER (WHERE P.loot_current > 0) <='],
+      ];
+      const havingConditions: string[] = [];
+      let v = [...values];
+      for (const [value, comparison] of aggregateFilters) {
+        if (value === undefined) continue;
+        havingConditions.push(`AND ${comparison} $${parameterIndex++}`);
+        v.push(value);
+      }
       const havingSqlConditions = `
         HAVING
           COUNT(P.id) > 0
-          ${minMight === undefined ? '' : `AND SUM(P.might_current) >= $${parameterIndex++}`}
-          ${maxMight === undefined ? '' : `AND SUM(P.might_current) <= $${parameterIndex++}`}
-          ${minLoot === undefined ? '' : `AND SUM(P.loot_current) >= $${parameterIndex++}`}
-          ${maxLoot === undefined ? '' : `AND SUM(P.loot_current) <= $${parameterIndex++}`}
-          ${minFame === undefined ? '' : `AND SUM(P.current_fame) >= $${parameterIndex++}`}
-          ${maxFame === undefined ? '' : `AND SUM(P.current_fame) <= $${parameterIndex++}`}
-          ${minPlayerCount === undefined ? '' : `AND COUNT(P.id) >= $${parameterIndex++}`}
-          ${maxPlayerCount === undefined ? '' : `AND COUNT(P.id) <= $${parameterIndex++}`}
-          ${minActivePlayerCount === undefined ? '' : `AND COUNT(P.id) FILTER (WHERE P.loot_current > 0) >= $${parameterIndex++}`}
-          ${maxActivePlayerCount === undefined ? '' : `AND COUNT(P.id) FILTER (WHERE P.loot_current > 0) <= $${parameterIndex++}`}
+          ${havingConditions.join('\n          ')}
       `;
-      let v = [...values];
-      if (minMight !== undefined) v.push(minMight);
-      if (maxMight !== undefined) v.push(maxMight);
-      if (minLoot !== undefined) v.push(minLoot);
-      if (maxLoot !== undefined) v.push(maxLoot);
-      if (minFame !== undefined) v.push(minFame);
-      if (maxFame !== undefined) v.push(maxFame);
-      if (minPlayerCount !== undefined) v.push(minPlayerCount);
-      if (maxPlayerCount !== undefined) v.push(maxPlayerCount);
       v.push(ApiHelper.PAGINATION_LIMIT, (page - 1) * ApiHelper.PAGINATION_LIMIT);
       const query = `
         SELECT
@@ -621,5 +588,40 @@ export abstract class ApiAlliances implements ApiHelper {
       ORDER BY
         P.might_current DESC;
       `;
+  }
+
+  private static async locateDistanceOrigin(
+    pool: pg.Pool,
+    playerName: string,
+    kingdomId: number,
+    request: express.Request,
+  ): Promise<{ x: number | null; y: number | null } | { error: RouteErrorMessagesEnum }> {
+    const column = kingdomId > 0 ? 'castles_realm' : 'castles';
+    const playerQuery = `SELECT ${column} FROM players WHERE LOWER(name) = LOWER($1) LIMIT 1`;
+    const playerResults: any[] = await new Promise((resolve, reject) => {
+      pool.query(playerQuery, [playerName], (error, results) => {
+        if (error) {
+          ApiHelper.logError(error, 'getAllianceByAllianceId', request);
+          reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
+        } else {
+          resolve(results.rows);
+        }
+      });
+    });
+    if (playerResults.length === 0) return { error: RouteErrorMessagesEnum.InvalidPlayerName };
+
+    if (kingdomId > 0) {
+      // castles_realm: [[kingdomId, x, y, castleType], ...]  castleType=12 is realm main castle
+      const realmCastles: number[][] = playerResults[0].castles_realm ?? [];
+      const mainRealmCastle = realmCastles.find((c) => c[0] === kingdomId && c[3] === 12);
+      if (!mainRealmCastle) return { error: RouteErrorMessagesEnum.PlayerNotInRealm };
+      return { x: mainRealmCastle[1], y: mainRealmCastle[2] };
+    }
+
+    // castles: [[x, y, castleType], ...]  castleType=1 is main castle
+    const castles: number[][] = playerResults[0].castles ?? [];
+    const mainCastle = castles.filter((kid) => kid[2] === 1);
+    if (mainCastle.length === 0) return { x: null, y: null };
+    return { x: mainCastle[0][0], y: mainCastle[0][1] };
   }
 }

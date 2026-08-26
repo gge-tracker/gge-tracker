@@ -3,6 +3,9 @@ import { Component, effect, input, TemplateRef, untracked } from '@angular/core'
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '@ngx-translate/core';
 
+const toComparableText = (value: unknown): string =>
+  typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value);
+
 export interface ModalTableSortContext {
   sortBy: (column: string) => void;
   sortColumn: string | undefined;
@@ -97,7 +100,7 @@ export class ModalTableComponent<T> {
         const cmp =
           typeof aValue === 'number' && typeof bValue === 'number'
             ? aValue - bValue
-            : String(aValue).localeCompare(String(bValue), undefined, { sensitivity: 'base' });
+            : toComparableText(aValue).localeCompare(toComparableText(bValue), undefined, { sensitivity: 'base' });
         return cmp * (this.sortAsc ? 1 : -1);
       });
     }

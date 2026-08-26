@@ -1,7 +1,7 @@
 <div *ngIf="!isInLoading" class="container-fluid">
   <div class="gge-stats-grid">
     <div class="gge-stat-card" *ngFor="let card of cards; let i = index">
-      <button class="gge-stat-ctl h-100" role="button" aria-haspopup="dialog"
+      <button class="gge-stat-ctl h-100" aria-haspopup="dialog"
         [attr.aria-label]="card.label + (card.value ? ' : ' + card.value : '')"
         [attr.data-bs-toggle]="card.identifier !== 'events_participation_rate' ? 'modal' : false"
         [attr.data-bs-target]="card.identifier !== 'events_participation_rate' ? '#statsModal' : false"

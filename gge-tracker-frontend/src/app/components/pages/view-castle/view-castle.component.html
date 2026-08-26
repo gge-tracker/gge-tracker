@@ -237,8 +237,10 @@
                       </div>
                       <div class="building-gallery-grid">
                         @for (building of galleryBuildings; track building) {
-                          <div class="bg-card pointer"
+                          <div class="bg-card pointer" tabindex="0" role="button"
                             (click)="updateSelectedItem(building)"
+                            (keydown.enter)="updateSelectedItem(building)"
+                            (keydown.space)="updateSelectedItem(building)"
                             data-bs-toggle="modal" data-bs-target="#viewItemModal"
                             [title]="capitalizeFirstLetter(getBuildingName(building))">
                             @if (building.building.damageFactor > 0) {
@@ -348,6 +350,8 @@
                         <tbody>
                           @for (building of paginatedBuildings; track building) {
                             <tr (click)="updateSelectedItem(building)"
+                              (keydown.enter)="updateSelectedItem(building)"
+                              (keydown.space)="updateSelectedItem(building)" tabindex="0"
                               data-bs-toggle="modal" data-bs-target="#viewItemModal" [title]="'Voir plus' | translate"
                               class="pointer">
                               <td class="name-cell">
@@ -551,8 +555,10 @@
               <hr>
                 <div class="row d-flex g-3">
                   @for (item of getItemsInDistrict(selectedItem); track item) {
-                    <div class="col-4 d-flex flex-column pointer"
-                      (click)="updateSelectedItem(item, selectedItem)">
+                    <div class="col-4 d-flex flex-column pointer" tabindex="0" role="button"
+                      (click)="updateSelectedItem(item, selectedItem)"
+                      (keydown.enter)="updateSelectedItem(item, selectedItem)"
+                      (keydown.space)="updateSelectedItem(item, selectedItem)">
                       <div class="text-center mb-3 visualize-img py-5">
                         <app-building-img [src]="getBuildingAssetUrl(item)" [alt]="getBuildingName(item)" [shadow]="true"
                           [size]="200">

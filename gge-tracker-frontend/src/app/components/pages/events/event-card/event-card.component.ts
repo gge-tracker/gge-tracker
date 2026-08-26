@@ -39,7 +39,7 @@ export class EventCardComponent<T extends EventList | OuterEventData | WoaEvent 
     displayMode: 'player-count' | 'ranking' | 'points';
     dateFormat?: string;
   }>();
-  public onEventClick = output<T>();
+  public eventClick = output<T>();
 
   public readonly events: Events[] = [
     {

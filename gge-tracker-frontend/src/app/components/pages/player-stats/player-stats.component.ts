@@ -44,6 +44,7 @@ import {
   WoaPlayerSummary,
 } from '@ggetracker-interfaces/empire-ranking';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
+import { formatThousands } from '@ggetracker-services/text-format.utilities';
 import { LevelPipe } from '@ggetracker-pipes/level.pipe';
 import { LanguageService } from '@ggetracker-services/language.service';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
@@ -326,7 +327,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   }
 
   public get peaceDisabledAtInDays(): number | null {
-    if (this.stats && this.stats.peaceDisabledAt) {
+    if (this.stats?.peaceDisabledAt) {
       const now = new Date();
       const diff = this.stats.peaceDisabledAt.getTime() - now.getTime();
       return Math.ceil(diff / (1000 * 60 * 60 * 24));
@@ -946,7 +947,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
         y: {
           formatter: function (value): string {
             if (value === null) return '?';
-            if (value > 0) return value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+            if (value > 0) return formatThousands(value.toString());
             return '0';
           },
         },
@@ -994,7 +995,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       },
       tooltip: {
         y: {
-          formatter: (value): string => value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ','),
+          formatter: (value): string => formatThousands(value.toString()),
         },
       },
       colors: ['#EF6C00'],
@@ -1006,7 +1007,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       fill: {},
       yaxis: {
         labels: {
-          formatter: (value): string => value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ','),
+          formatter: (value): string => formatThousands(value.toString()),
         },
       },
       legend: {},
@@ -1068,7 +1069,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
         y: {
           formatter: function (value): string {
             if (value === null) return '?';
-            if (value > 0) return value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+            if (value > 0) return formatThousands(value.toString());
             return '0';
           },
         },
@@ -1133,7 +1134,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       yaxis: {
         labels: {
           formatter: function (value): string {
-            return value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return value === null ? '?' : formatThousands(value.toString());
           },
         },
         min: 0,
@@ -1264,7 +1265,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       },
       tooltip: {
         y: {
-          formatter: (value): string => value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ','),
+          formatter: (value): string => formatThousands(value.toString()),
         },
       },
       title: {},
@@ -1906,7 +1907,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     const yLabels = this.charts['loot'].yaxis.labels;
     if (!yLabels) return;
     yLabels.formatter = function (value): string {
-      return value === null ? '-' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+      return value === null ? '-' : formatThousands(value.toString());
     };
   }
 
@@ -2233,7 +2234,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       this.allianceUpdates = null;
     } else {
       const data = allianceUpdatesResponse.data;
-      if (data && data.updates && data.updates.length > 0) {
+      if (data?.updates && data.updates.length > 0) {
         data.updates.sort((a, b) => this.compareDate(a, b));
         this.allianceUpdates = [];
         const firstAlliance = data.updates.at(-1);
@@ -2276,7 +2277,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       this.playerUpdates = null;
     } else {
       const data = playerUpdatesResponse.data;
-      if (data && data.updates && data.updates.length > 0) {
+      if (data?.updates && data.updates.length > 0) {
         data.updates.sort((a, b) => this.compareDate(a, b));
         this.playerUpdates = [];
         const firstPlayer = data.updates.at(-1);
@@ -2310,11 +2311,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     this.stats?.castles.forEach((castle: number[]) => {
       const target = castle[3];
       switch (target) {
-        case CastleType.CASTLE: {
-          this.quantity.castle++;
-          this.quantity.patriarch++;
-          break;
-        }
+        case CastleType.CASTLE:
         case CastleType.REALM_CASTLE: {
           this.quantity.castle++;
           this.quantity.patriarch++;

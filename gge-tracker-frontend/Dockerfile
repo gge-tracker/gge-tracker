@@ -35,8 +35,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/dist /usr/share/nginx/html
 
-RUN useradd -r -d /var/www -s /sbin/nologin nginx
-RUN chown -R nginx:nginx /usr/share/nginx/html
+RUN useradd -r -d /var/www -s /sbin/nologin nginx \
+    && chown -R nginx:nginx /usr/share/nginx/html
 COPY ./nginx/nginx.conf /etc/nginx/sites-available/default
 
 RUN service nginx reload

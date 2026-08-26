@@ -36,6 +36,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { Castle, LucideAngularModule } from 'lucide-angular';
 import { BuildingImgComponent } from './app-building-img/building-img.component';
 import { ViewCastleUtilities } from './view-castle-utilities';
+import { formatThousands } from '@ggetracker-services/text-format.utilities';
 
 type CastleFilterValue = number | string | null;
 
@@ -302,13 +303,10 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   }
 
   public formatValue(value: number | string | boolean | null): string {
-    const regex = /\B(?=(\d{3})+(?!\d))/g;
     if (typeof value === 'number') {
       value = Math.ceil(value);
     }
-    return Number.isInteger(value) && value !== null
-      ? value.toString().replaceAll(regex, ',')
-      : this.translations['Inconnu'];
+    return Number.isInteger(value) && value !== null ? formatThousands(value.toString()) : this.translations['Inconnu'];
   }
 
   public displayUnavailableCastleMessage(): void {
@@ -612,22 +610,22 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     const districtItems = this.getItemsInDistrict(hoveredBuilding);
     const name = this.capitalizeFirstLetter(this.getBuildingName(hoveredBuilding));
     const objectID = hoveredBuilding.building?.objectID;
+    const dimensions = `${hoveredBuilding.data?.['width']}x${hoveredBuilding.data?.['height']}`;
+    const burnableFlag = hoveredBuilding?.data?.['burnable'];
+    const burnable =
+      burnableFlag === undefined || Number.parseInt(String(burnableFlag))
+        ? this.translations['Oui']
+        : this.translations['Non'];
     let info = [
       `<b>${name === '-' ? 'OID:' + objectID : name}</b> (${this.translations['Niveau']} ${hoveredBuilding.data?.['level']})`,
       '',
       `<b>${this.translations['Ordre public']}:</b> ${this.formatValue(Number(hoveredBuilding?.data['publicOrder'])) ?? this.translations['Inconnu']}`,
-      `<b>${this.translations['Brûlable']}:</b> ${
-        hoveredBuilding?.data?.['burnable'] === undefined
-          ? this.translations['Oui']
-          : Number.parseInt(String(hoveredBuilding?.data?.['burnable']))
-            ? this.translations['Oui']
-            : this.translations['Non']
-      }`,
+      `<b>${this.translations['Brûlable']}:</b> ${burnable}`,
       `<b>${this.translations['Puissance']}:</b> ${this.formatValue(Number.parseInt(String(hoveredBuilding?.data?.['mightValue']))) ?? this.translations['Inconnu']}`,
       `<b>${this.translations['Commentaires']}:</b> ${
         hoveredBuilding?.data?.['comment1'] ?? ''
       }${hoveredBuilding?.data?.['comment2'] ? ', ' + (hoveredBuilding?.data?.['comment2'] ?? this.translations['Aucun']) : ''}`,
-      `<b>${this.translations['Dimensions']}:</b> ${hoveredBuilding ? `${hoveredBuilding.data?.['width']}x${hoveredBuilding.data?.['height']}` : this.translations['Inconnu']}`,
+      `<b>${this.translations['Dimensions']}:</b> ${dimensions}`,
       `<b>${this.translations['Prix de vente']}:</b> ${this.formatValue(Number.parseInt(String(hoveredBuilding?.data?.['sellC1']))) ?? this.translations['Inconnu']}`,
     ];
 
@@ -641,11 +639,13 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     }
     const constructionItems = Object.values(hoveredBuilding.constructionItems);
     info.push(`<br><b>${this.translations['Objets de construction']}: (${constructionItems.length})</b>`);
-    const sortedConstructionItemsBySlotTypeID = constructionItems.sort((a, b) => {
+    const sortedConstructionItemsBySlotTypeID = [...constructionItems].sort((a, b) => {
       const slotA = Number(a['slotTypeID']);
       const slotB = Number(b['slotTypeID']);
       if (slotA === slotB) return 0;
-      return slotA === 1 ? -1 : slotB === 1 ? 1 : slotA - slotB;
+      if (slotA === 1) return -1;
+      if (slotB === 1) return 1;
+      return slotA - slotB;
     });
     for (const item of sortedConstructionItemsBySlotTypeID) {
       const slotTypeName = this.getSlotTypeName(Number(item['slotTypeID']));
@@ -1020,7 +1020,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
             return (aValue - bValue) * (this.sortAsc ? 1 : -1);
           }
           case 'boolean': {
-            return (aValue === bValue ? 0 : aValue ? 1 : -1) * (this.sortAsc ? 1 : -1);
+            if (aValue === bValue) return 0;
+            return (aValue ? 1 : -1) * (this.sortAsc ? 1 : -1);
           }
           default: {
             return 0;

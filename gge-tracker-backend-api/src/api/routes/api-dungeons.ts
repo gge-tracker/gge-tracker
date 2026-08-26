@@ -783,14 +783,12 @@ export abstract class ApiDungeons implements ApiHelper {
   } {
     const filtersKids = JSON.parse(filterByKid);
     for (let index = 0; index < filtersKids.length; index++) {
-      if (Number.isNaN(Number(filtersKids[index]))) {
-        filtersKids.splice(index, 1);
-        index--;
-      } else if (Number(filtersKids[index]) < 0 || Number(filtersKids[index]) > 9) {
+      const kid = Number(filtersKids[index]);
+      if (Number.isNaN(kid) || kid < 0 || kid > 9) {
         filtersKids.splice(index, 1);
         index--;
       } else {
-        filtersKids[index] = Number(filtersKids[index]);
+        filtersKids[index] = kid;
       }
     }
     const filterByAttackCooldown = request.query.filterByAttackCooldown

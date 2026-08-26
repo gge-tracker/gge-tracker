@@ -19,7 +19,7 @@
       </div>
     </div>
   </section>
-  <nav class="alliance-tabs alliance-tabs--skeleton mt-5" aria-hidden="true">
+  <div class="alliance-tabs alliance-tabs--skeleton mt-5" aria-hidden="true">
     <div class="alliance-tabs-scroller">
       @for (tab of tabs; track tab.key) {
         <span class="alliance-tab alliance-tab--skeleton">
@@ -27,7 +27,7 @@
         </span>
       }
     </div>
-  </nav>
+  </div>
   <div class="alliances-stats-content pb-3 pt-3" aria-hidden="true">
     <div class="container pt-3">
       @for (placeholder of skeletonRows; track $index) {

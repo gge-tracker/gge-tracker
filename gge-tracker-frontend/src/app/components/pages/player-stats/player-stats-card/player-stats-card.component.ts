@@ -19,6 +19,8 @@ import { TranslateModule } from '@ngx-translate/core';
 import { ApexXAxis, ChartComponent } from 'ng-apexcharts';
 import { StatsPanelComponent } from '../stats-panel/stats-panel.component';
 
+export type StatsPeriod = 'day' | 'week' | 'month' | 'year';
+
 @Component({
   selector: 'app-player-stats-card',
   standalone: true,
@@ -65,7 +67,7 @@ export class PlayerStatsCardComponent implements AfterViewInit, OnInit {
   public inversedData: EventGenericVariation[] = [];
   public changeTabOutput = output<ChartTypes>();
   public fullHistoryRequested = output<void>();
-  public changePeriodOutput = output<'day' | 'week' | 'month' | 'year'>();
+  public changePeriodOutput = output<StatsPeriod>();
 
   private readonly cdr = inject(ChangeDetectorRef);
 

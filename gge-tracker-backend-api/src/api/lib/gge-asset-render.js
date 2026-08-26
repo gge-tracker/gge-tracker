@@ -80,7 +80,7 @@
       if (loader.setCrossOrigin) loader.setCrossOrigin('anonymous');
 
       loader.on('error', function (error) {
-        reject(new Error('Loader error: ' + ((error && error.message) || JSON.stringify(error))));
+        reject(new Error('Loader error: ' + (error?.message || JSON.stringify(error))));
       });
 
       loader.on('complete', function () {
@@ -92,7 +92,7 @@
           stage.update();
 
           var bounds = display.getBounds() || display.nominalBounds;
-          if (!bounds || !bounds.width || !bounds.height) {
+          if (!bounds?.width || !bounds.height) {
             return reject(new Error('Asset has no measurable bounds'));
           }
           var scale = Math.min(1, options.maxDimension / Math.max(bounds.width, bounds.height));

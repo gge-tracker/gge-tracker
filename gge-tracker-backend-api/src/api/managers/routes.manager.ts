@@ -140,7 +140,19 @@ export class RoutesManager {
     const na = RoutesManager.normalizePath(a);
     const nb = RoutesManager.normalizeRouteForPrefix(b);
     if (na === nb) return true;
-    return (na + '/').replace(/\/+$/, '/') === (nb + '/').replace(/\/+$/, '/');
+    return RoutesManager.withSingleTrailingSlash(na) === RoutesManager.withSingleTrailingSlash(nb);
+  }
+
+  /**
+   * Rewrites a path so it ends with exactly one slash
+   *
+   * @param path The path to rewrite
+   * @returns The path with its trailing slashes replaced by a single one
+   */
+  private static withSingleTrailingSlash(path: string): string {
+    let end = path.length;
+    while (end > 0 && path[end - 1] === '/') end--;
+    return path.slice(0, end) + '/';
   }
 
   /**

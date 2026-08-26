@@ -109,7 +109,7 @@ function applyConfig(target: Partial<ServerConfig>, key: string, value: string):
 }
 
 function isValidServer(server: Partial<ServerConfig> | null): server is ServerConfig {
-  return !!(server && server.name);
+  return !!server?.name;
 }
 
 async function processServer(server: ServerConfig, index: string, total: number): Promise<boolean> {

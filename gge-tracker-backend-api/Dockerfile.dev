@@ -32,7 +32,7 @@ RUN apt-get update && apt-get install -y \
 ENV PUPPETEER_CACHE_DIR=/opt/puppeteer
 
 COPY package.json package-lock.json ./
-RUN npm ci --no-audit --no-fund \
+RUN npm ci --ignore-scripts --no-audit --no-fund \
     && node_modules/.bin/puppeteer browsers install chrome
 
 ENV REDIS_URL=redis://redis-server:6379
@@ -40,5 +40,5 @@ EXPOSE 3000
 
 ENV HEADER="[DEV]"
 
-CMD ["npx", "nodemon"]
+CMD ["node_modules/.bin/nodemon"]
 

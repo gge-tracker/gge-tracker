@@ -54,7 +54,7 @@
         <div class="card event-card m-2">
           @if (getScoreboardFromEvent(event)) {
           <div class="card-body d-flex flex-column justify-content-between">
-            <h5 class="card-title"><img src="/assets/star.png" alt="Top 3"></h5>
+            <h5 class="card-title"><img src="/assets/star.png" alt=""><span class="visually-hidden">Top 3</span></h5>
             <div class="card-content d-flex align-items-center">
               <div class="img-container me-3">
                 <img [src]="'/assets/event-logo-id-' + event + '.png'" class="img-fluid" alt="Event" width="90"
@@ -695,7 +695,8 @@
             @for (woaEvent of woaHistory; track woaEvent) {
               <div class="col-12 col-lg-6">
                 <app-event-card [event]="woaEvent" [options]="{ displayMode: 'points', dateFormat: 'Date_1' }"
-                  (click)="navigateToEvent(woaEvent)"></app-event-card>
+                  (click)="navigateToEvent(woaEvent)" (keydown.enter)="navigateToEvent(woaEvent)"
+                  (keydown.space)="navigateToEvent(woaEvent)" tabindex="0" role="button"></app-event-card>
               </div>
             }
             @if (woaHistory.length === 0) {

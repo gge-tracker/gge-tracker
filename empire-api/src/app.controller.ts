@@ -31,6 +31,21 @@ function isDryRunRequested(request: express.Request): boolean {
 
 loadCommands();
 
+/**
+ * Maps the headers of a sent command onto the headers the answer is matched against
+ * A command with no mapping is answered under the very headers it was sent with
+ */
+function buildResponseHeaders(command: string, messageHeaders: Record<string, unknown>): Record<string, unknown> {
+  if (!(command in commands)) return messageHeaders;
+  const responseHeaders = {};
+  for (const [messageKey, responsePath] of Object.entries(commands[command])) {
+    if (messageKey in messageHeaders) {
+      HeadersUtilities.setNestedValue(responseHeaders, responsePath, messageHeaders[messageKey]);
+    }
+  }
+  return responseHeaders;
+}
+
 export default function createApp(sockets: {
   [x: string]: GgeEmpire4KingdomsSocket | GgeEmpireSocket | GgeLiveTemporaryServerSocket | GgeEmpire4KingdomsTcp;
 }): express.Express {
@@ -203,54 +218,47 @@ export default function createApp(sockets: {
   });
 
   app.get('/:server/:command/:headers', async (request, response) => {
-    if (request.params.server in sockets) {
-      if (sockets[request.params.server] !== null && sockets[request.params.server].connected.isSet) {
-        let responseHeaders = {};
-        try {
-          if (request.params.headers === 'null') {
-            request.params.headers = '';
-          }
-          const messageHeaders = JSON.parse(`{${request.params.headers}}`);
-          sockets[request.params.server].sendJsonCommand(request.params.command, messageHeaders);
-
-          if (request.params.command in commands) {
-            for (const [messageKey, responsePath] of Object.entries(commands[request.params.command])) {
-              if (messageKey in messageHeaders) {
-                HeadersUtilities.setNestedValue(responseHeaders, responsePath, messageHeaders[messageKey]);
-              }
-            }
-          } else {
-            responseHeaders = messageHeaders;
-          }
-          // Transformations
-          if (request.params.command === 'jca') {
-            request.params.command = 'jaa';
-          }
-          const jsonResponse = await sockets[request.params.server].waitForJsonResponse(
-            request.params.command,
-            responseHeaders,
-            1000,
-          );
-          response.status(200).json({
-            server: request.params.server,
-            command: request.params.command,
-            return_code: jsonResponse.payload.status,
-            content: jsonResponse.payload.data,
-          });
-        } catch {
-          response.status(200).json({
-            error: 'Timeout',
-            server: request.params.server,
-            command: request.params.command,
-            response_headers: responseHeaders,
-            return_code: -1,
-          });
-        }
-      } else {
-        response.status(500).json({ error: 'Server not connected' });
-      }
-    } else {
+    if (!(request.params.server in sockets)) {
       response.status(404).json({ error: 'Server not found' });
+      return;
+    }
+    if (!sockets[request.params.server]?.connected.isSet) {
+      response.status(500).json({ error: 'Server not connected' });
+      return;
+    }
+
+    let responseHeaders = {};
+    try {
+      if (request.params.headers === 'null') {
+        request.params.headers = '';
+      }
+      const messageHeaders = JSON.parse(`{${request.params.headers}}`);
+      sockets[request.params.server].sendJsonCommand(request.params.command, messageHeaders);
+      responseHeaders = buildResponseHeaders(request.params.command, messageHeaders);
+
+      // Transformations
+      if (request.params.command === 'jca') {
+        request.params.command = 'jaa';
+      }
+      const jsonResponse = await sockets[request.params.server].waitForJsonResponse(
+        request.params.command,
+        responseHeaders,
+        1000,
+      );
+      response.status(200).json({
+        server: request.params.server,
+        command: request.params.command,
+        return_code: jsonResponse.payload.status,
+        content: jsonResponse.payload.data,
+      });
+    } catch {
+      response.status(200).json({
+        error: 'Timeout',
+        server: request.params.server,
+        command: request.params.command,
+        response_headers: responseHeaders,
+        return_code: -1,
+      });
     }
   });
 

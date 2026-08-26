@@ -16,10 +16,6 @@
   position: relative;
 }
 
-.search-input-wrapper {
-  min-width: 250px;
-}
-
 .btn-filter:hover {
   background: rgba(255,255,255,0.2);
 }
@@ -78,6 +74,7 @@
 .search-input-wrapper {
   align-items: center;
   display: flex;
+  min-width: 250px;
   position: relative;
 }
 

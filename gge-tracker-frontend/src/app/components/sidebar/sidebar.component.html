@@ -1,6 +1,7 @@
 <aside #panel id="app-sidebar-panel" class="sidebar" [class.closed]="!isSidebarOpen()"
   [ngClass]="{'mobile-view': sidebarService.isMobileView }" [attr.inert]="isSidebarOpen() ? null : ''">
-  <div class="sidebar-header" (click)="closeSidebar()">
+  <div class="sidebar-header" (click)="closeSidebar()" (keydown.enter)="closeSidebar()"
+    (keydown.space)="closeSidebar()" tabindex="0" role="button">
     <div class="sidebar-header-img"></div>
   </div>
 

@@ -36,6 +36,7 @@ import {
   SearchType,
 } from '@ggetracker-interfaces/empire-ranking';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
+import { formatThousands } from '@ggetracker-services/text-format.utilities';
 import { LanguageService } from '@ggetracker-services/language.service';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
 import { WindowService } from '@ggetracker-services/window.service';
@@ -95,6 +96,8 @@ interface CardConfig {
 const MS_PER_HOUR = 3_600_000;
 const HOURS_PER_WEEK = 168;
 const DEFAULT_RESET_OFFSET = -1;
+
+const WHITESPACE = /\s/;
 
 @Component({
   selector: 'app-alliance-stats',
@@ -456,11 +459,11 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   }
 
   public formatAvg(value: number, toFixed = 3): string {
-    return value.toFixed(toFixed).replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return formatThousands(value.toFixed(toFixed));
   }
 
   public customFormatter(value: number, precision: number): string {
-    return value.toFixed(precision).replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return formatThousands(value.toFixed(precision));
   }
 
   public openFullscreen(chartKey: keyof typeof ApiPlayerStatsType): void {
@@ -476,7 +479,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     if (!chart) return;
     const copyChart = { ...chart };
     const win = this.windowService.getWindow();
-    if (!win || !win.innerWidth || !win.innerHeight) return;
+    if (!win?.innerWidth || !win.innerHeight) return;
     chart.chart.height = win.innerHeight - 250;
     chart.chart.width = win.innerWidth - 100;
     if (tab === ChartTypes.PARTICIPATION_RATE) {
@@ -783,7 +786,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     let playerProperty: keyof Player;
     if (sort === 'level') {
       // If the property is 'level', sort by level and legendary level
-      this.players = this.players.sort((a, b) => {
+      this.players = [...this.players].sort((a, b) => {
         const aLevelValue = (a.level || 0) + (a.legendaryLevel || 0);
         const bLevelValue = (b.level || 0) + (b.legendaryLevel || 0);
         if (this.reverse) return bLevelValue - aLevelValue;
@@ -792,7 +795,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     } else {
       playerProperty = sort.replaceAll(/_(\w)/g, (match, p1) => p1.toUpperCase()) as keyof Player;
       // If the property is not 'level', sort by that property
-      this.players = this.players.sort((a, b) => {
+      this.players = [...this.players].sort((a, b) => {
         const aValue = a[playerProperty] ?? 0;
         const bValue = b[playerProperty] ?? 0;
         const type = typeof a[playerProperty];
@@ -1545,7 +1548,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     if (name.endsWith(' 💤')) {
       return name.slice(0, -2);
     } else {
-      const regex = /\s\(([\d,.]+[A-Za-z]{0,1})\)$/;
+      const regex = /\s\(([\d,.]+[A-Za-z]?)\)$/;
       const match = regex.exec(name);
       if (match) {
         return name.replace(regex, '');
@@ -1906,7 +1909,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         },
         y: {
           formatter: function (value): string {
-            return value > 0 ? value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
+            return value > 0 ? formatThousands(value.toString()) : '';
           },
         },
       },
@@ -1954,7 +1957,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       yaxis: {
         labels: {
           formatter: function (value): string {
-            return value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return value === null ? '?' : formatThousands(value.toString());
           },
         },
         min: 0,
@@ -2112,7 +2115,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       yaxis: {
         labels: {
           formatter: function (value): string {
-            return value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return value === null ? '?' : formatThousands(value.toString());
           },
         },
         forceNiceScale: true,
@@ -2159,7 +2162,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       tooltip: {
         y: {
           formatter: function (value): string {
-            return value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',') + ' ' + mp;
+            return value === null ? '?' : formatThousands(value.toString()) + ' ' + mp;
           },
         },
       },
@@ -2248,7 +2251,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         y: {
           formatter: function (value): string {
             if (value === null) return '?';
-            if (value > 0) return value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+            if (value > 0) return formatThousands(value.toString());
             return '0';
           },
         },
@@ -2284,7 +2287,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       yaxis: {
         labels: {
           formatter: function (value): string {
-            return value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return value === null ? '?' : formatThousands(value.toString());
           },
         },
         forceNiceScale: true,
@@ -2347,7 +2350,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         logBase: logBase,
         labels: {
           formatter: function (value): string {
-            return value === 0 ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return value === 0 ? '?' : formatThousands(value.toString());
           },
         },
       },
@@ -2457,16 +2460,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   }
 
   private async loadDetailsEventPlayerStats(): Promise<void> {
-    let playersData: ApiPlayerStatsForAlliance = {
-      player_event_berimond_invasion_history: [],
-      player_event_berimond_kingdom_history: [],
-      player_event_bloodcrow_history: [],
-      player_event_nomad_history: [],
-      player_event_samurai_history: [],
-      player_event_war_realms_history: [],
-      player_loot_history: [],
-      player_might_history: [],
-    };
+    let playersData: ApiPlayerStatsForAlliance;
     this.countQueryFinished = 0;
     this.totalQuery = 1;
     try {
@@ -2670,7 +2664,32 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   }
 
   private tokenizeDescription(description: string): string[] {
-    return description.split(/(<[^>]*>|\s+)/).filter((token) => token !== '');
+    const tokens: string[] = [];
+    let word = '';
+    const flushWord = (): void => {
+      if (word.length > 0) tokens.push(word);
+      word = '';
+    };
+    for (let index = 0; index < description.length;) {
+      const character = description[index];
+      const tagEnd = character === '<' ? description.indexOf('>', index) : -1;
+      if (tagEnd !== -1) {
+        flushWord();
+        tokens.push(description.slice(index, tagEnd + 1));
+        index = tagEnd + 1;
+      } else if (WHITESPACE.test(character)) {
+        flushWord();
+        let end = index;
+        while (end < description.length && WHITESPACE.test(description[end])) end++;
+        tokens.push(description.slice(index, end));
+        index = end;
+      } else {
+        word += character;
+        index++;
+      }
+    }
+    flushWord();
+    return tokens;
   }
 
   private renderSegments(segments: DescriptionSegment[], highlightClass: string): string {

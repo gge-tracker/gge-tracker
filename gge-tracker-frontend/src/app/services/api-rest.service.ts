@@ -53,6 +53,39 @@ import {
   ApiOffersCatalogResponse,
 } from '@ggetracker-interfaces/empire-ranking';
 
+export interface DungeonsListQuery {
+  page: number;
+  size: number;
+  filterByKid: string;
+  filterByAttackCooldown: number | null;
+  filterByPlayerName: string | null;
+  positionX: number | null;
+  positionY: number | null;
+  nearPlayerName: string | null;
+}
+
+interface StormListQuery {
+  page: number;
+  size: number;
+  positionX?: number | null;
+  positionY?: number | null;
+  nearPlayerName?: string | null;
+  maxDistance?: number | null;
+  filterByIsleIds?: number[] | null;
+  orderBy?: string | null;
+  orderDirection?: 'asc' | 'desc' | null;
+}
+
+export interface StormFortsListQuery extends StormListQuery {
+  filterByAvailability?: number | null;
+  minAttacksLeft?: number | null;
+}
+
+export interface StormIslesListQuery extends StormListQuery {
+  filterByState?: number | null;
+  filterByOccupierName?: string | null;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -186,16 +219,17 @@ export class ApiRestService {
    * @param filterByAttackCooldown Optional parameter to filter by attack cooldown
    * @returns A promise that resolves to the dungeons data
    */
-  public async getDungeonsList(
-    page: number,
-    size: number,
-    filterByKid: string,
-    filterByAttackCooldown: number | null = null,
-    filterByPlayerName: string | null = null,
-    positionX: number | null,
-    positionY: number | null,
-    nearPlayerName: string | null,
-  ): Promise<ApiResponse<ApiDungeonsResponse>> {
+  public async getDungeonsList(query: DungeonsListQuery): Promise<ApiResponse<ApiDungeonsResponse>> {
+    const {
+      page,
+      size,
+      filterByKid,
+      filterByAttackCooldown,
+      filterByPlayerName,
+      positionX,
+      positionY,
+      nearPlayerName,
+    } = query;
     let request = `${ApiRestService.apiUrl}dungeons?page=${page}&size=${size}&filterByKid=${filterByKid}`;
     if (filterByAttackCooldown) request += `&filterByAttackCooldown=${filterByAttackCooldown}`;
     if (filterByPlayerName) request += `&filterByPlayerName=${filterByPlayerName}`;
@@ -219,19 +253,20 @@ export class ApiRestService {
    * @param maxDistance Optional radius in tiles around the sort origin
    * @returns A promise that resolves to the storm forts data
    */
-  public async getStormFortsList(
-    page: number,
-    size: number,
-    filterByAvailability: number | null = null,
-    minAttacksLeft: number | null = null,
-    positionX: number | null = null,
-    positionY: number | null = null,
-    nearPlayerName: string | null = null,
-    maxDistance: number | null = null,
-    filterByIsleIds: number[] | null = null,
-    orderBy: string | null = null,
-    orderDirection: 'asc' | 'desc' | null = null,
-  ): Promise<ApiResponse<ApiStormFortsResponse>> {
+  public async getStormFortsList(query: StormFortsListQuery): Promise<ApiResponse<ApiStormFortsResponse>> {
+    const {
+      page,
+      size,
+      filterByAvailability = null,
+      minAttacksLeft = null,
+      positionX = null,
+      positionY = null,
+      nearPlayerName = null,
+      maxDistance = null,
+      filterByIsleIds = null,
+      orderBy = null,
+      orderDirection = null,
+    } = query;
     let request = `${ApiRestService.apiUrl}storms/forts?page=${page}&size=${size}`;
     if (filterByAvailability) request += `&filterByAvailability=${filterByAvailability}`;
     if (minAttacksLeft !== null) request += `&minAttacksLeft=${minAttacksLeft}`;
@@ -259,19 +294,20 @@ export class ApiRestService {
    * @param maxDistance Optional radius in tiles around the sort origin
    * @returns A promise that resolves to the storm isles data
    */
-  public async getStormIslesList(
-    page: number,
-    size: number,
-    filterByState: number | null = null,
-    filterByOccupierName: string | null = null,
-    positionX: number | null = null,
-    positionY: number | null = null,
-    nearPlayerName: string | null = null,
-    maxDistance: number | null = null,
-    filterByIsleIds: number[] | null = null,
-    orderBy: string | null = null,
-    orderDirection: 'asc' | 'desc' | null = null,
-  ): Promise<ApiResponse<ApiStormIslesResponse>> {
+  public async getStormIslesList(query: StormIslesListQuery): Promise<ApiResponse<ApiStormIslesResponse>> {
+    const {
+      page,
+      size,
+      filterByState = null,
+      filterByOccupierName = null,
+      positionX = null,
+      positionY = null,
+      nearPlayerName = null,
+      maxDistance = null,
+      filterByIsleIds = null,
+      orderBy = null,
+      orderDirection = null,
+    } = query;
     let request = `${ApiRestService.apiUrl}storms/isles?page=${page}&size=${size}`;
     if (filterByState) request += `&filterByState=${filterByState}`;
     if (filterByOccupierName) request += `&filterByOccupierName=${filterByOccupierName}`;

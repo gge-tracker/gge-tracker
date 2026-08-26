@@ -1341,7 +1341,6 @@ export class GenericFetchAndSaveBackend {
         if (response.data.return_code == '0' && response.data.content) {
           const content = response.data.content.L || [];
           if (content.length === 0) {
-            hasMore = false;
             Utils.logMessage(' No more data to fetch. Ending Outer Realms data fetch.');
             break;
           }
@@ -1387,7 +1386,6 @@ export class GenericFetchAndSaveBackend {
           // If we have a full batch with all duplicates, we can stop fetching more data
           if (duplicatesInThisBatch === content.length) {
             Utils.logMessage(` All entries in this batch are duplicates (SV=${item}). Ending Outer Realms data fetch.`);
-            hasMore = false;
             break;
           }
         }
@@ -1483,7 +1481,7 @@ export class GenericFetchAndSaveBackend {
       .slice(0, 10)
       .map(
         (p, index) =>
-          `**${index + 1}. ${index === 0 ? ':first_place: ' : index === 1 ? ':second_place: ' : index === 2 ? ':third_place: ' : ''}${this.formatValueForDiscord(p.playerName)} ${this.transformServerNameToEmoji(p.server)}** (Level: ${p.legendaryLevel ? p.level + '/' + p.legendaryLevel : p.level}, Alliance: _${this.formatValueForDiscord(p.allianceName) || '-'}_)`,
+          `**${index + 1}. ${Utils.medalForRank(index)}${this.formatValueForDiscord(p.playerName)} ${this.transformServerNameToEmoji(p.server)}** (Level: ${p.legendaryLevel ? p.level + '/' + p.legendaryLevel : p.level}, Alliance: _${this.formatValueForDiscord(p.allianceName) || '-'}_)`,
       )
       .join('\n')}`;
     const baseImageUrl = 'https://gge-tracker.com/assets/';
@@ -1856,11 +1854,9 @@ export class GenericFetchAndSaveBackend {
     const occupierId = Number(row[4]);
     const remainingSeconds = Number(row[9]) || 0;
     const isOccupied = occupierId > 0;
-    const state = isOccupied
-      ? StormIsleState.OCCUPIED
-      : remainingSeconds > 0
-        ? StormIsleState.RESPAWNING
-        : StormIsleState.FREE;
+    let state = StormIsleState.FREE;
+    if (isOccupied) state = StormIsleState.OCCUPIED;
+    else if (remainingSeconds > 0) state = StormIsleState.RESPAWNING;
 
     return {
       positionX: Number(row[1]),
@@ -2283,7 +2279,7 @@ export class GenericFetchAndSaveBackend {
               'Url : ' + this.BASE_API_URL + 'hgh' + `/"LT":6,"LID":${levelCategory},"SV":"${i}"`,
               JSON.stringify(data),
             ];
-            void this.stackTraceError(identifier, true, messages);
+            void this.stackTraceError(identifier, messages, true);
             return;
           }
         }
@@ -2341,11 +2337,9 @@ export class GenericFetchAndSaveBackend {
                       const APRealms = infos['AP']
                         .filter((ap: number[]) => [1, 2, 3, 4].includes(ap[0]))
                         .map((ap: any[]) => [ap[0], ap[2], ap[3], ap[4]]);
-                      this.playerLootAndMightPointHistoryList[uid.toString()][4] = AP
-                        ? JSON.parse(JSON.stringify(AP))
-                        : [];
+                      this.playerLootAndMightPointHistoryList[uid.toString()][4] = AP ? structuredClone(AP) : [];
                       this.playerLootAndMightPointHistoryList[uid.toString()][13] = APRealms
-                        ? JSON.parse(JSON.stringify(APRealms))
+                        ? structuredClone(APRealms)
                         : [];
                     }
                     this.playerLootAndMightPointHistoryList[uid.toString()][5] = infos['H'];
@@ -2410,7 +2404,7 @@ export class GenericFetchAndSaveBackend {
       }
       const rows: Array<Record<string, unknown>> = [];
       for (const player of Object.values(playerList)) {
-        if (player && player.uid && player.name) {
+        if (player?.uid && player.name) {
           rows.push({ player_id: player.uid, point: player.mightPoints, created_at: currentDateFormatted });
         }
       }
@@ -2434,7 +2428,7 @@ export class GenericFetchAndSaveBackend {
   private formatValueForDiscord(value?: string | number): string {
     if (value === undefined || value === null) return '';
     const strValue = value.toString();
-    return strValue.replace(/([\\_*~`>|@#])/g, '\\$1');
+    return strValue.replace(/([\\_*~`>|@#])/g, String.raw`\$1`);
   }
 
   private async fillLootHistory(): Promise<void> {
@@ -2512,7 +2506,7 @@ export class GenericFetchAndSaveBackend {
                   const mightPoints: number = infos['MP'];
                   if (mightPoints && mightPoints >= 0) {
                     const AP = infos['AP'];
-                    if (AP && AP.length > 0 && mightPoints && mightPoints > 0) {
+                    if (AP && AP.length > 0) {
                       playerList[uid.toString()] = {
                         rank: rank,
                         uid: uid,
@@ -2535,11 +2529,9 @@ export class GenericFetchAndSaveBackend {
                       const APRealms = infos['AP']
                         .filter((ap: number[]) => [1, 2, 3, 4].includes(ap[0]))
                         .map((ap: any[]) => [ap[0], ap[2], ap[3], ap[4]]);
-                      this.playerLootAndMightPointHistoryList[uid.toString()][4] = AP
-                        ? JSON.parse(JSON.stringify(AP))
-                        : [];
+                      this.playerLootAndMightPointHistoryList[uid.toString()][4] = AP ? structuredClone(AP) : [];
                       this.playerLootAndMightPointHistoryList[uid.toString()][13] = APRealms
-                        ? JSON.parse(JSON.stringify(APRealms))
+                        ? structuredClone(APRealms)
                         : [];
                     }
                     this.playerLootAndMightPointHistoryList[uid.toString()][5] = infos['H'];
@@ -2585,7 +2577,6 @@ export class GenericFetchAndSaveBackend {
             Utils.logMessage(' [Info] Processing loot for players with negative points');
             c = true;
             let data = await this.fetchDataAndReturn(2, levelCategory, 1);
-            let maxNegative = data?.content?.LR;
             if (data?.['return_code'] != '0') {
               const attempts = 3;
               let k = 0;
@@ -2595,7 +2586,7 @@ export class GenericFetchAndSaveBackend {
                 k++;
               }
             }
-            maxNegative = data?.content?.LR;
+            let maxNegative = data?.content?.LR;
             if (data?.['return_code'] != '0' || !maxNegative) {
               Utils.logMessage(
                 'Url : ',
@@ -2626,13 +2617,11 @@ export class GenericFetchAndSaveBackend {
                 Utils.logMessage(JSON.stringify(data));
                 Utils.logCritical('023', undefined, ' [KO] No players found');
               } else {
-                const ids: number[] = [];
                 const OVERFLOW_OFFSET = 2 ** 32;
                 for (const player of players) {
                   if (this.CURRENT_ENV === 'development') Utils.stdoudInfo(j, maxNegative);
                   try {
                     if (Number(player[1]) < 0) {
-                      ids.push(player[0]);
                       const points: number =
                         Number(player[1]) >= 0 ? Number(player[1]) : Number(player[1]) + OVERFLOW_OFFSET;
                       const infos: any = player[2];
@@ -2641,7 +2630,7 @@ export class GenericFetchAndSaveBackend {
                       Utils.logMessage(' [Info] Player with negative points found', uid, '(', infos['N'], ')');
                       if (mightPoints && mightPoints >= 0) {
                         const AP = infos['AP'];
-                        if (AP && AP.length > 0 && mightPoints && mightPoints > 0) {
+                        if (AP && AP.length > 0) {
                           playerList[uid.toString()] = {
                             rank: -1,
                             uid: uid,
@@ -2664,11 +2653,9 @@ export class GenericFetchAndSaveBackend {
                           const APRealms = infos['AP']
                             .filter((ap: number[]) => [1, 2, 3, 4].includes(ap[0]))
                             .map((ap: any[]) => [ap[0], ap[2], ap[3], ap[4]]);
-                          this.playerLootAndMightPointHistoryList[uid.toString()][4] = AP
-                            ? JSON.parse(JSON.stringify(AP))
-                            : [];
+                          this.playerLootAndMightPointHistoryList[uid.toString()][4] = AP ? structuredClone(AP) : [];
                           this.playerLootAndMightPointHistoryList[uid.toString()][13] = APRealms
-                            ? JSON.parse(JSON.stringify(APRealms))
+                            ? structuredClone(APRealms)
                             : [];
                         }
                         this.playerLootAndMightPointHistoryList[uid.toString()][5] = infos['H'];
@@ -2715,7 +2702,7 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage(' Beginning insertion of loot for players into the database');
       const rows: Array<Record<string, unknown>> = [];
       for (const player of Object.values(playerList)) {
-        if (player && player.uid && player.name) {
+        if (player?.uid && player.name) {
           rows.push({ player_id: player.uid, point: player.points, created_at: currentDateFormatted });
         }
       }
@@ -2784,14 +2771,12 @@ export class GenericFetchAndSaveBackend {
             INSERT INTO player_alliance_update (player_id, old_alliance_id, new_alliance_id, old_alliance_name, new_alliance_name)
             VALUES ($1, $2, $3, $4, $5)
         `;
-    await Promise.all([
-      this.pgSqlQuery(pgSqlQueryInsertAllianceUpdateHistory, [
-        playerId,
-        currentAllianceId,
-        allianceId,
-        currentAllianceName,
-        allianceName,
-      ]),
+    await this.pgSqlQuery(pgSqlQueryInsertAllianceUpdateHistory, [
+      playerId,
+      currentAllianceId,
+      allianceId,
+      currentAllianceName,
+      allianceName,
     ]);
     this.customPlayersAttributesList['player_alliance_update_count'] =
       this.customPlayersAttributesList['player_alliance_update_count'] || 0;
@@ -3383,13 +3368,6 @@ export class GenericFetchAndSaveBackend {
       'peace_disabled_at',
     ];
     const nbColumns = columns.length;
-    function chunkArray<T>(array: T[], chunkSize: number): T[][] {
-      const result: T[][] = [];
-      for (let i = 0; i < array.length; i += chunkSize) {
-        result.push(array.slice(i, i + chunkSize));
-      }
-      return result;
-    }
     const insertValues: any[][] = [];
     for (const [key, data] of Object.entries(updates)) {
       const playerId = Number(key);
@@ -3427,7 +3405,7 @@ export class GenericFetchAndSaveBackend {
       ]);
     }
     Utils.logMessage('Chunk array...');
-    const chunks = chunkArray(insertValues, CHUNK_SIZE);
+    const chunks = this.chunkArray(insertValues, CHUNK_SIZE);
     Utils.logMessage('Loop chunks...');
     for (const chunk of chunks) {
       const valuesClause = chunk
@@ -4752,7 +4730,7 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
-  private async stackTraceError(identifier: string, criticalError = false, error: string | string[]): Promise<void> {
+  private async stackTraceError(identifier: string, error: string | string[], criticalError = false): Promise<void> {
     if (Array.isArray(error)) {
       error.forEach((err) => Utils.logMessage(err));
     }

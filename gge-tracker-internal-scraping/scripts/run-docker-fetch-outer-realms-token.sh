@@ -31,12 +31,13 @@ CLICKHOUSE_DB=$(get_conf_value "$SERVER" "olap")
 LOG_SUFFIX=$SERVER
 CONNECTION_LIMIT=$(get_conf_value "$SERVER" "limit")
 
-TARGET_ID_SERVER=$(get_conf_value "ORREALTIME" "zone")
-TARGET_PG_DB=$(get_conf_value "ORREALTIME" "sql")
-TARGET_MYSQL_DB=$(get_conf_value "ORREALTIME" "sql")
-TARGET_CLICKHOUSE_DB=$(get_conf_value "ORREALTIME" "olap")
-TARGET_LOG_SUFFIX="ORREALTIME"
-TARGET_CONNECTION_LIMIT=$(get_conf_value "ORREALTIME" "limit")
+OUTER_REALMS_SERVER="ORREALTIME"
+TARGET_ID_SERVER=$(get_conf_value "$OUTER_REALMS_SERVER" "zone")
+TARGET_PG_DB=$(get_conf_value "$OUTER_REALMS_SERVER" "sql")
+TARGET_MYSQL_DB=$(get_conf_value "$OUTER_REALMS_SERVER" "sql")
+TARGET_CLICKHOUSE_DB=$(get_conf_value "$OUTER_REALMS_SERVER" "olap")
+TARGET_LOG_SUFFIX="$OUTER_REALMS_SERVER"
+TARGET_CONNECTION_LIMIT=$(get_conf_value "$OUTER_REALMS_SERVER" "limit")
 
 exec docker run --rm --init --network backend --env-file=$BASE_SCRIPT_DIR/.env \
     --name ic-fetch-token-$SERVER \

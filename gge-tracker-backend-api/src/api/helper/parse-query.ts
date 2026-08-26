@@ -2,6 +2,19 @@ import { QueryField } from '../interfaces/interfaces';
 
 type QueryFlagValue = 0 | 1 | undefined;
 
+/**
+ * Anything that is not a primitive or a list of primitives is rejected instead of being coerced
+ */
+export const toQueryText = (value: unknown): string | undefined => {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value)) {
+    const parts = value.map((entry) => toQueryText(entry));
+    return parts.includes(undefined) ? undefined : parts.join(',');
+  }
+  return undefined;
+};
+
 export const qNumber = (
   options: {
     min?: number;
@@ -10,9 +23,10 @@ export const qNumber = (
   } = {},
 ): QueryField<number | undefined> => ({
   parse: (value): number | undefined => {
-    if (value === undefined) return options.default;
+    const text = toQueryText(value);
+    if (text === undefined) return options.default;
 
-    const n = Number.parseInt(String(value), 10);
+    const n = Number.parseInt(text, 10);
     if (Number.isNaN(n)) return options.default;
     if (options.min !== undefined && n < options.min) return options.default;
     if (options.max !== undefined && n > options.max) return options.default;
@@ -23,8 +37,9 @@ export const qNumber = (
 
 export const qString = (options: { max?: number } = {}): QueryField<string | undefined> => ({
   parse: (value): string | undefined => {
-    if (value === undefined) return;
-    const s = String(value).trim();
+    const text = toQueryText(value);
+    if (text === undefined) return;
+    const s = text.trim();
     if (options.max !== undefined && s.length > options.max) return undefined;
     return s.length > 0 ? s : undefined;
   },
@@ -32,14 +47,19 @@ export const qString = (options: { max?: number } = {}): QueryField<string | und
 
 export const qLowerString = (): QueryField<string | undefined> => ({
   parse: (value): string | undefined => {
-    if (value === undefined) return;
-    const s = String(value).trim().toLowerCase();
+    const text = toQueryText(value);
+    if (text === undefined) return;
+    const s = text.trim().toLowerCase();
     return s.length > 0 ? s : undefined;
   },
 });
 
 export const qFlag = (): QueryField<QueryFlagValue> => ({
-  parse: (value) => (value === '0' || value === 0 ? 0 : value === '1' || value === 1 ? 1 : undefined),
+  parse: (value): QueryFlagValue => {
+    if (value === '0' || value === 0) return 0;
+    if (value === '1' || value === 1) return 1;
+    return;
+  },
 });
 
 export const qLevelPair = (options: {
@@ -47,9 +67,10 @@ export const qLevelPair = (options: {
   maxLegendaryLevel: number;
 }): QueryField<[number | undefined, number | undefined]> => ({
   parse: (value): [number | undefined, number | undefined] => {
-    if (!value) return [undefined, undefined];
+    const text = toQueryText(value);
+    if (!text) return [undefined, undefined];
 
-    const [a, b] = String(value).split('/');
+    const [a, b] = text.split('/');
     return [
       qNumber({ min: 0, max: options.maxLevel }).parse(a),
       qNumber({ min: 0, max: options.maxLegendaryLevel }).parse(b),
@@ -67,9 +88,10 @@ export const qOrderType = (): QueryField<'ASC' | 'DESC'> => ({
 
 export const qNumberArray = (): QueryField<number[] | undefined> => ({
   parse: (value): number[] | undefined => {
-    if (!value) return;
+    const text = toQueryText(value);
+    if (!text) return;
 
-    const array = String(value)
+    const array = text
       .split(',')
       .map((v) => Number.parseInt(v, 10))
       .filter((v) => !Number.isNaN(v));
@@ -80,9 +102,10 @@ export const qNumberArray = (): QueryField<number[] | undefined> => ({
 
 export const qKingdomArray = (): QueryField<number[] | undefined> => ({
   parse: (value): number[] | undefined => {
-    if (!value) return;
+    const text = toQueryText(value);
+    if (!text) return;
     const authorizedKingdoms = new Set([1, 2, 3, 999]);
-    const array = String(value)
+    const array = text
       .split(',')
       .map((v) => Number.parseInt(v, 10))
       .filter((v) => !Number.isNaN(v) && authorizedKingdoms.has(v));

@@ -57,6 +57,26 @@ interface FormFilters {
   styleUrl: './movements.component.css',
 })
 export class MovementsComponent extends GenericComponent {
+  private static readonly RANGE_FILTER_KEYS = [
+    'minHonor',
+    'maxHonor',
+    'minMight',
+    'maxMight',
+    'minLoot',
+    'maxLoot',
+    'minLevel',
+    'maxLevel',
+    'minFame',
+    'maxFame',
+    'castleCountMin',
+    'castleCountMax',
+  ] as const;
+  private static readonly TRISTATE_FILTER_KEYS = [
+    'allianceFilter',
+    'protectionFilter',
+    'banFilter',
+    'inactiveFilter',
+  ] as const;
   @ViewChild('searchForm') public searchForm!: SearchFormComponent;
   public search = '';
   public pageSize = 10;
@@ -350,23 +370,14 @@ export class MovementsComponent extends GenericComponent {
 
   private constructFilters(): Record<string, string | number> {
     const filters: Record<string, string | number> = {};
-    if (this.formFilters.minHonor) filters['minHonor'] = this.formFilters.minHonor;
-    if (this.formFilters.maxHonor) filters['maxHonor'] = this.formFilters.maxHonor;
-    if (this.formFilters.minMight) filters['minMight'] = this.formFilters.minMight;
-    if (this.formFilters.maxMight) filters['maxMight'] = this.formFilters.maxMight;
-    if (this.formFilters.minLoot) filters['minLoot'] = this.formFilters.minLoot;
-    if (this.formFilters.maxLoot) filters['maxLoot'] = this.formFilters.maxLoot;
-    if (this.formFilters.minLevel) filters['minLevel'] = this.formFilters.minLevel;
-    if (this.formFilters.maxLevel) filters['maxLevel'] = this.formFilters.maxLevel;
-    if (this.formFilters.allianceFilter !== '-1') filters['allianceFilter'] = this.formFilters.allianceFilter;
-    if (this.formFilters.protectionFilter !== '-1') filters['protectionFilter'] = this.formFilters.protectionFilter;
-    if (this.formFilters.banFilter !== '-1') filters['banFilter'] = this.formFilters.banFilter;
-    if (this.formFilters.inactiveFilter !== '-1') filters['inactiveFilter'] = this.formFilters.inactiveFilter;
+    for (const key of MovementsComponent.RANGE_FILTER_KEYS) {
+      if (this.formFilters[key]) filters[key] = this.formFilters[key];
+    }
+    // -1 is the "no preference" option of a three-state select, so it is not a filter
+    for (const key of MovementsComponent.TRISTATE_FILTER_KEYS) {
+      if (this.formFilters[key] !== '-1') filters[key] = this.formFilters[key];
+    }
     if (this.formFilters.playerCastleDistance) filters['playerNameForDistance'] = this.formFilters.playerCastleDistance;
-    if (this.formFilters.minFame) filters['minFame'] = this.formFilters.minFame;
-    if (this.formFilters.maxFame) filters['maxFame'] = this.formFilters.maxFame;
-    if (this.formFilters.castleCountMin) filters['castleCountMin'] = this.formFilters.castleCountMin;
-    if (this.formFilters.castleCountMax) filters['castleCountMax'] = this.formFilters.castleCountMax;
     this.formFilters.isFiltered = Object.keys(filters).length > 0;
     return filters;
   }

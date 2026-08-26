@@ -74,6 +74,31 @@ interface FormFilters {
   styleUrl: './players.component.css',
 })
 export class PlayersComponent extends GenericComponent implements OnInit {
+  private static readonly RANGE_FILTER_KEYS = [
+    'minHonor',
+    'maxHonor',
+    'minMight',
+    'maxMight',
+    'minAllianceMight',
+    'maxAllianceMight',
+    'minMightAllTime',
+    'maxMightAllTime',
+    'minLoot',
+    'maxLoot',
+    'minLevel',
+    'maxLevel',
+    'minFame',
+    'maxFame',
+    'castleCountMin',
+    'castleCountMax',
+  ] as const;
+  private static readonly TRISTATE_FILTER_KEYS = [
+    'allianceFilter',
+    'protectionFilter',
+    'stormyIslandsFilter',
+    'banFilter',
+    'inactiveFilter',
+  ] as const;
   @ViewChild('searchForm') public searchForm!: SearchFormComponent;
   public readonly REALM_ORDER = ['0', '2', '1', '3'];
   public players: Player[] = [];
@@ -215,44 +240,9 @@ export class PlayersComponent extends GenericComponent implements OnInit {
   }
 
   public onGenericFocus(type: BoundType, field: FilterField): void {
-    let targetValue: string | null = null;
-    switch (field) {
-      case 'honor': {
-        targetValue = type === 'min' ? this.formFilters.minHonor : this.formFilters.maxHonor;
-        break;
-      }
-      case 'loot': {
-        targetValue = type === 'min' ? this.formFilters.minLoot : this.formFilters.maxLoot;
-        break;
-      }
-      case 'level': {
-        targetValue = type === 'min' ? this.formFilters.minLevel : this.formFilters.maxLevel;
-        break;
-      }
-      case 'might': {
-        targetValue = type === 'min' ? this.formFilters.minMight : this.formFilters.maxMight;
-        break;
-      }
-      case 'allianceMight': {
-        targetValue = type === 'min' ? this.formFilters.minAllianceMight : this.formFilters.maxAllianceMight;
-        break;
-      }
-      case 'mightAllTime': {
-        targetValue = type === 'min' ? this.formFilters.minMightAllTime : this.formFilters.maxMightAllTime;
-        break;
-      }
-      case 'fame': {
-        targetValue = type === 'min' ? (this.formFilters as any).minFame : (this.formFilters as any).maxFame;
-        break;
-      }
-    }
-    if (targetValue != null) {
-      if (type === 'min') {
-        this.displayFormValues[field].min = targetValue.toString();
-      } else {
-        this.displayFormValues[field].max = targetValue.toString();
-      }
-    }
+    const targetValue = this.formFilters[this.FILTER_KEYS[field][type]];
+    if (targetValue == null) return;
+    this.displayFormValues[field][type] = targetValue.toString();
   }
 
   public onGenericInput(type: BoundType, field: FilterField, event: Event): void {
@@ -343,7 +333,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     }
     const REALM_ORDER = this.REALM_ORDER;
     const lastSelected = selectedItems.at(-1);
-    if (lastSelected && lastSelected.key === '999') {
+    if (lastSelected?.key === '999') {
       this.formFilters.kingdomFilter = ['999'];
       return;
     }
@@ -715,29 +705,14 @@ export class PlayersComponent extends GenericComponent implements OnInit {
 
   private constructFilters(): Record<string, string | number> {
     const filters: Record<string, string | number> = {};
-    if (this.formFilters.minHonor) filters['minHonor'] = this.formFilters.minHonor;
-    if (this.formFilters.maxHonor) filters['maxHonor'] = this.formFilters.maxHonor;
-    if (this.formFilters.minMight) filters['minMight'] = this.formFilters.minMight;
-    if (this.formFilters.maxMight) filters['maxMight'] = this.formFilters.maxMight;
-    if (this.formFilters.minAllianceMight) filters['minAllianceMight'] = this.formFilters.minAllianceMight;
-    if (this.formFilters.maxAllianceMight) filters['maxAllianceMight'] = this.formFilters.maxAllianceMight;
-    if (this.formFilters.minMightAllTime) filters['minMightAllTime'] = this.formFilters.minMightAllTime;
-    if (this.formFilters.maxMightAllTime) filters['maxMightAllTime'] = this.formFilters.maxMightAllTime;
-    if (this.formFilters.minLoot) filters['minLoot'] = this.formFilters.minLoot;
-    if (this.formFilters.maxLoot) filters['maxLoot'] = this.formFilters.maxLoot;
-    if (this.formFilters.minLevel) filters['minLevel'] = this.formFilters.minLevel;
-    if (this.formFilters.maxLevel) filters['maxLevel'] = this.formFilters.maxLevel;
-    if (this.formFilters.allianceFilter !== '-1') filters['allianceFilter'] = this.formFilters.allianceFilter;
-    if (this.formFilters.protectionFilter !== '-1') filters['protectionFilter'] = this.formFilters.protectionFilter;
-    if (this.formFilters.stormyIslandsFilter !== '-1')
-      filters['stormyIslandsFilter'] = this.formFilters.stormyIslandsFilter;
-    if (this.formFilters.banFilter !== '-1') filters['banFilter'] = this.formFilters.banFilter;
-    if (this.formFilters.inactiveFilter !== '-1') filters['inactiveFilter'] = this.formFilters.inactiveFilter;
+    for (const key of PlayersComponent.RANGE_FILTER_KEYS) {
+      if (this.formFilters[key]) filters[key] = this.formFilters[key];
+    }
+    // -1 is the "no preference" option of a three-state select, so it is not a filter
+    for (const key of PlayersComponent.TRISTATE_FILTER_KEYS) {
+      if (this.formFilters[key] !== '-1') filters[key] = this.formFilters[key];
+    }
     if (this.formFilters.playerCastleDistance) filters['playerNameForDistance'] = this.formFilters.playerCastleDistance;
-    if (this.formFilters.minFame) filters['minFame'] = this.formFilters.minFame;
-    if (this.formFilters.maxFame) filters['maxFame'] = this.formFilters.maxFame;
-    if (this.formFilters.castleCountMin) filters['castleCountMin'] = this.formFilters.castleCountMin;
-    if (this.formFilters.castleCountMax) filters['castleCountMax'] = this.formFilters.castleCountMax;
     if (this.formFilters.allianceRankFilter.includes('1')) {
       filters['allianceRankFilter'] = this.formFilters.allianceRankFilter
         .map((value, index) => (value === '1' ? index : null))

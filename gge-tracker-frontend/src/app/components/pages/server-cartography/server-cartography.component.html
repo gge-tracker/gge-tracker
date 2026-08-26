@@ -12,7 +12,7 @@
       <div class="legend-item"
         (click)="watchModeAlliance === 'one' ? togglePlayerCastle(legend.name) : toggleAllianceCastles(legend.name)"
         (keydown)="($event.key === 'Enter' || $event.key === ' ') ? (watchModeAlliance === 'one' ? togglePlayerCastle(legend.name) : toggleAllianceCastles(legend.name)) : null"
-        tabindex="0">
+        tabindex="0" role="button">
         <div class="legend-color" [style.background-color]="legend.color"></div>
         <div class="legend-text" [ngClass]="{ 'hidden': isPlayerHidden(legend.name) }">
           {{ legend.name === '1' ? ('Sans alliance' | translate) : legend.name }}
@@ -216,7 +216,7 @@
               <span field prefix class="large">
                 <img [src]="filter.icon" [attr.alt]="filter.alt | translate" [title]="filter.title | translate">
               </span>
-              <label field toggle [for]="filter.id">
+              <label field toggle [for]="filter.id" [attr.aria-label]="filter.label | translate">
                 <input type="checkbox" [(ngModel)]="formFilters[filter.model]" [id]="filter.id">
                 <span class="slider"></span>
               </label>

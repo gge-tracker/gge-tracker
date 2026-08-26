@@ -299,19 +299,6 @@
 }
 
 .castle-tooltip {
-  background: rgba(20,20,24,0.9);
-  border-radius: 6px;
-  color: white;
-  font-size: 0.85rem;
-  padding: 0.45rem 0.6rem;
-  pointer-events: none;
-  position: absolute;
-  transform: translate(8px,8px);
-  white-space: nowrap;
-  z-index: 999999;
-}
-
-.castle-tooltip {
   background: rgba(0,0,0,0.75);
   border-radius: 4px;
   color: white;
@@ -319,8 +306,11 @@
   padding: 4px 8px;
   pointer-events: none;
   position: absolute;
+  transform: translate(8px,8px);
   white-space: nowrap;
+  font-size: 0.85rem;
   z-index: 999999;
+  border-radius: 6px;
 }
 
 .castle-type {
@@ -606,12 +596,8 @@
 
 .modern-modal {
   backdrop-filter: blur(12px);
-  background: rgba(20,20,25,0.6);
-  padding: 1rem;
-}
-
-.modern-modal {
   background: linear-gradient(180deg,#1c1f26,#14161c);
+  padding: 1rem;
   border-radius: 0;
   color: #e4e7eb;
   font-family: 'Inter', 'Roboto', sans-serif;

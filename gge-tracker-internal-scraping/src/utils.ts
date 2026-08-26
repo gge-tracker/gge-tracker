@@ -52,6 +52,11 @@ class Utils {
     process.stdout.write(`[${time}]` + ` Work in progress ${percentStr}% (${actualProcess}/${maxProcess}).\r`);
   }
 
+  public static medalForRank(index: number): string {
+    const medals = [':first_place: ', ':second_place: ', ':third_place: '];
+    return medals[index] ?? '';
+  }
+
   /**
    * Logs a message at `info` level.
    *

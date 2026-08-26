@@ -220,10 +220,9 @@ export class TrackerComponent extends GenericComponent {
   }
 
   public onPositionChange(positionX: number | null, positionY: number | null): void {
-    if (positionX === null || positionY === null) {
-      this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
-      return;
-    } else if (positionX < 0 || positionY < 0 || positionX > 1286 || positionY > 1286) {
+    const outsideMap = positionX === null || positionY === null;
+    const outsideBounds = !outsideMap && (positionX < 0 || positionY < 0 || positionX > 1286 || positionY > 1286);
+    if (outsideMap || outsideBounds) {
       this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
       return;
     }
@@ -421,17 +420,16 @@ export class TrackerComponent extends GenericComponent {
       this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
       throw new Error('Server not found');
     }
-    return await this.apiRestService.getGenericData(
-      this.apiRestService.getDungeonsList.bind(this.apiRestService),
-      this.page,
-      this.pageSize,
-      JSON.stringify(this.filterByKid),
-      this.filterByAttackCooldown,
-      this.filterByPlayerName,
-      this.positionX,
-      this.positionY,
-      this.nearPlayerName,
-    );
+    return await this.apiRestService.getGenericData(this.apiRestService.getDungeonsList.bind(this.apiRestService), {
+      page: this.page,
+      size: this.pageSize,
+      filterByKid: JSON.stringify(this.filterByKid),
+      filterByAttackCooldown: this.filterByAttackCooldown,
+      filterByPlayerName: this.filterByPlayerName,
+      positionX: this.positionX,
+      positionY: this.positionY,
+      nearPlayerName: this.nearPlayerName,
+    });
   }
 
   private mapStateEntry([label, value]: [string, number]): { label: string; value: string } {

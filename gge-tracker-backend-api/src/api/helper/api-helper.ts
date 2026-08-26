@@ -1,11 +1,15 @@
 import * as express from 'express';
 import * as crypto from 'node:crypto';
+import * as nodeFs from 'node:fs';
+import nodePath from 'node:path';
+import { inspect } from 'node:util';
 import { RedisClientType } from 'redis';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { Status } from '../enums/http-status.enums';
 import { ApiGgeTrackerManager } from '../managers/api.manager';
 import { ApiInputErrorType, ApiInvalidInputType, ApiUndefinedInputType } from '../types/parameter.types';
 import * as cacheVersion from './cache/cache-version';
+import { toQueryText } from './parse-query';
 
 /**
  * Abstract utility class providing helper methods and constants for API operations
@@ -41,7 +45,7 @@ export abstract class ApiHelper {
   public static readonly GGE_BASE_URL = 'https://empire-html5.goodgamestudios.com';
   public static readonly ASSETS_BASE_URL = this.GGE_BASE_URL + '/default';
   public static readonly CONFIG_BASE_URL = this.GGE_BASE_URL + '/config';
-  public static readonly API_VERSION = require('/app/package.json').version;
+  public static readonly API_VERSION = this.readPackageVersion();
   public static readonly API_VERSION_RELEASE_DATE = this.formatReleaseDate(this.API_VERSION);
 
   /**
@@ -163,7 +167,7 @@ export abstract class ApiHelper {
    * @param request - The Express request object associated with the error, used to log query, params, and body
    */
   public static logError(error: unknown, methodName: string, request?: express.Request): void {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = error instanceof Error ? error.message : inspect(error, { depth: 2 });
     const contextParts: string[] = [];
     if (request?.query && Object.keys(request.query).length > 0) {
       contextParts.push(`query=${JSON.stringify(request.query)}`);
@@ -353,7 +357,7 @@ export abstract class ApiHelper {
    */
   public static getParsedString(value: unknown, defaultValue: string | null = null): string | null {
     if (!value) return defaultValue;
-    return String(value);
+    return toQueryText(value) ?? defaultValue;
   }
 
   /**
@@ -364,7 +368,7 @@ export abstract class ApiHelper {
    * @returns The validated page number or the default value
    */
   public static validatePageNumber(page: unknown, defaultValue: number = 1): number {
-    const pageNumber = Number.parseInt(String(page)) || defaultValue;
+    const pageNumber = Number.parseInt(toQueryText(page) ?? '') || defaultValue;
     if (Number.isNaN(pageNumber) || pageNumber < 1 || pageNumber > ApiHelper.MAX_RESULT_PAGE) {
       return defaultValue;
     }
@@ -522,6 +526,23 @@ export abstract class ApiHelper {
    */
   public static setGgeTrackerManager(ggeTrackerManager: ApiGgeTrackerManager): void {
     this.ggeTrackerManager = ggeTrackerManager;
+  }
+
+  private static readPackageVersion(): string {
+    let directory = __dirname;
+    for (;;) {
+      const candidate = nodePath.join(directory, 'package.json');
+      if (nodeFs.existsSync(candidate)) {
+        try {
+          return JSON.parse(nodeFs.readFileSync(candidate).toString()).version || 'Unknown';
+        } catch {
+          return 'Unknown';
+        }
+      }
+      const parent = nodePath.dirname(directory);
+      if (parent === directory) return 'Unknown';
+      directory = parent;
+    }
   }
 
   /**

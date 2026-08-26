@@ -15,6 +15,7 @@ import { ServerService } from '@ggetracker-services/server.service';
 import { WindowService } from '@ggetracker-services/window.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { XAxisAnnotations } from 'ng-apexcharts';
+import { formatThousands } from '@ggetracker-services/text-format.utilities';
 
 @Component({
   selector: 'app-server-statistics',
@@ -401,14 +402,14 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
     chart.yaxis = {
       labels: {
         formatter: (value: number): string => {
-          return value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return formatThousands(value.toString());
         },
       },
     };
     chart.tooltip = {
       y: {
         formatter: (value: number): string => {
-          return value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return formatThousands(value.toString());
         },
       },
       x: {
@@ -450,7 +451,7 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
         labels: {
           formatter: (value: number): string => {
             const level = value > 70 ? '70/' + (Math.round(value) - 70) : Math.round(value);
-            return level.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return formatThousands(level.toString());
           },
         },
       };
@@ -459,7 +460,7 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
         // @ts-expect-error: formatter is not a recognized property but is used for configuration
         y.formatter = (value: number): string => {
           const level = value > 70 ? '70/' + (Math.round(value) - 70) : Math.round(value);
-          return level.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return formatThousands(level.toString());
         };
       }
     } else {
@@ -551,11 +552,11 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
   }
 
   public customFormatter(value: number, precision: number): string {
-    return value.toFixed(precision).replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return formatThousands(value.toFixed(precision));
   }
 
   public formatAvg(value: number, toFixed = 3): string {
-    return (value > 0 ? '+' + value.toFixed(toFixed) : value.toFixed(toFixed)).replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return formatThousands(value > 0 ? '+' + value.toFixed(toFixed) : value.toFixed(toFixed));
   }
 
   public async changeRange(range: Event): Promise<void> {
@@ -689,7 +690,7 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
       tooltip: {
         y: {
           formatter: (value: number): string => {
-            return value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',') + ' (points de puissance)';
+            return formatThousands(value.toString()) + ' (points de puissance)';
           },
         },
       },
@@ -777,7 +778,7 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
       yaxis: {
         labels: {
           formatter: (value: number): string => {
-            return value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return formatThousands(value.toString());
           },
         },
       },

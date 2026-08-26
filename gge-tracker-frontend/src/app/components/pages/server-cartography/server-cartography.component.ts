@@ -194,7 +194,7 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     const cellHeight = canvasHeight / rows;
     const col = Math.floor(x / cellWidth);
     const row = Math.floor(y / cellHeight);
-    if (this.heatmap[row] && this.heatmap[row][col]) {
+    if (this.heatmap[row]?.[col]) {
       this.showCellDetails(row, col, this.heatmap[row][col], event);
     } else {
       this.hideCellDetails();
@@ -1163,7 +1163,7 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     const colors: Record<string, string> = {};
     const minPp = Math.min(...players.map((player) => player.pp));
     const maxPp = Math.max(...players.map((player) => player.pp));
-    const list = players.length > 3000 ? players.reverse() : players;
+    const list = players.length > 3000 ? [...players].reverse() : players;
     list.forEach((player: Castle) => {
       let color: string;
       if (one) {

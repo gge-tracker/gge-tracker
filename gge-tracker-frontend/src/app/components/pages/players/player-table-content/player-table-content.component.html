@@ -136,7 +136,7 @@
             <img src="/assets/icon_castles.png" class="btn-icon" alt="">
           </a>
           <img [src]="'/assets/icon_friends' + (player.isFavorite ? '2' : '') + '.png'" (click)="toggleFavorite.emit(player)"
-            (keydown.enter)="toggleFavorite.emit(player)" tabindex="0" [alt]="'Favori' | translate"
+            (keydown.enter)="toggleFavorite.emit(player)" tabindex="0" role="button" [alt]="'Favori' | translate"
             class="btn-icon btn-favorite" [ngClass]="player.isFavorite ? 'is-favorite' : ''">
         </div>
       </td>
