@@ -40,6 +40,9 @@ import { formatThousands } from '@ggetracker-services/text-format.utilities';
 
 type CastleFilterValue = number | string | null;
 
+/** A raw value read out of the GGE building data blob, before formatting. */
+type RawBuildingValue = number | string | boolean | null;
+
 @Component({
   selector: 'app-view-castle',
   imports: [
@@ -155,6 +158,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   public cid: number | null = null;
   public equipments: { [key: string]: any }[] | null = null;
   public tooltip: { x: number; y: number; text: string } | null = null;
+  public focusedBuildingIndex = -1;
   public itemsInDistricts: Record<number, IMappedBuildingWithGround[]> = {};
   public searchTerm = '';
   public sortColumn: string | null = null;
@@ -302,7 +306,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
-  public formatValue(value: number | string | boolean | null): string {
+  public formatValue(value: RawBuildingValue): string {
     if (typeof value === 'number') {
       value = Math.ceil(value);
     }
@@ -592,11 +596,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       this.tooltip = null;
       return;
     }
-    this.searchTerm = '#' + hoveredBuilding.building.objectID;
-    this.applyFilterAndSort();
-    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-    this.currentPage = 1;
-    this.cdr.detectChanges();
+    this.selectBuilding(hoveredBuilding);
   }
 
   public onMouseMove(event: MouseEvent): void {
@@ -606,76 +606,41 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       this.tooltip = null;
       return;
     }
+    this.showTooltipFor(hoveredBuilding, event.pageX, event.pageY);
+  }
 
-    const districtItems = this.getItemsInDistrict(hoveredBuilding);
-    const name = this.capitalizeFirstLetter(this.getBuildingName(hoveredBuilding));
-    const objectID = hoveredBuilding.building?.objectID;
-    const dimensions = `${hoveredBuilding.data?.['width']}x${hoveredBuilding.data?.['height']}`;
-    const burnableFlag = hoveredBuilding?.data?.['burnable'];
-    const burnable =
-      burnableFlag === undefined || Number.parseInt(String(burnableFlag))
-        ? this.translations['Oui']
-        : this.translations['Non'];
-    let info = [
-      `<b>${name === '-' ? 'OID:' + objectID : name}</b> (${this.translations['Niveau']} ${hoveredBuilding.data?.['level']})`,
-      '',
-      `<b>${this.translations['Ordre public']}:</b> ${this.formatValue(Number(hoveredBuilding?.data['publicOrder'])) ?? this.translations['Inconnu']}`,
-      `<b>${this.translations['Brûlable']}:</b> ${burnable}`,
-      `<b>${this.translations['Puissance']}:</b> ${this.formatValue(Number.parseInt(String(hoveredBuilding?.data?.['mightValue']))) ?? this.translations['Inconnu']}`,
-      `<b>${this.translations['Commentaires']}:</b> ${
-        hoveredBuilding?.data?.['comment1'] ?? ''
-      }${hoveredBuilding?.data?.['comment2'] ? ', ' + (hoveredBuilding?.data?.['comment2'] ?? this.translations['Aucun']) : ''}`,
-      `<b>${this.translations['Dimensions']}:</b> ${dimensions}`,
-      `<b>${this.translations['Prix de vente']}:</b> ${this.formatValue(Number.parseInt(String(hoveredBuilding?.data?.['sellC1']))) ?? this.translations['Inconnu']}`,
-    ];
+  public onCanvasKeydown(event: KeyboardEvent): void {
+    if (!this.canvasReady) return;
+    const walkable = this.navigableBuildings;
+    if (walkable.length === 0) return;
 
-    if (districtItems.length > 0) {
-      info.push(`<br><b>${this.translations['Espace dans le quartier']}: (${districtItems.length})</b>`);
-      for (const item of districtItems) {
-        info.push(
-          `- ${this.capitalizeFirstLetter(this.getBuildingName(item))} (${this.translations['Niveau']} ${item.data?.['level']})`,
-        );
-      }
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+    if (step !== undefined) {
+      event.preventDefault();
+      const count = walkable.length;
+      this.focusedBuildingIndex =
+        this.focusedBuildingIndex < 0 ? (step > 0 ? 0 : count - 1) : (this.focusedBuildingIndex + step + count) % count;
+      this.showTooltipForFocusedBuilding(walkable[this.focusedBuildingIndex]);
+      return;
     }
-    const constructionItems = Object.values(hoveredBuilding.constructionItems);
-    info.push(`<br><b>${this.translations['Objets de construction']}: (${constructionItems.length})</b>`);
-    const sortedConstructionItemsBySlotTypeID = [...constructionItems].sort((a, b) => {
-      const slotA = Number(a['slotTypeID']);
-      const slotB = Number(b['slotTypeID']);
-      if (slotA === slotB) return 0;
-      if (slotA === 1) return -1;
-      if (slotB === 1) return 1;
-      return slotA - slotB;
-    });
-    for (const item of sortedConstructionItemsBySlotTypeID) {
-      const slotTypeName = this.getSlotTypeName(Number(item['slotTypeID']));
-      info.push(
-        `- ${slotTypeName} : ${this.capitalizeFirstLetter(String(item['translatedName']))} (${this.translations['Niveau']} ${item['level']})`,
-      );
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      const focused = walkable[this.focusedBuildingIndex];
+      if (focused) this.selectBuilding(focused);
+      return;
     }
-
-    info = info.filter((item) => item !== null);
-
-    if (hoveredBuilding) {
-      this.tooltip = {
-        x: event.pageX + 10,
-        y: event.pageY + 10,
-        text: info.join('<br>'),
-      };
-    } else {
+    if (event.key === 'Escape') {
       this.tooltip = null;
-    }
-    const tooltipElement = globalThis.document.querySelector('#tooltip') as HTMLElement | null;
-    const tooltipHeight = tooltipElement?.offsetHeight || 0;
-    const tooltipWidth = (tooltipElement?.offsetWidth || 0) + 16;
-    if (tooltipHeight + 30 + event.pageY > window.innerHeight && this.tooltip)
-      this.tooltip.y = window.innerHeight - tooltipHeight - 10;
-    if (this.tooltip && this.tooltip.x + tooltipWidth > window.innerWidth) {
-      this.tooltip.x = window.innerWidth - tooltipWidth - 10;
+      this.focusedBuildingIndex = -1;
     }
   }
 
-  public getSlotTypeName(slotTypeID: number | string | boolean | null): string {
+  public onCanvasBlur(): void {
+    this.tooltip = null;
+    this.focusedBuildingIndex = -1;
+  }
+
+  public getSlotTypeName(slotTypeID: RawBuildingValue): string {
     if (!this.languageJsonData) {
       return '-';
     }
@@ -1087,6 +1052,49 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     };
   }
 
+  private mapCastleCategories(
+    castleData: ApiPlayerCastleDataResponse,
+    buildingItems: { [key: string]: string | number }[],
+    result: ApiPlayerCastleDataMapped,
+  ): void {
+    for (const [category, data] of Object.entries(castleData.data)) {
+      for (const [index, datum] of data.entries()) {
+        const item = { ...datum, internalID: '#' + datum.objectID };
+        const definition = buildingItems.find((object) => object['wodID'] === item.wodID);
+        if (!definition) {
+          console.warn(`Item with wodID ${item.wodID} not found in items.`);
+          continue;
+        }
+        result.data[category as keyof typeof castleData.data][index] = {
+          building: item,
+          data: this.mapDataObject(definition),
+          constructionItems: {},
+        };
+      }
+    }
+  }
+
+  private attachConstructionItems(
+    castleData: ApiPlayerCastleDataResponse,
+    constructionItems: { [key: string]: string | number }[],
+    result: ApiPlayerCastleDataMapped,
+  ): { [key: string]: ConstructionItem[] } {
+    const mappedConstructionItems: { [key: string]: ConstructionItem[] } = {};
+    for (const [oid, elements] of Object.entries(castleData.constructionItems)) {
+      for (const [cid] of elements) {
+        const item = constructionItems.find((object) => object['constructionItemID'] === String(cid));
+        if (!item) continue;
+        const targetObject = result.data.buildings.find((g) => g?.building.objectID === Number(oid));
+        if (!targetObject) continue;
+        const object: IMappedBuildingUnknownDataElement = this.mapConstructionItemObject(item);
+        targetObject['constructionItems'][item['slotTypeID'] as string] = object;
+        mappedConstructionItems[oid] = mappedConstructionItems[oid] ?? [];
+        mappedConstructionItems[oid].push(object);
+      }
+    }
+    return mappedConstructionItems;
+  }
+
   private async mapCastleJson(castleData: ApiPlayerCastleDataResponse): Promise<void> {
     const castleJsonData = await this.fetchCastleJsonItems();
     this.effects = castleJsonData['effects'];
@@ -1105,51 +1113,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       },
       constructionItems: [],
     };
-    for (const castleDataCategory of Object.entries(castleData.data)) {
-      const [category, data] = castleDataCategory;
-      for (const [index, datum] of data.entries()) {
-        const item = {
-          ...datum,
-          internalID: '#' + datum.objectID,
-        };
-        const b = buildingItems.find((object: { [key: string]: string | number }) => object['wodID'] === item.wodID);
-        if (!b) {
-          console.warn(`Item with wodID ${item.wodID} not found in items.`);
-          continue;
-        }
-        result.data[category as keyof typeof castleData.data][index] = {
-          building: item,
-          data: this.mapDataObject(b),
-          constructionItems: {},
-        };
-      }
-    }
-
-    let mappedConstructionItems: { [key: string]: ConstructionItem[] } = {};
-    for (const [oid, elements] of Object.entries(castleData.constructionItems)) {
-      for (const [cid] of elements) {
-        const item: IMappedBuildingUnknownDataElement | undefined = constructionItems.find(
-          (object: { [key: string]: string | number }) => object['constructionItemID'] === String(cid),
-        );
-        if (!item) continue;
-        let targetObject;
-        try {
-          targetObject = result.data.buildings.find((g) => g.building.objectID === Number(oid));
-        } catch (error) {
-          console.error('Error finding target object:', error);
-        }
-        if (!targetObject) continue;
-        const object: IMappedBuildingUnknownDataElement = this.mapConstructionItemObject(item);
-        const type = item['slotTypeID'] as string;
-        targetObject['constructionItems'][type] = targetObject['constructionItems'][type] || [];
-        targetObject['constructionItems'][type] = object;
-        if (!mappedConstructionItems[oid]) {
-          mappedConstructionItems[oid] = [];
-        }
-        mappedConstructionItems[oid].push(object);
-      }
-    }
-    this.constructionItems = mappedConstructionItems;
+    this.mapCastleCategories(castleData, buildingItems, result);
+    this.constructionItems = this.attachConstructionItems(castleData, constructionItems, result);
     this.castleObject = result;
     this.regroupedEffects = [];
     const mappedGrounds = result.data.grounds.map((g) => this.toMapped(g, true));
@@ -1213,6 +1178,103 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
+  private get navigableBuildings(): IMappedBuildingWithGround[] {
+    return this.buildings
+      .filter((b) => b && !b.isGround)
+      .sort((a, b) => a.building.positionY - b.building.positionY || a.building.positionX - b.building.positionX);
+  }
+
+  private showTooltipForFocusedBuilding(focused: IMappedBuildingWithGround | undefined): void {
+    if (!focused) {
+      this.tooltip = null;
+      return;
+    }
+    const canvas = this.canvasRef.nativeElement;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = rect.width / canvas.width;
+    const scaleY = rect.height / canvas.height;
+    const canvasX = this.offsetX + (focused.building.positionX - this.minX) * this.cellSize;
+    const canvasY = this.offsetY + (focused.building.positionY - this.minY) * this.cellSize;
+    this.showTooltipFor(
+      focused,
+      rect.left + window.scrollX + canvasX * scaleX,
+      rect.top + window.scrollY + canvasY * scaleY,
+    );
+  }
+
+  private selectBuilding(building: IMappedBuildingWithGround): void {
+    this.searchTerm = '#' + building.building.objectID;
+    this.applyFilterAndSort();
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    this.currentPage = 1;
+    this.cdr.detectChanges();
+  }
+
+  private showTooltipFor(hoveredBuilding: IMappedBuildingWithGround, pageX: number, pageY: number): void {
+    const districtItems = this.getItemsInDistrict(hoveredBuilding);
+    const name = this.capitalizeFirstLetter(this.getBuildingName(hoveredBuilding));
+    const objectID = hoveredBuilding.building?.objectID;
+    const dimensions = `${hoveredBuilding.data?.['width']}x${hoveredBuilding.data?.['height']}`;
+    const burnableFlag = hoveredBuilding?.data?.['burnable'];
+    const burnable =
+      burnableFlag === undefined || Number.parseInt(String(burnableFlag))
+        ? this.translations['Oui']
+        : this.translations['Non'];
+    let info = [
+      `<b>${name === '-' ? 'OID:' + objectID : name}</b> (${this.translations['Niveau']} ${hoveredBuilding.data?.['level']})`,
+      '',
+      `<b>${this.translations['Ordre public']}:</b> ${this.formatValue(Number(hoveredBuilding?.data['publicOrder'])) ?? this.translations['Inconnu']}`,
+      `<b>${this.translations['Brûlable']}:</b> ${burnable}`,
+      `<b>${this.translations['Puissance']}:</b> ${this.formatValue(Number.parseInt(String(hoveredBuilding?.data?.['mightValue']))) ?? this.translations['Inconnu']}`,
+      `<b>${this.translations['Commentaires']}:</b> ${
+        hoveredBuilding?.data?.['comment1'] ?? ''
+      }${hoveredBuilding?.data?.['comment2'] ? ', ' + (hoveredBuilding?.data?.['comment2'] ?? this.translations['Aucun']) : ''}`,
+      `<b>${this.translations['Dimensions']}:</b> ${dimensions}`,
+      `<b>${this.translations['Prix de vente']}:</b> ${this.formatValue(Number.parseInt(String(hoveredBuilding?.data?.['sellC1']))) ?? this.translations['Inconnu']}`,
+    ];
+
+    if (districtItems.length > 0) {
+      info.push(`<br><b>${this.translations['Espace dans le quartier']}: (${districtItems.length})</b>`);
+      for (const item of districtItems) {
+        info.push(
+          `- ${this.capitalizeFirstLetter(this.getBuildingName(item))} (${this.translations['Niveau']} ${item.data?.['level']})`,
+        );
+      }
+    }
+    const constructionItems = Object.values(hoveredBuilding.constructionItems);
+    info.push(`<br><b>${this.translations['Objets de construction']}: (${constructionItems.length})</b>`);
+    const sortedConstructionItemsBySlotTypeID = [...constructionItems].sort((a, b) => {
+      const slotA = Number(a['slotTypeID']);
+      const slotB = Number(b['slotTypeID']);
+      if (slotA === slotB) return 0;
+      if (slotA === 1) return -1;
+      if (slotB === 1) return 1;
+      return slotA - slotB;
+    });
+    for (const item of sortedConstructionItemsBySlotTypeID) {
+      const slotTypeName = this.getSlotTypeName(Number(item['slotTypeID']));
+      info.push(
+        `- ${slotTypeName} : ${this.capitalizeFirstLetter(String(item['translatedName']))} (${this.translations['Niveau']} ${item['level']})`,
+      );
+    }
+
+    info = info.filter((item) => item !== null);
+
+    this.tooltip = {
+      x: pageX + 10,
+      y: pageY + 10,
+      text: info.join('<br>'),
+    };
+    const tooltipElement = globalThis.document.querySelector('#tooltip') as HTMLElement | null;
+    const tooltipHeight = tooltipElement?.offsetHeight || 0;
+    const tooltipWidth = (tooltipElement?.offsetWidth || 0) + 16;
+    if (tooltipHeight + 30 + pageY > window.innerHeight && this.tooltip)
+      this.tooltip.y = window.innerHeight - tooltipHeight - 10;
+    if (this.tooltip && this.tooltip.x + tooltipWidth > window.innerWidth) {
+      this.tooltip.x = window.innerWidth - tooltipWidth - 10;
+    }
+  }
+
   private getBuildingAtMouseEvent(event: MouseEvent): IMappedBuildingWithGround | null {
     const canvas = this.canvasRef.nativeElement;
     const rect = canvas.getBoundingClientRect();
@@ -1222,6 +1284,10 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     const canvasY = (event.clientY - rect.top) * scaleY;
     const cellX = Math.floor((canvasX - this.offsetX) / this.cellSize) + this.minX;
     const cellY = Math.floor((canvasY - this.offsetY) / this.cellSize) + this.minY;
+    return this.getBuildingAtCell(cellX, cellY);
+  }
+
+  private getBuildingAtCell(cellX: number, cellY: number): IMappedBuildingWithGround | null {
     return (
       this.buildings.find((b) => {
         if (!b || b.isGround) return false;

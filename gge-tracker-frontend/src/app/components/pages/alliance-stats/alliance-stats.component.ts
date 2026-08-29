@@ -517,70 +517,23 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   public closeFullscreen(): void {
     const key = this.fullScreenModalKey;
     if (!key) return;
-    let chart;
     const tab = this.chartsTabs[key];
-    if (tab === ChartTypes.PARTICIPATION_RATE) {
-      chart = this.participationRateCharts[key];
-    } else if (tab === ChartTypes.RADAR) {
-      chart = this.radarCharts[key];
-    } else {
-      chart = this.charts[key];
-    }
+    const store = this.chartStoreFor(tab);
+    const chart = store[key];
     if (!chart) return;
-    if (tab === ChartTypes.RADAR) {
-      chart.chart.height = ChartTypeHeights.LARGE;
-    } else {
-      chart.chart.height = ChartTypeHeights.DEFAULT;
-    }
-    const participationRateChart = this.participationRateCharts[key];
-    const basicChart = this.charts[key];
-    const radarChart = this.radarCharts[key];
-    if (participationRateChart) {
-      participationRateChart.chart.height = ChartTypeHeights.DEFAULT;
-    }
-    if (basicChart) {
-      basicChart.chart.height = ChartTypeHeights.DEFAULT;
-    }
-    if (radarChart) {
-      radarChart.chart.height = ChartTypeHeights.LARGE;
-    }
-    chart.chart.width = undefined;
-    if (participationRateChart) {
-      participationRateChart.chart.width = undefined;
-    }
-    if (basicChart) {
-      basicChart.chart.width = undefined;
-    }
-    if (radarChart) {
-      radarChart.chart.width = undefined;
-    }
+    this.resetChartSize(this.participationRateCharts[key], ChartTypeHeights.DEFAULT);
+    this.resetChartSize(this.charts[key], ChartTypeHeights.DEFAULT);
+    this.resetChartSize(this.radarCharts[key], ChartTypeHeights.LARGE);
+    this.resetChartSize(chart, tab === ChartTypes.RADAR ? ChartTypeHeights.LARGE : ChartTypeHeights.DEFAULT);
     const copyChart = { ...chart };
-    if (tab === ChartTypes.PARTICIPATION_RATE) {
-      this.participationRateCharts[key] = chart;
-    } else if (tab === ChartTypes.RADAR) {
-      this.radarCharts[key] = chart;
-    } else {
-      this.charts[key] = chart;
-    }
+    store[key] = chart;
     this.cdr.detectChanges();
     setTimeout(() => {
       // Update the chart reference
-      if (tab === ChartTypes.PARTICIPATION_RATE) {
-        delete this.participationRateCharts[key];
-      } else if (tab === ChartTypes.RADAR) {
-        delete this.radarCharts[key];
-      } else {
-        delete this.charts[key];
-      }
+      delete store[key];
       this.cdr.detectChanges();
       setTimeout(() => {
-        if (tab === ChartTypes.PARTICIPATION_RATE) {
-          this.participationRateCharts[key] = copyChart;
-        } else if (tab === ChartTypes.RADAR) {
-          this.radarCharts[key] = copyChart;
-        } else {
-          this.charts[key] = copyChart;
-        }
+        store[key] = copyChart;
         this.fullScreenModalKey = null;
         this.cdr.detectChanges();
       }, 0);
@@ -2712,15 +2665,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       return { previousSegments, currentSegments };
     }
     const width = currentLength + 1;
-    const lcs = new Int32Array((previousLength + 1) * width);
-    for (let previousIndex = previousLength - 1; previousIndex >= 0; previousIndex--) {
-      for (let currentIndex = currentLength - 1; currentIndex >= 0; currentIndex--) {
-        lcs[previousIndex * width + currentIndex] =
-          previousTokens[previousIndex] === currentTokens[currentIndex]
-            ? lcs[(previousIndex + 1) * width + currentIndex + 1] + 1
-            : Math.max(lcs[(previousIndex + 1) * width + currentIndex], lcs[previousIndex * width + currentIndex + 1]);
-      }
-    }
+    const lcs = this.buildLcsTable(previousTokens, currentTokens);
 
     let previousIndex = 0;
     let currentIndex = 0;
@@ -2742,6 +2687,34 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     }
 
     return { previousSegments, currentSegments };
+  }
+
+  private chartStoreFor(tab: ChartTypes | null): Record<keyof typeof ApiPlayerStatsType, ChartOptions | undefined> {
+    if (tab === ChartTypes.PARTICIPATION_RATE) return this.participationRateCharts;
+    if (tab === ChartTypes.RADAR) return this.radarCharts;
+    return this.charts;
+  }
+
+  private resetChartSize(chart: ChartOptions | undefined, height: ChartTypeHeights): void {
+    if (!chart) return;
+    chart.chart.height = height;
+    chart.chart.width = undefined;
+  }
+
+  private buildLcsTable(previousTokens: string[], currentTokens: string[]): Int32Array {
+    const previousLength = previousTokens.length;
+    const currentLength = currentTokens.length;
+    const width = currentLength + 1;
+    const lcs = new Int32Array((previousLength + 1) * width);
+    for (let previousIndex = previousLength - 1; previousIndex >= 0; previousIndex--) {
+      for (let currentIndex = currentLength - 1; currentIndex >= 0; currentIndex--) {
+        lcs[previousIndex * width + currentIndex] =
+          previousTokens[previousIndex] === currentTokens[currentIndex]
+            ? lcs[(previousIndex + 1) * width + currentIndex + 1] + 1
+            : Math.max(lcs[(previousIndex + 1) * width + currentIndex], lcs[previousIndex * width + currentIndex + 1]);
+      }
+    }
+    return lcs;
   }
 
   private pushSegment(segments: DescriptionSegment[], text: string, changed: boolean): void {

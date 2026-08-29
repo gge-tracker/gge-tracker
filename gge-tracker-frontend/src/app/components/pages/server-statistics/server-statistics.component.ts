@@ -16,6 +16,11 @@ import { WindowService } from '@ggetracker-services/window.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { formatThousands } from '@ggetracker-services/text-format.utilities';
 
+interface StatPoint {
+  x: string;
+  y: number | null;
+}
+
 @Component({
   selector: 'app-server-statistics',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -388,11 +393,10 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
       tooltip: {},
     };
     let data = this.serverStatsData.map((d) => {
+      const value = Number(d[identifier]);
       return {
         x: d.created_at,
-        y: d[identifier]?.toString().includes('.')
-          ? Number.parseFloat(Number(d[identifier]).toFixed(3))
-          : d[identifier],
+        y: Number.isFinite(value) ? Number.parseFloat(value.toFixed(3)) : null,
       };
     });
     // We need to remove the null values from the data
@@ -416,72 +420,15 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
       },
     };
     if (identifier.startsWith('event_')) {
-      let lastData: {
-        x: string;
-        y: string | number | null | Record<string, { id: string; point: number }[]>;
-      }[] = [];
-      for (let index = data.length - 1; index >= 0; index--) {
-        if (data[index].y === 0) {
-          const slice = data.slice(index);
-          lastData = slice.map((d) => {
-            return { x: d.x, y: d.y };
-          });
-          break;
-        }
-      }
-      chart.series = [
-        {
-          name: card.label,
-          data: lastData,
-        },
-      ];
-      chart.xaxis.min = new Date(lastData[0].x).getTime();
-      if (lastData.at(-1)) {
-        chart.xaxis.max = new Date(lastData.at(-1)!.x).getTime();
-      }
+      this.applyEventSeries(chart, card, data);
     } else if (identifier === 'avg_level') {
-      chart.series = [
-        {
-          name: card.label,
-          data,
-        },
-      ];
-      chart.yaxis = {
-        labels: {
-          formatter: (value: number): string => {
-            const level = value > 70 ? '70/' + (Math.round(value) - 70) : Math.round(value);
-            return formatThousands(level.toString());
-          },
-        },
-      };
-      const y = chart.tooltip.y;
-      if (y) {
-        // @ts-expect-error: formatter is not a recognized property but is used for configuration
-        y.formatter = (value: number): string => {
-          const level = value > 70 ? '70/' + (Math.round(value) - 70) : Math.round(value);
-          return formatThousands(level.toString());
-        };
-      }
+      this.applyAvgLevelSeries(chart, card, data);
     } else {
-      if (identifier === 'players_who_changed_name' || identifier === 'alliances_changed_name') {
-        const groupedData: Record<string, number> = {};
-        data.forEach((d) => {
-          const date = new Date(d.x);
-          const dateString = this.utilitiesService.toLocalDayKey(date);
-          if (!groupedData[dateString]) {
-            groupedData[dateString] = 0;
-          }
-          groupedData[dateString] += d.y as number;
-        });
-        data = Object.entries(groupedData).map(([key, value]) => {
-          return { x: key, y: value };
-        });
-        data.sort((a, b) => new Date(a.x).getTime() - new Date(b.x).getTime());
-      }
+      const shouldGroupByDay = identifier === 'players_who_changed_name' || identifier === 'alliances_changed_name';
       chart.series = [
         {
           name: card.label,
-          data,
+          data: shouldGroupByDay ? this.sumByDay(data) : data,
         },
       ];
     }
@@ -529,9 +476,10 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
     const selectedCard = this.selectedCard;
     if (!selectedCard) return;
     const data = this.serverStatsData.map((d) => {
+      const cell = d[selectedCard.identifier];
       return {
         x: new Date(d.created_at).toLocaleString(),
-        y: d[selectedCard.identifier],
+        y: typeof cell === 'object' && cell !== null ? JSON.stringify(cell) : String(cell),
       };
     });
     data.unshift({
@@ -739,5 +687,49 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
     if (this.charts[name].chart.zoom) {
       this.charts[name].chart.zoom.allowMouseWheelZoom = false;
     }
+  }
+
+  private applyEventSeries(chart: ChartOptions, card: Card, data: StatPoint[]): void {
+    let lastData: StatPoint[] = [];
+    for (let index = data.length - 1; index >= 0; index--) {
+      if (data[index].y === 0) {
+        lastData = data.slice(index).map((d) => ({ x: d.x, y: d.y }));
+        break;
+      }
+    }
+    chart.series = [{ name: card.label, data: lastData }];
+    chart.xaxis.min = new Date(lastData[0].x).getTime();
+    const last = lastData.at(-1);
+    if (last) chart.xaxis.max = new Date(last.x).getTime();
+  }
+
+  private formatLevelLabel(value: number): string {
+    const level = value > 70 ? '70/' + (Math.round(value) - 70) : Math.round(value);
+    return formatThousands(level.toString());
+  }
+
+  private applyAvgLevelSeries(chart: ChartOptions, card: Card, data: StatPoint[]): void {
+    chart.series = [{ name: card.label, data }];
+    chart.yaxis = {
+      labels: {
+        formatter: (value: number): string => this.formatLevelLabel(value),
+      },
+    };
+    const y = chart.tooltip.y;
+    if (y) {
+      // @ts-expect-error: formatter is not a recognized property but is used for configuration
+      y.formatter = (value: number): string => this.formatLevelLabel(value);
+    }
+  }
+
+  private sumByDay(data: StatPoint[]): StatPoint[] {
+    const groupedData: Record<string, number> = {};
+    for (const d of data) {
+      const dateString = this.utilitiesService.toLocalDayKey(new Date(d.x));
+      groupedData[dateString] = (groupedData[dateString] ?? 0) + (d.y as number);
+    }
+    return Object.entries(groupedData)
+      .map(([key, value]) => ({ x: key, y: value }))
+      .sort((a, b) => new Date(a.x).getTime() - new Date(b.x).getTime());
   }
 }

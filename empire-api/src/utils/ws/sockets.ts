@@ -84,8 +84,8 @@ const GGE_NETWORKS: GgeNetworkDefinition[] = [
 ];
 
 export abstract class SocketService {
-  public static instances: string[];
-  public static credentials: any;
+  private static instances: string[];
+  private static credentials: any;
   public static readonly managedInstances: Set<string> = new Set<string>();
 
   public static getAllowedInstances(): string[] {

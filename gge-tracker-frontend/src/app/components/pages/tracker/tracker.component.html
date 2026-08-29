@@ -294,7 +294,7 @@
           @if (activeTab === 'list') {
             <app-modal-table
               [items]="playerDungeonAttackHistory"
-              [headerTemplate]="dungeonHistoryHeader"
+              [columns]="dungeonHistoryColumns"
               [rowTemplate]="dungeonHistoryRow"
               [searchFilter]="dungeonHistorySearchFilter"
               [resetKey]="selectedPlayerName"
@@ -359,24 +359,6 @@
     </div>
   </div>
 </div>
-
-<ng-template #dungeonHistoryHeader let-sortBy="sortBy" let-sortColumn="sortColumn" let-sortAsc="sortAsc">
-  <tr>
-    <th (click)="sortBy('kid')" scope="col" tabindex="0" (keydown.enter)="sortBy('kid')">
-      {{ 'Royaume' | translate }}
-      @if (sortColumn === 'kid') {
-        <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc" [class.fa-arrow-down]="!sortAsc"></i>
-      }
-    </th>
-    <th scope="col">{{ 'Position' | translate }}</th>
-    <th (click)="sortBy('attacked_at')" scope="col" tabindex="0" (keydown.enter)="sortBy('attacked_at')">
-      {{ 'Date de l\'attaque' | translate }}
-      @if (sortColumn === 'attacked_at') {
-        <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc" [class.fa-arrow-down]="!sortAsc"></i>
-      }
-    </th>
-  </tr>
-</ng-template>
 
 <ng-template #dungeonHistoryRow let-attack>
   <tr>

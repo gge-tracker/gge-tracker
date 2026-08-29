@@ -58,7 +58,7 @@ export const qFlag = (): QueryField<QueryFlagValue> => ({
   parse: (value): QueryFlagValue => {
     if (value === '0' || value === 0) return 0;
     if (value === '1' || value === 1) return 1;
-    return;
+    return undefined;
   },
 });
 

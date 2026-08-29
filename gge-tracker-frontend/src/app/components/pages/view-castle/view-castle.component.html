@@ -194,8 +194,12 @@
                     <div class="canvas-zone" [hidden]="activeView !== 'canvas'">
                       <div class="canvas-wrapper">
                         <canvas #mapCanvas [width]="canvasWidth" [height]="canvasHeight"
+                          tabindex="0"
+                          [attr.aria-label]="'Carte' | translate"
                           (mousemove)="onMouseMove($event)"
                           (click)="onClick($event)"
+                          (keydown)="onCanvasKeydown($event)"
+                          (blur)="onCanvasBlur()"
                           (mouseleave)="tooltip = null"></canvas>
                         @if (tooltip) {
                           <div [style.left.px]="tooltip.x" [style.top.px]="tooltip.y"

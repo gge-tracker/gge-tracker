@@ -423,7 +423,7 @@
               }
               @if (monumentsList.length > 0) {
                 <div class="ps-section">
-                  <app-modal-table [items]="monumentsList" [headerTemplate]="patriarchMonumentsHeader"
+                  <app-modal-table [items]="monumentsList" [columns]="monumentsColumns"
                     [rowTemplate]="patriarchMonumentsRow" [searchFilter]="monumentsSearchFilter"
                     defaultSortColumn="type" />
                 </div>
@@ -975,7 +975,7 @@
       </div>
       <div class="modal-body">
         <ng-container *ngTemplateOutlet="patriarchOverviewContent"></ng-container>
-        <app-modal-table [items]="monumentsList" [headerTemplate]="patriarchMonumentsHeader"
+        <app-modal-table [items]="monumentsList" [columns]="monumentsColumns"
           [rowTemplate]="patriarchMonumentsRow" [searchFilter]="monumentsSearchFilter" defaultSortColumn="type" />
       </div>
     </div>
@@ -998,29 +998,6 @@
       }
     </div>
   </div>
-</ng-template>
-
-<ng-template #patriarchMonumentsHeader let-sortBy="sortBy" let-sortColumn="sortColumn" let-sortAsc="sortAsc">
-  <tr>
-    <th (click)="sortBy('type')" scope="col" tabindex="0" (keydown.enter)="sortBy('type')">
-      {{ 'Type de patrimoine' | translate }}
-      @if (sortColumn === 'type') {
-      <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc" [class.fa-arrow-down]="!sortAsc"></i>
-      }
-    </th>
-    <th (click)="sortBy('kingdom')" scope="col" tabindex="0" (keydown.enter)="sortBy('kingdom')">
-      {{ 'Royaume' | translate }}
-      @if (sortColumn === 'kingdom') {
-      <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc" [class.fa-arrow-down]="!sortAsc"></i>
-      }
-    </th>
-    <th (click)="sortBy('position')" scope="col" tabindex="0" (keydown.enter)="sortBy('position')">
-      {{ 'Position' | translate }}
-      @if (sortColumn === 'position') {
-      <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc" [class.fa-arrow-down]="!sortAsc"></i>
-      }
-    </th>
-  </tr>
 </ng-template>
 
 <ng-template #patriarchMonumentsRow let-monument>

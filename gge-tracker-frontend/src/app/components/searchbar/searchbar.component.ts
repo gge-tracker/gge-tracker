@@ -25,8 +25,8 @@ export class SearchbarComponent implements OnInit, OnChanges {
   public min = input<number | null | undefined>(null);
   public max = input<number | null | undefined>(null);
   public hasContent = input<boolean>(false);
-  public search: string | number | null | undefined = '';
-  public firstValue: string | number | null | undefined = '';
+  public search: SearchValue = '';
+  public firstValue: SearchValue = '';
   public searchEmitter = output<string>();
 
   public ngOnInit(): void {
@@ -40,7 +40,7 @@ export class SearchbarComponent implements OnInit, OnChanges {
     }
   }
 
-  public updateSearchValue(value: string | number | null | undefined): void {
+  public updateSearchValue(value: SearchValue): void {
     this.searchEmitter.emit(String(value ?? ''));
   }
 }

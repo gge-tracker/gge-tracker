@@ -83,6 +83,72 @@ const TARGET_postgresConfig = {
   max: Number(TARGET_CONNECTION_LIMIT),
 };
 
+async function ensureOuterRealmsConnected(
+  generic: GenericFetchAndSaveBackend,
+  statusUrl: string,
+  serverUrl: string,
+): Promise<{ ready: boolean; lastTSIDValue: string | null }> {
+  console.log('Checking Empire API Realtime status for Outer Realms server...');
+  const statusResponse = await generic.fetchUrl(statusUrl, 'GET', null);
+  const realtimeRedisStatus = await generic.getRedisValue('outerRealmsDataFetchError');
+  if (statusResponse.data?.['EmpireEx_42'] === true && !realtimeRedisStatus) {
+    return { ready: true, lastTSIDValue: process.env.INITIAL_TSID_VALUE || null };
+  }
+
+  const lastCheckTime = await generic.getRedisValue('outerRealmsLastCheckTime');
+  const lastTSIDValue = await generic.getRedisValue('temporaryServerData');
+  const now = Date.now();
+  if (lastCheckTime && now - Number(lastCheckTime) < 10 * 60 * 1000) {
+    console.error('Outer Realms server is not ready yet. Last check was less than 10 minutes ago. Exiting.');
+    return { ready: false, lastTSIDValue };
+  }
+  await generic.setRedisValue('outerRealmsLastCheckTime', now.toString());
+
+  console.log('Deleting existing Outer Realms server configuration if any...');
+  try {
+    await generic.fetchUrl(serverUrl + '/' + TARGET_ID_SERVER, 'DELETE', null);
+  } catch {}
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+
+  console.log('Fetching Outer Realms tokens...');
+  const data = await generic.getOuterRealmsCode();
+  if (!data) {
+    console.error('Failed to get Outer Realms tokens');
+    return { ready: false, lastTSIDValue };
+  }
+
+  console.log('Outer Realms server is not connected yet. Connecting...');
+  const { TLT, TSIP, TSZ } = data;
+  await generic.fetchUrl(BASE_DOMAIN_URL + '/server', 'POST', {
+    server: TSZ,
+    socket_url: TSIP,
+    username: 'gge-tracker-outer-realms',
+    password: TLT,
+  });
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+
+  console.log('Outer Realms server might be connected. Verifying...');
+  const verifyResponse = await generic.fetchUrl(statusUrl, 'GET', null);
+  if (verifyResponse.data?.['EmpireEx_42'] !== true) {
+    console.error('Failed to connect Outer Realms server, exiting.');
+    return { ready: false, lastTSIDValue };
+  }
+  console.log('Outer Realms server is successfully connected!');
+  return { ready: true, lastTSIDValue };
+}
+
+async function notifyOuterRealmsEvent(
+  generic: GenericFetchAndSaveBackend,
+  discordApiUrl: string,
+  scoringSystemType: 'collector' | 'might' | 'rankSwap',
+): Promise<void> {
+  try {
+    await generic.fetchUrl(discordApiUrl, 'POST', getDiscordApiMessageBody(scoringSystemType));
+  } catch (error) {
+    console.error('Error sending Discord notification:', error);
+  }
+}
+
 async function createOuterRealmsInstance(): Promise<void> {
   const statusUrl = BASE_DOMAIN_URL + '/status';
   const serverUrl = BASE_DOMAIN_URL + '/server';
@@ -94,52 +160,10 @@ async function createOuterRealmsInstance(): Promise<void> {
       logSuffix || 'Outer Realms Token Scraper',
     );
 
-    console.log('Checking Empire API Realtime status for Outer Realms server...');
-    const statusResponse = await generic.fetchUrl(statusUrl, 'GET', null);
-    const realtimeRedisStatus = await generic.getRedisValue('outerRealmsDataFetchError');
-    let lastTSIDValue: string | null = process.env.INITIAL_TSID_VALUE || null;
-    if (statusResponse.data?.['EmpireEx_42'] !== true || realtimeRedisStatus) {
-      const lastCheckTime = await generic.getRedisValue('outerRealmsLastCheckTime');
-      lastTSIDValue = await generic.getRedisValue('temporaryServerData');
-      const now = Date.now();
-      if (lastCheckTime && now - Number(lastCheckTime) < 10 * 60 * 1000) {
-        console.error('Outer Realms server is not ready yet. Last check was less than 10 minutes ago. Exiting.');
-        return;
-      }
-      await generic.setRedisValue('outerRealmsLastCheckTime', now.toString());
-      console.log('Deleting existing Outer Realms server configuration if any...');
-      try {
-        await generic.fetchUrl(serverUrl + '/' + TARGET_ID_SERVER, 'DELETE', null);
-      } catch {}
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+    const connection = await ensureOuterRealmsConnected(generic, statusUrl, serverUrl);
+    if (!connection.ready) return;
+    const lastTSIDValue = connection.lastTSIDValue;
 
-      console.log('Fetching Outer Realms tokens...');
-      const data = await generic.getOuterRealmsCode();
-      if (!data) {
-        console.error('Failed to get Outer Realms tokens');
-        return;
-      }
-
-      console.log('Outer Realms server is not connected yet. Connecting...');
-      const { TLT, TSIP, TSZ } = data;
-      const url = BASE_DOMAIN_URL + '/server';
-      const body = {
-        server: TSZ,
-        socket_url: TSIP,
-        username: 'gge-tracker-outer-realms',
-        password: TLT,
-      };
-      await generic.fetchUrl(url, 'POST', body);
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-      console.log('Outer Realms server might be connected. Verifying...');
-      const verifyResponse = await generic.fetchUrl(statusUrl, 'GET', null);
-      if (verifyResponse.data?.['EmpireEx_42'] === true) {
-        console.log('Outer Realms server is successfully connected!');
-      } else {
-        console.error('Failed to connect Outer Realms server, exiting.');
-        return;
-      }
-    }
     console.log('Starting Outer Realms data fetch process...');
     const target = new GenericFetchAndSaveBackend(
       TARGET_BASE_API_URL,
@@ -152,26 +176,13 @@ async function createOuterRealmsInstance(): Promise<void> {
     console.log('Current TSID value in Redis:', currentTSIDValue);
     console.log('Last TSID value in Redis:', lastTSIDValue);
     console.log('Scoring system type detected:', scoringSystemType);
-    if (
-      lastTSIDValue &&
-      currentTSIDValue &&
-      lastTSIDValue &&
-      lastTSIDValue !== currentTSIDValue &&
-      scoringSystemType &&
-      DISCORD_OR_API_URL &&
-      DISCORD_OR_CHANNEL_ID
-    ) {
+    const tsidChanged = Boolean(lastTSIDValue && currentTSIDValue && lastTSIDValue !== currentTSIDValue);
+    if (tsidChanged && scoringSystemType && DISCORD_OR_API_URL && DISCORD_OR_CHANNEL_ID) {
       console.log('TSID value has changed since last check. New TSID:', currentTSIDValue);
-      const discordMessageBody = getDiscordApiMessageBody(scoringSystemType);
-      try {
-        await generic.fetchUrl(DISCORD_OR_API_URL, 'POST', discordMessageBody);
-      } catch (error) {
-        console.error('Error sending Discord notification:', error);
-      }
+      await notifyOuterRealmsEvent(generic, DISCORD_OR_API_URL, scoringSystemType);
     }
   } catch (error) {
     console.error('Error fetching Empire API Realtime status:', error);
-    
   }
 }
 

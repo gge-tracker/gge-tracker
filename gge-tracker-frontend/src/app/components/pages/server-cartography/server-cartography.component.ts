@@ -11,7 +11,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { ModalFormGroupComponent } from '@ggetracker-components/modal-form-group/modal-form-group.component';
-import { ModalTableComponent } from '@ggetracker-components/modal-table/modal-table.component';
+import { ModalTableColumn, ModalTableComponent } from '@ggetracker-components/modal-table/modal-table.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import {
   ApiCartoAlliance,
@@ -111,6 +111,12 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     patriarch: 0,
   };
   public filters = this.getFilters();
+
+  public readonly monumentsColumns: ModalTableColumn[] = [
+    { label: 'Type de patrimoine', sortKey: 'type' },
+    { label: 'Position', sortKey: 'position' },
+    { label: 'Propriétaire', sortKey: 'owner' },
+  ];
 
   private readonly MIN_RADIUS = 2;
   private readonly MAX_RADIUS = 30;
@@ -739,34 +745,10 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     parsedColors: string[] | null = null,
   ): Promise<void> {
     this.watchModeAlliance = watchMode;
-    const alliances: ApiCartoAlliance[][] = [];
-    // We check if the alliance is a number or a string
-    if (typeof alliance === 'string' && !Number.isNaN(Number.parseInt(alliance))) {
-      const element = await this.apiRestService.getCartoAlliance(Number(alliance), this.selectedWorld);
-      if (element.success && element.data.length > 0) {
-        alliances.push(element.data);
-      } else {
-        this.toastService.add(ErrorType.NO_ALLIANCE_FOUND, 5000);
-        return;
-      }
-    } else if (Array.isArray(alliance)) {
-      for (const id of alliance) {
-        const response = await this.apiRestService.getCartoAlliance(Number(id), this.selectedWorld);
-        if (response.success && response.data.length > 0) {
-          alliances.push(response.data);
-        } else {
-          this.toastService.add(ErrorType.NO_ALLIANCE_FOUND, 5000);
-          return;
-        }
-      }
-    } else {
-      const element = await this.apiRestService.getCartoAllianceByName(alliance, this.selectedWorld);
-      if (element.success && element.data.length > 0) {
-        alliances.push(element.data);
-      } else {
-        this.toastService.add(ErrorType.NO_ALLIANCE_FOUND, 5000);
-        return;
-      }
+    const alliances = await this.loadAlliances(alliance);
+    if (!alliances) {
+      this.toastService.add(ErrorType.NO_ALLIANCE_FOUND, 5000);
+      return;
     }
     const castles: Castle[] = [];
     alliances.forEach((alliance: ApiCartoAlliance[]) => {
@@ -778,13 +760,7 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     this.generateHeatmap();
     setTimeout(() => {
       this.genericInit();
-      if (parsedColors) {
-        for (let index = 0; index < this.legends.length; index++) {
-          if (parsedColors[index]) {
-            this.changeItemColor(this.legends[index].name, parsedColors[index]);
-          }
-        }
-      }
+      this.applyLegendColors(parsedColors);
       this.cdr.detectChanges();
     }, 100);
     this.addHeatmapLayer(this.castles);
@@ -1401,6 +1377,36 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
         context.fillStyle = this.getDensityColor(this.heatmap[row][col].players.length);
         context.fillRect(col * cellWidth, row * cellHeight, cellWidth, cellHeight);
       }
+    }
+  }
+
+  private async loadAlliances(alliance: string | string[]): Promise<ApiCartoAlliance[][] | null> {
+    const lookups = Array.isArray(alliance)
+      ? alliance.map(
+          (id) => (): Promise<ApiResponse<ApiCartoAlliance[]>> =>
+            this.apiRestService.getCartoAlliance(Number(id), this.selectedWorld),
+        )
+      : [
+          Number.isNaN(Number.parseInt(alliance))
+            ? (): Promise<ApiResponse<ApiCartoAlliance[]>> =>
+                this.apiRestService.getCartoAllianceByName(alliance, this.selectedWorld)
+            : (): Promise<ApiResponse<ApiCartoAlliance[]>> =>
+                this.apiRestService.getCartoAlliance(Number(alliance), this.selectedWorld),
+        ];
+
+    const alliances: ApiCartoAlliance[][] = [];
+    for (const lookup of lookups) {
+      const response = await lookup();
+      if (!response.success || response.data.length === 0) return null;
+      alliances.push(response.data);
+    }
+    return alliances;
+  }
+
+  private applyLegendColors(parsedColors: string[] | null): void {
+    if (!parsedColors) return;
+    for (const [index, legend] of this.legends.entries()) {
+      if (parsedColors[index]) this.changeItemColor(legend.name, parsedColors[index]);
     }
   }
 }

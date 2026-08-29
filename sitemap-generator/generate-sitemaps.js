@@ -175,7 +175,9 @@ async function generateSitemaps() {
   console.log("Static sitemap generated.");
 }
 
-generateSitemaps().catch((e) => {
+try {
+  await generateSitemaps();
+} catch (e) {
   console.error("Error generating sitemaps:", e);
   process.exit(1);
-});
+}

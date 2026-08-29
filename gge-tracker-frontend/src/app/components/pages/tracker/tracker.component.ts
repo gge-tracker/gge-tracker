@@ -6,7 +6,7 @@ import { SearchbarComponent } from '@ggetracker-components/searchbar/searchbar.c
 import { SelectComponent } from '@ggetracker-components/select/select.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
 import { ModalFormGroupComponent } from '@ggetracker-components/modal-form-group/modal-form-group.component';
-import { ModalTableComponent } from '@ggetracker-components/modal-table/modal-table.component';
+import { ModalTableColumn, ModalTableComponent } from '@ggetracker-components/modal-table/modal-table.component';
 import { ChartsWrapperComponent } from '@ggetracker-modules/charts-client/charts-wrapper.component';
 import {
   ApiDungeonsAttackHistory,
@@ -68,6 +68,12 @@ export class TrackerComponent extends GenericComponent {
   public readonly Search = Search;
   public readonly X = X;
   public readonly MessageCircleQuestionMark = MessageCircleQuestion;
+  public readonly dungeonHistoryColumns: ModalTableColumn[] = [
+    { label: 'Royaume', sortKey: 'kid' },
+    { label: 'Position' },
+    { label: "Date de l'attaque", sortKey: 'attacked_at' },
+  ];
+
   public pageSize = 15;
   public refreshDataAnimationSpinner = false;
   public selectedState: keyof typeof this.states = 'Tous';

@@ -1527,10 +1527,6 @@ export class GenericFetchAndSaveBackend {
     };
   }
 
-  /**
-   * This method fetches data for the "Wheel of Unimaginable Affluence"
-   *  event (LT: 72) and inserts it into the ClickHouse database.
-   */
   public async insertWheelOfUnimaginableAffluenceData(retry = 0): Promise<void> {
     const LT = 72;
     const LID = 1;
@@ -1541,40 +1537,7 @@ export class GenericFetchAndSaveBackend {
         Utils.logMessage('Wheel of Unimaginable Affluence event is active. Start fetching data...');
         const entriesPerPage = response.data.content.L.length;
         const totalEntries = response.data.content.LR || 0;
-        let fetchedEntries = 0;
-        let hasMore = true;
-        let SV = Math.ceil(entriesPerPage / 2);
-        const wheelData: {
-          playerId: number;
-          points: number;
-        }[] = [];
-        while (hasMore) {
-          const pageResponse = await this.genericFetchData('hgh', { LT, LID, SV: String(SV) });
-          if (pageResponse.data.return_code == '0' && pageResponse.data.content?.L?.length > 0) {
-            const content = pageResponse.data.content.L;
-            for (const entry of content) {
-              const playerData = entry[2];
-              const OID = Number(playerData.OID);
-              if (!wheelData.some((e) => e.playerId === OID)) {
-                wheelData.push({
-                  playerId: OID,
-                  points: Number(entry[1]),
-                });
-                fetchedEntries++;
-              } else {
-                // This is unexpected but we log it just in case
-                Utils.logMessage(`Duplicate entry found for player ID ${OID} at SV=${SV}. Skipping.`);
-              }
-            }
-            Utils.logMessage(`Fetched ${fetchedEntries}/${totalEntries} entries...`);
-            SV += entriesPerPage;
-            if (SV > totalEntries + entriesPerPage) {
-              hasMore = false;
-            }
-          } else {
-            hasMore = false;
-          }
-        }
+        const wheelData = await this.fetchWheelEntries(LT, LID, entriesPerPage, totalEntries);
         const now = new Date();
         Utils.logMessage(
           'Finished fetching Wheel of Unimaginable Affluence data. Total entries:',
@@ -1582,20 +1545,7 @@ export class GenericFetchAndSaveBackend {
           ', at time:',
           now.toISOString(),
         );
-        try {
-          const fetchDateStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
-          await this.insertRowsClickHouse(
-            'wheel_unimaginable_affluence',
-            wheelData.map((entry) => ({
-              player_id: entry.playerId,
-              point: entry.points,
-              created_at: fetchDateStr,
-            })),
-          );
-        } catch (error) {
-          Utils.logCritical('', error, 'Error executing query:');
-          this.DB_UPDATES.criticalErrors++;
-        }
+        await this.storeWheelEntries(wheelData);
       } else {
         Utils.logMessage('Wheel of Unimaginable Affluence event is not active. No data to fetch.');
       }
@@ -1617,6 +1567,60 @@ export class GenericFetchAndSaveBackend {
         );
       }
       Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, this.server);
+    }
+  }
+
+  /**
+   * This method fetches data for the "Wheel of Unimaginable Affluence"
+   *  event (LT: 72) and inserts it into the ClickHouse database.
+   */
+  private async fetchWheelEntries(
+    LT: number,
+    LID: number,
+    entriesPerPage: number,
+    totalEntries: number,
+  ): Promise<{ playerId: number; points: number }[]> {
+    const wheelData: { playerId: number; points: number }[] = [];
+    const seen = new Set<number>();
+    let SV = Math.ceil(entriesPerPage / 2);
+    let hasMore = true;
+
+    while (hasMore) {
+      const pageResponse = await this.genericFetchData('hgh', { LT, LID, SV: String(SV) });
+      if (pageResponse.data.return_code != '0' || !(pageResponse.data.content?.L?.length > 0)) break;
+
+      for (const entry of pageResponse.data.content.L) {
+        const OID = Number(entry[2].OID);
+        if (seen.has(OID)) {
+          // This is unexpected but we log it just in case
+          Utils.logMessage(`Duplicate entry found for player ID ${OID} at SV=${SV}. Skipping.`);
+          continue;
+        }
+        seen.add(OID);
+        wheelData.push({ playerId: OID, points: Number(entry[1]) });
+      }
+      Utils.logMessage(`Fetched ${wheelData.length}/${totalEntries} entries...`);
+
+      SV += entriesPerPage;
+      hasMore = SV <= totalEntries + entriesPerPage;
+    }
+    return wheelData;
+  }
+
+  private async storeWheelEntries(wheelData: { playerId: number; points: number }[]): Promise<void> {
+    try {
+      const fetchDateStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
+      await this.insertRowsClickHouse(
+        'wheel_unimaginable_affluence',
+        wheelData.map((entry) => ({
+          player_id: entry.playerId,
+          point: entry.points,
+          created_at: fetchDateStr,
+        })),
+      );
+    } catch (error) {
+      Utils.logCritical('', error, 'Error executing query:');
+      this.DB_UPDATES.criticalErrors++;
     }
   }
 
@@ -1742,12 +1746,48 @@ export class GenericFetchAndSaveBackend {
     return this.pgSqlConnection;
   }
 
-  /**
-   * Sweeps the storm kingdom ring by ring from the centre and parses every storm object found
-   *
-   * @param knownRadius Radius in map cells reached by the previous scan, used as the starting size
-   * @returns The forts and isles found, the radius actually covered and whether the map border was met
-   */
+  private async scanStormRing(
+    ring: number,
+    forts: Map<string, StormFort>,
+    isles: Map<string, StormIsle>,
+    requestsSoFar: number,
+  ): Promise<{ ringHasObjects: boolean; borderReached: boolean; requests: number }> {
+    let ringHasObjects = false;
+    let borderReached = false;
+    let done = requestsSoFar;
+    for (const tile of this.getStormRingTiles(ring)) {
+      const json = `"KID":${this.STORM_KID},"AX1":${tile.AX1},"AY1":${tile.AY1},"AX2":${tile.AX2},"AY2":${tile.AY2}`;
+      console.log('Fetching zone: ' + json);
+      const url: string = encodeURI(this.BASE_API_URL + 'gaa/' + json);
+      const areaInfos = await this.fetchStormArea(url);
+      const currentTime = new Date();
+
+      for (const object of areaInfos) {
+        const objectType = Number(object[0]);
+        if (objectType === this.STORM_BORDER_OBJECT_ID) {
+          borderReached = true;
+          continue;
+        }
+        if (objectType === this.STORM_FORT_OBJECT_ID) {
+          const fort = this.parseStormFort(object, currentTime);
+          forts.set(`${fort.positionX}:${fort.positionY}`, fort);
+          ringHasObjects = true;
+        } else if (objectType === this.STORM_ISLE_OBJECT_ID) {
+          const isle = this.parseStormIsle(object, currentTime);
+          isles.set(`${isle.positionX}:${isle.positionY}`, isle);
+          ringHasObjects = true;
+        }
+      }
+
+      done++;
+      await this.sleep(30);
+      if (done % 5 === 0) {
+        await this.sleep(1000);
+      }
+    }
+    return { ringHasObjects, borderReached, requests: done };
+  }
+
   private async scanStormMap(knownRadius: number): Promise<StormScanResult> {
     const forts = new Map<string, StormFort>();
     const isles = new Map<string, StormIsle>();
@@ -1758,38 +1798,10 @@ export class GenericFetchAndSaveBackend {
     let done = 0;
 
     while (ring <= this.STORM_MAX_RINGS) {
-      const tiles = this.getStormRingTiles(ring);
-      let ringHasObjects = false;
-      for (const tile of tiles) {
-        const json = `"KID":${this.STORM_KID},"AX1":${tile.AX1},"AY1":${tile.AY1},"AX2":${tile.AX2},"AY2":${tile.AY2}`;
-        console.log('Fetching zone: ' + json);
-        const url: string = encodeURI(this.BASE_API_URL + 'gaa/' + json);
-        const areaInfos = await this.fetchStormArea(url);
-        const currentTime = new Date();
-
-        for (const object of areaInfos) {
-          const objectType = Number(object[0]);
-          if (objectType === this.STORM_BORDER_OBJECT_ID) {
-            borderReached = true;
-            continue;
-          }
-          if (objectType === this.STORM_FORT_OBJECT_ID) {
-            const fort = this.parseStormFort(object, currentTime);
-            forts.set(`${fort.positionX}:${fort.positionY}`, fort);
-            ringHasObjects = true;
-          } else if (objectType === this.STORM_ISLE_OBJECT_ID) {
-            const isle = this.parseStormIsle(object, currentTime);
-            isles.set(`${isle.positionX}:${isle.positionY}`, isle);
-            ringHasObjects = true;
-          }
-        }
-
-        done++;
-        await this.sleep(30);
-        if (done % 5 === 0) {
-          await this.sleep(1000);
-        }
-      }
+      const scan = await this.scanStormRing(ring, forts, isles, done);
+      done = scan.requests;
+      borderReached = borderReached || scan.borderReached;
+      const ringHasObjects = scan.ringHasObjects;
 
       if (ringHasObjects && ring > reachedRings) {
         reachedRings = ring;
@@ -3655,6 +3667,103 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
+  private async refreshInactivePlayer(id: number): Promise<void> {
+    try {
+      const url: string = encodeURI(this.BASE_API_URL + 'gdi' + `/"PID":${id}`);
+      const response = await axios.get(url);
+      const data = response.data;
+      if (data?.content) {
+        const player = data.content;
+        if (player?.['O']) {
+          await this.applyInactivePlayerRefresh(id, player['O']);
+        } else {
+          await this.removePlayerFromDatabase(id);
+        }
+      } else if (data?.error === 'Timeout') {
+        Utils.logMessage(' [Info] Player data timeout, removing player from database', id);
+        await this.removePlayerFromDatabase(id);
+      }
+    } catch (error) {
+      Utils.logCritical('104', error, ' [KO] Error', id);
+      const pgSqlQuery = `
+            UPDATE players
+            SET
+              castles = [],
+              castles_realm = [],
+              alliance_id = NULL
+            WHERE id = $1
+          `;
+      try {
+        await this.pgSqlQuery(pgSqlQuery, [id]);
+      } catch (error) {
+        Utils.logCritical('105', error, ' [KO] Error while updating player', id);
+        this.DB_UPDATES.criticalErrors++;
+      }
+    }
+  }
+
+  private async applyInactivePlayerRefresh(id: number, o: Record<string, any>): Promise<void> {
+    const allianceId = o['AID'] || null;
+    const allianceName = o['AN'] || null;
+    const might_current = o['MP'] || 0;
+    const loot_current = o['P'] || 0;
+    const playerName = o['N'];
+    const rpt = o['RPT'] || 0;
+    const level = o['L'] || 0;
+    const legendaryLevel = o['LL'] || 0;
+    const honor = o['H'] || 0;
+    const targetDateISO = new Date(Date.now() + rpt * 1000).toISOString();
+    let ap = o['AP'] || null;
+    if (ap && ap.length > 0) {
+      ap = o['AP'].filter((entry: number[]) => entry[0] === 0).map((entry: any[]) => [entry[2], entry[3], entry[4]]);
+    }
+    if (!ap) ap = null;
+
+    await this.addPlayerInDatabase({
+      playerId: id,
+      playerName,
+      allianceId,
+      allianceName,
+      might_current,
+      might_all_time: null,
+      loot_current,
+      loot_all_time: null,
+      castles: ap,
+    });
+
+    const pgQuery = `
+      UPDATE players
+      SET
+        might_current = $1,
+        loot_current = $2,
+        might_all_time = GREATEST(COALESCE(might_all_time, 0), $3),
+        loot_all_time = GREATEST(COALESCE(loot_all_time, 0), $4),
+        castles = $5,
+        honor = $6,
+        max_honor = GREATEST(COALESCE(max_honor, 0), $7),
+        remaining_peace_time = $8,
+        level = GREATEST(COALESCE(level, 0), $9),
+        legendary_level = GREATEST(COALESCE(legendary_level, 0), $10),
+        peace_disabled_at = $11,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $12
+    `;
+    await this.pgSqlQuery(pgQuery, [
+      might_current,
+      loot_current,
+      might_current,
+      loot_current,
+      JSON.stringify(ap),
+      honor,
+      honor,
+      rpt,
+      level,
+      legendaryLevel,
+      targetDateISO,
+      id,
+    ]);
+  }
+
   private async updateInactivePlayers(): Promise<void> {
     try {
       if (Object.keys(this.playerLootAndMightPointHistoryList).length < 100) {
@@ -3675,102 +3784,10 @@ export class GenericFetchAndSaveBackend {
         ${pgPoolForIn1}
       `;
       const result = await this.pgSqlQuery(pgSqlQuery);
-      //const ids = rows.map((row) => row.id);
       const ids = result.rows.map((row: { id: any }) => row.id);
       Utils.logMessage('Number of inactive players to update:', ids.length);
       for (const id of ids) {
-        try {
-          const url: string = encodeURI(this.BASE_API_URL + 'gdi' + `/"PID":${id}`);
-          const response = await axios.get(url);
-          const data = response.data;
-          if (data?.content && data.content) {
-            const player = data.content;
-            if (player?.['O']) {
-              const allianceId = player['O']['AID'] || null;
-              const allianceName = player['O']['AN'] || null;
-              const might_current = player['O']['MP'] || 0;
-              const loot_current = player['O']['P'] || 0;
-              const playerName = player['O']['N'];
-              const rpt = player['O']['RPT'] || 0;
-              const level = player['O']['L'] || 0;
-              const legendaryLevel = player['O']['LL'] || 0;
-              const honor = player['O']['H'] || 0;
-              const now = new Date();
-              const targetDate = new Date(now.getTime() + rpt * 1000);
-              const targetDateISO = targetDate.toISOString();
-              let ap = player['O']['AP'] || null;
-              if (ap && ap.length > 0) {
-                ap = player['O']['AP'].filter((ap: number[]) => ap[0] === 0).map((ap: any[]) => [ap[2], ap[3], ap[4]]);
-              }
-              if (!ap) ap = null;
-              const pgQuery = `
-                UPDATE players
-                SET
-                  might_current = $1,
-                  loot_current = $2,
-                  might_all_time = GREATEST(COALESCE(might_all_time, 0), $3),
-                  loot_all_time = GREATEST(COALESCE(loot_all_time, 0), $4),
-                  castles = $5,
-                  honor = $6,
-                  max_honor = GREATEST(COALESCE(max_honor, 0), $7),
-                  remaining_peace_time = $8,
-                  level = GREATEST(COALESCE(level, 0), $9),
-                  legendary_level = GREATEST(COALESCE(legendary_level, 0), $10),
-                  peace_disabled_at = $11,
-                  updated_at = CURRENT_TIMESTAMP
-                WHERE id = $12
-              `;
-              await this.addPlayerInDatabase({
-                playerId: id,
-                playerName,
-                allianceId,
-                allianceName,
-                might_current,
-                might_all_time: null,
-                loot_current,
-                loot_all_time: null,
-                castles: ap,
-              });
-              const params = [
-                might_current,
-                loot_current,
-                might_current,
-                loot_current,
-                JSON.stringify(ap),
-                honor,
-                honor,
-                rpt,
-                level,
-                legendaryLevel,
-                targetDateISO,
-                id,
-              ];
-              await this.pgSqlQuery(pgQuery, params);
-            } else {
-              await this.removePlayerFromDatabase(id);
-            }
-          } else if (data?.error === 'Timeout') {
-            // Player is not found, remove from database
-            Utils.logMessage(' [Info] Player data timeout, removing player from database', id);
-            await this.removePlayerFromDatabase(id);
-          }
-        } catch (error) {
-          Utils.logCritical('104', error, ' [KO] Error', id);
-          const pgSqlQuery = `
-            UPDATE players
-            SET
-              castles = [],
-              castles_realm = [],
-              alliance_id = NULL
-            WHERE id = $1
-          `;
-          try {
-            await this.pgSqlQuery(pgSqlQuery, [id]);
-          } catch (error) {
-            Utils.logCritical('105', error, ' [KO] Error while updating player', id);
-            this.DB_UPDATES.criticalErrors++;
-          }
-        }
+        await this.refreshInactivePlayer(id);
       }
     } catch (error) {
       Utils.logCritical('100', error, 'Error updating inactive players');
@@ -4029,57 +4046,60 @@ export class GenericFetchAndSaveBackend {
     }
     const currentCastlesMap = new Map(parsedCurrentCastles.map((c) => [`${c[0]},${c[1]},${c[2]}`, c]));
     const newCastlesMap = new Map(parsedNewCastles.map((c) => [`${c[0]},${c[1]},${c[2]}`, c]));
-    const movements: CastleMovement[] = [];
-    const currentMainCastle = parsedCurrentCastles.find((c) => c[2] === 1);
-    const newMainCastle = parsedNewCastles.find((c) => c[2] === 1);
-    let mainCastleMoved = false;
+    const mainCastleMove = this.detectMainCastleMove(playerId, parsedCurrentCastles, parsedNewCastles);
+    const mainCastleMoved = mainCastleMove !== null;
 
-    if (currentMainCastle && newMainCastle) {
-      const [xOld, yOld] = currentMainCastle;
-      const [xNew, yNew] = newMainCastle;
-
-      if (xOld !== xNew || yOld !== yNew) {
-        movements.push({
-          player_id: playerId,
-          castle_type: 1,
-          movement_type: 'move',
-          position_x_old: xOld,
-          position_y_old: yOld,
-          position_x_new: xNew,
-          position_y_new: yNew,
-        });
-        mainCastleMoved = true;
-      }
-    }
-
+    const removals: CastleMovement[] = [];
     for (const [key, castle] of currentCastlesMap) {
       const [xOld, yOld, type] = castle;
       if (type === 1 && mainCastleMoved) continue;
-      if (!newCastlesMap.has(key) && !parsedNewCastles.some((c) => c[2] === type)) {
-        movements.push({
-          player_id: playerId,
-          castle_type: type,
-          movement_type: 'remove',
-          position_x_old: xOld,
-          position_y_old: yOld,
-        });
-      }
+      if (newCastlesMap.has(key) || parsedNewCastles.some((c) => c[2] === type)) continue;
+      removals.push({
+        player_id: playerId,
+        castle_type: type,
+        movement_type: 'remove',
+        position_x_old: xOld,
+        position_y_old: yOld,
+      });
     }
 
+    const additions: CastleMovement[] = [];
     for (const [key, castle] of newCastlesMap) {
       const [xNew, yNew, type] = castle;
       if (type === 1 && mainCastleMoved) continue;
-      if (!currentCastlesMap.has(key)) {
-        movements.push({
-          player_id: playerId,
-          castle_type: type,
-          movement_type: 'add',
-          position_x_new: xNew,
-          position_y_new: yNew,
-        });
-      }
+      if (currentCastlesMap.has(key)) continue;
+      additions.push({
+        player_id: playerId,
+        castle_type: type,
+        movement_type: 'add',
+        position_x_new: xNew,
+        position_y_new: yNew,
+      });
     }
-    return movements;
+
+    return [...(mainCastleMove ? [mainCastleMove] : []), ...removals, ...additions];
+  }
+
+  private detectMainCastleMove(
+    playerId: number,
+    parsedCurrentCastles: Castle[],
+    parsedNewCastles: Castle[],
+  ): CastleMovement | null {
+    const currentMainCastle = parsedCurrentCastles.find((c) => c[2] === 1);
+    const newMainCastle = parsedNewCastles.find((c) => c[2] === 1);
+    if (!currentMainCastle || !newMainCastle) return null;
+    const [xOld, yOld] = currentMainCastle;
+    const [xNew, yNew] = newMainCastle;
+    if (xOld === xNew && yOld === yNew) return null;
+    return {
+      player_id: playerId,
+      castle_type: 1,
+      movement_type: 'move',
+      position_x_old: xOld,
+      position_y_old: yOld,
+      position_x_new: xNew,
+      position_y_new: yNew,
+    };
   }
 
   private async updatePlayerCastles(

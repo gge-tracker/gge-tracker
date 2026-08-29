@@ -51,7 +51,7 @@ import { LocalStorageService } from '@ggetracker-services/local-storage.service'
 import { TranslateModule } from '@ngx-translate/core';
 import Gradient from 'javascript-color-gradient';
 import { ApexAxisChartSeries } from 'ng-apexcharts';
-import { ModalTableComponent } from '@ggetracker-components/modal-table/modal-table.component';
+import { ModalTableColumn, ModalTableComponent } from '@ggetracker-components/modal-table/modal-table.component';
 import { PlayerStatsCardComponent } from './player-stats-card/player-stats-card.component';
 import { StatsPanelComponent } from './stats-panel/stats-panel.component';
 import { combineLatest, firstValueFrom } from 'rxjs';
@@ -229,6 +229,12 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   public eventSummary: Record<ApiPlayerStatsType, ApiPlayerStatsSummaryEvent> | null = null;
   public eventOccurrences: Record<string, ApiPlayerEventOccurrence[]> = {};
   public seriesState: Record<string, 'idle' | 'loading' | 'loaded' | 'empty' | 'error'> = {};
+
+  public readonly monumentsColumns: ModalTableColumn[] = [
+    { label: 'Type de patrimoine', sortKey: 'type' },
+    { label: 'Royaume', sortKey: 'kingdom' },
+    { label: 'Position', sortKey: 'position' },
+  ];
   private readonly EVENT_SERIES_DEFAULT_LIMIT = 5;
 
   private readonly CHART_SOURCES: Record<string, { table: ApiPlayerStatsType; days: number }> = {
@@ -1610,6 +1616,26 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     this.buildEventCharts('bloodcrow', data.length);
   }
 
+  private groupAquamarineMetrics(snapshots: ApiAquamarineSnapshot[]): Map<number, Array<[number, number]>> {
+    const metricSeries = new Map<number, Array<[number, number]>>();
+    for (const snapshot of snapshots) {
+      const ts = new Date(snapshot.collected_at).getTime();
+      for (const metric of snapshot.metrics) {
+        if (!this.AQUAMARINE_ALLOWED.includes(metric.metric_id)) continue;
+        let points = metricSeries.get(metric.metric_id);
+        if (!points) {
+          points = [];
+          metricSeries.set(metric.metric_id, points);
+        }
+        points.push([ts, metric.value]);
+      }
+    }
+    for (const points of metricSeries.values()) {
+      points.sort(([a], [b]) => a - b);
+    }
+    return metricSeries;
+  }
+
   private initAquamarineCharts(): void {
     const snapshots = this.aquamarineSnapshotsForMonth;
     if (snapshots.length === 0) {
@@ -1625,24 +1651,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     const timestamp = latestSnapshot.metrics.find((m) => m.metric_id === 21)?.value;
     this.aquamarineSnapshotsLastUpdated = new Date(timestamp ? timestamp * 1000 : Date.now());
 
-    // Build one time-series per metric_id across all snapshots for this month
-    const metricSeries = new Map<number, Array<[number, number]>>();
-    for (const snapshot of snapshots) {
-      const ts = new Date(snapshot.collected_at).getTime();
-      for (const metric of snapshot.metrics) {
-        if (this.AQUAMARINE_ALLOWED.includes(metric.metric_id)) {
-          if (!metricSeries.has(metric.metric_id)) {
-            metricSeries.set(metric.metric_id, []);
-          }
-          metricSeries.get(metric.metric_id)!.push([ts, metric.value]);
-        }
-      }
-    }
-
-    // Sort each series chronologically.
-    for (const points of metricSeries.values()) {
-      points.sort(([a], [b]) => a - b);
-    }
+    const metricSeries = this.groupAquamarineMetrics(snapshots);
 
     const series: ApexAxisChartSeries = [...metricSeries.entries()].map(([metricId, points]) => ({
       name: this.translateService.instant(this.AQUAMARINE_METRIC_LABELS[metricId]) ?? `${metricId}`,
