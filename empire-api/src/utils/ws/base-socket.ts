@@ -3,6 +3,7 @@ import { AsyncEvent } from '../event.js';
 import { HeadersUtilities } from '../nested-headers.js';
 import { Log } from './log.js';
 import * as net from 'node:net';
+import { randomInt } from 'node:crypto';
 
 export enum GgeServerType {
   E4K = 'E4K',
@@ -103,7 +104,7 @@ class BaseSocket extends Log {
     this.disconnect();
     const { baseDelaySeconds, jitterSeconds, preSleepMilliseconds } = this.reconnectTiming();
     const nbReconnects = this.nbReconnects++;
-    const randomDelay = jitterSeconds > 0 ? Math.floor(Math.random() * jitterSeconds) : 0;
+    const randomDelay = jitterSeconds > 0 ? randomInt(jitterSeconds) : 0;
     let defaultDelay = baseDelaySeconds;
     if (!instant && nbReconnects > 0) {
       if (nbReconnects < 5) {

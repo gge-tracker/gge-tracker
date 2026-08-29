@@ -296,3 +296,7 @@
   font-size: 0.72rem;
   letter-spacing: 0.3px;
 }
+
+::ng-deep .about-heart {
+  color: #ff00009e;
+}

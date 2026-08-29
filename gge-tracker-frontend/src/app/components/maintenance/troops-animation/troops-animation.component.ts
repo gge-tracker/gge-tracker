@@ -91,69 +91,75 @@ export class TroopsAnimationComponent implements OnInit, OnDestroy {
     }
   }
 
+  private randomFraction(): number {
+    const slot = new Uint32Array(1);
+    crypto.getRandomValues(slot);
+    return slot[0] / 2 ** 32;
+  }
+
   private createTroop(id: number): Troop {
     const containerRect = this.container.nativeElement.getBoundingClientRect();
     const edges = ['top', 'right', 'bottom', 'left', 'top-left', 'top-right', 'bottom-left', 'bottom-right'];
-    const edge = edges[Math.floor(Math.random() * edges.length)];
+    const edge = edges[Math.floor(this.randomFraction() * edges.length)];
     let x = 0,
       y = 0,
       dx = 0,
       dy = 0;
     switch (edge) {
       case 'top': {
-        x = Math.random() * containerRect.width;
+        x = this.randomFraction() * containerRect.width;
         y = -this.size;
-        dx = (Math.random() - 0.5) * 1;
-        dy = 0.8 + Math.random() * 0.4;
+        dx = (this.randomFraction() - 0.5) * 1;
+        dy = 0.8 + this.randomFraction() * 0.4;
         break;
       }
       case 'bottom': {
-        x = Math.random() * containerRect.width;
+        x = this.randomFraction() * containerRect.width;
         y = containerRect.height + this.size;
-        dx = (Math.random() - 0.5) * 1;
-        dy = -(0.8 + Math.random() * 0.4);
+        dx = (this.randomFraction() - 0.5) * 1;
+        dy = -(0.8 + this.randomFraction() * 0.4);
         break;
       }
       case 'left': {
         x = -this.size;
-        y = Math.random() * containerRect.height;
-        dx = 0.8 + Math.random() * 0.4;
-        dy = (Math.random() - 0.5) * 1;
+        y = this.randomFraction() * containerRect.height;
+        dx = 0.8 + this.randomFraction() * 0.4;
+        dy = (this.randomFraction() - 0.5) * 1;
         break;
       }
       case 'right': {
         x = containerRect.width + this.size;
-        y = Math.random() * containerRect.height;
-        dx = -(0.8 + Math.random() * 0.4);
-        dy = (Math.random() - 0.5) * 1;
+        y = this.randomFraction() * containerRect.height;
+        dx = -(0.8 + this.randomFraction() * 0.4);
+        dy = (this.randomFraction() - 0.5) * 1;
         break;
       }
       case 'top-left': {
         x = -this.size;
         y = -this.size;
-        dx = 0.8 + Math.random() * 0.4;
-        dy = 0.8 + Math.random() * 0.4;
+        dx = 0.8 + this.randomFraction() * 0.4;
+        dy = 0.8 + this.randomFraction() * 0.4;
         break;
       }
       case 'top-right': {
         x = containerRect.width + this.size;
         y = -this.size;
-        dx = -(0.8 + Math.random() * 0.4);
-        dy = 0.8 + Math.random() * 0.4;
+        dx = -(0.8 + this.randomFraction() * 0.4);
+        dy = 0.8 + this.randomFraction() * 0.4;
         break;
       }
       case 'bottom-left': {
         x = -this.size;
         y = containerRect.height + this.size;
-        dx = 0.8 + Math.random() * 0.4;
-        dy = -(0.8 + Math.random() * 0.4);
+        dx = 0.8 + this.randomFraction() * 0.4;
+        dy = -(0.8 + this.randomFraction() * 0.4);
         break;
       }
       case 'bottom-right': {
         x = containerRect.width + this.size;
         y = containerRect.height + this.size;
-        dx = -(0.8 + Math.random() * 0.4);
-        dy = -(0.8 + Math.random() * 0.4);
+        dx = -(0.8 + this.randomFraction() * 0.4);
+        dy = -(0.8 + this.randomFraction() * 0.4);
         break;
       }
     }
@@ -167,8 +173,8 @@ export class TroopsAnimationComponent implements OnInit, OnDestroy {
       size: this.size,
       direction: edge,
       id,
-      speed: Math.random() * (maxSpeed - minSpeed) + minSpeed,
-      team: Math.floor(Math.random() * this.teamFilters.length),
+      speed: this.randomFraction() * (maxSpeed - minSpeed) + minSpeed,
+      team: Math.floor(this.randomFraction() * this.teamFilters.length),
     };
   }
 

@@ -1,5 +1,6 @@
 import { BaseSocket, GgeServerType } from './base-socket.js';
 import { GgeEmpireSocketImpl } from './gge-socket-impl.js';
+import { randomInt } from 'node:crypto';
 
 const E4kEnumLoginStatus = {
   SUCCESS: 10_005,
@@ -90,7 +91,7 @@ class GgeEmpire4KingdomsSocket extends BaseSocket implements GgeEmpireSocketImpl
     super.sendJsonCommand('core_reg', {
       PN: this.username,
       PW: this.password,
-      MAIL: `${this.username}-${Math.floor(Math.random() * 99_999)}@mail.com`,
+      MAIL: `${this.username}-${randomInt(99_999)}@mail.com`,
       LANG: 'fr',
       AID: '1760000000000000000',
       DID: '5',

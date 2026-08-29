@@ -15,7 +15,7 @@ FROM node:24-slim AS build
 
 WORKDIR /app
 COPY ./package*.json ./
-RUN npm ci
+RUN npm ci --ignore-scripts
 COPY . .
 ARG BUILD_ENV=prod
 RUN if [ "$BUILD_ENV" = "beta" ]; then \
@@ -31,7 +31,7 @@ RUN npm run build --output-path=dist --configuration=production
 FROM node:24-slim AS production
 
 RUN apt-get update \
-    && apt-get install -y nginx \
+    && apt-get install -y --no-install-recommends nginx \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/dist /usr/share/nginx/html
 

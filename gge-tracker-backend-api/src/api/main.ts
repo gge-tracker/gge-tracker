@@ -62,6 +62,7 @@ config();
  * ------------------------------------------------ */
 const APPLICATION_PORT = 3000;
 const app = express();
+app.disable('x-powered-by');
 app.use(express.json());
 app.use(
   cors({

@@ -15,7 +15,7 @@ FROM node:24
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     fonts-freefont-ttf \
     libasound2 \
@@ -39,6 +39,8 @@ ENV REDIS_URL=redis://redis-server:6379
 EXPOSE 3000
 
 ENV HEADER="[DEV]"
+
+USER node
 
 CMD ["node_modules/.bin/nodemon"]
 

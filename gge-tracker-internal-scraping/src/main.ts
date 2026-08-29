@@ -12,6 +12,7 @@ import { format } from 'date-fns';
 import * as mysql from 'mysql2/promise';
 import pLimit from 'p-limit';
 import * as pg from 'pg';
+import { randomInt } from 'node:crypto';
 import * as readline from 'node:readline';
 import { createClient } from 'redis';
 import { HIGHSCORES_CONFIG } from './definitions/highest_scores.config';
@@ -594,13 +595,16 @@ export class GenericFetchAndSaveBackend {
     const delay = (ms: number): Promise<void> => new Promise((res) => setTimeout(res, ms));
     const minValue = 100;
     const maxValue = 1100;
-    let randoms: number[] = [];
+    const randoms: number[] = [];
     for (let i = 0; i < totalRequests; i++) {
-      const random = Math.floor(Math.random() * (maxValue - minValue + 1)) + minValue;
+      const random = randomInt(minValue, maxValue + 1);
       randoms.push(random);
     }
     // We shuffle the list to avoid having patterns in the requests
-    randoms = randoms.sort(() => Math.random() - 0.5);
+    for (let i = randoms.length - 1; i > 0; i--) {
+      const j = randomInt(i + 1);
+      [randoms[i], randoms[j]] = [randoms[j], randoms[i]];
+    }
     const minuteToRetrieve = Math.ceil((totalRequests * (minValue + maxValue)) / 2 / 60000);
 
     const confirmationMessage = `About to retrieve dungeons for world ${worldNumber} with the following parameters:
@@ -1662,7 +1666,7 @@ export class GenericFetchAndSaveBackend {
           throw error;
         }
         const code = GenericFetchAndSaveBackend.parseClickHouseErrorCode(error);
-        const wait = Math.round(delay + Math.random() * delay);
+        const wait = delay + randomInt(delay);
         Utils.logMessage(
           ' [retry] ClickHouse',
           description,
