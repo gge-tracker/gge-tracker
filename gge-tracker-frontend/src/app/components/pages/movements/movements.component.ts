@@ -1,5 +1,5 @@
 import { DatePipe, NgClass } from '@angular/common';
-import { Component, inject, ViewChild } from '@angular/core';
+import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
@@ -56,7 +56,7 @@ interface FormFilters {
   templateUrl: './movements.component.html',
   styleUrl: './movements.component.css',
 })
-export class MovementsComponent extends GenericComponent {
+export class MovementsComponent extends GenericComponent implements OnInit {
   private static readonly RANGE_FILTER_KEYS = [
     'minHonor',
     'maxHonor',
@@ -130,6 +130,9 @@ export class MovementsComponent extends GenericComponent {
   constructor() {
     super();
     this.isInLoading = true;
+  }
+
+  public ngOnInit(): void {
     this.init().catch(console.error);
   }
 

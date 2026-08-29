@@ -6,6 +6,7 @@ import {
   ElementRef,
   inject,
   OnDestroy,
+  OnInit,
   QueryList,
   ViewChild,
   ViewChildren,
@@ -103,7 +104,7 @@ type OfferSort = '' | 'price-asc' | 'price-desc';
   templateUrl: './offers.component.html',
   styleUrl: './offers.component.css',
 })
-export class OffersComponent extends GenericComponent implements AfterViewInit, OnDestroy {
+export class OffersComponent extends GenericComponent implements OnInit, AfterViewInit, OnDestroy {
   public readonly Search = Search;
   public readonly X = X;
   public readonly RefreshCw = RefreshCw;
@@ -182,6 +183,9 @@ export class OffersComponent extends GenericComponent implements AfterViewInit, 
     this.serverCurrency = currencyForServer(this.serverService.currentServer?.name);
     this.currencyOptions = buildCurrencyOptions(this.langageService.getCurrentLocale());
     this.currency = this.readStoredCurrency();
+  }
+
+  public ngOnInit(): void {
     void this.getData();
   }
 

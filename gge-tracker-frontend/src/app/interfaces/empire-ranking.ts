@@ -267,7 +267,6 @@ export enum ErrorType {
   ERROR_OCCURRED = 'Une erreur est survenue',
   NO_ALLIANCE_FOUND = 'Aucune alliance trouvée',
   NO_PLAYER_FOUND = 'Aucun joueur trouvé',
-  PLAYER_NOT_IN_REALM = 'Aucun joueur trouvé',
   ALLIANCE_ADDED = 'Alliance ajoutée',
   ALLIANCE_REMOVED = 'Alliance retirée',
   COPIED_TO_CLIPBOARD = 'Copié dans le presse-papier',

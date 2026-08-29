@@ -14,7 +14,6 @@ import { LanguageService } from '@ggetracker-services/language.service';
 import { ServerService } from '@ggetracker-services/server.service';
 import { WindowService } from '@ggetracker-services/window.service';
 import { TranslateModule } from '@ngx-translate/core';
-import { XAxisAnnotations } from 'ng-apexcharts';
 import { formatThousands } from '@ggetracker-services/text-format.utilities';
 
 @Component({
@@ -485,52 +484,6 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
           data,
         },
       ];
-    }
-    const timestamps = this.serverStatsData.map((d) => new Date(d.created_at).getTime());
-    const minTime = Math.min(...timestamps);
-    const maxTime = Math.max(...timestamps);
-    const annotations: XAxisAnnotations[] = [];
-    let currentTime = new Date(minTime);
-    currentTime.setHours(6, 0, 0, 0);
-    while (currentTime.getTime() < maxTime) {
-      const morningStart = new Date(currentTime);
-      morningStart.setHours(6, 0, 0, 0);
-      const afternoonStart = new Date(morningStart);
-      afternoonStart.setHours(12, 0, 0, 0);
-      const eveningStart = new Date(afternoonStart);
-      eveningStart.setHours(18, 0, 0, 0);
-      const nightStart = new Date(eveningStart);
-      nightStart.setHours(0, 0, 0, 0);
-      nightStart.setDate(nightStart.getDate() + 1);
-      const nextMorningStart = new Date(morningStart);
-      nextMorningStart.setDate(nextMorningStart.getDate() + 1);
-      annotations.push(
-        {
-          x: new Date(morningStart).setHours(0, 0, 0, 0),
-          x2: morningStart.getTime(),
-          fillColor: '#2196F3',
-          opacity: 0.1,
-        },
-        {
-          x: morningStart.getTime(),
-          x2: afternoonStart.getTime(),
-          fillColor: '#FFEB3B',
-          opacity: 0.2,
-        },
-        {
-          x: afternoonStart.getTime(),
-          x2: eveningStart.getTime(),
-          fillColor: '#4CAF50',
-          opacity: 0.2,
-        },
-        {
-          x: eveningStart.getTime(),
-          x2: nightStart.getTime(),
-          fillColor: '#F44336',
-          opacity: 0.2,
-        },
-      );
-      currentTime = new Date(nextMorningStart);
     }
     const name = chart.series[0].name;
     if (name !== undefined) {

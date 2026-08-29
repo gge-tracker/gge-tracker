@@ -31,6 +31,19 @@ import {
 } from './interfaces';
 import Utils from './utils';
 
+export interface PlayerUpsertInput {
+  playerId: number;
+  playerName: string;
+  allianceId: any;
+  allianceName: any;
+  might_current: any;
+  might_all_time: any;
+  loot_current: any;
+  loot_all_time: any;
+  castles?: any;
+  minimalist?: boolean;
+}
+
 export interface DiscordApiMessageBody {
   channelId: string;
   embeds: {
@@ -1370,7 +1383,7 @@ export class GenericFetchAndSaveBackend {
               playerEntries.set(OID, {
                 OID,
                 N: playerName,
-                server: server,
+                server: server ?? '',
                 score: score ?? Number(entry[1]),
                 rank: rank,
                 level: Number(playerData.L),
@@ -2784,18 +2797,10 @@ export class GenericFetchAndSaveBackend {
     this.DB_UPDATES.playersAllianceUpdated++;
   }
 
-  private async addPlayerInDatabase(
-    playerId: number,
-    playerName: string,
-    allianceId: any,
-    allianceName: any,
-    might_current: any,
-    might_all_time: any,
-    loot_current: any,
-    loot_all_time: any,
-    castles: any = null,
-    minimalist = false,
-  ): Promise<void> {
+  private async addPlayerInDatabase(input: PlayerUpsertInput): Promise<void> {
+    const { playerId, playerName, allianceName, minimalist = false } = input;
+    let { allianceId, might_current, might_all_time, loot_current, loot_all_time } = input;
+    let castles = input.castles ?? null;
     if (!allianceId || Number(allianceId) <= 0) {
       allianceId = null;
     }
@@ -3613,17 +3618,17 @@ export class GenericFetchAndSaveBackend {
             ).length > 0);
         if (shouldInsert) {
           const promise = limit(() =>
-            this.addPlayerInDatabase(
+            this.addPlayerInDatabase({
               playerId,
               playerName,
               allianceId,
               allianceName,
               might_current,
-              null,
+              might_all_time: null,
               loot_current,
-              null,
-              ap,
-            ),
+              loot_all_time: null,
+              castles: ap,
+            }),
           );
           insertionPromises.push(promise);
           j++;
@@ -3711,17 +3716,17 @@ export class GenericFetchAndSaveBackend {
                   updated_at = CURRENT_TIMESTAMP
                 WHERE id = $12
               `;
-              await this.addPlayerInDatabase(
-                id,
+              await this.addPlayerInDatabase({
+                playerId: id,
                 playerName,
                 allianceId,
                 allianceName,
                 might_current,
-                null,
+                might_all_time: null,
                 loot_current,
-                null,
-                ap,
-              );
+                loot_all_time: null,
+                castles: ap,
+              });
               const params = [
                 might_current,
                 loot_current,

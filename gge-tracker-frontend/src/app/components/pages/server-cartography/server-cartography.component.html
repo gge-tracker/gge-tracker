@@ -9,15 +9,13 @@
     </div>
     <div class="legend-items">
       @for (legend of legends; track legend) {
-      <div class="legend-item"
-        (click)="watchModeAlliance === 'one' ? togglePlayerCastle(legend.name) : toggleAllianceCastles(legend.name)"
-        (keydown)="($event.key === 'Enter' || $event.key === ' ') ? (watchModeAlliance === 'one' ? togglePlayerCastle(legend.name) : toggleAllianceCastles(legend.name)) : null"
-        tabindex="0" role="button">
+      <button type="button" class="legend-item button-reset"
+        (click)="watchModeAlliance === 'one' ? togglePlayerCastle(legend.name) : toggleAllianceCastles(legend.name)">
         <div class="legend-color" [style.background-color]="legend.color"></div>
         <div class="legend-text" [ngClass]="{ 'hidden': isPlayerHidden(legend.name) }">
           {{ legend.name === '1' ? ('Sans alliance' | translate) : legend.name }}
         </div>
-      </div>
+      </button>
       }
     </div>
     <div class="legend-summary">

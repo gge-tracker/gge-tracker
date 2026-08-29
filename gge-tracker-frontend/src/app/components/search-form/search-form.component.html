@@ -26,10 +26,12 @@
         }
       </datalist>
       @if (search) {
-        <lucide-icon
+        <button type="button" class="reset-icon button-reset d-flex"
           [title]="'Réinitialiser' | translate"
-          class="reset-icon" [img]="Reset"
-          (click)="onReset()"></lucide-icon>
+          [attr.aria-label]="'Réinitialiser' | translate"
+          (click)="onReset()">
+          <lucide-icon [img]="Reset"></lucide-icon>
+        </button>
       }
     </div>
     @if (searchTypes()['player']) {

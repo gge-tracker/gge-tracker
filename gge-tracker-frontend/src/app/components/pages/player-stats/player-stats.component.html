@@ -215,7 +215,7 @@
           </div>
           <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="loot">
             @if (charts['loot'] && chartVisibles.loot) {
-            <app-player-stats-card [charts]="{ 'Graphique': charts['loot'] }" [data]="[]"
+            <app-player-stats-card [charts]="eventCharts['loot'] ?? { 'Graphique': charts['loot'] }" [data]="[]"
               [title]="'Pillage hebdomadaire' | translate"
               [dataName]="'Points de pillage' | translate"
               [playerId]="playerId" [eventName]="'player_loot_history'"

@@ -1,4 +1,4 @@
-::ng-deep .reset-icon > svg {
+::ng-deep .reset-icon svg {
   color: #ccc;
   height: 1.2rem;
   position: absolute;
@@ -6,22 +6,22 @@
 }
 
 .btn-alliance {
-  background: rgba(120,220,180,0.2);
+  background: rgba(120, 220, 180, 0.2);
   color: #fff;
 }
 
 .btn-filter {
-  background: rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.1);
   color: #fff;
   position: relative;
 }
 
 .btn-filter:hover {
-  background: rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .btn-player {
-  background: rgba(80,180,255,0.2);
+  background: rgba(80, 180, 255, 0.2);
   color: #fff;
 }
 
@@ -61,7 +61,7 @@
 
 .search-input {
   backdrop-filter: blur(12px);
-  background: rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 12px;
   border: none;
   color: #fff;
@@ -83,7 +83,7 @@
 }
 
 .search-input:focus {
-  background: rgba(255,255,255,0.25);
-  box-shadow: 0 0 0 3px rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
   outline: 0;
 }

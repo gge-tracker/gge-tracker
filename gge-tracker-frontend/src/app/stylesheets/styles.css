@@ -723,3 +723,19 @@ select.form-select, .modal-content input[type="text"], .modal-content input[type
   border-right: 1px solid rgba(255, 255, 255, 0.1);
   padding: 0 12px;
 }
+
+output {
+  display: block;
+}
+
+.button-reset {
+  background: none;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  padding: 0;
+  text-align: inherit;
+}

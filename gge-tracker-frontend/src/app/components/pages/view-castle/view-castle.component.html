@@ -18,8 +18,8 @@
             </div>
           }
           @for (castle of castles; track castle) {
-            <div
-              class="castle-card position-relative kid-{{ castle.kingdomId }}"
+            <button type="button"
+              class="castle-card position-relative button-reset kid-{{ castle.kingdomId }}"
               [ngClass]="{ unavailable: !castle.isAvailable, dummy: castle.dummy }"
               (click)="castle.dummy ? false : castle.isAvailable ? onCastleClick(castle) : displayUnavailableCastleMessage()"
               [title]="castle.isAvailable ? ('Voir plus' | translate) : ''">
@@ -81,7 +81,7 @@
                           </span>
                         </div>
                       </div>
-                    </div>
+                    </button>
                   }
                 </div>
               </div>
@@ -237,10 +237,8 @@
                       </div>
                       <div class="building-gallery-grid">
                         @for (building of galleryBuildings; track building) {
-                          <div class="bg-card pointer" tabindex="0" role="button"
+                          <button type="button" class="bg-card pointer button-reset"
                             (click)="updateSelectedItem(building)"
-                            (keydown.enter)="updateSelectedItem(building)"
-                            (keydown.space)="updateSelectedItem(building)"
                             data-bs-toggle="modal" data-bs-target="#viewItemModal"
                             [title]="capitalizeFirstLetter(getBuildingName(building))">
                             @if (building.building.damageFactor > 0) {
@@ -280,7 +278,7 @@
                                 </div>
                               }
                             </div>
-                          </div>
+                          </button>
                         }
                         @if (galleryBuildings.length === 0) {
                           <div class="bg-empty">-</div>
@@ -555,10 +553,8 @@
               <hr>
                 <div class="row d-flex g-3">
                   @for (item of getItemsInDistrict(selectedItem); track item) {
-                    <div class="col-4 d-flex flex-column pointer" tabindex="0" role="button"
-                      (click)="updateSelectedItem(item, selectedItem)"
-                      (keydown.enter)="updateSelectedItem(item, selectedItem)"
-                      (keydown.space)="updateSelectedItem(item, selectedItem)">
+                    <button type="button" class="col-4 d-flex flex-column pointer button-reset"
+                      (click)="updateSelectedItem(item, selectedItem)">
                       <div class="text-center mb-3 visualize-img py-5">
                         <app-building-img [src]="getBuildingAssetUrl(item)" [alt]="getBuildingName(item)" [shadow]="true"
                           [size]="200">
@@ -570,7 +566,7 @@
                           {{ 'Niveau' | translate }} <strong>{{ item.data['level'] }}</strong>
                         </p>
                       </div>
-                    </div>
+                    </button>
                   }
                 </div>
               }

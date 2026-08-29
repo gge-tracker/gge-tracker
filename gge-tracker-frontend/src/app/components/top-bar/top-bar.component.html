@@ -90,12 +90,12 @@
 
       <!-- Lang selector -->
       <div class="position-relative" id="language-menu">
-        <div class="lang-pill" (click)="toggleLanguageMenu()" (keydown.enter)="toggleLanguageMenu()"
-          (keydown.space)="toggleLanguageMenu()" tabindex="0" role="button" [class.rotate]="isLanguageMenuOpen()">
+        <button type="button" class="lang-pill button-reset" (click)="toggleLanguageMenu()"
+          [class.rotate]="isLanguageMenuOpen()">
           <img [src]="languageService.getFlagUrlForLang(languageService.currentLang)" width="20" class="me-2"
             alt="{{ languageService.currentLang }}" title="{{ languageService.currentLang }}">
           <app-icon name="ChevronDown" class="chevron" [size]="14"></app-icon>
-        </div>
+        </button>
 
         @if (isLanguageMenuOpen()) {
           <div class="lang-dropdown">

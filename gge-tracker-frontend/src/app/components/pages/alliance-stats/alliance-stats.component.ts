@@ -941,7 +941,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
           return;
         }
       } else if (response.error === 'Player not in this realm') {
-        this.toastService.add(ErrorType.PLAYER_NOT_IN_REALM, 20_000);
+        this.toastService.add(ErrorType.NO_PLAYER_FOUND, 20_000);
         return;
       } else {
         this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);

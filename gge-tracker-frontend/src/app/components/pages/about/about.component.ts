@@ -45,7 +45,6 @@ export class AboutComponent extends GenericComponent implements OnInit {
     this.isInLoading = false;
     this.constructDateVersion(package_.version);
     this.constructVersion(package_.version);
-    void this.fetchContributors(environment.i18nBaseUrl + 'contributors.xml');
   }
 
   public async fetchContributors(url: string): Promise<void> {
@@ -61,6 +60,7 @@ export class AboutComponent extends GenericComponent implements OnInit {
   }
 
   public ngOnInit(): void {
+    void this.fetchContributors(environment.i18nBaseUrl + 'contributors.xml');
     this.translateService
       .get('about.intro-1', {
         heart: `<span style="color: #ff00009e;"><i class="fa-solid fa-heart"></i></span>`,

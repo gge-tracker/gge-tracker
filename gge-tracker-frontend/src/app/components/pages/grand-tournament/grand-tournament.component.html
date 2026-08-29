@@ -106,7 +106,7 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body pt-1 pb-2">
-            <select #eventSelect class="form-select mb-3 text-white" aria-label="Select Event"
+            <select #eventSelect class="form-select mb-3 text-white" aria-labelledby="dateModalLabel"
               (change)="updateDates(eventSelect.value)">
               @for (event of events; track event) {
                 <option [value]="event.event_id"

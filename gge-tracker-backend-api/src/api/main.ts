@@ -4174,6 +4174,7 @@ publicRoutes.get(
  *             - player_event_nomad_history
  *             - player_event_samurai_history
  *             - player_event_war_realms_history
+ *             - player_loot_history
  *     responses:
  *       '200':
  *         description: Successful response with one entry per run, oldest first

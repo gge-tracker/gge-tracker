@@ -442,6 +442,7 @@ export const CATALOG: Endpoint[] = [
   { id: 'stats-player-event-occurrences', method: 'GET', scope: 'public', path: (s) => `/statistics/player/${s.playerId ?? '1'}/player_event_nomad_history/occurrences`, okStatuses: [200, 400, 404], needs: ['server', 'player'], cases: [
     { label: 'rejects an unknown event', path: (s) => `/statistics/player/${s.playerId ?? '1'}/not_an_event/occurrences`, expect: [400] },
     { label: 'rejects a continuously sampled table', path: (s) => `/statistics/player/${s.playerId ?? '1'}/player_might_history/occurrences`, expect: [400] },
+    { label: 'groups the weekly loot reset into weeks', path: (s) => `/statistics/player/${s.playerId ?? '1'}/player_loot_history/occurrences`, expect: [200, 400, 404] },
   ] },
 
   // Live ranking (public)

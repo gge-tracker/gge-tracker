@@ -1,5 +1,5 @@
 import { DatePipe, DecimalPipe, NgClass } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { ModalFormGroupComponent } from '@ggetracker-components/modal-form-group/modal-form-group.component';
@@ -67,7 +67,7 @@ interface StormIsleRow extends StormIsle {
   styleUrl: './storm-tracker.component.css',
   changeDetection: ChangeDetectionStrategy.Default,
 })
-export class StormTrackerComponent extends GenericComponent {
+export class StormTrackerComponent extends GenericComponent implements OnInit {
   public serverService = inject(ServerService);
   public readonly Search = Search;
   public readonly X = X;
@@ -144,6 +144,9 @@ export class StormTrackerComponent extends GenericComponent {
     this.isInLoading = true;
     this.init();
     this.resetHeaders();
+  }
+
+  public ngOnInit(): void {
     void this.loadInitialData();
   }
 

@@ -1,9 +1,8 @@
 <aside #panel id="app-sidebar-panel" class="sidebar" [class.closed]="!isSidebarOpen()"
   [ngClass]="{'mobile-view': sidebarService.isMobileView }" [attr.inert]="isSidebarOpen() ? null : ''">
-  <div class="sidebar-header" (click)="closeSidebar()" (keydown.enter)="closeSidebar()"
-    (keydown.space)="closeSidebar()" tabindex="0" role="button">
+  <button type="button" class="sidebar-header button-reset" (click)="closeSidebar()">
     <div class="sidebar-header-img"></div>
-  </div>
+  </button>
 
   <div #scroll class="sidebar-scroll">
     @for (section of menuStructure; track section) {

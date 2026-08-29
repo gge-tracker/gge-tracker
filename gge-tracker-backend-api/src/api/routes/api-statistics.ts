@@ -34,6 +34,12 @@ export abstract class ApiStatistics implements ApiHelper {
    */
   private static readonly CONTINUOUS_TABLES = new Set(['player_might_history', 'player_loot_history']);
 
+  private static readonly WEEKLY_RESET_TABLES = new Set(['player_loot_history']);
+
+  private static readonly SECONDS_PER_WEEK = 604_800;
+
+  private static readonly WEEK_ANCHOR_SECONDS = 345_600;
+
   /**
    * Handles the HTTP request to retrieve statistics for a specific alliance by its ID
    *
@@ -360,9 +366,10 @@ export abstract class ApiStatistics implements ApiHelper {
         return;
       }
       const eventName = request.params.eventName;
+      const isWeeklyReset = this.WEEKLY_RESET_TABLES.has(eventName);
       if (
         !ApiHelper.ggeTrackerManager.getOlapEventTables().includes(eventName) ||
-        this.CONTINUOUS_TABLES.has(eventName)
+        (this.CONTINUOUS_TABLES.has(eventName) && !isWeeklyReset)
       ) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventName });
         return;
@@ -388,7 +395,9 @@ export abstract class ApiStatistics implements ApiHelper {
       /* ---------------------------------
        * Group the event dates into runs
        * --------------------------------- */
-      const occurrences = await this.getPlayerEventOccurrences(playerId, olapDatabaseName, eventName);
+      const occurrences = isWeeklyReset
+        ? await this.getPlayerWeeklyOccurrences(playerId, olapDatabaseName, eventName)
+        : await this.getPlayerEventOccurrences(playerId, olapDatabaseName, eventName);
       const data = { event: eventName, occurrences };
       void ApiHelper.updateCache(cacheKey, data);
       response.status(ApiHelper.HTTP_OK).send(data);
@@ -1083,6 +1092,57 @@ export abstract class ApiStatistics implements ApiHelper {
     const clickhouseQuery = await clickhouseClient.query({
       query,
       query_params: { playerId: ApiHelper.removeCountryCode(playerId), eventTable },
+    });
+    const result = await clickhouseQuery.json();
+    return result.data.map((row: any) => ({
+      started_at: new Date(row.started_at).toISOString(),
+      ended_at: new Date(row.ended_at).toISOString(),
+      point: Number(row.point),
+    }));
+  }
+
+  /**
+   * Groups a weekly-reset history into one entry per week and reports the peak the player reached
+   * in each of them
+   *
+   * @param playerId The player, with their country code still attached
+   * @param olapDatabase The OLAP database holding this server's history
+   * @param eventTable The weekly-reset table to group
+   * @returns One entry per week the player was sampled in, oldest first
+   */
+  private static async getPlayerWeeklyOccurrences(
+    playerId: number,
+    olapDatabase: string,
+    eventTable: string,
+  ): Promise<Array<{ started_at: string; ended_at: string; point: number }>> {
+    const resetOffset =
+      ApiHelper.ggeTrackerManager.getServerResetOffsetByCode(ApiHelper.getCountryCode(String(playerId)) || '') ?? -1;
+    const anchor = this.WEEK_ANCHOR_SECONDS + (resetOffset - 1) * 3600;
+    const clickhouseClient: NodeClickHouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
+    const query = `
+      SELECT
+        week_start AS started_at,
+        week_start + {week:UInt32} - 1 AS ended_at,
+        toUInt64(max(point)) AS point
+      FROM (
+        SELECT
+          toDateTime(
+            intDiv(toUnixTimestamp(created_at) - {anchor:Int64}, {week:UInt32}) * {week:UInt32} + {anchor:Int64}
+          ) AS week_start,
+          point
+        FROM ${olapDatabase}.${eventTable}
+        WHERE player_id = {playerId:UInt32}
+      )
+      GROUP BY week_start
+      ORDER BY week_start ASC
+    `;
+    const clickhouseQuery = await clickhouseClient.query({
+      query,
+      query_params: {
+        playerId: ApiHelper.removeCountryCode(playerId),
+        anchor,
+        week: this.SECONDS_PER_WEEK,
+      },
     });
     const result = await clickhouseQuery.json();
     return result.data.map((row: any) => ({

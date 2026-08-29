@@ -242,6 +242,7 @@
       }
 
       .scroll {
+        display: block;
         position: relative;
         width: min(640px, 100%);
         text-align: center;
@@ -444,7 +445,7 @@
     <div class="overlay" aria-hidden="true"></div>
 
     <main class="wrap">
-      <section class="scroll" role="status" aria-live="polite">
+      <output class="scroll" aria-live="polite">
         <div class="emblem" aria-hidden="true">
           <img src="https://i.imgur.com/KHde40t.png" alt="" />
         </div>
@@ -478,7 +479,7 @@
         </a>
 
         <p class="footnote">This page refreshes automatically - no need to reload.</p>
-      </section>
+      </output>
     </main>
 
     <script>
@@ -593,8 +594,9 @@
           badgeNum.textContent = score;
           badge.classList.add("show");
           badge.classList.remove("bump");
-          badge.offsetWidth;
-          badge.classList.add("bump");
+          requestAnimationFrame(function () {
+            badge.classList.add("bump");
+          });
 
           lastActivity = performance.now();
 

@@ -34,8 +34,7 @@
 
 <ng-template #contributors>
   @if (lanes.length) {
-    <div class="roll" [class.roll-paused]="rollPaused" (click)="toggleRoll()" (keydown.enter)="toggleRoll()"
-      (keydown.space)="toggleRoll()" tabindex="0" role="button">
+    <button type="button" class="roll button-reset" [class.roll-paused]="rollPaused" (click)="toggleRoll()">
       @for (lane of lanes; track $index) {
         <div class="lane">
           <div
@@ -61,7 +60,7 @@
           </div>
         </div>
       }
-    </div>
+    </button>
   }
 </ng-template>
 
