@@ -602,11 +602,11 @@ export class GenericFetchAndSaveBackend {
     }
 
     const dungeonMaps: DungeonMap[] = [];
-    const start = new Date();
+    const start = Date.now();
     const completed = await this.scanDungeonArea(worldNumber, bounds, randoms, dungeonMaps);
     if (!completed) return;
 
-    const elapsedTimeInSeconds = Math.floor((new Date().getTime() - start.getTime()) / 1000);
+    const elapsedTimeInSeconds = Math.floor((Date.now() - start) / 1000);
     console.log(
       '\nTime taken to retrieve dungeons:',
       elapsedTimeInSeconds,
@@ -2828,7 +2828,7 @@ export class GenericFetchAndSaveBackend {
     levelCategory: number,
   ): boolean {
     let reachedEnd = false;
-    const lastPoints = players[players.length - 1]?.[1];
+    const lastPoints = players.at(-1)?.[1];
     if (players.length <= 0 || !lastPoints || lastPoints == 0) {
       reachedEnd = true;
       Utils.logMessage('Search for loot stopped due to a player with 0 points, players: ', scannedCount);
@@ -4527,7 +4527,7 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
-  private async fetchCustomEventHeader(lt: number, levelCategory: number, sv: number): Promise<any | null> {
+  private async fetchCustomEventHeader(lt: number, levelCategory: number, sv: number): Promise<any> {
     let data = await this.fetchDataAndReturn(lt, levelCategory, sv);
     if (data?.['return_code'] != '0') {
       if (sv < 10) {

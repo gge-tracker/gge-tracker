@@ -455,7 +455,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   private readonly languageService = inject(LanguageService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly localStorage = inject(LocalStorageService);
-  private playersColors: Record<string, string> = {};
+  private readonly playersColors: Record<string, string> = {};
   private statsFinished = false;
   private statsInProgress = false;
   private data: ApiPlayerStatsForAlliance | null = null;
