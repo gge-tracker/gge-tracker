@@ -17,7 +17,7 @@ templates:
       {{- if eq .Annotations.runs "0" }}
       ⚠️ **No scraping run completed in the last hour.**
       {{- else if .Annotations.runs }}
-      ✅ **{{ .Annotations.servers }}** servers · **{{ .Annotations.runs }}** runs completed · **{{ .Annotations.errors }}** errors — in the last hour.
+      ✅ **{{ .Annotations.servers }}** servers · **{{ .Annotations.runs }}** runs completed · **{{ .Annotations.errors }}** errors - in the last hour.
       {{- end }}
       {{- end }}
       {{- else }}
