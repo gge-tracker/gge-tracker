@@ -100,6 +100,14 @@ export class GuessDailyPlayerComponent extends GenericComponent implements OnIni
     return this.maxAttempts - this.guesses.length;
   }
 
+  public get attemptsProgressMax(): number {
+    return this.maxAttempts === Infinity ? 1 : this.maxAttempts;
+  }
+
+  public get attemptsProgressValue(): number {
+    return this.maxAttempts === Infinity ? 0 : this.guesses.length;
+  }
+
   public async submitGuess(): Promise<void> {
     if (!this.search || this.isSubmitting || this.isWin || this.isLose) {
       return;

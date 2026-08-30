@@ -43,6 +43,19 @@ type CastleFilterValue = number | string | null;
 /** A raw value read out of the GGE building data blob, before formatting. */
 type RawBuildingValue = number | string | boolean | null;
 
+interface EffectLabel {
+  text: string;
+  template: string;
+}
+
+interface ConstructionEffect {
+  effectId: string;
+  effectTypeID: string;
+  raw: string;
+  value: number;
+  name: string;
+}
+
 @Component({
   selector: 'app-view-castle',
   imports: [
@@ -67,6 +80,9 @@ type RawBuildingValue = number | string | boolean | null;
   styleUrl: './view-castle.component.css',
 })
 export class ViewCastleComponent extends GenericComponent implements OnInit {
+  private static readonly WALL_DEFENSE_CAPACITY_EFFECT_TYPE_ID = '12'; // defenseUnitAmountWallCapped
+  private static readonly UNIT_WALL_ABSOLUTE_AMOUNT_EFFECT_TYPE_ID = '194'; // unitWallAbsoluteAmount
+  private static readonly SIGHT_RADIUS_BONUS_EFFECT_TYPE_ID = '59'; // SightRadiusBonus
   private static readonly RARENESS_NAMES: Record<number, string> = {
     0: 'unique',
     1: 'common',
@@ -374,48 +390,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   }
 
   public async updateFilters(): Promise<void> {
-    const defaultItems = this.allVisibleBuildings;
-    const filters = this.filters;
-    const filteredItems = defaultItems.filter((item) => {
-      const { positionX, positionY, inDistrictID } = item.building;
-      if (filters.isInDistrict === true && (positionX >= 0 || positionY >= 0 || !inDistrictID)) return false;
-      if (filters.hasMaxLevel === true && item.data['upgradeWodID']) return false;
-      if (filters.upgradable === true && !item.data['upgradeWodID']) return false;
-      if (filters.burnable === true && item.data['burnable'] == 0) return false;
-      if (filters.minLevel && Number(item.data['level']) < Number(filters.minLevel)) return false;
-      if (filters.maxLevel && Number(item.data['level']) > Number(filters.maxLevel)) return false;
-      if (filters.sellPriceMin && (!item.data['sellC1'] || Number(item.data['sellC1']) < Number(filters.sellPriceMin)))
-        return false;
-      if (filters.sellPriceMax && (!item.data['sellC1'] || Number(item.data['sellC1']) > Number(filters.sellPriceMax)))
-        return false;
-      if (filters.mightMin && Number(item.data['mightValue']) < Number(filters.mightMin)) return false;
-      if (filters.mightMax && Number(item.data['mightValue']) > Number(filters.mightMax)) return false;
-      if (filters.fireDamageMin && item.building['damageFactor'] * 100 < Number(filters.fireDamageMin)) return false;
-      if (filters.fireDamageMax && item.building['damageFactor'] * 100 > Number(filters.fireDamageMax)) return false;
-      if (filters.publicOrderMin && Number(item.data['publicOrder']) < Number(filters.publicOrderMin)) return false;
-      if (filters.publicOrderMax && Number(item.data['publicOrder']) > Number(filters.publicOrderMax)) return false;
-      if (filters.constructionType && item.data['buildingGroundType'] !== filters.constructionType) return false;
-      if (
-        filters.constructionItemsSlot1 &&
-        ((filters.constructionItemsSlot1 === 'assigned' && !item.constructionItems[0]) ||
-          (filters.constructionItemsSlot1 === 'unassigned' && item.constructionItems[0]))
-      )
-        return false;
-      if (
-        filters.constructionItemsSlot2 &&
-        ((filters.constructionItemsSlot2 === 'assigned' && !item.constructionItems[1]) ||
-          (filters.constructionItemsSlot2 === 'unassigned' && item.constructionItems[1]))
-      )
-        return false;
-      if (
-        filters.constructionItemsSlot3 &&
-        ((filters.constructionItemsSlot3 === 'assigned' && !item.constructionItems[2]) ||
-          (filters.constructionItemsSlot3 === 'unassigned' && item.constructionItems[2]))
-      )
-        return false;
-      return true;
-    });
-    this.countFilterActivated = Object.values(filters).filter(
+    const filteredItems = this.allVisibleBuildings.filter((item) => this.matchesFilters(item));
+    this.countFilterActivated = Object.values(this.filters).filter(
       (value) => value !== null && value !== undefined && value !== false,
     ).length;
     this.visibleBuildings = filteredItems;
@@ -618,8 +594,11 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     if (step !== undefined) {
       event.preventDefault();
       const count = walkable.length;
-      this.focusedBuildingIndex =
-        this.focusedBuildingIndex < 0 ? (step > 0 ? 0 : count - 1) : (this.focusedBuildingIndex + step + count) % count;
+      if (this.focusedBuildingIndex < 0) {
+        this.focusedBuildingIndex = step > 0 ? 0 : count - 1;
+      } else {
+        this.focusedBuildingIndex = (this.focusedBuildingIndex + step + count) % count;
+      }
       this.showTooltipForFocusedBuilding(walkable[this.focusedBuildingIndex]);
       return;
     }
@@ -689,6 +668,52 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       console.error('Error during fetch:', error);
       return {};
     }
+  }
+
+  private matchesFilters(item: IMappedBuildingWithGround): boolean {
+    return this.matchesStateFilters(item) && this.matchesRangeFilters(item) && this.matchesSlotFilters(item);
+  }
+
+  private matchesStateFilters(item: IMappedBuildingWithGround): boolean {
+    const filters = this.filters;
+    const { positionX, positionY, inDistrictID } = item.building;
+    if (filters.isInDistrict === true && (positionX >= 0 || positionY >= 0 || !inDistrictID)) return false;
+    if (filters.hasMaxLevel === true && item.data['upgradeWodID']) return false;
+    if (filters.upgradable === true && !item.data['upgradeWodID']) return false;
+    if (filters.burnable === true && item.data['burnable'] == 0) return false;
+    return !(filters.constructionType && item.data['buildingGroundType'] !== filters.constructionType);
+  }
+
+  private matchesRangeFilters(item: IMappedBuildingWithGround): boolean {
+    const filters = this.filters;
+    const sellPrice = item.data['sellC1'] ? Number(item.data['sellC1']) : null;
+    return (
+      this.withinRange(Number(item.data['level']), filters.minLevel, filters.maxLevel) &&
+      this.withinRange(sellPrice, filters.sellPriceMin, filters.sellPriceMax) &&
+      this.withinRange(Number(item.data['mightValue']), filters.mightMin, filters.mightMax) &&
+      this.withinRange(item.building['damageFactor'] * 100, filters.fireDamageMin, filters.fireDamageMax) &&
+      this.withinRange(Number(item.data['publicOrder']), filters.publicOrderMin, filters.publicOrderMax)
+    );
+  }
+
+  private withinRange(value: number | null, min: CastleFilterValue, max: CastleFilterValue): boolean {
+    if (min && (value === null || value < Number(min))) return false;
+    return !(max && (value === null || value > Number(max)));
+  }
+
+  private matchesSlotFilters(item: IMappedBuildingWithGround): boolean {
+    const filters = this.filters;
+    return (
+      this.matchesSlot(filters.constructionItemsSlot1, item.constructionItems[0]) &&
+      this.matchesSlot(filters.constructionItemsSlot2, item.constructionItems[1]) &&
+      this.matchesSlot(filters.constructionItemsSlot3, item.constructionItems[2])
+    );
+  }
+
+  private matchesSlot(filter: string | null, slot: unknown): boolean {
+    if (filter === 'assigned') return Boolean(slot);
+    if (filter === 'unassigned') return !slot;
+    return true;
   }
 
   private clearAllParameters(): void {
@@ -1343,144 +1368,150 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
 
   private mapConstructionItemObject(data: IMappedBuildingUnknownDataElement): IMappedBuildingUnknownDataElement {
     try {
-      const RARENESS_COLORS = ViewCastleComponent.RARENESS_COLORS;
-      const RARENESS_NAMES = ViewCastleComponent.RARENESS_NAMES;
       if (!this.languageJsonData) {
         throw new Error('Language JSON data is not loaded');
       }
-      const splittedEffects = data['effects'] ? String(data['effects']).split(',') : [];
-      let effects: { effectId: string; effectTypeID: string; raw: string; value: number; name: string }[] = [];
-
-      // Handle deco points effect if present, as it's a common public order source for construction items
-      if (data['decoPoints']) {
-        const name = this.languageJsonData['ci_effect_decoPoints'.toUpperCase()];
-        effects.push({
-          effectId: 'decoPoints',
-          effectTypeID: 'decoPoints',
-          raw: name as string,
-          value: Number(data['decoPoints']),
-          name: (name as string).replace('{0}', String(data['decoPoints'])),
-        });
-        this.calculatedCastleProperties.publicOrder.effects += Number(data['decoPoints']);
-      }
-
-      // Handle legacy effects that are directly present as fields in the data object
-      // This is an in-game mechanic where some effects are not included in the 'effects'
-      // field but are instead represented as separate fields in the building data
-      const legacyEffectFields: [string, boolean][] = this.getLegacyEffects();
-      for (const [key] of legacyEffectFields) {
-        if (data[key] !== undefined) {
-          const count = data[key];
-          const name = this.languageJsonData[('ci_effect_' + key).toUpperCase()];
-          effects.push({
-            raw: name as string,
-            effectId: key,
-            effectTypeID: key,
-            value: Number(count),
-            name: (name as string).replace('{0}', String(count)),
-          });
-        }
-      }
-
-      // Handle regular effects defined in the 'effects' field
-      for (const splittedEffect of splittedEffects) {
-        const [effectId, effectValue] = splittedEffect ? splittedEffect.split('&') : [null, null];
-        let effectCode = this.effects.find((effect) => effect['effectID'] === effectId);
-        if (splittedEffect && effectValue !== null) {
-          const key = effectCode?.['name'];
-          const name = this.languageJsonData[('equip_effect_description_' + key).toUpperCase()];
-          if (name) {
-            effects.push({
-              effectId: effectCode?.['effectID'] || 'unknown',
-              effectTypeID: effectCode?.['effectTypeID'] || 'unknown',
-              raw: name as string,
-              value: Number(effectValue),
-              name: (name as string).replace('{0}', String(effectValue)),
-            });
-          } else {
-            const name = this.languageJsonData[('ci_effect_' + key).toUpperCase()];
-            if (name) {
-              effects.push({
-                effectId: effectCode?.['effectID'] || 'unknown',
-                effectTypeID: effectCode?.['effectTypeID'] || 'unknown',
-                raw: name as string,
-                value: Number(effectValue),
-                name: (name as string).replace('{0}', String(effectValue)),
-              });
-            } else {
-              const target = effectValue.split('+');
-              effects.push({
-                effectId: effectCode?.['effectID'] || 'unknown',
-                effectTypeID: effectCode?.['effectTypeID'] || 'unknown',
-                raw: this.languageJsonData[('ci_effect_' + key + '_' + target[0]).toUpperCase()] as string,
-                value: Number(target[1]),
-                name: (this.languageJsonData[('ci_effect_' + key + '_' + target[0]).toUpperCase()] as string).replace(
-                  '{0}',
-                  String(target[1]),
-                ),
-              });
-            }
-          }
-        }
-      }
-      for (const effect of effects) {
-        const name = this.capitalizeFirstLetter(
-          String(effect['raw'])
-            .trim()
-            .replaceAll(/\+?-?{0\}%?\s*/g, '')
-            .toLowerCase(),
-        );
-        const regroupedEffect = this.regroupedEffects.find(
-          (regroupedEffect) => regroupedEffect['effectId'] == effect['effectId'] || effect['name'] === name,
-        );
-        const unitWallAbsoluteAmount = new Set(['194']); // ID: unitWallAbsoluteAmount
-        if (unitWallAbsoluteAmount.has(effect['effectTypeID'] || '')) {
-          if (String(effect['raw']).includes('%')) {
-            this.calculatedCastleProperties.wall.effects +=
-              (this.calculatedCastleProperties.wall.base * Number(effect['value'])) / 100;
-          } else {
-            this.calculatedCastleProperties.wall.base += Number(effect['value']) || 0;
-          }
-        }
-        if (!regroupedEffect) {
-          this.regroupedEffects.push({
-            name: name,
-            effectId: effect['effectId'] || 'unknown',
-            type: String(effect['raw']).includes('%') ? 'percentage' : 'flat',
-            value: Number(effect['value']) || 0,
-          });
-        } else if (regroupedEffect) {
-          regroupedEffect.value += Number(effect['value']) || 0;
-        } else {
-          console.error('Effect code not found for effectId:', effect, data['effects'], data);
-        }
-      }
-      const mappedEffectNames = effects.map((effect) => effect.name).join(', ');
-
-      return {
-        ...data,
-        isPremium: data['isPremium'] === '1',
-        slotTypeName: this.getSlotTypeName(data['slotTypeID']),
-        slotTypeID: Number(data['slotTypeID']) || 0,
-        level: String(data['slotTypeID']) === '0' ? '1' : Number(data['level']),
-        rarenessName: String(
-          this.languageJsonData[
-            ('equipment_rarity_' + RARENESS_NAMES[Number(data['rarenessID'])] || 'unknown').toUpperCase()
-          ],
-        ),
-        rarenessColor: this.toHex(RARENESS_COLORS[Number(data['rarenessID'])] || 0),
-        translatedName: String(
-          this.languageJsonData[
-            (this.getBaseNameTextId(String(data['slotTypeID'])) + '_' + data['name'] || 'unknown').toUpperCase()
-          ],
-        ),
-        boxUrl: this.getBoxUrl(data),
-        effect: mappedEffectNames || null,
-      };
+      const effects = [
+        ...this.decoPointsEffects(data),
+        ...this.legacyFieldEffects(data),
+        ...this.declaredEffects(data),
+      ];
+      this.regroupConstructionEffects(effects);
+      return this.describeConstructionItem(data, effects);
     } catch (error) {
       console.error('Error in transformData:', error);
       return { ...data, effect: null };
     }
+  }
+
+  private decoPointsEffects(data: IMappedBuildingUnknownDataElement): ConstructionEffect[] {
+    if (!data['decoPoints']) return [];
+    const raw = this.languageJsonData!['ci_effect_decoPoints'.toUpperCase()] as string;
+    this.calculatedCastleProperties.publicOrder.effects += Number(data['decoPoints']);
+    return [
+      {
+        effectId: 'decoPoints',
+        effectTypeID: 'decoPoints',
+        raw,
+        value: Number(data['decoPoints']),
+        name: raw.replace('{0}', String(data['decoPoints'])),
+      },
+    ];
+  }
+
+  private legacyFieldEffects(data: IMappedBuildingUnknownDataElement): ConstructionEffect[] {
+    const effects: ConstructionEffect[] = [];
+    for (const [key] of this.getLegacyEffects()) {
+      if (data[key] === undefined) continue;
+      const count = data[key];
+      const raw = this.languageJsonData![('ci_effect_' + key).toUpperCase()] as string;
+      effects.push({
+        effectId: key,
+        effectTypeID: key,
+        raw,
+        value: Number(count),
+        name: raw.replace('{0}', String(count)),
+      });
+    }
+    return effects;
+  }
+
+  private declaredEffects(data: IMappedBuildingUnknownDataElement): ConstructionEffect[] {
+    const splittedEffects = data['effects'] ? String(data['effects']).split(',') : [];
+    const effects: ConstructionEffect[] = [];
+    for (const splittedEffect of splittedEffects) {
+      if (!splittedEffect) continue;
+      const [effectId, effectValue] = splittedEffect.split('&');
+      const effectCode = this.effects.find((effect) => effect['effectID'] === effectId);
+      effects.push({
+        effectId: effectCode?.['effectID'] || 'unknown',
+        effectTypeID: effectCode?.['effectTypeID'] || 'unknown',
+        ...this.describeDeclaredEffect(effectCode?.['name'], effectValue),
+      });
+    }
+    return effects;
+  }
+
+  private describeDeclaredEffect(
+    key: string | undefined,
+    effectValue: string,
+  ): { raw: string; value: number; name: string } {
+    const description = this.languageJsonData![('equip_effect_description_' + key).toUpperCase()] as string;
+    if (description) {
+      return { raw: description, value: Number(effectValue), name: description.replace('{0}', String(effectValue)) };
+    }
+    const ciEffect = this.languageJsonData![('ci_effect_' + key).toUpperCase()] as string;
+    if (ciEffect) {
+      return { raw: ciEffect, value: Number(effectValue), name: ciEffect.replace('{0}', String(effectValue)) };
+    }
+    const target = effectValue.split('+');
+    const composite = this.languageJsonData![('ci_effect_' + key + '_' + target[0]).toUpperCase()] as string;
+    return { raw: composite, value: Number(target[1]), name: composite.replace('{0}', String(target[1])) };
+  }
+
+  private regroupConstructionEffects(effects: ConstructionEffect[]): void {
+    for (const effect of effects) {
+      const name = this.capitalizeFirstLetter(
+        String(effect.raw)
+          .trim()
+          .replaceAll(/\+?-?{0\}%?\s*/g, '')
+          .toLowerCase(),
+      );
+      if (effect.effectTypeID === ViewCastleComponent.UNIT_WALL_ABSOLUTE_AMOUNT_EFFECT_TYPE_ID) {
+        this.addWallEffect(effect);
+      }
+      const existing = this.regroupedEffects.find(
+        (regrouped) => regrouped.effectId == effect.effectId || effect.name === name,
+      );
+      if (existing) {
+        existing.value += Number(effect.value) || 0;
+      } else {
+        this.regroupedEffects.push({
+          name,
+          effectId: effect.effectId || 'unknown',
+          type: String(effect.raw).includes('%') ? 'percentage' : 'flat',
+          value: Number(effect.value) || 0,
+        });
+      }
+    }
+  }
+
+  private addWallEffect(effect: ConstructionEffect): void {
+    if (String(effect.raw).includes('%')) {
+      this.calculatedCastleProperties.wall.effects +=
+        (this.calculatedCastleProperties.wall.base * Number(effect.value)) / 100;
+    } else {
+      this.calculatedCastleProperties.wall.base += Number(effect.value) || 0;
+    }
+  }
+
+  private describeConstructionItem(
+    data: IMappedBuildingUnknownDataElement,
+    effects: ConstructionEffect[],
+  ): IMappedBuildingUnknownDataElement {
+    const rarenessId = Number(data['rarenessID']);
+    const mappedEffectNames = effects.map((effect) => effect.name).join(', ');
+
+    return {
+      ...data,
+      isPremium: data['isPremium'] === '1',
+      slotTypeName: this.getSlotTypeName(data['slotTypeID']),
+      slotTypeID: Number(data['slotTypeID']) || 0,
+      level: String(data['slotTypeID']) === '0' ? '1' : Number(data['level']),
+      rarenessName: String(
+        this.languageJsonData![
+          ('equipment_rarity_' + ViewCastleComponent.RARENESS_NAMES[rarenessId] || 'unknown').toUpperCase()
+        ],
+      ),
+      rarenessColor: this.toHex(ViewCastleComponent.RARENESS_COLORS[rarenessId] || 0),
+      translatedName: String(
+        this.languageJsonData![
+          (this.getBaseNameTextId(String(data['slotTypeID'])) + '_' + data['name'] || 'unknown').toUpperCase()
+        ],
+      ),
+      boxUrl: this.getBoxUrl(data),
+      effect: mappedEffectNames || null,
+    };
   }
 
   private getLegacyEffects(): [string, boolean][] {
@@ -1570,108 +1601,102 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   }
 
   private getAreaSpecificEffects(data: IMappedBuildingUnknownDataElement): string[] {
-    if (!this.languageJsonData) {
+    const areaSpecificEffects = data['areaSpecificEffects'];
+    if (!this.languageJsonData || typeof areaSpecificEffects !== 'string' || !areaSpecificEffects) {
       return [];
     }
-    const areaSpecificEffects = data['areaSpecificEffects'];
-    if (!areaSpecificEffects || typeof areaSpecificEffects !== 'string') {
-      return [];
-    } else {
-      const splitEffects = areaSpecificEffects.split(',');
-      const effects = [];
-      let index = -1;
-      for (const effect of splitEffects) {
-        index++;
-        const [id, value] = effect.split('&');
-        const findEffect = this.effects.find((effect) => effect['effectID'] === id);
-        if (!findEffect) {
-          console.warn(`Effect with ID ${id} not found in effects.`);
-          continue;
-        }
-        let name: string = '';
-        const tries = ['effect_name_' + findEffect['name'], 'equip_effect_description_' + findEffect['name']];
-        effects[index] = null;
-        let currentName: string | null = effects[index];
-        for (const tryKey of tries) {
-          if (currentName) break;
-          name = this.languageJsonData[tryKey.toUpperCase()] as string;
-          if (name) {
-            const searchType = this.effectTypes.find(
-              (effectType) => effectType['effectTypeID'] === findEffect['effectTypeID'],
-            );
-            const ciEffectName = this.languageJsonData[('ci_effect_' + searchType!['name']).toUpperCase()];
-            if (ciEffectName) {
-              currentName = String(ciEffectName).replace('{0}', value);
-            } else {
-              const target = value.split('+');
-              if (target.length === 2) {
-                currentName = this.languageJsonData[
-                  ('ci_effect_' + searchType!['name'] + '_' + target[0]).toUpperCase()
-                ] as string;
-              } else if (name.includes('{0}')) {
-                currentName = String(name).replace('{0}', value);
-              } else if (
-                String(findEffect['name']).includes('Unboosted') ||
-                String(findEffect['name']).includes('Amount')
-              ) {
-                const isPositive = Number(value) > 0;
-                const sign = isPositive ? '+' : '-';
-                currentName = String(name) + ' : ' + sign + value;
-              } else {
-                const isPositive = Number(value) > 0;
-                currentName = String(name) + ' : ' + (isPositive ? '+' : '-') + value + '%';
-              }
-            }
-          }
-        }
-        if (!currentName) {
-          const searchType = this.effectTypes.find(
-            (effectType) => effectType['effectTypeID'] === findEffect['effectTypeID'],
-          );
-          const target = value.split('+');
-          if (target.length === 2) {
-            name = this.languageJsonData[
-              ('ci_effect_' + searchType!['name'] + '_' + target[0]).toUpperCase()
-            ] as string;
-            currentName = name ? String(name).replace('{0}', target[1]) : null;
-          }
-        }
-        effects[index] = currentName;
-        if (currentName) {
-          const effect = currentName.includes('%') ? 'percentage' : 'flat';
-          const parsedName = name
-            .toLowerCase()
-            .replaceAll(/\+?-?{0\}%?\s*/g, '')
-            .trim();
-          const item = {
-            name: this.capitalizeFirstLetter(parsedName),
-            effectId: findEffect['effectID'],
-            value: Number(value),
-            type: effect,
-          };
-          const bonusWallDefenseTroopCapacityEffectId = new Set(['12']); // ID: defenseUnitAmountWallCapped
-          const sightRadiusBonusEffectId = new Set(['59']); // ID: SightRadiusBonus
-          if (bonusWallDefenseTroopCapacityEffectId.has(findEffect['effectTypeID'])) {
-            this.calculatedCastleProperties.wall.effects += Number(value);
-          } else if (sightRadiusBonusEffectId.has(findEffect['effectTypeID'])) {
-            this.calculatedCastleProperties.sightRadius += Number(value);
-          }
-          const existing = this.regroupedEffects.find(
-            (effect) => effect.name === item.name && effect.effectId === item.effectId,
-          );
-          if (existing) {
-            existing.value += item.value;
-          } else {
-            this.regroupedEffects.push(item);
-          }
-        } else {
-          const searchType = this.effectTypes.find(
-            (effectType) => effectType['effectTypeID'] === findEffect['effectTypeID'],
-          );
-          console.warn(`Effect name for ${findEffect['name']} not found in language data.`, searchType, data, value);
-        }
+
+    const labels: string[] = [];
+    for (const rawEffect of areaSpecificEffects.split(',')) {
+      const [id, value] = rawEffect.split('&');
+      const effect = this.effects.find((candidate) => candidate['effectID'] === id);
+      if (!effect) {
+        console.warn(`Effect with ID ${id} not found in effects.`);
+        continue;
       }
-      return effects.filter((effect: string | null) => effect !== null && effect !== undefined);
+
+      const label = this.resolveEffectLabel(effect, value);
+      if (!label) {
+        console.warn(
+          `Effect name for ${effect['name']} not found in language data.`,
+          this.findEffectType(effect),
+          data,
+          value,
+        );
+        continue;
+      }
+
+      labels.push(label.text);
+      this.accumulateEffect(effect, value, label);
+    }
+    return labels;
+  }
+
+  private findEffectType(effect: Record<string, any>): Record<string, any> | undefined {
+    return this.effectTypes.find((effectType) => effectType['effectTypeID'] === effect['effectTypeID']);
+  }
+
+  private resolveEffectLabel(effect: Record<string, any>, value: string): EffectLabel | null {
+    const tries = ['effect_name_' + effect['name'], 'equip_effect_description_' + effect['name']];
+    for (const tryKey of tries) {
+      const template = this.languageJsonData![tryKey.toUpperCase()] as string;
+      if (!template) continue;
+      const text = this.formatEffectLabel(effect, template, value);
+      if (text) return { text, template };
+    }
+    return this.resolveCompositeEffectLabel(effect, value);
+  }
+
+  private formatEffectLabel(effect: Record<string, any>, template: string, value: string): string | null {
+    const typeName = this.findEffectType(effect)!['name'];
+    const ciEffectName = this.languageJsonData![('ci_effect_' + typeName).toUpperCase()];
+    if (ciEffectName) return String(ciEffectName).replace('{0}', value);
+
+    const target = value.split('+');
+    if (target.length === 2) {
+      return (this.languageJsonData![('ci_effect_' + typeName + '_' + target[0]).toUpperCase()] as string) ?? null;
+    }
+    if (template.includes('{0}')) return String(template).replace('{0}', value);
+
+    const sign = Number(value) > 0 ? '+' : '-';
+    const isFlatAmount = String(effect['name']).includes('Unboosted') || String(effect['name']).includes('Amount');
+    return String(template) + ' : ' + sign + value + (isFlatAmount ? '' : '%');
+  }
+
+  private resolveCompositeEffectLabel(effect: Record<string, any>, value: string): EffectLabel | null {
+    const target = value.split('+');
+    if (target.length !== 2) return null;
+    const typeName = this.findEffectType(effect)!['name'];
+    const template = this.languageJsonData![('ci_effect_' + typeName + '_' + target[0]).toUpperCase()] as string;
+    if (!template) return null;
+    return { text: String(template).replace('{0}', target[1]), template };
+  }
+
+  private accumulateEffect(effect: Record<string, any>, value: string, label: EffectLabel): void {
+    const parsedName = label.template
+      .toLowerCase()
+      .replaceAll(/\+?-?{0\}%?\s*/g, '')
+      .trim();
+    const item = {
+      name: this.capitalizeFirstLetter(parsedName),
+      effectId: effect['effectID'],
+      value: Number(value),
+      type: label.text.includes('%') ? 'percentage' : 'flat',
+    };
+
+    if (effect['effectTypeID'] === ViewCastleComponent.WALL_DEFENSE_CAPACITY_EFFECT_TYPE_ID) {
+      this.calculatedCastleProperties.wall.effects += Number(value);
+    } else if (effect['effectTypeID'] === ViewCastleComponent.SIGHT_RADIUS_BONUS_EFFECT_TYPE_ID) {
+      this.calculatedCastleProperties.sightRadius += Number(value);
+    }
+
+    const existing = this.regroupedEffects.find(
+      (candidate) => candidate.name === item.name && candidate.effectId === item.effectId,
+    );
+    if (existing) {
+      existing.value += item.value;
+    } else {
+      this.regroupedEffects.push(item);
     }
   }
 }

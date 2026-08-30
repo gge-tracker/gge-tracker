@@ -194,16 +194,6 @@ export default function createApp(sockets: {
           );
           break;
         }
-        case 'e4k-legacy': {
-          socketServer = new GgeEmpire4KingdomsSocket(
-            'ws://' + socket_url,
-            server,
-            username,
-            password,
-            autoReconnectValue,
-          );
-          break;
-        }
         default: {
           socketServer = new GgeLiveTemporaryServerSocket('wss://' + socket_url, server, username, password);
           break;

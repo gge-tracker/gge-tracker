@@ -247,7 +247,7 @@ export abstract class ApiStatus implements ApiHelper {
   ): Promise<number | null> {
     const mirrorKey = this.LAST_DURATION_KEY_PREFIX + code;
     if (durationRow?.value != null) {
-      await ApiHelper.updateCache(mirrorKey, durationRow.value, this.LAST_DURATION_TTL_SECONDS, true);
+      await ApiHelper.updateCache(mirrorKey, String(durationRow.value), this.LAST_DURATION_TTL_SECONDS, true);
       return durationRow.value;
     }
     const mirrored = await ApiHelper.redisClient.get(mirrorKey).catch(() => null);

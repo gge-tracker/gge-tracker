@@ -15,6 +15,8 @@ import { RouterLink } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import {
   AlliancesUpdates,
+  ApiAllianceUpdates,
+  ApiAllianceUpdatesByPlayerId,
   ApiAquamarineMetric,
   ApiAquamarineSnapshot,
   ApiGenericData,
@@ -22,6 +24,7 @@ import {
   ApiPlayerStatsSummary,
   ApiPlayerStatsSummaryEvent,
   ApiPlayerStatsType,
+  ApiPlayerUpdatesByPlayerId,
   ApiRankingStatsPlayer,
   ApiResponse,
   ApiWoaEventPlayerAggregates,
@@ -2235,85 +2238,88 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     this.fillPlayerHistoryState = 'loading';
     this.isInLoading = true;
     this.cdr.detectChanges();
+
     const [allianceUpdatesResponse, playerUpdatesResponse] = await Promise.all([
       this.apiRestService.getAllianceUpdatesByPlayerId(playerId),
       this.apiRestService.getPlayerUpdatesByPlayerId(playerId),
     ]);
-    if (allianceUpdatesResponse.success === false) {
-      this.allianceUpdates = null;
-    } else {
-      const data = allianceUpdatesResponse.data;
-      if (data?.updates && data.updates.length > 0) {
-        data.updates.sort((a, b) => this.compareDate(a, b));
-        this.allianceUpdates = [];
-        const firstAlliance = data.updates.at(-1);
-        for (let index = 0; index < data.updates.length; index++) {
-          const { value, durationValue } =
-            index > 0
-              ? this.getDateDiff(data.updates[index]['date'], data.updates[index - 1]['date'])
-              : this.getDateDiff(data.updates[index]['date'], new Date().toISOString());
-          this.allianceUpdates[index] = {
-            id: data.updates[index]['new_alliance_id'],
-            date: data.updates[index]['date'],
-            alliance: data.updates[index]['new_alliance_name'],
-            original_new_alliance_name:
-              data.updates[index]['original_new_alliance_name'] === data.updates[index]['new_alliance_name']
-                ? null
-                : data.updates[index]['original_new_alliance_name'],
-            duration: index > 0 ? value : this.translateService.instant('depuis') + ' ' + value,
-            durationValue: durationValue,
-          };
-        }
-        if (firstAlliance) {
-          this.allianceUpdates.push({
-            id: firstAlliance['old_alliance_id'],
-            date: null,
-            alliance: firstAlliance['old_alliance_name'],
-            original_new_alliance_name:
-              firstAlliance['original_old_alliance_name'] === firstAlliance['old_alliance_name']
-                ? null
-                : firstAlliance['original_old_alliance_name'],
-            duration: '-',
-            durationValue: 0,
-          });
-        }
-      } else {
-        this.setDefaultAlliance();
-      }
-      this.maxDuration = Math.max(...this.allianceUpdates!.map((a) => a.durationValue));
-    }
-    if (playerUpdatesResponse.success === false) {
-      this.playerUpdates = null;
-    } else {
-      const data = playerUpdatesResponse.data;
-      if (data?.updates && data.updates.length > 0) {
-        data.updates.sort((a, b) => this.compareDate(a, b));
-        this.playerUpdates = [];
-        const firstPlayer = data.updates.at(-1);
-        for (let index = 0; index < data.updates.length; index++) {
-          this.playerUpdates[index] = {
-            date: data.updates[index]['date'],
-            player: data.updates[index]['new_player_name'],
-            duration:
-              index > 0
-                ? this.getDateDiff(data.updates[index]['date'], data.updates[index - 1]['date']).value
-                : this.translateService.instant('depuis') +
-                  ' ' +
-                  this.getDateDiff(data.updates[index]['date'], new Date().toISOString()).value,
-          };
-        }
-        if (firstPlayer) {
-          this.playerUpdates.push({
-            date: null,
-            player: firstPlayer['old_player_name'],
-            duration: '-',
-          });
-        }
-      }
-    }
+    this.applyAllianceUpdates(allianceUpdatesResponse);
+    this.applyPlayerNameUpdates(playerUpdatesResponse);
+
     this.fillPlayerHistoryState = 'loaded';
     this.isInLoading = false;
     this.cdr.detectChanges();
+  }
+
+  private applyAllianceUpdates(response: ApiResponse<ApiAllianceUpdatesByPlayerId>): void {
+    if (response.success === false) {
+      this.allianceUpdates = null;
+      return;
+    }
+    const updates = response.data?.updates;
+    if (!updates || updates.length === 0) {
+      this.setDefaultAlliance();
+    } else {
+      updates.sort((a, b) => this.compareDate(a, b));
+      const oldestUpdate = updates.at(-1);
+      this.allianceUpdates = updates.map((update, index) =>
+        this.toAllianceUpdate(update, index > 0 ? updates[index - 1]['date'] : null),
+      );
+      if (oldestUpdate) {
+        this.allianceUpdates.push({
+          id: oldestUpdate['old_alliance_id'],
+          date: null,
+          alliance: oldestUpdate['old_alliance_name'],
+          original_new_alliance_name:
+            oldestUpdate['original_old_alliance_name'] === oldestUpdate['old_alliance_name']
+              ? null
+              : oldestUpdate['original_old_alliance_name'],
+          duration: '-',
+          durationValue: 0,
+        });
+      }
+    }
+    this.maxDuration = Math.max(...this.allianceUpdates!.map((update) => update.durationValue));
+  }
+
+  private toAllianceUpdate(update: ApiAllianceUpdates, previousDate: string | null): AlliancesUpdates {
+    const { value, durationValue } = this.getDateDiff(update['date'], previousDate ?? new Date().toISOString());
+    return {
+      id: update['new_alliance_id'],
+      date: update['date'],
+      alliance: update['new_alliance_name'],
+      original_new_alliance_name:
+        update['original_new_alliance_name'] === update['new_alliance_name']
+          ? null
+          : update['original_new_alliance_name'],
+      duration: previousDate ? value : this.translateService.instant('depuis') + ' ' + value,
+      durationValue,
+    };
+  }
+
+  private applyPlayerNameUpdates(response: ApiResponse<ApiPlayerUpdatesByPlayerId>): void {
+    if (response.success === false) {
+      this.playerUpdates = null;
+      return;
+    }
+    const updates = response.data?.updates;
+    if (!updates || updates.length === 0) return;
+
+    updates.sort((a, b) => this.compareDate(a, b));
+    const oldestUpdate = updates.at(-1);
+    this.playerUpdates = updates.map((update, index) => ({
+      date: update['date'],
+      player: update['new_player_name'],
+      duration: this.formatUpdateDuration(update['date'], index > 0 ? updates[index - 1]['date'] : null),
+    }));
+    if (oldestUpdate) {
+      this.playerUpdates.push({ date: null, player: oldestUpdate['old_player_name'], duration: '-' });
+    }
+  }
+
+  private formatUpdateDuration(date: string, previousDate: string | null): string {
+    if (previousDate) return this.getDateDiff(date, previousDate).value;
+    return this.translateService.instant('depuis') + ' ' + this.getDateDiff(date, new Date().toISOString()).value;
   }
 
   private fillQuantity(): void {

@@ -255,10 +255,12 @@ export abstract class ApiHelper {
    * @param key - The cache key under which the data will be stored
    * @param data - The data to be cached. If `noJsonMode` is false, this will be stringified as JSON
    * @param cacheTTL - The time-to-live (TTL) for the cache entry in seconds. Defaults to 1200 seconds
-   * @param noJsonMode - If true, stores the data as-is without JSON stringification. Defaults to false
+   * @param noJsonMode - If true, stores the data as-is without JSON stringification, which Redis only accepts for a string. Defaults to false
    *
    * @returns A promise that resolves when the cache has been updated
    */
+  public static async updateCache(key: string, data: string, cacheTTL: number, noJsonMode: true): Promise<void>;
+  public static async updateCache(key: string, data: any, cacheTTL?: number, noJsonMode?: false): Promise<void>;
   public static async updateCache(key: string, data: any, cacheTTL = 3600, noJsonMode = false): Promise<void> {
     try {
       if (noJsonMode) {
