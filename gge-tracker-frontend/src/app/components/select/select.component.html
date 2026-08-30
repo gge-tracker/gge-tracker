@@ -1,5 +1,5 @@
 <div class="modern-select-wrapper">
-  <select class="modern-select" [(ngModel)]="currentItem" [attr.name]="name()" (ngModelChange)="onSelectChange()">
+  <select class="modern-select" [(ngModel)]="currentItem" [attr.name]="name()" [attr.aria-label]="name()" (ngModelChange)="onSelectChange()">
     <button>
       <selectedcontent></selectedcontent>
       <i class="fa-solid fa-chevron-down select-icon"></i>

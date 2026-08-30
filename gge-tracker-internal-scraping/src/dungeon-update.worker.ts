@@ -34,20 +34,24 @@ function getTimestamp(): string {
   return new Date().toISOString().replace('T', ' ').substring(0, 19);
 }
 
+function timestampTag(): string {
+  return colors.gray(`[${getTimestamp()}]`);
+}
+
 function logInfo(msg: string): void {
-  console.log(`${colors.gray(`[${getTimestamp()}]`)} ${colors.green('[INFO]')} ${msg}`);
+  console.log(`${timestampTag()} ${colors.green('[INFO]')} ${msg}`);
 }
 
 function logWarn(msg: string): void {
-  console.log(`${colors.gray(`[${getTimestamp()}]`)} ${colors.yellow('[WARN]')} ${msg}`);
+  console.log(`${timestampTag()} ${colors.yellow('[WARN]')} ${msg}`);
 }
 
 function logError(msg: string): void {
-  console.log(`${colors.gray(`[${getTimestamp()}]`)} ${colors.red('[ERROR]')} ${msg}`);
+  console.log(`${timestampTag()} ${colors.red('[ERROR]')} ${msg}`);
 }
 
 function logStep(msg: string): void {
-  console.log(`${colors.gray(`[${getTimestamp()}]`)} ${colors.cyan('[STEP]')} ${msg}`);
+  console.log(`${timestampTag()} ${colors.cyan('[STEP]')} ${msg}`);
 }
 
 export function parseServersConf(): ServerConfig[] {
@@ -62,7 +66,7 @@ export function parseServersConf(): ServerConfig[] {
 
     if (line.startsWith('[')) {
       if (isValidServer(current)) {
-        servers.push(current as ServerConfig);
+        servers.push(current);
       }
       current = { name: line.slice(1, -1) };
       continue;
@@ -72,7 +76,7 @@ export function parseServersConf(): ServerConfig[] {
     applyConfig(current, key, value);
   }
   if (isValidServer(current)) {
-    servers.push(current as ServerConfig);
+    servers.push(current);
   }
 
   logInfo(`Loaded ${servers.length} servers from config`);
@@ -105,7 +109,7 @@ function applyConfig(target: Partial<ServerConfig>, key: string, value: string):
 }
 
 function isValidServer(server: Partial<ServerConfig> | null): server is ServerConfig {
-  return !!(server && server.name);
+  return !!server?.name;
 }
 
 async function processServer(server: ServerConfig, index: string, total: number): Promise<boolean> {
@@ -117,8 +121,8 @@ async function processServer(server: ServerConfig, index: string, total: number)
     {},
     {
       host: 'postgres',
-      user: process.env.SQL_USER!,
-      password: process.env.SQL_PASSWORD!,
+      user: process.env.SQL_USER,
+      password: process.env.SQL_PASSWORD,
       database: server.sql,
       port: 5432,
       max: 1,

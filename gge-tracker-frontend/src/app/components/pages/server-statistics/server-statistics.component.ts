@@ -14,7 +14,12 @@ import { LanguageService } from '@ggetracker-services/language.service';
 import { ServerService } from '@ggetracker-services/server.service';
 import { WindowService } from '@ggetracker-services/window.service';
 import { TranslateModule } from '@ngx-translate/core';
-import { XAxisAnnotations } from 'ng-apexcharts';
+import { formatThousands } from '@ggetracker-services/text-format.utilities';
+
+interface StatPoint {
+  x: string;
+  y: number | null;
+}
 
 @Component({
   selector: 'app-server-statistics',
@@ -37,10 +42,10 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
   public selectedTab: 'graph' | 'table' = 'graph';
   public serverService = inject(ServerService);
 
-  private cdr = inject(ChangeDetectorRef);
-  private windowService = inject(WindowService);
-  private languageService = inject(LanguageService);
-  private data: AllianceStatsData[] = [];
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly windowService = inject(WindowService);
+  private readonly languageService = inject(LanguageService);
+  private readonly data: AllianceStatsData[] = [];
 
   public ngOnInit(): void {
     const lastUpdate = this.utilitiesService.data$.subscribe((data) => {
@@ -298,12 +303,11 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
   public openModal(identifier: keyof ApiServerStats, card: Card): void {
     if (identifier === 'events_participation_rate') return;
     this.selectedCard = card;
-    const specialIdentifier = identifier == 'alliances_changed_name' || identifier == 'players_who_changed_name';
-    const curveStroke = specialIdentifier ? 'straight' : 'straight';
+    const curveStroke = 'straight';
     const chart: ChartOptions = {
       series: [],
       chart: {
-        type: specialIdentifier ? 'area' : 'area',
+        type: 'area',
         locales: this.rankingService.CHART_LOCALES,
         defaultLocale: this.languageService.getCurrentLang(),
         zoom: {
@@ -389,11 +393,10 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
       tooltip: {},
     };
     let data = this.serverStatsData.map((d) => {
+      const value = Number(d[identifier]);
       return {
         x: d.created_at,
-        y: d[identifier]?.toString().includes('.')
-          ? Number.parseFloat(Number(d[identifier]).toFixed(3))
-          : d[identifier],
+        y: Number.isFinite(value) ? Number.parseFloat(value.toFixed(3)) : null,
       };
     });
     // We need to remove the null values from the data
@@ -402,14 +405,14 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
     chart.yaxis = {
       labels: {
         formatter: (value: number): string => {
-          return value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return formatThousands(value.toString());
         },
       },
     };
     chart.tooltip = {
       y: {
         formatter: (value: number): string => {
-          return value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return formatThousands(value.toString());
         },
       },
       x: {
@@ -417,120 +420,17 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
       },
     };
     if (identifier.startsWith('event_')) {
-      let lastData: {
-        x: string;
-        y: string | number | null | Record<string, { id: string; point: number }[]>;
-      }[] = [];
-      for (let index = data.length - 1; index >= 0; index--) {
-        if (data[index].y === 0) {
-          const slice = data.slice(index);
-          lastData = slice.map((d) => {
-            return { x: d.x, y: d.y };
-          });
-          break;
-        }
-      }
-      chart.series = [
-        {
-          name: card.label,
-          data: lastData,
-        },
-      ];
-      chart.xaxis.min = new Date(lastData[0].x).getTime();
-      if (lastData.at(-1)) {
-        chart.xaxis.max = new Date(lastData.at(-1)!.x).getTime();
-      }
+      this.applyEventSeries(chart, card, data);
     } else if (identifier === 'avg_level') {
-      chart.series = [
-        {
-          name: card.label,
-          data,
-        },
-      ];
-      chart.yaxis = {
-        labels: {
-          formatter: (value: number): string => {
-            const level = value > 70 ? '70/' + (Math.round(value) - 70) : Math.round(value);
-            return level.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
-          },
-        },
-      };
-      const y = chart.tooltip.y;
-      if (y) {
-        // @ts-expect-error: formatter is not a recognized property but is used for configuration
-        y.formatter = (value: number): string => {
-          const level = value > 70 ? '70/' + (Math.round(value) - 70) : Math.round(value);
-          return level.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
-        };
-      }
+      this.applyAvgLevelSeries(chart, card, data);
     } else {
-      if (identifier === 'players_who_changed_name' || identifier === 'alliances_changed_name') {
-        const groupedData: Record<string, number> = {};
-        data.forEach((d) => {
-          const date = new Date(d.x);
-          const dateString = this.utilitiesService.toLocalDayKey(date);
-          if (!groupedData[dateString]) {
-            groupedData[dateString] = 0;
-          }
-          groupedData[dateString] += d.y as number;
-        });
-        data = Object.entries(groupedData).map(([key, value]) => {
-          return { x: key, y: value };
-        });
-        data.sort((a, b) => new Date(a.x).getTime() - new Date(b.x).getTime());
-      }
+      const shouldGroupByDay = identifier === 'players_who_changed_name' || identifier === 'alliances_changed_name';
       chart.series = [
         {
           name: card.label,
-          data,
+          data: shouldGroupByDay ? this.sumByDay(data) : data,
         },
       ];
-    }
-    const timestamps = this.serverStatsData.map((d) => new Date(d.created_at).getTime());
-    const minTime = Math.min(...timestamps);
-    const maxTime = Math.max(...timestamps);
-    const annotations: XAxisAnnotations[] = [];
-    let currentTime = new Date(minTime);
-    currentTime.setHours(6, 0, 0, 0);
-    while (currentTime.getTime() < maxTime) {
-      const morningStart = new Date(currentTime);
-      morningStart.setHours(6, 0, 0, 0);
-      const afternoonStart = new Date(morningStart);
-      afternoonStart.setHours(12, 0, 0, 0);
-      const eveningStart = new Date(afternoonStart);
-      eveningStart.setHours(18, 0, 0, 0);
-      const nightStart = new Date(eveningStart);
-      nightStart.setHours(0, 0, 0, 0);
-      nightStart.setDate(nightStart.getDate() + 1);
-      const nextMorningStart = new Date(morningStart);
-      nextMorningStart.setDate(nextMorningStart.getDate() + 1);
-      annotations.push(
-        {
-          x: new Date(morningStart).setHours(0, 0, 0, 0),
-          x2: morningStart.getTime(),
-          fillColor: '#2196F3',
-          opacity: 0.1,
-        },
-        {
-          x: morningStart.getTime(),
-          x2: afternoonStart.getTime(),
-          fillColor: '#FFEB3B',
-          opacity: 0.2,
-        },
-        {
-          x: afternoonStart.getTime(),
-          x2: eveningStart.getTime(),
-          fillColor: '#4CAF50',
-          opacity: 0.2,
-        },
-        {
-          x: eveningStart.getTime(),
-          x2: nightStart.getTime(),
-          fillColor: '#F44336',
-          opacity: 0.2,
-        },
-      );
-      currentTime = new Date(nextMorningStart);
     }
     const name = chart.series[0].name;
     if (name !== undefined) {
@@ -552,11 +452,11 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
   }
 
   public customFormatter(value: number, precision: number): string {
-    return value.toFixed(precision).replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return formatThousands(value.toFixed(precision));
   }
 
   public formatAvg(value: number, toFixed = 3): string {
-    return (value > 0 ? '+' + value.toFixed(toFixed) : value.toFixed(toFixed)).replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return formatThousands(value > 0 ? '+' + value.toFixed(toFixed) : value.toFixed(toFixed));
   }
 
   public async changeRange(range: Event): Promise<void> {
@@ -576,9 +476,10 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
     const selectedCard = this.selectedCard;
     if (!selectedCard) return;
     const data = this.serverStatsData.map((d) => {
+      const cell = d[selectedCard.identifier];
       return {
         x: new Date(d.created_at).toLocaleString(),
-        y: d[selectedCard.identifier],
+        y: typeof cell === 'object' && cell !== null ? JSON.stringify(cell) : String(cell),
       };
     });
     data.unshift({
@@ -690,7 +591,7 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
       tooltip: {
         y: {
           formatter: (value: number): string => {
-            return value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',') + ' (points de puissance)';
+            return formatThousands(value.toString()) + ' (points de puissance)';
           },
         },
       },
@@ -778,7 +679,7 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
       yaxis: {
         labels: {
           formatter: (value: number): string => {
-            return value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return formatThousands(value.toString());
           },
         },
       },
@@ -786,5 +687,49 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
     if (this.charts[name].chart.zoom) {
       this.charts[name].chart.zoom.allowMouseWheelZoom = false;
     }
+  }
+
+  private applyEventSeries(chart: ChartOptions, card: Card, data: StatPoint[]): void {
+    let lastData: StatPoint[] = [];
+    for (let index = data.length - 1; index >= 0; index--) {
+      if (data[index].y === 0) {
+        lastData = data.slice(index).map((d) => ({ x: d.x, y: d.y }));
+        break;
+      }
+    }
+    chart.series = [{ name: card.label, data: lastData }];
+    chart.xaxis.min = new Date(lastData[0].x).getTime();
+    const last = lastData.at(-1);
+    if (last) chart.xaxis.max = new Date(last.x).getTime();
+  }
+
+  private formatLevelLabel(value: number): string {
+    const level = value > 70 ? '70/' + (Math.round(value) - 70) : Math.round(value);
+    return formatThousands(level.toString());
+  }
+
+  private applyAvgLevelSeries(chart: ChartOptions, card: Card, data: StatPoint[]): void {
+    chart.series = [{ name: card.label, data }];
+    chart.yaxis = {
+      labels: {
+        formatter: (value: number): string => this.formatLevelLabel(value),
+      },
+    };
+    const y = chart.tooltip.y;
+    if (y) {
+      // @ts-expect-error: formatter is not a recognized property but is used for configuration
+      y.formatter = (value: number): string => this.formatLevelLabel(value);
+    }
+  }
+
+  private sumByDay(data: StatPoint[]): StatPoint[] {
+    const groupedData: Record<string, number> = {};
+    for (const d of data) {
+      const dateString = this.utilitiesService.toLocalDayKey(new Date(d.x));
+      groupedData[dateString] = (groupedData[dateString] ?? 0) + (d.y as number);
+    }
+    return Object.entries(groupedData)
+      .map(([key, value]) => ({ x: key, y: value }))
+      .sort((a, b) => new Date(a.x).getTime() - new Date(b.x).getTime());
   }
 }

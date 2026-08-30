@@ -1,11 +1,15 @@
 import * as express from 'express';
 import * as crypto from 'node:crypto';
+import * as nodeFs from 'node:fs';
+import nodePath from 'node:path';
+import { inspect } from 'node:util';
 import { RedisClientType } from 'redis';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { Status } from '../enums/http-status.enums';
 import { ApiGgeTrackerManager } from '../managers/api.manager';
 import { ApiInputErrorType, ApiInvalidInputType, ApiUndefinedInputType } from '../types/parameter.types';
 import * as cacheVersion from './cache/cache-version';
+import { toQueryText } from './parse-query';
 
 /**
  * Abstract utility class providing helper methods and constants for API operations
@@ -24,6 +28,8 @@ export abstract class ApiHelper {
   public static readonly API_PUBLIC_TOKEN = 0x5F_37_59_DFn;
   public static readonly PRIME = 11_400_714_819_323_198_485n;
   public static readonly PAGINATION_LIMIT = 15;
+  public static readonly RATE_LIMIT_POINTS = Number(process.env.RATE_LIMIT_POINTS) || 30;
+  public static readonly RATE_LIMIT_DURATION_SECONDS = Number(process.env.RATE_LIMIT_DURATION) || 5;
   public static readonly REDIS_KEY_GGE_VERSION = 'gge_build_version';
   public static readonly MAX_RESULT_PAGE = 999_999_999;
   public static readonly MAX_BIG_VALUE = 999_999_999_999;
@@ -39,7 +45,7 @@ export abstract class ApiHelper {
   public static readonly GGE_BASE_URL = 'https://empire-html5.goodgamestudios.com';
   public static readonly ASSETS_BASE_URL = this.GGE_BASE_URL + '/default';
   public static readonly CONFIG_BASE_URL = this.GGE_BASE_URL + '/config';
-  public static readonly API_VERSION = require('/app/package.json').version;
+  public static readonly API_VERSION = this.readPackageVersion();
   public static readonly API_VERSION_RELEASE_DATE = this.formatReleaseDate(this.API_VERSION);
 
   /**
@@ -133,7 +139,7 @@ export abstract class ApiHelper {
   public static getHttpMessageResponse(status: number): { code: number; message: string } {
     return {
       code: status,
-      message: this.HTTP_MESSAGE[status as Status] || RouteErrorMessagesEnum.GenericUnknownStatus,
+      message: this.HTTP_MESSAGE[status] || RouteErrorMessagesEnum.GenericUnknownStatus,
     };
   }
 
@@ -161,7 +167,7 @@ export abstract class ApiHelper {
    * @param request - The Express request object associated with the error, used to log query, params, and body
    */
   public static logError(error: unknown, methodName: string, request?: express.Request): void {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = error instanceof Error ? error.message : inspect(error, { depth: 2 });
     const contextParts: string[] = [];
     if (request?.query && Object.keys(request.query).length > 0) {
       contextParts.push(`query=${JSON.stringify(request.query)}`);
@@ -249,10 +255,12 @@ export abstract class ApiHelper {
    * @param key - The cache key under which the data will be stored
    * @param data - The data to be cached. If `noJsonMode` is false, this will be stringified as JSON
    * @param cacheTTL - The time-to-live (TTL) for the cache entry in seconds. Defaults to 1200 seconds
-   * @param noJsonMode - If true, stores the data as-is without JSON stringification. Defaults to false
+   * @param noJsonMode - If true, stores the data as-is without JSON stringification, which Redis only accepts for a string. Defaults to false
    *
    * @returns A promise that resolves when the cache has been updated
    */
+  public static async updateCache(key: string, data: string, cacheTTL: number, noJsonMode: true): Promise<void>;
+  public static async updateCache(key: string, data: any, cacheTTL?: number, noJsonMode?: false): Promise<void>;
   public static async updateCache(key: string, data: any, cacheTTL = 3600, noJsonMode = false): Promise<void> {
     try {
       if (noJsonMode) {
@@ -351,7 +359,7 @@ export abstract class ApiHelper {
    */
   public static getParsedString(value: unknown, defaultValue: string | null = null): string | null {
     if (!value) return defaultValue;
-    return String(value);
+    return toQueryText(value) ?? defaultValue;
   }
 
   /**
@@ -362,7 +370,7 @@ export abstract class ApiHelper {
    * @returns The validated page number or the default value
    */
   public static validatePageNumber(page: unknown, defaultValue: number = 1): number {
-    const pageNumber = Number.parseInt(String(page)) || defaultValue;
+    const pageNumber = Number.parseInt(toQueryText(page) ?? '') || defaultValue;
     if (Number.isNaN(pageNumber) || pageNumber < 1 || pageNumber > ApiHelper.MAX_RESULT_PAGE) {
       return defaultValue;
     }
@@ -520,6 +528,23 @@ export abstract class ApiHelper {
    */
   public static setGgeTrackerManager(ggeTrackerManager: ApiGgeTrackerManager): void {
     this.ggeTrackerManager = ggeTrackerManager;
+  }
+
+  private static readPackageVersion(): string {
+    let directory = __dirname;
+    for (;;) {
+      const candidate = nodePath.join(directory, 'package.json');
+      if (nodeFs.existsSync(candidate)) {
+        try {
+          return JSON.parse(nodeFs.readFileSync(candidate).toString()).version || 'Unknown';
+        } catch {
+          return 'Unknown';
+        }
+      }
+      const parent = nodePath.dirname(directory);
+      if (parent === directory) return 'Unknown';
+      directory = parent;
+    }
   }
 
   /**

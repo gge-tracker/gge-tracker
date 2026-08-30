@@ -83,7 +83,7 @@ function renderRequest(x: Exchange): string[] {
 
 function renderExchange(x: Exchange, bodyLimit: number): string[] {
   const out: string[] = [];
-  out.push('**Action** — the request the harness sent');
+  out.push('**Action** - the request the harness sent');
   out.push('');
   out.push('```http');
   out.push(...renderRequest(x));
@@ -92,7 +92,7 @@ function renderExchange(x: Exchange, bodyLimit: number): string[] {
 
   const headerLines = Object.entries(x.responseHeaders).map(([n, v]) => `${n}: ${v}`);
   const status = x.status === 0 ? `no response (${x.networkError})` : `HTTP ${x.status}`;
-  out.push(`**Received** — ${status} in ${Math.round(x.ms)} ms, ${x.responseBytes} bytes`);
+  out.push(`**Received** - ${status} in ${Math.round(x.ms)} ms, ${x.responseBytes} bytes`);
   out.push('');
   if (headerLines.length) {
     out.push('```http');
@@ -122,9 +122,9 @@ type ShownAt = Map<number, number>;
 function renderReference(x: Exchange, at: number | undefined): string[] {
   const status = x.status === 0 ? `no response (${x.networkError})` : `HTTP ${x.status}`;
   return [
-    `**Action** — \`${x.method} ${x.path}\` (call #${x.seq}${at ? `, sent and shown in full under check ${at}` : ''})`,
+    `**Action** - \`${x.method} ${x.path}\` (call #${x.seq}${at ? `, sent and shown in full under check ${at}` : ''})`,
     '',
-    `**Received** — ${status} in ${Math.round(x.ms)} ms, ${x.responseBytes} bytes — the same response the check above judged`,
+    `**Received** - ${status} in ${Math.round(x.ms)} ms, ${x.responseBytes} bytes - the same response the check above judged`,
     '',
   ];
 }
@@ -133,7 +133,7 @@ function renderCheck(r: CheckResult, index: number, shownAt: ShownAt): string[] 
   const out: string[] = [];
   const verdict = verdictOf(r);
   const mark = verdict === 'PASS' ? 'OK' : verdict === 'FAIL' ? 'KO' : 'SKIP';
-  out.push(`### ${index}. ${mark} ${verdict} — ${r.name}`);
+  out.push(`### ${index}. ${mark} ${verdict} - ${r.name}`);
   out.push('');
   out.push(`- **Suite** : \`${r.suite}\``);
   out.push(`- **Run at** : ${r.at}${r.ms !== undefined ? ` (${Math.round(r.ms)} ms)` : ''}`);
@@ -174,7 +174,7 @@ function renderMarkdown(report: Report, context: RunContext, results: CheckResul
   const seconds = ((finishedAt.getTime() - report.startedAt.getTime()) / 1000).toFixed(1);
   const out: string[] = [];
 
-  out.push('# GGE Tracker API — test run trace');
+  out.push('# GGE Tracker API - test run trace');
   out.push('');
   out.push('| | |');
   out.push('|---|---|');

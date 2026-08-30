@@ -6,7 +6,7 @@ import { SearchbarComponent } from '@ggetracker-components/searchbar/searchbar.c
 import { SelectComponent } from '@ggetracker-components/select/select.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
 import { ModalFormGroupComponent } from '@ggetracker-components/modal-form-group/modal-form-group.component';
-import { ModalTableComponent } from '@ggetracker-components/modal-table/modal-table.component';
+import { ModalTableColumn, ModalTableComponent } from '@ggetracker-components/modal-table/modal-table.component';
 import { ChartsWrapperComponent } from '@ggetracker-modules/charts-client/charts-wrapper.component';
 import {
   ApiDungeonsAttackHistory,
@@ -68,6 +68,12 @@ export class TrackerComponent extends GenericComponent {
   public readonly Search = Search;
   public readonly X = X;
   public readonly MessageCircleQuestionMark = MessageCircleQuestion;
+  public readonly dungeonHistoryColumns: ModalTableColumn[] = [
+    { label: 'Royaume', sortKey: 'kid' },
+    { label: 'Position' },
+    { label: "Date de l'attaque", sortKey: 'attacked_at' },
+  ];
+
   public pageSize = 15;
   public refreshDataAnimationSpinner = false;
   public selectedState: keyof typeof this.states = 'Tous';
@@ -95,7 +101,7 @@ export class TrackerComponent extends GenericComponent {
   public displayedStates: { label: string; value: string }[] = [];
   public selectedRealm: string[] = ['2'];
   public filterByKid: string[] = ['2'];
-  private localStorage = inject(LocalStorageService);
+  private readonly localStorage = inject(LocalStorageService);
 
   constructor() {
     super();
@@ -220,10 +226,9 @@ export class TrackerComponent extends GenericComponent {
   }
 
   public onPositionChange(positionX: number | null, positionY: number | null): void {
-    if (positionX === null || positionY === null) {
-      this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
-      return;
-    } else if (positionX < 0 || positionY < 0 || positionX > 1286 || positionY > 1286) {
+    const outsideMap = positionX === null || positionY === null;
+    const outsideBounds = !outsideMap && (positionX < 0 || positionY < 0 || positionX > 1286 || positionY > 1286);
+    if (outsideMap || outsideBounds) {
       this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
       return;
     }
@@ -421,17 +426,16 @@ export class TrackerComponent extends GenericComponent {
       this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
       throw new Error('Server not found');
     }
-    return await this.apiRestService.getGenericData(
-      this.apiRestService.getDungeonsList.bind(this.apiRestService),
-      this.page,
-      this.pageSize,
-      JSON.stringify(this.filterByKid),
-      this.filterByAttackCooldown,
-      this.filterByPlayerName,
-      this.positionX,
-      this.positionY,
-      this.nearPlayerName,
-    );
+    return await this.apiRestService.getGenericData(this.apiRestService.getDungeonsList.bind(this.apiRestService), {
+      page: this.page,
+      size: this.pageSize,
+      filterByKid: JSON.stringify(this.filterByKid),
+      filterByAttackCooldown: this.filterByAttackCooldown,
+      filterByPlayerName: this.filterByPlayerName,
+      positionX: this.positionX,
+      positionY: this.positionY,
+      nearPlayerName: this.nearPlayerName,
+    });
   }
 
   private mapStateEntry([label, value]: [string, number]): { label: string; value: string } {

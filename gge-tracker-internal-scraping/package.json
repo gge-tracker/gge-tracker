@@ -7,7 +7,12 @@
   "private": true,
   "description": "",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "lint": "eslint -f json src tests",
+    "lint-fix": "eslint --fix -f json src tests",
+    "test": "TZ=UTC TS_NODE_PROJECT=tests/tsconfig.json TS_NODE_TRANSPILE_ONLY=true node --require ts-node/register tests/run.ts",
+    "test:types": "tsc -p tests/tsconfig.json",
+    "test:capture": "TS_NODE_PROJECT=tests/tsconfig.json TS_NODE_TRANSPILE_ONLY=true ts-node tests/capture/capture.ts"
   },
   "dependencies": {
     "axios": "^1.16.0",

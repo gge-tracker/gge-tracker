@@ -126,12 +126,10 @@ export abstract class ApiOffers implements ApiHelper {
        * Send response
        * --------------------------------- */
       response.status(ApiHelper.HTTP_OK).send(data);
-      return;
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getOffers', request);
-      return;
     }
   }
 
@@ -149,34 +147,44 @@ export abstract class ApiOffers implements ApiHelper {
     region: string,
     level: number,
     legendaryLevel: number,
-  ): Promise<unknown | null> {
+  ): Promise<unknown> {
     const expected = region.toUpperCase();
     if (!this.getEgressRoute(region)) return null;
     for (const serverName of this.CATALOG_SERVERS) {
       const server = ApiHelper.ggeTrackerManager.get(serverName);
       if (!server?.zone || !server?.zoneId) continue;
-      const apiUrl = this.buildCatalogUrl(locale, server.zoneId, level, legendaryLevel);
-      let token = await this.getBearerToken(server.zone);
+      const token = await this.getBearerToken(server.zone);
       if (!token) continue;
-      const deadline = Date.now() + this.REGION_SYNC_BUDGET;
-      let answered = false;
-      for (let attempt = 0; attempt < this.REGION_SYNC_ATTEMPTS && Date.now() < deadline; attempt++) {
-        if (attempt > 0) await this.wait(this.REGION_SYNC_DELAY);
-        let catalog = await this.fetchCatalog(apiUrl, token, region, deadline);
-        if (catalog?.status === ApiHelper.HTTP_UNAUTHORIZED || catalog?.status === ApiHelper.HTTP_FORBIDDEN) {
-          const refreshed = await this.getBearerToken(server.zone, true);
-          if (!refreshed) break;
-          token = refreshed;
-          catalog = await this.fetchCatalog(apiUrl, token, region, deadline);
-        }
-        if (catalog?.status !== ApiHelper.HTTP_OK || !catalog.data) continue;
-        answered = true;
-        const served = this.readCatalogRegion(catalog.data);
-        if (!served || served === expected) return this.stripPrivateFields(catalog.data);
-      }
-      if (answered) return null;
+      const apiUrl = this.buildCatalogUrl(locale, server.zoneId, level, legendaryLevel);
+      const attempt = await this.readCatalogFromServer(apiUrl, server.zone, region, expected, token);
+      if (attempt.status === 'served') return attempt.catalog;
+      if (attempt.status === 'wrong-region') return null;
     }
     return null;
+  }
+
+  private static async readCatalogFromServer(
+    apiUrl: string,
+    zone: string,
+    region: string,
+    expected: string,
+    initialToken: string,
+  ): Promise<{ status: 'served'; catalog: unknown } | { status: 'wrong-region' | 'silent' }> {
+    const deadline = Date.now() + this.REGION_SYNC_BUDGET;
+    let token = initialToken;
+    let answered = false;
+    for (let attempt = 0; attempt < this.REGION_SYNC_ATTEMPTS && Date.now() < deadline; attempt++) {
+      if (attempt > 0) await this.wait(this.REGION_SYNC_DELAY);
+      const authorised = await this.fetchCatalogAuthorised(apiUrl, zone, region, deadline, token);
+      if (!authorised) break;
+      token = authorised.token;
+      const catalog = authorised.response;
+      if (catalog?.status !== ApiHelper.HTTP_OK || !catalog.data) continue;
+      answered = true;
+      const served = this.readCatalogRegion(catalog.data);
+      if (!served || served === expected) return { status: 'served', catalog: this.stripPrivateFields(catalog.data) };
+    }
+    return { status: answered ? 'wrong-region' : 'silent' };
   }
 
   /**
@@ -254,6 +262,22 @@ export abstract class ApiOffers implements ApiHelper {
       criteria: JSON.stringify(criteria),
     });
     return `${this.CASH_OFFERS_URL}?${parameters.toString()}`;
+  }
+
+  private static async fetchCatalogAuthorised(
+    apiUrl: string,
+    zone: string,
+    region: string,
+    deadline: number,
+    token: string,
+  ): Promise<{ response: AxiosResponse<unknown> | null; token: string } | null> {
+    const response = await this.fetchCatalog(apiUrl, token, region, deadline);
+    if (response?.status !== ApiHelper.HTTP_UNAUTHORIZED && response?.status !== ApiHelper.HTTP_FORBIDDEN) {
+      return { response, token };
+    }
+    const refreshed = await this.getBearerToken(zone, true);
+    if (!refreshed) return null;
+    return { response: await this.fetchCatalog(apiUrl, refreshed, region, deadline), token: refreshed };
   }
 
   private static async fetchCatalog(

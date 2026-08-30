@@ -135,12 +135,13 @@
                 @if (isInCooldown(dungeon)) {
                 <span>
                   {{ dungeon.playerName }}
-                  <span class="pointer modal-info" [title]="'Cliquez pour plus d\'informations' | translate">
-                    <i class="fa-solid fa-history ms-1"
-                      (click)="getDungeonsByPlayerId(dungeon)"
-                      data-bs-toggle="modal"
-                      data-bs-target="#dungeonHistoryModal"></i>
-                  </span>
+                  <button type="button" class="pointer modal-info button-reset"
+                    [title]="'Cliquez pour plus d\'informations' | translate"
+                    (click)="getDungeonsByPlayerId(dungeon)"
+                    data-bs-toggle="modal"
+                    data-bs-target="#dungeonHistoryModal">
+                    <i class="fa-solid fa-history ms-1" aria-hidden="true"></i>
+                  </button>
                 </span>
                 } @else {
                 -
@@ -174,9 +175,9 @@
           <div class="modal-body d-flex flex-column gap-3">
             <app-modal-form-group [label]="'Plus proche d\'une position' | translate">
               <span field prefix>X</span>
-              <input field type="number" [(ngModel)]="positionX" [placeholder]="'Position X' | translate" />
+              <input field type="number" [(ngModel)]="positionX" [placeholder]="'Position X' | translate"  [attr.aria-label]="'Position X' | translate"/>
               <span field prefix>Y</span>
-              <input field type="number" [(ngModel)]="positionY" [placeholder]="'Position Y' | translate" />
+              <input field type="number" [(ngModel)]="positionY" [placeholder]="'Position Y' | translate"  [attr.aria-label]="'Position Y' | translate"/>
               <button action search data-bs-dismiss="modal" (click)="onPositionChange(positionX, positionY)">
                 {{ 'Rechercher' | translate }}
               </button>
@@ -187,7 +188,7 @@
 
             <app-modal-form-group [label]="'Plus proche d\'un joueur' | translate">
               <span field prefix>{{ 'Joueur' | translate }}</span>
-              <input field type="text" [(ngModel)]="nearPlayerName" [placeholder]="'Nom du joueur' | translate" />
+              <input field type="text" [(ngModel)]="nearPlayerName" [placeholder]="'Nom du joueur' | translate"  [attr.aria-label]="'Nom du joueur' | translate"/>
               <button action search data-bs-dismiss="modal" (click)="onPositionChangePlayerName(nearPlayerName)">
                 {{ 'Rechercher' | translate }}
               </button>
@@ -215,7 +216,7 @@
         <div class="modal-body">
           <app-modal-form-group [label]="'Nombre de résultats par page' | translate">
             <input field type="number" [(ngModel)]="pageSize"
-              [placeholder]="'Nombre de résultats' | translate" min="0" />
+              [placeholder]="'Nombre de résultats' | translate" min="0"  [attr.aria-label]="'Nombre de résultats' | translate"/>
             <button action search data-bs-dismiss="modal" (click)="onPageSizeChange(pageSize)">
               {{ 'Rechercher' | translate }}
             </button>
@@ -293,7 +294,7 @@
           @if (activeTab === 'list') {
             <app-modal-table
               [items]="playerDungeonAttackHistory"
-              [headerTemplate]="dungeonHistoryHeader"
+              [columns]="dungeonHistoryColumns"
               [rowTemplate]="dungeonHistoryRow"
               [searchFilter]="dungeonHistorySearchFilter"
               [resetKey]="selectedPlayerName"
@@ -358,24 +359,6 @@
     </div>
   </div>
 </div>
-
-<ng-template #dungeonHistoryHeader let-sortBy="sortBy" let-sortColumn="sortColumn" let-sortAsc="sortAsc">
-  <tr>
-    <th (click)="sortBy('kid')">
-      {{ 'Royaume' | translate }}
-      @if (sortColumn === 'kid') {
-        <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc" [class.fa-arrow-down]="!sortAsc"></i>
-      }
-    </th>
-    <th>{{ 'Position' | translate }}</th>
-    <th (click)="sortBy('attacked_at')">
-      {{ 'Date de l\'attaque' | translate }}
-      @if (sortColumn === 'attacked_at') {
-        <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc" [class.fa-arrow-down]="!sortAsc"></i>
-      }
-    </th>
-  </tr>
-</ng-template>
 
 <ng-template #dungeonHistoryRow let-attack>
   <tr>

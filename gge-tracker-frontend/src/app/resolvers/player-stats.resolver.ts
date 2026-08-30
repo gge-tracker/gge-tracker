@@ -10,19 +10,19 @@ import { firstValueFrom } from 'rxjs';
 @Injectable({ providedIn: 'root' })
 export class PlayerStatsResolver implements Resolve<Promise<ApiResponse<ApiRankingStatsPlayer>>> {
   constructor(
-    private apiRestService: ApiRestService,
-    private translateService: TranslateService,
-    private titleService: Title,
+    private readonly apiRestService: ApiRestService,
+    private readonly translateService: TranslateService,
+    private readonly titleService: Title,
   ) {}
 
   public async resolve(route: ActivatedRouteSnapshot): Promise<ApiResponse<ApiRankingStatsPlayer>> {
     const playerId = route.paramMap.get('playerId');
     if (!playerId) {
-      throw 'Player ID is required';
+      throw new Error('Player ID is required');
     }
     const parsedPlayerId = Number.parseInt(playerId, 10);
     if (Number.isNaN(parsedPlayerId)) {
-      throw 'Invalid Player ID';
+      throw new TypeError('Invalid Player ID');
     }
     return this.apiRestService.getRankingStatsByPlayerId(parsedPlayerId).then(async (response) => {
       if (response.success) {

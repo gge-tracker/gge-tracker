@@ -1,5 +1,5 @@
 import { DatePipe, DecimalPipe, NgClass } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { ModalFormGroupComponent } from '@ggetracker-components/modal-form-group/modal-form-group.component';
@@ -67,7 +67,7 @@ interface StormIsleRow extends StormIsle {
   styleUrl: './storm-tracker.component.css',
   changeDetection: ChangeDetectionStrategy.Default,
 })
-export class StormTrackerComponent extends GenericComponent {
+export class StormTrackerComponent extends GenericComponent implements OnInit {
   public serverService = inject(ServerService);
   public readonly Search = Search;
   public readonly X = X;
@@ -136,21 +136,18 @@ export class StormTrackerComponent extends GenericComponent {
   public nearPlayerName: string | null = null;
   public maxDistance: number | null = null;
 
-  private localStorage = inject(LocalStorageService);
-  private cdr = inject(ChangeDetectorRef);
+  private readonly localStorage = inject(LocalStorageService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   constructor() {
     super();
     this.isInLoading = true;
     this.init();
     this.resetHeaders();
-    try {
-      void this.getMeta();
-      void this.getData();
-    } catch {
-      this.isInLoading = false;
-      this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
-    }
+  }
+
+  public ngOnInit(): void {
+    void this.loadInitialData();
   }
 
   public get allowedServers(): string[] {
@@ -433,21 +430,11 @@ export class StormTrackerComponent extends GenericComponent {
       const storedIsleState = this.localStorage.getItem('stormIsleState');
       if (storedIsleState) this.filterByState = Number(storedIsleState) || null;
 
-      if (this.localStorage.getItem('stormPageSize')) {
-        this.pageSize = Number.parseInt(this.localStorage.getItem('stormPageSize') as string);
-      }
-      if (this.localStorage.getItem('stormPositionX')) {
-        this.positionX = Number.parseInt(this.localStorage.getItem('stormPositionX') as string);
-      }
-      if (this.localStorage.getItem('stormPositionY')) {
-        this.positionY = Number.parseInt(this.localStorage.getItem('stormPositionY') as string);
-      }
-      if (this.localStorage.getItem('stormNearPlayerName')) {
-        this.nearPlayerName = this.localStorage.getItem('stormNearPlayerName');
-      }
-      if (this.localStorage.getItem('stormMaxDistance')) {
-        this.maxDistance = Number.parseInt(this.localStorage.getItem('stormMaxDistance') as string);
-      }
+      this.pageSize = this.readStoredInteger('stormPageSize') ?? this.pageSize;
+      this.positionX = this.readStoredInteger('stormPositionX') ?? this.positionX;
+      this.positionY = this.readStoredInteger('stormPositionY') ?? this.positionY;
+      this.nearPlayerName = this.localStorage.getItem('stormNearPlayerName') || this.nearPlayerName;
+      this.maxDistance = this.readStoredInteger('stormMaxDistance') ?? this.maxDistance;
       this.selectedLevels = this.readStoredArray('stormLevels', (v) => this.fortLevels.includes(Number(v))).map(Number);
       this.selectedResources = this.readStoredArray('stormResources', (v) =>
         (this.resources as string[]).includes(String(v)),
@@ -466,6 +453,11 @@ export class StormTrackerComponent extends GenericComponent {
     }
   }
 
+  private readStoredInteger(key: string): number | null {
+    const stored = this.localStorage.getItem(key);
+    return stored ? Number.parseInt(stored) : null;
+  }
+
   private readStoredArray(key: string, isValid: (value: unknown) => boolean): unknown[] {
     const raw = this.localStorage.getItem(key);
     if (!raw) return [];
@@ -474,6 +466,15 @@ export class StormTrackerComponent extends GenericComponent {
       return Array.isArray(parsed) ? parsed.filter((element) => isValid(element)) : [];
     } catch {
       return [];
+    }
+  }
+
+  private async loadInitialData(): Promise<void> {
+    try {
+      await Promise.all([this.getMeta(), this.getData()]);
+    } catch {
+      this.isInLoading = false;
+      this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
     }
   }
 
@@ -508,17 +509,19 @@ export class StormTrackerComponent extends GenericComponent {
   private async loadForts(): Promise<void> {
     const result = await this.apiRestService.getGenericData(
       this.apiRestService.getStormFortsList.bind(this.apiRestService),
-      this.page,
-      this.pageSize,
-      this.filterByAvailability,
-      this.minAttacksLeft,
-      this.positionX,
-      this.positionY,
-      this.nearPlayerName,
-      this.maxDistance,
-      resolveFortIsleIds(this.selectedLevels, this.lowGarrisonOnly),
-      this.orderBy || null,
-      this.orderDirection,
+      {
+        page: this.page,
+        size: this.pageSize,
+        filterByAvailability: this.filterByAvailability,
+        minAttacksLeft: this.minAttacksLeft,
+        positionX: this.positionX,
+        positionY: this.positionY,
+        nearPlayerName: this.nearPlayerName,
+        maxDistance: this.maxDistance,
+        filterByIsleIds: resolveFortIsleIds(this.selectedLevels, this.lowGarrisonOnly),
+        orderBy: this.orderBy || null,
+        orderDirection: this.orderDirection,
+      },
     );
     this.responseTime = result.response;
     this.applyPagination(result.data);
@@ -528,17 +531,19 @@ export class StormTrackerComponent extends GenericComponent {
   private async loadIsles(): Promise<void> {
     const result = await this.apiRestService.getGenericData(
       this.apiRestService.getStormIslesList.bind(this.apiRestService),
-      this.page,
-      this.pageSize,
-      this.filterByState,
-      this.filterByOccupierName,
-      this.positionX,
-      this.positionY,
-      this.nearPlayerName,
-      this.maxDistance,
-      resolveIsleIsleIds(this.selectedResources),
-      this.orderBy || null,
-      this.orderDirection,
+      {
+        page: this.page,
+        size: this.pageSize,
+        filterByState: this.filterByState,
+        filterByOccupierName: this.filterByOccupierName,
+        positionX: this.positionX,
+        positionY: this.positionY,
+        nearPlayerName: this.nearPlayerName,
+        maxDistance: this.maxDistance,
+        filterByIsleIds: resolveIsleIsleIds(this.selectedResources),
+        orderBy: this.orderBy || null,
+        orderDirection: this.orderDirection,
+      },
     );
     this.responseTime = result.response;
     this.applyPagination(result.data);
@@ -596,18 +601,16 @@ export class StormTrackerComponent extends GenericComponent {
   }
 
   public get activeFilterCount(): number {
-    let count = 0;
-    if (this.activeTab === 'forts') {
-      if (this.filterByAvailability !== null) count++;
-      if (this.selectedLevels.length > 0) count++;
-      if (this.lowGarrisonOnly) count++;
-      if (this.minAttacksLeft !== null) count++;
-    } else {
-      if (this.filterByState !== null) count++;
-      if (this.selectedResources.length > 0) count++;
-      if (this.filterByOccupierName) count++;
-    }
-    return count;
+    const active =
+      this.activeTab === 'forts'
+        ? [
+            this.filterByAvailability !== null,
+            this.selectedLevels.length > 0,
+            this.lowGarrisonOnly,
+            this.minAttacksLeft !== null,
+          ]
+        : [this.filterByState !== null, this.selectedResources.length > 0, Boolean(this.filterByOccupierName)];
+    return active.filter(Boolean).length;
   }
 
   public get isDistanceShown(): boolean {

@@ -151,11 +151,50 @@ export function loadBaseline(server: string): Baseline | undefined {
   }
 }
 
-export function saveBaseline(baseline: Baseline): string {
+export interface BaselineWrite {
+  path: string;
+  written: boolean;
+  changed: string[];
+  added: string[];
+  removed: string[];
+}
+
+export function saveBaseline(baseline: Baseline): BaselineWrite {
   const path = baselinePath(baseline.server);
-  mkdirSync(resolve(TESTS_ROOT, 'snapshots'), { recursive: true });
+  const previous = loadBaseline(baseline.server);
+  const changed: string[] = [];
+  const added: string[] = [];
+
   const ordered: Record<string, Digest> = {};
-  for (const key of Object.keys(baseline.entries).sort()) ordered[key] = baseline.entries[key];
-  writeFileSync(path, JSON.stringify({ ...baseline, entries: ordered }, null, 2) + '\n', 'utf8');
-  return path;
+  for (const key of Object.keys(baseline.entries).sort()) {
+    const fresh = baseline.entries[key];
+    const recorded = previous?.entries[key];
+    if (!recorded) {
+      added.push(key);
+      ordered[key] = fresh;
+    } else if (compare(recorded, fresh) === undefined) {
+      ordered[key] = recorded;
+    } else {
+      changed.push(key);
+      ordered[key] = fresh;
+    }
+  }
+
+  const removed = Object.keys(previous?.entries ?? {}).filter((key) => !(key in baseline.entries));
+  const fixtureMoved = previous !== undefined && previous.fixture !== baseline.fixture;
+  const written =
+    previous === undefined || fixtureMoved || changed.length > 0 || added.length > 0 || removed.length > 0;
+
+  if (written) {
+    mkdirSync(resolve(TESTS_ROOT, 'snapshots'), { recursive: true });
+    const recordedAt = baseline.recordedAt;
+    writeFileSync(
+      path,
+      JSON.stringify({ fixture: baseline.fixture, server: baseline.server, recordedAt, entries: ordered }, null, 2) +
+        '\n',
+      'utf8',
+    );
+  }
+
+  return { path, written, changed, added, removed };
 }

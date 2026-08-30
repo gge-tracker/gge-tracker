@@ -1,12 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, input, OnInit, output } from '@angular/core';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
-import { ChartAdvancedOptions } from '@ggetracker-interfaces/empire-ranking';
 import { ChartsWrapperComponent } from '@ggetracker-modules/charts-client/charts-wrapper.component';
 import { LanguageService } from '@ggetracker-services/language.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { LucideAngularModule, XCircle } from 'lucide-angular';
 import { ApexAxisChartSeries, ApexChart, ApexNonAxisChartSeries, ApexOptions, ApexPlotOptions } from 'ng-apexcharts';
+import { formatThousands } from '@ggetracker-services/text-format.utilities';
 
 interface GenericChartConfig {
   type: ApexChart['type'];
@@ -33,7 +33,7 @@ export class GrandTournamentAnalyzeComponent extends GenericComponent implements
   public tournamentAllianceData = input.required<{ alliance_id: number; alliance_name: string; server: string }>();
   public exitEmitter = output<void>();
   public readonly XCircle = XCircle;
-  public charts: Record<string, ChartAdvancedOptions | any> = {};
+  public charts: Record<string, any> = {};
   public languageService = inject(LanguageService);
 
   public get entriesWithDifference(): any[] {
@@ -108,8 +108,7 @@ export class GrandTournamentAnalyzeComponent extends GenericComponent implements
         shared: false,
         x: { format: dateFormat },
         y: {
-          formatter: (value: number) =>
-            value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ','),
+          formatter: (value: number) => (value === null ? '?' : formatThousands(value.toString())),
         },
       },
       dataLabels: { enabled: false },
@@ -117,8 +116,7 @@ export class GrandTournamentAnalyzeComponent extends GenericComponent implements
       legend: { show: true, showForZeroSeries: true },
       yaxis: {
         labels: {
-          formatter: (value: number) =>
-            value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ','),
+          formatter: (value: number) => (value === null ? '?' : formatThousands(value.toString())),
         },
         logarithmic: logarithmic,
         forceNiceScale: true,

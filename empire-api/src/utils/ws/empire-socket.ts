@@ -43,60 +43,7 @@ class GgeEmpireSocket extends BaseSocket implements GgeEmpireSocketImpl {
         void this.pingAndCheck();
         await this.checkConnection();
       } else {
-        switch (lliResponse.payload.status) {
-          case 21: {
-            this.kill();
-            this.error('[connect] Login failed: Invalid credentials. Please check your USERNAME and PASSWORD.');
-            return;
-          }
-          case 27: {
-            this.kill();
-            const banDurationinSeconds = lliResponse.payload.data?.RS ? Number(lliResponse.payload.data.RS) : -1;
-            const banDurationMessage =
-              banDurationinSeconds > 0
-                ? `Account is banned for another ${Math.ceil(banDurationinSeconds / 60)} minutes.`
-                : 'Account is permanently banned.';
-            this.error(`[connect] Login failed: Account is banned. ${banDurationMessage}`);
-            setTimeout(
-              () => {
-                this.log('Retrying connection after ban duration...');
-                this.socketState = SocketState.CONNECTING;
-                this.reconnect = true;
-                void this.restart();
-              },
-              banDurationinSeconds > 0 ? banDurationinSeconds * 1000 : 60 * 60 * 1000,
-            );
-
-            break;
-          }
-          case 453: {
-            const timeoutDurationInSeconds = lliResponse.payload.data?.CD ? Number(lliResponse.payload.data.CD) : 300;
-            this.error(
-              '[connect] Login failed: Too many login attempts. Retrying in ' +
-                Math.ceil(timeoutDurationInSeconds / 60) +
-                ' minutes...',
-            );
-            this.kill();
-            setTimeout(() => {
-              this.log('Retrying connection after too many login attempts...');
-              this.socketState = SocketState.CONNECTING;
-              this.reconnect = true;
-              void this.restart();
-            }, timeoutDurationInSeconds * 1000);
-
-            break;
-          }
-          default: {
-            this.error(`Login failed with status: ${lliResponse.payload.status} 🔄 Retrying in 1 minute...`);
-            this.kill();
-            setTimeout(() => {
-              this.log('Retrying connection after login failure...');
-              this.socketState = SocketState.CONNECTING;
-              this.reconnect = true;
-              void this.restart();
-            }, 60 * 1000);
-          }
-        }
+        this.handleLoginFailure(lliResponse);
       }
     } catch (error) {
       this.error('[connect] Error during connection process:', error instanceof Error ? error.message : error);
@@ -111,6 +58,61 @@ class GgeEmpireSocket extends BaseSocket implements GgeEmpireSocketImpl {
         60 * 2 * 1000,
       );
     }
+  }
+
+  /**
+   * Reacts to a login the game refused
+   *
+   * Every delay below is the one the game asked for: reconnecting sooner gets the account
+   * rate-limited, so none of them may be shortened
+   */
+  private handleLoginFailure(lliResponse: { payload: { status: number; data?: Record<string, unknown> } }): void {
+    switch (lliResponse.payload.status) {
+      case 21: {
+        this.kill();
+        this.error('[connect] Login failed: Invalid credentials. Please check your USERNAME and PASSWORD.');
+        return;
+      }
+      case 27: {
+        this.kill();
+        const banDurationinSeconds = lliResponse.payload.data?.RS ? Number(lliResponse.payload.data.RS) : -1;
+        const banDurationMessage =
+          banDurationinSeconds > 0
+            ? `Account is banned for another ${Math.ceil(banDurationinSeconds / 60)} minutes.`
+            : 'Account is permanently banned.';
+        this.error(`[connect] Login failed: Account is banned. ${banDurationMessage}`);
+        this.restartAfter(
+          banDurationinSeconds > 0 ? banDurationinSeconds * 1000 : 60 * 60 * 1000,
+          'Retrying connection after ban duration...',
+        );
+        return;
+      }
+      case 453: {
+        const timeoutDurationInSeconds = lliResponse.payload.data?.CD ? Number(lliResponse.payload.data.CD) : 300;
+        this.error(
+          '[connect] Login failed: Too many login attempts. Retrying in ' +
+            Math.ceil(timeoutDurationInSeconds / 60) +
+            ' minutes...',
+        );
+        this.kill();
+        this.restartAfter(timeoutDurationInSeconds * 1000, 'Retrying connection after too many login attempts...');
+        return;
+      }
+      default: {
+        this.error(`Login failed with status: ${lliResponse.payload.status} 🔄 Retrying in 1 minute...`);
+        this.kill();
+        this.restartAfter(60 * 1000, 'Retrying connection after login failure...');
+      }
+    }
+  }
+
+  private restartAfter(delayMilliseconds: number, message: string): void {
+    setTimeout(() => {
+      this.log(message);
+      this.socketState = SocketState.CONNECTING;
+      this.reconnect = true;
+      void this.restart();
+    }, delayMilliseconds);
   }
 
   private sendLoginMessage(): void {

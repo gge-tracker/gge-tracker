@@ -4,7 +4,7 @@ import { Injectable, Inject, DOCUMENT } from '@angular/core';
   providedIn: 'root',
 })
 export class WindowService {
-  constructor(@Inject(DOCUMENT) private _document: Document) {}
+  constructor(@Inject(DOCUMENT) private readonly _document: Document) {}
 
   public getWindow(): (Window & typeof globalThis) | null {
     return this._document.defaultView;

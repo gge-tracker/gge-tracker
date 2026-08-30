@@ -220,7 +220,7 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
       this.toastService.add(ErrorType.ERROR_OCCURRED, 5000, 'error');
       return;
     }
-    this.currentDates = dates.reverse();
+    this.currentDates = [...dates].reverse();
     this.currentDate = dates.at(0) || '';
     this.defaultDate = this.currentDate;
     const urlParameters = this.route.snapshot.queryParams;

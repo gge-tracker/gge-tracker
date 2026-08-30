@@ -15,6 +15,8 @@ import { RouterLink } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import {
   AlliancesUpdates,
+  ApiAllianceUpdates,
+  ApiAllianceUpdatesByPlayerId,
   ApiAquamarineMetric,
   ApiAquamarineSnapshot,
   ApiGenericData,
@@ -22,6 +24,7 @@ import {
   ApiPlayerStatsSummary,
   ApiPlayerStatsSummaryEvent,
   ApiPlayerStatsType,
+  ApiPlayerUpdatesByPlayerId,
   ApiRankingStatsPlayer,
   ApiResponse,
   ApiWoaEventPlayerAggregates,
@@ -44,13 +47,14 @@ import {
   WoaPlayerSummary,
 } from '@ggetracker-interfaces/empire-ranking';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
+import { formatThousands } from '@ggetracker-services/text-format.utilities';
 import { LevelPipe } from '@ggetracker-pipes/level.pipe';
 import { LanguageService } from '@ggetracker-services/language.service';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
 import { TranslateModule } from '@ngx-translate/core';
 import Gradient from 'javascript-color-gradient';
 import { ApexAxisChartSeries } from 'ng-apexcharts';
-import { ModalTableComponent } from '@ggetracker-components/modal-table/modal-table.component';
+import { ModalTableColumn, ModalTableComponent } from '@ggetracker-components/modal-table/modal-table.component';
 import { PlayerStatsCardComponent } from './player-stats-card/player-stats-card.component';
 import { StatsPanelComponent } from './stats-panel/stats-panel.component';
 import { combineLatest, firstValueFrom } from 'rxjs';
@@ -64,6 +68,8 @@ const DEFAULT_RESET_OFFSET = -1;
 const WOA_SUMMARY_MIN_EVENTS = 3;
 const WOA_TREND_MIN_EVENTS = 4;
 const WOA_TREND_WINDOW = 3;
+
+type FillDataState = 'idle' | 'loading' | 'loaded' | 'error';
 
 @Component({
   selector: 'app-player-stats',
@@ -148,8 +154,8 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   public timezoneOffset: number | null = null;
   public allianceName?: string;
   public allianceId?: number;
-  public fillDataState: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
-  public fillPlayerHistoryState: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
+  public fillDataState: FillDataState = 'idle';
+  public fillPlayerHistoryState: FillDataState = 'idle';
   public favories: Record<number, string> = {};
   public activeOptionButton = '';
   public currentSemaine?: string;
@@ -186,11 +192,11 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   public woaSummary: WoaPlayerSummary | null = null;
   public monumentsList: Monument[] = [];
   public aquamarineSnapshots: ApiAquamarineSnapshot[] = [];
-  public aquamarineLoadState: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
+  public aquamarineLoadState: FillDataState = 'idle';
   public aquamarineMonth = new Date().toISOString().slice(0, 7);
-  public eventsLoadState: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
-  public woaLoadState: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
-  public gloryLoadState: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
+  public eventsLoadState: FillDataState = 'idle';
+  public woaLoadState: FillDataState = 'idle';
+  public gloryLoadState: FillDataState = 'idle';
   public readonly currentI18nTitleKey = 'titles.playerTitle_';
   public tabs: { key: PlayerStatsTabs; label: string; assetIcon?: string }[] = [
     { key: 'overview', label: "Vue d'ensemble", assetIcon: 'players.png' },
@@ -226,6 +232,12 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   public eventSummary: Record<ApiPlayerStatsType, ApiPlayerStatsSummaryEvent> | null = null;
   public eventOccurrences: Record<string, ApiPlayerEventOccurrence[]> = {};
   public seriesState: Record<string, 'idle' | 'loading' | 'loaded' | 'empty' | 'error'> = {};
+
+  public readonly monumentsColumns: ModalTableColumn[] = [
+    { label: 'Type de patrimoine', sortKey: 'type' },
+    { label: 'Royaume', sortKey: 'kingdom' },
+    { label: 'Position', sortKey: 'position' },
+  ];
   private readonly EVENT_SERIES_DEFAULT_LIMIT = 5;
 
   private readonly CHART_SOURCES: Record<string, { table: ApiPlayerStatsType; days: number }> = {
@@ -275,10 +287,10 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   }
 
   private animationFrames: Partial<Record<keyof IRankingStatsPlayer, number>> = {};
-  private localStorage = inject(LocalStorageService);
-  private languageService = inject(LanguageService);
-  private cdr = inject(ChangeDetectorRef);
-  private worlds = [
+  private readonly localStorage = inject(LocalStorageService);
+  private readonly languageService = inject(LanguageService);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly worlds = [
     { name: 'Le Grand Empire', id: 0 },
     { name: 'Le Glacier éternel', id: 2 },
     { name: 'Les Sables brûlants', id: 1 },
@@ -286,7 +298,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     { name: 'Les Îles orageuses', id: 4 },
   ];
   private observer!: IntersectionObserver;
-  @ViewChildren('chartContainer', { read: ElementRef }) private chartContainers!: QueryList<ElementRef>;
+  @ViewChildren('chartContainer', { read: ElementRef }) private readonly chartContainers!: QueryList<ElementRef>;
 
   constructor() {
     super();
@@ -324,7 +336,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   }
 
   public get peaceDisabledAtInDays(): number | null {
-    if (this.stats && this.stats.peaceDisabledAt) {
+    if (this.stats?.peaceDisabledAt) {
       const now = new Date();
       const diff = this.stats.peaceDisabledAt.getTime() - now.getTime();
       return Math.ceil(diff / (1000 * 60 * 60 * 24));
@@ -519,21 +531,24 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   }
 
   public getCurrentFameTitle(): RankingFameTitle {
+    const fallback = this.fameTitles.at(-1) || {
+      titleID: 'unknown',
+      type: 'FAME',
+      displayType: 'DEFAULT',
+      mightValue: '0',
+      decay: 0,
+      threshold: 0,
+    };
     try {
-      return this.fameTitles
-        .filter((title) => title.threshold && Number(title.threshold) < this.stats!.currentFame)
-        .reduce((max, t) => (Number(t.threshold) > Number(max.threshold) ? t : max));
-    } catch {
-      return (
-        this.fameTitles.at(-1) || {
-          titleID: 'unknown',
-          type: 'FAME',
-          displayType: 'DEFAULT',
-          mightValue: '0',
-          decay: 0,
-          threshold: 0,
-        }
+      const eligible = this.fameTitles.filter(
+        (title) => title.threshold && Number(title.threshold) < this.stats!.currentFame,
       );
+      return eligible.reduce(
+        (max, t) => (Number(t.threshold) > Number(max.threshold) ? t : max),
+        eligible[0] ?? fallback,
+      );
+    } catch {
+      return fallback;
     }
   }
 
@@ -561,7 +576,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       this.fameTitles = fameTitles.filter((title) => title.topX === undefined);
       const currentFameTitle = this.getCurrentFameTitle();
       const currentFameTopXTitle = this.fameTitlesTopX.find(
-        (title) => title.topX && this.stats!.playerCurrentFameRank <= title.topX!,
+        (title) => title.topX && this.stats!.playerCurrentFameRank <= title.topX,
       );
 
       if (currentFameTopXTitle) {
@@ -941,7 +956,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
         y: {
           formatter: function (value): string {
             if (value === null) return '?';
-            if (value > 0) return value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+            if (value > 0) return formatThousands(value.toString());
             return '0';
           },
         },
@@ -989,7 +1004,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       },
       tooltip: {
         y: {
-          formatter: (value): string => value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ','),
+          formatter: (value): string => formatThousands(value.toString()),
         },
       },
       colors: ['#EF6C00'],
@@ -1001,7 +1016,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       fill: {},
       yaxis: {
         labels: {
-          formatter: (value): string => value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ','),
+          formatter: (value): string => formatThousands(value.toString()),
         },
       },
       legend: {},
@@ -1063,7 +1078,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
         y: {
           formatter: function (value): string {
             if (value === null) return '?';
-            if (value > 0) return value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+            if (value > 0) return formatThousands(value.toString());
             return '0';
           },
         },
@@ -1128,7 +1143,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       yaxis: {
         labels: {
           formatter: function (value): string {
-            return value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return value === null ? '?' : formatThousands(value.toString());
           },
         },
         min: 0,
@@ -1259,7 +1274,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       },
       tooltip: {
         y: {
-          formatter: (value): string => value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ','),
+          formatter: (value): string => formatThousands(value.toString()),
         },
       },
       title: {},
@@ -1604,6 +1619,26 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     this.buildEventCharts('bloodcrow', data.length);
   }
 
+  private groupAquamarineMetrics(snapshots: ApiAquamarineSnapshot[]): Map<number, Array<[number, number]>> {
+    const metricSeries = new Map<number, Array<[number, number]>>();
+    for (const snapshot of snapshots) {
+      const ts = new Date(snapshot.collected_at).getTime();
+      for (const metric of snapshot.metrics) {
+        if (!this.AQUAMARINE_ALLOWED.includes(metric.metric_id)) continue;
+        let points = metricSeries.get(metric.metric_id);
+        if (!points) {
+          points = [];
+          metricSeries.set(metric.metric_id, points);
+        }
+        points.push([ts, metric.value]);
+      }
+    }
+    for (const points of metricSeries.values()) {
+      points.sort(([a], [b]) => a - b);
+    }
+    return metricSeries;
+  }
+
   private initAquamarineCharts(): void {
     const snapshots = this.aquamarineSnapshotsForMonth;
     if (snapshots.length === 0) {
@@ -1619,24 +1654,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     const timestamp = latestSnapshot.metrics.find((m) => m.metric_id === 21)?.value;
     this.aquamarineSnapshotsLastUpdated = new Date(timestamp ? timestamp * 1000 : Date.now());
 
-    // Build one time-series per metric_id across all snapshots for this month
-    const metricSeries = new Map<number, Array<[number, number]>>();
-    for (const snapshot of snapshots) {
-      const ts = new Date(snapshot.collected_at).getTime();
-      for (const metric of snapshot.metrics) {
-        if (this.AQUAMARINE_ALLOWED.includes(metric.metric_id)) {
-          if (!metricSeries.has(metric.metric_id)) {
-            metricSeries.set(metric.metric_id, []);
-          }
-          metricSeries.get(metric.metric_id)!.push([ts, metric.value]);
-        }
-      }
-    }
-
-    // Sort each series chronologically.
-    for (const points of metricSeries.values()) {
-      points.sort(([a], [b]) => a - b);
-    }
+    const metricSeries = this.groupAquamarineMetrics(snapshots);
 
     const series: ApexAxisChartSeries = [...metricSeries.entries()].map(([metricId, points]) => ({
       name: this.translateService.instant(this.AQUAMARINE_METRIC_LABELS[metricId]) ?? `${metricId}`,
@@ -1901,7 +1919,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     const yLabels = this.charts['loot'].yaxis.labels;
     if (!yLabels) return;
     yLabels.formatter = function (value): string {
-      return value === null ? '-' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+      return value === null ? '-' : formatThousands(value.toString());
     };
   }
 
@@ -2042,10 +2060,8 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
         eventDataSegmentsReference = [];
       }
       eventDataSegmentsReference.push(currentEvent);
-    } else {
-      if (!eventDataSegmentsReference) {
-        eventDataSegmentsReference = [];
-      }
+    } else if (!eventDataSegmentsReference) {
+      eventDataSegmentsReference = [];
     }
     return eventDataSegmentsReference.map((event) => {
       return event.map((event) => {
@@ -2222,96 +2238,95 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     this.fillPlayerHistoryState = 'loading';
     this.isInLoading = true;
     this.cdr.detectChanges();
+
     const [allianceUpdatesResponse, playerUpdatesResponse] = await Promise.all([
       this.apiRestService.getAllianceUpdatesByPlayerId(playerId),
       this.apiRestService.getPlayerUpdatesByPlayerId(playerId),
     ]);
-    if (allianceUpdatesResponse.success === false) {
-      this.allianceUpdates = null;
-    } else {
-      const data = allianceUpdatesResponse.data;
-      if (data && data.updates && data.updates.length > 0) {
-        data.updates.sort((a, b) => this.compareDate(a, b));
-        this.allianceUpdates = [];
-        const firstAlliance = data.updates.at(-1);
-        for (let index = 0; index < data.updates.length; index++) {
-          const { value, durationValue } =
-            index > 0
-              ? this.getDateDiff(data.updates[index]['date'], data.updates[index - 1]['date'])
-              : this.getDateDiff(data.updates[index]['date'], new Date().toISOString());
-          this.allianceUpdates[index] = {
-            id: data.updates[index]['new_alliance_id'],
-            date: data.updates[index]['date'],
-            alliance: data.updates[index]['new_alliance_name'],
-            original_new_alliance_name:
-              data.updates[index]['original_new_alliance_name'] === data.updates[index]['new_alliance_name']
-                ? null
-                : data.updates[index]['original_new_alliance_name'],
-            duration: index > 0 ? value : this.translateService.instant('depuis') + ' ' + value,
-            durationValue: durationValue,
-          };
-        }
-        if (firstAlliance) {
-          this.allianceUpdates.push({
-            id: firstAlliance['old_alliance_id'],
-            date: null,
-            alliance: firstAlliance['old_alliance_name'],
-            original_new_alliance_name:
-              firstAlliance['original_old_alliance_name'] === firstAlliance['old_alliance_name']
-                ? null
-                : firstAlliance['original_old_alliance_name'],
-            duration: '-',
-            durationValue: 0,
-          });
-        }
-      } else {
-        this.setDefaultAlliance();
-      }
-      this.maxDuration = Math.max(...this.allianceUpdates!.map((a) => a.durationValue));
-    }
-    if (playerUpdatesResponse.success === false) {
-      this.playerUpdates = null;
-    } else {
-      const data = playerUpdatesResponse.data;
-      if (data && data.updates && data.updates.length > 0) {
-        data.updates.sort((a, b) => this.compareDate(a, b));
-        this.playerUpdates = [];
-        const firstPlayer = data.updates.at(-1);
-        for (let index = 0; index < data.updates.length; index++) {
-          this.playerUpdates[index] = {
-            date: data.updates[index]['date'],
-            player: data.updates[index]['new_player_name'],
-            duration:
-              index > 0
-                ? this.getDateDiff(data.updates[index]['date'], data.updates[index - 1]['date']).value
-                : this.translateService.instant('depuis') +
-                  ' ' +
-                  this.getDateDiff(data.updates[index]['date'], new Date().toISOString()).value,
-          };
-        }
-        if (firstPlayer) {
-          this.playerUpdates.push({
-            date: null,
-            player: firstPlayer['old_player_name'],
-            duration: '-',
-          });
-        }
-      }
-    }
+    this.applyAllianceUpdates(allianceUpdatesResponse);
+    this.applyPlayerNameUpdates(playerUpdatesResponse);
+
     this.fillPlayerHistoryState = 'loaded';
     this.isInLoading = false;
     this.cdr.detectChanges();
+  }
+
+  private applyAllianceUpdates(response: ApiResponse<ApiAllianceUpdatesByPlayerId>): void {
+    if (response.success === false) {
+      this.allianceUpdates = null;
+      return;
+    }
+    const updates = response.data?.updates;
+    if (!updates || updates.length === 0) {
+      this.setDefaultAlliance();
+    } else {
+      updates.sort((a, b) => this.compareDate(a, b));
+      const oldestUpdate = updates.at(-1);
+      this.allianceUpdates = updates.map((update, index) =>
+        this.toAllianceUpdate(update, index > 0 ? updates[index - 1]['date'] : null),
+      );
+      if (oldestUpdate) {
+        this.allianceUpdates.push({
+          id: oldestUpdate['old_alliance_id'],
+          date: null,
+          alliance: oldestUpdate['old_alliance_name'],
+          original_new_alliance_name:
+            oldestUpdate['original_old_alliance_name'] === oldestUpdate['old_alliance_name']
+              ? null
+              : oldestUpdate['original_old_alliance_name'],
+          duration: '-',
+          durationValue: 0,
+        });
+      }
+    }
+    this.maxDuration = Math.max(...this.allianceUpdates!.map((update) => update.durationValue));
+  }
+
+  private toAllianceUpdate(update: ApiAllianceUpdates, previousDate: string | null): AlliancesUpdates {
+    const { value, durationValue } = this.getDateDiff(update['date'], previousDate ?? new Date().toISOString());
+    return {
+      id: update['new_alliance_id'],
+      date: update['date'],
+      alliance: update['new_alliance_name'],
+      original_new_alliance_name:
+        update['original_new_alliance_name'] === update['new_alliance_name']
+          ? null
+          : update['original_new_alliance_name'],
+      duration: previousDate ? value : this.translateService.instant('depuis') + ' ' + value,
+      durationValue,
+    };
+  }
+
+  private applyPlayerNameUpdates(response: ApiResponse<ApiPlayerUpdatesByPlayerId>): void {
+    if (response.success === false) {
+      this.playerUpdates = null;
+      return;
+    }
+    const updates = response.data?.updates;
+    if (!updates || updates.length === 0) return;
+
+    updates.sort((a, b) => this.compareDate(a, b));
+    const oldestUpdate = updates.at(-1);
+    this.playerUpdates = updates.map((update, index) => ({
+      date: update['date'],
+      player: update['new_player_name'],
+      duration: this.formatUpdateDuration(update['date'], index > 0 ? updates[index - 1]['date'] : null),
+    }));
+    if (oldestUpdate) {
+      this.playerUpdates.push({ date: null, player: oldestUpdate['old_player_name'], duration: '-' });
+    }
+  }
+
+  private formatUpdateDuration(date: string, previousDate: string | null): string {
+    if (previousDate) return this.getDateDiff(date, previousDate).value;
+    return this.translateService.instant('depuis') + ' ' + this.getDateDiff(date, new Date().toISOString()).value;
   }
 
   private fillQuantity(): void {
     this.stats?.castles.forEach((castle: number[]) => {
       const target = castle[3];
       switch (target) {
-        case CastleType.CASTLE: {
-          this.quantity.castle++;
-          this.quantity.patriarch++;
-          break;
-        }
+        case CastleType.CASTLE:
         case CastleType.REALM_CASTLE: {
           this.quantity.castle++;
           this.quantity.patriarch++;

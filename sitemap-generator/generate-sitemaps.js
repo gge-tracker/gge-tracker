@@ -8,9 +8,9 @@
 //  Copyrights (c) 2025 - gge-tracker.com & gge-tracker contributors
 //
 import { Client } from "pg";
-import path from "path";
-import fs from "fs";
-import fsprom from "fs/promises";
+import path from "node:path";
+import fs from "node:fs";
+import fsprom from "node:fs/promises";
 import yaml from "js-yaml";
 
 const config = yaml.load(fs.readFileSync("servers.yaml", "utf8"));
@@ -175,7 +175,9 @@ async function generateSitemaps() {
   console.log("Static sitemap generated.");
 }
 
-generateSitemaps().catch((e) => {
+try {
+  await generateSitemaps();
+} catch (e) {
   console.error("Error generating sitemaps:", e);
   process.exit(1);
-});
+}

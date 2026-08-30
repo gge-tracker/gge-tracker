@@ -18,11 +18,13 @@ WORKDIR /app
 COPY package*.json ./
 COPY tsconfig.json ./
 
-RUN npm install
+RUN npm ci --ignore-scripts
 
 COPY src/ ./src/
 
-RUN npx tsc
+RUN node_modules/.bin/tsc
+
+USER node
 
 ENTRYPOINT ["node"]
 CMD ["dist/main.js"]

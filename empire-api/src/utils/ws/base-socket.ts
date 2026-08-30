@@ -3,6 +3,7 @@ import { AsyncEvent } from '../event.js';
 import { HeadersUtilities } from '../nested-headers.js';
 import { Log } from './log.js';
 import * as net from 'node:net';
+import { randomInt } from 'node:crypto';
 
 export enum GgeServerType {
   E4K = 'E4K',
@@ -103,7 +104,7 @@ class BaseSocket extends Log {
     this.disconnect();
     const { baseDelaySeconds, jitterSeconds, preSleepMilliseconds } = this.reconnectTiming();
     const nbReconnects = this.nbReconnects++;
-    const randomDelay = jitterSeconds > 0 ? Math.floor(Math.random() * jitterSeconds) : 0;
+    const randomDelay = jitterSeconds > 0 ? randomInt(jitterSeconds) : 0;
     let defaultDelay = baseDelaySeconds;
     if (!instant && nbReconnects > 0) {
       if (nbReconnects < 5) {
@@ -225,16 +226,12 @@ class BaseSocket extends Log {
 
   public handleErrorState(error: unknown): void {
     this.error('[onError] Error occurred in socket', error instanceof Error ? error.message : error);
-    switch (this.socketState) {
-      case SocketState.KILLED: {
-        this.warn('[onError] Error occurred but socket is killed. No action will be taken.');
-        break;
-      }
-      default: {
-        this.warn('[onError] Unknown socket state. Attempting to restart the connection as a precaution.');
-        void this.restart();
-      }
+    if (this.socketState === SocketState.KILLED) {
+      this.warn('[onError] Error occurred but socket is killed. No action will be taken.');
+      return;
     }
+    this.warn('[onError] Unknown socket state. Attempting to restart the connection as a precaution.');
+    void this.restart();
   }
 
   public handleCloseState(code: number, reason: Buffer): void {
@@ -332,8 +329,8 @@ class BaseSocket extends Log {
     if (
       !this.connected.isSet ||
       this.socketState !== SocketState.CONNECTED ||
-      (!this.socket && (!this.ws || this.ws.readyState !== WebSocket.OPEN)) ||
-      (this.socket && this.socket.destroyed)
+      (!this.socket && (this.ws?.readyState !== WebSocket.OPEN)) ||
+      this.socket?.destroyed
     ) {
       this.warn(
         '[ping] Cannot send ping, socket is not connected :',
@@ -411,7 +408,7 @@ class BaseSocket extends Log {
         status: +parsed[3],
         data: parsed.length > 4 ? parsed.slice(4).join('%') : null,
       };
-      if (payload.data && payload.data.startsWith('{')) {
+      if (payload.data?.startsWith('{')) {
         payload.data = JSON.parse(payload.data);
       }
       return { type: 'json', payload };

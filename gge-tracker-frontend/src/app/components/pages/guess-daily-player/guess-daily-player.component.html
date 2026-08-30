@@ -18,10 +18,8 @@
                   <i class="fas fa-infinity"></i> {{ 'restants' | translate }}</span>
                 }
               </div>
-              <div class="progress" style="height: 6px;">
-                <div class="progress-bar bg-gradient-primary" role="progressbar"
-                [style.width.%]="((maxAttempts - remainingTries) / maxAttempts) * 100"></div>
-              </div>
+              <progress class="attempts-progress" [value]="attemptsProgressValue" [max]="attemptsProgressMax"
+                [attr.aria-label]="'Tentatives' | translate"></progress>
             </div>
           }
           @if (isWin) {
@@ -50,7 +48,7 @@
                     </span>
                     <input type="text" class="form-control bg-transparent border-0 text-white" [(ngModel)]="search" name="guess"
                       (input)="autoCompletePlayerNames($event)" [placeholder]="'Rechercher un joueur' | translate"
-                      autocomplete="off" (blur)="updateInputFocusState(false)" (focus)="updateInputFocusState(true)">
+                      autocomplete="off" (blur)="updateInputFocusState(false)" (focus)="updateInputFocusState(true)" [attr.aria-label]="'Rechercher un joueur' | translate">
                   </div>
                   <button type="submit" class="btn btn-action" [disabled]="isSubmitting || !search || !canGuess()">
                     <i class="fas fa-arrow-right"></i>

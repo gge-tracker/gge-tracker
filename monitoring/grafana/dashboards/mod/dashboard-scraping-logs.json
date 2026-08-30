@@ -240,7 +240,7 @@
     },
     {
       "datasource": { "type": "loki", "uid": "loki" },
-      "description": "One row per server. Criticals or Errors above zero is what you used to get a @everyone ping for. A server missing from this table logged nothing at all in the range — that is itself a red flag.",
+      "description": "One row per server. Criticals or Errors above zero is what you used to get a @everyone ping for. A server missing from this table logged nothing at all in the range - that is itself a red flag.",
       "fieldConfig": {
         "defaults": {
           "custom": {

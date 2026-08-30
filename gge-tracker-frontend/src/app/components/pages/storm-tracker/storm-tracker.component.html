@@ -7,7 +7,7 @@
           <nav class="storm-segmented w-100" role="tablist">
             <button class="storm-segment" role="tab" [attr.aria-selected]="activeTab === 'forts'"
               [class.storm-segment--on]="activeTab === 'forts'" (click)="switchTab('forts')">
-              <img src="/assets/storm-tracker/fort.png" class="storm-menu-icon">
+              <img src="/assets/storm-tracker/fort.png" class="storm-menu-icon" alt="">
               <span class="storm-segment__label">{{ 'Forteresses des tempêtes' | translate }}</span>
               @if (stormMeta) {
               <span class="storm-count">{{ stormMeta.forts_count }}</span>
@@ -15,7 +15,7 @@
             </button>
             <button class="storm-segment" role="tab" [attr.aria-selected]="activeTab === 'isles'"
               [class.storm-segment--on]="activeTab === 'isles'" (click)="switchTab('isles')">
-              <img src="/assets/storm-tracker/village/6.png" class="storm-menu-icon">
+              <img src="/assets/storm-tracker/village/6.png" class="storm-menu-icon" alt="">
               <span class="storm-segment__label">{{ 'Îles de ressources' | translate }}</span>
               @if (stormMeta) {
               <span class="storm-count">{{ stormMeta.isles_count }}</span>
@@ -253,12 +253,12 @@
                   @if (isle.definition) {
                   <span class="storm-loot storm-resource-{{ isle.definition.resource }} storm-id-{{ isle.isleId }}">
                     {{ isle.definition.fixedLoot | number }}
-                    <img src="/assets/storm-tracker/aquamarine.webp" style="width: 20px">
+                    <img src="/assets/storm-tracker/aquamarine.webp" style="width: 20px" alt="">
                   </span>
                   @if (isle.definition.cargoPoints) {
                   <div class="storm-sub">
                     {{ isle.definition.cargoPoints | number }}
-                    <img src="/assets/aquamarine_100.webp"  style="width: 15px">
+                    <img src="/assets/aquamarine_100.webp"  style="width: 15px" alt="">
                   </div>
                   }
                   } @else {
@@ -310,7 +310,7 @@
 
           <app-modal-form-group [label]="'Attaques restantes minimum' | translate">
             <input field type="number" [(ngModel)]="minAttacksLeft" [placeholder]="'Attaques restantes' | translate"
-              min="0" [attr.max]="maxVictories" />
+              min="0" [attr.max]="maxVictories"  [attr.aria-label]="'Attaques restantes' | translate"/>
             <button action search data-bs-dismiss="modal" (click)="onMinAttacksLeftChange(minAttacksLeft)">
               {{ 'Rechercher' | translate }}
             </button>
@@ -377,9 +377,9 @@
 
           <app-modal-form-group [label]="'Plus proche d\'une position' | translate">
             <span field prefix>X</span>
-            <input field type="number" [(ngModel)]="positionX" [placeholder]="'Position X' | translate" />
+            <input field type="number" [(ngModel)]="positionX" [placeholder]="'Position X' | translate"  [attr.aria-label]="'Position X' | translate"/>
             <span field prefix>Y</span>
-            <input field type="number" [(ngModel)]="positionY" [placeholder]="'Position Y' | translate" />
+            <input field type="number" [(ngModel)]="positionY" [placeholder]="'Position Y' | translate"  [attr.aria-label]="'Position Y' | translate"/>
             <button action search data-bs-dismiss="modal" (click)="onPositionChange(positionX, positionY)">
               {{ 'Rechercher' | translate }}
             </button>
@@ -390,7 +390,7 @@
 
           <app-modal-form-group [label]="'Plus proche d\'un joueur' | translate">
             <span field prefix>{{ 'Joueur' | translate }}</span>
-            <input field type="text" [(ngModel)]="nearPlayerName" [placeholder]="'Nom du joueur' | translate" />
+            <input field type="text" [(ngModel)]="nearPlayerName" [placeholder]="'Nom du joueur' | translate"  [attr.aria-label]="'Nom du joueur' | translate"/>
             <button action search data-bs-dismiss="modal" (click)="onPositionChangePlayerName(nearPlayerName)">
               {{ 'Rechercher' | translate }}
             </button>
@@ -401,7 +401,7 @@
 
           <app-modal-form-group [label]="'Distance maximale (cases)' | translate">
             <input field type="number" [(ngModel)]="maxDistance" [placeholder]="'Distance maximale' | translate"
-              min="1" />
+              min="1"  [attr.aria-label]="'Distance maximale' | translate"/>
             <button action search data-bs-dismiss="modal" (click)="onMaxDistanceChange(maxDistance)">
               {{ 'Rechercher' | translate }}
             </button>
@@ -413,7 +413,7 @@
           @if (activeTab === 'forts') {
           <app-modal-form-group [label]="'Attaques restantes minimum' | translate">
             <input field type="number" [(ngModel)]="minAttacksLeft"
-              [placeholder]="'Attaques restantes' | translate" min="0" [attr.max]="maxVictories" />
+              [placeholder]="'Attaques restantes' | translate" min="0" [attr.max]="maxVictories"  [attr.aria-label]="'Attaques restantes' | translate"/>
             <button action search data-bs-dismiss="modal" (click)="onMinAttacksLeftChange(minAttacksLeft)">
               {{ 'Rechercher' | translate }}
             </button>
@@ -441,7 +441,7 @@
         <div class="modal-body">
           <app-modal-form-group [label]="'Nombre de résultats par page' | translate">
             <input field type="number" [(ngModel)]="pageSize" [placeholder]="'Nombre de résultats' | translate"
-              min="0" />
+              min="0"  [attr.aria-label]="'Nombre de résultats' | translate"/>
             <button action search data-bs-dismiss="modal" (click)="onPageSizeChange(pageSize)">
               {{ 'Rechercher' | translate }}
             </button>

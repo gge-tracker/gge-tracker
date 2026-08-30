@@ -1,8 +1,5 @@
 input:checked + .slider {
   background: linear-gradient(135deg, #0d6efd, #00cfff);
-}
-
-input:checked + .slider {
   box-shadow: 0 0 10px rgba(0, 207, 255, 0.5);
 }
 

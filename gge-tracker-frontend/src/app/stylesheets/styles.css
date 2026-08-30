@@ -16,10 +16,6 @@ a:hover {
   cursor: pointer;
 }
 
-.apexcharts-tooltip {
-  overflow: hidden !important;
-}
-
 .form-check-input:checked {
   background-color: #3c53c7;
   border-color: #3c53c7;
@@ -269,6 +265,7 @@ input:-webkit-autofill {
 .apexcharts-tooltip {
   white-space: pre-wrap !important;
   max-height: 50vh !important;
+  overflow: hidden !important;
   overflow-y: auto !important;
 }
 
@@ -557,8 +554,8 @@ select.form-select, .modal-content input[type="text"], .modal-content input[type
 }
 
 .modern-scroll::-webkit-scrollbar-thumb {
-  background-clip: padding-box;
   background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.08));
+  background-clip: padding-box;
   border-radius: 10px;
   border: 2px solid transparent;
 }
@@ -714,9 +711,7 @@ select.form-select, .modal-content input[type="text"], .modal-content input[type
   color: #495057;
   opacity: 0.4;
   cursor: default;
-}
-
-.page-indicator {
+}.page-indicator {
   font-size: 0.75rem;
   font-weight: 500;
   color: #dee2e6;
@@ -724,10 +719,23 @@ select.form-select, .modal-content input[type="text"], .modal-content input[type
   user-select: none;
   letter-spacing: 0.3px;
   font-family: 'Segoe UI', Roboto, sans-serif;
-}
-
-.page-indicator {
   border-left: 1px solid rgba(255, 255, 255, 0.1);
   border-right: 1px solid rgba(255, 255, 255, 0.1);
   padding: 0 12px;
+}
+
+output {
+  display: block;
+}
+
+.button-reset {
+  background: none;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  padding: 0;
+  text-align: inherit;
 }

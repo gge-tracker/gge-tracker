@@ -9,16 +9,26 @@
         (ngModelChange)="onSearchChange()"
         placeholder="{{ 'Rechercher' | translate }}..."
         class="form-control search-input"
-      />
+       aria-label="{{ 'Rechercher' | translate }}..."/>
     </div>
 
     <div class="table-responsive">
       <table class="modern-table w-100">
         <thead>
-          <ng-container
-            [ngTemplateOutlet]="headerTemplate()"
-            [ngTemplateOutletContext]="sortContext"
-          />
+          <tr>
+            @for (column of columns(); track column.label) {
+              @if (column.sortKey; as sortKey) {
+                <th scope="col" tabindex="0" (click)="sortBy(sortKey)" (keydown.enter)="sortBy(sortKey)">
+                  {{ column.label | translate }}
+                  @if (sortColumn === sortKey) {
+                    <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc" [class.fa-arrow-down]="!sortAsc"></i>
+                  }
+                </th>
+              } @else {
+                <th scope="col">{{ column.label | translate }}</th>
+              }
+            }
+          </tr>
         </thead>
         <tbody>
           @for (item of paginatedItems; track $index) {

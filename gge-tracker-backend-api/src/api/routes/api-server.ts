@@ -269,7 +269,6 @@ export abstract class ApiServer implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getMovements', request);
-      return;
     }
   }
 
@@ -306,13 +305,9 @@ export abstract class ApiServer implements ApiHelper {
       const searchInput = ApiHelper.validateSearchAndSanitize(request.query.search);
       const searchType = ApiHelper.getParsedString(request.query.searchType);
       const showType = ApiHelper.getParsedString(request.query.showType, 'players');
-      if (searchType !== 'player' && searchType !== 'alliance' && searchType !== null) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidInput });
-        return;
-      } else if (showType !== 'players' && showType !== 'alliances') {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidInput });
-        return;
-      } else if (searchInput === ApiInvalidInputType) {
+      const invalidSearchType = searchType !== 'player' && searchType !== 'alliance' && searchType !== null;
+      const invalidShowType = showType !== 'players' && showType !== 'alliances';
+      if (invalidSearchType || invalidShowType || searchInput === ApiInvalidInputType) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidInput });
         return;
       } else if (request.query.allianceId && !allianceId) {
@@ -343,72 +338,31 @@ export abstract class ApiServer implements ApiHelper {
       /* ---------------------------------
        * Build query filters
        * --------------------------------- */
-      let parameterIndex = 1;
-      const conditions: string[] = [];
-      const values: any[] = [];
-      if (searchType && searchType === 'player' && ApiHelper.isValidInput(searchInput) && showType === 'players') {
-        conditions.push(
-          `LOWER(R.old_name) = LOWER($${parameterIndex++}) OR LOWER(R.new_name) = LOWER($${parameterIndex++})`,
-        );
-        values.push(searchInput, searchInput);
-      }
-      if (searchType && searchType === 'alliance' && ApiHelper.isValidInput(searchInput)) {
-        if (showType === 'players') {
-          conditions.push(`LOWER(A.name) = LOWER($${parameterIndex++})`);
-          values.push(searchInput);
-        } else {
-          conditions.push(
-            `LOWER(R.old_name) = LOWER($${parameterIndex++}) OR LOWER(R.new_name) = LOWER($${parameterIndex++})`,
-          );
-          values.push(searchInput, searchInput);
-        }
-      }
-      if (allianceId) {
-        if (showType === 'players') {
-          conditions.push(`A.id = $${parameterIndex++}`);
-          values.push(ApiHelper.removeCountryCode(Number(allianceId)));
-        } else {
-          conditions.push(`R.alliance_id = $${parameterIndex++}`);
-          values.push(ApiHelper.removeCountryCode(Number(allianceId)));
-        }
-      }
+      const { conditions, values, nextParameterIndex } = ApiServer.buildRenameFilters(
+        searchType,
+        searchInput,
+        showType,
+        allianceId,
+      );
+      let parameterIndex = nextParameterIndex;
 
       /* ---------------------------------
        * Build main query
        * --------------------------------- */
-      let renamesCount: number | string = 0;
-      let countQuery = `
+      const countQuery =
+        `
         SELECT
           COUNT(*) AS renames_count
         FROM
           ${mainTableName} R
-        `;
-      if (showType === 'players') {
-        countQuery += `
-          LEFT JOIN
-            players P ON R.player_id = P.id
-          LEFT JOIN
-            alliances A ON P.alliance_id = A.id
-        `;
-      }
-      if (conditions.length > 0) {
-        countQuery += ` WHERE ` + conditions.join(' AND ');
-      }
+        ` +
+        ApiServer.renamePlayerJoins(showType) +
+        ApiServer.renameWhereClause(conditions);
 
       /* ---------------------------------
        * Execute count query
        * --------------------------------- */
-      await new Promise((resolve, reject) => {
-        (request['pg_pool'] as pg.Pool).query(countQuery, values, (error, results) => {
-          if (error) {
-            ApiHelper.logError(error, 'getRenames_countQuery', request);
-            reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
-          } else {
-            renamesCount = Number.parseInt(results.rows[0]['renames_count']);
-            resolve(null);
-          }
-        });
-      });
+      const renamesCount = await ApiServer.countRenames(request, countQuery, values);
       values.push(viewPerPage, (page - 1) * viewPerPage);
       const totalPages = Math.ceil(renamesCount / viewPerPage);
       if (page > totalPages) {
@@ -455,9 +409,7 @@ export abstract class ApiServer implements ApiHelper {
           FROM
             alliance_update_history R
         `;
-      if (conditions.length > 0) {
-        query += ` WHERE ` + conditions.join(' AND ');
-      }
+      query += ApiServer.renameWhereClause(conditions);
       query += ` ORDER BY R.created_at DESC, R.id LIMIT $${parameterIndex++} OFFSET $${parameterIndex++};`;
 
       /* ---------------------------------
@@ -503,7 +455,6 @@ export abstract class ApiServer implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getRenames', request);
-      return;
     }
   }
 
@@ -553,7 +504,6 @@ export abstract class ApiServer implements ApiHelper {
           response
             .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
             .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
-          return;
         } else {
           /* ---------------------------------
            * Process results
@@ -562,14 +512,14 @@ export abstract class ApiServer implements ApiHelper {
             const rate = result.events_participation_rate
               ? result.events_participation_rate
                   .replaceAll(/([,{])(\s*)(\w+)(\s*):/g, '$1"$3":')
-                  .replaceAll(/(\w+):/g, '"$1":')
-                  .replaceAll(/(\d+):/g, '"$1":')
+                  .replaceAll(/(?<!\w)(\w+):/g, '"$1":')
+                  .replaceAll(/(?<!\d)(\d+):/g, '"$1":')
               : '{}';
             const eventsTop3Names = result.events_top_3_names
               ? result.events_top_3_names
                   .replaceAll(/([,{])(\s*)(\w+)(\s*):/g, '$1"$3":')
-                  .replaceAll(/(\w+):/g, '"$1":')
-                  .replaceAll(/(\d+):/g, '"$1":')
+                  .replaceAll(/(?<!\w)(\w+):/g, '"$1":')
+                  .replaceAll(/(?<!\d)(\d+):/g, '"$1":')
               : '{}';
 
             return {
@@ -628,7 +578,68 @@ export abstract class ApiServer implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getStatistics', request);
-      return;
     }
+  }
+
+  private static buildRenameFilters(
+    searchType: string | null,
+    searchInput: unknown,
+    showType: string | null,
+    allianceId: number | false | null,
+  ): { conditions: string[]; values: any[]; nextParameterIndex: number } {
+    let parameterIndex = 1;
+    const conditions: string[] = [];
+    const values: any[] = [];
+    const searchesPlayers = showType === 'players';
+
+    if (ApiHelper.isValidInput(searchInput)) {
+      if (searchType === 'player' && searchesPlayers) {
+        conditions.push(
+          `LOWER(R.old_name) = LOWER($${parameterIndex++}) OR LOWER(R.new_name) = LOWER($${parameterIndex++})`,
+        );
+        values.push(searchInput, searchInput);
+      } else if (searchType === 'alliance') {
+        conditions.push(
+          searchesPlayers
+            ? `LOWER(A.name) = LOWER($${parameterIndex++})`
+            : `LOWER(R.old_name) = LOWER($${parameterIndex++}) OR LOWER(R.new_name) = LOWER($${parameterIndex++})`,
+        );
+        values.push(searchInput);
+        if (!searchesPlayers) values.push(searchInput);
+      }
+    }
+    if (allianceId) {
+      conditions.push(searchesPlayers ? `A.id = $${parameterIndex++}` : `R.alliance_id = $${parameterIndex++}`);
+      values.push(ApiHelper.removeCountryCode(Number(allianceId)));
+    }
+    return { conditions, values, nextParameterIndex: parameterIndex };
+  }
+
+  private static renamePlayerJoins(showType: string | null): string {
+    if (showType !== 'players') return '';
+    return `
+      LEFT JOIN
+        players P ON R.player_id = P.id
+      LEFT JOIN
+        alliances A ON P.alliance_id = A.id
+    `;
+  }
+
+  private static renameWhereClause(conditions: string[]): string {
+    if (conditions.length === 0) return '';
+    return ` WHERE ` + conditions.map((condition) => `(${condition})`).join(' AND ');
+  }
+
+  private static async countRenames(request: express.Request, countQuery: string, values: any[]): Promise<number> {
+    return new Promise((resolve, reject) => {
+      (request['pg_pool'] as pg.Pool).query(countQuery, values, (error, results) => {
+        if (error) {
+          ApiHelper.logError(error, 'getRenames_countQuery', request);
+          reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
+        } else {
+          resolve(Number.parseInt(results.rows[0]['renames_count']));
+        }
+      });
+    });
   }
 }

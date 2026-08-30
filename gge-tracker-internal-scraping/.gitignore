@@ -3,3 +3,5 @@ dist/
 .env
 logs/*.log
 logs/*.sh
+tests/fixtures/identity-map.json
+tests/.trace/

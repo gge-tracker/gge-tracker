@@ -26,10 +26,8 @@ export abstract class HeadersUtilities {
         if (!HeadersUtilities.compareNestedHeaders(message[key], response[key])) {
           return false;
         }
-      } else {
-        if (!(key in response) || response[key] !== message[key]) {
-          return false;
-        }
+      } else if (!(key in response) || response[key] !== message[key]) {
+        return false;
       }
     }
     return true;

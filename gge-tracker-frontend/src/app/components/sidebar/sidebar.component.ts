@@ -119,8 +119,8 @@ export class SidebarComponent implements AfterViewInit, OnDestroy {
     },
   ];
 
-  private router = inject(Router);
-  private host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly router = inject(Router);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private widthObserver?: ResizeObserver;
 
   constructor() {

@@ -32,6 +32,7 @@ module.exports = [
   },
   {
     files: ["**/*.ts"],
+    ignores: ["tests/**/*.ts"],
     languageOptions: {
       parser: require("@typescript-eslint/parser"),
       parserOptions: {
@@ -80,6 +81,35 @@ module.exports = [
           ],
         },
       ],
+    },
+  },
+  {
+    files: ["tests/**/*.ts"],
+    languageOptions: {
+      parser: require("@typescript-eslint/parser"),
+      parserOptions: {
+        project: "./tests/tsconfig.json",
+        tsconfigRootDir: __dirname,
+        sourceType: "module",
+      },
+    },
+    plugins: {
+      "@typescript-eslint": tseslint,
+    },
+    rules: {
+      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+      "@typescript-eslint/explicit-function-return-type": "warn",
+      "@typescript-eslint/consistent-type-definitions": ["error", "interface"],
+      "@typescript-eslint/explicit-member-accessibility": [
+        "error",
+        {
+          accessibility: "explicit",
+          overrides: {
+            constructors: "no-public",
+          },
+        },
+      ],
+      "@typescript-eslint/no-floating-promises": "off",
     },
   },
 ];

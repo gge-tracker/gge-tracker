@@ -3,6 +3,7 @@ import * as pg from 'pg';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { AuthorizedSpecialServersEnum } from '../enums/gge-tracker-special-servers.enums';
 import { ApiHelper } from '../helper/api-helper';
+import { toQueryText } from '../helper/parse-query';
 
 /**
  * Provides API endpoints for the Storm Islands live map: storm forts and resource isles
@@ -364,9 +365,11 @@ export abstract class ApiStorms implements ApiHelper {
    */
   private static parseIsleIds(rawValue: unknown): number[] | null | false {
     if (rawValue === undefined || rawValue === null || rawValue === '') return null;
+    const text = toQueryText(rawValue);
+    if (text === undefined) return false;
     let parsed: unknown;
     try {
-      parsed = JSON.parse(String(rawValue));
+      parsed = JSON.parse(text);
     } catch {
       return false;
     }

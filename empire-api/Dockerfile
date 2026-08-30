@@ -17,11 +17,11 @@ WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm ci
+RUN npm ci --ignore-scripts
 COPY src ./src
 COPY tsconfig.json ./
 
-RUN npx tsc
+RUN node_modules/.bin/tsc
 
 FROM node:24-slim
 
@@ -31,8 +31,10 @@ ENV NODE_ENV=production
 COPY --from=builder /app/dist ./dist
 COPY package*.json ./
 
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --ignore-scripts \
+    && mv dist/* . \
+    && rm -rf dist
 
-RUN mv dist/* . && rm -rf dist
+USER node
 
 CMD ["node", "server.js"]

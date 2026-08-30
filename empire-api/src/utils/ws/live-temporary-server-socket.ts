@@ -61,7 +61,7 @@ class GgeLiveTemporaryServerSocket extends BaseSocket implements GgeEmpireSocket
         const content = parsedMessage.payload.data;
         if (content?.sei?.E) {
           const temporaryServer = content.sei.E.find((event: any) => event.EID === 106);
-          if (temporaryServer && temporaryServer.TSID) {
+          if (temporaryServer?.TSID) {
             const redisClient = createClient({
               url: 'redis://redis-server:6379',
             });

@@ -74,8 +74,8 @@ const EVENT_TABLE_PREFIXES: Record<string, string> = {
  * @implements {ApiHelper}
  */
 export abstract class ApiEvents implements ApiHelper {
-  public static CLICKHOUSE_WOA_TABLE_NAME = 'wheel_unimaginable_affluence';
-  public static CLICKHOUSE_PLAYER_METRICS_TABLE_NAME = 'player_metrics';
+  public static readonly CLICKHOUSE_WOA_TABLE_NAME = 'wheel_unimaginable_affluence';
+  public static readonly CLICKHOUSE_PLAYER_METRICS_TABLE_NAME = 'player_metrics';
 
   private static readonly AQUAMARINE_ITEMS_PER_PAGE = 15;
   private static readonly AQUAMARINE_CACHE_TTL_LEADERBOARD = 60 * 60;
@@ -165,8 +165,6 @@ export abstract class ApiEvents implements ApiHelper {
         whereClause = `WHERE type = 'outer_realms'`;
       } else if (eventType === EventTypes.BEYOND_THE_HORIZON) {
         whereClause = `WHERE type = 'beyond_the_horizon'`;
-      } else {
-        whereClause = '';
       }
 
       const countQuery = `
@@ -232,7 +230,6 @@ export abstract class ApiEvents implements ApiHelper {
           response
             .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
             .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
-          return;
         } else {
           /* ---------------------------------
            * Format results
@@ -261,7 +258,6 @@ export abstract class ApiEvents implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getEvents', request);
-      return;
     }
   }
 
@@ -333,7 +329,6 @@ export abstract class ApiEvents implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getGrandTournamentEventDates', request);
-      return;
     }
   }
 
@@ -375,7 +370,7 @@ export abstract class ApiEvents implements ApiHelper {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceId });
         return;
       }
-      let replacedZone = zone.replaceAll(new RegExp('EmpireEx_?', 'g'), '');
+      let replacedZone = zone.replaceAll(/EmpireEx_?/g, '');
       if (replacedZone === '') {
         replacedZone = '1';
       }
@@ -449,7 +444,6 @@ export abstract class ApiEvents implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getGrandTournamentAllianceAnalysis', request);
-      return;
     }
   }
 
@@ -586,7 +580,6 @@ export abstract class ApiEvents implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'searchGrandTournamentDataByAllianceName', request);
-      return;
     }
   }
 
@@ -788,7 +781,6 @@ export abstract class ApiEvents implements ApiHelper {
             .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
             .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
           ApiHelper.logError(error, 'getEventByPlayerId', request);
-          return;
         } else {
           const events = results.rows.map((result: any) => ({
             type: result.type || eventType,
@@ -805,7 +797,6 @@ export abstract class ApiEvents implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getEventByPlayerId', request);
-      return;
     }
   }
 
@@ -978,7 +969,6 @@ export abstract class ApiEvents implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getEventPlayers', request);
-      return;
     }
   }
 
@@ -1205,7 +1195,6 @@ export abstract class ApiEvents implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getDataEventType', request);
-      return;
     }
   }
 
@@ -1301,7 +1290,6 @@ export abstract class ApiEvents implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getLiveOuterRealmsRankingSpecificPlayer', request);
-      return;
     }
   }
 
@@ -1421,7 +1409,6 @@ export abstract class ApiEvents implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getLiveOuterRealmsRanking', request);
-      return;
     }
   }
 
@@ -1500,7 +1487,6 @@ export abstract class ApiEvents implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getWoaEventsByPlayerId', request);
-      return;
     }
   }
 
@@ -1736,7 +1722,7 @@ export abstract class ApiEvents implements ApiHelper {
       for (const row of json.data as Array<{ metric_id: number; value: number; collected_at: string }>) {
         const ts = new Date(row.collected_at).toISOString();
         if (!snapshotMap.has(ts)) snapshotMap.set(ts, []);
-        snapshotMap.get(ts)!.push({ metric_id: Number(row.metric_id), value: Number(row.value) });
+        snapshotMap.get(ts).push({ metric_id: Number(row.metric_id), value: Number(row.value) });
       }
       const snapshots = [...snapshotMap.entries()].map(([collected_at, metrics]) => ({
         collected_at,
@@ -1921,23 +1907,9 @@ export abstract class ApiEvents implements ApiHelper {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
         return;
       }
-      const page = ApiHelper.validatePageNumber(request.query.page);
-      const rawOrderDirection = String(request.query.order_dir || 'DESC').toUpperCase();
-      const orderDirection = ['ASC', 'DESC'].includes(rawOrderDirection) ? rawOrderDirection : 'DESC';
-      const rawOrderBy = String(request.query.order_by);
-      let orderMetricId: number | string = 100;
-      if (ApiEvents.STORMY_ISLES_ALLOWED_METRIC_IDS.has(Number(rawOrderBy))) {
-        orderMetricId = Number(rawOrderBy);
-      } else if (rawOrderBy in ApiEvents.STORMY_ISLES_PG_SORT_EXPRESSIONS) {
-        orderMetricId = rawOrderBy;
-      }
+      const { page, orderDirection, orderMetricId, limit } = ApiEvents.parseStormyIslesQuery(request);
       const playerFilter = ApiEvents.buildStormyIslesPlayerFilter(request);
       const metricFilter = ApiEvents.buildStormyIslesMetricFilter(request);
-      const sizeValue = Number(request.query.size);
-      const limit =
-        !Number.isNaN(sizeValue) && sizeValue > 0 && sizeValue < 9999
-          ? Number(sizeValue)
-          : ApiEvents.STORMY_ISLES_ITEMS_PER_PAGE;
 
       /* ---------------------------------
        * Cache check
@@ -1969,31 +1941,14 @@ export abstract class ApiEvents implements ApiHelper {
       const sortsOnPgColumn = typeof orderMetricId === 'string';
       let eligiblePlayerIds: number[] | null = null;
       if (sortsOnPgColumn || playerFilter.isActive) {
-        const chIdsResult = await clickhouseClient.query({
-          query: `
-            SELECT player_id
-            FROM ${table}
-            WHERE toDate(collected_at) = {latestDate:String}
-            GROUP BY player_id
-            ${metricFilter.having}
-          `,
-          query_params: { latestDate, ...metricFilter.queryParameters },
-        });
-        const chIdsJson = await chIdsResult.json();
-        const candidateIds = (chIdsJson.data as Array<{ player_id: number }>).map((r) => Number(r.player_id));
-        if (candidateIds.length === 0) {
-          response.status(ApiHelper.HTTP_OK).send(ApiEvents.emptyStormyIslesLeaderboard(page, latestDate));
-          return;
-        }
-        const pgFilterResult = await pgPool.query(
-          `SELECT P.id
-            FROM players P
-            LEFT JOIN alliances A ON P.alliance_id = A.id
-            ${ApiEvents.STORMY_ISLES_ALLIANCE_AGGREGATE_JOIN}
-            WHERE P.id = ANY($1) ${playerFilter.where}`,
-          [candidateIds, ...playerFilter.values],
+        eligiblePlayerIds = await ApiEvents.resolveEligibleStormyIslesPlayers(
+          clickhouseClient,
+          pgPool,
+          table,
+          latestDate,
+          playerFilter,
+          metricFilter,
         );
-        eligiblePlayerIds = pgFilterResult.rows.map((r: { id: number }) => Number(r.id));
         if (eligiblePlayerIds.length === 0) {
           response.status(ApiHelper.HTTP_OK).send(ApiEvents.emptyStormyIslesLeaderboard(page, latestDate));
           return;
@@ -2005,7 +1960,7 @@ export abstract class ApiEvents implements ApiHelper {
        * (player_name, level, might_current, alliance_might, ...)
        * --------------------------------- */
       if (sortsOnPgColumn) {
-        const totalItems = (eligiblePlayerIds as number[]).length;
+        const totalItems = eligiblePlayerIds.length;
         const pgPageResult = await pgPool.query(
           `SELECT ${ApiEvents.STORMY_ISLES_PG_COLUMNS}
             FROM players P
@@ -2019,30 +1974,12 @@ export abstract class ApiEvents implements ApiHelper {
         const pgRows = pgPageResult.rows as StormyIslesPgRow[];
         const pagePlayerIds = pgRows.map((r) => Number(r.id));
 
-        const metricsByPlayerId = new Map<number, { metrics: Record<number, number>; collectedAt: string }>();
-        if (pagePlayerIds.length > 0) {
-          const chMetricsResult = await clickhouseClient.query({
-            query: `
-              SELECT
-                player_id,
-                groupArray(metric_id)  AS metric_ids,
-                groupArray(value)      AS metric_values,
-                any(collected_at)      AS latest_collected_at
-              FROM ${table}
-              WHERE toDate(collected_at) = {latestDate:String}
-                AND player_id IN ({pagePlayerIds:Array(Int64)})
-              GROUP BY player_id
-            `,
-            query_params: { latestDate, pagePlayerIds },
-          });
-          const chMetricsJson = await chMetricsResult.json();
-          for (const row of chMetricsJson.data as StormyIslesClickhouseRow[]) {
-            metricsByPlayerId.set(Number(row.player_id), {
-              metrics: ApiEvents.mapStormyIslesMetrics(row),
-              collectedAt: row.latest_collected_at,
-            });
-          }
-        }
+        const metricsByPlayerId = await ApiEvents.readStormyIslesMetrics(
+          clickhouseClient,
+          table,
+          latestDate,
+          pagePlayerIds,
+        );
 
         const players = pgRows.map((row, index) => {
           const chRow = metricsByPlayerId.get(Number(row.id));
@@ -2217,7 +2154,7 @@ export abstract class ApiEvents implements ApiHelper {
     collectedAt: string | null,
     fallbackPlayerId?: number,
   ): object {
-    const playerId = pgRow ? Number(pgRow.id) : (fallbackPlayerId as number);
+    const playerId = pgRow ? Number(pgRow.id) : fallbackPlayerId;
     return {
       rank,
       player_id: ApiHelper.addCountryCode(String(playerId), code),
@@ -2650,5 +2587,95 @@ export abstract class ApiEvents implements ApiHelper {
       ApiHelper.logError(error, 'getCurrentOuterRealmsEvent', null);
       return null;
     }
+  }
+
+  private static parseStormyIslesQuery(request: express.Request): {
+    page: number;
+    orderDirection: string;
+    orderMetricId: number | string;
+    limit: number;
+  } {
+    const rawOrderDirection = String(request.query.order_dir || 'DESC').toUpperCase();
+    const rawOrderBy = String(request.query.order_by);
+    let orderMetricId: number | string = 100;
+    if (ApiEvents.STORMY_ISLES_ALLOWED_METRIC_IDS.has(Number(rawOrderBy))) {
+      orderMetricId = Number(rawOrderBy);
+    } else if (rawOrderBy in ApiEvents.STORMY_ISLES_PG_SORT_EXPRESSIONS) {
+      orderMetricId = rawOrderBy;
+    }
+    const sizeValue = Number(request.query.size);
+    const sizeIsUsable = !Number.isNaN(sizeValue) && sizeValue > 0 && sizeValue < 9999;
+    return {
+      page: ApiHelper.validatePageNumber(request.query.page),
+      orderDirection: ['ASC', 'DESC'].includes(rawOrderDirection) ? rawOrderDirection : 'DESC',
+      orderMetricId,
+      limit: sizeIsUsable ? sizeValue : ApiEvents.STORMY_ISLES_ITEMS_PER_PAGE,
+    };
+  }
+
+  private static async resolveEligibleStormyIslesPlayers(
+    clickhouseClient: any,
+    pgPool: pg.Pool,
+    table: string,
+    latestDate: string,
+    playerFilter: { where: string; values: any[] },
+    metricFilter: { having: string; queryParameters: Record<string, unknown> },
+  ): Promise<number[]> {
+    const chIdsResult = await clickhouseClient.query({
+      query: `
+        SELECT player_id
+        FROM ${table}
+        WHERE toDate(collected_at) = {latestDate:String}
+        GROUP BY player_id
+        ${metricFilter.having}
+      `,
+      query_params: { latestDate, ...metricFilter.queryParameters },
+    });
+    const chIdsJson = await chIdsResult.json();
+    const candidateIds = (chIdsJson.data as Array<{ player_id: number }>).map((r) => Number(r.player_id));
+    if (candidateIds.length === 0) return [];
+
+    const pgFilterResult = await pgPool.query(
+      `SELECT P.id
+        FROM players P
+        LEFT JOIN alliances A ON P.alliance_id = A.id
+        ${ApiEvents.STORMY_ISLES_ALLIANCE_AGGREGATE_JOIN}
+        WHERE P.id = ANY($1) ${playerFilter.where}`,
+      [candidateIds, ...playerFilter.values],
+    );
+    return pgFilterResult.rows.map((r: { id: number }) => Number(r.id));
+  }
+
+  private static async readStormyIslesMetrics(
+    clickhouseClient: any,
+    table: string,
+    latestDate: string,
+    pagePlayerIds: number[],
+  ): Promise<Map<number, { metrics: Record<number, number>; collectedAt: string }>> {
+    const metricsByPlayerId = new Map<number, { metrics: Record<number, number>; collectedAt: string }>();
+    if (pagePlayerIds.length === 0) return metricsByPlayerId;
+
+    const chMetricsResult = await clickhouseClient.query({
+      query: `
+        SELECT
+          player_id,
+          groupArray(metric_id) AS metric_ids,
+          groupArray(value) AS metric_values,
+          any(collected_at) AS latest_collected_at
+        FROM ${table}
+        WHERE toDate(collected_at) = {latestDate:String}
+          AND player_id IN ({pagePlayerIds:Array(Int64)})
+        GROUP BY player_id
+      `,
+      query_params: { latestDate, pagePlayerIds },
+    });
+    const chMetricsJson = await chMetricsResult.json();
+    for (const row of chMetricsJson.data as StormyIslesClickhouseRow[]) {
+      metricsByPlayerId.set(Number(row.player_id), {
+        metrics: ApiEvents.mapStormyIslesMetrics(row),
+        collectedAt: row.latest_collected_at,
+      });
+    }
+    return metricsByPlayerId;
   }
 }

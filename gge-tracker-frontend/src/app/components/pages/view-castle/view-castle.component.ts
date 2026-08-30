@@ -36,6 +36,25 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { Castle, LucideAngularModule } from 'lucide-angular';
 import { BuildingImgComponent } from './app-building-img/building-img.component';
 import { ViewCastleUtilities } from './view-castle-utilities';
+import { formatThousands } from '@ggetracker-services/text-format.utilities';
+
+type CastleFilterValue = number | string | null;
+
+/** A raw value read out of the GGE building data blob, before formatting. */
+type RawBuildingValue = number | string | boolean | null;
+
+interface EffectLabel {
+  text: string;
+  template: string;
+}
+
+interface ConstructionEffect {
+  effectId: string;
+  effectTypeID: string;
+  raw: string;
+  value: number;
+  name: string;
+}
 
 @Component({
   selector: 'app-view-castle',
@@ -61,6 +80,9 @@ import { ViewCastleUtilities } from './view-castle-utilities';
   styleUrl: './view-castle.component.css',
 })
 export class ViewCastleComponent extends GenericComponent implements OnInit {
+  private static readonly WALL_DEFENSE_CAPACITY_EFFECT_TYPE_ID = '12'; // defenseUnitAmountWallCapped
+  private static readonly UNIT_WALL_ABSOLUTE_AMOUNT_EFFECT_TYPE_ID = '194'; // unitWallAbsoluteAmount
+  private static readonly SIGHT_RADIUS_BONUS_EFFECT_TYPE_ID = '59'; // SightRadiusBonus
   private static readonly RARENESS_NAMES: Record<number, string> = {
     0: 'unique',
     1: 'common',
@@ -114,16 +136,16 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     hasMaxLevel: boolean;
     upgradable: boolean;
     burnable: boolean;
-    minLevel: number | string | null;
-    maxLevel: number | string | null;
-    sellPriceMin: number | string | null;
-    sellPriceMax: number | string | null;
-    mightMin: number | string | null;
-    mightMax: number | string | null;
-    fireDamageMin: number | string | null;
-    fireDamageMax: number | string | null;
-    publicOrderMin: number | string | null;
-    publicOrderMax: number | string | null;
+    minLevel: CastleFilterValue;
+    maxLevel: CastleFilterValue;
+    sellPriceMin: CastleFilterValue;
+    sellPriceMax: CastleFilterValue;
+    mightMin: CastleFilterValue;
+    mightMax: CastleFilterValue;
+    fireDamageMin: CastleFilterValue;
+    fireDamageMax: CastleFilterValue;
+    publicOrderMin: CastleFilterValue;
+    publicOrderMax: CastleFilterValue;
     constructionType: string | null;
     constructionItemsSlot1: string | null;
     constructionItemsSlot2: string | null;
@@ -152,6 +174,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   public cid: number | null = null;
   public equipments: { [key: string]: any }[] | null = null;
   public tooltip: { x: number; y: number; text: string } | null = null;
+  public focusedBuildingIndex = -1;
   public itemsInDistricts: Record<number, IMappedBuildingWithGround[]> = {};
   public searchTerm = '';
   public sortColumn: string | null = null;
@@ -223,8 +246,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     'Objets de construction': '',
   };
   private _filteredBuildings: IMappedBuildingWithGround[] = [];
-  private cdr = inject(ChangeDetectorRef);
-  private serverService = inject(ServerService);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly serverService = inject(ServerService);
 
   constructor() {
     super();
@@ -297,17 +320,13 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     this.drawMiniMaps();
     this.loadItemPlaceholder = false;
     this.cdr.detectChanges();
-    return;
   }
 
-  public formatValue(value: number | string | number | boolean | null): string {
-    const regex = /\B(?=(\d{3})+(?!\d))/g;
+  public formatValue(value: RawBuildingValue): string {
     if (typeof value === 'number') {
       value = Math.ceil(value);
     }
-    return Number.isInteger(value) && value !== null
-      ? value.toString().replaceAll(regex, ',')
-      : this.translations['Inconnu'];
+    return Number.isInteger(value) && value !== null ? formatThousands(value.toString()) : this.translations['Inconnu'];
   }
 
   public displayUnavailableCastleMessage(): void {
@@ -360,58 +379,19 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
         break;
       }
     }
-    if (displayEquipment && castle.equipment && castle.equipment?.name) {
-      const cleanName = castle.equipment?.name.toLowerCase().trim().replaceAll('\-_', '');
+    if (displayEquipment && castle.equipment?.name) {
+      const cleanName = castle.equipment?.name.toLowerCase().trim().replaceAll('-_', '');
       // Special case for sand outpost which has a specific icon in the game assets
       const suffix = castle.type === CastleType.OUTPOST && cleanName === 'sand' ? 'sand802icon' : cleanName;
       return `${basePath}${eqName ?? path}special${suffix}.png`;
     }
-    return `${basePath}${path}${level ? `level${level}.png` : 'basic.png'}`;
+    const leaf = level ? `level${level}.png` : 'basic.png';
+    return `${basePath}${path}${leaf}`;
   }
 
   public async updateFilters(): Promise<void> {
-    const defaultItems = this.allVisibleBuildings;
-    const filters = this.filters;
-    const filteredItems = defaultItems.filter((item) => {
-      const { positionX, positionY, inDistrictID } = item.building;
-      if (filters.isInDistrict === true && (positionX >= 0 || positionY >= 0 || !inDistrictID)) return false;
-      if (filters.hasMaxLevel === true && item.data['upgradeWodID']) return false;
-      if (filters.upgradable === true && !item.data['upgradeWodID']) return false;
-      if (filters.burnable === true && item.data['burnable'] == 0) return false;
-      if (filters.minLevel && Number(item.data['level']) < Number(filters.minLevel)) return false;
-      if (filters.maxLevel && Number(item.data['level']) > Number(filters.maxLevel)) return false;
-      if (filters.sellPriceMin && (!item.data['sellC1'] || Number(item.data['sellC1']) < Number(filters.sellPriceMin)))
-        return false;
-      if (filters.sellPriceMax && (!item.data['sellC1'] || Number(item.data['sellC1']) > Number(filters.sellPriceMax)))
-        return false;
-      if (filters.mightMin && Number(item.data['mightValue']) < Number(filters.mightMin)) return false;
-      if (filters.mightMax && Number(item.data['mightValue']) > Number(filters.mightMax)) return false;
-      if (filters.fireDamageMin && item.building['damageFactor'] * 100 < Number(filters.fireDamageMin)) return false;
-      if (filters.fireDamageMax && item.building['damageFactor'] * 100 > Number(filters.fireDamageMax)) return false;
-      if (filters.publicOrderMin && Number(item.data['publicOrder']) < Number(filters.publicOrderMin)) return false;
-      if (filters.publicOrderMax && Number(item.data['publicOrder']) > Number(filters.publicOrderMax)) return false;
-      if (filters.constructionType && item.data['buildingGroundType'] !== filters.constructionType) return false;
-      if (
-        filters.constructionItemsSlot1 &&
-        ((filters.constructionItemsSlot1 === 'assigned' && !item.constructionItems[0]) ||
-          (filters.constructionItemsSlot1 === 'unassigned' && item.constructionItems[0]))
-      )
-        return false;
-      if (
-        filters.constructionItemsSlot2 &&
-        ((filters.constructionItemsSlot2 === 'assigned' && !item.constructionItems[1]) ||
-          (filters.constructionItemsSlot2 === 'unassigned' && item.constructionItems[1]))
-      )
-        return false;
-      if (
-        filters.constructionItemsSlot3 &&
-        ((filters.constructionItemsSlot3 === 'assigned' && !item.constructionItems[2]) ||
-          (filters.constructionItemsSlot3 === 'unassigned' && item.constructionItems[2]))
-      )
-        return false;
-      return true;
-    });
-    this.countFilterActivated = Object.values(filters).filter(
+    const filteredItems = this.allVisibleBuildings.filter((item) => this.matchesFilters(item));
+    this.countFilterActivated = Object.values(this.filters).filter(
       (value) => value !== null && value !== undefined && value !== false,
     ).length;
     this.visibleBuildings = filteredItems;
@@ -565,7 +545,6 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     await this.router.navigate([], { queryParams: { analysis: cid, kid: castleData.kingdomId } });
     await this.fetchCastleData(+cid, +(castleData.kingdomId || 0));
     this.cdr.detectChanges();
-    return;
   }
 
   public async onBackButtonClick(): Promise<void> {
@@ -574,7 +553,6 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     this.clearAllParameters();
     this.cdr.detectChanges();
     await this.searchPlayer(search);
-    return;
   }
 
   public getSumBuildingSpecificItem(item: string): number {
@@ -594,11 +572,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       this.tooltip = null;
       return;
     }
-    this.searchTerm = '#' + hoveredBuilding.building.objectID;
-    this.applyFilterAndSort();
-    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-    this.currentPage = 1;
-    this.cdr.detectChanges();
+    this.selectBuilding(hoveredBuilding);
   }
 
   public onMouseMove(event: MouseEvent): void {
@@ -608,74 +582,44 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       this.tooltip = null;
       return;
     }
+    this.showTooltipFor(hoveredBuilding, event.pageX, event.pageY);
+  }
 
-    const districtItems = this.getItemsInDistrict(hoveredBuilding);
-    const name = this.capitalizeFirstLetter(this.getBuildingName(hoveredBuilding));
-    const objectID = hoveredBuilding.building?.objectID;
-    let info = [
-      `<b>${name === '-' ? 'OID:' + objectID : name}</b> (${this.translations['Niveau']} ${hoveredBuilding.data?.['level']})`,
-      '',
-      `<b>${this.translations['Ordre public']}:</b> ${this.formatValue(Number(hoveredBuilding?.data['publicOrder'])) ?? this.translations['Inconnu']}`,
-      `<b>${this.translations['Brûlable']}:</b> ${
-        hoveredBuilding?.data?.['burnable'] === undefined
-          ? this.translations['Oui']
-          : Number.parseInt(String(hoveredBuilding?.data?.['burnable']))
-            ? this.translations['Oui']
-            : this.translations['Non']
-      }`,
-      `<b>${this.translations['Puissance']}:</b> ${this.formatValue(Number.parseInt(String(hoveredBuilding?.data?.['mightValue']))) ?? this.translations['Inconnu']}`,
-      `<b>${this.translations['Commentaires']}:</b> ${
-        hoveredBuilding?.data?.['comment1'] ?? ''
-      }${hoveredBuilding?.data?.['comment2'] ? ', ' + (hoveredBuilding?.data?.['comment2'] ?? this.translations['Aucun']) : ''}`,
-      `<b>${this.translations['Dimensions']}:</b> ${hoveredBuilding ? `${hoveredBuilding.data?.['width']}x${hoveredBuilding.data?.['height']}` : this.translations['Inconnu']}`,
-      `<b>${this.translations['Prix de vente']}:</b> ${this.formatValue(Number.parseInt(String(hoveredBuilding?.data?.['sellC1']))) ?? this.translations['Inconnu']}`,
-    ];
+  public onCanvasKeydown(event: KeyboardEvent): void {
+    if (!this.canvasReady) return;
+    const walkable = this.navigableBuildings;
+    if (walkable.length === 0) return;
 
-    if (districtItems.length > 0) {
-      info.push(`<br><b>${this.translations['Espace dans le quartier']}: (${districtItems.length})</b>`);
-      for (const item of districtItems) {
-        info.push(
-          `- ${this.capitalizeFirstLetter(this.getBuildingName(item))} (${this.translations['Niveau']} ${item.data?.['level']})`,
-        );
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+    if (step !== undefined) {
+      event.preventDefault();
+      const count = walkable.length;
+      if (this.focusedBuildingIndex < 0) {
+        this.focusedBuildingIndex = step > 0 ? 0 : count - 1;
+      } else {
+        this.focusedBuildingIndex = (this.focusedBuildingIndex + step + count) % count;
       }
+      this.showTooltipForFocusedBuilding(walkable[this.focusedBuildingIndex]);
+      return;
     }
-    const constructionItems = Object.values(hoveredBuilding.constructionItems);
-    info.push(`<br><b>${this.translations['Objets de construction']}: (${constructionItems.length})</b>`);
-    const sortedConstructionItemsBySlotTypeID = constructionItems.sort((a, b) => {
-      const slotA = Number(a['slotTypeID']);
-      const slotB = Number(b['slotTypeID']);
-      if (slotA === slotB) return 0;
-      return slotA === 1 ? -1 : slotB === 1 ? 1 : slotA - slotB;
-    });
-    for (const item of sortedConstructionItemsBySlotTypeID) {
-      const slotTypeName = this.getSlotTypeName(Number(item['slotTypeID']));
-      info.push(
-        `- ${slotTypeName} : ${this.capitalizeFirstLetter(String(item['translatedName']))} (${this.translations['Niveau']} ${item['level']})`,
-      );
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      const focused = walkable[this.focusedBuildingIndex];
+      if (focused) this.selectBuilding(focused);
+      return;
     }
-
-    info = info.filter((item) => item !== null);
-
-    if (hoveredBuilding) {
-      this.tooltip = {
-        x: event.pageX + 10,
-        y: event.pageY + 10,
-        text: info.join('<br>'),
-      };
-    } else {
+    if (event.key === 'Escape') {
       this.tooltip = null;
-    }
-    const tooltipElement = globalThis.document.querySelector('#tooltip') as HTMLElement | null;
-    const tooltipHeight = tooltipElement?.offsetHeight || 0;
-    const tooltipWidth = (tooltipElement?.offsetWidth || 0) + 16;
-    if (tooltipHeight + 30 + event.pageY > window.innerHeight && this.tooltip)
-      this.tooltip.y = window.innerHeight - tooltipHeight - 10;
-    if (this.tooltip && this.tooltip.x + tooltipWidth > window.innerWidth) {
-      this.tooltip.x = window.innerWidth - tooltipWidth - 10;
+      this.focusedBuildingIndex = -1;
     }
   }
 
-  public getSlotTypeName(slotTypeID: number | string | boolean | null): string {
+  public onCanvasBlur(): void {
+    this.tooltip = null;
+    this.focusedBuildingIndex = -1;
+  }
+
+  public getSlotTypeName(slotTypeID: RawBuildingValue): string {
     if (!this.languageJsonData) {
       return '-';
     }
@@ -724,6 +668,52 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       console.error('Error during fetch:', error);
       return {};
     }
+  }
+
+  private matchesFilters(item: IMappedBuildingWithGround): boolean {
+    return this.matchesStateFilters(item) && this.matchesRangeFilters(item) && this.matchesSlotFilters(item);
+  }
+
+  private matchesStateFilters(item: IMappedBuildingWithGround): boolean {
+    const filters = this.filters;
+    const { positionX, positionY, inDistrictID } = item.building;
+    if (filters.isInDistrict === true && (positionX >= 0 || positionY >= 0 || !inDistrictID)) return false;
+    if (filters.hasMaxLevel === true && item.data['upgradeWodID']) return false;
+    if (filters.upgradable === true && !item.data['upgradeWodID']) return false;
+    if (filters.burnable === true && item.data['burnable'] == 0) return false;
+    return !(filters.constructionType && item.data['buildingGroundType'] !== filters.constructionType);
+  }
+
+  private matchesRangeFilters(item: IMappedBuildingWithGround): boolean {
+    const filters = this.filters;
+    const sellPrice = item.data['sellC1'] ? Number(item.data['sellC1']) : null;
+    return (
+      this.withinRange(Number(item.data['level']), filters.minLevel, filters.maxLevel) &&
+      this.withinRange(sellPrice, filters.sellPriceMin, filters.sellPriceMax) &&
+      this.withinRange(Number(item.data['mightValue']), filters.mightMin, filters.mightMax) &&
+      this.withinRange(item.building['damageFactor'] * 100, filters.fireDamageMin, filters.fireDamageMax) &&
+      this.withinRange(Number(item.data['publicOrder']), filters.publicOrderMin, filters.publicOrderMax)
+    );
+  }
+
+  private withinRange(value: number | null, min: CastleFilterValue, max: CastleFilterValue): boolean {
+    if (min && (value === null || value < Number(min))) return false;
+    return !(max && (value === null || value > Number(max)));
+  }
+
+  private matchesSlotFilters(item: IMappedBuildingWithGround): boolean {
+    const filters = this.filters;
+    return (
+      this.matchesSlot(filters.constructionItemsSlot1, item.constructionItems[0]) &&
+      this.matchesSlot(filters.constructionItemsSlot2, item.constructionItems[1]) &&
+      this.matchesSlot(filters.constructionItemsSlot3, item.constructionItems[2])
+    );
+  }
+
+  private matchesSlot(filter: string | null, slot: unknown): boolean {
+    if (filter === 'assigned') return Boolean(slot);
+    if (filter === 'unassigned') return !slot;
+    return true;
   }
 
   private clearAllParameters(): void {
@@ -1020,7 +1010,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
             return (aValue - bValue) * (this.sortAsc ? 1 : -1);
           }
           case 'boolean': {
-            return (aValue === bValue ? 0 : aValue ? 1 : -1) * (this.sortAsc ? 1 : -1);
+            if (aValue === bValue) return 0;
+            return (aValue ? 1 : -1) * (this.sortAsc ? 1 : -1);
           }
           default: {
             return 0;
@@ -1086,6 +1077,49 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     };
   }
 
+  private mapCastleCategories(
+    castleData: ApiPlayerCastleDataResponse,
+    buildingItems: { [key: string]: string | number }[],
+    result: ApiPlayerCastleDataMapped,
+  ): void {
+    for (const [category, data] of Object.entries(castleData.data)) {
+      for (const [index, datum] of data.entries()) {
+        const item = { ...datum, internalID: '#' + datum.objectID };
+        const definition = buildingItems.find((object) => object['wodID'] === item.wodID);
+        if (!definition) {
+          console.warn(`Item with wodID ${item.wodID} not found in items.`);
+          continue;
+        }
+        result.data[category as keyof typeof castleData.data][index] = {
+          building: item,
+          data: this.mapDataObject(definition),
+          constructionItems: {},
+        };
+      }
+    }
+  }
+
+  private attachConstructionItems(
+    castleData: ApiPlayerCastleDataResponse,
+    constructionItems: { [key: string]: string | number }[],
+    result: ApiPlayerCastleDataMapped,
+  ): { [key: string]: ConstructionItem[] } {
+    const mappedConstructionItems: { [key: string]: ConstructionItem[] } = {};
+    for (const [oid, elements] of Object.entries(castleData.constructionItems)) {
+      for (const [cid] of elements) {
+        const item = constructionItems.find((object) => object['constructionItemID'] === String(cid));
+        if (!item) continue;
+        const targetObject = result.data.buildings.find((g) => g?.building.objectID === Number(oid));
+        if (!targetObject) continue;
+        const object: IMappedBuildingUnknownDataElement = this.mapConstructionItemObject(item);
+        targetObject['constructionItems'][item['slotTypeID'] as string] = object;
+        mappedConstructionItems[oid] = mappedConstructionItems[oid] ?? [];
+        mappedConstructionItems[oid].push(object);
+      }
+    }
+    return mappedConstructionItems;
+  }
+
   private async mapCastleJson(castleData: ApiPlayerCastleDataResponse): Promise<void> {
     const castleJsonData = await this.fetchCastleJsonItems();
     this.effects = castleJsonData['effects'];
@@ -1104,51 +1138,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       },
       constructionItems: [],
     };
-    for (const castleDataCategory of Object.entries(castleData.data)) {
-      const [category, data] = castleDataCategory;
-      for (const [index, datum] of data.entries()) {
-        const item = {
-          ...datum,
-          internalID: '#' + datum.objectID,
-        };
-        const b = buildingItems.find((object: { [key: string]: string | number }) => object['wodID'] === item.wodID);
-        if (!b) {
-          console.warn(`Item with wodID ${item.wodID} not found in items.`);
-          continue;
-        }
-        result.data[category as keyof typeof castleData.data][index] = {
-          building: item,
-          data: this.mapDataObject(b),
-          constructionItems: {},
-        };
-      }
-    }
-
-    let mappedConstructionItems: { [key: string]: ConstructionItem[] } = {};
-    for (const [oid, elements] of Object.entries(castleData.constructionItems)) {
-      for (const [cid] of elements) {
-        const item: IMappedBuildingUnknownDataElement | undefined = constructionItems.find(
-          (object: { [key: string]: string | number }) => object['constructionItemID'] === String(cid),
-        );
-        if (!item) continue;
-        let targetObject;
-        try {
-          targetObject = result.data.buildings.find((g) => g.building.objectID === Number(oid));
-        } catch (error) {
-          console.error('Error finding target object:', error);
-        }
-        if (!targetObject) continue;
-        const object: IMappedBuildingUnknownDataElement = this.mapConstructionItemObject(item);
-        const type = item['slotTypeID'] as string;
-        targetObject['constructionItems'][type] = targetObject['constructionItems'][type] || [];
-        targetObject['constructionItems'][type] = object;
-        if (!mappedConstructionItems[oid]) {
-          mappedConstructionItems[oid] = [];
-        }
-        mappedConstructionItems[oid].push(object);
-      }
-    }
-    this.constructionItems = mappedConstructionItems;
+    this.mapCastleCategories(castleData, buildingItems, result);
+    this.constructionItems = this.attachConstructionItems(castleData, constructionItems, result);
     this.castleObject = result;
     this.regroupedEffects = [];
     const mappedGrounds = result.data.grounds.map((g) => this.toMapped(g, true));
@@ -1212,6 +1203,103 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
+  private get navigableBuildings(): IMappedBuildingWithGround[] {
+    return this.buildings
+      .filter((b) => b && !b.isGround)
+      .sort((a, b) => a.building.positionY - b.building.positionY || a.building.positionX - b.building.positionX);
+  }
+
+  private showTooltipForFocusedBuilding(focused: IMappedBuildingWithGround | undefined): void {
+    if (!focused) {
+      this.tooltip = null;
+      return;
+    }
+    const canvas = this.canvasRef.nativeElement;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = rect.width / canvas.width;
+    const scaleY = rect.height / canvas.height;
+    const canvasX = this.offsetX + (focused.building.positionX - this.minX) * this.cellSize;
+    const canvasY = this.offsetY + (focused.building.positionY - this.minY) * this.cellSize;
+    this.showTooltipFor(
+      focused,
+      rect.left + window.scrollX + canvasX * scaleX,
+      rect.top + window.scrollY + canvasY * scaleY,
+    );
+  }
+
+  private selectBuilding(building: IMappedBuildingWithGround): void {
+    this.searchTerm = '#' + building.building.objectID;
+    this.applyFilterAndSort();
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    this.currentPage = 1;
+    this.cdr.detectChanges();
+  }
+
+  private showTooltipFor(hoveredBuilding: IMappedBuildingWithGround, pageX: number, pageY: number): void {
+    const districtItems = this.getItemsInDistrict(hoveredBuilding);
+    const name = this.capitalizeFirstLetter(this.getBuildingName(hoveredBuilding));
+    const objectID = hoveredBuilding.building?.objectID;
+    const dimensions = `${hoveredBuilding.data?.['width']}x${hoveredBuilding.data?.['height']}`;
+    const burnableFlag = hoveredBuilding?.data?.['burnable'];
+    const burnable =
+      burnableFlag === undefined || Number.parseInt(String(burnableFlag))
+        ? this.translations['Oui']
+        : this.translations['Non'];
+    let info = [
+      `<b>${name === '-' ? 'OID:' + objectID : name}</b> (${this.translations['Niveau']} ${hoveredBuilding.data?.['level']})`,
+      '',
+      `<b>${this.translations['Ordre public']}:</b> ${this.formatValue(Number(hoveredBuilding?.data['publicOrder'])) ?? this.translations['Inconnu']}`,
+      `<b>${this.translations['Brûlable']}:</b> ${burnable}`,
+      `<b>${this.translations['Puissance']}:</b> ${this.formatValue(Number.parseInt(String(hoveredBuilding?.data?.['mightValue']))) ?? this.translations['Inconnu']}`,
+      `<b>${this.translations['Commentaires']}:</b> ${
+        hoveredBuilding?.data?.['comment1'] ?? ''
+      }${hoveredBuilding?.data?.['comment2'] ? ', ' + (hoveredBuilding?.data?.['comment2'] ?? this.translations['Aucun']) : ''}`,
+      `<b>${this.translations['Dimensions']}:</b> ${dimensions}`,
+      `<b>${this.translations['Prix de vente']}:</b> ${this.formatValue(Number.parseInt(String(hoveredBuilding?.data?.['sellC1']))) ?? this.translations['Inconnu']}`,
+    ];
+
+    if (districtItems.length > 0) {
+      info.push(`<br><b>${this.translations['Espace dans le quartier']}: (${districtItems.length})</b>`);
+      for (const item of districtItems) {
+        info.push(
+          `- ${this.capitalizeFirstLetter(this.getBuildingName(item))} (${this.translations['Niveau']} ${item.data?.['level']})`,
+        );
+      }
+    }
+    const constructionItems = Object.values(hoveredBuilding.constructionItems);
+    info.push(`<br><b>${this.translations['Objets de construction']}: (${constructionItems.length})</b>`);
+    const sortedConstructionItemsBySlotTypeID = [...constructionItems].sort((a, b) => {
+      const slotA = Number(a['slotTypeID']);
+      const slotB = Number(b['slotTypeID']);
+      if (slotA === slotB) return 0;
+      if (slotA === 1) return -1;
+      if (slotB === 1) return 1;
+      return slotA - slotB;
+    });
+    for (const item of sortedConstructionItemsBySlotTypeID) {
+      const slotTypeName = this.getSlotTypeName(Number(item['slotTypeID']));
+      info.push(
+        `- ${slotTypeName} : ${this.capitalizeFirstLetter(String(item['translatedName']))} (${this.translations['Niveau']} ${item['level']})`,
+      );
+    }
+
+    info = info.filter((item) => item !== null);
+
+    this.tooltip = {
+      x: pageX + 10,
+      y: pageY + 10,
+      text: info.join('<br>'),
+    };
+    const tooltipElement = globalThis.document.querySelector('#tooltip') as HTMLElement | null;
+    const tooltipHeight = tooltipElement?.offsetHeight || 0;
+    const tooltipWidth = (tooltipElement?.offsetWidth || 0) + 16;
+    if (tooltipHeight + 30 + pageY > window.innerHeight && this.tooltip)
+      this.tooltip.y = window.innerHeight - tooltipHeight - 10;
+    if (this.tooltip && this.tooltip.x + tooltipWidth > window.innerWidth) {
+      this.tooltip.x = window.innerWidth - tooltipWidth - 10;
+    }
+  }
+
   private getBuildingAtMouseEvent(event: MouseEvent): IMappedBuildingWithGround | null {
     const canvas = this.canvasRef.nativeElement;
     const rect = canvas.getBoundingClientRect();
@@ -1221,6 +1309,10 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     const canvasY = (event.clientY - rect.top) * scaleY;
     const cellX = Math.floor((canvasX - this.offsetX) / this.cellSize) + this.minX;
     const cellY = Math.floor((canvasY - this.offsetY) / this.cellSize) + this.minY;
+    return this.getBuildingAtCell(cellX, cellY);
+  }
+
+  private getBuildingAtCell(cellX: number, cellY: number): IMappedBuildingWithGround | null {
     return (
       this.buildings.find((b) => {
         if (!b || b.isGround) return false;
@@ -1245,9 +1337,9 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       publicOrder: this.getPublicOrderOfBuilding(data),
       translatedName: this.capitalizeFirstLetter(this.getBuildingNameFromData(data)),
       effects: JSON.stringify(effects),
-      totalwidth: (Number(data['width']) ?? 0) * (Number(data['height']) ?? 0),
+      totalwidth: (Number(data['width']) || 0) * (Number(data['height']) || 0),
       buildingGroundType: String(this.languageJsonData[String(data['buildingGroundType'])] ?? '-'),
-      originalBuildingGroundType: String(data['buildingGroundType']) ?? '-',
+      originalBuildingGroundType: String(data['buildingGroundType'] ?? '-'),
     };
   }
 
@@ -1276,147 +1368,150 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
 
   private mapConstructionItemObject(data: IMappedBuildingUnknownDataElement): IMappedBuildingUnknownDataElement {
     try {
-      const RARENESS_COLORS = ViewCastleComponent.RARENESS_COLORS;
-      const RARENESS_NAMES = ViewCastleComponent.RARENESS_NAMES;
       if (!this.languageJsonData) {
         throw new Error('Language JSON data is not loaded');
       }
-      const splittedEffects = data['effects'] ? String(data['effects']).split(',') : [];
-      let effects: { effectId: string; effectTypeID: string; raw: string; value: number; name: string }[] = [];
-
-      // Handle deco points effect if present, as it's a common public order source for construction items
-      if (data['decoPoints']) {
-        const name = this.languageJsonData['ci_effect_decoPoints'.toUpperCase()];
-        effects.push({
-          effectId: 'decoPoints',
-          effectTypeID: 'decoPoints',
-          raw: name as string,
-          value: Number(data['decoPoints']),
-          name: (name as string).replace('{0}', String(data['decoPoints'])),
-        });
-        this.calculatedCastleProperties.publicOrder.effects += Number(data['decoPoints']);
-      }
-
-      // Handle legacy effects that are directly present as fields in the data object
-      // This is an in-game mechanic where some effects are not included in the 'effects'
-      // field but are instead represented as separate fields in the building data
-      const legacyEffectFields: [string, boolean][] = this.getLegacyEffects();
-      for (const [key] of legacyEffectFields) {
-        if (data[key] !== undefined) {
-          const count = data[key];
-          const name = this.languageJsonData[('ci_effect_' + key).toUpperCase()];
-          effects.push({
-            raw: name as string,
-            effectId: key,
-            effectTypeID: key,
-            value: Number(count),
-            name: (name as string).replace('{0}', String(count)),
-          });
-        }
-      }
-
-      // Handle regular effects defined in the 'effects' field
-      for (const splittedEffect of splittedEffects) {
-        const [effectId, effectValue] = splittedEffect ? splittedEffect.split('&') : [null, null];
-        let effectCode = this.effects.find((effect) => effect['effectID'] === effectId);
-        if (splittedEffect && effectValue !== null) {
-          const key = effectCode && effectCode['name'];
-          const name = this.languageJsonData[('equip_effect_description_' + key).toUpperCase()];
-          if (name) {
-            effects.push({
-              effectId: effectCode?.['effectID'] || 'unknown',
-              effectTypeID: effectCode?.['effectTypeID'] || 'unknown',
-              raw: name as string,
-              value: Number(effectValue),
-              name: (name as string).replace('{0}', String(effectValue)),
-            });
-          } else {
-            const name = this.languageJsonData[('ci_effect_' + key).toUpperCase()];
-            if (name) {
-              effects.push({
-                effectId: effectCode?.['effectID'] || 'unknown',
-                effectTypeID: effectCode?.['effectTypeID'] || 'unknown',
-                raw: name as string,
-                value: Number(effectValue),
-                name: (name as string).replace('{0}', String(effectValue)),
-              });
-            } else {
-              const target = effectValue.split('+');
-              effects.push({
-                effectId: effectCode?.['effectID'] || 'unknown',
-                effectTypeID: effectCode?.['effectTypeID'] || 'unknown',
-                raw: this.languageJsonData[('ci_effect_' + key + '_' + target[0]).toUpperCase()] as string,
-                value: Number(target[1]),
-                name: (this.languageJsonData[('ci_effect_' + key + '_' + target[0]).toUpperCase()] as string).replace(
-                  '{0}',
-                  String(target[1]),
-                ),
-              });
-            }
-          }
-        }
-      }
-      for (const effect of effects) {
-        const name = this.capitalizeFirstLetter(
-          String(effect['raw'])
-            .trim()
-            .replaceAll(/\+?-?{0\}%?\s*/g, '')
-            .toLowerCase(),
-        );
-        const regroupedEffect = this.regroupedEffects.find(
-          (regroupedEffect) => regroupedEffect['effectId'] == effect['effectId'] || effect['name'] === name,
-        );
-        const unitWallAbsoluteAmount = new Set(['194']); // ID: unitWallAbsoluteAmount
-        if (unitWallAbsoluteAmount.has(effect['effectTypeID'] || '')) {
-          if (String(effect['raw']).includes('%')) {
-            this.calculatedCastleProperties.wall.effects +=
-              (this.calculatedCastleProperties.wall.base * Number(effect['value'])) / 100;
-          } else {
-            this.calculatedCastleProperties.wall.base += Number(effect['value']) || 0;
-          }
-        }
-        if (!regroupedEffect) {
-          this.regroupedEffects.push({
-            name: name,
-            effectId: effect['effectId'] || 'unknown',
-            type: String(effect['raw']).includes('%') ? 'percentage' : 'flat',
-            value: Number(effect['value']) || 0,
-          });
-        } else if (regroupedEffect) {
-          regroupedEffect.value += Number(effect['value']) || 0;
-        } else {
-          console.error('Effect code not found for effectId:', effect, data['effects'], data);
-        }
-      }
-      const mappedEffectNames = effects.map((effect) => effect.name).join(', ');
-
-      return {
-        ...data,
-        isPremium: data['isPremium'] === '1' ? true : false,
-        slotTypeName: this.getSlotTypeName(data['slotTypeID']),
-        slotTypeID: Number(data['slotTypeID']) || 0,
-        level: String(data['slotTypeID']) === '0' ? '1' : Number(data['level']),
-        rarenessName: String(
-          this.languageJsonData[
-            (
-              'equipment_rarity_' + RARENESS_NAMES[Number(data['rarenessID']) as keyof typeof RARENESS_NAMES] ||
-              'unknown'
-            ).toUpperCase()
-          ],
-        ),
-        rarenessColor: this.toHex(RARENESS_COLORS[Number(data['rarenessID']) as keyof typeof RARENESS_COLORS] || 0),
-        translatedName: String(
-          this.languageJsonData[
-            (this.getBaseNameTextId(String(data['slotTypeID'])) + '_' + data['name'] || 'unknown').toUpperCase()
-          ],
-        ),
-        boxUrl: this.getBoxUrl(data),
-        effect: mappedEffectNames || null,
-      };
+      const effects = [
+        ...this.decoPointsEffects(data),
+        ...this.legacyFieldEffects(data),
+        ...this.declaredEffects(data),
+      ];
+      this.regroupConstructionEffects(effects);
+      return this.describeConstructionItem(data, effects);
     } catch (error) {
       console.error('Error in transformData:', error);
       return { ...data, effect: null };
     }
+  }
+
+  private decoPointsEffects(data: IMappedBuildingUnknownDataElement): ConstructionEffect[] {
+    if (!data['decoPoints']) return [];
+    const raw = this.languageJsonData!['ci_effect_decoPoints'.toUpperCase()] as string;
+    this.calculatedCastleProperties.publicOrder.effects += Number(data['decoPoints']);
+    return [
+      {
+        effectId: 'decoPoints',
+        effectTypeID: 'decoPoints',
+        raw,
+        value: Number(data['decoPoints']),
+        name: raw.replace('{0}', String(data['decoPoints'])),
+      },
+    ];
+  }
+
+  private legacyFieldEffects(data: IMappedBuildingUnknownDataElement): ConstructionEffect[] {
+    const effects: ConstructionEffect[] = [];
+    for (const [key] of this.getLegacyEffects()) {
+      if (data[key] === undefined) continue;
+      const count = data[key];
+      const raw = this.languageJsonData![('ci_effect_' + key).toUpperCase()] as string;
+      effects.push({
+        effectId: key,
+        effectTypeID: key,
+        raw,
+        value: Number(count),
+        name: raw.replace('{0}', String(count)),
+      });
+    }
+    return effects;
+  }
+
+  private declaredEffects(data: IMappedBuildingUnknownDataElement): ConstructionEffect[] {
+    const splittedEffects = data['effects'] ? String(data['effects']).split(',') : [];
+    const effects: ConstructionEffect[] = [];
+    for (const splittedEffect of splittedEffects) {
+      if (!splittedEffect) continue;
+      const [effectId, effectValue] = splittedEffect.split('&');
+      const effectCode = this.effects.find((effect) => effect['effectID'] === effectId);
+      effects.push({
+        effectId: effectCode?.['effectID'] || 'unknown',
+        effectTypeID: effectCode?.['effectTypeID'] || 'unknown',
+        ...this.describeDeclaredEffect(effectCode?.['name'], effectValue),
+      });
+    }
+    return effects;
+  }
+
+  private describeDeclaredEffect(
+    key: string | undefined,
+    effectValue: string,
+  ): { raw: string; value: number; name: string } {
+    const description = this.languageJsonData![('equip_effect_description_' + key).toUpperCase()] as string;
+    if (description) {
+      return { raw: description, value: Number(effectValue), name: description.replace('{0}', String(effectValue)) };
+    }
+    const ciEffect = this.languageJsonData![('ci_effect_' + key).toUpperCase()] as string;
+    if (ciEffect) {
+      return { raw: ciEffect, value: Number(effectValue), name: ciEffect.replace('{0}', String(effectValue)) };
+    }
+    const target = effectValue.split('+');
+    const composite = this.languageJsonData![('ci_effect_' + key + '_' + target[0]).toUpperCase()] as string;
+    return { raw: composite, value: Number(target[1]), name: composite.replace('{0}', String(target[1])) };
+  }
+
+  private regroupConstructionEffects(effects: ConstructionEffect[]): void {
+    for (const effect of effects) {
+      const name = this.capitalizeFirstLetter(
+        String(effect.raw)
+          .trim()
+          .replaceAll(/\+?-?{0\}%?\s*/g, '')
+          .toLowerCase(),
+      );
+      if (effect.effectTypeID === ViewCastleComponent.UNIT_WALL_ABSOLUTE_AMOUNT_EFFECT_TYPE_ID) {
+        this.addWallEffect(effect);
+      }
+      const existing = this.regroupedEffects.find(
+        (regrouped) => regrouped.effectId == effect.effectId || effect.name === name,
+      );
+      if (existing) {
+        existing.value += Number(effect.value) || 0;
+      } else {
+        this.regroupedEffects.push({
+          name,
+          effectId: effect.effectId || 'unknown',
+          type: String(effect.raw).includes('%') ? 'percentage' : 'flat',
+          value: Number(effect.value) || 0,
+        });
+      }
+    }
+  }
+
+  private addWallEffect(effect: ConstructionEffect): void {
+    if (String(effect.raw).includes('%')) {
+      this.calculatedCastleProperties.wall.effects +=
+        (this.calculatedCastleProperties.wall.base * Number(effect.value)) / 100;
+    } else {
+      this.calculatedCastleProperties.wall.base += Number(effect.value) || 0;
+    }
+  }
+
+  private describeConstructionItem(
+    data: IMappedBuildingUnknownDataElement,
+    effects: ConstructionEffect[],
+  ): IMappedBuildingUnknownDataElement {
+    const rarenessId = Number(data['rarenessID']);
+    const mappedEffectNames = effects.map((effect) => effect.name).join(', ');
+
+    return {
+      ...data,
+      isPremium: data['isPremium'] === '1',
+      slotTypeName: this.getSlotTypeName(data['slotTypeID']),
+      slotTypeID: Number(data['slotTypeID']) || 0,
+      level: String(data['slotTypeID']) === '0' ? '1' : Number(data['level']),
+      rarenessName: String(
+        this.languageJsonData![
+          ('equipment_rarity_' + ViewCastleComponent.RARENESS_NAMES[rarenessId] || 'unknown').toUpperCase()
+        ],
+      ),
+      rarenessColor: this.toHex(ViewCastleComponent.RARENESS_COLORS[rarenessId] || 0),
+      translatedName: String(
+        this.languageJsonData![
+          (this.getBaseNameTextId(String(data['slotTypeID'])) + '_' + data['name'] || 'unknown').toUpperCase()
+        ],
+      ),
+      boxUrl: this.getBoxUrl(data),
+      effect: mappedEffectNames || null,
+    };
   }
 
   private getLegacyEffects(): [string, boolean][] {
@@ -1506,107 +1601,102 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   }
 
   private getAreaSpecificEffects(data: IMappedBuildingUnknownDataElement): string[] {
-    if (!this.languageJsonData) {
+    const areaSpecificEffects = data['areaSpecificEffects'];
+    if (!this.languageJsonData || typeof areaSpecificEffects !== 'string' || !areaSpecificEffects) {
       return [];
     }
-    const areaSpecificEffects = data['areaSpecificEffects'];
-    if (!areaSpecificEffects || typeof areaSpecificEffects !== 'string') {
-      return [];
-    } else {
-      const splitEffects = areaSpecificEffects.split(',');
-      const effects = [];
-      let index = -1;
-      for (const effect of splitEffects) {
-        index++;
-        const [id, value] = effect.split('&');
-        const findEffect = this.effects.find((effect) => effect['effectID'] === id);
-        if (!findEffect) {
-          console.warn(`Effect with ID ${id} not found in effects.`);
-          continue;
-        }
-        let name: string = '';
-        const tries = ['effect_name_' + findEffect['name'], 'equip_effect_description_' + findEffect['name']];
-        effects[index] = null;
-        let currentName: string | null = effects[index];
-        for (const tryKey of tries) {
-          if (currentName) break;
-          name = this.languageJsonData[tryKey.toUpperCase()] as string;
-          if (name) {
-            const searchType = this.effectTypes.find(
-              (effectType) => effectType['effectTypeID'] === findEffect['effectTypeID'],
-            );
-            const ciEffectName = this.languageJsonData[('ci_effect_' + searchType!['name']).toUpperCase()];
-            if (ciEffectName) {
-              currentName = String(ciEffectName).replace('{0}', value);
-            } else {
-              const target = value.split('+');
-              if (target.length === 2) {
-                currentName = this.languageJsonData[
-                  ('ci_effect_' + searchType!['name'] + '_' + target[0]).toUpperCase()
-                ] as string;
-              } else if (name.includes('{0}')) {
-                currentName = String(name).replace('{0}', value);
-              } else {
-                if (String(findEffect['name']).includes('Unboosted') || String(findEffect['name']).includes('Amount')) {
-                  const isPositive = Number(value) > 0;
-                  const sign = isPositive ? '+' : '-';
-                  currentName = String(name) + ' : ' + sign + value;
-                } else {
-                  const isPositive = Number(value) > 0;
-                  currentName = String(name) + ' : ' + (isPositive ? '+' : '-') + value + '%';
-                }
-              }
-            }
-          }
-        }
-        if (!currentName) {
-          const searchType = this.effectTypes.find(
-            (effectType) => effectType['effectTypeID'] === findEffect['effectTypeID'],
-          );
-          const target = value.split('+');
-          if (target.length === 2) {
-            name = this.languageJsonData[
-              ('ci_effect_' + searchType!['name'] + '_' + target[0]).toUpperCase()
-            ] as string;
-            currentName = name ? String(name).replace('{0}', target[1]) : null;
-          }
-        }
-        effects[index] = currentName;
-        if (currentName) {
-          const effect = currentName.includes('%') ? 'percentage' : 'flat';
-          const parsedName = name
-            .toLowerCase()
-            .replaceAll(/\+?-?{0\}%?\s*/g, '')
-            .trim();
-          const item = {
-            name: this.capitalizeFirstLetter(parsedName),
-            effectId: findEffect['effectID'],
-            value: Number(value),
-            type: effect,
-          };
-          const bonusWallDefenseTroopCapacityEffectId = new Set(['12']); // ID: defenseUnitAmountWallCapped
-          const sightRadiusBonusEffectId = new Set(['59']); // ID: SightRadiusBonus
-          if (bonusWallDefenseTroopCapacityEffectId.has(findEffect['effectTypeID'])) {
-            this.calculatedCastleProperties.wall.effects += Number(value);
-          } else if (sightRadiusBonusEffectId.has(findEffect['effectTypeID'])) {
-            this.calculatedCastleProperties.sightRadius += Number(value);
-          }
-          const existing = this.regroupedEffects.find(
-            (effect) => effect.name === item.name && effect.effectId === item.effectId,
-          );
-          if (existing) {
-            existing.value += item.value;
-          } else {
-            this.regroupedEffects.push(item);
-          }
-        } else {
-          const searchType = this.effectTypes.find(
-            (effectType) => effectType['effectTypeID'] === findEffect['effectTypeID'],
-          );
-          console.warn(`Effect name for ${findEffect['name']} not found in language data.`, searchType, data, value);
-        }
+
+    const labels: string[] = [];
+    for (const rawEffect of areaSpecificEffects.split(',')) {
+      const [id, value] = rawEffect.split('&');
+      const effect = this.effects.find((candidate) => candidate['effectID'] === id);
+      if (!effect) {
+        console.warn(`Effect with ID ${id} not found in effects.`);
+        continue;
       }
-      return effects.filter((effect: string | null) => effect !== null && effect !== undefined) as string[];
+
+      const label = this.resolveEffectLabel(effect, value);
+      if (!label) {
+        console.warn(
+          `Effect name for ${effect['name']} not found in language data.`,
+          this.findEffectType(effect),
+          data,
+          value,
+        );
+        continue;
+      }
+
+      labels.push(label.text);
+      this.accumulateEffect(effect, value, label);
+    }
+    return labels;
+  }
+
+  private findEffectType(effect: Record<string, any>): Record<string, any> | undefined {
+    return this.effectTypes.find((effectType) => effectType['effectTypeID'] === effect['effectTypeID']);
+  }
+
+  private resolveEffectLabel(effect: Record<string, any>, value: string): EffectLabel | null {
+    const tries = ['effect_name_' + effect['name'], 'equip_effect_description_' + effect['name']];
+    for (const tryKey of tries) {
+      const template = this.languageJsonData![tryKey.toUpperCase()] as string;
+      if (!template) continue;
+      const text = this.formatEffectLabel(effect, template, value);
+      if (text) return { text, template };
+    }
+    return this.resolveCompositeEffectLabel(effect, value);
+  }
+
+  private formatEffectLabel(effect: Record<string, any>, template: string, value: string): string | null {
+    const typeName = this.findEffectType(effect)!['name'];
+    const ciEffectName = this.languageJsonData![('ci_effect_' + typeName).toUpperCase()];
+    if (ciEffectName) return String(ciEffectName).replace('{0}', value);
+
+    const target = value.split('+');
+    if (target.length === 2) {
+      return (this.languageJsonData![('ci_effect_' + typeName + '_' + target[0]).toUpperCase()] as string) ?? null;
+    }
+    if (template.includes('{0}')) return String(template).replace('{0}', value);
+
+    const sign = Number(value) > 0 ? '+' : '-';
+    const isFlatAmount = String(effect['name']).includes('Unboosted') || String(effect['name']).includes('Amount');
+    return String(template) + ' : ' + sign + value + (isFlatAmount ? '' : '%');
+  }
+
+  private resolveCompositeEffectLabel(effect: Record<string, any>, value: string): EffectLabel | null {
+    const target = value.split('+');
+    if (target.length !== 2) return null;
+    const typeName = this.findEffectType(effect)!['name'];
+    const template = this.languageJsonData![('ci_effect_' + typeName + '_' + target[0]).toUpperCase()] as string;
+    if (!template) return null;
+    return { text: String(template).replace('{0}', target[1]), template };
+  }
+
+  private accumulateEffect(effect: Record<string, any>, value: string, label: EffectLabel): void {
+    const parsedName = label.template
+      .toLowerCase()
+      .replaceAll(/\+?-?{0\}%?\s*/g, '')
+      .trim();
+    const item = {
+      name: this.capitalizeFirstLetter(parsedName),
+      effectId: effect['effectID'],
+      value: Number(value),
+      type: label.text.includes('%') ? 'percentage' : 'flat',
+    };
+
+    if (effect['effectTypeID'] === ViewCastleComponent.WALL_DEFENSE_CAPACITY_EFFECT_TYPE_ID) {
+      this.calculatedCastleProperties.wall.effects += Number(value);
+    } else if (effect['effectTypeID'] === ViewCastleComponent.SIGHT_RADIUS_BONUS_EFFECT_TYPE_ID) {
+      this.calculatedCastleProperties.sightRadius += Number(value);
+    }
+
+    const existing = this.regroupedEffects.find(
+      (candidate) => candidate.name === item.name && candidate.effectId === item.effectId,
+    );
+    if (existing) {
+      existing.value += item.value;
+    } else {
+      this.regroupedEffects.push(item);
     }
   }
 }

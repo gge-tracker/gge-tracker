@@ -7,7 +7,7 @@
 //
 //  Copyrights (c) 2026 - gge-tracker.com & gge-tracker contributors
 //
-import * as path from 'path';
+import * as path from 'node:path';
 import { pino, destination, stdTimeFunctions, Logger } from 'pino';
 
 const isDevelopment: boolean = process.env.ENVIRONMENT === 'development';
@@ -50,6 +50,11 @@ class Utils {
     const percentStr: string = percent.toFixed(2);
     const time: string = new Date().toLocaleTimeString();
     process.stdout.write(`[${time}]` + ` Work in progress ${percentStr}% (${actualProcess}/${maxProcess}).\r`);
+  }
+
+  public static medalForRank(index: number): string {
+    const medals = [':first_place: ', ':second_place: ', ':third_place: '];
+    return medals[index] ?? '';
   }
 
   /**

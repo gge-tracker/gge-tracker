@@ -1,0 +1,32 @@
+{
+  "meta": {
+    "name": "hgh-warrealms-lt44-lid1",
+    "describes": "War realms while the event is not running (LR=0, empty page)",
+    "capturedAt": "2026-08-29T20:36:25.796Z",
+    "capturedFrom": "EmpireEx_3",
+    "rowCount": 0,
+    "complete": true,
+    "anonymised": true
+  },
+  "lt": 44,
+  "lid": 1,
+  "pageSize": 0,
+  "totalRanked": 0,
+  "fr": 1,
+  "igh": 0,
+  "rows": [],
+  "rawResponse": {
+    "server": "EmpireEx_3",
+    "command": "hgh",
+    "return_code": 0,
+    "content": {
+      "LT": 44,
+      "LID": 1,
+      "L": [],
+      "LR": 0,
+      "SV": "1",
+      "FR": 1,
+      "IGH": 0
+    }
+  }
+}

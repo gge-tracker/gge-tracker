@@ -94,6 +94,8 @@
   background-size: 120px, auto;
   border-radius: 16px;
   border: 1px solid rgba(0, 0, 0, 0.08);
+  display: block;
+  width: 100%;
   box-shadow:
     0 10px 26px rgba(0, 0, 0, 0.1),
     inset 0 0 0 1px rgba(204, 163, 0, 0.22),
@@ -293,4 +295,8 @@
   opacity: 0.6;
   font-size: 0.72rem;
   letter-spacing: 0.3px;
+}
+
+::ng-deep .about-heart {
+  color: #ff00009e;
 }

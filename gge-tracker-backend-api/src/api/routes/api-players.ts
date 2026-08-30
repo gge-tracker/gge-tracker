@@ -19,35 +19,6 @@ import { QueryFilterBuilder } from '../helper/filters/impl/query-filter-builder'
  * @abstract
  */
 export abstract class ApiPlayers implements ApiHelper {
-  /**
-   * Handles the retrieval of players with advanced filtering, sorting, and pagination
-   *
-   * This endpoint supports multiple query parameters for filtering players by alliance, honor, might, loot, level,
-   * legendary level, alliance membership, protection status, ban status, inactivity, and distance from a specific player
-   * It also supports sorting by various fields and paginates the results
-   *
-   * Query Parameters:
-   * - `page`: The page number for pagination (default: 1)
-   * - `orderBy`: The field to order by (default: "player_name"). Allowed values: "player_name", "loot_current", "loot_all_time", "might_current", "might_all_time", "honor", "level", "highest_fame", "current_fame", "remaining_relocation_time", "distance", "remaining_peace_time"
-   * - `orderType`: The order direction, either "ASC" or "DESC" (default: "ASC")
-   * - `alliance`: Filter by alliance name
-   * - `minHonor`, `maxHonor`: Minimum and maximum honor values
-   * - `minMight`, `maxMight`: Minimum and maximum might values
-   * - `minLoot`, `maxLoot`: Minimum and maximum loot values
-   * - `minLevel`, `maxLevel`: Minimum and maximum player level, in the format "level/legendaryLevel"
-   * - `allianceFilter`: Filter by alliance membership (0: no alliance, 1: has alliance)
-   * - `protectionFilter`: Filter by protection status (0: not protected, 1: protected)
-   * - `banFilter`: Filter by ban status (0: not banned, 1: banned)
-   * - `inactiveFilter`: Filter by activity (0: inactive, 1: active)
-   * - `playerNameForDistance`: Player name to calculate distance from (required if ordering by distance)
-   * - `allianceRankFilter`: Comma-separated list of alliance ranks to exclude
-   *
-   * Caches results based on query parameters for performance
-   *
-   * @param request - Express request object, expects query parameters for filtering, sorting, and pagination
-   * @param response - Express response object, sends paginated and filtered player data or error messages
-   * @returns A Promise that resolves when the response is sent
-   */
   public static async getPlayers(request: express.Request, response: express.Response): Promise<void> {
     try {
       /* ---------------------------------
@@ -110,40 +81,7 @@ export abstract class ApiPlayers implements ApiHelper {
        * Cache validation
        * --------------------------------- */
       const cacheVersion = await ApiHelper.getCacheVersion(ApiHelper.redisClient, request['language']);
-      const cacheKey = new CacheKeyBuilder(request['language'])
-        .with(cacheVersion)
-        .with('players')
-        .withParams({
-          page,
-          orderBy,
-          orderType,
-          alliance,
-          minHonor,
-          maxHonor,
-          minMight,
-          maxMight,
-          minAllianceMight,
-          maxAllianceMight,
-          minMightAllTime,
-          maxMightAllTime,
-          minLoot,
-          maxLoot,
-          minLevel: minLevel ? minLevel.join('/') : undefined,
-          maxLevel: maxLevel ? maxLevel.join('/') : undefined,
-          minFame,
-          maxFame,
-          castleCountMin,
-          castleCountMax,
-          stormyIslandsFilter,
-          allianceFilter,
-          protectionFilter,
-          banFilter,
-          inactiveFilter,
-          kingdomFilter: Array.isArray(kingdomFilter) ? kingdomFilter.join('-') : undefined,
-          playerNameForDistance,
-          allianceRankFilter: Array.isArray(allianceRankFilter) ? allianceRankFilter.join('-') : undefined,
-        })
-        .build();
+      const cacheKey = ApiPlayers.buildPlayersCacheKey(request['language'], cacheVersion, page, parsedQuery);
       const cachedData = await ApiHelper.redisClient.get(cacheKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
@@ -262,68 +200,35 @@ export abstract class ApiPlayers implements ApiHelper {
       /* ---------------------------------
        * Query count results
        * --------------------------------- */
-      await new Promise((resolve, reject) => {
-        (request['pg_pool'] as pg.Pool).query(countQuery, values, (error, results) => {
-          if (error) {
-            ApiHelper.logError(error, 'getPlayers_countQuery', request);
-            reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
-          } else {
-            playerCount = results.rows[0]['player_count'];
-            totalPages = Math.ceil(playerCount / ApiHelper.PAGINATION_LIMIT);
-            if (page > totalPages) {
-              page = totalPages;
-            }
-            resolve(null);
-          }
-        });
-      });
+      playerCount = await ApiPlayers.countPlayers(request, countQuery, values);
+      totalPages = Math.ceil(playerCount / ApiHelper.PAGINATION_LIMIT);
+      if (page > totalPages) page = totalPages;
 
       /* ---------------------------------
        * Finalize query
        * --------------------------------- */
       query += `${where} `;
-      if (orderBy === 'distance') {
-        if (playerNameForDistance && playerNameForDistance !== '') {
-          query += `ORDER BY calculated_distance ${orderType}`;
-        } else {
-          response
-            .status(ApiHelper.HTTP_BAD_REQUEST)
-            .send({ error: 'Player name for distance is required when ordering by distance' });
-          return;
-        }
-      } else {
-        query += `ORDER BY ${orderBy} ${orderType}`;
-        if (orderBy === 'level') query += `, legendary_level ${orderType}`;
+      const ordering = ApiPlayers.buildPlayerOrdering(orderBy, orderType, playerNameForDistance);
+      if (ordering === null) {
+        response
+          .status(ApiHelper.HTTP_BAD_REQUEST)
+          .send({ error: 'Player name for distance is required when ordering by distance' });
+        return;
       }
-      query += `, player_id ASC`; // Always have a deterministic order
+      query += ordering;
       query += ` LIMIT $${parameterIndex++} OFFSET $${parameterIndex++}`;
       // Performance issue
       const sqlDuration = Date.now();
       let playerX = null;
       let playerY = null;
       if (playerNameForDistance && playerNameForDistance !== '') {
-        parameterIndex = 1;
-        const playerQuery = `SELECT castles FROM players WHERE LOWER(name) = $${parameterIndex++} LIMIT 1`;
-        const playerResults: any[] = await new Promise((resolve, reject) => {
-          (request['pg_pool'] as pg.Pool).query(playerQuery, [playerNameForDistance], (error, results) => {
-            if (error) {
-              ApiHelper.logError(error, 'getPlayer_castles_query', request);
-              reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
-            } else {
-              resolve(results.rows);
-            }
-          });
-        });
-        if (playerResults.length === 0) {
+        const origin = await ApiPlayers.locateDistanceOrigin(request, playerNameForDistance);
+        if (origin === null) {
           response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerName });
           return;
         }
-        const playerKid = playerResults[0].castles ?? [];
-        const selectedKid = playerKid.filter((kid: any) => kid[2] === 1);
-        if (selectedKid && selectedKid.length > 0) {
-          playerX = selectedKid[0][0];
-          playerY = selectedKid[0][1];
-        }
+        playerX = origin.x;
+        playerY = origin.y;
         parameters.unshift(playerX, playerX, playerY);
       }
 
@@ -424,7 +329,6 @@ export abstract class ApiPlayers implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getPlayers', request);
-      return;
     }
   }
 
@@ -511,7 +415,6 @@ export abstract class ApiPlayers implements ApiHelper {
           response
             .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
             .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
-          return;
         } else {
           if (!results.rows || results.rows.length === 0) {
             // Trick: we return 200 for frontend compatibility, but with an error message
@@ -583,7 +486,6 @@ export abstract class ApiPlayers implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getPlayersByPlayerName', request);
-      return;
     }
   }
 
@@ -656,7 +558,6 @@ export abstract class ApiPlayers implements ApiHelper {
           response
             .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
             .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
-          return;
         } else {
           const topPlayers = results.rows.map((result: any) => {
             const utcDate = toDate(result['created_at']);
@@ -678,7 +579,6 @@ export abstract class ApiPlayers implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getTopPlayersByPlayerId', request);
-      return;
     }
   }
 
@@ -824,7 +724,126 @@ export abstract class ApiPlayers implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getPlayerBulkData', request);
-      return;
     }
+  }
+
+  /**
+   * Handles the retrieval of players with advanced filtering, sorting, and pagination
+   *
+   * This endpoint supports multiple query parameters for filtering players by alliance, honor, might, loot, level,
+   * legendary level, alliance membership, protection status, ban status, inactivity, and distance from a specific player
+   * It also supports sorting by various fields and paginates the results
+   *
+   * Query Parameters:
+   * - `page`: The page number for pagination (default: 1)
+   * - `orderBy`: The field to order by (default: "player_name"). Allowed values: "player_name", "loot_current", "loot_all_time", "might_current", "might_all_time", "honor", "level", "highest_fame", "current_fame", "remaining_relocation_time", "distance", "remaining_peace_time"
+   * - `orderType`: The order direction, either "ASC" or "DESC" (default: "ASC")
+   * - `alliance`: Filter by alliance name
+   * - `minHonor`, `maxHonor`: Minimum and maximum honor values
+   * - `minMight`, `maxMight`: Minimum and maximum might values
+   * - `minLoot`, `maxLoot`: Minimum and maximum loot values
+   * - `minLevel`, `maxLevel`: Minimum and maximum player level, in the format "level/legendaryLevel"
+   * - `allianceFilter`: Filter by alliance membership (0: no alliance, 1: has alliance)
+   * - `protectionFilter`: Filter by protection status (0: not protected, 1: protected)
+   * - `banFilter`: Filter by ban status (0: not banned, 1: banned)
+   * - `inactiveFilter`: Filter by activity (0: inactive, 1: active)
+   * - `playerNameForDistance`: Player name to calculate distance from (required if ordering by distance)
+   * - `allianceRankFilter`: Comma-separated list of alliance ranks to exclude
+   *
+   * Caches results based on query parameters for performance
+   *
+   * @param request - Express request object, expects query parameters for filtering, sorting, and pagination
+   * @param response - Express response object, sends paginated and filtered player data or error messages
+   * @returns A Promise that resolves when the response is sent
+   */
+  private static buildPlayersCacheKey(
+    language: string,
+    cacheVersion: string,
+    page: number,
+    query: ReturnType<typeof parseQuery>,
+  ): string {
+    return new CacheKeyBuilder(language)
+      .with(cacheVersion)
+      .with('players')
+      .withParams({
+        page,
+        orderBy: query.orderBy,
+        orderType: query.orderType,
+        alliance: query.alliance,
+        minHonor: query.minHonor,
+        maxHonor: query.maxHonor,
+        minMight: query.minMight,
+        maxMight: query.maxMight,
+        minAllianceMight: query.minAllianceMight,
+        maxAllianceMight: query.maxAllianceMight,
+        minMightAllTime: query.minMightAllTime,
+        maxMightAllTime: query.maxMightAllTime,
+        minLoot: query.minLoot,
+        maxLoot: query.maxLoot,
+        minLevel: query.minLevel ? query.minLevel.join('/') : undefined,
+        maxLevel: query.maxLevel ? query.maxLevel.join('/') : undefined,
+        minFame: query.minFame,
+        maxFame: query.maxFame,
+        castleCountMin: query.castleCountMin,
+        castleCountMax: query.castleCountMax,
+        stormyIslandsFilter: query.stormyIslandsFilter,
+        allianceFilter: query.allianceFilter,
+        protectionFilter: query.protectionFilter,
+        banFilter: query.banFilter,
+        inactiveFilter: query.inactiveFilter,
+        kingdomFilter: Array.isArray(query.kingdomFilter) ? query.kingdomFilter.join('-') : undefined,
+        playerNameForDistance: query.playerNameForDistance,
+        allianceRankFilter: Array.isArray(query.allianceRankFilter) ? query.allianceRankFilter.join('-') : undefined,
+      })
+      .build();
+  }
+
+  private static async countPlayers(request: express.Request, countQuery: string, values: any[]): Promise<number> {
+    return new Promise((resolve, reject) => {
+      (request['pg_pool'] as pg.Pool).query(countQuery, values, (error, results) => {
+        if (error) {
+          ApiHelper.logError(error, 'getPlayers_countQuery', request);
+          reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
+        } else {
+          resolve(results.rows[0]['player_count']);
+        }
+      });
+    });
+  }
+
+  private static buildPlayerOrdering(
+    orderBy: string,
+    orderType: string,
+    playerNameForDistance: string | undefined,
+  ): string | null {
+    // Always ends on player_id so the paging order is total
+    if (orderBy === 'distance') {
+      if (!playerNameForDistance) return null;
+      return `ORDER BY calculated_distance ${orderType}, player_id ASC`;
+    }
+    const legendaryTiebreak = orderBy === 'level' ? `, legendary_level ${orderType}` : '';
+    return `ORDER BY ${orderBy} ${orderType}${legendaryTiebreak}, player_id ASC`;
+  }
+
+  private static async locateDistanceOrigin(
+    request: express.Request,
+    playerName: string,
+  ): Promise<{ x: number | null; y: number | null } | null> {
+    const playerQuery = `SELECT castles FROM players WHERE LOWER(name) = $1 LIMIT 1`;
+    const playerResults: any[] = await new Promise((resolve, reject) => {
+      (request['pg_pool'] as pg.Pool).query(playerQuery, [playerName], (error, results) => {
+        if (error) {
+          ApiHelper.logError(error, 'getPlayer_castles_query', request);
+          reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
+        } else {
+          resolve(results.rows);
+        }
+      });
+    });
+    if (playerResults.length === 0) return null;
+    const castles = playerResults[0].castles ?? [];
+    const mainCastle = castles.filter((kid: any) => kid[2] === 1);
+    if (mainCastle.length === 0) return { x: null, y: null };
+    return { x: mainCastle[0][0], y: mainCastle[0][1] };
   }
 }

@@ -1,6 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { ServerService } from '@ggetracker-services/server.service';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -33,19 +32,17 @@ export class AboutComponent extends GenericComponent implements OnInit {
   public shortVersion = '';
   public dateVersion = '';
   public currentYear = new Date().getFullYear();
-  public safeTranslatedIntro1!: SafeHtml;
-  public sanitizer = inject(DomSanitizer);
+  public translatedIntro1 = '';
   public contribs: Contributor[] = [];
   public lanes: ContributorLane[] = [];
   public rollPaused = false;
-  private serverService = inject(ServerService);
+  private readonly serverService = inject(ServerService);
 
   constructor() {
     super();
     this.isInLoading = false;
     this.constructDateVersion(package_.version);
     this.constructVersion(package_.version);
-    void this.fetchContributors(environment.i18nBaseUrl + 'contributors.xml');
   }
 
   public async fetchContributors(url: string): Promise<void> {
@@ -61,12 +58,13 @@ export class AboutComponent extends GenericComponent implements OnInit {
   }
 
   public ngOnInit(): void {
+    void this.fetchContributors(environment.i18nBaseUrl + 'contributors.xml');
     this.translateService
       .get('about.intro-1', {
-        heart: `<span style="color: #ff00009e;"><i class="fa-solid fa-heart"></i></span>`,
+        heart: `<span class="about-heart"><i class="fa-solid fa-heart"></i></span>`,
       })
       .subscribe((result: string) => {
-        this.safeTranslatedIntro1 = this.sanitizer.bypassSecurityTrustHtml(result);
+        this.translatedIntro1 = result;
       });
   }
 

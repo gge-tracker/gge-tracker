@@ -1,0 +1,29 @@
+{
+  "meta": {
+    "name": "hgh-bloodcrow-lt58-lid1",
+    "describes": "Bloodcrows while the socket does not answer (return_code -1, no content)",
+    "capturedAt": "2026-08-29T20:36:27.069Z",
+    "capturedFrom": "EmpireEx_3",
+    "rowCount": 0,
+    "complete": true,
+    "anonymised": true
+  },
+  "lt": 58,
+  "lid": 1,
+  "pageSize": 0,
+  "totalRanked": 0,
+  "fr": null,
+  "igh": null,
+  "rows": [],
+  "rawResponse": {
+    "error": "Timeout",
+    "server": "EmpireEx_3",
+    "command": "hgh",
+    "response_headers": {
+      "LT": 58,
+      "LID": 1,
+      "SV": "1"
+    },
+    "return_code": -1
+  }
+}

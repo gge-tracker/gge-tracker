@@ -6,6 +6,7 @@ import {
   ElementRef,
   inject,
   OnDestroy,
+  OnInit,
   QueryList,
   ViewChild,
   ViewChildren,
@@ -103,7 +104,7 @@ type OfferSort = '' | 'price-asc' | 'price-desc';
   templateUrl: './offers.component.html',
   styleUrl: './offers.component.css',
 })
-export class OffersComponent extends GenericComponent implements AfterViewInit, OnDestroy {
+export class OffersComponent extends GenericComponent implements OnInit, AfterViewInit, OnDestroy {
   public readonly Search = Search;
   public readonly X = X;
   public readonly RefreshCw = RefreshCw;
@@ -162,16 +163,16 @@ export class OffersComponent extends GenericComponent implements AfterViewInit, 
     subscriptions: 'Abonnements',
   };
 
-  @ViewChildren('cardContent') private cardContents!: QueryList<ElementRef<HTMLElement>>;
-  @ViewChildren('cardFlow') private cardFlows!: QueryList<ElementRef<HTMLElement>>;
+  @ViewChildren('cardContent') private readonly cardContents!: QueryList<ElementRef<HTMLElement>>;
+  @ViewChildren('cardFlow') private readonly cardFlows!: QueryList<ElementRef<HTMLElement>>;
 
   private allOffers: OfferCard[] = [];
   private tabStrip?: HTMLElement;
   private tabsObserver?: ResizeObserver;
 
-  private localStorage = inject(LocalStorageService);
-  private serverService = inject(ServerService);
-  private cdr = inject(ChangeDetectorRef);
+  private readonly localStorage = inject(LocalStorageService);
+  private readonly serverService = inject(ServerService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private flowObserver?: ResizeObserver;
   private measureScheduled = false;
 
@@ -182,6 +183,9 @@ export class OffersComponent extends GenericComponent implements AfterViewInit, 
     this.serverCurrency = currencyForServer(this.serverService.currentServer?.name);
     this.currencyOptions = buildCurrencyOptions(this.langageService.getCurrentLocale());
     this.currency = this.readStoredCurrency();
+  }
+
+  public ngOnInit(): void {
     void this.getData();
   }
 
@@ -535,11 +539,10 @@ export class OffersComponent extends GenericComponent implements AfterViewInit, 
       const offerId = element.dataset['offer'];
       const window = offerId ? windows.get(offerId) : undefined;
       if (!offerId || !window) continue;
-      if (this.expandedOffers.has(offerId)) {
-        if (this.overflowingOffers.has(offerId)) overflowing.add(offerId);
-      } else if (element.offsetHeight - window.clientHeight > 2) {
-        overflowing.add(offerId);
-      }
+      const clipped = this.expandedOffers.has(offerId)
+        ? this.overflowingOffers.has(offerId)
+        : element.offsetHeight - window.clientHeight > 2;
+      if (clipped) overflowing.add(offerId);
     }
     if (overflowing.size === this.overflowingOffers.size && [...overflowing].every((id) => this.isClipped(id))) {
       return;

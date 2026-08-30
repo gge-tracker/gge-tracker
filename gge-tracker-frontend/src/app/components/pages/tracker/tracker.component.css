@@ -27,7 +27,7 @@
   background: #ffffffce;
   border-radius: 12px;
   border: none;
-  color: #fff;
+  color: #1e1e1e;
   font-size: 1rem;
   padding: 0.55rem 2.5rem 0.55rem 1rem;
 }
@@ -139,9 +139,9 @@ td, th {
   font-family: monospace;
 }
 .btn.btn-warning {
+  background: url(/assets/light-background-hover.png), #dda969;
   background-position: center;
   background-size: 24px;
-  background: url(/assets/light-background-hover.png), #dda969;
   transition: all 0.3s ease;
 }
 

@@ -36,6 +36,7 @@ import {
   SearchType,
 } from '@ggetracker-interfaces/empire-ranking';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
+import { formatThousands } from '@ggetracker-services/text-format.utilities';
 import { LanguageService } from '@ggetracker-services/language.service';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
 import { WindowService } from '@ggetracker-services/window.service';
@@ -95,6 +96,40 @@ interface CardConfig {
 const MS_PER_HOUR = 3_600_000;
 const HOURS_PER_WEEK = 168;
 const DEFAULT_RESET_OFFSET = -1;
+const FIRST_LOOT_EVENT_TIMESTAMP = 1_737_349_200_000;
+
+interface LootPlayerSeries {
+  playerName: string;
+  segments: [number, number][];
+}
+
+interface LootSegment {
+  name: string;
+  data: [number, number | null][];
+  lastValue: number;
+  hidden?: boolean;
+}
+
+interface EventPlayerSeries {
+  playerName: string;
+  segments: { name: string; data: [number, number][]; lastValue: number };
+}
+
+interface EventSegment {
+  name: string;
+  data: [number, number][];
+  lastValue: number;
+  playerName?: string;
+}
+
+interface EventSerie {
+  name: string;
+  data: [number, number][];
+  hidden: boolean;
+  custom?: Record<string, unknown>;
+}
+
+const WHITESPACE = /\s/;
 
 @Component({
   selector: 'app-alliance-stats',
@@ -416,15 +451,15 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     ['', '', undefined, true],
   ];
   public defaultMembersTableHeaderSize = this.membersTableHeader.length;
-  private windowService = inject(WindowService);
-  private languageService = inject(LanguageService);
-  private cdr = inject(ChangeDetectorRef);
-  private localStorage = inject(LocalStorageService);
-  private playersColors: Record<string, string> = {};
+  private readonly windowService = inject(WindowService);
+  private readonly languageService = inject(LanguageService);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly localStorage = inject(LocalStorageService);
+  private readonly playersColors: Record<string, string> = {};
   private statsFinished = false;
   private statsInProgress = false;
   private data: ApiPlayerStatsForAlliance | null = null;
-  private titleService = inject(Title);
+  private readonly titleService = inject(Title);
   private timezoneOffset: number | null = null;
   private isDestroyed = false;
 
@@ -456,11 +491,11 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   }
 
   public formatAvg(value: number, toFixed = 3): string {
-    return value.toFixed(toFixed).replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return formatThousands(value.toFixed(toFixed));
   }
 
   public customFormatter(value: number, precision: number): string {
-    return value.toFixed(precision).replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return formatThousands(value.toFixed(precision));
   }
 
   public openFullscreen(chartKey: keyof typeof ApiPlayerStatsType): void {
@@ -476,7 +511,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     if (!chart) return;
     const copyChart = { ...chart };
     const win = this.windowService.getWindow();
-    if (!win || !win.innerWidth || !win.innerHeight) return;
+    if (!win?.innerWidth || !win.innerHeight) return;
     chart.chart.height = win.innerHeight - 250;
     chart.chart.width = win.innerWidth - 100;
     if (tab === ChartTypes.PARTICIPATION_RATE) {
@@ -514,70 +549,23 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   public closeFullscreen(): void {
     const key = this.fullScreenModalKey;
     if (!key) return;
-    let chart;
     const tab = this.chartsTabs[key];
-    if (tab === ChartTypes.PARTICIPATION_RATE) {
-      chart = this.participationRateCharts[key];
-    } else if (tab === ChartTypes.RADAR) {
-      chart = this.radarCharts[key];
-    } else {
-      chart = this.charts[key];
-    }
+    const store = this.chartStoreFor(tab);
+    const chart = store[key];
     if (!chart) return;
-    if (tab === ChartTypes.RADAR) {
-      chart.chart.height = ChartTypeHeights.LARGE;
-    } else {
-      chart.chart.height = ChartTypeHeights.DEFAULT;
-    }
-    const participationRateChart = this.participationRateCharts[key];
-    const basicChart = this.charts[key];
-    const radarChart = this.radarCharts[key];
-    if (participationRateChart) {
-      participationRateChart.chart.height = ChartTypeHeights.DEFAULT;
-    }
-    if (basicChart) {
-      basicChart.chart.height = ChartTypeHeights.DEFAULT;
-    }
-    if (radarChart) {
-      radarChart.chart.height = ChartTypeHeights.LARGE;
-    }
-    chart.chart.width = undefined;
-    if (participationRateChart) {
-      participationRateChart.chart.width = undefined;
-    }
-    if (basicChart) {
-      basicChart.chart.width = undefined;
-    }
-    if (radarChart) {
-      radarChart.chart.width = undefined;
-    }
+    this.resetChartSize(this.participationRateCharts[key], ChartTypeHeights.DEFAULT);
+    this.resetChartSize(this.charts[key], ChartTypeHeights.DEFAULT);
+    this.resetChartSize(this.radarCharts[key], ChartTypeHeights.LARGE);
+    this.resetChartSize(chart, tab === ChartTypes.RADAR ? ChartTypeHeights.LARGE : ChartTypeHeights.DEFAULT);
     const copyChart = { ...chart };
-    if (tab === ChartTypes.PARTICIPATION_RATE) {
-      this.participationRateCharts[key] = chart;
-    } else if (tab === ChartTypes.RADAR) {
-      this.radarCharts[key] = chart;
-    } else {
-      this.charts[key] = chart;
-    }
+    store[key] = chart;
     this.cdr.detectChanges();
     setTimeout(() => {
       // Update the chart reference
-      if (tab === ChartTypes.PARTICIPATION_RATE) {
-        delete this.participationRateCharts[key];
-      } else if (tab === ChartTypes.RADAR) {
-        delete this.radarCharts[key];
-      } else {
-        delete this.charts[key];
-      }
+      delete store[key];
       this.cdr.detectChanges();
       setTimeout(() => {
-        if (tab === ChartTypes.PARTICIPATION_RATE) {
-          this.participationRateCharts[key] = copyChart;
-        } else if (tab === ChartTypes.RADAR) {
-          this.radarCharts[key] = copyChart;
-        } else {
-          this.charts[key] = copyChart;
-        }
+        store[key] = copyChart;
         this.fullScreenModalKey = null;
         this.cdr.detectChanges();
       }, 0);
@@ -783,7 +771,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     let playerProperty: keyof Player;
     if (sort === 'level') {
       // If the property is 'level', sort by level and legendary level
-      this.players = this.players.sort((a, b) => {
+      this.players = [...this.players].sort((a, b) => {
         const aLevelValue = (a.level || 0) + (a.legendaryLevel || 0);
         const bLevelValue = (b.level || 0) + (b.legendaryLevel || 0);
         if (this.reverse) return bLevelValue - aLevelValue;
@@ -792,7 +780,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     } else {
       playerProperty = sort.replaceAll(/_(\w)/g, (match, p1) => p1.toUpperCase()) as keyof Player;
       // If the property is not 'level', sort by that property
-      this.players = this.players.sort((a, b) => {
+      this.players = [...this.players].sort((a, b) => {
         const aValue = a[playerProperty] ?? 0;
         const bValue = b[playerProperty] ?? 0;
         const type = typeof a[playerProperty];
@@ -938,7 +926,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
           return;
         }
       } else if (response.error === 'Player not in this realm') {
-        this.toastService.add(ErrorType.PLAYER_NOT_IN_REALM, 20_000);
+        this.toastService.add(ErrorType.NO_PLAYER_FOUND, 20_000);
         return;
       } else {
         this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
@@ -1033,7 +1021,6 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
         this.isInLoading = false;
         void this.router.navigate(['/']);
-        return;
       }
     });
   }
@@ -1404,135 +1391,35 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   }
 
   private initLootHistoryData(data: ApiPlayerStatsForAlliance): void {
-    const timezoneOffset: number | null = this.timezoneOffset;
     const serieChoosen = this.graphPages.player_loot_history;
-    const playerMap = new Map<number, { playerName: string; segments: [number, number][] }>();
-    const now = new Date();
-    const currentMonday = this.weekResetInstant(now, timezoneOffset ?? DEFAULT_RESET_OFFSET);
+    const currentMonday = this.weekResetInstant(new Date(), this.timezoneOffset ?? DEFAULT_RESET_OFFSET);
     const startOfWeek = new Date(currentMonday.getTime() - serieChoosen * HOURS_PER_WEEK * MS_PER_HOUR);
-    const endOfWeek = new Date(startOfWeek.getTime() + (HOURS_PER_WEEK - 1) * MS_PER_HOUR);
-    const timestampsByHour = Array.from(
-      { length: HOURS_PER_WEEK },
-      (_, index) => startOfWeek.getTime() + index * MS_PER_HOUR,
-    );
-    const showedEndOfWeek = new Date(endOfWeek.getTime() - 24 * MS_PER_HOUR);
-    if (startOfWeek.getTime() < 1_737_349_200_000) {
+    if (startOfWeek.getTime() < FIRST_LOOT_EVENT_TIMESTAMP) {
       this.graphPages[ApiPlayerStatsType.loot] = serieChoosen - 1;
       return;
     }
+
+    const endOfWeek = new Date(startOfWeek.getTime() + (HOURS_PER_WEEK - 1) * MS_PER_HOUR);
+    const showedEndOfWeek = new Date(endOfWeek.getTime() - 24 * MS_PER_HOUR);
     this.eventTitles['loot'] = this.translateService.instant('Événement du 0 au 0', {
       start: startOfWeek.toLocaleDateString().slice(0, -5),
       end: showedEndOfWeek.toLocaleDateString().slice(0, -5),
     });
-    const segmentsWithColors: {
-      segment: {
-        name: string;
-        data: [number, number | null][];
-        lastValue: number;
-      };
-      color: string;
-    }[] = [];
-    const hoursToRemove = new Set<number>();
-    for (const record of data[ApiPlayerStatsType.loot]) {
-      const { player_id, date, point } = record;
-      const dateHour = new Date(date);
-      dateHour.setMinutes(0, 0, 0);
-      if (!playerMap.has(player_id)) {
-        playerMap.set(player_id, {
-          playerName: this.getPlayerName(player_id.toString()),
-          segments: [],
-        });
-      }
-      const player = playerMap.get(player_id);
-      if (player) {
-        player.segments.push([dateHour.getTime(), point]);
-      }
-    }
-    for (const [, playerData] of playerMap.entries()) {
-      const { segments } = playerData;
-      const playerScoresByTimestamp = new Map<number, number>();
-      for (const [timestamp, point] of segments) {
-        playerScoresByTimestamp.set(timestamp, point);
-      }
-      const alignedData: [number, number | null][] = timestampsByHour.map((hourTimestamp) => {
-        const score = playerScoresByTimestamp.get(hourTimestamp) || 0;
-        return [hourTimestamp, score];
-      });
-      for (let index = 1; index < alignedData.length; index++) {
-        const [, currentScore] = alignedData[index];
-        const [, previousScore] = alignedData[index - 1];
-        if (currentScore === 0 && previousScore !== null && previousScore > currentScore) {
-          const hasFutureHigherPoint = alignedData.slice(index + 1).some(([, futureScore]) => {
-            return futureScore !== null && futureScore > currentScore;
-          });
-          if (hasFutureHigherPoint) {
-            let index_ = index;
-            while (index_ < alignedData.length && alignedData[index_][1] === 0) {
-              hoursToRemove.add(alignedData[index_][0]);
-              index_++;
-            }
-          }
-        }
-      }
-    }
+
+    const timestampsByHour = Array.from(
+      { length: HOURS_PER_WEEK },
+      (_, index) => startOfWeek.getTime() + index * MS_PER_HOUR,
+    );
+    const playerMap = this.groupLootRecordsByPlayer(data);
+    const hoursToRemove = this.findIdleLootHours(playerMap, timestampsByHour);
     const filteredTimestampsByHour = timestampsByHour.filter((hour) => !hoursToRemove.has(hour));
-    for (const [, playerData] of playerMap.entries()) {
-      playerData.segments = playerData.segments.filter(([timestamp]) => !hoursToRemove.has(timestamp));
-    }
-    for (const [, playerData] of playerMap.entries()) {
-      const { playerName, segments } = playerData;
-      const alignedData: [number, number | null][] = filteredTimestampsByHour.map((hourTimestamp) => {
-        const score = new Map(segments).get(hourTimestamp) || 0;
-        return [hourTimestamp, score];
-      });
-      let lastValue: number;
-      if (serieChoosen === 0) {
-        lastValue = Math.max(...alignedData.map(([, score]) => score || 0));
-      } else {
-        lastValue = alignedData.at(-1)?.[1] ?? 0;
-      }
-      if (lastValue === 0) continue;
-      const { v, unit } = this.getUnitByValue(lastValue);
-      const segment = {
-        name: `${playerName} (${v}${unit})`,
-        data: alignedData,
-        lastValue,
-      };
-      if (!this.playersColors[playerName]) {
-        this.playersColors[playerName] = this.getPlayerColor(playerName);
-      }
-      const color = this.playersColors[playerName];
-      segmentsWithColors.push({ segment, color });
-    }
+
+    const segmentsWithColors = this.buildLootSegments(playerMap, filteredTimestampsByHour, hoursToRemove, serieChoosen);
     segmentsWithColors.sort((a, b) => (b.segment.lastValue ?? 0) - (a.segment.lastValue ?? 0));
     const selectedSegmentsMapped = segmentsWithColors.map(({ segment }) => segment);
     const filledColorsMapped = segmentsWithColors.map(({ color }) => color);
-    if (this.players.length !== selectedSegmentsMapped.length) {
-      const playersWithNoData = this.players.filter(
-        (player) => !selectedSegmentsMapped.some((segment) => segment.name.includes(player.playerName)),
-      );
-      for (const player of playersWithNoData) {
-        const playerName = player.playerName;
-        const lastValue = 0;
-        const segment: {
-          name: string;
-          data: [number, number | null][];
-          lastValue: number;
-          hidden: boolean;
-        } = {
-          name: `${playerName} 💤`,
-          data: timestampsByHour.map((hourTimestamp) => [hourTimestamp, -1] as [number, number | null]),
-          lastValue,
-          hidden: true,
-        };
-        if (!this.playersColors[playerName]) {
-          this.playersColors[playerName] = this.getPlayerColor(playerName);
-        }
-        const color = this.playersColors[playerName];
-        selectedSegmentsMapped.push(segment);
-        filledColorsMapped.push(color);
-      }
-    }
+    this.appendIdleLootSegments(selectedSegmentsMapped, filledColorsMapped, timestampsByHour);
+
     this.initChartOption('loot', selectedSegmentsMapped, filledColorsMapped);
     this.constructParticipationRateChart('loot', selectedSegmentsMapped);
     this.constructRadarChart('loot', selectedSegmentsMapped);
@@ -1542,12 +1429,94 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     }
   }
 
+  private groupLootRecordsByPlayer(data: ApiPlayerStatsForAlliance): Map<number, LootPlayerSeries> {
+    const playerMap = new Map<number, LootPlayerSeries>();
+    for (const { player_id, date, point } of data[ApiPlayerStatsType.loot]) {
+      const dateHour = new Date(date);
+      dateHour.setMinutes(0, 0, 0);
+      let player = playerMap.get(player_id);
+      if (!player) {
+        player = { playerName: this.getPlayerName(player_id.toString()), segments: [] };
+        playerMap.set(player_id, player);
+      }
+      player.segments.push([dateHour.getTime(), point]);
+    }
+    return playerMap;
+  }
+
+  private findIdleLootHours(playerMap: Map<number, LootPlayerSeries>, timestampsByHour: number[]): Set<number> {
+    const hoursToRemove = new Set<number>();
+    for (const { segments } of playerMap.values()) {
+      const scoresByTimestamp = new Map(segments);
+      const alignedData: [number, number][] = timestampsByHour.map((hourTimestamp) => [
+        hourTimestamp,
+        scoresByTimestamp.get(hourTimestamp) || 0,
+      ]);
+      this.markZeroRunsFollowedByPoints(alignedData, hoursToRemove);
+    }
+    return hoursToRemove;
+  }
+
+  private markZeroRunsFollowedByPoints(alignedData: [number, number][], hoursToRemove: Set<number>): void {
+    for (let index = 1; index < alignedData.length; index++) {
+      const currentScore = alignedData[index][1];
+      const previousScore = alignedData[index - 1][1];
+      if (currentScore !== 0 || previousScore <= currentScore) continue;
+      const hasFutureHigherPoint = alignedData.slice(index + 1).some(([, futureScore]) => futureScore > currentScore);
+      if (!hasFutureHigherPoint) continue;
+      for (let cursor = index; cursor < alignedData.length && alignedData[cursor][1] === 0; cursor++) {
+        hoursToRemove.add(alignedData[cursor][0]);
+      }
+    }
+  }
+
+  private buildLootSegments(
+    playerMap: Map<number, LootPlayerSeries>,
+    filteredTimestampsByHour: number[],
+    hoursToRemove: Set<number>,
+    serieChoosen: number,
+  ): { segment: LootSegment; color: string }[] {
+    const segmentsWithColors: { segment: LootSegment; color: string }[] = [];
+    for (const { playerName, segments } of playerMap.values()) {
+      const scoresByTimestamp = new Map(segments.filter(([timestamp]) => !hoursToRemove.has(timestamp)));
+      const alignedData: [number, number | null][] = filteredTimestampsByHour.map((hourTimestamp) => [
+        hourTimestamp,
+        scoresByTimestamp.get(hourTimestamp) || 0,
+      ]);
+      const lastValue =
+        serieChoosen === 0 ? Math.max(...alignedData.map(([, score]) => score || 0)) : (alignedData.at(-1)?.[1] ?? 0);
+      if (lastValue === 0) continue;
+      const { v, unit } = this.getUnitByValue(lastValue);
+      segmentsWithColors.push({
+        segment: { name: `${playerName} (${v}${unit})`, data: alignedData, lastValue },
+        color: this.playerColor(playerName),
+      });
+    }
+    return segmentsWithColors;
+  }
+
+  private appendIdleLootSegments(segments: LootSegment[], colors: string[], timestampsByHour: number[]): void {
+    if (this.players.length === segments.length) return;
+    const playersWithNoData = this.players.filter(
+      (player) => !segments.some((segment) => segment.name.includes(player.playerName)),
+    );
+    for (const player of playersWithNoData) {
+      segments.push({
+        name: `${player.playerName} 💤`,
+        data: timestampsByHour.map((hourTimestamp) => [hourTimestamp, -1] as [number, number | null]),
+        lastValue: 0,
+        hidden: true,
+      });
+      colors.push(this.playerColor(player.playerName));
+    }
+  }
+
   private formatPlayerNameForStatsCard(name: string): string {
     if (name.endsWith(' 💤')) {
       return name.slice(0, -2);
     } else {
-      const regex = /\s\(([\d,.]+[A-Za-z]{0,1})\)$/;
-      const match = name.match(regex);
+      const regex = /\s\(([\d,.]+[A-Za-z]?)\)$/;
+      const match = regex.exec(name);
       if (match) {
         return name.replace(regex, '');
       }
@@ -1623,176 +1592,41 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   ): void {
     const eventData = data[eventKey];
     if (!eventData) return;
-    const playerMap = new Map<
-      number,
-      {
-        playerName: string;
-        segments: { name: string; data: [number, number][]; lastValue: number };
-      }
-    >();
-    const filledSeries: {
-      name: string;
-      data: [number, number][];
-      hidden: boolean;
-      custom?: Record<string, unknown>;
-    }[] = [];
+    const playerMap = this.groupEventRecordsByPlayer(eventData);
 
     if (eventKey === ApiPlayerStatsType.might) {
-      for (const record of eventData) {
-        const { player_id, date, point } = record;
-
-        if (!playerMap.has(player_id)) {
-          playerMap.set(player_id, {
-            playerName: this.getPlayerName(player_id.toString()),
-            segments: { name: '', data: [], lastValue: 0 },
-          });
-        }
-
-        const player = playerMap.get(player_id);
-        if (player) {
-          player.segments.data.push([new Date(date).getTime(), point]);
-        }
-      }
-      this.eventTitles[chartKey] = '-';
-      const segmentsWithColors: {
-        segment: { name: string; data: [number, number][]; lastValue: number };
-        color: string;
-      }[] = [];
-      for (const [, playerData] of playerMap.entries()) {
-        const { playerName, segments } = playerData;
-
-        const lastValue = segments.data.at(-1)?.[1] ?? 0;
-        const { v, unit } = this.getUnitByValue(lastValue);
-
-        const segment = {
-          name: `${playerName} (${v}${unit})`,
-          data: segments.data,
-          lastValue,
-        };
-        if (!this.playersColors[playerName]) {
-          this.playersColors[playerName] = this.getPlayerColor(playerName);
-        }
-        const color = this.playersColors[playerName];
-        segmentsWithColors.push({ segment, color });
-      }
-      segmentsWithColors.sort((a, b) => b.segment.lastValue - a.segment.lastValue);
-      const selectedSegmentsMapped = segmentsWithColors.map(({ segment }) => segment);
-      const filledColorsMapped = segmentsWithColors.map(({ color }) => color);
-      const globalTimeline = this.buildGlobalTimeline(selectedSegmentsMapped);
-      for (const segment of selectedSegmentsMapped) {
-        const alignedData = this.alignSeriesToTimeline(segment.data, globalTimeline);
-        filledSeries.push({
-          name: segment.name,
-          data: alignedData,
-          hidden: false,
-        });
-      }
-      this.initChartOption(chartKey, filledSeries, filledColorsMapped);
+      this.initMightChart(chartKey, playerMap);
       return;
     }
 
-    // Step 1
-    for (const record of eventData) {
-      const { player_id, date, point } = record;
-      if (!playerMap.has(player_id)) {
-        playerMap.set(player_id, {
-          playerName: this.getPlayerName(player_id.toString()),
-          segments: { name: '', data: [], lastValue: 0 },
-        });
-      }
-
-      const player = playerMap.get(player_id);
-      if (player) {
-        player.segments.data.push([new Date(date).getTime(), point]);
-      }
-    }
-
-    // Step 2
     const allEventTimestamps: number[] = [];
-    for (const [, { segments }] of playerMap.entries()) {
-      for (const [timestamp] of segments.data) {
-        allEventTimestamps.push(timestamp);
-      }
+    for (const { segments } of playerMap.values()) {
+      for (const [timestamp] of segments.data) allEventTimestamps.push(timestamp);
     }
-
-    // Step 3
     const groupedTimestamps = this.groupEventDataByTimeGaps(allEventTimestamps.map((timestamp) => [timestamp, 0])).map(
       (group) => group.map(([timestamp]) => timestamp),
     );
-
-    // Step 4
-    let serieIndex = serieChoosen;
-    if (serieChoosen <= -1) serieIndex = groupedTimestamps.length - serieChoosen * -1;
+    const serieIndex = serieChoosen <= -1 ? groupedTimestamps.length - serieChoosen * -1 : serieChoosen;
     const selectedTimestamps = groupedTimestamps[serieIndex];
     if (!selectedTimestamps) {
       this.graphPages[eventKey]++;
       return;
     }
-    const eventTitle = this.generateEventTitle(selectedTimestamps.map((timestamp) => [timestamp, 0]));
-    this.eventTitles[chartKey] = eventTitle;
-    const segmentsWithColors: {
-      segment: {
-        name: string;
-        data: [number, number][];
-        lastValue: number;
-        playerName: string;
-      };
-      color: string;
-    }[] = [];
-    // Step 5
-    for (const [, playerData] of playerMap.entries()) {
-      const { playerName, segments } = playerData;
-      const playerScoresByTimestamp: Record<number, number> = {};
-      for (const [timestamp, point] of segments.data) {
-        playerScoresByTimestamp[timestamp] = point;
-      }
-      const alignedData: [number, number][] = selectedTimestamps.map((timestamp) => {
-        return [timestamp, playerScoresByTimestamp[timestamp] || 0];
-      });
-      const lastValue = alignedData.at(-1)?.[1] ?? 0;
-      if (lastValue === 0) continue; // If the player is completely inactive, skip them
-      const { v, unit } = this.getUnitByValue(lastValue);
+    this.eventTitles[chartKey] = this.generateEventTitle(selectedTimestamps.map((timestamp) => [timestamp, 0]));
 
-      const segment = {
-        playerName: playerName,
-        name: `${playerName} (${v}${unit})`,
-        data: alignedData,
-        lastValue,
-      };
-      if (!this.playersColors[playerName]) {
-        this.playersColors[playerName] = this.getPlayerColor(playerName);
-      }
-      const color = this.playersColors[playerName];
-      segmentsWithColors.push({ segment, color });
-    }
-    // Step 6
+    const segmentsWithColors = this.buildEventSegments(playerMap, selectedTimestamps);
     segmentsWithColors.sort((a, b) => b.segment.lastValue - a.segment.lastValue);
     const selectedSegmentsMapped = segmentsWithColors.map(({ segment }) => segment);
     const filledColorsMapped = segmentsWithColors.map(({ color }) => color);
     const globalTimeline = this.buildGlobalTimeline(selectedSegmentsMapped);
-    for (const segment of selectedSegmentsMapped) {
-      const alignedData = this.alignSeriesToTimeline(segment.data, globalTimeline);
-      filledSeries.push({
-        custom: { playerName: segment.playerName },
-        name: segment.name,
-        data: alignedData,
-        hidden: false,
-      });
-    }
-    if (filledSeries.length != this.players.length) {
-      const missingPlayers = this.players.filter(
-        (player) => !filledSeries.some((serie) => serie.custom?.['playerName'] === player.playerName),
-      );
-      for (const player of missingPlayers) {
-        filledSeries.push({
-          name: player.playerName + ' 💤',
-          data: globalTimeline.map((timestamp) => [timestamp, -1]),
-          hidden: true,
-        });
-        filledColorsMapped.push(this.playersColors[player.playerName] || this.getPlayerColor(player.playerName));
-      }
-    }
-    // Now we need to initialize the chart options with the filled series and colors
+    const filledSeries: EventSerie[] = selectedSegmentsMapped.map((segment) => ({
+      custom: { playerName: segment.playerName },
+      name: segment.name,
+      data: this.alignSeriesToTimeline(segment.data, globalTimeline),
+      hidden: false,
+    }));
+    this.appendIdleEventSeries(filledSeries, filledColorsMapped, globalTimeline);
+
     this.initChartOption(chartKey, filledSeries, filledColorsMapped);
     this.constructParticipationRateChart(chartKey, filledSeries);
     this.constructRadarChart(chartKey, filledSeries);
@@ -1800,6 +1634,90 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     if (statsCardConfig) {
       this.initStatsCardData(statsCardConfig, selectedSegmentsMapped);
     }
+  }
+
+  private groupEventRecordsByPlayer(eventData: ApiPlayerStatsAlliance[]): Map<number, EventPlayerSeries> {
+    const playerMap = new Map<number, EventPlayerSeries>();
+    for (const { player_id, date, point } of eventData) {
+      let player = playerMap.get(player_id);
+      if (!player) {
+        player = {
+          playerName: this.getPlayerName(player_id.toString()),
+          segments: { name: '', data: [], lastValue: 0 },
+        };
+        playerMap.set(player_id, player);
+      }
+      player.segments.data.push([new Date(date).getTime(), point]);
+    }
+    return playerMap;
+  }
+
+  private initMightChart(chartKey: keyof typeof ApiPlayerStatsType, playerMap: Map<number, EventPlayerSeries>): void {
+    this.eventTitles[chartKey] = '-';
+    const segmentsWithColors: { segment: EventSegment; color: string }[] = [];
+    for (const { playerName, segments } of playerMap.values()) {
+      const lastValue = segments.data.at(-1)?.[1] ?? 0;
+      const { v, unit } = this.getUnitByValue(lastValue);
+      segmentsWithColors.push({
+        segment: { name: `${playerName} (${v}${unit})`, data: segments.data, lastValue },
+        color: this.playerColor(playerName),
+      });
+    }
+    segmentsWithColors.sort((a, b) => b.segment.lastValue - a.segment.lastValue);
+    const selectedSegmentsMapped = segmentsWithColors.map(({ segment }) => segment);
+    const globalTimeline = this.buildGlobalTimeline(selectedSegmentsMapped);
+    const filledSeries: EventSerie[] = selectedSegmentsMapped.map((segment) => ({
+      name: segment.name,
+      data: this.alignSeriesToTimeline(segment.data, globalTimeline),
+      hidden: false,
+    }));
+    this.initChartOption(
+      chartKey,
+      filledSeries,
+      segmentsWithColors.map(({ color }) => color),
+    );
+  }
+
+  private buildEventSegments(
+    playerMap: Map<number, EventPlayerSeries>,
+    selectedTimestamps: number[],
+  ): { segment: EventSegment; color: string }[] {
+    const segmentsWithColors: { segment: EventSegment; color: string }[] = [];
+    for (const { playerName, segments } of playerMap.values()) {
+      const scoresByTimestamp = new Map(segments.data);
+      const alignedData: [number, number][] = selectedTimestamps.map((timestamp) => [
+        timestamp,
+        scoresByTimestamp.get(timestamp) || 0,
+      ]);
+      const lastValue = alignedData.at(-1)?.[1] ?? 0;
+      if (lastValue === 0) continue; // If the player is completely inactive, skip them
+      const { v, unit } = this.getUnitByValue(lastValue);
+      segmentsWithColors.push({
+        segment: { playerName, name: `${playerName} (${v}${unit})`, data: alignedData, lastValue },
+        color: this.playerColor(playerName),
+      });
+    }
+    return segmentsWithColors;
+  }
+
+  private appendIdleEventSeries(filledSeries: EventSerie[], colors: string[], globalTimeline: number[]): void {
+    if (filledSeries.length === this.players.length) return;
+    const missingPlayers = this.players.filter(
+      (player) => !filledSeries.some((serie) => serie.custom?.['playerName'] === player.playerName),
+    );
+    for (const player of missingPlayers) {
+      filledSeries.push({
+        name: player.playerName + ' 💤',
+        data: globalTimeline.map((timestamp) => [timestamp, -1]),
+        hidden: true,
+      });
+      colors.push(this.playersColors[player.playerName] || this.getPlayerColor(player.playerName));
+    }
+  }
+
+  private playerColor(playerName: string): string {
+    this.playersColors[playerName] ||= this.getPlayerColor(playerName);
+    return this.playersColors[playerName];
   }
 
   /**
@@ -1907,7 +1825,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         },
         y: {
           formatter: function (value): string {
-            return value > 0 ? value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
+            return value > 0 ? formatThousands(value.toString()) : '';
           },
         },
       },
@@ -1955,7 +1873,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       yaxis: {
         labels: {
           formatter: function (value): string {
-            return value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return value === null ? '?' : formatThousands(value.toString());
           },
         },
         min: 0,
@@ -2113,7 +2031,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       yaxis: {
         labels: {
           formatter: function (value): string {
-            return value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return value === null ? '?' : formatThousands(value.toString());
           },
         },
         forceNiceScale: true,
@@ -2160,7 +2078,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       tooltip: {
         y: {
           formatter: function (value): string {
-            return value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',') + ' ' + mp;
+            return value === null ? '?' : formatThousands(value.toString()) + ' ' + mp;
           },
         },
       },
@@ -2249,7 +2167,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         y: {
           formatter: function (value): string {
             if (value === null) return '?';
-            if (value > 0) return value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+            if (value > 0) return formatThousands(value.toString());
             return '0';
           },
         },
@@ -2285,7 +2203,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       yaxis: {
         labels: {
           formatter: function (value): string {
-            return value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return value === null ? '?' : formatThousands(value.toString());
           },
         },
         forceNiceScale: true,
@@ -2348,7 +2266,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         logBase: logBase,
         labels: {
           formatter: function (value): string {
-            return value === 0 ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return value === 0 ? '?' : formatThousands(value.toString());
           },
         },
       },
@@ -2458,16 +2376,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   }
 
   private async loadDetailsEventPlayerStats(): Promise<void> {
-    let playersData: ApiPlayerStatsForAlliance = {
-      player_event_berimond_invasion_history: [],
-      player_event_berimond_kingdom_history: [],
-      player_event_bloodcrow_history: [],
-      player_event_nomad_history: [],
-      player_event_samurai_history: [],
-      player_event_war_realms_history: [],
-      player_loot_history: [],
-      player_might_history: [],
-    };
+    let playersData: ApiPlayerStatsForAlliance;
     this.countQueryFinished = 0;
     this.totalQuery = 1;
     try {
@@ -2671,7 +2580,32 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   }
 
   private tokenizeDescription(description: string): string[] {
-    return description.split(/(<[^>]*>|\s+)/).filter((token) => token !== '');
+    const tokens: string[] = [];
+    let word = '';
+    const flushWord = (): void => {
+      if (word.length > 0) tokens.push(word);
+      word = '';
+    };
+    for (let index = 0; index < description.length;) {
+      const character = description[index];
+      const tagEnd = character === '<' ? description.indexOf('>', index) : -1;
+      if (tagEnd !== -1) {
+        flushWord();
+        tokens.push(description.slice(index, tagEnd + 1));
+        index = tagEnd + 1;
+      } else if (WHITESPACE.test(character)) {
+        flushWord();
+        let end = index;
+        while (end < description.length && WHITESPACE.test(description[end])) end++;
+        tokens.push(description.slice(index, end));
+        index = end;
+      } else {
+        word += character;
+        index++;
+      }
+    }
+    flushWord();
+    return tokens;
   }
 
   private renderSegments(segments: DescriptionSegment[], highlightClass: string): string {
@@ -2694,15 +2628,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       return { previousSegments, currentSegments };
     }
     const width = currentLength + 1;
-    const lcs = new Int32Array((previousLength + 1) * width);
-    for (let previousIndex = previousLength - 1; previousIndex >= 0; previousIndex--) {
-      for (let currentIndex = currentLength - 1; currentIndex >= 0; currentIndex--) {
-        lcs[previousIndex * width + currentIndex] =
-          previousTokens[previousIndex] === currentTokens[currentIndex]
-            ? lcs[(previousIndex + 1) * width + currentIndex + 1] + 1
-            : Math.max(lcs[(previousIndex + 1) * width + currentIndex], lcs[previousIndex * width + currentIndex + 1]);
-      }
-    }
+    const lcs = this.buildLcsTable(previousTokens, currentTokens);
 
     let previousIndex = 0;
     let currentIndex = 0;
@@ -2724,6 +2650,34 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     }
 
     return { previousSegments, currentSegments };
+  }
+
+  private chartStoreFor(tab: ChartTypes | null): Record<keyof typeof ApiPlayerStatsType, ChartOptions | undefined> {
+    if (tab === ChartTypes.PARTICIPATION_RATE) return this.participationRateCharts;
+    if (tab === ChartTypes.RADAR) return this.radarCharts;
+    return this.charts;
+  }
+
+  private resetChartSize(chart: ChartOptions | undefined, height: ChartTypeHeights): void {
+    if (!chart) return;
+    chart.chart.height = height;
+    chart.chart.width = undefined;
+  }
+
+  private buildLcsTable(previousTokens: string[], currentTokens: string[]): Int32Array {
+    const previousLength = previousTokens.length;
+    const currentLength = currentTokens.length;
+    const width = currentLength + 1;
+    const lcs = new Int32Array((previousLength + 1) * width);
+    for (let previousIndex = previousLength - 1; previousIndex >= 0; previousIndex--) {
+      for (let currentIndex = currentLength - 1; currentIndex >= 0; currentIndex--) {
+        lcs[previousIndex * width + currentIndex] =
+          previousTokens[previousIndex] === currentTokens[currentIndex]
+            ? lcs[(previousIndex + 1) * width + currentIndex + 1] + 1
+            : Math.max(lcs[(previousIndex + 1) * width + currentIndex], lcs[previousIndex * width + currentIndex + 1]);
+      }
+    }
+    return lcs;
   }
 
   private pushSegment(segments: DescriptionSegment[], text: string, changed: boolean): void {

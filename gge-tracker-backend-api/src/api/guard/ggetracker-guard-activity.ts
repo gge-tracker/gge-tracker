@@ -41,8 +41,8 @@ interface LogEntryRow {
  *
  */
 export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaultParameters {
-  public static gzip = promisify(zlib.gzip);
-  public static NODE_ENV = process.env.NODE_ENV || 'development';
+  public static readonly gzip = promisify(zlib.gzip);
+  public static readonly NODE_ENV = process.env.NODE_ENV || 'development';
 
   private static instance: GgeTrackerApiGuardActivity;
   private logBuffer: LogEntry[] = [];
@@ -125,8 +125,14 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
     bypassRules: RoutesManager[],
   ): Promise<void> {
     const xff = request.headers['x-forwarded-for'];
-    const ip =
-      typeof xff === 'string' ? xff.split(',')[0].trim() : Array.isArray(xff) ? xff[0] : request.ip || 'unknown';
+    let ip: string;
+    if (typeof xff === 'string') {
+      ip = xff.split(',')[0].trim();
+    } else if (Array.isArray(xff)) {
+      ip = xff[0];
+    } else {
+      ip = request.ip || 'unknown';
+    }
     const normalizedIp = ip.replace(/^::ffff:/, '');
 
     try {
@@ -314,7 +320,7 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
    * @param batchIndex - The index of the current batch (used for logging purposes).
    * @returns A promise that resolves to null on success or an error object if all retry attempts fail.
    */
-  private async sendWithRetry(payload: string, baseUrl: string, batchIndex: number): Promise<any | null> {
+  private async sendWithRetry(payload: string, baseUrl: string, batchIndex: number): Promise<any> {
     const maxRetries = 3;
     const baseDelayMs = 200;
     let lastError: any = null;
@@ -375,7 +381,7 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
       const ts = `${logEntry.timestamp}000000`;
       const value = JSON.stringify(logEntry.line);
       if (streams.has(key)) {
-        streams.get(key)!.values.push([ts, value]);
+        streams.get(key).values.push([ts, value]);
       } else {
         streams.set(key, { stream: logEntry.labels, values: [[ts, value]] });
       }

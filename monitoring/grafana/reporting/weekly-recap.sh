@@ -83,7 +83,7 @@ bullets() {
       if (n >= 1000) { return sprintf("%.1fk", n / 1000) }
       return sprintf("%d", n)
     }
-    NF >= 2 && $1 != "" { printf "· `%s` — %s\n", $1, human($2) }
+    NF >= 2 && $1 != "" { printf "· `%s` - %s\n", $1, human($2) }
   '
 }
 
@@ -251,7 +251,7 @@ MANAGED=$(ch "SELECT sum(players), sum(alliances)
 MANAGED_PLAYERS=$(num "$(field "$MANAGED" 1)")
 MANAGED_ALLIANCES=$(num "$(field "$MANAGED" 2)")
 
-overview=$(embed "Weekly recap — $PERIOD" \
+overview=$(embed "Weekly recap - $PERIOD" \
 "Cloudflare, API and scraping over the last ${WINDOW_DAYS} days, compared with the ${WINDOW_DAYS} days before.")
 overview=$(printf '%s' "$overview" | jq \
   --arg cf "$(printf 'Requests **%s**%s\nBandwidth **%s**%s\nCache hit **%s**\nThreats **%s** · Page views **%s**' \

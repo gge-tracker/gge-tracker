@@ -1,3 +1,5 @@
+import { stripTrailingDigits } from '@ggetracker-services/text-format.utilities';
+
 export interface OfferCurrency {
   code: string;
   label: string;
@@ -50,7 +52,9 @@ const SERVER_CURRENCIES: Record<string, string> = {
 
 export function currencyForServer(server: string | undefined): string {
   if (!server) return DEFAULT_OFFER_CURRENCY;
-  const region = server.replace(/^(E4K_|PARTNER_)/, '').replace(/\d+$/, '');
+  const withoutPrefix =
+    server.startsWith('E4K_') || server.startsWith('PARTNER_') ? server.slice(server.indexOf('_') + 1) : server;
+  const region = stripTrailingDigits(withoutPrefix);
   return SERVER_CURRENCIES[region] ?? DEFAULT_OFFER_CURRENCY;
 }
 

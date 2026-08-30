@@ -29,7 +29,7 @@ class PuppeteerManager {
   private browser: puppeteer.Browser | null = null;
   private launch: Promise<puppeteer.Browser> | null = null;
   private openPages = 0;
-  private waiting: (() => void)[] = [];
+  private readonly waiting: (() => void)[] = [];
   private idleTimer: NodeJS.Timeout | null = null;
 
   public async getBrowser(): Promise<puppeteer.Browser> {

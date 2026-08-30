@@ -13,6 +13,7 @@ import { FormsModule } from '@angular/forms';
 })
 export class SwitchComponent implements OnInit {
   public id = input.required<string>();
+  public ariaLabel = input<string>('');
   public defaultInput = input.required<boolean>();
   public switchEmitter = output<boolean>();
   public currentValue: boolean = false;

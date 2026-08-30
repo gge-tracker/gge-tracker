@@ -4,13 +4,9 @@ import { RouterModule } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
-import {
-  ApiLiveRanking,
-  ChartAdvancedOptions,
-  IOuterRealmEvent,
-  PlayerLiveRankingExtended,
-} from '@ggetracker-interfaces/empire-ranking';
+import { ApiLiveRanking, IOuterRealmEvent, PlayerLiveRankingExtended } from '@ggetracker-interfaces/empire-ranking';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
+import { formatThousands } from '@ggetracker-services/text-format.utilities';
 import { ServerService } from '@ggetracker-services/server.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { ApexAxisChartSeries, ApexChart, ApexNonAxisChartSeries, ApexOptions, ApexPlotOptions } from 'ng-apexcharts';
@@ -46,7 +42,7 @@ interface GenericChartConfig {
 export class LiveOuterRealmsComponent extends GenericComponent {
   public players: ApiLiveRanking[] = [];
   public eventNotActive = false;
-  public charts: Record<string, ChartAdvancedOptions | any> = {};
+  public charts: Record<string, any> = {};
   public currentEvent: IOuterRealmEvent | null = null;
   public player: PlayerLiveRankingExtended | null = null;
   public isDataLoading = false;
@@ -88,10 +84,11 @@ export class LiveOuterRealmsComponent extends GenericComponent {
       this.isInLoading = false;
       return;
     }
-    this.player = Object.assign({}, response.data.player, {
+    this.player = {
+      ...response.data.player,
       level: response.data.player.data[0]?.level || 0,
       legendary_level: response.data.player.data[0]?.legendary_level || 0,
-    });
+    };
     const scoreSeries = [
       {
         name: this.translateService.instant('Score'),
@@ -293,8 +290,7 @@ export class LiveOuterRealmsComponent extends GenericComponent {
         y: {
           formatter:
             tooltipYFormatter ||
-            ((value: number): string =>
-              value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',')),
+            ((value: number): string => (value === null ? '?' : formatThousands(value.toString()))),
         },
       },
       dataLabels: {
@@ -316,11 +312,10 @@ export class LiveOuterRealmsComponent extends GenericComponent {
       },
       yaxis: {
         reversed: reversed || false,
-        min: minValue === undefined ? undefined : minValue,
+        min: minValue,
         labels: {
           style: { colors: 'rgba(255,255,255,0.65)' },
-          formatter: (value: number) =>
-            value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ','),
+          formatter: (value: number) => (value === null ? '?' : formatThousands(value.toString())),
         },
         logarithmic: logarithmic || false,
         forceNiceScale: true,

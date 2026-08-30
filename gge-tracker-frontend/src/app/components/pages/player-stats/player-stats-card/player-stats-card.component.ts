@@ -16,9 +16,10 @@ import { ChartOptions, ChartTypes, EventGenericVariation, EventStatsData } from 
 import { ChartsWrapperComponent } from '@ggetracker-modules/charts-client/charts-wrapper.component';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { TranslateModule } from '@ngx-translate/core';
-import { ChartComponent } from 'ng-apexcharts';
+import { ApexXAxis, ChartComponent } from 'ng-apexcharts';
 import { StatsPanelComponent } from '../stats-panel/stats-panel.component';
-import { ApexXAxis } from 'ng-apexcharts';
+
+export type StatsPeriod = 'day' | 'week' | 'month' | 'year';
 
 @Component({
   selector: 'app-player-stats-card',
@@ -66,9 +67,9 @@ export class PlayerStatsCardComponent implements AfterViewInit, OnInit {
   public inversedData: EventGenericVariation[] = [];
   public changeTabOutput = output<ChartTypes>();
   public fullHistoryRequested = output<void>();
-  public changePeriodOutput = output<'day' | 'week' | 'month' | 'year'>();
+  public changePeriodOutput = output<StatsPeriod>();
 
-  private cdr = inject(ChangeDetectorRef);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   public ngOnInit(): void {
     const value = Object.keys(this.charts())[0] as ChartTypes;

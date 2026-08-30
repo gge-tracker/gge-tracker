@@ -67,7 +67,7 @@ export class SearchFormComponent implements OnChanges, OnInit {
     return this.inputTip();
   });
 
-  private cdr = inject(ChangeDetectorRef);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   public ngOnInit(): void {
     this.updateNbFilterActivated();
@@ -154,9 +154,7 @@ export class SearchFormComponent implements OnChanges, OnInit {
       if (globalThis.window === undefined) return [];
       const history = this.getLocalStorageSearchHistory();
       if (category === 'all') {
-        return [...new Set(Object.values(history).flat())]
-          .filter((_, index) => index % 2 === 0)
-          .slice(0, 5) as string[];
+        return [...new Set(Object.values(history).flat())].filter((_, index) => index % 2 === 0).slice(0, 5);
       }
       return [...new Set(history[category] || [])];
     } catch (error) {
@@ -174,7 +172,7 @@ export class SearchFormComponent implements OnChanges, OnInit {
       ).length - 1;
     for (const key of Object.keys(forms)) {
       if (Array.isArray(forms[key])) {
-        const array = forms[key] as string[];
+        const array = forms[key];
         nb += array.filter((value) => value === '1').length;
       }
     }

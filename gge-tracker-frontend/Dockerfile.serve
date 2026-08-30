@@ -17,9 +17,15 @@ WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm install
+RUN npm ci --ignore-scripts
 
-COPY . .
+COPY --chown=node:node angular.json ngsw-config.json tsconfig*.json ./
+COPY --chown=node:node src ./src
+COPY --chown=node:node public ./public
+
+RUN chown node:node /app
+
+USER node
 
 EXPOSE 4200
-CMD ["npx", "ng", "serve", "--host", "0.0.0.0", "--configuration", "development"]
+CMD ["node_modules/.bin/ng", "serve", "--host", "0.0.0.0", "--configuration", "development"]

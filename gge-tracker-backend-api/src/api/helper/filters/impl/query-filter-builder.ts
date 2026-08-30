@@ -9,7 +9,7 @@ import { QueryFilterService } from '../query-filter.service';
 export class QueryFilterBuilder {
   private readonly conditions: string[] = [];
   private readonly values: SqlValue[] = [];
-  private queryFilterService = new QueryFilterService();
+  private readonly queryFilterService = new QueryFilterService();
 
   constructor(parameterIndex?: number) {
     if (parameterIndex) {

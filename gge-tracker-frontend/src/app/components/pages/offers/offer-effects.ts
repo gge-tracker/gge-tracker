@@ -12,8 +12,29 @@ export interface ParsedRewardDescription {
 
 const SIGNED_VALUE = /[+-]\s?\d[\d.,]*(?:\s?[km](?!\p{L}))?\s?%?/iu;
 const SIZE = /\b\d+\s?[x×]\s?\d+\b/i;
-const PARENTHETICAL = /\(([^()]*\d[^()]*)\)/;
-const LABEL_EDGES = /^[\s,.:;·-]+|[\s,.:;·-]+$/g;
+const PARENTHETICAL = /\(([^()]*)\)/g;
+const LABEL_EDGE_PUNCTUATION = new Set([',', '.', ':', ';', '·', '-']);
+const WHITESPACE = /\s/;
+
+const isLabelEdge = (character: string): boolean => LABEL_EDGE_PUNCTUATION.has(character) || WHITESPACE.test(character);
+
+function trimLabelEdges(text: string): string {
+  let start = 0;
+  let end = text.length;
+  while (start < end && isLabelEdge(text[start])) start++;
+  while (end > start && isLabelEdge(text[end - 1])) end--;
+  return text.slice(start, end);
+}
+
+function capParenthetical(clause: string): RegExpExecArray | null {
+  PARENTHETICAL.lastIndex = 0;
+  let match = PARENTHETICAL.exec(clause);
+  while (match !== null) {
+    if ([...match[1]].some((character) => character >= '0' && character <= '9')) return match;
+    match = PARENTHETICAL.exec(clause);
+  }
+  return null;
+}
 
 function splitClauses(description: string): string[] {
   const clauses: string[] = [];
@@ -56,7 +77,7 @@ export function parseRewardDescription(description: string, locale: string): Par
   let size: string | null = null;
 
   for (const clause of splitClauses(description)) {
-    const parenthetical = PARENTHETICAL.exec(clause);
+    const parenthetical = capParenthetical(clause);
     const cap = parenthetical?.[1]?.trim() ?? null;
     const body = parenthetical ? clause.replace(parenthetical[0], ' ') : clause;
     const value = SIGNED_VALUE.exec(body);
@@ -66,18 +87,14 @@ export function parseRewardDescription(description: string, locale: string): Par
       if (footprint && !size) {
         size = footprint[0].replaceAll(/\s/g, '');
       } else {
-        notes.push(body.replaceAll(LABEL_EDGES, '').trim());
+        notes.push(trimLabelEdges(body));
       }
       continue;
     }
 
     effects.push({
       value: formatValue(value[0], locale),
-      label: body
-        .replace(value[0], ' ')
-        .replaceAll(/\s{2,}/g, ' ')
-        .replaceAll(LABEL_EDGES, '')
-        .trim(),
+      label: trimLabelEdges(body.replace(value[0], ' ').replaceAll(/\s{2,}/g, ' ')),
       cap,
     });
   }

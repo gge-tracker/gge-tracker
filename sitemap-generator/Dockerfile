@@ -16,8 +16,10 @@ FROM node:24-alpine
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --ignore-scripts
 
-COPY . .
+COPY generate-sitemaps.js servers.yaml ./
+
+USER node
 
 CMD ["node", "generate-sitemaps.js"]

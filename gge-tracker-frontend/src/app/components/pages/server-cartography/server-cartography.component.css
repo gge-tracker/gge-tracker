@@ -179,10 +179,6 @@ h5 {
   width: 15px;
 }
 
-.circle-indicator {
-  border-radius: 50%;
-}
-
 .circle-indicator,
 .pentagone-indicator,
 .square-indicator {
@@ -205,11 +201,6 @@ h5 {
 
 .heatmap-canvas:hover {
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
-}
-
-.heatmap-cell {
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  position: relative;
 }
 
 .heatmap-cell {
@@ -357,7 +348,7 @@ h5 {
 }
 
 .legend-settings-btn {
-  background: rgba(0, 150, 200, 0.9);
+  background: rgba(0, 126, 168, 0.9);
   border-radius: 0.6rem;
   border: none;
   color: #fff;
@@ -552,10 +543,6 @@ h5 {
 .pagination-modern button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
-}
-
-.pentagone-indicator {
-  clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
 }
 
 .pentagone-indicator {

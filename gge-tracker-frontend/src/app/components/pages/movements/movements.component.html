@@ -102,7 +102,7 @@
                     <img [src]="'/assets/castle' + formFilters.castleType + '.png'"
                       [attr.alt]="'Type de position' | translate" [title]="'Type de position' | translate">
                   </span>
-                  <select field [(ngModel)]="formFilters.castleType">
+                  <select field [(ngModel)]="formFilters.castleType" [attr.aria-label]="'Type de position' | translate">
                     <option value="null">{{ 'Tous' | translate }}</option>
                     <option value="1">{{ 'Chateau principal' | translate }}</option>
                     <option value="3">{{ 'Capitale' | translate }}</option>
@@ -125,7 +125,7 @@
                       '/assets/moving.png'"
                       [attr.alt]="'Type de mouvement' | translate" [title]="'Type de mouvement' | translate">
                   </span>
-                  <select field [(ngModel)]="formFilters.movementType">
+                  <select field [(ngModel)]="formFilters.movementType" [attr.aria-label]="'Type de mouvement' | translate">
                     <option value="null">{{ 'Tous' | translate }}</option>
                     <option value="1">{{ 'Apparition' | translate }}</option>
                     <option value="2">{{ 'Disparition' | translate }}</option>
@@ -146,14 +146,14 @@
                   <input field type="text" id="honorMin"
                     [value]="displayFormValues.honor.min" (focus)="onGenericFocus('min', 'honor')"
                     (blur)="onGenericBlur('min', 'honor')" (input)="onGenericInput('min', 'honor', $event)"
-                    [title]="formFilters.minHonor" [placeholder]="'Honneur min.' | translate">
+                    [title]="formFilters.minHonor" [placeholder]="'Honneur min.' | translate" [attr.aria-label]="'Honneur min.' | translate">
                   <span field separator>
                     <lucide-icon [img]="ArrowBigRightDash" [size]="16"></lucide-icon>
                   </span>
                   <input field type="text" id="honorMax"
                     [value]="displayFormValues.honor.max" (focus)="onGenericFocus('max', 'honor')"
                     (blur)="onGenericBlur('max', 'honor')" (input)="onGenericInput('max', 'honor', $event)"
-                    [title]="formFilters.maxHonor" [placeholder]="'Honneur max.' | translate">
+                    [title]="formFilters.maxHonor" [placeholder]="'Honneur max.' | translate" [attr.aria-label]="'Honneur max.' | translate">
                 </app-modal-form-group>
               </div>
               <!-- Might -->
@@ -166,14 +166,14 @@
                   <input field type="text" id="mightMin"
                     [value]="displayFormValues.might.min" (focus)="onGenericFocus('min', 'might')"
                     (blur)="onGenericBlur('min', 'might')" (input)="onGenericInput('min', 'might', $event)"
-                    [title]="formFilters.minMight" [placeholder]="'Puissance min' | translate">
+                    [title]="formFilters.minMight" [placeholder]="'Puissance min' | translate" [attr.aria-label]="'Puissance min' | translate">
                   <span field separator>
                     <lucide-icon [img]="ArrowBigRightDash" [size]="16"></lucide-icon>
                   </span>
                   <input field type="text" id="mightMax"
                     [value]="displayFormValues.might.max" (focus)="onGenericFocus('max', 'might')"
                     (blur)="onGenericBlur('max', 'might')" (input)="onGenericInput('max', 'might', $event)"
-                    [title]="formFilters.maxMight" [placeholder]="'Puissance max' | translate">
+                    [title]="formFilters.maxMight" [placeholder]="'Puissance max' | translate" [attr.aria-label]="'Puissance max' | translate">
                 </app-modal-form-group>
               </div>
             </div>
@@ -188,14 +188,14 @@
                   <input field type="text" id="lootMin"
                     [value]="displayFormValues.loot.min" (focus)="onGenericFocus('min', 'loot')"
                     (blur)="onGenericBlur('min', 'loot')" (input)="onGenericInput('min', 'loot', $event)"
-                    [title]="formFilters.minLoot" [placeholder]="'Pillage min.' | translate">
+                    [title]="formFilters.minLoot" [placeholder]="'Pillage min.' | translate" [attr.aria-label]="'Pillage min.' | translate">
                   <span field separator>
                     <lucide-icon [img]="ArrowBigRightDash" [size]="16"></lucide-icon>
                   </span>
                   <input field type="text" id="lootMax"
                     [value]="displayFormValues.loot.max" (focus)="onGenericFocus('max', 'loot')"
                     (blur)="onGenericBlur('max', 'loot')" (input)="onGenericInput('max', 'loot', $event)"
-                    [title]="formFilters.maxLoot" [placeholder]="'Pillage max.' | translate">
+                    [title]="formFilters.maxLoot" [placeholder]="'Pillage max.' | translate" [attr.aria-label]="'Pillage max.' | translate">
                 </app-modal-form-group>
               </div>
               <!-- Level -->
@@ -207,13 +207,13 @@
                   </span>
                   <input field type="text" id="levelMin"
                     [(ngModel)]="formFilters.minLevel" [title]="formFilters.minLevel"
-                    [placeholder]="'Niveau min' | translate">
+                    [placeholder]="'Niveau min' | translate" [attr.aria-label]="'Niveau min' | translate">
                   <span field separator>
                     <lucide-icon [img]="ArrowBigRightDash" [size]="16"></lucide-icon>
                   </span>
                   <input field type="text" id="levelMax"
                     [(ngModel)]="formFilters.maxLevel" [title]="formFilters.maxLevel"
-                    [placeholder]="'Niveau max' | translate">
+                    [placeholder]="'Niveau max' | translate" [attr.aria-label]="'Niveau max' | translate">
                 </app-modal-form-group>
               </div>
             </div>
@@ -228,14 +228,14 @@
                   <input field type="text" id="fameMin"
                     [value]="displayFormValues.fame.min" (focus)="onGenericFocus('min', 'fame')"
                     (blur)="onGenericBlur('min', 'fame')" (input)="onGenericInput('min', 'fame', $event)"
-                    [title]="formFilters.minFame" [placeholder]="'Gloire min.' | translate">
+                    [title]="formFilters.minFame" [placeholder]="'Gloire min.' | translate" [attr.aria-label]="'Gloire min.' | translate">
                   <span field separator>
                     <lucide-icon [img]="ArrowBigRightDash" [size]="16"></lucide-icon>
                   </span>
                   <input field type="text" id="fameMax"
                     [value]="displayFormValues.fame.max" (focus)="onGenericFocus('max', 'fame')"
                     (blur)="onGenericBlur('max', 'fame')" (input)="onGenericInput('max', 'fame', $event)"
-                    [title]="formFilters.maxFame" [placeholder]="'Gloire max.' | translate">
+                    [title]="formFilters.maxFame" [placeholder]="'Gloire max.' | translate" [attr.aria-label]="'Gloire max.' | translate">
                 </app-modal-form-group>
               </div>
               <!-- Castle count -->
@@ -248,14 +248,14 @@
                   <input field type="text" id="castleCountMin"
                     [value]="displayFormValues.castleCount.min" (focus)="onGenericFocus('min', 'castleCount')"
                     (blur)="onGenericBlur('min', 'castleCount')" (input)="onGenericInput('min', 'castleCount', $event)"
-                    [title]="formFilters.castleCountMin" [placeholder]="'Châteaux min.' | translate">
+                    [title]="formFilters.castleCountMin" [placeholder]="'Châteaux min.' | translate" [attr.aria-label]="'Châteaux min.' | translate">
                   <span field separator>
                     <lucide-icon [img]="ArrowBigRightDash" [size]="16"></lucide-icon>
                   </span>
                   <input field type="text" id="castleCountMax"
                     [value]="displayFormValues.castleCount.max" (focus)="onGenericFocus('max', 'castleCount')"
                     (blur)="onGenericBlur('max', 'castleCount')" (input)="onGenericInput('max', 'castleCount', $event)"
-                    [title]="formFilters.castleCountMax" [placeholder]="'Châteaux max.' | translate">
+                    [title]="formFilters.castleCountMax" [placeholder]="'Châteaux max.' | translate" [attr.aria-label]="'Châteaux max.' | translate">
                 </app-modal-form-group>
               </div>
             </div>

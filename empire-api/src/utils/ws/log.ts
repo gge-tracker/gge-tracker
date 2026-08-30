@@ -1,14 +1,14 @@
 import { GgeServerType } from './base-socket.js';
 
 export class Log {
-  private _serverHeader: string;
-  private _serverType: GgeServerType;
+  private readonly _serverHeader: string;
+  private readonly _serverType: GgeServerType;
 
-  private gray = this.color(90);
-  private bold = this.color(1);
-  private green = this.color(32);
-  private yellow = this.color(33);
-  private blue = this.color(34);
+  private readonly gray = this.color(90);
+  private readonly bold = this.color(1);
+  private readonly green = this.color(32);
+  private readonly yellow = this.color(33);
+  private readonly blue = this.color(34);
 
   constructor(serverHeader: string, serverType: GgeServerType) {
     this._serverHeader = serverHeader;
@@ -38,11 +38,10 @@ export class Log {
     const typeColor = this.getColorForServerType(this._serverType);
     const headerColor = this.getColorForServerHeader(this._serverHeader);
 
-    const output =
-      `${this.gray(`[${timestamp}]`)} ` +
-      `${this.bold(typeColor(`[${this._serverType}]`))}` +
-      `${this.bold(headerColor(`[${this._serverHeader}]`))} ` +
-      `${message}`;
+    const timeTag = this.gray(`[${timestamp}]`);
+    const typeTag = this.bold(typeColor(`[${this._serverType}]`));
+    const headerTag = this.bold(headerColor(`[${this._serverHeader}]`));
+    const output = `${timeTag} ${typeTag}${headerTag} ${message}`;
 
     console.log(output, ...arguments_);
   }

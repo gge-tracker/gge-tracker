@@ -1,5 +1,5 @@
 @if (isInLoading) {
-  <section class="alliance-hero alliance-hero--skeleton" role="status"
+  <output class="alliance-hero alliance-hero--skeleton"
     [attr.aria-label]="'Chargement' | translate">
     <div class="alliance-hero-backdrop" aria-hidden="true"></div>
     <div class="container-fluid container-xxl alliance-stats-container mb-5 mb-lg-3" aria-hidden="true">
@@ -18,8 +18,8 @@
         }
       </div>
     </div>
-  </section>
-  <nav class="alliance-tabs alliance-tabs--skeleton mt-5" aria-hidden="true">
+  </output>
+  <div class="alliance-tabs alliance-tabs--skeleton mt-5" aria-hidden="true">
     <div class="alliance-tabs-scroller">
       @for (tab of tabs; track tab.key) {
         <span class="alliance-tab alliance-tab--skeleton">
@@ -27,7 +27,7 @@
         </span>
       }
     </div>
-  </nav>
+  </div>
   <div class="alliances-stats-content pb-3 pt-3" aria-hidden="true">
     <div class="container pt-3">
       @for (placeholder of skeletonRows; track $index) {
@@ -103,9 +103,9 @@
     ]" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
         @if (isInMovementLoading) {
           @for (row of skeletonRows; track $index) {
-            <tr class="table-skeleton-row" aria-hidden="true">
+            <tr class="table-skeleton-row">
               @for (cell of skeletonCells; track $index) {
-                <td><span class="gge-skeleton gge-skeleton--parchment table-skeleton-cell"></span></td>
+                <td><span class="gge-skeleton gge-skeleton--parchment table-skeleton-cell" aria-hidden="true"></span></td>
               }
             </tr>
           }
@@ -150,7 +150,7 @@
             type="text"
             class="distance-input"
             [placeholder]="'Pseudonyme' | translate"
-            [(ngModel)]="playerNameForDistance">
+            [(ngModel)]="playerNameForDistance" [attr.aria-label]="'Pseudonyme' | translate">
           <div class="world-selector-group">
             @for (world of availableWorlds; track world.id) {
               <button
@@ -566,7 +566,7 @@
         </div>
       </div>
     } @else {
-      <div class="container-fluid pt-3 pb-3" role="status" [attr.aria-label]="'Chargement' | translate">
+      <output class="container-fluid pt-3 pb-3" [attr.aria-label]="'Chargement' | translate">
         <div class="row" aria-hidden="true">
           @for (placeholder of skeletonPulseTables; track $index) {
             <div class="col-12 col-lg-6 mt-4">
@@ -584,7 +584,7 @@
             <span class="gge-skeleton gge-skeleton--parchment alliance-skeleton-chart"></span>
           </div>
         </div>
-      </div>
+      </output>
     }
   </div>
 }

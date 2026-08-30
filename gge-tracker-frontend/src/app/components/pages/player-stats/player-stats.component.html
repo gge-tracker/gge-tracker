@@ -54,7 +54,7 @@
         <div class="card event-card m-2">
           @if (getScoreboardFromEvent(event)) {
           <div class="card-body d-flex flex-column justify-content-between">
-            <h5 class="card-title"><img src="/assets/star.png" alt="Top 3"></h5>
+            <h5 class="card-title"><img src="/assets/star.png" alt=""><span class="visually-hidden">Top 3</span></h5>
             <div class="card-content d-flex align-items-center">
               <div class="img-container me-3">
                 <img [src]="'/assets/event-logo-id-' + event + '.png'" class="img-fluid" alt="Event" width="90"
@@ -215,7 +215,7 @@
           </div>
           <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="loot">
             @if (charts['loot'] && chartVisibles.loot) {
-            <app-player-stats-card [charts]="{ 'Graphique': charts['loot'] }" [data]="[]"
+            <app-player-stats-card [charts]="eventCharts['loot'] ?? { 'Graphique': charts['loot'] }" [data]="[]"
               [title]="'Pillage hebdomadaire' | translate"
               [dataName]="'Points de pillage' | translate"
               [playerId]="playerId" [eventName]="'player_loot_history'"
@@ -423,7 +423,7 @@
               }
               @if (monumentsList.length > 0) {
                 <div class="ps-section">
-                  <app-modal-table [items]="monumentsList" [headerTemplate]="patriarchMonumentsHeader"
+                  <app-modal-table [items]="monumentsList" [columns]="monumentsColumns"
                     [rowTemplate]="patriarchMonumentsRow" [searchFilter]="monumentsSearchFilter"
                     defaultSortColumn="type" />
                 </div>
@@ -695,7 +695,8 @@
             @for (woaEvent of woaHistory; track woaEvent) {
               <div class="col-12 col-lg-6">
                 <app-event-card [event]="woaEvent" [options]="{ displayMode: 'points', dateFormat: 'Date_1' }"
-                  (click)="navigateToEvent(woaEvent)"></app-event-card>
+                  (click)="navigateToEvent(woaEvent)" (keydown.enter)="navigateToEvent(woaEvent)"
+                  (keydown.space)="navigateToEvent(woaEvent)" tabindex="0" role="button"></app-event-card>
               </div>
             }
             @if (woaHistory.length === 0) {
@@ -974,7 +975,7 @@
       </div>
       <div class="modal-body">
         <ng-container *ngTemplateOutlet="patriarchOverviewContent"></ng-container>
-        <app-modal-table [items]="monumentsList" [headerTemplate]="patriarchMonumentsHeader"
+        <app-modal-table [items]="monumentsList" [columns]="monumentsColumns"
           [rowTemplate]="patriarchMonumentsRow" [searchFilter]="monumentsSearchFilter" defaultSortColumn="type" />
       </div>
     </div>
@@ -997,29 +998,6 @@
       }
     </div>
   </div>
-</ng-template>
-
-<ng-template #patriarchMonumentsHeader let-sortBy="sortBy" let-sortColumn="sortColumn" let-sortAsc="sortAsc">
-  <tr>
-    <th (click)="sortBy('type')">
-      {{ 'Type de patrimoine' | translate }}
-      @if (sortColumn === 'type') {
-      <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc" [class.fa-arrow-down]="!sortAsc"></i>
-      }
-    </th>
-    <th (click)="sortBy('kingdom')">
-      {{ 'Royaume' | translate }}
-      @if (sortColumn === 'kingdom') {
-      <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc" [class.fa-arrow-down]="!sortAsc"></i>
-      }
-    </th>
-    <th (click)="sortBy('position')">
-      {{ 'Position' | translate }}
-      @if (sortColumn === 'position') {
-      <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc" [class.fa-arrow-down]="!sortAsc"></i>
-      }
-    </th>
-  </tr>
 </ng-template>
 
 <ng-template #patriarchMonumentsRow let-monument>

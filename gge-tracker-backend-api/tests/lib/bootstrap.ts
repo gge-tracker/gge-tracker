@@ -29,6 +29,7 @@ export interface Seeds {
   alliedPlayerRank?: number;
   movementType?: string;
   movementCastleType?: number;
+  statusEtag?: string;
 }
 
 const SPECIAL_SERVERS = new Set<string>(Object.values(AuthorizedSpecialServersEnum));
@@ -60,6 +61,10 @@ export async function bootstrap(): Promise<Seeds> {
   const header = seeds.server ? { 'gge-server': seeds.server } : {};
 
   if (seeds.server) {
+    const statusRes = await request({ path: '/', headers: header });
+    const etag = statusRes.headers['etag'];
+    if (typeof etag === 'string' && etag !== '') seeds.statusEtag = etag;
+
     const playersRes = await request({ path: '/players?page=1', headers: header });
     const first = playersRes.body?.players?.[0];
     if (first) {

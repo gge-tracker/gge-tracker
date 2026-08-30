@@ -16,7 +16,6 @@ import { firstValueFrom } from 'rxjs';
   selector: 'app-generic',
   imports: [],
   templateUrl: './generic.component.html',
-  styleUrl: './generic.component.css',
   standalone: true,
 })
 export class GenericComponent {
@@ -32,8 +31,8 @@ export class GenericComponent {
   public meta = inject(Meta);
   public translateService = inject(TranslateService);
 
-  private renderer = inject(Renderer2);
-  private rendererFactory = inject(RendererFactory2);
+  private readonly renderer = inject(Renderer2);
+  private readonly rendererFactory = inject(RendererFactory2);
 
   constructor() {
     this.isBrowser = isPlatformBrowser(this.platformId);
@@ -190,20 +189,18 @@ export class GenericComponent {
         keyword: CastleTypeDefaultTranslation.NEW_PLAYER,
         description: `(${positionNew[0]}, ${positionNew[1]})`,
       };
-    } else {
-      if (positionOld[0] && positionOld[1] && positionNew[0] === null && positionNew[1] === null) {
-        return {
-          image: `<img src="/assets/ruins.png">`,
-          keyword: `${titleType} ${CastleTypeDefaultTranslation.ABANDONED}${needE}`,
-          description: `(${positionOld[0]}, ${positionOld[1]})`,
-        };
-      } else if (positionOld[0] === null && positionOld[1] === null && positionNew[0] && positionNew[1]) {
-        return {
-          image: `<img src="/assets/new-castle.png">`,
-          keyword: `${CastleTypeDefaultTranslation.CONQUEST}${needE} ${titleType.toLowerCase()}`,
-          description: `(${positionNew[0]}, ${positionNew[1]})`,
-        };
-      }
+    } else if (positionOld[0] && positionOld[1] && positionNew[0] === null && positionNew[1] === null) {
+      return {
+        image: `<img src="/assets/ruins.png">`,
+        keyword: `${titleType} ${CastleTypeDefaultTranslation.ABANDONED}${needE}`,
+        description: `(${positionOld[0]}, ${positionOld[1]})`,
+      };
+    } else if (positionOld[0] === null && positionOld[1] === null && positionNew[0] && positionNew[1]) {
+      return {
+        image: `<img src="/assets/new-castle.png">`,
+        keyword: `${CastleTypeDefaultTranslation.CONQUEST}${needE} ${titleType.toLowerCase()}`,
+        description: `(${positionNew[0]}, ${positionNew[1]})`,
+      };
     }
     return {
       image: ``,

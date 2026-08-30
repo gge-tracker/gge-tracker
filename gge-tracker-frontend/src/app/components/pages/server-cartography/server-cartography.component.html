@@ -9,15 +9,13 @@
     </div>
     <div class="legend-items">
       @for (legend of legends; track legend) {
-      <div class="legend-item"
-        (click)="watchModeAlliance === 'one' ? togglePlayerCastle(legend.name) : toggleAllianceCastles(legend.name)"
-        (keydown)="($event.key === 'Enter' || $event.key === ' ') ? (watchModeAlliance === 'one' ? togglePlayerCastle(legend.name) : toggleAllianceCastles(legend.name)) : null"
-        tabindex="0">
+      <button type="button" class="legend-item button-reset"
+        (click)="watchModeAlliance === 'one' ? togglePlayerCastle(legend.name) : toggleAllianceCastles(legend.name)">
         <div class="legend-color" [style.background-color]="legend.color"></div>
         <div class="legend-text" [ngClass]="{ 'hidden': isPlayerHidden(legend.name) }">
           {{ legend.name === '1' ? ('Sans alliance' | translate) : legend.name }}
         </div>
-      </div>
+      </button>
       }
     </div>
     <div class="legend-summary">
@@ -187,7 +185,7 @@
               </div>
             </div>
 
-            <app-modal-table [items]="monumentsList" [headerTemplate]="patriarchMonumentsHeader"
+            <app-modal-table [items]="monumentsList" [columns]="monumentsColumns"
               [rowTemplate]="patriarchMonumentsRow" [searchFilter]="monumentsSearchFilter" defaultSortColumn="type" />
           </div>
         </div>
@@ -216,7 +214,7 @@
               <span field prefix class="large">
                 <img [src]="filter.icon" [attr.alt]="filter.alt | translate" [title]="filter.title | translate">
               </span>
-              <label field toggle [for]="filter.id">
+              <label field toggle [for]="filter.id" [attr.aria-label]="filter.label | translate">
                 <input type="checkbox" [(ngModel)]="formFilters[filter.model]" [id]="filter.id">
                 <span class="slider"></span>
               </label>
@@ -256,7 +254,8 @@
             <span class="fw-medium">{{ legend.name === '1' ? ('Sans alliance' | translate) : legend.name }}</span>
             <div class="d-flex align-items-center gap-2">
               <input type="color" class="form-control form-control-color p-0 shadow-none"
-                [value]="rgbToHex(legend.color)" (change)="changeItemColor(legend.name, $event.target)">
+                [value]="rgbToHex(legend.color)" (change)="changeItemColor(legend.name, $event.target)"
+                [attr.aria-label]="legend.name">
               @if (watchModeAlliance !== 'one') {
               <button class="btn btn-outline-danger btn-sm"
                 [title]="('Supprimer' | translate) + ' ' + (legend.name === '1' ? ('Sans alliance' | translate) : legend.name)"
@@ -274,7 +273,7 @@
           {{ 'Ajouter une alliance' | translate }}
         </h5>
         <div class="input-group px-2 mb-3">
-          <input type="text" #allianceAddName class="form-control" [placeholder]="'Ajouter une alliance' | translate">
+          <input type="text" #allianceAddName class="form-control" [placeholder]="'Ajouter une alliance' | translate" [attr.aria-label]="'Ajouter une alliance' | translate">
           <button class="gge-btn search" type="button"
             (click)="loadNewAlliance(allianceAddName.value); allianceAddName.value=''">
             <i class="fas fa-search"></i>
@@ -285,7 +284,8 @@
           {{ 'Nombre d\'alliances à afficher' | translate}}
         </h5>
         <div class="input-group px-2 mb-3">
-          <input type="number" class="form-control" min="1" [(ngModel)]="alliancesQuantity">
+          <input type="number" class="form-control" min="1" [(ngModel)]="alliancesQuantity"
+            [attr.aria-label]="'Nombre d\'alliances à afficher' | translate">
           <button class="gge-btn search" type="button" (click)="changeMapSize(false)">
             <i class="fas fa-search"></i>
           </button>
@@ -319,29 +319,6 @@
     </div>
   </div>
 </div>
-
-<ng-template #patriarchMonumentsHeader let-sortBy="sortBy" let-sortColumn="sortColumn" let-sortAsc="sortAsc">
-  <tr>
-    <th (click)="sortBy('type')">
-      {{ 'Type de patrimoine' | translate }}
-      @if (sortColumn === 'type') {
-      <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc" [class.fa-arrow-down]="!sortAsc"></i>
-      }
-    </th>
-    <th (click)="sortBy('position')">
-      {{ 'Position' | translate }}
-      @if (sortColumn === 'position') {
-      <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc" [class.fa-arrow-down]="!sortAsc"></i>
-      }
-    </th>
-    <th (click)="sortBy('owner')">
-      {{ 'Propriétaire' | translate }}
-      @if (sortColumn === 'owner') {
-      <i class="ms-1 fa-solid" [class.fa-arrow-up]="sortAsc" [class.fa-arrow-down]="!sortAsc"></i>
-      }
-    </th>
-  </tr>
-</ng-template>
 
 <ng-template #patriarchMonumentsRow let-monument>
   <tr>

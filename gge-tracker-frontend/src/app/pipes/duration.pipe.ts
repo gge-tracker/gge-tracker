@@ -6,8 +6,8 @@ import { TranslateService } from '@ngx-translate/core';
   standalone: true,
 })
 export class DurationPipe implements PipeTransform, OnDestroy {
-  private translateService = inject(TranslateService);
-  private timer: ReturnType<typeof setInterval> | null = null;
+  private readonly translateService = inject(TranslateService);
+  private readonly timer: ReturnType<typeof setInterval> | null = null;
 
   private translations: Record<string, string> = {};
 

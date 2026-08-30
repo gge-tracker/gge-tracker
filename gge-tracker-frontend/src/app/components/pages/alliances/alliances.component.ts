@@ -92,8 +92,8 @@ export class AlliancesComponent extends GenericComponent implements OnInit {
     playerCount: { min: 'minPlayerCount', max: 'maxPlayerCount' },
   };
 
-  private localStorage = inject(LocalStorageService);
-  private formatNumberPipe = inject(FormatNumberPipe);
+  private readonly localStorage = inject(LocalStorageService);
+  private readonly formatNumberPipe = inject(FormatNumberPipe);
 
   constructor() {
     super();

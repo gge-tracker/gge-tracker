@@ -109,7 +109,33 @@ const stormRejectedCases = (base: '/storms/forts' | '/storms/isles'): EndpointCa
 export const CATALOG: Endpoint[] = [
   // Documentation / status (public)
   { id: 'docs', method: 'GET', scope: 'public', path: () => '/docs', okStatuses: [200], kind: 'any', shapeKeys: ['openapi', 'info', 'paths'] },
-  { id: 'status-root', snapshot: 'shape', method: 'GET', scope: 'protected', bypass: true, path: () => '/', okStatuses: [200], shapeKeys: ['version'], needs: ['server'] },
+  {
+    id: 'status-root',
+    snapshot: 'fields',
+    method: 'GET',
+    scope: 'protected',
+    bypass: true,
+    path: () => '/',
+    okStatuses: [200],
+    shapeKeys: ['server', 'server_code', 'version', 'generated_at', 'data', 'dataset', 'polling', 'rate_limit'],
+    needs: ['server'],
+    cases: [
+      { label: 'If-None-Match * is answered 304', path: () => '/', expect: [304], headers: () => ({ 'If-None-Match': '*' }) },
+      { label: 'a stale ETag still returns the body', path: () => '/', expect: [200], headers: () => ({ 'If-None-Match': 'W/"nope"' }) },
+      {
+        label: 'the ETag it just handed out is answered 304',
+        path: () => '/',
+        expect: [304],
+        headers: (s) => (s.statusEtag ? { 'If-None-Match': s.statusEtag } : undefined),
+      },
+      {
+        label: 'a JSON-escaped ETag is still recognised',
+        path: () => '/',
+        expect: [304],
+        headers: (s) => (s.statusEtag ? { 'If-None-Match': s.statusEtag.replaceAll('"', String.raw`\"`) } : undefined),
+      },
+    ],
+  },
   { id: 'servers', method: 'GET', scope: 'public', path: () => '/servers', okStatuses: [200] },
 
   // Assets (public, rate-limit bypass)
@@ -416,6 +442,7 @@ export const CATALOG: Endpoint[] = [
   { id: 'stats-player-event-occurrences', method: 'GET', scope: 'public', path: (s) => `/statistics/player/${s.playerId ?? '1'}/player_event_nomad_history/occurrences`, okStatuses: [200, 400, 404], needs: ['server', 'player'], cases: [
     { label: 'rejects an unknown event', path: (s) => `/statistics/player/${s.playerId ?? '1'}/not_an_event/occurrences`, expect: [400] },
     { label: 'rejects a continuously sampled table', path: (s) => `/statistics/player/${s.playerId ?? '1'}/player_might_history/occurrences`, expect: [400] },
+    { label: 'groups the weekly loot reset into weeks', path: (s) => `/statistics/player/${s.playerId ?? '1'}/player_loot_history/occurrences`, expect: [200, 400, 404] },
   ] },
 
   // Live ranking (public)

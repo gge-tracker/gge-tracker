@@ -115,7 +115,7 @@
         }
 
         @if (isRefreshing) {
-        <div class="offers-grid offers-grid--skeleton" role="status" [attr.aria-label]="'Chargement' | translate">
+        <output class="offers-grid offers-grid--skeleton" [attr.aria-label]="'Chargement' | translate">
           @for (placeholder of skeletonCards; track $index) {
           <div class="offer-card offer-card--skeleton" aria-hidden="true">
             <div class="offer-card__media">
@@ -133,7 +133,7 @@
             </div>
           </div>
           }
-        </div>
+        </output>
         } @else {
 
         @if (!isInLoading && categories.length === 0) {

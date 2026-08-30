@@ -16,9 +16,9 @@ export class UtilitiesService {
   public lastUpdate?: string;
   public dataSubject = new BehaviorSubject<ApiLastUpdates | null>(null);
   public data$ = this.dataSubject.asObservable();
-  private apiRestService = inject(ApiRestService);
-  private toastService = inject(ToastService);
-  private translateService = inject(TranslateService);
+  private readonly apiRestService = inject(ApiRestService);
+  private readonly toastService = inject(ToastService);
+  private readonly translateService = inject(TranslateService);
 
   constructor() {
     this.loadLastUpdates();
@@ -148,7 +148,7 @@ export class UtilitiesService {
 
         const context = canvas.getContext('2d');
         if (!context) {
-          reject('Canvas context not available');
+          reject(new Error('Canvas context not available'));
           return;
         }
 
@@ -162,7 +162,7 @@ export class UtilitiesService {
       });
 
       img.addEventListener('error', (error) => {
-        reject(error);
+        reject(new Error(`Failed to load image ${url}`, { cause: error }));
       });
     });
   }

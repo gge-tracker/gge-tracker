@@ -3,10 +3,12 @@ import { Component, effect, input, TemplateRef, untracked } from '@angular/core'
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '@ngx-translate/core';
 
-export interface ModalTableSortContext {
-  sortBy: (column: string) => void;
-  sortColumn: string | undefined;
-  sortAsc: boolean;
+const toComparableText = (value: unknown): string =>
+  typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value);
+
+export interface ModalTableColumn {
+  label: string;
+  sortKey?: string;
 }
 
 /**
@@ -22,7 +24,7 @@ export interface ModalTableSortContext {
 export class ModalTableComponent<T> {
   public readonly items = input.required<T[]>();
 
-  public readonly headerTemplate = input.required<TemplateRef<ModalTableSortContext>>();
+  public readonly columns = input.required<ModalTableColumn[]>();
   public readonly rowTemplate = input.required<TemplateRef<{ $implicit: T }>>();
 
   public readonly defaultSortColumn = input<string>();
@@ -97,7 +99,7 @@ export class ModalTableComponent<T> {
         const cmp =
           typeof aValue === 'number' && typeof bValue === 'number'
             ? aValue - bValue
-            : String(aValue).localeCompare(String(bValue), undefined, { sensitivity: 'base' });
+            : toComparableText(aValue).localeCompare(toComparableText(bValue), undefined, { sensitivity: 'base' });
         return cmp * (this.sortAsc ? 1 : -1);
       });
     }
@@ -107,14 +109,6 @@ export class ModalTableComponent<T> {
     if (this.currentPage > this.totalPages) this.currentPage = this.totalPages;
     const start = (this.currentPage - 1) * this.pageSize();
     return filtered.slice(start, start + this.pageSize());
-  }
-
-  public get sortContext(): ModalTableSortContext {
-    return {
-      sortBy: this.sortBy.bind(this),
-      sortColumn: this.sortColumn,
-      sortAsc: this.sortAsc,
-    };
   }
 
   public sortBy(column: string): void {

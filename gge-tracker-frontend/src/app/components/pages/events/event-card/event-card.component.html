@@ -1,5 +1,5 @@
-<div [title]="'Voir le détail' | translate" (click)="onEventClick.emit(this.event())"
-  (keyup.enter)="onEventClick.emit(this.event())" (keydown.space)="onEventClick.emit(this.event())" class="event-card"
+<div [title]="'Voir le détail' | translate" (click)="eventClick.emit(this.event())"
+  (keyup.enter)="eventClick.emit(this.event())" (keydown.space)="eventClick.emit(this.event())" class="event-card"
   [class.card-loading]="loading()"
   [ngStyle]="{'background-image': 'url(/assets/' + selectedEvent().type + '.png)'}">
   <div class="event-overlay">

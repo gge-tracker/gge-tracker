@@ -1,4 +1,4 @@
-<label class="switch">
+<label class="switch" [attr.for]="id()" [attr.aria-label]="ariaLabel() || null">
   <input type="checkbox"
     [(ngModel)]="currentValue"
     (ngModelChange)="updateSwitchValue(currentValue)" [id]="id()">

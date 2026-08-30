@@ -27,7 +27,7 @@
         @if (isServerMenuOpen()) {
           <div class="server-dropdown">
             <input type="text" #searchServerInput id="searchServerInput" name="searchServerInput" class="form-control"
-              placeholder="{{ 'Rechercher' | translate }}" [(ngModel)]="filteredServerInput">
+              placeholder="{{ 'Rechercher' | translate }}" [(ngModel)]="filteredServerInput" aria-label="{{ 'Rechercher' | translate }}">
             <div class="separator"></div>
             @for (srv of serverService.xmlServers; track srv) {
               <button
@@ -90,11 +90,12 @@
 
       <!-- Lang selector -->
       <div class="position-relative" id="language-menu">
-        <div class="lang-pill" (click)="toggleLanguageMenu()" [class.rotate]="isLanguageMenuOpen()">
+        <button type="button" class="lang-pill button-reset" (click)="toggleLanguageMenu()"
+          [class.rotate]="isLanguageMenuOpen()">
           <img [src]="languageService.getFlagUrlForLang(languageService.currentLang)" width="20" class="me-2"
             alt="{{ languageService.currentLang }}" title="{{ languageService.currentLang }}">
           <app-icon name="ChevronDown" class="chevron" [size]="14"></app-icon>
-        </div>
+        </button>
 
         @if (isLanguageMenuOpen()) {
           <div class="lang-dropdown">

@@ -11,7 +11,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { ModalFormGroupComponent } from '@ggetracker-components/modal-form-group/modal-form-group.component';
-import { ModalTableComponent } from '@ggetracker-components/modal-table/modal-table.component';
+import { ModalTableColumn, ModalTableComponent } from '@ggetracker-components/modal-table/modal-table.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import {
   ApiCartoAlliance,
@@ -112,19 +112,25 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
   };
   public filters = this.getFilters();
 
+  public readonly monumentsColumns: ModalTableColumn[] = [
+    { label: 'Type de patrimoine', sortKey: 'type' },
+    { label: 'Position', sortKey: 'position' },
+    { label: 'Propriétaire', sortKey: 'owner' },
+  ];
+
   private readonly MIN_RADIUS = 2;
   private readonly MAX_RADIUS = 30;
   private alliances: ApiCartoMap[] = [];
   private toggledAllianceCastles: string[] = [];
   private L!: typeof Leaflet;
-  private cdr = inject(ChangeDetectorRef);
-  private windowService = inject(WindowService);
-  private serverService = inject(ServerService);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly windowService = inject(WindowService);
+  private readonly serverService = inject(ServerService);
   private allianceName: string | null = null;
   private filteredCastles: Castle[] = [];
   private playerLayers: Record<string, L.LayerGroup> = {};
   private selectedPolylines: L.Polyline[] = [];
-  private containerSize: number = WorldSizeDimensions.X.MAX;
+  private readonly containerSize: number = WorldSizeDimensions.X.MAX;
   private selectedPlayer: string | null = null;
 
   public async ngAfterViewInit(): Promise<void> {
@@ -172,7 +178,6 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
             void this.initWithSpecificAlliance(parsedParameter, WatchModeStats.ALL_ALLIANCES, parsedColors);
           } catch {
             this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
-            return;
           }
         } else {
           this.allianceName = alliance;
@@ -195,7 +200,7 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     const cellHeight = canvasHeight / rows;
     const col = Math.floor(x / cellWidth);
     const row = Math.floor(y / cellHeight);
-    if (this.heatmap[row] && this.heatmap[row][col]) {
+    if (this.heatmap[row]?.[col]) {
       this.showCellDetails(row, col, this.heatmap[row][col], event);
     } else {
       this.hideCellDetails();
@@ -355,7 +360,7 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
         if (_ === CastleType.LABORATORY || _ === CastleType.MONUMENT || _ === CastleType.ROYAL_TOWER) return;
         const row = Math.floor(y / this.resolution);
         const col = Math.floor(x / this.resolution);
-        if (this.heatmap[row] && this.heatmap[row][col] !== undefined) {
+        if (this.heatmap[row]?.[col] !== undefined) {
           const nbCastles = player.castles.filter(
             (castle) =>
               castle[2] !== CastleType.MONUMENT &&
@@ -740,34 +745,10 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     parsedColors: string[] | null = null,
   ): Promise<void> {
     this.watchModeAlliance = watchMode;
-    const alliances: ApiCartoAlliance[][] = [];
-    // We check if the alliance is a number or a string
-    if (typeof alliance === 'string' && !Number.isNaN(Number.parseInt(alliance))) {
-      const element = await this.apiRestService.getCartoAlliance(Number(alliance), this.selectedWorld);
-      if (element.success && element.data.length > 0) {
-        alliances.push(element.data);
-      } else {
-        this.toastService.add(ErrorType.NO_ALLIANCE_FOUND, 5000);
-        return;
-      }
-    } else if (Array.isArray(alliance)) {
-      for (const id of alliance) {
-        const response = await this.apiRestService.getCartoAlliance(Number(id), this.selectedWorld);
-        if (response.success && response.data.length > 0) {
-          alliances.push(response.data);
-        } else {
-          this.toastService.add(ErrorType.NO_ALLIANCE_FOUND, 5000);
-          return;
-        }
-      }
-    } else {
-      const element = await this.apiRestService.getCartoAllianceByName(alliance, this.selectedWorld);
-      if (element.success && element.data.length > 0) {
-        alliances.push(element.data);
-      } else {
-        this.toastService.add(ErrorType.NO_ALLIANCE_FOUND, 5000);
-        return;
-      }
+    const alliances = await this.loadAlliances(alliance);
+    if (!alliances) {
+      this.toastService.add(ErrorType.NO_ALLIANCE_FOUND, 5000);
+      return;
     }
     const castles: Castle[] = [];
     alliances.forEach((alliance: ApiCartoAlliance[]) => {
@@ -779,13 +760,7 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     this.generateHeatmap();
     setTimeout(() => {
       this.genericInit();
-      if (parsedColors) {
-        for (let index = 0; index < this.legends.length; index++) {
-          if (parsedColors[index]) {
-            this.changeItemColor(this.legends[index].name, parsedColors[index]);
-          }
-        }
-      }
+      this.applyLegendColors(parsedColors);
       this.cdr.detectChanges();
     }, 100);
     this.addHeatmapLayer(this.castles);
@@ -912,7 +887,7 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
 
   private getBackgroundColor(): string {
     const colors = ['green', '#E3D191', '#F3F2F2', '#46362A', '#0E98B9'];
-    return colors[(this.selectedWorld === undefined ? 0 : this.selectedWorld) % colors.length];
+    return colors[(this.selectedWorld ?? 0) % colors.length];
   }
 
   /**
@@ -1164,16 +1139,14 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     const colors: Record<string, string> = {};
     const minPp = Math.min(...players.map((player) => player.pp));
     const maxPp = Math.max(...players.map((player) => player.pp));
-    const list = players.length > 3000 ? players.reverse() : players;
+    const list = players.length > 3000 ? [...players].reverse() : players;
     list.forEach((player: Castle) => {
       let color: string;
       if (one) {
         color = this.getPlayerColor(player.name);
-      } else {
-        if (player.alliance_name !== undefined) {
-          if (!colors[player.alliance_name]) colors[player.alliance_name] = this.getPlayerColor(player.alliance_name);
-          color = colors[player.alliance_name];
-        }
+      } else if (player.alliance_name !== undefined) {
+        if (!colors[player.alliance_name]) colors[player.alliance_name] = this.getPlayerColor(player.alliance_name);
+        color = colors[player.alliance_name];
       }
       const playerLayer = this.L.layerGroup();
       player.castles.forEach((castle: number[]) => {
@@ -1188,16 +1161,14 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
       if (watchModeAlliance === WatchModeStats.SPECIFIC_ALLIANCE) {
         playerLayer.addTo(this.map);
         this.playerLayers[player.name] = playerLayer;
-      } else {
-        if (player.alliance_name) {
-          if (this.playerLayers[player.alliance_name]) {
-            this.playerLayers[player.alliance_name].addLayer(playerLayer);
-          } else {
-            const allianceLayer = this.L.layerGroup();
-            allianceLayer.addLayer(playerLayer);
-            allianceLayer.addTo(this.map);
-            this.playerLayers[player.alliance_name] = allianceLayer;
-          }
+      } else if (player.alliance_name) {
+        if (this.playerLayers[player.alliance_name]) {
+          this.playerLayers[player.alliance_name].addLayer(playerLayer);
+        } else {
+          const allianceLayer = this.L.layerGroup();
+          allianceLayer.addLayer(playerLayer);
+          allianceLayer.addTo(this.map);
+          this.playerLayers[player.alliance_name] = allianceLayer;
         }
       }
     });
@@ -1406,6 +1377,36 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
         context.fillStyle = this.getDensityColor(this.heatmap[row][col].players.length);
         context.fillRect(col * cellWidth, row * cellHeight, cellWidth, cellHeight);
       }
+    }
+  }
+
+  private async loadAlliances(alliance: string | string[]): Promise<ApiCartoAlliance[][] | null> {
+    const lookups = Array.isArray(alliance)
+      ? alliance.map(
+          (id) => (): Promise<ApiResponse<ApiCartoAlliance[]>> =>
+            this.apiRestService.getCartoAlliance(Number(id), this.selectedWorld),
+        )
+      : [
+          Number.isNaN(Number.parseInt(alliance))
+            ? (): Promise<ApiResponse<ApiCartoAlliance[]>> =>
+                this.apiRestService.getCartoAllianceByName(alliance, this.selectedWorld)
+            : (): Promise<ApiResponse<ApiCartoAlliance[]>> =>
+                this.apiRestService.getCartoAlliance(Number(alliance), this.selectedWorld),
+        ];
+
+    const alliances: ApiCartoAlliance[][] = [];
+    for (const lookup of lookups) {
+      const response = await lookup();
+      if (!response.success || response.data.length === 0) return null;
+      alliances.push(response.data);
+    }
+    return alliances;
+  }
+
+  private applyLegendColors(parsedColors: string[] | null): void {
+    if (!parsedColors) return;
+    for (const [index, legend] of this.legends.entries()) {
+      if (parsedColors[index]) this.changeItemColor(legend.name, parsedColors[index]);
     }
   }
 }

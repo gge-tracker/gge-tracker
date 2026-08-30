@@ -31,7 +31,7 @@ export abstract class AssetImageRenderer {
   public static render(asset: string, variant: AssetImageVariant, baseUrl: string): Promise<RenderedAssetImage> {
     const key = this.variantKey(asset, variant);
     const running = this.inFlight.get(key);
-    if (running) return running;
+    if (running !== undefined) return running;
     const job = this.renderOnce(asset, variant, baseUrl).finally(() => this.inFlight.delete(key));
     this.inFlight.set(key, job);
     return job;

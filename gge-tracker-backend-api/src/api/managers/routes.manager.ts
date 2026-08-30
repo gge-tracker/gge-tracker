@@ -14,11 +14,11 @@ export class RoutesManager {
   /**
    * The route string to be matched against incoming requests
    */
-  private route: string;
+  private readonly route: string;
   /**
    * The type of match to perform (Exact, Prefix, or RegExp)
    */
-  private type: MatchType;
+  private readonly type: MatchType;
   /**
    * Indicates whether the route is subject to rate limiting
    */
@@ -140,7 +140,19 @@ export class RoutesManager {
     const na = RoutesManager.normalizePath(a);
     const nb = RoutesManager.normalizeRouteForPrefix(b);
     if (na === nb) return true;
-    return (na + '/').replace(/\/+$/, '/') === (nb + '/').replace(/\/+$/, '/');
+    return RoutesManager.withSingleTrailingSlash(na) === RoutesManager.withSingleTrailingSlash(nb);
+  }
+
+  /**
+   * Rewrites a path so it ends with exactly one slash
+   *
+   * @param path The path to rewrite
+   * @returns The path with its trailing slashes replaced by a single one
+   */
+  private static withSingleTrailingSlash(path: string): string {
+    let end = path.length;
+    while (end > 0 && path[end - 1] === '/') end--;
+    return path.slice(0, end) + '/';
   }
 
   /**
@@ -155,7 +167,7 @@ export class RoutesManager {
    */
   private static guessRegExpFromString(s: string): RegExp {
     const slashStyle = /^\/(.+)\/([gimsuy]*)$/;
-    const m = s.match(slashStyle);
+    const m = slashStyle.exec(s);
     if (m) {
       return new RegExp(m[1], m[2]);
     }

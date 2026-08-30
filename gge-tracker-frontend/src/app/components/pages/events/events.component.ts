@@ -16,6 +16,7 @@ import {
 } from '@ggetracker-interfaces/empire-ranking';
 import { ChartsWrapperComponent } from '@ggetracker-modules/charts-client/charts-wrapper.component';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
+import { formatThousands, stripTrailingDigits } from '@ggetracker-services/text-format.utilities';
 import { LanguageService } from '@ggetracker-services/language.service';
 import { ServerService } from '@ggetracker-services/server.service';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -114,14 +115,14 @@ export class EventsComponent extends GenericComponent {
   };
   public translations: Record<string, string> = {};
   private eventId: number | null = null;
-  private languageService = inject(LanguageService);
-  private cdr = inject(ChangeDetectorRef);
+  private readonly languageService = inject(LanguageService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   constructor() {
     super();
     this.onInit();
   }
-  public serverGroupFn = (server: string): string => server.replaceAll(/\d+$/g, '').toUpperCase();
+  public serverGroupFn = (server: string): string => stripTrailingDigits(server).toUpperCase();
 
   public onInit(): void {
     void this.generateTranslations().then(() => {
@@ -504,8 +505,7 @@ export class EventsComponent extends GenericComponent {
         shared: false,
         x: { format: dateFormat },
         y: {
-          formatter: (value: number) =>
-            value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ','),
+          formatter: (value: number) => (value === null ? '?' : formatThousands(value.toString())),
         },
       },
       dataLabels: { enabled: false },
@@ -513,8 +513,7 @@ export class EventsComponent extends GenericComponent {
       legend: { show: true, showForZeroSeries: true },
       yaxis: {
         labels: {
-          formatter: (value: number) =>
-            value === null ? '?' : value.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ','),
+          formatter: (value: number) => (value === null ? '?' : formatThousands(value.toString())),
           style: { colors: '#64748b' },
         },
         min: 0,

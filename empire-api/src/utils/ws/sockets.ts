@@ -84,9 +84,9 @@ const GGE_NETWORKS: GgeNetworkDefinition[] = [
 ];
 
 export abstract class SocketService {
-  public static instances: string[];
-  public static credentials: any;
-  public static managedInstances: Set<string> = new Set<string>();
+  private static instances: string[];
+  private static credentials: any;
+  public static readonly managedInstances: Set<string> = new Set<string>();
 
   public static getAllowedInstances(): string[] {
     return SocketService.instances;
@@ -100,7 +100,7 @@ export abstract class SocketService {
       return null;
     }
     const creds = SocketService.credentials[header];
-    if (!creds || !creds.USERNAME || !creds.PASSWORD || !creds.SERVER_ID) {
+    if (!creds?.USERNAME || !creds.PASSWORD || !creds.SERVER_ID) {
       console.warn(`[${header}] Missing or incomplete credentials.`);
       return null;
     }
@@ -198,19 +198,14 @@ export abstract class SocketService {
     }
   }
 
-  public static async syncInstances(
-    sockets: { [key: string]: GgeManagedSocket },
-    dryRun: boolean,
-  ): Promise<GgeInstanceSyncResult> {
-    const config = SocketService.readConfig();
-    const files = config.files;
-    const descriptors = await SocketService.fetchInstanceDescriptors();
-    const allowed = config.instances;
-    const activeBeforeSync = Object.keys(sockets);
-    const actions: GgeInstanceSyncAction[] = [];
-    const toAdd: GgeInstanceDescriptor[] = [];
-    const toRemove: string[] = [];
-
+  private static planAdditions(
+    allowed: string[],
+    activeBeforeSync: string[],
+    descriptors: Map<string, GgeInstanceDescriptor>,
+    config: { credentials: any },
+    actions: GgeInstanceSyncAction[],
+    toAdd: GgeInstanceDescriptor[],
+  ): void {
     for (const zone of allowed) {
       if (activeBeforeSync.includes(zone)) {
         actions.push({ server: zone, action: 'unchanged', applied: false });
@@ -238,7 +233,14 @@ export abstract class SocketService {
       }
       toAdd.push(descriptor);
     }
+  }
 
+  private static planRemovals(
+    allowed: string[],
+    activeBeforeSync: string[],
+    actions: GgeInstanceSyncAction[],
+    toRemove: string[],
+  ): void {
     for (const zone of activeBeforeSync) {
       if (allowed.includes(zone)) continue;
       if (SocketService.managedInstances.has(zone)) {
@@ -252,20 +254,39 @@ export abstract class SocketService {
         reason: 'socket was not created from the configuration files',
       });
     }
+  }
+
+  private static killManagedSocket(sockets: { [key: string]: GgeManagedSocket }, zone: string): void {
+    try {
+      sockets[zone].kill();
+    } catch (error) {
+      console.warn(`[${zone}] Error while killing socket:`, error instanceof Error ? error.message : error);
+    } finally {
+      delete sockets[zone];
+      SocketService.managedInstances.delete(zone);
+    }
+  }
+
+  public static async syncInstances(
+    sockets: { [key: string]: GgeManagedSocket },
+    dryRun: boolean,
+  ): Promise<GgeInstanceSyncResult> {
+    const config = SocketService.readConfig();
+    const files = config.files;
+    const descriptors = await SocketService.fetchInstanceDescriptors();
+    const allowed = config.instances;
+    const activeBeforeSync = Object.keys(sockets);
+    const actions: GgeInstanceSyncAction[] = [];
+    const toAdd: GgeInstanceDescriptor[] = [];
+    const toRemove: string[] = [];
+
+    SocketService.planAdditions(allowed, activeBeforeSync, descriptors, config, actions, toAdd);
+    SocketService.planRemovals(allowed, activeBeforeSync, actions, toRemove);
 
     if (!dryRun) SocketService.applyConfig(config);
 
     for (const zone of toRemove) {
-      if (!dryRun) {
-        try {
-          sockets[zone].kill();
-        } catch (error) {
-          console.warn(`[${zone}] Error while killing socket:`, error instanceof Error ? error.message : error);
-        } finally {
-          delete sockets[zone];
-          SocketService.managedInstances.delete(zone);
-        }
-      }
+      if (!dryRun) SocketService.killManagedSocket(sockets, zone);
       actions.push({ server: zone, action: 'removed', applied: !dryRun });
     }
 

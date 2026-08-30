@@ -3,6 +3,8 @@ import { Component, input, OnChanges, OnInit, output, SimpleChanges } from '@ang
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 
+export type SearchValue = string | number | null | undefined;
+
 /**
  * SearchbarComponent provides a customizable search bar UI element
  */
@@ -18,13 +20,13 @@ export class SearchbarComponent implements OnInit, OnChanges {
   public inputType = input<string>('text');
   public placeholderInput = input.required<string>();
   public touched = input<boolean>(false);
-  public searchInput = input.required<string | null | undefined | number>();
+  public searchInput = input.required<SearchValue>();
   public name = input.required<string>();
   public min = input<number | null | undefined>(null);
   public max = input<number | null | undefined>(null);
   public hasContent = input<boolean>(false);
-  public search: string | number | null | undefined = '';
-  public firstValue: string | number | null | undefined = '';
+  public search: SearchValue = '';
+  public firstValue: SearchValue = '';
   public searchEmitter = output<string>();
 
   public ngOnInit(): void {
@@ -38,7 +40,7 @@ export class SearchbarComponent implements OnInit, OnChanges {
     }
   }
 
-  public updateSearchValue(value: string | number | null | undefined): void {
+  public updateSearchValue(value: SearchValue): void {
     this.searchEmitter.emit(String(value ?? ''));
   }
 }

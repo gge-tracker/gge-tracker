@@ -22,8 +22,4 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
-          args: >
-            -Dsonar.projectKey=gge-tracker_gge-tracker
-            -Dsonar.organization=gge-tracker
-            -Dsonar.exclusions=database/**,gge-tracker-tools/**,gge-tracker-fetcher/**
           projectBaseDir: .

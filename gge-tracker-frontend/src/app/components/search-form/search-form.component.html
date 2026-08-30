@@ -9,7 +9,7 @@
         type="text"
         class="search-input"
         [(ngModel)]="search"
-        />
+         [attr.aria-label]="inputTip()"/>
       <datalist id="search-list">
         @for (search of getSearchHistory('all'); track search) {
           <option [value]="search"></option>
@@ -26,10 +26,12 @@
         }
       </datalist>
       @if (search) {
-        <lucide-icon
+        <button type="button" class="reset-icon button-reset d-flex"
           [title]="'Réinitialiser' | translate"
-          class="reset-icon" [img]="Reset"
-          (click)="onReset()"></lucide-icon>
+          [attr.aria-label]="'Réinitialiser' | translate"
+          (click)="onReset()">
+          <lucide-icon [img]="Reset"></lucide-icon>
+        </button>
       }
     </div>
     @if (searchTypes()['player']) {

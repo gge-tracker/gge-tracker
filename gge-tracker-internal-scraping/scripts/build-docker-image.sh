@@ -10,8 +10,7 @@
 #
 
 BASE_SCRIPT_DIR="$(cd "$(dirname "$0")/.."; pwd)"
-docker build -t gge-tracker-internal-scraping "$BASE_SCRIPT_DIR"
-if [ $? -ne 0 ]; then
+if ! docker build -t gge-tracker-internal-scraping "$BASE_SCRIPT_DIR"; then
     echo "Docker build failed"
     exit 1
 fi

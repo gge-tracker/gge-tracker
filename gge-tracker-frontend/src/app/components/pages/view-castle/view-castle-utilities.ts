@@ -1,5 +1,12 @@
 import { Pt } from '@ggetracker-interfaces/view-castle';
 
+interface FloorBounds {
+  xMin: number;
+  yMin: number;
+  xMax: number;
+  yMax: number;
+}
+
 export class ViewCastleUtilities {
   public static drawFloorPerimeter(
     context: CanvasRenderingContext2D,
@@ -11,167 +18,26 @@ export class ViewCastleUtilities {
     cellSize: number,
   ): void {
     const floors = castleObject?.data.grounds || [];
-    if (!floors || floors.length === 0) return;
-    let fxMin = Infinity,
-      fyMin = Infinity,
-      fxMax = -Infinity,
-      fyMax = -Infinity;
-    for (const f of floors) {
-      const widthElement = f.data?.['width'] ?? '1';
-      const heightElement = f.data?.['height'] ?? '1';
-      let w = Number.parseInt(String(widthElement), 10);
-      let h = Number.parseInt(String(heightElement), 10);
-      if (f.building.rotation === 1) [w, h] = [h, w];
-      const x1 = f.building.positionX;
-      const y1 = f.building.positionY;
-      const x2 = x1 + w;
-      const y2 = y1 + h;
-      fxMin = Math.min(fxMin, x1);
-      fyMin = Math.min(fyMin, y1);
-      fxMax = Math.max(fxMax, x2);
-      fyMax = Math.max(fyMax, y2);
-    }
-    const gridW = Math.max(1, fxMax - fxMin);
-    const gridH = Math.max(1, fyMax - fyMin);
-    const grid: Uint8Array[] = Array.from({ length: gridH });
-    for (let y = 0; y < gridH; y++) {
-      grid[y] = new Uint8Array(gridW);
-    }
-    for (const f of floors) {
-      const widthElement = f.data?.['width'] ?? '1';
-      const heightElement = f.data?.['height'] ?? '1';
-      let w = Number.parseInt(String(widthElement), 10);
-      let h = Number.parseInt(String(heightElement), 10);
-      if (f.building.rotation === 1) [w, h] = [h, w];
-      const sx = f.building.positionX - fxMin;
-      const sy = f.building.positionY - fyMin;
-      for (let yy = 0; yy < h; yy++) {
-        const gy = sy + yy;
-        if (gy < 0 || gy >= gridH) continue;
-        for (let xx = 0; xx < w; xx++) {
-          const gx = sx + xx;
-          if (gx < 0 || gx >= gridW) continue;
-          grid[gy][gx] = 1;
-        }
-      }
-    }
-    const edges = new Map<string, Pt[]>();
-    const pushEdge = (sx: number, sy: number, ex: number, ey: number): void => {
-      const key = `${sx},${sy}`;
-      const list = edges.get(key) ?? [];
-      list.push({ x: ex, y: ey });
-      edges.set(key, list);
-    };
-    const isFilled = (gx: number, gy: number): boolean => {
-      if (gx < 0 || gy < 0 || gy >= gridH || gx >= gridW) return false;
-      return grid[gy][gx] === 1;
-    };
-    for (let gy = 0; gy < gridH; gy++) {
-      for (let gx = 0; gx < gridW; gx++) {
-        if (!isFilled(gx, gy)) continue;
-        if (!isFilled(gx, gy - 1)) pushEdge(gx, gy, gx + 1, gy);
-        if (!isFilled(gx + 1, gy)) pushEdge(gx + 1, gy, gx + 1, gy + 1);
-        if (!isFilled(gx, gy + 1)) pushEdge(gx + 1, gy + 1, gx, gy + 1);
-        if (!isFilled(gx - 1, gy)) pushEdge(gx, gy + 1, gx, gy);
-      }
-    }
-    const edgeUsed = new Set<string>();
-    const polygons: Pt[][] = [];
-    for (const [startKey, ends] of edges) {
-      const startPts = startKey.split(',').map(Number);
-      const sx = startPts[0],
-        sy = startPts[1];
-      for (const end of ends) {
-        const ex = end.x,
-          ey = end.y;
-        const k = this.edgeKey(sx, sy, ex, ey);
-        if (edgeUsed.has(k)) continue;
-        const poly: Pt[] = [];
-        let currentX = sx,
-          currentY = sy;
-        let nextX = ex,
-          nextY = ey;
-        poly.push({ x: currentX, y: currentY });
-        edgeUsed.add(k);
-        while (true) {
-          currentX = nextX;
-          currentY = nextY;
-          poly.push({ x: currentX, y: currentY });
-          const currentKey = `${currentX},${currentY}`;
-          const list = edges.get(currentKey) ?? [];
-          let found = false;
-          for (const candidate of list) {
-            const k2 = this.edgeKey(currentX, currentY, candidate.x, candidate.y);
-            if (!edgeUsed.has(k2)) {
-              edgeUsed.add(k2);
-              nextX = candidate.x;
-              nextY = candidate.y;
-              found = true;
-              break;
-            }
-          }
-          if (!found) break;
-          if (nextX === sx && nextY === sy) break;
-        }
-        if (poly.length >= 3) polygons.push(poly);
-      }
-    }
+    if (floors.length === 0) return;
+
+    const bounds = this.floorBounds(floors);
+    const gridW = Math.max(1, bounds.xMax - bounds.xMin);
+    const gridH = Math.max(1, bounds.yMax - bounds.yMin);
+    const grid = this.rasterizeFloors(floors, bounds, gridW, gridH);
+    const polygons = this.tracePolygons(this.boundaryEdges(grid, gridW, gridH));
     if (polygons.length === 0) return;
-    const polygonArea = (poly: Pt[]): number => {
-      let area = 0;
-      for (let index = 0; index < poly.length; index++) {
-        const a = poly[index];
-        const b = poly[(index + 1) % poly.length];
-        area += a.x * b.y - b.x * a.y;
-      }
-      return Math.abs(area) / 2;
-    };
-    let largest = polygons[0];
-    let maxArea = polygonArea(largest);
-    for (const p of polygons) {
-      const a = polygonArea(p);
-      if (a > maxArea) {
-        maxArea = a;
-        largest = p;
-      }
-    }
-    const pointsPx = largest.map((pt) => {
-      const worldX = fxMin + pt.x;
-      const worldY = fyMin + pt.y;
-      const px = offsetX + (worldX - minX) * cellSize;
-      const py = offsetY + (worldY - minY) * cellSize;
-      return { x: px, y: py };
-    });
+
+    const pointsPx = this.largestPolygon(polygons).map((pt) => ({
+      x: offsetX + (bounds.xMin + pt.x - minX) * cellSize,
+      y: offsetY + (bounds.yMin + pt.y - minY) * cellSize,
+    }));
     if (pointsPx.length < 2) return;
-    const borderSize = 15;
-    context.save();
-    context.lineJoin = 'miter';
-    context.lineCap = 'butt';
 
-    context.beginPath();
-    context.moveTo(pointsPx[0].x, pointsPx[0].y);
-    for (let index = 1; index < pointsPx.length; index++) context.lineTo(pointsPx[index].x, pointsPx[index].y);
-    context.closePath();
-    context.lineWidth = borderSize * 3;
-    context.strokeStyle = 'rgba(34,169,187,0.42)';
-    context.translate(-context.lineWidth / 2, -context.lineWidth / 2);
-    context.stroke();
-    context.translate(context.lineWidth / 2, context.lineWidth / 2);
-
-    context.beginPath();
-    context.moveTo(pointsPx[0].x, pointsPx[0].y);
-    for (let index = 1; index < pointsPx.length; index++) context.lineTo(pointsPx[index].x, pointsPx[index].y);
-    context.closePath();
-    context.lineWidth = borderSize;
-    context.strokeStyle = 'rgba(0,0,0,0.5)';
-    context.translate(-context.lineWidth / 2, -context.lineWidth / 2);
-    context.stroke();
-    context.translate(context.lineWidth / 2, context.lineWidth / 2);
-
-    context.restore();
+    this.strokePerimeter(context, pointsPx);
   }
 
-  public static edgeKey = (sx: number, sy: number, ex: number, ey: number): string => `${sx},${sy}->${ex},${ey}`;
+  public static readonly edgeKey = (sx: number, sy: number, ex: number, ey: number): string =>
+    `${sx},${sy}->${ex},${ey}`;
 
   public static getItemColor(name: string): [string, string] {
     if (name === 'Castle') {
@@ -218,11 +84,11 @@ export class ViewCastleUtilities {
       if (length === 3 || length === 4 || length === 6 || length === 8)
         return [h(length, 0), h(length, 1), h(length, 2)];
     }
-    const m = color.match(/rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+    const m = /rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i.exec(color);
     if (m) return [Number(m[1]), Number(m[2]), Number(m[3])];
     return [128, 128, 128];
   }
-  public static rgbString = (r: number, g: number, b: number): string => `rgb(${r},${g},${b})`;
+  public static readonly rgbString = (r: number, g: number, b: number): string => `rgb(${r},${g},${b})`;
 
   public static roundedTo2Decimals(value: number): number {
     return Math.round(value * 100) / 100;
@@ -305,5 +171,166 @@ export class ViewCastleUtilities {
       context_.fillRect(px, py + ph - 1, pw, 1); // bottom
       context_.fillRect(px + pw - 1, py, 1, ph); // right
     }
+  }
+
+  private static floorSize(floor: any): { w: number; h: number } {
+    const w = Number.parseInt(String(floor.data?.['width'] ?? '1'), 10);
+    const h = Number.parseInt(String(floor.data?.['height'] ?? '1'), 10);
+    return floor.building.rotation === 1 ? { w: h, h: w } : { w, h };
+  }
+
+  private static floorBounds(floors: any[]): FloorBounds {
+    let xMin = Infinity,
+      yMin = Infinity,
+      xMax = -Infinity,
+      yMax = -Infinity;
+    for (const floor of floors) {
+      const { w, h } = this.floorSize(floor);
+      const x = floor.building.positionX;
+      const y = floor.building.positionY;
+      xMin = Math.min(xMin, x);
+      yMin = Math.min(yMin, y);
+      xMax = Math.max(xMax, x + w);
+      yMax = Math.max(yMax, y + h);
+    }
+    return { xMin, yMin, xMax, yMax };
+  }
+
+  private static rasterizeFloors(floors: any[], bounds: FloorBounds, gridW: number, gridH: number): Uint8Array[] {
+    const grid: Uint8Array[] = Array.from({ length: gridH }, () => new Uint8Array(gridW));
+    for (const floor of floors) {
+      const { w, h } = this.floorSize(floor);
+      const sx = floor.building.positionX - bounds.xMin;
+      const sy = floor.building.positionY - bounds.yMin;
+      const yEnd = Math.min(gridH, sy + h);
+      const xEnd = Math.min(gridW, sx + w);
+      for (let gy = Math.max(0, sy); gy < yEnd; gy++) {
+        for (let gx = Math.max(0, sx); gx < xEnd; gx++) grid[gy][gx] = 1;
+      }
+    }
+    return grid;
+  }
+
+  private static boundaryEdges(grid: Uint8Array[], gridW: number, gridH: number): Map<string, Pt[]> {
+    const edges = new Map<string, Pt[]>();
+    const isFilled = (gx: number, gy: number): boolean =>
+      gx >= 0 && gy >= 0 && gx < gridW && gy < gridH && grid[gy][gx] === 1;
+
+    for (let gy = 0; gy < gridH; gy++) {
+      for (let gx = 0; gx < gridW; gx++) {
+        if (isFilled(gx, gy)) this.pushCellEdges(edges, isFilled, gx, gy);
+      }
+    }
+    return edges;
+  }
+
+  private static pushCellEdges(
+    edges: Map<string, Pt[]>,
+    isFilled: (gx: number, gy: number) => boolean,
+    gx: number,
+    gy: number,
+  ): void {
+    const pushEdge = (sx: number, sy: number, ex: number, ey: number): void => {
+      const key = `${sx},${sy}`;
+      const list = edges.get(key) ?? [];
+      list.push({ x: ex, y: ey });
+      edges.set(key, list);
+    };
+
+    if (!isFilled(gx, gy - 1)) pushEdge(gx, gy, gx + 1, gy);
+    if (!isFilled(gx + 1, gy)) pushEdge(gx + 1, gy, gx + 1, gy + 1);
+    if (!isFilled(gx, gy + 1)) pushEdge(gx + 1, gy + 1, gx, gy + 1);
+    if (!isFilled(gx - 1, gy)) pushEdge(gx, gy + 1, gx, gy);
+  }
+
+  private static tracePolygons(edges: Map<string, Pt[]>): Pt[][] {
+    const used = new Set<string>();
+    const polygons: Pt[][] = [];
+    for (const [startKey, ends] of edges) {
+      const [sx, sy] = startKey.split(',').map(Number);
+      for (const end of ends) {
+        const polygon = this.traceRing(edges, used, sx, sy, end);
+        if (polygon.length >= 3) polygons.push(polygon);
+      }
+    }
+    return polygons;
+  }
+
+  private static traceRing(edges: Map<string, Pt[]>, used: Set<string>, sx: number, sy: number, first: Pt): Pt[] {
+    const firstKey = this.edgeKey(sx, sy, first.x, first.y);
+    if (used.has(firstKey)) return [];
+    used.add(firstKey);
+
+    const polygon: Pt[] = [{ x: sx, y: sy }];
+    let current = first;
+    while (true) {
+      polygon.push({ x: current.x, y: current.y });
+      const next = this.nextUnusedEdge(edges, used, current);
+      if (!next) break;
+      if (next.x === sx && next.y === sy) break;
+      current = next;
+    }
+    return polygon;
+  }
+
+  private static nextUnusedEdge(edges: Map<string, Pt[]>, used: Set<string>, from: Pt): Pt | null {
+    for (const candidate of edges.get(`${from.x},${from.y}`) ?? []) {
+      const key = this.edgeKey(from.x, from.y, candidate.x, candidate.y);
+      if (!used.has(key)) {
+        used.add(key);
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  private static largestPolygon(polygons: Pt[][]): Pt[] {
+    let largest = polygons[0];
+    let maxArea = this.polygonArea(largest);
+    for (const polygon of polygons) {
+      const area = this.polygonArea(polygon);
+      if (area > maxArea) {
+        maxArea = area;
+        largest = polygon;
+      }
+    }
+    return largest;
+  }
+
+  private static polygonArea(polygon: Pt[]): number {
+    let area = 0;
+    for (let index = 0; index < polygon.length; index++) {
+      const a = polygon[index];
+      const b = polygon[(index + 1) % polygon.length];
+      area += a.x * b.y - b.x * a.y;
+    }
+    return Math.abs(area) / 2;
+  }
+
+  private static strokePerimeter(context: CanvasRenderingContext2D, pointsPx: Pt[]): void {
+    const borderSize = 15;
+    context.save();
+    context.lineJoin = 'miter';
+    context.lineCap = 'butt';
+    this.strokeOutline(context, pointsPx, borderSize * 3, 'rgba(34,169,187,0.42)');
+    this.strokeOutline(context, pointsPx, borderSize, 'rgba(0,0,0,0.5)');
+    context.restore();
+  }
+
+  private static strokeOutline(
+    context: CanvasRenderingContext2D,
+    pointsPx: Pt[],
+    lineWidth: number,
+    strokeStyle: string,
+  ): void {
+    context.beginPath();
+    context.moveTo(pointsPx[0].x, pointsPx[0].y);
+    for (let index = 1; index < pointsPx.length; index++) context.lineTo(pointsPx[index].x, pointsPx[index].y);
+    context.closePath();
+    context.lineWidth = lineWidth;
+    context.strokeStyle = strokeStyle;
+    context.translate(-lineWidth / 2, -lineWidth / 2);
+    context.stroke();
+    context.translate(lineWidth / 2, lineWidth / 2);
   }
 }

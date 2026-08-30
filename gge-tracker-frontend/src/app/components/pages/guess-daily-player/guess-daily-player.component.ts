@@ -73,27 +73,12 @@ export class GuessDailyPlayerComponent extends GenericComponent implements OnIni
     NW: '↖️',
   };
   public isInputFocused: boolean = false;
-  private searchSubject = new Subject<string>();
+  private readonly searchSubject = new Subject<string>();
 
   public async ngOnInit(): Promise<void> {
     try {
       this.isInLoading = true;
-      this.searchSubject
-        .pipe(
-          debounceTime(400),
-          distinctUntilChanged(),
-          switchMap((value: string) =>
-            this.apiRestService.apiFetch(
-              ApiRestService.apiUrl + 'mini-games/guesses/autocomplete?query=' + encodeURIComponent(value),
-            ),
-          ),
-        )
-        .subscribe((response: any) => {
-          if (response.success) {
-            this.autoCompleteSuggestions = response.data as string[];
-            this.isInputFocused = true;
-          }
-        });
+      this.wireAutocomplete();
       const dailyResponse = await this.apiRestService.apiFetch(ApiRestService.apiUrl + 'mini-games/daily');
       if (dailyResponse.success) {
         this.dailyTarget = dailyResponse.data as DailyTarget;
@@ -104,33 +89,8 @@ export class GuessDailyPlayerComponent extends GenericComponent implements OnIni
         this.isInLoading = false;
         return;
       }
-      const savedGuesses = localStorage.getItem('miniGameGuesses');
-      if (savedGuesses) {
-        const parsed = JSON.parse(savedGuesses) as { gameId: string; guesses: GuessResult[] };
-        if (parsed.gameId === this.dailyTarget!.id) {
-          this.guesses = parsed.guesses;
-          if (this.guesses.some((g) => g.win)) {
-            this.isWin = true;
-          } else if (this.guesses.length >= this.maxAttempts) {
-            this.isLose = true;
-          }
-        }
-      }
-      for (const key in localStorage) {
-        if (key.startsWith('miniGameGuesses')) {
-          const item = localStorage.getItem(key);
-          if (item) {
-            try {
-              const parsed = JSON.parse(item) as { gameId: string; guesses: GuessResult[] };
-              if (parsed.gameId !== this.dailyTarget!.id || parsed.guesses.length > this.maxAttempts) {
-                localStorage.removeItem(key);
-              }
-            } catch {
-              localStorage.removeItem(key);
-            }
-          }
-        }
-      }
+      this.restoreSavedGuesses(this.dailyTarget.id);
+      this.pruneStaleGuesses(this.dailyTarget.id);
     } catch {
       this.isInLoading = false;
     }
@@ -138,6 +98,14 @@ export class GuessDailyPlayerComponent extends GenericComponent implements OnIni
 
   public get remainingTries(): number {
     return this.maxAttempts - this.guesses.length;
+  }
+
+  public get attemptsProgressMax(): number {
+    return this.maxAttempts === Infinity ? 1 : this.maxAttempts;
+  }
+
+  public get attemptsProgressValue(): number {
+    return this.maxAttempts === Infinity ? 0 : this.guesses.length;
   }
 
   public async submitGuess(): Promise<void> {
@@ -313,5 +281,58 @@ export class GuessDailyPlayerComponent extends GenericComponent implements OnIni
     if (direction === 'correct') return '🟩';
     if (direction === 'higher') return '🔼';
     return '🔽';
+  }
+
+  private wireAutocomplete(): void {
+    this.searchSubject
+      .pipe(
+        debounceTime(400),
+        distinctUntilChanged(),
+        switchMap((value: string) =>
+          this.apiRestService.apiFetch(
+            ApiRestService.apiUrl + 'mini-games/guesses/autocomplete?query=' + encodeURIComponent(value),
+          ),
+        ),
+      )
+      .subscribe((response: any) => {
+        if (!response.success) return;
+        this.autoCompleteSuggestions = response.data as string[];
+        this.isInputFocused = true;
+      });
+  }
+
+  private restoreSavedGuesses(gameId: string): void {
+    const savedGuesses = localStorage.getItem('miniGameGuesses');
+    if (!savedGuesses) return;
+    const parsed = JSON.parse(savedGuesses) as {
+      gameId: string;
+      guesses: GuessResult[];
+    };
+    if (parsed.gameId !== gameId) return;
+    this.guesses = parsed.guesses;
+    if (this.guesses.some((g) => g.win)) {
+      this.isWin = true;
+    } else if (this.guesses.length >= this.maxAttempts) {
+      this.isLose = true;
+    }
+  }
+
+  private pruneStaleGuesses(gameId: string): void {
+    for (const key in localStorage) {
+      if (!key.startsWith('miniGameGuesses')) continue;
+      const item = localStorage.getItem(key);
+      if (!item) continue;
+      try {
+        const parsed = JSON.parse(item) as {
+          gameId: string;
+          guesses: GuessResult[];
+        };
+        if (parsed.gameId !== gameId || parsed.guesses.length > this.maxAttempts) {
+          localStorage.removeItem(key);
+        }
+      } catch {
+        localStorage.removeItem(key);
+      }
+    }
   }
 }

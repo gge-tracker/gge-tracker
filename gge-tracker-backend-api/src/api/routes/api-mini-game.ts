@@ -4,6 +4,8 @@ import { ApiHelper } from '../helper/api-helper';
 import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 
+type GuessDirection = 'correct' | 'higher' | 'lower';
+
 export abstract class ApiMiniGame implements ApiHelper {
   public static async getDailyMiniGame(request: express.Request, response: express.Response): Promise<void> {
     try {
@@ -214,61 +216,31 @@ export abstract class ApiMiniGame implements ApiHelper {
         direction,
         allianceRank: {
           guess: guessedPlayer.alliance_rank,
-          direction:
-            allianceRankFormatted === miniGameAllianceRankFormatted
-              ? 'correct'
-              : Number(allianceRankFormatted) < Number(miniGameAllianceRankFormatted)
-                ? 'lower'
-                : 'higher',
+          direction: ApiMiniGame.rankGuessDirection(allianceRankFormatted, miniGameAllianceRankFormatted),
         },
         level: {
           guess: guessedPlayer.level,
-          direction:
-            guessedPlayer.level === miniGameData.level
-              ? 'correct'
-              : Number(guessedPlayer.level) < Number(miniGameData.level)
-                ? 'higher'
-                : 'lower',
+          direction: ApiMiniGame.guessDirection(guessedPlayer.level, miniGameData.level),
         },
         legendaryLevel: {
           guess: guessedPlayer.legendary_level,
-          direction:
-            legendaryLevelFormatted === miniGameData.legendary_level
-              ? 'correct'
-              : Number(legendaryLevelFormatted) < Number(miniGameData.legendary_level)
-                ? 'higher'
-                : 'lower',
+          direction: ApiMiniGame.guessDirection(legendaryLevelFormatted, miniGameData.legendary_level),
         },
         honor: {
           guess: guessedPlayer.honor,
-          direction:
-            guessedPlayer.honor === miniGameData.honor
-              ? 'correct'
-              : Number(guessedPlayer.honor) < Number(miniGameData.honor)
-                ? 'higher'
-                : 'lower',
+          direction: ApiMiniGame.guessDirection(guessedPlayer.honor, miniGameData.honor),
         },
         isProtection: {
           guess: isGuessedPlayerInProtection,
-          status: isGuessedPlayerInProtection === miniGameData.is_protection ? true : false,
+          status: isGuessedPlayerInProtection === miniGameData.is_protection,
         },
         might: {
           guess: guessedPlayer.might_current,
-          direction:
-            guessedPlayer.might_current === miniGameData.might
-              ? 'correct'
-              : Number(guessedPlayer.might_current) < Number(miniGameData.might)
-                ? 'higher'
-                : 'lower',
+          direction: ApiMiniGame.guessDirection(guessedPlayer.might_current, miniGameData.might),
         },
         fame: {
           guess: guessedPlayer.current_fame,
-          direction:
-            guessedPlayer.current_fame === miniGameData.fame
-              ? 'correct'
-              : Number(guessedPlayer.current_fame) < Number(miniGameData.fame)
-                ? 'higher'
-                : 'lower',
+          direction: ApiMiniGame.guessDirection(guessedPlayer.current_fame, miniGameData.fame),
         },
         playerName: guessedPlayer.name,
       });
@@ -278,6 +250,19 @@ export abstract class ApiMiniGame implements ApiHelper {
         .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
         .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
     }
+  }
+
+  /**
+   * Tells the player which way to move from their guess
+   */
+  private static guessDirection(guess: unknown, target: unknown): GuessDirection {
+    if (guess === target) return 'correct';
+    return Number(guess) < Number(target) ? 'higher' : 'lower';
+  }
+
+  private static rankGuessDirection(guess: unknown, target: unknown): GuessDirection {
+    if (guess === target) return 'correct';
+    return Number(guess) < Number(target) ? 'lower' : 'higher';
   }
 
   private static async generateDailyMiniGame(
@@ -393,6 +378,5 @@ export abstract class ApiMiniGame implements ApiHelper {
       player.name,
     ];
     await pgPool.query(insertQuery, insertValues);
-    return;
   }
 }
