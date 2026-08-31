@@ -1,5 +1,4 @@
 import { NodeClickHouseClient } from '@clickhouse/client/dist/client';
-import * as mysql from 'mysql';
 import * as pg from 'pg';
 import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
 import { GgeTrackerSqlBaseNameEnum } from '../enums/gge-tracker-sql-base-name.enums';
@@ -12,7 +11,7 @@ import { DatabaseManager } from './database.manager';
  *
  * The `ApiGgeTrackerManager` class extends `DatabaseManager` and provides:
  * - Centralized access to server metadata and database names for all supported GGE Tracker servers
- * - Management of MySQL and PostgreSQL connection pools for each server
+ * - Management of PostgreSQL connection pools for each server
  * - Utility methods to retrieve server information by name, code, or player ID
  * - Methods to validate server names and codes
  * - Access to OLAP and SQL database names, as well as ClickHouse instances
@@ -23,12 +22,6 @@ import { DatabaseManager } from './database.manager';
  *
  */
 export class ApiGgeTrackerManager extends DatabaseManager {
-  /**
-   * A mapping of connection pool instances for MySQL databases, keyed by a unique string identifier
-   * Each key corresponds to a specific database or configuration, allowing for efficient management
-   * and reuse of multiple MySQL connection pools within the application
-   */
-  private readonly mysqlPools: { [key: string]: mysql.Pool } = {};
   /**
    * A mapping of unique string keys to PostgreSQL connection pools
    * Each key represents a distinct database configuration or tenant,
@@ -677,14 +670,13 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    * Initializes a new instance of the service, creating connection pools for all configured SQL databases
    *
    * This constructor calls the parent class constructor, retrieves all SQL database configurations,
-   * and initializes MySQL and PostgreSQL connection pools, assigning them to the respective properties
+   * and initializes the PostgreSQL connection pools, assigning them to the respective properties
    */
   constructor() {
     super();
     try {
       this.checkServerConfig();
-      const { mysql, postgres, clickhouse } = this.createConnectionPools(this.getAllSqlDatabases());
-      this.mysqlPools = mysql;
+      const { postgres, clickhouse } = this.createConnectionPools(this.getAllSqlDatabases());
       this.postgresPools = postgres;
       this.clickhouseClient = clickhouse;
     } catch (error) {
@@ -847,16 +839,6 @@ export class ApiGgeTrackerManager extends DatabaseManager {
       return entry[0];
     }
     return null;
-  }
-
-  /**
-   * Retrieves the MySQL connection pool associated with the specified server name
-   *
-   * @param serverName - The name of the server for which to obtain the MySQL pool
-   * @returns The MySQL pool instance if found; otherwise, `null`
-   */
-  public getSqlPool(serverName: string): mysql.Pool | null {
-    return this.mysqlPools[serverName] || null;
   }
 
   /**

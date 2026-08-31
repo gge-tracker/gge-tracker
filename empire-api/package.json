@@ -30,7 +30,6 @@
     "eslint-plugin-unicorn": "^62.0.0",
     "express": "^5.2.1",
     "fast-xml-parser": "^5.7.0",
-    "puppeteer-core": "^22.15.0",
     "redis": "^5.11.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",

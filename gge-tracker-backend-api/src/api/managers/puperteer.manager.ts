@@ -1,4 +1,4 @@
-import * as puppeteer from 'puppeteer';
+import type { Browser, Page } from 'puppeteer' with { 'resolution-mode': 'import' };
 
 const IDLE_SHUTDOWN_MS = Number(process.env.PUPPETEER_IDLE_SHUTDOWN_MS) || 5 * 60 * 1000;
 const MAX_CONCURRENT_PAGES = Number(process.env.PUPPETEER_MAX_PAGES) || 4;
@@ -26,13 +26,13 @@ const LAUNCH_ARGS = [
 ];
 
 class PuppeteerManager {
-  private browser: puppeteer.Browser | null = null;
-  private launch: Promise<puppeteer.Browser> | null = null;
+  private browser: Browser | null = null;
+  private launch: Promise<Browser> | null = null;
   private openPages = 0;
   private readonly waiting: (() => void)[] = [];
   private idleTimer: NodeJS.Timeout | null = null;
 
-  public async getBrowser(): Promise<puppeteer.Browser> {
+  public async getBrowser(): Promise<Browser> {
     if (this.browser?.connected) return this.browser;
     // A failed launch must not leave later callers waiting forever, so the shared promise is
     // dropped as soon as it settles and the next caller starts a fresh attempt
@@ -42,10 +42,10 @@ class PuppeteerManager {
     return this.launch;
   }
 
-  public async withPage<T>(run: (page: puppeteer.Page) => Promise<T>): Promise<T> {
+  public async withPage<T>(run: (page: Page) => Promise<T>): Promise<T> {
     await this.acquireSlot();
     this.cancelIdleShutdown();
-    let page: puppeteer.Page | null = null;
+    let page: Page | null = null;
     try {
       const browser = await this.getBrowser();
       page = await browser.newPage();
@@ -71,9 +71,10 @@ class PuppeteerManager {
     if (browser) await browser.close().catch(() => null);
   }
 
-  private async launchBrowser(): Promise<puppeteer.Browser> {
+  private async launchBrowser(): Promise<Browser> {
     logBrowserEvent(`launching the browser`);
-    const browser = await puppeteer.launch({ headless: true, args: LAUNCH_ARGS });
+    const { launch } = await import('puppeteer');
+    const browser = await launch({ headless: true, args: LAUNCH_ARGS });
     // Relaunching from here would resurrect the browser during shutdown and recurse on a crash
     // loop; getBrowser reopens it lazily on the next render instead
     browser.on('disconnected', () => {

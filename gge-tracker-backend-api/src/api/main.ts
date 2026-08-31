@@ -5387,7 +5387,7 @@ protectedRoutes.get('/offers', routingInstance.getOffers.bind(routingInstance));
  * - Checks if the 'gge-server' header is provided; responds with 400 if missing
  * - Validates the server name using `apiGgeTrackerManager.isValidServer`; responds with 400 if invalid
  * - Retrieves the server configuration; responds with 500 if not found
- * - Attaches database connection pools (`pg_pool`, `mysql_pool`), the server language, and server code to the request object for downstream handlers
+ * - Attaches the database connection pool (`pg_pool`), the server language, and server code to the request object for downstream handlers
  *
  * @param req - The Express request object, extended with additional properties for database pools and server info
  * @param res - The Express response object
@@ -5421,7 +5421,6 @@ const ggeServerMiddleware = (request: Request, response: Response, next: NextFun
   // This will be used in the controllers
   // to get the right database connection
   request['pg_pool'] = managerInstance.getPgSqlPool(language);
-  request['mysql_pool'] = managerInstance.getSqlPool(language);
   request['language'] = language;
   request['code'] = server.code;
   next();

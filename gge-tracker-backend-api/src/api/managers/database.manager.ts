@@ -1,13 +1,12 @@
 import { createClient } from '@clickhouse/client';
 import { NodeClickHouseClient } from '@clickhouse/client/dist/client';
-import * as mysql from 'mysql';
 import * as pg from 'pg';
 
 /**
- * Manages the creation and organization of MySQL and PostgreSQL connection pools for multiple databases
+ * Manages the creation and organization of PostgreSQL and ClickHouse connections for multiple databases
  *
  * @remarks
- * This class provides utility methods to create and manage connection pools for both MySQL and PostgreSQL databases
+ * This class provides utility methods to create and manage PostgreSQL connection pools
  * It also maintains a list of SQL event table names relevant to the application's domain
  */
 export class DatabaseManager {
@@ -29,23 +28,6 @@ export class DatabaseManager {
     'player_loot_history',
     'player_might_history',
   ];
-
-  /**
-   * Creates and returns a MySQL connection pool for the specified database
-   *
-   * @param dbName - The name of the database to connect to
-   * @returns A MySQL connection pool instance configured with environment variables and the specified database
-   */
-  protected createConnectionPool(databaseName: string): mysql.Pool {
-    return mysql.createPool({
-      host: process.env.MYSQL_HOST,
-      user: process.env.MYSQL_USER,
-      password: process.env.MYSQL_PASSWORD,
-      database: databaseName,
-      connectionLimit: 15,
-      timeout: 10 * 1000,
-    });
-  }
 
   /**
    * Creates and returns a new PostgreSQL connection pool for the specified database
@@ -85,37 +67,26 @@ export class DatabaseManager {
   }
 
   /**
-   * Creates and initializes MySQL and PostgreSQL connection pools for the provided database names
-   *
-   * For each entry in the `dbNames` object, this method attempts to create a MySQL connection pool
-   * (skipping the "GLOBAL" key) and a PostgreSQL connection pool. It logs the creation of each pool
-   * and handles any errors that occur during pool creation
+   * Creates and initializes PostgreSQL connection pools for the provided database names
    *
    * @param dbNames - An object mapping pool keys to database names
-   * @returns An object containing two properties:
-   *   - `mysql`: An object mapping keys to MySQL connection pools
-   *   - `postgres`: An object mapping keys to PostgreSQL connection pools
+   * @returns An object containing the PostgreSQL pools keyed the same way, and a ClickHouse client
    */
   protected createConnectionPools(databaseNames: { [key: string]: string }): {
-    mysql: { [key: string]: mysql.Pool };
     postgres: { [key: string]: pg.Pool };
     clickhouse: NodeClickHouseClient;
   } {
-    const mysqlPools: { [key: string]: mysql.Pool } = {};
     const postgresPools: { [key: string]: pg.Pool } = {};
     console.log('[DB] Creating connection pools...');
     for (const [key, databaseName] of Object.entries(databaseNames)) {
       try {
-        if (key !== 'GLOBAL') mysqlPools[key] = this.createConnectionPool(databaseName);
         postgresPools[key] = this.createPostgresPool(databaseName);
-        console.log(`[DB] Connection pool created for ${key} with database ${databaseName}`);
         console.log(`[DB] Postgres connection pool created for ${key} with database ${databaseName}`);
       } catch (error) {
         console.error(`[DB] Error creating connection pools for ${key}:`, error);
       }
     }
     return {
-      mysql: mysqlPools,
       postgres: postgresPools,
       clickhouse: this.createClickhouseClient(),
     };
