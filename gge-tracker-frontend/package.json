@@ -18,13 +18,13 @@
   "dependencies": {
     "@angular/animations": "^20.3.26",
     "@angular/cdk": "^20.2.14",
-    "@angular/common": "^20.3.26",
-    "@angular/compiler": "^20.3.26",
-    "@angular/core": "^20.3.26",
+    "@angular/common": "^20.3.27",
+    "@angular/compiler": "^20.3.27",
+    "@angular/core": "^22.1.4",
     "@angular/forms": "^20.3.26",
     "@angular/platform-browser": "^20.3.26",
     "@angular/platform-browser-dynamic": "^20.3.26",
-    "@angular/platform-server": "^20.3.26",
+    "@angular/platform-server": "^20.3.27",
     "@angular/router": "^20.3.26",
     "@angular/service-worker": "^20.3.26",
     "@createjs/easeljs": "^2.0.0-beta.4",
@@ -48,7 +48,7 @@
     "zone.js": "~0.15.1"
   },
   "devDependencies": {
-    "@angular-devkit/build-angular": "^20.3.28",
+    "@angular-devkit/build-angular": "^20.3.35",
     "@angular-devkit/core": "^20.3.26",
     "@angular-devkit/schematics": "^20.3.26",
     "@angular-eslint/eslint-plugin": "^20.7.0",
