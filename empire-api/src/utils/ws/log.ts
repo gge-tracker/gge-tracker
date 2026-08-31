@@ -1,6 +1,8 @@
 import { GgeServerType } from './base-socket.js';
 
 export class Log {
+  private static readonly HASH_MAX_LENGTH = 64;
+
   private readonly _serverHeader: string;
   private readonly _serverType: GgeServerType;
 
@@ -90,7 +92,8 @@ export class Log {
 
   private hashString(string_: string): number {
     let hash = 5381;
-    for (let index = 0; index < string_.length; index++) {
+    const length = Math.min(string_.length, Log.HASH_MAX_LENGTH);
+    for (let index = 0; index < length; index++) {
       hash = (hash * 33) ^ string_.codePointAt(index);
     }
     return Math.abs(hash);

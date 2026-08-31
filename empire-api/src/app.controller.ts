@@ -14,6 +14,8 @@ interface CommandInterface {
   };
 }
 
+const SERVER_HEADER_REGEX = /^[A-Za-z][\dA-Za-z_-]{0,63}$/;
+
 const __dirname = import.meta.dirname;
 let commands: CommandInterface;
 let instancesSyncRunning = false;
@@ -159,6 +161,15 @@ export default function createApp(sockets: {
         response.status(400).json({ error: 'Missing parameters' });
         return;
       }
+      if (!SERVER_HEADER_REGEX.test(server)) {
+        response.status(400).json({ error: 'Invalid server header' });
+        return;
+      }
+      const regex = /^[\dA-Za-z-]+\.goodgamestudios\.com$/;
+      if (!regex.test(socket_url)) {
+        response.status(400).json({ error: 'Invalid socket URL' });
+        return;
+      }
       if (server in sockets) {
         try {
           sockets[server].kill();
@@ -167,11 +178,6 @@ export default function createApp(sockets: {
         } finally {
           delete sockets[server];
         }
-      }
-      const regex = /^[\dA-Za-z-]+\.goodgamestudios\.com$/;
-      if (!regex.test(socket_url)) {
-        response.status(400).json({ error: 'Invalid socket URL' });
-        return;
       }
       let socketServer:
         | GgeEmpire4KingdomsSocket
