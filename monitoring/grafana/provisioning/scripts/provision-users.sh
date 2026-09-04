@@ -54,32 +54,52 @@ folder_uid() {
 ADMIN_VIEWER_ID=$(ensure_user "$GF_ADMIN_VIEWER_USER" "$GF_ADMIN_VIEWER_PASSWORD" "${GF_ADMIN_VIEWER_EMAIL:-}")
 MOD_VIEWER_ID=$(ensure_user "$GF_MOD_VIEWER_USER" "$GF_MOD_VIEWER_PASSWORD" "${GF_MOD_VIEWER_EMAIL:-}")
 
+PARTNER_VIEWER_ID=""
+if [ -n "${GF_PARTNER_VIEWER_USER:-}" ]; then
+  PARTNER_VIEWER_ID=$(ensure_user "$GF_PARTNER_VIEWER_USER" "${GF_PARTNER_VIEWER_PASSWORD:?GF_PARTNER_VIEWER_PASSWORD is required when GF_PARTNER_VIEWER_USER is set}" "${GF_PARTNER_VIEWER_EMAIL:-}")
+else
+  echo "[provision] GF_PARTNER_VIEWER_USER is not set, skipping the partner account" >&2
+fi
+
 ADMIN_FOLDER=""
 MOD_FOLDER=""
+PARTNER_FOLDER=""
 _tries=0
 while [ "$_tries" -lt 30 ]; do
   ADMIN_FOLDER=$(folder_uid "Admin")
   MOD_FOLDER=$(folder_uid "Mod")
-  [ -n "$ADMIN_FOLDER" ] && [ -n "$MOD_FOLDER" ] && break
+  PARTNER_FOLDER=$(folder_uid "Partner")
+  [ -n "$ADMIN_FOLDER" ] && [ -n "$MOD_FOLDER" ] && [ -n "$PARTNER_FOLDER" ] && break
   _tries=$((_tries + 1))
   sleep 2
 done
 
-if [ -z "$ADMIN_FOLDER" ] || [ -z "$MOD_FOLDER" ]; then
-  echo "[provision] ERROR: could not resolve Admin/Mod folder uids (Admin='${ADMIN_FOLDER}' Mod='${MOD_FOLDER}')" >&2
+if [ -z "$ADMIN_FOLDER" ] || [ -z "$MOD_FOLDER" ] || [ -z "$PARTNER_FOLDER" ]; then
+  echo "[provision] ERROR: could not resolve the dashboard folder uids (Admin='${ADMIN_FOLDER}' Mod='${MOD_FOLDER}' Partner='${PARTNER_FOLDER}')" >&2
   exit 1
 fi
 
-echo "[provision] Admin folder=${ADMIN_FOLDER}  Mod folder=${MOD_FOLDER}"
+echo "[provision] Admin folder=${ADMIN_FOLDER}  Mod folder=${MOD_FOLDER}  Partner folder=${PARTNER_FOLDER}"
 
-ADMIN_PERMS=$(jq -n --argjson a "$ADMIN_VIEWER_ID" \
-  '{items:[{userId:$a, permission:1}]}')
-MOD_PERMS=$(jq -n --argjson a "$ADMIN_VIEWER_ID" --argjson m "$MOD_VIEWER_ID" \
-  '{items:[{userId:$a, permission:1},{userId:$m, permission:1}]}')
+viewers() {
+  jq -n --argjson ids "$1" '{items: [$ids[] | {userId: ., permission: 1}]}'
+}
 
-api POST "/api/folders/${ADMIN_FOLDER}/permissions" "$ADMIN_PERMS" >/dev/null
+ADMIN_IDS="[${ADMIN_VIEWER_ID}]"
+MOD_IDS="[${ADMIN_VIEWER_ID},${MOD_VIEWER_ID}]"
+PARTNER_IDS="[${ADMIN_VIEWER_ID}]"
+PARTNER_SUFFIX=""
+if [ -n "$PARTNER_VIEWER_ID" ]; then
+  MOD_IDS="[${ADMIN_VIEWER_ID},${MOD_VIEWER_ID},${PARTNER_VIEWER_ID}]"
+  PARTNER_IDS="[${ADMIN_VIEWER_ID},${PARTNER_VIEWER_ID}]"
+  PARTNER_SUFFIX=" + partner viewer"
+fi
+
+api POST "/api/folders/${ADMIN_FOLDER}/permissions" "$(viewers "$ADMIN_IDS")" >/dev/null
 echo "[provision] Admin folder permissions set (admin viewer)."
-api POST "/api/folders/${MOD_FOLDER}/permissions" "$MOD_PERMS" >/dev/null
-echo "[provision] Mod folder permissions set (admin viewer + mod viewer)."
+api POST "/api/folders/${MOD_FOLDER}/permissions" "$(viewers "$MOD_IDS")" >/dev/null
+echo "[provision] Mod folder permissions set (admin viewer + mod viewer${PARTNER_SUFFIX})."
+api POST "/api/folders/${PARTNER_FOLDER}/permissions" "$(viewers "$PARTNER_IDS")" >/dev/null
+echo "[provision] Partner folder permissions set (admin viewer${PARTNER_SUFFIX})."
 
 echo "[provision] done."

@@ -364,6 +364,9 @@ services:
       - GF_MOD_VIEWER_USER=${GF_MOD_VIEWER_USER}
       - GF_MOD_VIEWER_PASSWORD=${GF_MOD_VIEWER_PASSWORD}
       - GF_MOD_VIEWER_EMAIL=${GF_MOD_VIEWER_EMAIL:-}
+      - GF_PARTNER_VIEWER_USER=${GF_PARTNER_VIEWER_USER:-}
+      - GF_PARTNER_VIEWER_PASSWORD=${GF_PARTNER_VIEWER_PASSWORD:-}
+      - GF_PARTNER_VIEWER_EMAIL=${GF_PARTNER_VIEWER_EMAIL:-}
     entrypoint: ["sh", "-c", "apk add --no-cache curl jq >/dev/null && sh /scripts/provision-users.sh"]
     restart: "no"
 
