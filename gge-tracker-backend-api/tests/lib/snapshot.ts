@@ -5,7 +5,7 @@ import { HttpResult } from './http';
 
 export type SnapshotMode = 'full' | 'shape' | 'fields' | 'none';
 
-const INSTRUMENTATION_FIELDS = new Set(['duration', 'diffs']);
+const INSTRUMENTATION_FIELDS = new Set(['duration', 'diffs', 'generated_at']);
 
 export interface Digest {
   status: number;

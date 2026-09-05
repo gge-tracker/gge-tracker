@@ -1,7 +1,7 @@
 {
   "fixture": "80bf5e064c8b1db8",
   "server": "FR1",
-  "recordedAt": "2026-08-25T19:33:12.693Z",
+  "recordedAt": "2026-09-05T14:14:00.862Z",
   "entries": {
     "GET alliance-by-id": {
       "status": 200,
@@ -69,6 +69,38 @@
         "player_count"
       ],
       "hash": "530b5cff86a11aad"
+    },
+    "GET alliance-profile": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 1659,
+      "kind": "object",
+      "count": 5,
+      "keys": [
+        "alliance",
+        "castles",
+        "description_history",
+        "generated_at",
+        "member_changes",
+        "members",
+        "name_history",
+        "server",
+        "server_code",
+        "server_name",
+        "statistics",
+        "weekly_reset_offset_hours",
+        "zone"
+      ],
+      "rowKeys": [
+        "castle_type",
+        "is_main",
+        "kingdom_id",
+        "player_id",
+        "player_name",
+        "position_x",
+        "position_y"
+      ],
+      "hash": "1659ddd7cb75e361"
     },
     "GET alliances-list": {
       "status": 200,
@@ -367,10 +399,34 @@
       ],
       "hash": "de61ae60c11e4a82"
     },
+    "GET changes": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 0,
+      "kind": "object",
+      "keys": [
+        "changes",
+        "generated_at",
+        "page",
+        "server",
+        "server_code",
+        "types"
+      ],
+      "rowKeys": [
+        "id",
+        "new_alliance_id",
+        "new_alliance_name",
+        "occurred_at",
+        "old_alliance_id",
+        "old_alliance_name",
+        "player_id",
+        "type"
+      ]
+    },
     "GET docs": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 266300,
+      "bytes": 299276,
       "kind": "object",
       "count": 1,
       "keys": [
@@ -385,7 +441,7 @@
         "description",
         "url"
       ],
-      "hash": "e1ee15ad3bb15e28"
+      "hash": "d3a4bba194b7efba"
     },
     "GET dungeons": {
       "status": 200,
@@ -607,6 +663,71 @@
       ],
       "hash": "7195554b8ec7f012"
     },
+    "GET export-alliances": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 3081,
+      "kind": "object",
+      "count": 50,
+      "keys": [
+        "alliances",
+        "data_version",
+        "fields",
+        "generated_at",
+        "page",
+        "server",
+        "server_code"
+      ],
+      "rowKeys": [
+        "alliance_id",
+        "alliance_name"
+      ],
+      "hash": "1db9c5fb6e0d73d1"
+    },
+    "GET export-castles": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 61251,
+      "kind": "object",
+      "count": 387,
+      "keys": [
+        "castles",
+        "data_version",
+        "fields",
+        "generated_at",
+        "page",
+        "server",
+        "server_code"
+      ],
+      "rowKeys": [
+        "alliance_id",
+        "castle_type",
+        "is_main",
+        "kingdom_id",
+        "player_id",
+        "player_name",
+        "position_x",
+        "position_y"
+      ],
+      "hash": "b5dc86425530b630"
+    },
+    "GET export-players": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 4004,
+      "kind": "object",
+      "count": 3,
+      "keys": [
+        "data_version",
+        "fields",
+        "generated_at",
+        "page",
+        "players",
+        "server",
+        "server_code"
+      ],
+      "hash": "65896ad2aca8f920"
+    },
     "GET gt-alliance-analysis": {
       "status": 200,
       "contentType": "application/json",
@@ -673,7 +794,7 @@
     "GET languages": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 3127979,
+      "bytes": 3129036,
       "kind": "object",
       "keys": [
         "@metadata",
@@ -3086,6 +3207,7 @@
         "ci_effect_foodCapacityBonusBaronEconomy",
         "ci_effect_foodProductionBonusBaronEconomy",
         "ci_effect_foodProductionBoost",
+        "ci_effect_foodProductionBoostBaronEconomyCapped",
         "ci_effect_foodStorage",
         "ci_effect_foodStorageTCI",
         "ci_effect_foodStorage_tt",
@@ -13731,6 +13853,7 @@
         "equip_effect_description_foodCapacityBonusBaronEconomy",
         "equip_effect_description_foodProductionBonusBaronEconomy",
         "equip_effect_description_foodProductionBoostBaronEconomy",
+        "equip_effect_description_foodProductionBoostBaronEconomyCapped",
         "equip_effect_description_foodStorageTCI",
         "equip_effect_description_gateBonus",
         "equip_effect_description_gateBonusBaron",
@@ -29616,6 +29739,11 @@
         "webshop_AnniversaryFood_1283_desc",
         "webshop_AnniversaryKeepStrength_1282_desc",
         "webshop_AnniversaryStorage15_1284_desc",
+        "webshop_BaronAdvisorTokenStash_big_name",
+        "webshop_BaronAdvisorTokenStash_huge_name",
+        "webshop_BaronAdvisorTokenStash_mega_name",
+        "webshop_BaronAdvisorTokenStash_name",
+        "webshop_BaronAdvisorToken_name",
         "webshop_BeefProduction_VIP_name",
         "webshop_BeefProduction_extraLarge_name",
         "webshop_BeefProduction_giant_name",
@@ -30431,8 +30559,10 @@
         "webshop_payment_additional",
         "webshop_permCIbase_fooddistrict_POFoodProd_desc",
         "webshop_permCIbase_militarydistrict_POFoodProd_desc",
+        "webshop_permCIbase_tradedistrict_POFoodProd_desc",
         "webshop_permCIrelic_fooddistrict_POMeadProd_desc",
         "webshop_permCIrelic_militarydistrict_POMeadProd_desc",
+        "webshop_permCIrelic_tradedistrict_POMeadProd_desc",
         "webshop_permCIspring_stronghold_POUnitLimitWall_desc",
         "webshop_permacastellan_desc",
         "webshop_permacommander_desc",
@@ -30707,17 +30837,18 @@
         "zombiemarksman_name",
         "zombiemarksman_short_info"
       ],
-      "hash": "898b31e8f0e032e2"
+      "hash": "f606b054e769483e"
     },
     "GET live-outer-realms": {
       "status": 403,
       "contentType": "application/json",
-      "bytes": 35,
+      "bytes": 61,
       "kind": "object",
       "keys": [
+        "code",
         "error"
       ],
-      "hash": "e13aa3be3c72d746"
+      "hash": "7db0bd2d1fc1ae3b"
     },
     "GET live-outer-realms-player": {
       "status": 404,
@@ -30762,6 +30893,35 @@
         "player_id",
         "server"
       ]
+    },
+    "GET player-profile": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 886,
+      "kind": "object",
+      "count": 1,
+      "keys": [
+        "alliance_history",
+        "castle_movements",
+        "castles",
+        "generated_at",
+        "name_history",
+        "player",
+        "rank",
+        "server",
+        "server_code",
+        "server_name",
+        "weekly_reset_offset_hours",
+        "zone"
+      ],
+      "rowKeys": [
+        "new_alliance_id",
+        "new_alliance_name",
+        "occurred_at",
+        "old_alliance_id",
+        "old_alliance_name"
+      ],
+      "hash": "e7fae9a42a0d8a09"
     },
     "GET players-by-distance": {
       "status": 200,
@@ -30964,10 +31124,8 @@
     "GET server-renames": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 2766,
+      "bytes": 0,
       "kind": "paginated",
-      "total": 674,
-      "count": 15,
       "keys": [
         "pagination",
         "renames"
@@ -30979,29 +31137,17 @@
         "old_player_name",
         "player_might",
         "player_name"
-      ],
-      "hash": "8ea7866e2932964c"
+      ]
     },
     "GET server-renames-filtered": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 290,
+      "bytes": 0,
       "kind": "paginated",
-      "total": 1,
-      "count": 1,
       "keys": [
         "pagination",
         "renames"
-      ],
-      "rowKeys": [
-        "alliance_name",
-        "date",
-        "new_player_name",
-        "old_player_name",
-        "player_might",
-        "player_name"
-      ],
-      "hash": "301648595c1ce9b6"
+      ]
     },
     "GET server-statistics": {
       "status": 200,
@@ -31502,12 +31648,13 @@
     "GET top-players": {
       "status": 404,
       "contentType": "application/json",
-      "bytes": 43,
+      "bytes": 62,
       "kind": "object",
       "keys": [
+        "code",
         "error"
       ],
-      "hash": "0ad829136addc603"
+      "hash": "a5ac8f34255b104b"
     },
     "GET updates-alliance-players": {
       "status": 200,
@@ -31628,6 +31775,54 @@
       ],
       "hash": "ec9d44507f2e3edf"
     },
+    "POST bulk-alliances": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 634,
+      "kind": "object",
+      "count": 1,
+      "keys": [
+        "alliances",
+        "generated_at",
+        "missing",
+        "polling",
+        "requested",
+        "resolved",
+        "servers"
+      ],
+      "rowKeys": [
+        "active_player_count",
+        "alliance_id",
+        "alliance_name",
+        "auto_join_enabled",
+        "current_fame",
+        "description",
+        "is_island_king",
+        "is_searching_players",
+        "language",
+        "loot_current",
+        "might_current",
+        "player_count"
+      ],
+      "hash": "50fb8c8cdd833801"
+    },
+    "POST bulk-players": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 721,
+      "kind": "object",
+      "count": 0,
+      "keys": [
+        "generated_at",
+        "missing",
+        "players",
+        "polling",
+        "requested",
+        "resolved",
+        "servers"
+      ],
+      "hash": "afcc747e127bb786"
+    },
     "POST minigame-guess": {
       "status": 200,
       "contentType": "application/json",
@@ -31671,12 +31866,13 @@
     "PUT assets-update": {
       "status": 403,
       "contentType": "application/json",
-      "bytes": 21,
+      "bytes": 48,
       "kind": "object",
       "keys": [
+        "code",
         "error"
       ],
-      "hash": "18e11a797e00b786"
+      "hash": "5101f60f029cbbd2"
     }
   }
 }

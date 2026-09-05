@@ -85,6 +85,12 @@ export abstract class ApiEvents implements ApiHelper {
   private static readonly WOA_PLAYER_EVENTS_LIMIT = 100;
   private static readonly WOA_CACHE_TTL = 60 * 60;
 
+  private static readonly OUTER_REALMS_ITEMS_PER_PAGE = 10;
+  private static readonly OUTER_REALMS_CACHE_TTL_RANKING = 60;
+  private static readonly OUTER_REALMS_CACHE_TTL_PLAYER = 2 * 60;
+  private static readonly OUTER_REALMS_RECENT_WINDOW_HOURS = 2;
+  private static readonly OUTER_REALMS_FALLBACK_WINDOW_HOURS = 24 * 30;
+
   private static readonly SMALLINT_MAX = 32_767;
   private static readonly STORMY_ISLES_ITEMS_PER_PAGE = 15;
   private static readonly STORMY_ISLES_CACHE_TTL_LEADERBOARD = 60 * 60;
@@ -503,8 +509,7 @@ export abstract class ApiEvents implements ApiHelper {
         SELECT
           COUNT(*) AS total_items
         FROM grand_tournament
-        WHERE ($1::timestamp IS NULL
-          OR (created_at >= $1::timestamp AND created_at < $1::timestamp + interval '1 hour'))
+        WHERE created_at >= $1::timestamp AND created_at < $1::timestamp + interval '1 hour'
           AND alliance_name ILIKE $2
       `;
       const { rows: countRows } = await pgPool.query(queryCount, [...baseParameters, `%${allianceName}%`]);
@@ -529,8 +534,7 @@ export abstract class ApiEvents implements ApiHelper {
           score,
           created_at
         FROM grand_tournament
-        WHERE ($1::timestamp IS NULL
-          OR (created_at >= $1::timestamp AND created_at < $1::timestamp + interval '1 hour'))
+        WHERE created_at >= $1::timestamp AND created_at < $1::timestamp + interval '1 hour'
           AND alliance_name ILIKE $2
         ORDER BY created_at DESC, division_id DESC, score DESC, rank
         LIMIT $3 OFFSET $4;
@@ -650,8 +654,7 @@ export abstract class ApiEvents implements ApiHelper {
           score,
           created_at
         FROM grand_tournament
-        WHERE ($1::timestamp IS NULL
-          OR (created_at >= $1::timestamp AND created_at < $1::timestamp + interval '1 hour'))
+        WHERE created_at >= $1::timestamp AND created_at < $1::timestamp + interval '1 hour'
           AND division_id = $${index++}
           ${subdivision_id ? `AND subdivision_id = $${index++}` : ''}
         ORDER BY created_at DESC, division_id DESC, ${subdivision_id ? 'subdivision_id, rank' : 'score DESC, rank'}
@@ -664,8 +667,7 @@ export abstract class ApiEvents implements ApiHelper {
           COUNT(*) AS total_items,
           MAX(subdivision_id) AS max_subdivision_id
         FROM grand_tournament
-        WHERE ($1::timestamp IS NULL
-              OR (created_at >= $1::timestamp AND created_at < $1::timestamp + interval '1 hour'))
+        WHERE created_at >= $1::timestamp AND created_at < $1::timestamp + interval '1 hour'
           AND division_id = $${index++}
           ${subdivision_id ? `AND subdivision_id = $${index++}` : ''};
       `;
@@ -1229,6 +1231,13 @@ export abstract class ApiEvents implements ApiHelper {
 
       const clickhouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
 
+      const cachedKey = new CacheKeyBuilder('outer-realms:live-ranking:player').with(playerId).build();
+      const cachedData = await ApiHelper.redisClient.get(cachedKey);
+      if (cachedData) {
+        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        return;
+      }
+
       /* ---------------------------------
        * Database query for player data
        * --------------------------------- */
@@ -1285,6 +1294,7 @@ export abstract class ApiEvents implements ApiHelper {
 
       const currentOuterRealmsEvent = await this.getCurrentOuterRealmsEvent();
       const responseData = { player: finalEntry, current_event: currentOuterRealmsEvent };
+      void ApiHelper.updateCache(cachedKey, responseData, ApiEvents.OUTER_REALMS_CACHE_TTL_PLAYER);
       response.status(ApiHelper.HTTP_OK).send(responseData);
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
@@ -1303,21 +1313,33 @@ export abstract class ApiEvents implements ApiHelper {
         maxLength: 50,
         toLowerCase: false,
       });
-      const sizePerPage = 10;
+      const sizePerPage = ApiEvents.OUTER_REALMS_ITEMS_PER_PAGE;
       const offset = (page - 1) * sizePerPage;
       const clickhouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
 
       /* ---------------------------------
+       * Cache check
+       * --------------------------------- */
+      const cachedKey = new CacheKeyBuilder('outer-realms:live-ranking')
+        .with(page)
+        .with(ApiHelper.isValidInput(searchPlayerName) ? searchPlayerName.toLowerCase() : 'all')
+        .build();
+      const cachedData = await ApiHelper.redisClient.get(cachedKey);
+      if (cachedData) {
+        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        return;
+      }
+
+      /* ---------------------------------
        * Query database for players
        * --------------------------------- */
+      const { lastDate, previousDate } = await ApiEvents.getOuterRealmsFetchDates(clickhouseClient);
+      if (!lastDate) {
+        response.status(ApiHelper.HTTP_FORBIDDEN).send({ error: RouteErrorMessagesEnum.EventNotActive });
+        return;
+      }
+
       const playersQuery = `
-        WITH
-          (SELECT max(fetch_date) FROM ggetracker_global.outer_realms_ranking) AS last_date,
-          (
-            SELECT max(fetch_date)
-            FROM ggetracker_global.outer_realms_ranking
-            WHERE fetch_date < last_date
-          ) AS prev_date
         SELECT
           now.player_id,
           now.player_name,
@@ -1338,19 +1360,23 @@ export abstract class ApiEvents implements ApiHelper {
         (
           SELECT player_id, score, rank
           FROM ggetracker_global.outer_realms_ranking
-          WHERE fetch_date = prev_date
+          WHERE fetch_date = {previousDate:DateTime}
         ) AS before
         ON before.player_id = now.player_id
-        WHERE now.fetch_date = last_date
+        WHERE now.fetch_date = {lastDate:DateTime}
         ${ApiHelper.isValidInput(searchPlayerName) ? `AND now.player_name_lower LIKE {searchPlayerName:String}` : ''}
         ORDER BY now.rank ASC
         LIMIT ${sizePerPage} OFFSET ${offset};
       `;
       const rawPlayersResult = await clickhouseClient.query({
         query: playersQuery,
-        query_params: ApiHelper.isValidInput(searchPlayerName)
-          ? { searchPlayerName: `%${searchPlayerName.toLowerCase()}%` }
-          : {},
+        query_params: {
+          lastDate,
+          previousDate: previousDate ?? lastDate,
+          ...(ApiHelper.isValidInput(searchPlayerName)
+            ? { searchPlayerName: `%${searchPlayerName.toLowerCase()}%` }
+            : {}),
+        },
       });
       const jsonPlayers = await rawPlayersResult.json();
       const playersResult: any = jsonPlayers.data;
@@ -1404,6 +1430,7 @@ export abstract class ApiEvents implements ApiHelper {
         },
       };
 
+      void ApiHelper.updateCache(cachedKey, responseData, ApiEvents.OUTER_REALMS_CACHE_TTL_RANKING);
       response.status(ApiHelper.HTTP_OK).send(responseData);
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
@@ -2566,6 +2593,36 @@ export abstract class ApiEvents implements ApiHelper {
       return false;
     }
     return true;
+  }
+
+  /**
+   * Resolves the two most recent collection instants of the Outer Realms ranking
+   *
+   * @param clickhouseClient The shared ClickHouse client
+   * @returns The latest fetch instant and the one before it, both null when the table is dormant
+   */
+  private static async getOuterRealmsFetchDates(
+    clickhouseClient: NodeClickHouseClient,
+  ): Promise<{ lastDate: string | null; previousDate: string | null }> {
+    const windows = [ApiEvents.OUTER_REALMS_RECENT_WINDOW_HOURS, ApiEvents.OUTER_REALMS_FALLBACK_WINDOW_HOURS];
+    for (const hours of windows) {
+      const rawDates = await clickhouseClient.query({
+        query: `
+          SELECT DISTINCT fetch_date
+          FROM ggetracker_global.outer_realms_ranking
+          WHERE fetch_date >= now() - INTERVAL {hours:UInt32} HOUR
+          ORDER BY fetch_date DESC
+          LIMIT 2
+        `,
+        query_params: { hours },
+      });
+      const parsedDates = await rawDates.json();
+      const dates = parsedDates.data as { fetch_date: string }[];
+      if (dates.length > 0) {
+        return { lastDate: dates[0].fetch_date, previousDate: dates[1]?.fetch_date ?? null };
+      }
+    }
+    return { lastDate: null, previousDate: null };
   }
 
   /**

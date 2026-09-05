@@ -36,6 +36,7 @@ import { ApiRoutingController } from './controllers/api-routing.controller';
 import { GgeTrackerApiGuardActivity } from './guard/ggetracker-guard-activity';
 import { ApiGgeTrackerManager } from './managers/api.manager';
 import { RoutesManager } from './managers/routes.manager';
+import { errorCodeMiddleware } from './helper/error-codes';
 import { ApiHelper } from './helper/api-helper';
 
 /* ------------------------------------------------
@@ -67,10 +68,22 @@ app.use(express.json());
 app.use(
   cors({
     origin: '*',
-    methods: ['GET'],
-    exposedHeaders: ['ETag', 'X-Data-Version'],
+    methods: ['GET', 'POST', 'HEAD', 'OPTIONS'],
+    exposedHeaders: [
+      'ETag',
+      'X-Data-Version',
+      'X-Next-Cursor',
+      'X-Has-More',
+      'X-Item-Count',
+      'X-RateLimit-Limit',
+      'X-RateLimit-Remaining',
+      'X-RateLimit-Reset',
+      'X-RateLimit-Window',
+      'Retry-After',
+    ],
   }),
 );
+app.use(errorCodeMiddleware);
 app.use((error: unknown, request: express.Request, response: express.Response, next: express.NextFunction) => {
   if (error instanceof SyntaxError && 'body' in error) {
     response.status(400).json({
@@ -5382,6 +5395,618 @@ publicRoutes.get('/dungeons/player/:playerId', routingInstance.getDungeonsByPlay
 protectedRoutes.get('/offers', routingInstance.getOffers.bind(routingInstance));
 
 /**
+ * @openapi
+ * /export/players:
+ *   get:
+ *     summary: Read the whole player collection in keyset pages
+ *     description: >
+ *       Returns every player on the server in pages of up to 5000, ordered by player id, projected
+ *       down to the columns named in fields
+ *       Read page.next_cursor and pass it back as cursor until page.has_more is false. A cursor
+ *       names the last row read rather than a row count, so a page boundary survives the hourly
+ *       fill rewriting the collection
+ *       The body only changes when the fill version changes, so send the ETag back as
+ *       If-None-Match and an unchanged server answers 304 with no body. GET / reports when the
+ *       next collection is expected
+ *     tags:
+ *       - Export
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - $ref: '#/components/parameters/IfNoneMatch'
+ *       - $ref: '#/components/parameters/ExportCursor'
+ *       - $ref: '#/components/parameters/ExportLimit'
+ *       - $ref: '#/components/parameters/ExportFormat'
+ *       - name: fields
+ *         in: query
+ *         required: false
+ *         description: >
+ *           Comma-separated projection, or all. The id column is always included. Available:
+ *           player_id, player_name, alliance_id, alliance_name, alliance_rank, might_current,
+ *           might_all_time, loot_current, loot_all_time, honor, max_honor, level, legendary_level,
+ *           highest_fame, current_fame, remaining_relocation_time, castles, castles_realm,
+ *           peace_disabled_at, updated_at
+ *         schema:
+ *           type: string
+ *           default: player_id,player_name,alliance_id
+ *       - name: updated_since
+ *         in: query
+ *         required: false
+ *         description: Only players whose row was written at or after this instant, which turns a full export into an incremental one
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *       - name: alliance_id
+ *         in: query
+ *         required: false
+ *         description: Restrict the export to the members of one alliance
+ *         schema:
+ *           type: string
+ *       - name: active
+ *         in: query
+ *         required: false
+ *         description: 1 keeps only players who still hold a castle, 0 keeps only those who do not. Omitted, both are returned
+ *         schema:
+ *           type: integer
+ *           enum: [0, 1]
+ *     responses:
+ *       '200':
+ *         description: A page of players
+ *         headers:
+ *           ETag:
+ *             description: Send back as If-None-Match to skip an unchanged page
+ *             schema:
+ *               type: string
+ *           X-Data-Version:
+ *             description: Fill version this page was computed from
+ *             schema:
+ *               type: string
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 server:
+ *                   type: string
+ *                 server_code:
+ *                   type: string
+ *                 data_version:
+ *                   type: integer
+ *                 generated_at:
+ *                   type: string
+ *                   format: date-time
+ *                 fields:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                 page:
+ *                   $ref: '#/components/schemas/KeysetPage'
+ *                 players:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     additionalProperties: true
+ *           application/x-ndjson:
+ *             schema:
+ *               type: string
+ *               description: One JSON object per line. Paging moves to the X-Next-Cursor, X-Has-More and X-Item-Count headers
+ *       '304':
+ *         description: The If-None-Match ETag still matches, so this page has not changed
+ *       '400':
+ *         $ref: '#/components/responses/BadRequest'
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+protectedRoutes.get('/export/players', routingInstance.getPlayersExport.bind(routingInstance));
+
+/**
+ * @openapi
+ * /export/alliances:
+ *   get:
+ *     summary: Read the whole alliance collection in keyset pages
+ *     description: >
+ *       The alliance equivalent of /export/players, with the same cursor, projection and
+ *       conditional request behaviour.
+ *       Aggregate columns such as player_count and might_current are computed from the members and
+ *       are only joined when the projection asks for one, so the default read stays an index scan
+ *     tags:
+ *       - Export
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - $ref: '#/components/parameters/IfNoneMatch'
+ *       - $ref: '#/components/parameters/ExportCursor'
+ *       - $ref: '#/components/parameters/ExportLimit'
+ *       - $ref: '#/components/parameters/ExportFormat'
+ *       - name: fields
+ *         in: query
+ *         required: false
+ *         description: >
+ *           Comma-separated projection, or all. Available: alliance_id, alliance_name, language,
+ *           description, is_island_king, is_searching_players, auto_join_enabled, player_count,
+ *           active_player_count, might_current, might_all_time, loot_current, loot_all_time,
+ *           current_fame, highest_fame
+ *         schema:
+ *           type: string
+ *           default: alliance_id,alliance_name
+ *       - name: only_populated
+ *         in: query
+ *         required: false
+ *         description: 1 drops alliances that currently have no members. These exist because an alliance row outlives its last player
+ *         schema:
+ *           type: integer
+ *           enum: [0, 1]
+ *     responses:
+ *       '200':
+ *         description: A page of alliances
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 page:
+ *                   $ref: '#/components/schemas/KeysetPage'
+ *                 alliances:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     additionalProperties: true
+ *       '304':
+ *         description: The If-None-Match ETag still matches, so this page has not changed
+ *       '400':
+ *         $ref: '#/components/responses/BadRequest'
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+protectedRoutes.get('/export/alliances', routingInstance.getAlliancesExport.bind(routingInstance));
+
+/**
+ * @openapi
+ * /export/castles:
+ *   get:
+ *     summary: Read every castle on the server, one row per castle
+ *     description: >
+ *       Flattens the two castle arrays a player row carries, castles for the Great Empire and
+ *       castles_realm for the kingdoms, into one row per castle. A map or a proximity search then
+ *       does not have to know how either array is shaped.
+ *       The page is cut on the player id, not on the castle: a player's castles are never split
+ *       across two pages, which is why page.count is larger than limit
+ *     tags:
+ *       - Export
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - $ref: '#/components/parameters/IfNoneMatch'
+ *       - $ref: '#/components/parameters/ExportCursor'
+ *       - $ref: '#/components/parameters/ExportLimit'
+ *       - $ref: '#/components/parameters/ExportFormat'
+ *     responses:
+ *       '200':
+ *         description: A page of castles
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 page:
+ *                   $ref: '#/components/schemas/KeysetPage'
+ *                 castles:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       player_id:
+ *                         type: string
+ *                       player_name:
+ *                         type: string
+ *                       alliance_id:
+ *                         type: string
+ *                         nullable: true
+ *                       kingdom_id:
+ *                         type: integer
+ *                         description: 0 the Great Empire, 1 Everwinter Glacier, 2 Burning Sands, 3 Fire Peaks
+ *                       position_x:
+ *                         type: integer
+ *                       position_y:
+ *                         type: integer
+ *                       castle_type:
+ *                         type: integer
+ *                       is_main:
+ *                         type: boolean
+ *       '304':
+ *         description: The If-None-Match ETag still matches, so this page has not changed
+ *       '400':
+ *         $ref: '#/components/responses/BadRequest'
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+protectedRoutes.get('/export/castles', routingInstance.getCastlesExport.bind(routingInstance));
+
+/**
+ * @openapi
+ * /changes:
+ *   get:
+ *     summary: Everything that moved on this server since a cursor
+ *     description: >
+ *       An ordered feed of the transitions the collector records as it writes: alliance
+ *       memberships, player and alliance renames, castle movements and alliance description edits.
+ *       Built for watch lists, which otherwise mean re-reading the collection on a timer and
+ *       diffing it locally
+ *       Without a cursor the feed starts 24 hours ago, or at since if given. Read page.next_cursor
+ *       and pass it back. The cursor holds one position per change type, so a type with nothing to
+ *       report keeps its place instead of being skipped
+ *       Use player_ids and alliance_ids to restrict the feed to the subjects you follow
+ *     tags:
+ *       - Changes
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - name: cursor
+ *         in: query
+ *         required: false
+ *         description: Opaque position returned as page.next_cursor by the previous call. Takes precedence over since
+ *         schema:
+ *           type: string
+ *       - name: since
+ *         in: query
+ *         required: false
+ *         description: Bootstrap the feed at this instant when no cursor is held. Defaults to 24 hours ago
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *       - name: types
+ *         in: query
+ *         required: false
+ *         description: >
+ *           Comma-separated subset of: membership, player_rename, castle_movement,
+ *           alliance_rename, alliance_description. All five by default
+ *         schema:
+ *           type: string
+ *       - name: player_ids
+ *         in: query
+ *         required: false
+ *         description: Up to 200 player ids. Restricts the player change types to these players
+ *         schema:
+ *           type: string
+ *       - name: alliance_ids
+ *         in: query
+ *         required: false
+ *         description: Up to 200 alliance ids. Restricts the alliance change types to these alliances
+ *         schema:
+ *           type: string
+ *       - name: limit
+ *         in: query
+ *         required: false
+ *         description: Changes per page, 1 to 1000
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 1000
+ *           default: 200
+ *     responses:
+ *       '200':
+ *         description: A page of changes, oldest first
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 server:
+ *                   type: string
+ *                 server_code:
+ *                   type: string
+ *                 generated_at:
+ *                   type: string
+ *                   format: date-time
+ *                 types:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                 page:
+ *                   $ref: '#/components/schemas/KeysetPage'
+ *                 changes:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       type:
+ *                         type: string
+ *                         enum: [membership, player_rename, castle_movement, alliance_rename, alliance_description]
+ *                       id:
+ *                         type: integer
+ *                       occurred_at:
+ *                         type: string
+ *                         format: date-time
+ *                     additionalProperties: true
+ *       '400':
+ *         $ref: '#/components/responses/BadRequest'
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+protectedRoutes.get('/changes', routingInstance.getChanges.bind(routingInstance));
+
+/**
+ * @openapi
+ * /players/{playerId}/profile:
+ *   get:
+ *     summary: Everything about one player in a single call
+ *     description: >
+ *       Composes the player row, their castles, their standing on the server and their three
+ *       histories into one document. The same data spread over /players/{playerName},
+ *       /statistics/ranking/player/{playerId}, /castle/search/{playerName},
+ *       /updates/players/{playerId}/names, /updates/players/{playerId}/alliances and
+ *       /server/movements costs six round trips for one subject
+ *     tags:
+ *       - Players
+ *     parameters:
+ *       - $ref: '#/components/parameters/PlayerId'
+ *       - $ref: '#/components/parameters/IfNoneMatch'
+ *       - name: include
+ *         in: query
+ *         required: false
+ *         description: >
+ *           Comma-separated subset of: castles, rank, names, alliances, movements. All of them by
+ *           default. Use none to return the player row alone
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: The player profile
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 server:
+ *                   type: string
+ *                 server_code:
+ *                   type: string
+ *                 weekly_reset_offset_hours:
+ *                   type: integer
+ *                   nullable: true
+ *                   description: Hours after Monday 00:00 UTC at which this server's weekly loot ranking empties
+ *                 player:
+ *                   type: object
+ *                   additionalProperties: true
+ *                 castles:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     additionalProperties: true
+ *                 rank:
+ *                   type: object
+ *                   description: Rank among the players who still hold a castle
+ *                   additionalProperties: true
+ *                 name_history:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     additionalProperties: true
+ *                 alliance_history:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     additionalProperties: true
+ *                 castle_movements:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     additionalProperties: true
+ *       '304':
+ *         description: The If-None-Match ETag still matches, so this profile has not changed
+ *       '400':
+ *         $ref: '#/components/responses/BadRequest'
+ *       '404':
+ *         $ref: '#/components/responses/NotFound'
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+publicRoutes.get('/players/:playerId/profile', routingInstance.getPlayerProfile.bind(routingInstance));
+
+/**
+ * @openapi
+ * /alliances/{allianceId}/profile:
+ *   get:
+ *     summary: Everything about one alliance in a single call
+ *     description: >
+ *       Composes the alliance row, its aggregates, its member list, the castles those members hold,
+ *       and its rename, description and membership histories into one document. This replaces the
+ *       four calls a client chains through /alliances/name/{name}, /alliances/id/{allianceId},
+ *       /statistics/alliance/{allianceId} and /cartography/id/{allianceId}.
+ *       Unlike /alliances/id/{allianceId}, which answers 200 with an error field when the alliance
+ *       is unknown, this route answers 404
+ *     tags:
+ *       - Alliances
+ *     parameters:
+ *       - $ref: '#/components/parameters/AllianceId'
+ *       - $ref: '#/components/parameters/IfNoneMatch'
+ *       - name: include
+ *         in: query
+ *         required: false
+ *         description: >
+ *           Comma-separated subset of: members, castles, names, descriptions, member_changes. All
+ *           of them by default. Use none to return the alliance row and its aggregates alone
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: The alliance profile
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 alliance:
+ *                   type: object
+ *                   additionalProperties: true
+ *                 statistics:
+ *                   type: object
+ *                   additionalProperties: true
+ *                 members:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     additionalProperties: true
+ *                 castles:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     additionalProperties: true
+ *                 name_history:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     additionalProperties: true
+ *                 description_history:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     additionalProperties: true
+ *                 member_changes:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     additionalProperties: true
+ *       '304':
+ *         description: The If-None-Match ETag still matches, so this profile has not changed
+ *       '400':
+ *         $ref: '#/components/responses/BadRequest'
+ *       '404':
+ *         $ref: '#/components/responses/NotFound'
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+publicRoutes.get('/alliances/:allianceId/profile', routingInstance.getAllianceProfile.bind(routingInstance));
+
+/**
+ * @openapi
+ * /bulk/players:
+ *   post:
+ *     summary: Read up to 500 players by id, across any number of servers
+ *     description: >
+ *       Every id this API returns ends in its three character server code, so a set of ids is self
+ *       routing. This route groups them, queries each server in parallel and answers once, so a
+ *       watch list spanning fifty servers is one call. POST /players is unchanged: same server,
+ *       gge-server header, 100 ids.
+ *       The response carries an ETag covering the whole set together with each involved server's
+ *       fill version, so send it back as If-None-Match and a watch list where nothing moved
+ *       answers 304 with no body.
+ *       Ids belonging to a server this deployment does not serve are dropped rather than failing
+ *       the batch. Ids that resolve to no row come back in missing
+ *     tags:
+ *       - Players
+ *     parameters:
+ *       - $ref: '#/components/parameters/IfNoneMatch'
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             oneOf:
+ *               - type: array
+ *                 items:
+ *                   type: string
+ *               - type: object
+ *                 properties:
+ *                   ids:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *     responses:
+ *       '200':
+ *         description: The players that resolved, and the ids that did not
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 requested:
+ *                   type: integer
+ *                 resolved:
+ *                   type: integer
+ *                 servers:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                 missing:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                 polling:
+ *                   type: object
+ *                   additionalProperties: true
+ *                 players:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     additionalProperties: true
+ *       '304':
+ *         description: The If-None-Match ETag still matches, so none of these players changed
+ *       '400':
+ *         $ref: '#/components/responses/BadRequest'
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+publicRoutes.post('/bulk/players', routingInstance.getPlayersBulk.bind(routingInstance));
+
+/**
+ * @openapi
+ * /bulk/alliances:
+ *   post:
+ *     summary: Read up to 500 alliances by id, across any number of servers
+ *     description: >
+ *       The alliance equivalent of /bulk/players, with the same cross server routing and the same
+ *       conditional request behaviour. Each alliance comes back with its member aggregates
+ *     tags:
+ *       - Alliances
+ *     parameters:
+ *       - $ref: '#/components/parameters/IfNoneMatch'
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             oneOf:
+ *               - type: array
+ *                 items:
+ *                   type: string
+ *               - type: object
+ *                 properties:
+ *                   ids:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *     responses:
+ *       '200':
+ *         description: The alliances that resolved, and the ids that did not
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 requested:
+ *                   type: integer
+ *                 resolved:
+ *                   type: integer
+ *                 servers:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                 missing:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                 alliances:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     additionalProperties: true
+ *       '304':
+ *         description: The If-None-Match ETag still matches, so none of these alliances changed
+ *       '400':
+ *         $ref: '#/components/responses/BadRequest'
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+publicRoutes.post('/bulk/alliances', routingInstance.getAlliancesBulk.bind(routingInstance));
+
+/**
  * Express middleware that validates the presence and validity of the 'gge-server' header in incoming requests
  *
  * - Checks if the 'gge-server' header is provided; responds with 400 if missing
@@ -5423,7 +6048,12 @@ const ggeServerMiddleware = (request: Request, response: Response, next: NextFun
   request['pg_pool'] = managerInstance.getPgSqlPool(language);
   request['language'] = language;
   request['code'] = server.code;
-  next();
+  ApiHelper.getCacheVersion(ApiHelper.redisClient, language)
+    .then((version) => {
+      response.setHeader('X-Data-Version', version);
+      next();
+    })
+    .catch(() => next());
 };
 
 app.use(compression());

@@ -102,8 +102,9 @@ export abstract class ApiAlliances implements ApiHelper {
             .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
         } else {
           if (!results || results.rowCount === 0) {
-            // HTTP 200 to avoid leaking valid IDs. This needs to be handled in the frontend
-            response.status(ApiHelper.HTTP_OK).send({ error: RouteErrorMessagesEnum.AllianceNotFound });
+            response
+              .status(ApiHelper.HTTP_OK)
+              .send({ found: false, error: RouteErrorMessagesEnum.AllianceNotFound, code: 'ALLIANCE_NOT_FOUND' });
             return;
           }
           /* ---------------------------------

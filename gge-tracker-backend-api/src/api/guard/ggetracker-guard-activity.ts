@@ -3,7 +3,9 @@ import express from 'express';
 import morgan from 'morgan';
 import { promisify } from 'node:util';
 import zlib from 'node:zlib';
-import { RateLimiterRedis } from 'rate-limiter-flexible';
+import { RateLimiterRedis, RateLimiterRes } from 'rate-limiter-flexible';
+import { RouteErrorMessagesEnum } from '../enums/errors.enums';
+import { ApiHelper } from '../helper/api-helper';
 import { ApiGgeTrackerManager } from '../managers/api.manager';
 import { RoutesManager, sortBySpecificity } from '../managers/routes.manager';
 import { GgeTrackerApiGuardActivityDefaultParameters } from './ggetracker-guard-activity.parameters';
@@ -144,11 +146,26 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
         return next();
       }
 
-      await this.rateLimiter.consume(normalizedIp);
+      const consumed = await this.rateLimiter.consume(normalizedIp);
+      this.applyRateLimitHeaders(response, consumed);
 
       next();
-    } catch {
-      response.status(429).json({ error: 'Too many requests, please try again later.' });
+    } catch (error) {
+      const state = error instanceof RateLimiterRes ? error : null;
+      const retryAfterSeconds = state
+        ? Math.max(1, Math.ceil(state.msBeforeNext / 1000))
+        : ApiHelper.RATE_LIMIT_DURATION_SECONDS;
+      this.applyRateLimitHeaders(response, state);
+      response.setHeader('Retry-After', String(retryAfterSeconds));
+      response.status(429).json({
+        error: RouteErrorMessagesEnum.RateLimited,
+        code: 'RATE_LIMITED',
+        retry_after_seconds: retryAfterSeconds,
+        limit: {
+          requests: ApiHelper.RATE_LIMIT_POINTS,
+          window_seconds: ApiHelper.RATE_LIMIT_DURATION_SECONDS,
+        },
+      });
     }
   }
 
@@ -399,5 +416,13 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
         await new Promise((r) => setTimeout(r, this.LOKI_RETRY_BASE_MS * 2 ** index));
       }
     }
+  }
+
+  private applyRateLimitHeaders(response: express.Response, state: RateLimiterRes | null): void {
+    response.setHeader('X-RateLimit-Limit', String(ApiHelper.RATE_LIMIT_POINTS));
+    response.setHeader('X-RateLimit-Window', String(ApiHelper.RATE_LIMIT_DURATION_SECONDS));
+    if (!state) return;
+    response.setHeader('X-RateLimit-Remaining', String(Math.max(0, state.remainingPoints)));
+    response.setHeader('X-RateLimit-Reset', String(Math.ceil((Date.now() + state.msBeforeNext) / 1000)));
   }
 }

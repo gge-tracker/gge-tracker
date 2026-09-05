@@ -5,13 +5,17 @@ import { ApiHelper } from '../helper/api-helper';
 import { ApiGgeTrackerManager } from '../managers/api.manager';
 import { ApiAlliances } from '../routes/api-alliances';
 import { ApiAssets } from '../routes/api-assets';
+import { ApiBulk } from '../routes/api-bulk';
 import { ApiCartography } from '../routes/api-cartography';
 import { ApiCastle } from '../routes/api-castle';
+import { ApiChanges } from '../routes/api-changes';
 import { ApiDocumentation } from '../routes/api-documentation';
 import { ApiDungeons } from '../routes/api-dungeons';
 import { ApiEvents } from '../routes/api-events';
+import { ApiExport } from '../routes/api-export';
 import { ApiOffers } from '../routes/api-offers';
 import { ApiPlayers } from '../routes/api-players';
+import { ApiProfiles } from '../routes/api-profiles';
 import { ApiServer } from '../routes/api-server';
 import { ApiStatistics } from '../routes/api-statistics';
 import { ApiStatus } from '../routes/api-status';
@@ -335,5 +339,37 @@ export class ApiRoutingController {
 
   public getStatisticsByPlayerIdAndEventNameAndDuration(request: express.Request, response: express.Response): void {
     void ApiStatistics.getStatisticsByPlayerIdAndEventNameAndDuration(request, response);
+  }
+
+  public getPlayersExport(request: express.Request, response: express.Response): void {
+    void ApiExport.getPlayersExport(request, response);
+  }
+
+  public getAlliancesExport(request: express.Request, response: express.Response): void {
+    void ApiExport.getAlliancesExport(request, response);
+  }
+
+  public getCastlesExport(request: express.Request, response: express.Response): void {
+    void ApiExport.getCastlesExport(request, response);
+  }
+
+  public getChanges(request: express.Request, response: express.Response): void {
+    void ApiChanges.getChanges(request, response);
+  }
+
+  public getPlayerProfile(request: express.Request, response: express.Response): void {
+    void ApiProfiles.getPlayerProfile(request, response);
+  }
+
+  public getAllianceProfile(request: express.Request, response: express.Response): void {
+    void ApiProfiles.getAllianceProfile(request, response);
+  }
+
+  public getPlayersBulk(request: express.Request, response: express.Response): void {
+    void ApiBulk.getPlayersBulk(request, response);
+  }
+
+  public getAlliancesBulk(request: express.Request, response: express.Response): void {
+    void ApiBulk.getAlliancesBulk(request, response);
   }
 }

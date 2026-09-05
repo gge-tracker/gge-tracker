@@ -7,6 +7,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { options } from '../../src/documentation';
 
 export interface RouteParam {
   name: string;
@@ -28,6 +29,13 @@ const MAIN_FILE = path.resolve(__dirname, '..', '..', 'src', 'api', 'main.ts');
 const REGISTRATION = /(publicRoutes|protectedRoutes)\s*\.\s*(get|post|put|delete|patch)\s*\(\s*['"]([^'"]+)['"]/g;
 
 export const UNDOCUMENTED_BY_DESIGN = new Set(['GET /docs', 'PUT /assets/update/:token']);
+
+const SHARED_PARAMETERS: Record<string, RouteParam> = Object.fromEntries(
+  Object.entries((options.definition.components?.parameters ?? {}) as Record<string, any>).map(([key, value]) => [
+    key,
+    { name: String(value.name), where: String(value.in), required: value.required === true },
+  ]),
+);
 
 export function readMainSource(): string {
   return fs.readFileSync(MAIN_FILE, 'utf8');
@@ -80,6 +88,12 @@ function parseParams(block: string): RouteParam[] {
   const params: RouteParam[] = [];
   for (const item of items) {
     const text = item.join('\n');
+    const referenced = text.match(/^\s*\$ref:\s*['"]#\/components\/parameters\/(\w+)['"]\s*$/m)?.[1];
+    if (referenced) {
+      const shared = SHARED_PARAMETERS[referenced];
+      if (shared) params.push(shared);
+      continue;
+    }
     const name = text.match(/^\s*name:\s*(\S+)\s*$/m)?.[1];
     const where = text.match(/^\s*in:\s*(\S+)\s*$/m)?.[1];
     if (!name || !where) continue;

@@ -20,6 +20,13 @@
                 <access_key_id from_env="CLICKHOUSE_S3_ACCESS_KEY"></access_key_id>
                 <secret_access_key from_env="CLICKHOUSE_S3_SECRET_KEY"></secret_access_key>
             </s3>
+            <s3_cached>
+                <type>cache</type>
+                <disk>s3</disk>
+                <path>/var/lib/clickhouse/disks/s3_cache/</path>
+                <max_size>8Gi</max_size>
+                <cache_on_write_operations>true</cache_on_write_operations>
+            </s3_cached>
         </disks>
         <policies>
             <hot_and_cold>
@@ -29,6 +36,7 @@
                     </hot>
                     <cold>
                         <disk>fake_s3</disk>
+                        <disk>s3_cached</disk>
                         <disk>s3</disk>
                     </cold>
                 </volumes>
