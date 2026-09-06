@@ -25,7 +25,9 @@ export abstract class AssetImageRenderer {
   private static readonly inFlight = new Map<string, Promise<RenderedAssetImage>>();
 
   public static variantKey(asset: string, variant: AssetImageVariant): string {
-    return [asset, variant.level ?? '', variant.type ?? '', variant.quality ?? ''].join('_');
+    const parts = [asset, variant.level ?? '', variant.type ?? '', variant.quality ?? ''];
+    while (parts.length > 1 && parts.at(-1) === '') parts.pop();
+    return parts.join('_');
   }
 
   public static render(asset: string, variant: AssetImageVariant, baseUrl: string): Promise<RenderedAssetImage> {
