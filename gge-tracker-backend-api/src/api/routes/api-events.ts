@@ -2599,30 +2599,43 @@ export abstract class ApiEvents implements ApiHelper {
    * Resolves the two most recent collection instants of the Outer Realms ranking
    *
    * @param clickhouseClient The shared ClickHouse client
-   * @returns The latest fetch instant and the one before it, both null when the table is dormant
+   * @returns The latest fetch instant and the one before it, both null when the table is empty
    */
   private static async getOuterRealmsFetchDates(
     clickhouseClient: NodeClickHouseClient,
   ): Promise<{ lastDate: string | null; previousDate: string | null }> {
     const windows = [ApiEvents.OUTER_REALMS_RECENT_WINDOW_HOURS, ApiEvents.OUTER_REALMS_FALLBACK_WINDOW_HOURS];
     for (const hours of windows) {
-      const rawDates = await clickhouseClient.query({
-        query: `
-          SELECT DISTINCT fetch_date
-          FROM ggetracker_global.outer_realms_ranking
-          WHERE fetch_date >= now() - INTERVAL {hours:UInt32} HOUR
-          ORDER BY fetch_date DESC
-          LIMIT 2
-        `,
-        query_params: { hours },
-      });
-      const parsedDates = await rawDates.json();
-      const dates = parsedDates.data as { fetch_date: string }[];
+      const dates = await ApiEvents.readOuterRealmsFetchDates(
+        clickhouseClient,
+        'WHERE fetch_date >= now() - INTERVAL {hours:UInt32} HOUR',
+        { hours },
+      );
       if (dates.length > 0) {
-        return { lastDate: dates[0].fetch_date, previousDate: dates[1]?.fetch_date ?? null };
+        return { lastDate: dates[0], previousDate: dates[1] ?? null };
       }
     }
-    return { lastDate: null, previousDate: null };
+    const anyDates = await ApiEvents.readOuterRealmsFetchDates(clickhouseClient, '', {});
+    return { lastDate: anyDates[0] ?? null, previousDate: anyDates[1] ?? null };
+  }
+
+  private static async readOuterRealmsFetchDates(
+    clickhouseClient: NodeClickHouseClient,
+    whereClause: string,
+    queryParameters: Record<string, number>,
+  ): Promise<string[]> {
+    const rawDates = await clickhouseClient.query({
+      query: `
+        SELECT DISTINCT fetch_date
+        FROM ggetracker_global.outer_realms_ranking
+        ${whereClause}
+        ORDER BY fetch_date DESC
+        LIMIT 2
+      `,
+      query_params: queryParameters,
+    });
+    const parsedDates = await rawDates.json();
+    return (parsedDates.data as { fetch_date: string }[]).map((row) => row.fetch_date);
   }
 
   /**
