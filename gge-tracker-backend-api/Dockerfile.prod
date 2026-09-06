@@ -33,10 +33,12 @@ ENV PUPPETEER_SKIP_DOWNLOAD=1 \
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund \
+RUN apt-get update && apt-get install -y --no-install-recommends unzip \
+    && npm ci --omit=dev --ignore-scripts --no-audit --no-fund \
     && node_modules/.bin/puppeteer browsers install chrome \
+    && apt-get purge -y unzip && apt-get autoremove -y \
     && npm cache clean --force \
-    && rm -rf /root/.npm /tmp/*
+    && rm -rf /var/lib/apt/lists/* /root/.npm /tmp/*
 
 FROM node:24-slim AS production
 
