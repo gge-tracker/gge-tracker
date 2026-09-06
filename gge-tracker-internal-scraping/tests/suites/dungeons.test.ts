@@ -22,7 +22,34 @@ const UPDATE_DUNGEONS = /UPDATE dungeons d/;
 const INSERT_HISTORY = /INSERT INTO dungeons_history/;
 const INSERT_COOLDOWNS = /INSERT INTO dungeon_player_cooldowns/;
 const SCAN_PARAMETER = /INSERT INTO parameters|UPDATE parameters/;
+const KNOWN_DUNGEONS = /SELECT kid, position_x, position_y FROM dungeons/;
+const TRY_LOCK = /pg_try_advisory_lock/;
+const UNLOCK = /pg_advisory_unlock/;
 const PLAYER_COOLDOWN_SECONDS = 4 * 24 * 60 * 60;
+
+const CURRENT_BOUNDARY_HOURS = 496539;
+const PREVIOUS_BOUNDARY_HOURS = CURRENT_BOUNDARY_HOURS - 168;
+const LONE_TILE_CASTLE = 555;
+const LONE_TILE_ORIGIN = 505;
+
+function realmCastles(...positions: [number, number][]): { rows: { castles_realm: unknown }[] } {
+  return { rows: positions.map(([x, y]) => ({ castles_realm: [[WORLD, x, y, 12]] })) };
+}
+
+function knownDungeons(...positions: [number, number][]): { rows: unknown[] } {
+  return { rows: positions.map(([x, y]) => ({ kid: WORLD, position_x: x, position_y: y })) };
+}
+
+function discoveryStamp(sandbox: Sandbox): number | undefined {
+  const written = sandbox.db.matching(SCAN_PARAMETER).find((query) => query.params[0] === 'dungeons_discovery');
+  return written?.params[1] as number | undefined;
+}
+
+function scannedTiles(sandbox: Sandbox): [number, number][] {
+  return sandbox.api
+    .callsFor('gaa')
+    .map((call): [number, number] => [Number(call.parameters.AX1), Number(call.parameters.AY1)]);
+}
 
 function runUnattended(sandbox: Sandbox): void {
   sandbox.setState('askConfirmation', async () => true);
@@ -230,6 +257,225 @@ describe('updateDungeonsList', () => {
       await sandbox.call('updateDungeonsList');
       assert.equal(sandbox.state('DB_UPDATES').criticalErrors, 1);
       assert.deepEqual(sandbox.db.matching(UPDATE_DUNGEONS), []);
+    });
+  });
+});
+
+describe('isDungeonDiscoveryDue', () => {
+  it('is due when the server has never run a discovery', async () => {
+    await withSandbox({}, async (sandbox) => {
+      assert.equal(await sandbox.call('isDungeonDiscoveryDue'), true);
+    });
+  });
+
+  it('is due when the stamp predates the current weekly boundary', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.db.when(/SELECT value FROM parameters/, { rows: [{ value: PREVIOUS_BOUNDARY_HOURS }] });
+      assert.equal(await sandbox.call('isDungeonDiscoveryDue'), true);
+    });
+  });
+
+  it('is not due again inside the same week', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.db.when(/SELECT value FROM parameters/, { rows: [{ value: CURRENT_BOUNDARY_HOURS }] });
+      assert.equal(await sandbox.call('isDungeonDiscoveryDue'), false);
+    });
+  });
+
+  it('reads the stamp of this server only', async () => {
+    await withSandbox({}, async (sandbox) => {
+      await sandbox.call('isDungeonDiscoveryDue');
+      assert.deepEqual(sandbox.db.one(/SELECT value FROM parameters/).params, ['dungeons_discovery']);
+    });
+  });
+});
+
+describe('discoverNewDungeons', () => {
+  it('scans nothing when every castle already has a dungeon inside the search radius', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.db.when(CASTLES, realmCastles([600, 600], [640, 640]));
+      sandbox.db.when(KNOWN_DUNGEONS, knownDungeons([620, 620]));
+      await sandbox.call('discoverNewDungeons');
+      assert.deepEqual(sandbox.api.callsFor('gaa'), [], 'settled territory costs no request');
+      assert.deepEqual(sandbox.db.matching(INSERT_DUNGEONS), []);
+    });
+  });
+
+  it('scans a castle whose nearest known dungeon sits just outside the radius', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.db.when(CASTLES, realmCastles([LONE_TILE_CASTLE, LONE_TILE_CASTLE]));
+      sandbox.db.when(KNOWN_DUNGEONS, knownDungeons([LONE_TILE_CASTLE + 51, LONE_TILE_CASTLE]));
+      sandbox.api.on('gaa', () => areaResponse([]));
+      await sandbox.call('discoverNewDungeons');
+      assert.deepEqual(scannedTiles(sandbox), [[LONE_TILE_ORIGIN, LONE_TILE_ORIGIN]]);
+    });
+  });
+
+  it('leaves that same castle alone once the dungeon is one tile closer', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.db.when(CASTLES, realmCastles([LONE_TILE_CASTLE, LONE_TILE_CASTLE]));
+      sandbox.db.when(KNOWN_DUNGEONS, knownDungeons([LONE_TILE_CASTLE + 50, LONE_TILE_CASTLE]));
+      await sandbox.call('discoverNewDungeons');
+      assert.deepEqual(sandbox.api.callsFor('gaa'), []);
+    });
+  });
+
+  it('asks for a 100-wide window on the realm of the castle', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.db.when(CASTLES, realmCastles([LONE_TILE_CASTLE, LONE_TILE_CASTLE]));
+      sandbox.api.on('gaa', () => areaResponse([]));
+      await sandbox.call('discoverNewDungeons');
+      const call = sandbox.api.callsFor('gaa')[0];
+      assert.equal(Number(call.parameters.KID), WORLD);
+      assert.equal(Number(call.parameters.AX2) - Number(call.parameters.AX1), 100);
+      assert.equal(Number(call.parameters.AY2) - Number(call.parameters.AY1), 100);
+    });
+  });
+
+  it('scans a tile once when several castles share it', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.db.when(CASTLES, realmCastles([550, 550], [560, 560], [545, 552]));
+      sandbox.api.on('gaa', () => areaResponse([]));
+      await sandbox.call('discoverNewDungeons');
+      const tiles = scannedTiles(sandbox).map((tile) => tile.join(','));
+      assert.deepEqual([...new Set(tiles)].sort(), tiles.sort(), 'no tile is requested twice');
+    });
+  });
+
+  it('inserts what it finds and keeps the cooldown the game reports', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.db.when(CASTLES, realmCastles([LONE_TILE_CASTLE, LONE_TILE_CASTLE]));
+      sandbox.api.on('gaa', () => areaResponse([dungeonAt(560, 550, 3600, 42), ['12', 561, 551, 0, 0, 60, 43]]));
+      await sandbox.call('discoverNewDungeons');
+      const insert = sandbox.db.one(INSERT_DUNGEONS);
+      assert.deepEqual(insert.params, [WORLD, 560, 550, new Date(sandbox.now.getTime() + 3600 * 1000)]);
+    });
+  });
+
+  it('covers every settled tile of a server that was never initialised', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.db.when(CASTLES, realmCastles([200, 200], [900, 900]));
+      sandbox.api.on('gaa', () => areaResponse([]));
+      await sandbox.call('discoverNewDungeons');
+      const tiles = scannedTiles(sandbox);
+      assert.ok(tiles.some(([x, y]) => x === 101 && y === 101));
+      assert.ok(tiles.some(([x, y]) => x === 909 && y === 909));
+      assert.equal(tiles.length, 8, 'four tiles around each of the two castles');
+    });
+  });
+
+  it('ignores castles of another realm or another kind', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.db.when(CASTLES, {
+        rows: [
+          { castles_realm: [[4, 555, 555, 12]] },
+          { castles_realm: [[WORLD, 555, 555, 3]] },
+          { castles_realm: [[WORLD, 555, 555]] },
+          { castles_realm: null },
+        ],
+      });
+      await sandbox.call('discoverNewDungeons');
+      assert.deepEqual(sandbox.api.callsFor('gaa'), []);
+    });
+  });
+
+  it('stamps the weekly boundary it just completed', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.db.when(CASTLES, realmCastles([LONE_TILE_CASTLE, LONE_TILE_CASTLE]));
+      sandbox.api.on('gaa', () => areaResponse([]));
+      assert.equal(await sandbox.call('discoverNewDungeons'), true);
+      assert.equal(discoveryStamp(sandbox), CURRENT_BOUNDARY_HOURS);
+    });
+  });
+
+  it('leaves the stamp alone when the bridge never answered, so the next cycle retries', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.db.when(CASTLES, realmCastles([200, 200], [900, 900]));
+      sandbox.api.on('gaa', () => {
+        throw new Error('the bridge is down');
+      });
+      assert.equal(await sandbox.call('discoverNewDungeons'), false, 'the caller is told the week is not done');
+      assert.equal(discoveryStamp(sandbox), undefined);
+      assert.deepEqual(sandbox.db.matching(INSERT_DUNGEONS), []);
+      assert.equal(sandbox.state<{ criticalErrors: number }>('DB_UPDATES').criticalErrors, 1);
+    });
+  });
+
+  it('retries a tile once before giving the realm up', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.db.when(CASTLES, realmCastles([LONE_TILE_CASTLE, LONE_TILE_CASTLE]));
+      sandbox.api.on('gaa', (request: ApiRequest, callIndex: number) => {
+        if (callIndex === 0) return { return_code: '-1', content: {} };
+        return areaResponse([dungeonAt(560, 550, 120, 7)]);
+      });
+      await sandbox.call('discoverNewDungeons');
+      assert.equal(sandbox.api.callsFor('gaa').length, 2, 'the same tile is asked twice');
+      assert.equal(sandbox.db.one(INSERT_DUNGEONS).params[1], 560, 'the retry result is kept');
+      assert.equal(discoveryStamp(sandbox), CURRENT_BOUNDARY_HOURS);
+    });
+  });
+
+  it('writes what answered but stays due when one tile did not', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.db.when(CASTLES, realmCastles([200, 200], [900, 900]));
+      sandbox.api.on('gaa', (request: ApiRequest) => {
+        if (Number(request.parameters.AX1) === 909) return { return_code: '-1', content: {} };
+        return areaResponse([dungeonAt(210, 210, 60, 7)]);
+      });
+      assert.equal(await sandbox.call('discoverNewDungeons'), false);
+      assert.equal(sandbox.db.one(INSERT_DUNGEONS).params[1], 210, 'the tiles that answered are kept');
+      assert.equal(discoveryStamp(sandbox), undefined, 'the week is only stamped by a complete pass');
+    });
+  });
+
+  it('does nothing at all while another dungeon job holds the lock', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.db.when(TRY_LOCK, { rows: [{ acquired: false }] });
+      sandbox.db.when(CASTLES, realmCastles([LONE_TILE_CASTLE, LONE_TILE_CASTLE]));
+      assert.equal(await sandbox.call('discoverNewDungeons'), false, 'a skipped pass is not a completed one');
+      assert.deepEqual(sandbox.api.callsFor('gaa'), []);
+      assert.deepEqual(sandbox.db.matching(CASTLES), [], 'the castles are not even read');
+      assert.equal(discoveryStamp(sandbox), undefined);
+      assert.deepEqual(sandbox.db.matching(UNLOCK), [], 'a lock that was not taken is not released');
+    });
+  });
+
+  it('releases the lock and the client it was taken on', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.db.when(CASTLES, realmCastles([LONE_TILE_CASTLE, LONE_TILE_CASTLE]));
+      sandbox.api.on('gaa', () => areaResponse([]));
+      await sandbox.call('discoverNewDungeons');
+      assert.equal(sandbox.db.matching(UNLOCK).length, 1);
+      assert.deepEqual(sandbox.db.one(TRY_LOCK).params, sandbox.db.one(UNLOCK).params);
+      assert.deepEqual(
+        sandbox.db.pools.map((pool) => pool.checkedOut),
+        sandbox.db.pools.map(() => 0),
+      );
+    });
+  });
+});
+
+describe('the dungeon lock', () => {
+  it('stops the cooldown sweep while a scan is running', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.db.when(TRY_LOCK, { rows: [{ acquired: false }] });
+      sandbox.db.when(READY_DUNGEONS, {
+        rows: [{ kid: WORLD, position_x: 700, position_y: 710, global_available_at: new Date(0) }],
+      });
+      await sandbox.call('updateDungeonsList');
+      assert.deepEqual(sandbox.api.callsFor('gaa'), []);
+      assert.deepEqual(sandbox.db.matching(UPDATE_DUNGEONS), []);
+    });
+  });
+
+  it('releases it once the sweep is over', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.db.when(READY_DUNGEONS, {
+        rows: [{ kid: WORLD, position_x: 700, position_y: 710, global_available_at: new Date(0) }],
+      });
+      sandbox.api.on('gaa', () => areaResponse([dungeonAt(700, 710, 7200, 55)]));
+      await sandbox.call('updateDungeonsList');
+      assert.equal(sandbox.db.matching(UNLOCK).length, 1);
     });
   });
 });

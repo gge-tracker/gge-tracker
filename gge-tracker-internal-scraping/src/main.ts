@@ -67,6 +67,11 @@ interface DungeonCooldownUpdate {
   player_id: number;
 }
 
+interface MapPosition {
+  x: number;
+  y: number;
+}
+
 interface DungeonScanBounds {
   minX: number;
   minY: number;
@@ -198,6 +203,16 @@ export class GenericFetchAndSaveBackend {
   private readonly DISCORD_OR_CHANNEL_ID: string = process.env.DISCORD_OR_CHANNEL_ID || '';
   private readonly DISCORD_OR_API_URL: string = process.env.DISCORD_OR_API_URL || '';
   private readonly MAP_SIZE = 1286;
+  private readonly DUNGEON_REALM_KIDS = [1, 2, 3];
+  private readonly DUNGEON_SCAN_STEP = 100;
+  private readonly DUNGEON_SCAN_ZONE = 101;
+  private readonly DUNGEON_SPAWN_RADIUS = 30;
+  private readonly DUNGEON_DISCOVERY_MARGIN = 20;
+  private readonly DUNGEON_DISCOVERY_CONCURRENCY = 5;
+  private readonly DUNGEON_DISCOVERY_WEEKDAY_UTC = 1;
+  private readonly DUNGEON_DISCOVERY_HOUR_UTC = 3;
+  private readonly DUNGEON_DISCOVERY_PARAMETER = 'dungeons_discovery';
+  private readonly DUNGEON_LOCK_KEY = 4242001;
   private readonly STORM_KID = 4;
   private readonly STORM_CENTER_X = 644;
   private readonly STORM_CENTER_Y = 644;
@@ -603,7 +618,9 @@ export class GenericFetchAndSaveBackend {
 
     const dungeonMaps: DungeonMap[] = [];
     const start = Date.now();
-    const completed = await this.scanDungeonArea(worldNumber, bounds, randoms, dungeonMaps);
+    const completed = await this.withDungeonLock('full realm scan', () =>
+      this.scanDungeonArea(worldNumber, bounds, randoms, dungeonMaps),
+    );
     if (!completed) return;
 
     const elapsedTimeInSeconds = Math.floor((Date.now() - start) / 1000);
@@ -619,6 +636,66 @@ export class GenericFetchAndSaveBackend {
     console.log('Database connection successful');
     await this.insertDungeonRows(worldNumber, dungeonMaps);
     console.log('\nDungeons list updated successfully for world', worldNumber, '\n');
+  }
+
+  public async isDungeonDiscoveryDue(): Promise<boolean> {
+    const { rows } = await this.pgSqlQuery('SELECT value FROM parameters WHERE identifier = $1', [
+      this.DUNGEON_DISCOVERY_PARAMETER,
+    ]);
+    const completed = rows.length > 0 && rows[0].value !== null ? Number(rows[0].value) : null;
+    return completed === null || completed < this.getDungeonDiscoveryBoundaryHours();
+  }
+
+  /**
+   * Finds the dungeons that appeared since the last pass and adds them to the table
+   */
+  public async discoverNewDungeons(): Promise<boolean> {
+    const start = new Date();
+    let tilesScanned = 0;
+    let tilesFailed = 0;
+    let dungeonsFound = 0;
+    try {
+      const stamped = await this.withDungeonLock('dungeon discovery', async () => {
+        const castlesByKid = await this.collectRealmCastlesByKid();
+        const knownByKid = await this.collectKnownDungeonsByKid();
+        for (const kid of this.DUNGEON_REALM_KIDS) {
+          const tiles = this.computeDungeonDiscoveryTiles(castlesByKid.get(kid) ?? [], knownByKid.get(kid) ?? []);
+          if (tiles.length === 0) continue;
+          const scan = await this.scanDungeonDiscoveryTiles(kid, tiles);
+          tilesScanned += tiles.length;
+          tilesFailed += scan.failed;
+          dungeonsFound += scan.dungeons.length;
+          await this.insertDungeonRows(kid, scan.dungeons);
+        }
+        if (tilesFailed > 0) {
+          console.error(`Dungeon discovery incomplete for ${this.server}: ${tilesFailed} tile(s) never answered`);
+          this.DB_UPDATES.criticalErrors++;
+          return false;
+        }
+        await this.upsertParameter(this.DUNGEON_DISCOVERY_PARAMETER, this.getDungeonDiscoveryBoundaryHours());
+        return true;
+      });
+      console.log(
+        `Dungeon discovery on ${this.server}: ${tilesScanned} tile(s) scanned, ${dungeonsFound} dungeon(s) seen`,
+      );
+      return stamped === true;
+    } catch (error) {
+      console.error('Error while discovering new dungeons:', error);
+      this.DB_UPDATES.criticalErrors++;
+      return false;
+    } finally {
+      await this.logToLoki({
+        job: 'discover-new-dungeons',
+        data: {
+          server: this.server,
+          criticalErrors: this.DB_UPDATES.criticalErrors,
+          durationMs: Date.now() - start.getTime(),
+          tilesScanned,
+          tilesFailed,
+          dungeonsFound,
+        },
+      });
+    }
   }
 
   public async fillGenericEventHistory(dryRunInsertBTH = false, dryRunInsertOR = false): Promise<void> {
@@ -832,21 +909,23 @@ export class GenericFetchAndSaveBackend {
     const pgPool = this.getPool();
     try {
       console.log('Connection to the database successful');
-      const { rows } = await pgPool.query(
-        `
-        SELECT kid, position_x, position_y, global_available_at
-        FROM dungeons
-        WHERE global_available_at <= NOW()
-        `,
-      );
-      const totalRequests = rows.length;
-      console.log('Total dungeons to check:', totalRequests);
-      const dungeonsToUpdate: DungeonCooldownUpdate[] = [];
-      const scanned = await this.scanDungeonCooldowns(rows, squares, totalRequests, dungeonsToUpdate);
-      if (!scanned) return;
+      await this.withDungeonLock('cooldown sweep', async () => {
+        const { rows } = await pgPool.query(
+          `
+          SELECT kid, position_x, position_y, global_available_at
+          FROM dungeons
+          WHERE global_available_at <= NOW()
+          `,
+        );
+        const totalRequests = rows.length;
+        console.log('Total dungeons to check:', totalRequests);
+        const dungeonsToUpdate: DungeonCooldownUpdate[] = [];
+        const scanned = await this.scanDungeonCooldowns(rows, squares, totalRequests, dungeonsToUpdate);
+        if (!scanned) return;
 
-      await this.upsertParameter('dungeons_scan', dungeonsToUpdate.length);
-      await this.persistDungeonUpdates(pgPool, dungeonsToUpdate);
+        await this.upsertParameter('dungeons_scan', dungeonsToUpdate.length);
+        await this.persistDungeonUpdates(pgPool, dungeonsToUpdate);
+      });
     } catch (error) {
       console.error('Error while updating dungeons list:', error);
       this.DB_UPDATES.criticalErrors++;
@@ -1310,8 +1389,8 @@ export class GenericFetchAndSaveBackend {
       if (y > maxY) maxY = y;
     }
 
-    const step = 100;
-    const zone = step + 1;
+    const step = this.DUNGEON_SCAN_STEP;
+    const zone = this.DUNGEON_SCAN_ZONE;
     const margin = zone * 2;
 
     minX = Math.floor(Math.max(0, minX - margin) / zone) * zone;
@@ -1431,6 +1510,150 @@ export class GenericFetchAndSaveBackend {
         values,
       );
     }
+  }
+
+  private async collectRealmCastlesByKid(): Promise<Map<number, MapPosition[]>> {
+    const { rows } = await this.pgSqlQuery('SELECT castles_realm FROM players WHERE castles IS NOT NULL');
+    const byKid = new Map<number, MapPosition[]>();
+    for (const kid of this.DUNGEON_REALM_KIDS) byKid.set(kid, []);
+    for (const { castles_realm } of rows) {
+      if (!Array.isArray(castles_realm)) continue;
+      for (const castleData of castles_realm) {
+        if (!Array.isArray(castleData) || castleData.length !== 4 || castleData[3] !== 12) continue;
+        byKid.get(castleData[0])?.push({ x: castleData[1], y: castleData[2] });
+      }
+    }
+    return byKid;
+  }
+
+  private async collectKnownDungeonsByKid(): Promise<Map<number, MapPosition[]>> {
+    const { rows } = await this.pgSqlQuery('SELECT kid, position_x, position_y FROM dungeons');
+    const byKid = new Map<number, MapPosition[]>();
+    for (const kid of this.DUNGEON_REALM_KIDS) byKid.set(kid, []);
+    for (const row of rows) {
+      byKid.get(Number(row.kid))?.push({ x: Number(row.position_x), y: Number(row.position_y) });
+    }
+    return byKid;
+  }
+
+  private computeDungeonDiscoveryTiles(castles: MapPosition[], known: MapPosition[]): MapPosition[] {
+    const radius = this.DUNGEON_SPAWN_RADIUS + this.DUNGEON_DISCOVERY_MARGIN;
+    const cells = this.indexPositionsByCell(known, radius);
+    const lastTile = Math.floor(this.MAP_SIZE / this.DUNGEON_SCAN_ZONE);
+    const tiles = new Map<string, MapPosition>();
+
+    for (const castle of castles) {
+      if (this.hasPositionWithinRadius(castle, radius, cells)) continue;
+      const firstX = Math.max(0, Math.floor((castle.x - radius) / this.DUNGEON_SCAN_ZONE));
+      const lastX = Math.min(lastTile, Math.floor((castle.x + radius) / this.DUNGEON_SCAN_ZONE));
+      const firstY = Math.max(0, Math.floor((castle.y - radius) / this.DUNGEON_SCAN_ZONE));
+      const lastY = Math.min(lastTile, Math.floor((castle.y + radius) / this.DUNGEON_SCAN_ZONE));
+      for (let tileX = firstX; tileX <= lastX; tileX++) {
+        for (let tileY = firstY; tileY <= lastY; tileY++) {
+          const key = `${tileX}-${tileY}`;
+          if (tiles.has(key)) continue;
+          tiles.set(key, { x: tileX * this.DUNGEON_SCAN_ZONE, y: tileY * this.DUNGEON_SCAN_ZONE });
+        }
+      }
+    }
+    return [...tiles.values()];
+  }
+
+  private indexPositionsByCell(positions: MapPosition[], cellSize: number): Map<string, MapPosition[]> {
+    const cells = new Map<string, MapPosition[]>();
+    for (const position of positions) {
+      const key = `${Math.floor(position.x / cellSize)}-${Math.floor(position.y / cellSize)}`;
+      const bucket = cells.get(key);
+      if (bucket) bucket.push(position);
+      else cells.set(key, [position]);
+    }
+    return cells;
+  }
+
+  private hasPositionWithinRadius(origin: MapPosition, radius: number, cells: Map<string, MapPosition[]>): boolean {
+    const cellX = Math.floor(origin.x / radius);
+    const cellY = Math.floor(origin.y / radius);
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        for (const position of cells.get(`${cellX + dx}-${cellY + dy}`) ?? []) {
+          if (Math.abs(position.x - origin.x) <= radius && Math.abs(position.y - origin.y) <= radius) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private async scanDungeonDiscoveryTiles(
+    kid: number,
+    tiles: MapPosition[],
+  ): Promise<{ dungeons: DungeonMap[]; failed: number }> {
+    const dungeons: DungeonMap[] = [];
+    const limit = pLimit(this.DUNGEON_DISCOVERY_CONCURRENCY);
+    let failed = 0;
+    await Promise.all(
+      tiles.map((tile) =>
+        limit(async () => {
+          const tileDungeons = await this.fetchDungeonTile(kid, tile);
+          if (tileDungeons === null) failed++;
+          else dungeons.push(...tileDungeons);
+        }),
+      ),
+    );
+    return { dungeons, failed };
+  }
+
+  private async fetchDungeonTile(kid: number, tile: MapPosition): Promise<DungeonMap[] | null> {
+    const json = `"KID":${kid},"AX1":${tile.x},"AY1":${tile.y},"AX2":${tile.x + this.DUNGEON_SCAN_STEP},"AY2":${tile.y + this.DUNGEON_SCAN_STEP}`;
+    const url: string = encodeURI(this.BASE_API_URL + 'gaa/' + json);
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const { data } = await axios.get(url);
+        if (data?.['return_code'] == '0') {
+          const dungeons: DungeonMap[] = [];
+          GenericFetchAndSaveBackend.appendDungeons(data, dungeons);
+          return dungeons;
+        }
+        console.error('Invalid response for URL:', url, data);
+      } catch (error) {
+        console.error('Error on URL:', url, error);
+      }
+      if (attempt === 1) await this.sleep(3000);
+    }
+    return null;
+  }
+
+  private async withDungeonLock<T>(label: string, action: () => Promise<T>): Promise<T | null> {
+    const client = await this.getPool().connect();
+    try {
+      const { rows } = await client.query('SELECT pg_try_advisory_lock($1) AS acquired', [this.DUNGEON_LOCK_KEY]);
+      if (rows[0]?.acquired !== true) {
+        console.log(`Skipping ${label} on ${this.server}: another dungeon job holds the lock`);
+        return null;
+      }
+      try {
+        return await action();
+      } finally {
+        await client.query('SELECT pg_advisory_unlock($1)', [this.DUNGEON_LOCK_KEY]);
+      }
+    } finally {
+      client.release();
+    }
+  }
+
+  private getDungeonDiscoveryBoundaryHours(): number {
+    return Math.floor(this.getLastDungeonDiscoveryBoundary().getTime() / 3600000);
+  }
+
+  private getLastDungeonDiscoveryBoundary(): Date {
+    const now = new Date();
+    const boundary = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), this.DUNGEON_DISCOVERY_HOUR_UTC, 0, 0, 0),
+    );
+    boundary.setUTCDate(boundary.getUTCDate() - ((boundary.getUTCDay() - this.DUNGEON_DISCOVERY_WEEKDAY_UTC + 7) % 7));
+    if (now < boundary) {
+      boundary.setUTCDate(boundary.getUTCDate() - 7);
+    }
+    return boundary;
   }
 
   private async scanDungeonCooldowns(

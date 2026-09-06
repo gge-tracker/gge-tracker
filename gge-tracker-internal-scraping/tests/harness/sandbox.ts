@@ -84,6 +84,7 @@ export function createSandbox(options: SandboxOptions = {}): Sandbox {
   assertUtc();
   const api = new FakeGameApi(API_BASE_URL);
   const db = new FakePostgres();
+  db.whenDefault(/pg_try_advisory_lock/, { rows: [{ acquired: true }] });
   const clickhouse = new FakeClickHouse(`${CLICKHOUSE_URL}:${CLICKHOUSE_PORT}`);
   const fakeRedis = new FakeRedis();
   const outbound: OutboundCall[] = [];

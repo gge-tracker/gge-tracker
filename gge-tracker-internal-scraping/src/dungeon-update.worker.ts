@@ -112,8 +112,18 @@ function isValidServer(server: Partial<ServerConfig> | null): server is ServerCo
   return !!server?.name;
 }
 
-async function processServer(server: ServerConfig, index: string, total: number): Promise<boolean> {
-  // logStep(`Updating ${colors.bold(server.name)}`);
+export interface ServerRunResult {
+  ok: boolean;
+  discoveryAttempted: boolean;
+  discoveryCompleted: boolean;
+}
+
+async function processServer(
+  server: ServerConfig,
+  index: string,
+  total: number,
+  discoveryAllowed: boolean,
+): Promise<ServerRunResult> {
   logStep(`[${index}/${total}] Updating ${server.name}`);
 
   const backend = new GenericFetchAndSaveBackend(
@@ -130,13 +140,21 @@ async function processServer(server: ServerConfig, index: string, total: number)
     server.name,
   );
 
+  let discoveryAttempted = false;
+  let discoveryCompleted = false;
   try {
+    if (discoveryAllowed && (await backend.isDungeonDiscoveryDue())) {
+      logStep(`${server.name} is due for the weekly dungeon discovery`);
+      discoveryAttempted = true;
+      discoveryCompleted = await backend.discoverNewDungeons();
+      if (!discoveryCompleted) logWarn(`${server.name} discovery incomplete, it stays due`);
+    }
     await backend.updateDungeonsList();
     logInfo(`${server.name} updated`);
-    return true;
+    return { ok: true, discoveryAttempted, discoveryCompleted };
   } catch (err) {
     logError(`${server.name} failed: ${(err as Error).message}`);
-    return false;
+    return { ok: false, discoveryAttempted, discoveryCompleted };
   } finally {
     await safeCloseConnections(backend);
   }
@@ -151,14 +169,19 @@ async function safeCloseConnections(backend: GenericFetchAndSaveBackend): Promis
   }
 }
 
+const DISCOVERY_ATTEMPTS_PER_CYCLE = 3;
+
 async function runOnce(): Promise<void> {
   const servers = parseServersConf();
   let success = 0;
   let failed = 0;
+  let attemptsLeft = DISCOVERY_ATTEMPTS_PER_CYCLE;
   for (const [index, server] of servers.entries()) {
     const cleanIndex: string = `${index + 1}`.padStart(servers.length.toString().length, ' ');
-    const ok = await processServer(server, cleanIndex, servers.length);
-    ok ? success++ : failed++;
+    const result = await processServer(server, cleanIndex, servers.length, attemptsLeft > 0);
+    if (result.discoveryAttempted) attemptsLeft--;
+    if (result.discoveryCompleted) attemptsLeft = 0;
+    result.ok ? success++ : failed++;
   }
   logInfo(`Run completed : ${success} success / ${failed} failed`);
 }

@@ -33,10 +33,16 @@ export class FakePostgres {
   public readonly endedDatabases: string[] = [];
 
   private readonly rules: QueryRule[] = [];
+  private readonly defaults: QueryRule[] = [];
   private readonly matchCounts = new Map<QueryRule, number>();
 
   public when(match: RegExp, result: Omit<QueryRule, 'match'> = {}): this {
     this.rules.push({ match, ...result });
+    return this;
+  }
+
+  public whenDefault(match: RegExp, result: Omit<QueryRule, 'match'> = {}): this {
+    this.defaults.push({ match, ...result });
     return this;
   }
 
@@ -61,7 +67,7 @@ export class FakePostgres {
   public run(text: string, params: any[], database: string): { rows: any[]; rowCount: number } {
     const sql = collapse(text);
     this.queries.push({ text, sql, params: params ?? [], database });
-    for (const rule of this.rules) {
+    for (const rule of [...this.rules, ...this.defaults]) {
       if (!rule.match.test(sql)) continue;
       const seen = this.matchCounts.get(rule) ?? 0;
       this.matchCounts.set(rule, seen + 1);
@@ -76,6 +82,7 @@ export class FakePostgres {
 
 export class FakePostgresPool {
   public ended = false;
+  public checkedOut = 0;
 
   constructor(
     private readonly parent: FakePostgres,
@@ -86,6 +93,11 @@ export class FakePostgresPool {
     return this.parent.run(text, params, this.database);
   }
 
+  public async connect(): Promise<FakePostgresClient> {
+    this.checkedOut++;
+    return new FakePostgresClient(this);
+  }
+
   public on(): this {
     return this;
   }
@@ -93,6 +105,21 @@ export class FakePostgresPool {
   public async end(): Promise<void> {
     this.ended = true;
     this.parent.endedDatabases.push(this.database);
+  }
+}
+
+export class FakePostgresClient {
+  public released = false;
+
+  constructor(private readonly pool: FakePostgresPool) {}
+
+  public async query(text: string, params: any[] = []): Promise<{ rows: any[]; rowCount: number }> {
+    return this.pool.query(text, params);
+  }
+
+  public release(): void {
+    this.released = true;
+    this.pool.checkedOut--;
   }
 }
 
