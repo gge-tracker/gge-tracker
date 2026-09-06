@@ -24,7 +24,7 @@
                 <type>cache</type>
                 <disk>s3</disk>
                 <path>/var/lib/clickhouse/disks/s3_cache/</path>
-                <max_size>8Gi</max_size>
+                <max_size>32Gi</max_size>
                 <cache_on_write_operations>true</cache_on_write_operations>
             </s3_cached>
         </disks>
@@ -37,7 +37,6 @@
                     <cold>
                         <disk>fake_s3</disk>
                         <disk>s3_cached</disk>
-                        <disk>s3</disk>
                     </cold>
                 </volumes>
             </hot_and_cold>
