@@ -10,6 +10,17 @@ import { CacheKeyBuilder } from '../helper/cache/cache-key-builder';
  */
 export abstract class ApiDungeons implements ApiHelper {
   private static readonly LIVE_CACHE_TTL_SECONDS = 30;
+  private static readonly HISTORY_LATERAL_MAX_ROWS = 250;
+  private static readonly PLAYER_COOLDOWN_EXPRESSION = `GREATEST(D.global_available_at, DPC.available_at)`;
+  private static readonly PLAYER_COOLDOWN_JOIN_CONDITION = `
+    ON D.kid = DPC.kid
+    AND D.position_x = DPC.position_x
+    AND D.position_y = DPC.position_y`;
+  private static readonly WITHOUT_PLAYER_COOLDOWN = {
+    cteSql: '',
+    joinSql: '',
+    cooldownExpr: `D.global_available_at`,
+  };
   private static readonly SCAN_CACHE_TTL_SECONDS = 900;
   private static readonly META_CACHE_TTL_SECONDS = 60;
 
@@ -136,7 +147,7 @@ export abstract class ApiDungeons implements ApiHelper {
        * --------------------------------- */
       const dungeons = this.mapDungeonRows(dungeonRows, request['code']);
       const responseContent = this.defaultResponseContent(dungeons, page, totalPages, dungeonsCount, dungeons.length);
-      const listTtl = this.isClockDependentView(filterByAttackCooldown, isSorted)
+      const listTtl = this.isClockDependentView(filterByAttackCooldown)
         ? this.LIVE_CACHE_TTL_SECONDS
         : this.SCAN_CACHE_TTL_SECONDS;
       void ApiHelper.updateCache(cacheKey, responseContent, listTtl);
@@ -427,6 +438,40 @@ export abstract class ApiDungeons implements ApiHelper {
     }
   }
 
+  private static buildPlayerCooldownJoin(
+    playerId: number | null,
+    parameter: (value: any) => string,
+  ): { cteSql: string; joinSql: string; cooldownExpr: string } {
+    if (playerId === null) return this.WITHOUT_PLAYER_COOLDOWN;
+
+    return {
+      cteSql: '',
+      joinSql: `
+        LEFT JOIN dungeon_player_cooldowns DPC
+          ${this.PLAYER_COOLDOWN_JOIN_CONDITION}
+          AND DPC.player_id = ${parameter(playerId)}
+      `,
+      cooldownExpr: this.PLAYER_COOLDOWN_EXPRESSION,
+    };
+  }
+
+  private static buildPlayerCooldownCte(
+    playerId: number | null,
+    parameter: (value: any) => string,
+  ): { cteSql: string; joinSql: string; cooldownExpr: string } {
+    if (playerId === null) return this.WITHOUT_PLAYER_COOLDOWN;
+
+    return {
+      cteSql: `DPC AS MATERIALIZED (
+        SELECT kid, position_x, position_y, available_at
+        FROM dungeon_player_cooldowns
+        WHERE player_id = ${parameter(playerId)}
+      )`,
+      joinSql: `LEFT JOIN DPC ${this.PLAYER_COOLDOWN_JOIN_CONDITION}`,
+      cooldownExpr: this.PLAYER_COOLDOWN_EXPRESSION,
+    };
+  }
+
   /**
    * Builds and executes the COUNT query used for pagination
    * When `playerNotFound` is true, forces an empty result
@@ -445,21 +490,7 @@ export abstract class ApiDungeons implements ApiHelper {
       return `$${parameters.length}`;
     };
 
-    let cooldownExpr = `D.global_available_at`;
-    let playerJoinSql = '';
-    if (playerId !== null) {
-      const playerIdPlaceholder = parameter(playerId);
-      playerJoinSql = `
-        LEFT JOIN dungeon_player_cooldowns DPC
-          ON D.kid = DPC.kid
-          AND D.position_x = DPC.position_x
-          AND D.position_y = DPC.position_y
-          AND DPC.player_id = ${playerIdPlaceholder}
-      `;
-      // When a player context is provided, the effective cooldown is the greater of
-      // the global dungeon cooldown and the player-specific available_at
-      cooldownExpr = `GREATEST(D.global_available_at, DPC.available_at)`;
-    }
+    const { cteSql, joinSql, cooldownExpr } = this.buildPlayerCooldownJoin(playerId, parameter);
 
     const conditions: string[] = [`D.kid IN (${filtersKids.map((k) => parameter(k)).join(', ')})`];
     if (playerNotFound) {
@@ -468,10 +499,12 @@ export abstract class ApiDungeons implements ApiHelper {
     }
     conditions.push(...this.buildCooldownConditions(cooldownExpr, filterByAttackCooldown));
 
-    let query = `SELECT COUNT(*) AS dungeons_count FROM dungeons D${playerJoinSql}`;
-    if (conditions.length > 0) {
-      query += ` WHERE ` + conditions.join(' AND ');
-    }
+    const query = `
+      ${cteSql ? `WITH ${cteSql}` : ''}
+      SELECT COUNT(*) AS dungeons_count
+      FROM dungeons D${joinSql}
+      WHERE ${conditions.join(' AND ')}
+    `;
 
     const rows = await this.executePgQuery(pool, query, parameters, 'getDungeons_countQuery', request);
     return Number.parseInt(rows[0]['dungeons_count'], 10);
@@ -515,6 +548,11 @@ export abstract class ApiDungeons implements ApiHelper {
     };
 
     /* ---------------------------------
+     * Player-specific cooldown
+     * --------------------------------- */
+    const { cteSql, joinSql, cooldownExpr } = this.buildPlayerCooldownCte(playerId, parameter);
+
+    /* ---------------------------------
      * Distance SELECT expression
      * --------------------------------- */
     let distanceSelectSql = '';
@@ -537,34 +575,42 @@ export abstract class ApiDungeons implements ApiHelper {
       }
     }
 
-    /* ---------------------------------
-     * Player-specific cooldown
-     * --------------------------------- */
-    let cooldownExpr = `D.global_available_at`;
-    let playerJoinSql = '';
-    if (playerId !== null) {
-      const playerIdPlaceholder = parameter(playerId);
-      playerJoinSql = `
-        LEFT JOIN dungeon_player_cooldowns DPC
-          ON D.kid = DPC.kid
-          AND D.position_x = DPC.position_x
-          AND D.position_y = DPC.position_y
-          AND DPC.player_id = ${playerIdPlaceholder}
-      `;
-      cooldownExpr = `GREATEST(D.global_available_at, DPC.available_at)`;
-    }
-
     const conditions: string[] = [
       `D.kid IN (${filtersKids.map((k) => parameter(k)).join(', ')})`,
       ...this.buildCooldownConditions(cooldownExpr, filterByAttackCooldown),
     ];
 
-    let query = `
+    // Default: attackable now first, then by shortest remaining cooldown
+    // The primary key breaks ties so paging is total: without it a tied row can be on two pages
+    const pageOrdering = isSorted
+      ? `calculated_distance ASC, D.kid ASC, D.position_x ASC, D.position_y ASC`
+      : `${cooldownExpr} <= NOW() DESC, ${cooldownExpr} ASC, D.kid ASC, D.position_x ASC, D.position_y ASC`;
+    const rowOrdering = isSorted
+      ? `page.calculated_distance ASC, page.kid ASC, page.position_x ASC, page.position_y ASC`
+      : `page.effective_cooldown_until <= NOW() DESC, page.effective_cooldown_until ASC, page.kid ASC, page.position_x ASC, page.position_y ASC`;
+
+    const pageCte = `page AS (
+        SELECT
+          D.kid,
+          D.position_x,
+          D.position_y,
+          D.global_available_at,
+          ${cooldownExpr} AS effective_cooldown_until
+          ${distanceSelectSql}
+        FROM dungeons D
+        ${joinSql}
+        WHERE ${conditions.join(' AND ')}
+        ORDER BY ${pageOrdering}
+        LIMIT ${parameter(viewPerPage)} OFFSET ${parameter((page - 1) * viewPerPage)}
+      )`;
+
+    const query = `
+      WITH ${[cteSql, pageCte].filter(Boolean).join(',\n')}
       SELECT
-        D.kid,
-        D.position_x,
-        D.position_y,
-        D.global_available_at,
+        page.kid,
+        page.position_x,
+        page.position_y,
+        page.global_available_at,
         DH.last_attack,
         DH.total_attack_count,
         DH.player_id,
@@ -574,58 +620,65 @@ export abstract class ApiDungeons implements ApiHelper {
         P.might_current AS player_might,
         P.level AS player_level,
         P.legendary_level AS player_legendary_level,
-        ${cooldownExpr} AS effective_cooldown_until
-        ${distanceSelectSql}
-      FROM dungeons D
+        page.effective_cooldown_until
+        ${isSorted ? ', page.calculated_distance' : ''}
+      FROM page
+      ${this.buildAttackHistoryJoin(viewPerPage)}
+      LEFT JOIN players P
+      ON P.id = DH.player_id
+      ORDER BY ${rowOrdering}
+    `;
+    return { query, parameters };
+  }
+
+  /**
+   * Joins the per-dungeon attack history onto a page of dungeons
+   *
+   * A lateral costs one small index range scan per row, which beats aggregating the whole history
+   * table until the page grows past a few hundred rows - the "show everything" sizes then flip it
+   */
+  private static buildAttackHistoryJoin(viewPerPage: number): string {
+    const aggregates = `
+      MAX(attacked_at) AS last_attack,
+      COUNT(*) AS total_attack_count,
+      (ARRAY_AGG(player_id ORDER BY attacked_at DESC))[1] AS player_id,
+      EXTRACT(
+        EPOCH FROM (
+          MAX(attacked_at)
+          -
+          (
+            ARRAY_AGG(attacked_at ORDER BY attacked_at DESC)
+          )[2]
+        )
+      ) AS seconds_between_last_two_attacks`;
+
+    if (viewPerPage > this.HISTORY_LATERAL_MAX_ROWS) {
+      return `
       LEFT JOIN (
         SELECT
           kid,
           position_x,
           position_y,
-          MAX(attacked_at) AS last_attack,
-          COUNT(*) AS total_attack_count,
-          (ARRAY_AGG(player_id ORDER BY attacked_at DESC))[1] AS player_id,
-          (
-            ARRAY_AGG(attacked_at ORDER BY attacked_at DESC)
-          )[2] AS previous_attack,
-          EXTRACT(
-            EPOCH FROM (
-              MAX(attacked_at)
-              -
-              (
-                ARRAY_AGG(attacked_at ORDER BY attacked_at DESC)
-              )[2]
-            )
-          ) AS seconds_between_last_two_attacks
+          ${aggregates}
         FROM dungeons_history
         GROUP BY kid, position_x, position_y
       ) DH
       ON
-        DH.kid = D.kid
-        AND DH.position_x = D.position_x
-        AND DH.position_y = D.position_y
-      LEFT JOIN players P
-      ON P.id = DH.player_id
-      ${playerJoinSql}
-    `;
-
-    if (conditions.length > 0) {
-      query += ` WHERE ` + conditions.join(' AND ');
+        DH.kid = page.kid
+        AND DH.position_x = page.position_x
+        AND DH.position_y = page.position_y`;
     }
 
-    if (isSorted) {
-      query += ` ORDER BY calculated_distance ASC`;
-    } else {
-      // Default: attackable now first, then by shortest remaining cooldown
-      query += `
-        ORDER BY
-          ${cooldownExpr} <= NOW() DESC,
-          ${cooldownExpr} ASC
-      `;
-    }
-
-    query += ` LIMIT ${parameter(viewPerPage)} OFFSET ${parameter((page - 1) * viewPerPage)}`;
-    return { query, parameters };
+    return `
+      LEFT JOIN LATERAL (
+        SELECT
+          ${aggregates}
+        FROM dungeons_history DH_ROWS
+        WHERE DH_ROWS.kid = page.kid
+          AND DH_ROWS.position_x = page.position_x
+          AND DH_ROWS.position_y = page.position_y
+        HAVING COUNT(*) > 0
+      ) DH ON TRUE`;
   }
 
   private static executePgQuery(
@@ -845,8 +898,8 @@ export abstract class ApiDungeons implements ApiHelper {
       .build();
   }
 
-  private static isClockDependentView(filterByAttackCooldown: string | null, isSorted: boolean): boolean {
-    return filterByAttackCooldown !== null || !isSorted;
+  private static isClockDependentView(filterByAttackCooldown: string | null): boolean {
+    return filterByAttackCooldown !== null;
   }
 
   private static async serveCached(response: express.Response, cacheKey: string): Promise<boolean> {
