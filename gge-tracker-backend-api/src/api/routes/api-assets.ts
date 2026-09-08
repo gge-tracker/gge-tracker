@@ -4,10 +4,12 @@ import * as fs from 'node:fs';
 import path from 'node:path';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
+import { HttpCache } from '../helper/http-cache';
 import { AssetFileCache } from '../services/asset-file-cache';
 import { AssetImageVariant, AssetImageRenderer } from '../services/asset-image-renderer';
 
 const IMAGE_CACHE_CONTROL = 'public, max-age=2592000, immutable';
+const ASSET_CATALOGUE_MAX_AGE_SECONDS = 7200;
 const MISSING_ASSET_TTL_SECONDS = 60 * 60;
 const WARM_CONCURRENCY = Number(process.env.ASSET_WARM_CONCURRENCY) || 3;
 
@@ -97,6 +99,7 @@ export abstract class ApiAssets implements ApiHelper {
        * --------------------------------- */
       const languageCacheBuildVersion = await ApiHelper.getGgeBuildVersion();
       const cachedKey = `assets_items_${languageCacheBuildVersion}`;
+      if (ApiAssets.applyAssetCaching(request, response, cachedKey)) return;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).json(JSON.parse(cachedData));
@@ -125,7 +128,6 @@ export abstract class ApiAssets implements ApiHelper {
        * Update Redis cache and send response
        * --------------------------------- */
       await ApiHelper.updateCache(cachedKey, filteredItems, 60 * 60 * 24 * 7);
-      response.set('Cache-Control', 'public, max-age=7200');
       response.status(ApiHelper.HTTP_OK).json(filteredItems);
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
@@ -169,6 +171,7 @@ export abstract class ApiAssets implements ApiHelper {
        * --------------------------------- */
       const languageCacheBuildVersion = await ApiHelper.getGgeBuildVersion();
       const cachedKey = `assets_lang_${languageCacheBuildVersion}_${lang}`;
+      if (ApiAssets.applyAssetCaching(request, response, cachedKey)) return;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).json(JSON.parse(cachedData));
@@ -186,7 +189,6 @@ export abstract class ApiAssets implements ApiHelper {
        * Update Redis cache and send response
        * --------------------------------- */
       await ApiHelper.updateCache(cachedKey, itemsData, 60 * 60 * 24 * 7);
-      response.set('Cache-Control', 'public, max-age=7200');
       response.status(ApiHelper.HTTP_OK).json(itemsData);
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
@@ -635,5 +637,12 @@ export abstract class ApiAssets implements ApiHelper {
     if (!itemsJsonResource.ok) throw new Error('Failed to fetch items JSON: ' + itemsJsonResource.status);
     const itemsJsonText = await itemsJsonResource.text();
     await fs.promises.writeFile(path.join(__dirname, './../assets/items.json'), itemsJsonText);
+  }
+
+  private static applyAssetCaching(request: express.Request, response: express.Response, cacheKey: string): boolean {
+    return HttpCache.handleConditional(request, response, {
+      etag: HttpCache.etagFromCacheKey(cacheKey),
+      maxAgeSeconds: ASSET_CATALOGUE_MAX_AGE_SECONDS,
+    });
   }
 }

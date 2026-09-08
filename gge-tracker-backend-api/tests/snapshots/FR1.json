@@ -1,7 +1,7 @@
 {
   "fixture": "80bf5e064c8b1db8",
   "server": "FR1",
-  "recordedAt": "2026-09-05T14:14:00.862Z",
+  "recordedAt": "2026-09-07T20:38:23.336Z",
   "entries": {
     "GET alliance-by-id": {
       "status": 200,
@@ -105,7 +105,7 @@
     "GET alliances-list": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 12478,
+      "bytes": 12476,
       "kind": "paginated",
       "total": 512,
       "count": 15,
@@ -131,12 +131,12 @@
         "might_current",
         "player_count"
       ],
-      "hash": "6e8b96a79044447c"
+      "hash": "bc7c5c648838a46a"
     },
     "GET alliances-ordered": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 13803,
+      "bytes": 13801,
       "kind": "paginated",
       "total": 512,
       "count": 15,
@@ -162,7 +162,7 @@
         "might_current",
         "player_count"
       ],
-      "hash": "4f255a2133c6e2ce"
+      "hash": "4bd0d6bae92dd7dc"
     },
     "GET aquamarine": {
       "status": 200,
@@ -794,7 +794,7 @@
     "GET languages": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 3129036,
+      "bytes": 3132704,
       "kind": "object",
       "keys": [
         "@metadata",
@@ -5713,6 +5713,7 @@
         "dialog_are_bossdefeatreward_description",
         "dialog_are_bossdefeatreward_eligibility",
         "dialog_are_bossdefeatreward_title",
+        "dialog_are_bossdefeatreward_tooltip",
         "dialog_are_btn_attack_boss",
         "dialog_are_btn_jump_to_map",
         "dialog_are_choose_boss_title",
@@ -5744,6 +5745,7 @@
         "dialog_are_infoBoss_healthBar_tooltip_ep_FungalSwarm",
         "dialog_are_infoBoss_healthBar_tooltip_ep_LegendaryDragon",
         "dialog_are_infoBoss_healthBar_tooltip_ep_Necromancer",
+        "dialog_are_leaderboard_title",
         "dialog_are_legendarydragon_effect_info",
         "dialog_are_necromancer_effect_info",
         "dialog_are_no_alliance_permission_desc",
@@ -5762,6 +5764,7 @@
         "dialog_are_regulareffect_title4",
         "dialog_are_regulareffect_title5",
         "dialog_are_regulareffect_title6",
+        "dialog_are_riftrewards_title",
         "dialog_are_selectButton",
         "dialog_are_shop_title",
         "dialog_are_start_desc1_desc",
@@ -21542,6 +21545,9 @@
         "help_allianceOpenRequests",
         "help_allianceOverview",
         "help_allianceRaidbossEvent",
+        "help_allianceRaidbossEventAdjustment_help",
+        "help_allianceRaidbossEventNormal_help",
+        "help_allianceRaidbossEventQualification_help",
         "help_allianceReRank",
         "help_allianceSearchMember",
         "help_allianceTreasury",
@@ -27071,6 +27077,7 @@
         "rankingRange_plus",
         "rankingRange_single",
         "ranking_calculating",
+        "ranking_description_AllianceRaidEvent",
         "ranking_description_AnniversaryGacha",
         "ranking_description_BlackFridayGacha",
         "ranking_description_CarnivalGacha",
@@ -27938,6 +27945,7 @@
         "ringmenu_building_rubyWishingWell",
         "ringmenu_building_toolsmith",
         "ringmenu_buildinginfo",
+        "ringmenu_citadel",
         "ringmenu_conquer",
         "ringmenu_defence",
         "ringmenu_demolish_districtNotEmpty",
@@ -30837,7 +30845,7 @@
         "zombiemarksman_name",
         "zombiemarksman_short_info"
       ],
-      "hash": "f606b054e769483e"
+      "hash": "af545244bb8840b1"
     },
     "GET live-outer-realms": {
       "status": 403,
@@ -30926,7 +30934,7 @@
     "GET players-by-distance": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 8011,
+      "bytes": 8009,
       "kind": "paginated",
       "total": 690,
       "count": 15,
@@ -30958,7 +30966,7 @@
         "remaining_relocation_time",
         "updated_at"
       ],
-      "hash": "977f400cbe3e330d"
+      "hash": "c916105db985f8da"
     },
     "GET players-by-name": {
       "status": 200,
@@ -30996,7 +31004,7 @@
     "GET players-filtered": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 2842,
+      "bytes": 2840,
       "kind": "paginated",
       "total": 1,
       "count": 1,
@@ -31028,12 +31036,12 @@
         "remaining_relocation_time",
         "updated_at"
       ],
-      "hash": "6084d6914eccf685"
+      "hash": "3779cae6e0543fd9"
     },
     "GET players-list": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 10135,
+      "bytes": 10133,
       "kind": "paginated",
       "total": 690,
       "count": 15,
@@ -31065,7 +31073,7 @@
         "remaining_relocation_time",
         "updated_at"
       ],
-      "hash": "da624bbde6d9aa22"
+      "hash": "49ce768aa4270fc6"
     },
     "GET server-movements": {
       "status": 200,
@@ -31556,7 +31564,7 @@
         "player_name",
         "rank"
       ],
-      "hash": "38ad3941a8d330c9"
+      "hash": "5160bef4e5293a61"
     },
     "GET stormy-isles-filtered": {
       "status": 200,
@@ -31585,7 +31593,7 @@
         "player_name",
         "rank"
       ],
-      "hash": "ccdacd03195d576f"
+      "hash": "334bbfb226e23188"
     },
     "GET stormy-isles-metric-filters": {
       "status": 200,
@@ -31614,7 +31622,7 @@
         "player_name",
         "rank"
       ],
-      "hash": "38ad3941a8d330c9"
+      "hash": "5160bef4e5293a61"
     },
     "GET stormy-isles-player-filters": {
       "status": 200,
@@ -31643,7 +31651,7 @@
         "player_name",
         "rank"
       ],
-      "hash": "0b04cb801a9def50"
+      "hash": "53634b465917aed3"
     },
     "GET top-players": {
       "status": 404,

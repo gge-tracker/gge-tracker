@@ -3,12 +3,19 @@ import * as pg from 'pg';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { AuthorizedSpecialServersEnum } from '../enums/gge-tracker-special-servers.enums';
 import { ApiHelper } from '../helper/api-helper';
+import { CachedResponse } from '../helper/cache/cached-response';
+import { CacheKeyBuilder } from '../helper/cache/cache-key-builder';
+import { PaginationCount } from '../helper/cache/pagination-count';
 import { toQueryText } from '../helper/parse-query';
 
 /**
  * Provides API endpoints for the Storm Islands live map: storm forts and resource isles
  */
 export abstract class ApiStorms implements ApiHelper {
+  private static readonly LIVE_CACHE_TTL_SECONDS = 20;
+  private static readonly SCAN_CACHE_TTL_SECONDS = 900;
+  private static readonly META_CACHE_TTL_SECONDS = 30;
+
   private static readonly STORM_KID = 4;
   private static readonly MAX_VICTORIES = 10;
   private static readonly DEFAULT_PAGE_SIZE = 15;
@@ -59,6 +66,12 @@ export abstract class ApiStorms implements ApiHelper {
       }
 
       /* ---------------------------------
+       * Cache validation
+       * --------------------------------- */
+      const cacheKey = this.buildCacheKey(request, 'forts', await this.scanVersion(request));
+      if (await CachedResponse.serveCached(response, cacheKey)) return;
+
+      /* ---------------------------------
        * Resolve nearPlayerName to the
        * player's Storm Islands castle
        * --------------------------------- */
@@ -73,27 +86,6 @@ export abstract class ApiStorms implements ApiHelper {
 
       const viewPerPage = this.resolvePageSize(size);
 
-      /* ---------------------------------
-       * Count matching forts for pagination
-       * --------------------------------- */
-      const fortsCount = await this.countStormObjects(request['pg_pool'] as pg.Pool, {
-        table: 'storm_forts',
-        conditions: this.buildFortConditions(filterByAvailability, minAttacksLeft, isleIds),
-        isSorted,
-        sortByPositionX,
-        sortByPositionY,
-        maxDistance,
-        context: 'getStormForts_countQuery',
-        request,
-      });
-      const totalPages = Math.ceil(fortsCount / viewPerPage);
-      if (page > totalPages && fortsCount > 0) {
-        response
-          .status(ApiHelper.HTTP_OK)
-          .send(this.defaultResponseContent('forts', [], page, totalPages, fortsCount, 0));
-        return;
-      }
-
       const { query, parameters } = this.buildStormFortsMainQuery({
         filterByAvailability,
         minAttacksLeft,
@@ -107,18 +99,42 @@ export abstract class ApiStorms implements ApiHelper {
         viewPerPage,
         page,
       });
-      const rows = await this.executePgQuery(
-        request['pg_pool'] as pg.Pool,
-        query,
-        parameters,
-        'getStormForts_mainQuery',
-        request,
-      );
+
+      const fortsTtl = this.isClockDependentFortView(filterByAvailability, orderBy, isSorted)
+        ? this.LIVE_CACHE_TTL_SECONDS
+        : this.SCAN_CACHE_TTL_SECONDS;
+      const countTtl = filterByAvailability === null ? this.SCAN_CACHE_TTL_SECONDS : this.LIVE_CACHE_TTL_SECONDS;
+      const countCacheKey = this.buildCountCacheKey(request, 'forts', await this.scanVersion(request), {
+        filterByAvailability,
+        minAttacksLeft,
+        isleIds: isleIds === null ? null : isleIds.join(','),
+        maxDistance,
+        sortByPositionX,
+        sortByPositionY,
+      });
+      const [fortsCount, rows] = await Promise.all([
+        PaginationCount.resolve(
+          countCacheKey,
+          () =>
+            this.countStormObjects(request['pg_pool'] as pg.Pool, {
+              table: 'storm_forts',
+              conditions: this.buildFortConditions(filterByAvailability, minAttacksLeft, isleIds),
+              isSorted,
+              sortByPositionX,
+              sortByPositionY,
+              maxDistance,
+              context: 'getStormForts_countQuery',
+              request,
+            }),
+          countTtl,
+        ),
+        this.executePgQuery(request['pg_pool'] as pg.Pool, query, parameters, 'getStormForts_mainQuery', request),
+      ]);
+      const totalPages = Math.ceil(fortsCount / viewPerPage);
 
       const forts = this.mapFortRows(rows);
-      response
-        .status(ApiHelper.HTTP_OK)
-        .send(this.defaultResponseContent('forts', forts, page, totalPages, fortsCount, forts.length));
+      const responseContent = this.defaultResponseContent('forts', forts, page, totalPages, fortsCount, forts.length);
+      await CachedResponse.serve(response, cacheKey, responseContent, fortsTtl);
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
@@ -163,6 +179,9 @@ export abstract class ApiStorms implements ApiHelper {
         return;
       }
 
+      const cacheKey = this.buildCacheKey(request, 'isles', await this.scanVersion(request));
+      if (await CachedResponse.serveCached(response, cacheKey)) return;
+
       if (nearPlayerName) {
         const sortResult = await this.resolveNearPlayerSortPosition(request, response, nearPlayerName);
         if (sortResult === null) return;
@@ -181,24 +200,6 @@ export abstract class ApiStorms implements ApiHelper {
         ? await this.resolvePlayerIdByName(request['pg_pool'] as pg.Pool, filterByOccupierName, request)
         : { playerId: null, notFound: false };
 
-      const islesCount = await this.countStormObjects(request['pg_pool'] as pg.Pool, {
-        table: 'storm_isles',
-        conditions: this.buildIsleConditions(filterByState, occupierId, occupierNotFound, isleIds),
-        isSorted,
-        sortByPositionX,
-        sortByPositionY,
-        maxDistance,
-        context: 'getStormIsles_countQuery',
-        request,
-      });
-      const totalPages = Math.ceil(islesCount / viewPerPage);
-      if (page > totalPages && islesCount > 0) {
-        response
-          .status(ApiHelper.HTTP_OK)
-          .send(this.defaultResponseContent('isles', [], page, totalPages, islesCount, 0));
-        return;
-      }
-
       const { query, parameters } = this.buildStormIslesMainQuery({
         filterByState,
         occupierId,
@@ -213,18 +214,38 @@ export abstract class ApiStorms implements ApiHelper {
         viewPerPage,
         page,
       });
-      const rows = await this.executePgQuery(
-        request['pg_pool'] as pg.Pool,
-        query,
-        parameters,
-        'getStormIsles_mainQuery',
-        request,
-      );
+
+      const countCacheKey = this.buildCountCacheKey(request, 'isles', await this.scanVersion(request), {
+        filterByState,
+        occupier: occupierNotFound ? 'none' : occupierId,
+        isleIds: isleIds === null ? null : isleIds.join(','),
+        maxDistance,
+        sortByPositionX,
+        sortByPositionY,
+      });
+      const [islesCount, rows] = await Promise.all([
+        PaginationCount.resolve(
+          countCacheKey,
+          () =>
+            this.countStormObjects(request['pg_pool'] as pg.Pool, {
+              table: 'storm_isles',
+              conditions: this.buildIsleConditions(filterByState, occupierId, occupierNotFound, isleIds),
+              isSorted,
+              sortByPositionX,
+              sortByPositionY,
+              maxDistance,
+              context: 'getStormIsles_countQuery',
+              request,
+            }),
+          this.SCAN_CACHE_TTL_SECONDS,
+        ),
+        this.executePgQuery(request['pg_pool'] as pg.Pool, query, parameters, 'getStormIsles_mainQuery', request),
+      ]);
+      const totalPages = Math.ceil(islesCount / viewPerPage);
 
       const isles = this.mapIsleRows(rows, request['code']);
-      response
-        .status(ApiHelper.HTTP_OK)
-        .send(this.defaultResponseContent('isles', isles, page, totalPages, islesCount, isles.length));
+      const responseContent = this.defaultResponseContent('isles', isles, page, totalPages, islesCount, isles.length);
+      await CachedResponse.serve(response, cacheKey, responseContent, this.SCAN_CACHE_TTL_SECONDS);
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
@@ -235,9 +256,21 @@ export abstract class ApiStorms implements ApiHelper {
   public static async getStormMeta(request: express.Request, response: express.Response): Promise<void> {
     try {
       if (!this.validateRequest(request, response)) return;
+
+      const cacheKey = this.buildCacheKey(request, 'meta', await this.scanVersion(request));
+      if (await CachedResponse.serveCached(response, cacheKey)) return;
+
       const rows = await this.executePgQuery(
         request['pg_pool'] as pg.Pool,
-        `SELECT season_started_at, scan_radius, last_scan_at FROM storm_meta WHERE id = TRUE LIMIT 1`,
+        `SELECT
+            season_started_at,
+            scan_radius,
+            last_scan_at,
+            (SELECT COUNT(*) FROM storm_forts) AS forts_count,
+            (SELECT COUNT(*) FROM storm_isles) AS isles_count
+          FROM storm_meta
+          WHERE id = TRUE
+          LIMIT 1`,
         [],
         'getStormMeta',
         request,
@@ -248,22 +281,14 @@ export abstract class ApiStorms implements ApiHelper {
           .send({ season_started_at: null, scan_radius: 0, last_scan_at: null, forts_count: 0, isles_count: 0 });
         return;
       }
-      const counts = await this.executePgQuery(
-        request['pg_pool'] as pg.Pool,
-        `SELECT
-            (SELECT COUNT(*) FROM storm_forts) AS forts_count,
-            (SELECT COUNT(*) FROM storm_isles) AS isles_count`,
-        [],
-        'getStormMeta_counts',
-        request,
-      );
-      response.status(ApiHelper.HTTP_OK).send({
+      const responseContent = {
         season_started_at: rows[0].season_started_at,
         scan_radius: rows[0].scan_radius,
         last_scan_at: rows[0].last_scan_at,
-        forts_count: Number.parseInt(counts[0].forts_count, 10),
-        isles_count: Number.parseInt(counts[0].isles_count, 10),
-      });
+        forts_count: Number.parseInt(rows[0].forts_count, 10),
+        isles_count: Number.parseInt(rows[0].isles_count, 10),
+      };
+      await CachedResponse.serve(response, cacheKey, responseContent, this.META_CACHE_TTL_SECONDS);
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
@@ -590,7 +615,7 @@ export abstract class ApiStorms implements ApiHelper {
       conditions.push(`${distanceExpr} <= ${parameter(Number(maxDistance) ** 2)}`);
     }
 
-    let query = `
+    let page_ = `
       SELECT
         S.position_x,
         S.position_y,
@@ -599,27 +624,35 @@ export abstract class ApiStorms implements ApiHelper {
         S.occupier_id,
         S.state,
         S.available_at,
-        S.updated_at,
-        P.name AS occupier_name,
-        P.might_current AS occupier_might,
-        P.level AS occupier_level,
-        P.legendary_level AS occupier_legendary_level,
-        A.name AS occupier_alliance_name
+        S.updated_at
         ${distanceSelectSql}
       FROM storm_isles S
-      LEFT JOIN players P ON P.id = S.occupier_id
-      LEFT JOIN alliances A ON A.id = P.alliance_id
     `;
     if (conditions.length > 0) {
-      query += ` WHERE ` + conditions.join(' AND ');
+      page_ += ` WHERE ` + conditions.join(' AND ');
     }
-    query += this.buildOrderByClause(
+    const orderByClause = this.buildOrderByClause(
       orderBy,
       orderDescending,
       isSorted,
       `(S.state = ${this.ISLE_STATE_FREE}) DESC, S.available_at ASC`,
     );
-    query += ` LIMIT ${parameter(viewPerPage)} OFFSET ${parameter((page - 1) * viewPerPage)}`;
+    page_ += orderByClause;
+    page_ += ` LIMIT ${parameter(viewPerPage)} OFFSET ${parameter((page - 1) * viewPerPage)}`;
+
+    const query = `
+      SELECT
+        S.*,
+        P.name AS occupier_name,
+        P.might_current AS occupier_might,
+        P.level AS occupier_level,
+        P.legendary_level AS occupier_legendary_level,
+        A.name AS occupier_alliance_name
+      FROM (${page_}) S
+      LEFT JOIN players P ON P.id = S.occupier_id
+      LEFT JOIN alliances A ON A.id = P.alliance_id
+      ${orderByClause}
+    `;
     return { query, parameters };
   }
 
@@ -790,6 +823,46 @@ export abstract class ApiStorms implements ApiHelper {
       return false;
     }
     return true;
+  }
+
+  /**
+   * The scan round this server is currently answering from
+   */
+  private static async scanVersion(request: express.Request): Promise<string> {
+    return (await ApiHelper.redisClient.get(`storm-version:${request['language']}`).catch(() => null)) ?? '0';
+  }
+
+  private static buildCountCacheKey(
+    request: express.Request,
+    route: string,
+    version: string,
+    filters: Record<string, string | number | null>,
+  ): string {
+    return new CacheKeyBuilder(request['language'])
+      .with(version)
+      .with('storms')
+      .with(route)
+      .with('count')
+      .withParams(filters)
+      .build();
+  }
+
+  private static buildCacheKey(request: express.Request, route: string, version: string): string {
+    return new CacheKeyBuilder(request['language'])
+      .with(version)
+      .with('storms')
+      .with(route)
+      .withQuery(request.query)
+      .build();
+  }
+
+  private static isClockDependentFortView(
+    filterByAvailability: string | null,
+    orderBy: string | null,
+    isSorted: boolean,
+  ): boolean {
+    if (filterByAvailability !== null) return true;
+    return !isSorted && (orderBy === null || orderBy === 'distance');
   }
 
   private static validateRequest(request: express.Request, response: express.Response): boolean {

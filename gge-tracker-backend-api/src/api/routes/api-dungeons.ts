@@ -3,11 +3,16 @@ import * as pg from 'pg';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { AuthorizedSpecialServersEnum } from '../enums/gge-tracker-special-servers.enums';
 import { ApiHelper } from '../helper/api-helper';
+import { CacheKeyBuilder } from '../helper/cache/cache-key-builder';
 
 /**
  * Provides API endpoints for retrieving dungeon data with various filters and sorting options
  */
 export abstract class ApiDungeons implements ApiHelper {
+  private static readonly LIVE_CACHE_TTL_SECONDS = 30;
+  private static readonly SCAN_CACHE_TTL_SECONDS = 900;
+  private static readonly META_CACHE_TTL_SECONDS = 60;
+
   /**
    * Handles the retrieval of dungeon data with various filters, sorting, and pagination options
    *
@@ -40,6 +45,12 @@ export abstract class ApiDungeons implements ApiHelper {
 
       if (!this.validateDungeonQueryParams(response, filtersKids, filterByAttackCooldown, filterByPlayerName, size))
         return;
+
+      /* ---------------------------------
+       * Cache validation
+       * --------------------------------- */
+      const cacheKey = this.buildCacheKey(request, 'list', await this.scanVersion(request));
+      if (await this.serveCached(response, cacheKey)) return;
 
       /* ---------------------------------
        * Resolve nearPlayerName to castle
@@ -124,9 +135,12 @@ export abstract class ApiDungeons implements ApiHelper {
        * Map rows to response shape
        * --------------------------------- */
       const dungeons = this.mapDungeonRows(dungeonRows, request['code']);
-      response
-        .status(ApiHelper.HTTP_OK)
-        .send(this.defaultResponseContent(dungeons, page, totalPages, dungeonsCount, dungeons.length));
+      const responseContent = this.defaultResponseContent(dungeons, page, totalPages, dungeonsCount, dungeons.length);
+      const listTtl = this.isClockDependentView(filterByAttackCooldown, isSorted)
+        ? this.LIVE_CACHE_TTL_SECONDS
+        : this.SCAN_CACHE_TTL_SECONDS;
+      void ApiHelper.updateCache(cacheKey, responseContent, listTtl);
+      response.status(ApiHelper.HTTP_OK).send(responseContent);
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
@@ -140,6 +154,10 @@ export abstract class ApiDungeons implements ApiHelper {
   public static async getDungeonsMeta(request: express.Request, response: express.Response): Promise<void> {
     try {
       if (!this.validateRequest(request, response)) return;
+
+      const cacheKey = this.buildCacheKey(request, 'meta', await this.scanVersion(request));
+      if (await this.serveCached(response, cacheKey)) return;
+
       const rows = await this.executePgQuery(
         request['pg_pool'] as pg.Pool,
         `SELECT updated_at FROM parameters WHERE identifier = 'dungeons_scan' LIMIT 1`,
@@ -147,7 +165,9 @@ export abstract class ApiDungeons implements ApiHelper {
         'getDungeonsMeta',
         request,
       );
-      response.status(ApiHelper.HTTP_OK).send({ last_scan_at: rows.length === 0 ? null : rows[0].updated_at });
+      const responseContent = { last_scan_at: rows.length === 0 ? null : rows[0].updated_at };
+      void ApiHelper.updateCache(cacheKey, responseContent, this.META_CACHE_TTL_SECONDS);
+      response.status(ApiHelper.HTTP_OK).send(responseContent);
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
@@ -810,5 +830,29 @@ export abstract class ApiDungeons implements ApiHelper {
       sizeValue,
       size,
     };
+  }
+
+  private static async scanVersion(request: express.Request): Promise<string> {
+    return (await ApiHelper.redisClient.get(`dungeon-version:${request['language']}`).catch(() => null)) ?? '0';
+  }
+
+  private static buildCacheKey(request: express.Request, route: string, version: string): string {
+    return new CacheKeyBuilder(request['language'])
+      .with(version)
+      .with('dungeons')
+      .with(route)
+      .withQuery(request.query)
+      .build();
+  }
+
+  private static isClockDependentView(filterByAttackCooldown: string | null, isSorted: boolean): boolean {
+    return filterByAttackCooldown !== null || !isSorted;
+  }
+
+  private static async serveCached(response: express.Response, cacheKey: string): Promise<boolean> {
+    const cached = await ApiHelper.redisClient.get(cacheKey).catch(() => null);
+    if (!cached) return false;
+    response.status(ApiHelper.HTTP_OK).send(JSON.parse(cached));
+    return true;
   }
 }

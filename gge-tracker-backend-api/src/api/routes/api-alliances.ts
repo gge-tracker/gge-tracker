@@ -5,6 +5,7 @@ import { ApiHelper } from '../helper/api-helper';
 import { ApiInvalidInputType } from '../types/parameter.types';
 import { parseQuery, querySchema } from '../helper/parse-query';
 import { CacheKeyBuilder } from '../helper/cache/cache-key-builder';
+import { PaginationCount } from '../helper/cache/pagination-count';
 import { QueryFilterBuilder } from '../helper/filters/impl/query-filter-builder';
 
 /**
@@ -317,24 +318,29 @@ export abstract class ApiAlliances implements ApiHelper {
        * Check cache
        * --------------------------------- */
       const cacheVersion = await ApiHelper.getCacheVersion(ApiHelper.redisClient, request['language']);
+      const filterParameters = {
+        minMight,
+        maxMight,
+        minLoot,
+        maxLoot,
+        minFame,
+        maxFame,
+        minPlayerCount,
+        maxPlayerCount,
+        minActivePlayerCount,
+        maxActivePlayerCount,
+      };
       const cacheKey = new CacheKeyBuilder(request['language'])
         .with(cacheVersion)
         .with('alliances')
-        .withParams({
-          page,
-          orderBy,
-          orderType,
-          minMight,
-          maxMight,
-          minLoot,
-          maxLoot,
-          minFame,
-          maxFame,
-          minPlayerCount,
-          maxPlayerCount,
-          minActivePlayerCount,
-          maxActivePlayerCount,
-        })
+        .withParams({ page, orderBy, orderType })
+        .withParams(filterParameters)
+        .build();
+      const countCacheKey = new CacheKeyBuilder(request['language'])
+        .with(cacheVersion)
+        .with('alliances')
+        .with('count')
+        .withParams(filterParameters)
         .build();
       const cachedData = await ApiHelper.redisClient.get(cacheKey);
       if (cachedData) {
@@ -426,71 +432,80 @@ export abstract class ApiAlliances implements ApiHelper {
             ${havingSqlConditions}
           );
       `;
-      const promiseCountQuery = new Promise((resolve, reject) => {
-        (request['pg_pool'] as pg.Pool).query(countQuery, v.slice(0, -2), (error, results) => {
-          if (error) {
-            ApiHelper.logError(error, 'getAlliances', request);
-            reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
-          } else {
-            allianceCount = results.rows[0]['alliance_count'];
-            totalPages = Math.ceil(allianceCount / ApiHelper.PAGINATION_LIMIT);
-            if (page > totalPages) {
-              page = totalPages;
+      const runCount = async (): Promise<number> =>
+        new Promise((resolve, reject) => {
+          (request['pg_pool'] as pg.Pool).query(countQuery, v.slice(0, -2), (error, results) => {
+            if (error) {
+              ApiHelper.logError(error, 'getAlliances', request);
+              reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
+            } else {
+              resolve(results.rows[0]['alliance_count']);
             }
-            resolve(null);
-          }
+          });
         });
-      });
-      await promiseCountQuery;
 
       /* ---------------------------------
-       * Fetch paginated alliance data
+       * Fetch the count and the page together
        * --------------------------------- */
       const sqlDuration = Date.now();
-      (request['pg_pool'] as pg.Pool).query(query, v, (error, results) => {
-        if (error) {
-          response
-            .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
-            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
-        } else {
-          /* ---------------------------------
-           * Format and send response
-           * --------------------------------- */
-          const pagination = {
-            current_page: page,
-            total_pages: totalPages,
-            current_items_count: results.rowCount,
-            total_items_count: allianceCount,
-          };
-          const sqlDurationEnd = Date.now();
-          const durationMs = sqlDurationEnd - sqlDuration;
-          const responseContent = {
-            duration: durationMs / 1000 + 's',
-            pagination,
-            alliances: results.rows.map((result: any) => {
-              return {
-                alliance_id: ApiHelper.addCountryCode(result.alliance_id, request['code']),
-                alliance_name: result.alliance_name,
-                might_current: result.might_current,
-                might_all_time: result.might_all_time,
-                loot_current: result.loot_current,
-                loot_all_time: result.loot_all_time,
-                current_fame: result.current_fame,
-                highest_fame: result.highest_fame,
-                player_count: result.player_count,
-                active_player_count: result.active_player_count,
-                is_island_king: result.is_island_king,
-                is_searching_players: result.is_searching_players,
-                auto_join_enabled: result.auto_join_enabled,
-                language: result.language,
-                description: result.description,
-              };
-            }),
-          };
-          void ApiHelper.updateCache(cacheKey, responseContent);
-          response.status(ApiHelper.HTTP_OK).send(responseContent);
-        }
+      const [resolvedCount, pageResults] = await Promise.all([
+        PaginationCount.resolve(countCacheKey, runCount),
+        (request['pg_pool'] as pg.Pool).query(query, v),
+      ]).catch((error_: unknown) => {
+        ApiHelper.logError(error_, 'getAlliances_mainQuery', request);
+        return [null, null] as [null, null];
       });
+
+      if (resolvedCount === null || pageResults === null) {
+        response
+          .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+          .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
+        return;
+      }
+
+      allianceCount = resolvedCount;
+      totalPages = Math.ceil(allianceCount / ApiHelper.PAGINATION_LIMIT);
+      if (page > totalPages) {
+        page = totalPages;
+      }
+
+      const results = pageResults;
+      /* ---------------------------------
+       * Format and send response
+       * --------------------------------- */
+      const pagination = {
+        current_page: page,
+        total_pages: totalPages,
+        current_items_count: results.rowCount,
+        total_items_count: allianceCount,
+      };
+      const sqlDurationEnd = Date.now();
+      const durationMs = sqlDurationEnd - sqlDuration;
+      const responseContent = {
+        duration: durationMs / 1000 + 's',
+        pagination,
+        alliances: results.rows.map((result: any) => {
+          return {
+            alliance_id: ApiHelper.addCountryCode(result.alliance_id, request['code']),
+            alliance_name: result.alliance_name,
+            might_current: result.might_current,
+            might_all_time: result.might_all_time,
+            loot_current: result.loot_current,
+            loot_all_time: result.loot_all_time,
+            current_fame: result.current_fame,
+            highest_fame: result.highest_fame,
+            player_count: result.player_count,
+            active_player_count: result.active_player_count,
+            is_island_king: result.is_island_king,
+            is_searching_players: result.is_searching_players,
+            auto_join_enabled: result.auto_join_enabled,
+            language: result.language,
+            description: result.description,
+          };
+        }),
+      };
+      void ApiHelper.updateCache(cacheKey, responseContent);
+      response.status(ApiHelper.HTTP_OK).send(responseContent);
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });

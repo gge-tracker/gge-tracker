@@ -492,6 +492,19 @@ export class GenericFetchAndSaveBackend {
     await redisClient.quit();
   }
 
+  public async bumpScanVersion(key: string): Promise<void> {
+    try {
+      const redisClient = createClient({
+        url: 'redis://redis-server:6379',
+      });
+      await redisClient.connect();
+      await redisClient.incr(key);
+      await redisClient.quit();
+    } catch (error) {
+      console.error('Unable to publish the scan version for', key, error);
+    }
+  }
+
   public async fillGrandTournamentResults(): Promise<void> {
     const start = new Date();
     try {
@@ -925,6 +938,7 @@ export class GenericFetchAndSaveBackend {
 
         await this.upsertParameter('dungeons_scan', dungeonsToUpdate.length);
         await this.persistDungeonUpdates(pgPool, dungeonsToUpdate);
+        await this.bumpScanVersion(`dungeon-version:${this.server}`);
       });
     } catch (error) {
       console.error('Error while updating dungeons list:', error);
@@ -982,6 +996,7 @@ export class GenericFetchAndSaveBackend {
       await this.pgSqlQuery('UPDATE storm_meta SET scan_radius = $1, last_scan_at = NOW() WHERE id = TRUE', [
         scan.radius,
       ]);
+      await this.bumpScanVersion(`storm-version:${this.server}`);
     } catch (error) {
       console.error('Error while updating the storm map:', error);
       this.DB_UPDATES.criticalErrors++;

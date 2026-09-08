@@ -2,6 +2,7 @@ import * as express from 'express';
 import * as pg from 'pg';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
+import { CacheKeyBuilder } from '../helper/cache/cache-key-builder';
 import { decodeCursor, encodeCursor } from '../helper/cursor';
 
 interface ChangeSource {
@@ -31,6 +32,7 @@ export abstract class ApiChanges implements ApiHelper {
   public static readonly MAX_LIMIT = 1000;
   public static readonly DEFAULT_LIMIT = 200;
   public static readonly MAX_SUBJECT_IDS = 200;
+  private static readonly CACHE_TTL_SECONDS = 20;
   private static readonly DEFAULT_LOOKBACK_HOURS = 24;
   private static readonly CURSOR_TIMESTAMP_COLUMN =
     "to_char(created_at, 'YYYY-MM-DD HH24:MI:SS.US') AS cursor_timestamp";
@@ -101,6 +103,16 @@ export abstract class ApiChanges implements ApiHelper {
       const pool = request['pg_pool'] as pg.Pool;
       const code = request['code'];
 
+      /* ---------------------------------
+       * Cache validation
+       * --------------------------------- */
+      const cacheKey = new CacheKeyBuilder(request['language']).with('changes').withQuery(request.query).build();
+      const cached = await ApiHelper.redisClient.get(cacheKey).catch(() => null);
+      if (cached) {
+        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cached));
+        return;
+      }
+
       const batches = await Promise.all(parameters.types.map((type) => this.readSource(pool, type, parameters, code)));
       const fetched = batches.flat();
       fetched.sort(
@@ -115,7 +127,7 @@ export abstract class ApiChanges implements ApiHelper {
         fetched.length > emitted.length ||
         parameters.types.some((type) => batches[parameters.types.indexOf(type)].length >= parameters.limit);
 
-      response.status(ApiHelper.HTTP_OK).send({
+      const responseContent = {
         server: request['language'],
         server_code: code,
         generated_at: new Date().toISOString(),
@@ -132,7 +144,9 @@ export abstract class ApiChanges implements ApiHelper {
           occurred_at: row.createdAt.toISOString(),
           ...row.payload,
         })),
-      });
+      };
+      void ApiHelper.updateCache(cacheKey, responseContent, this.CACHE_TTL_SECONDS);
+      response.status(ApiHelper.HTTP_OK).send(responseContent);
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });

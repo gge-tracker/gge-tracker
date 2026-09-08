@@ -6,6 +6,7 @@ import { ApiInvalidInputType } from '../types/parameter.types';
 import { QueryFilterBuilder } from '../helper/filters/impl/query-filter-builder';
 import { parseQuery, querySchema } from '../helper/parse-query';
 import { CacheKeyBuilder } from '../helper/cache/cache-key-builder';
+import { CachedResponse } from '../helper/cache/cached-response';
 
 /**
  * Abstract class providing API endpoints for server-side data retrieval and operations
@@ -482,11 +483,7 @@ export abstract class ApiServer implements ApiHelper {
        * --------------------------------- */
       const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${request['language']}`)) || '1';
       const cachedKey = request['language'] + `:${cacheVersion}:` + 'server-global-statistics';
-      const cachedData = await ApiHelper.redisClient.get(cachedKey);
-      if (cachedData) {
-        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
-        return;
-      }
+      if (await CachedResponse.serveCached(response, cachedKey)) return;
 
       /* ---------------------------------
        * Execute query
@@ -498,6 +495,8 @@ export abstract class ApiServer implements ApiHelper {
           server_statistics
         WHERE
           created_at >= NOW() - INTERVAL '7 DAY'
+        ORDER BY
+          created_at ASC
         `;
       (request['pg_pool'] as pg.Pool).query(query, async (error, results) => {
         if (error) {
@@ -570,8 +569,7 @@ export abstract class ApiServer implements ApiHelper {
           /* ---------------------------------
            * Cache update and response
            * --------------------------------- */
-          void ApiHelper.updateCache(cachedKey, prepareResponse);
-          response.status(ApiHelper.HTTP_OK).send(prepareResponse);
+          void CachedResponse.serve(response, cachedKey, prepareResponse);
         }
       });
     } catch (error) {

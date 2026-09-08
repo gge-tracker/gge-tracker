@@ -54,7 +54,9 @@ export abstract class ApiStatus implements ApiHelper {
   private static readonly LAST_DURATION_TTL_SECONDS = 7 * 24 * 3600;
   private static readonly DISCORD_INVITE_CODE = 'eb6WSHQqYh';
   private static readonly DISCORD_CACHE_KEY = 'discord_invite';
+  private static readonly DISCORD_FRESH_KEY = 'discord_invite:fresh';
   private static readonly DISCORD_CACHE_TTL_SECONDS = 3600;
+  private static readonly DISCORD_STALE_TTL_SECONDS = 7 * 24 * 3600;
 
   private static readonly FILL_STEPS: readonly string[] = [
     'loot',
@@ -296,14 +298,23 @@ export abstract class ApiStatus implements ApiHelper {
   private static async readDiscordMemberCount(): Promise<number | undefined> {
     try {
       const cachedDiscordData = await ApiHelper.redisClient.get(this.DISCORD_CACHE_KEY);
-      if (cachedDiscordData) {
-        return JSON.parse(cachedDiscordData).approximate_member_count || 0;
-      }
+      if (cachedDiscordData === null) return await this.refreshDiscordMemberCount();
+      const isFresh = await ApiHelper.redisClient.get(this.DISCORD_FRESH_KEY).catch(() => '1');
+      if (isFresh === null) void this.refreshDiscordMemberCount();
+      return JSON.parse(cachedDiscordData).approximate_member_count || 0;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private static async refreshDiscordMemberCount(): Promise<number | undefined> {
+    try {
+      await ApiHelper.updateCache(this.DISCORD_FRESH_KEY, '1', this.DISCORD_CACHE_TTL_SECONDS, true);
       const requestUrl = `https://discord.com/api/v9/invites/${this.DISCORD_INVITE_CODE}?with_counts=true&with_expiration=true`;
       const discordResponse: Response = await ApiHelper.fetchWithFallback(requestUrl);
       if (discordResponse.status !== ApiHelper.HTTP_OK) return undefined;
       const discordData = await discordResponse.json();
-      await ApiHelper.updateCache(this.DISCORD_CACHE_KEY, discordData, this.DISCORD_CACHE_TTL_SECONDS);
+      await ApiHelper.updateCache(this.DISCORD_CACHE_KEY, discordData, this.DISCORD_STALE_TTL_SECONDS);
       return discordData.approximate_member_count || 0;
     } catch {
       return undefined;

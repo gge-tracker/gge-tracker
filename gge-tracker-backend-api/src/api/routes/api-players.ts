@@ -5,6 +5,7 @@ import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { parseQuery, querySchema } from '../helper/parse-query';
 import { CacheKeyBuilder } from '../helper/cache/cache-key-builder';
+import { PaginationCount } from '../helper/cache/pagination-count';
 import { QueryFilterBuilder } from '../helper/filters/impl/query-filter-builder';
 
 /**
@@ -193,17 +194,11 @@ export abstract class ApiPlayers implements ApiHelper {
       countQuery += where;
       if (playerNameDistanceFilterActive) {
         // Tricky part, we need to re-index the $ parameters for the count query
-        countQuery = countQuery.replaceAll(/\$(\d+)/g, (match, p1) => {
+        countQuery = countQuery.replaceAll(/\$(\d+)/g, (_, p1) => {
           return `$${Number.parseInt(p1) - 3}`;
         });
       }
-      /* ---------------------------------
-       * Query count results
-       * --------------------------------- */
-      playerCount = await ApiPlayers.countPlayers(request, countQuery, values);
-      totalPages = Math.ceil(playerCount / ApiHelper.PAGINATION_LIMIT);
-      if (page > totalPages) page = totalPages;
-
+      const countCacheKey = ApiPlayers.buildPlayersCountCacheKey(request['language'], cacheVersion, parsedQuery);
       /* ---------------------------------
        * Finalize query
        * --------------------------------- */
@@ -233,98 +228,109 @@ export abstract class ApiPlayers implements ApiHelper {
       }
 
       /* ---------------------------------
-       * Execute final query
+       * Execute the count and the rows together
        * --------------------------------- */
-      (request['pg_pool'] as pg.Pool).query(query, parameters, async (error, results) => {
-        if (error) {
-          response
-            .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
-            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
-        } else {
-          const pagination = {
-            current_page: page,
-            total_pages: totalPages,
-            current_items_count: results.rowCount,
-            total_items_count: playerCount,
-          };
-          const sqlDurationEnd = Date.now();
-          const durationMs = sqlDurationEnd - sqlDuration;
-
-          /* ---------------------------------
-           * Retrieve player alliance history
-           * --------------------------------- */
-          const ids = results.rows.map((row: any) => row.player_id);
-          const allianceQuery = `
-            SELECT player_id, old_alliance_id, new_alliance_id, created_at
-            FROM player_alliance_update
-            WHERE player_id = ANY($1::bigint[])
-          `;
-          const allianceHistoryMap: Record<string, any[]> = {};
-          const [allianceError, allianceResults] = await new Promise<[null, pg.QueryResult]>((resolve, reject) => {
-            (request['pg_pool'] as pg.Pool).query(allianceQuery, [ids], (allianceError, allianceResults) => {
-              if (allianceError) {
-                reject(allianceError);
-              } else {
-                resolve([null, allianceResults]);
-              }
-            });
-          });
-          if (!allianceError) {
-            allianceResults.rows.forEach((row: any) => {
-              if (!allianceHistoryMap[row.player_id]) {
-                allianceHistoryMap[row.player_id] = [];
-              }
-              allianceHistoryMap[row.player_id].push({
-                old_alliance_id: ApiHelper.addCountryCode(row.old_alliance_id, request['code']),
-                new_alliance_id: ApiHelper.addCountryCode(row.new_alliance_id, request['code']),
-                date: new Date(row.created_at).toISOString(),
-              });
-            });
-          }
-
-          /* ---------------------------------
-           * Format results
-           * --------------------------------- */
-          const responseContent = {
-            duration: durationMs / 1000 + 's',
-            pagination,
-            players: results.rows.map((result: any) => {
-              return {
-                player_id: ApiHelper.addCountryCode(result.player_id, request['code']),
-                player_name: result.player_name,
-                alliance_name: result.alliance_name,
-                alliance_id: ApiHelper.addCountryCode(result.alliance_id, request['code']),
-                alliance_rank: result.alliance_rank,
-                might_current: result.might_current,
-                might_all_time: result.might_all_time,
-                loot_current: result.loot_current,
-                loot_all_time: result.loot_all_time,
-                honor: result.honor,
-                max_honor: result.max_honor,
-                highest_fame: result.highest_fame,
-                current_fame: result.current_fame,
-                castles: result.castles,
-                remaining_relocation_time: result.remaining_relocation_time,
-                peace_disabled_at: result.peace_disabled_at,
-                updated_at: new Date(result.updated_at).toISOString(),
-                level: result.level,
-                legendary_level: result.legendary_level,
-                calculated_distance:
-                  result.calculated_distance === undefined
-                    ? null
-                    : Number.parseFloat(Math.sqrt(result.calculated_distance).toFixed(1)),
-                alliance_history: allianceHistoryMap[result.player_id] || [],
-              };
-            }),
-          };
-
-          /* ---------------------------------
-           * Update cache
-           * --------------------------------- */
-          void ApiHelper.updateCache(cacheKey, responseContent);
-          response.status(ApiHelper.HTTP_OK).send(responseContent);
-        }
+      const [resolvedCount, results] = await Promise.all([
+        PaginationCount.resolve(countCacheKey, () => ApiPlayers.countPlayers(request, countQuery, values)),
+        (request['pg_pool'] as pg.Pool).query(query, parameters),
+      ]).catch((error_: unknown) => {
+        ApiHelper.logError(error_, 'getPlayers_mainQuery', request);
+        return [null, null] as [null, null];
       });
+
+      if (resolvedCount === null || results === null) {
+        response
+          .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+          .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
+        return;
+      }
+
+      playerCount = resolvedCount;
+      totalPages = Math.ceil(playerCount / ApiHelper.PAGINATION_LIMIT);
+      if (page > totalPages) page = totalPages;
+
+      const pagination = {
+        current_page: page,
+        total_pages: totalPages,
+        current_items_count: results.rowCount,
+        total_items_count: playerCount,
+      };
+      const sqlDurationEnd = Date.now();
+      const durationMs = sqlDurationEnd - sqlDuration;
+
+      /* ---------------------------------
+       * Retrieve player alliance history
+       * --------------------------------- */
+      const ids = results.rows.map((row: any) => row.player_id);
+      const allianceQuery = `
+        SELECT player_id, old_alliance_id, new_alliance_id, created_at
+        FROM player_alliance_update
+        WHERE player_id = ANY($1::bigint[])
+      `;
+      const allianceHistoryMap: Record<string, any[]> = {};
+      const [allianceError, allianceResults] = await new Promise<[null, pg.QueryResult]>((resolve, reject) => {
+        (request['pg_pool'] as pg.Pool).query(allianceQuery, [ids], (allianceError, allianceResults) => {
+          if (allianceError) {
+            reject(allianceError);
+          } else {
+            resolve([null, allianceResults]);
+          }
+        });
+      });
+      if (!allianceError) {
+        allianceResults.rows.forEach((row: any) => {
+          if (!allianceHistoryMap[row.player_id]) {
+            allianceHistoryMap[row.player_id] = [];
+          }
+          allianceHistoryMap[row.player_id].push({
+            old_alliance_id: ApiHelper.addCountryCode(row.old_alliance_id, request['code']),
+            new_alliance_id: ApiHelper.addCountryCode(row.new_alliance_id, request['code']),
+            date: new Date(row.created_at).toISOString(),
+          });
+        });
+      }
+
+      /* ---------------------------------
+       * Format results
+       * --------------------------------- */
+      const responseContent = {
+        duration: durationMs / 1000 + 's',
+        pagination,
+        players: results.rows.map((result: any) => {
+          return {
+            player_id: ApiHelper.addCountryCode(result.player_id, request['code']),
+            player_name: result.player_name,
+            alliance_name: result.alliance_name,
+            alliance_id: ApiHelper.addCountryCode(result.alliance_id, request['code']),
+            alliance_rank: result.alliance_rank,
+            might_current: result.might_current,
+            might_all_time: result.might_all_time,
+            loot_current: result.loot_current,
+            loot_all_time: result.loot_all_time,
+            honor: result.honor,
+            max_honor: result.max_honor,
+            highest_fame: result.highest_fame,
+            current_fame: result.current_fame,
+            castles: result.castles,
+            remaining_relocation_time: result.remaining_relocation_time,
+            peace_disabled_at: result.peace_disabled_at,
+            updated_at: new Date(result.updated_at).toISOString(),
+            level: result.level,
+            legendary_level: result.legendary_level,
+            calculated_distance:
+              result.calculated_distance === undefined
+                ? null
+                : Number.parseFloat(Math.sqrt(result.calculated_distance).toFixed(1)),
+            alliance_history: allianceHistoryMap[result.player_id] || [],
+          };
+        }),
+      };
+
+      /* ---------------------------------
+       * Update cache
+       * --------------------------------- */
+      void ApiHelper.updateCache(cacheKey, responseContent, 3600);
+      response.status(ApiHelper.HTTP_OK).send(responseContent);
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
@@ -769,33 +775,54 @@ export abstract class ApiPlayers implements ApiHelper {
         page,
         orderBy: query.orderBy,
         orderType: query.orderType,
-        alliance: query.alliance,
-        minHonor: query.minHonor,
-        maxHonor: query.maxHonor,
-        minMight: query.minMight,
-        maxMight: query.maxMight,
-        minAllianceMight: query.minAllianceMight,
-        maxAllianceMight: query.maxAllianceMight,
-        minMightAllTime: query.minMightAllTime,
-        maxMightAllTime: query.maxMightAllTime,
-        minLoot: query.minLoot,
-        maxLoot: query.maxLoot,
-        minLevel: query.minLevel ? query.minLevel.join('/') : undefined,
-        maxLevel: query.maxLevel ? query.maxLevel.join('/') : undefined,
-        minFame: query.minFame,
-        maxFame: query.maxFame,
-        castleCountMin: query.castleCountMin,
-        castleCountMax: query.castleCountMax,
-        stormyIslandsFilter: query.stormyIslandsFilter,
-        allianceFilter: query.allianceFilter,
-        protectionFilter: query.protectionFilter,
-        banFilter: query.banFilter,
-        inactiveFilter: query.inactiveFilter,
-        kingdomFilter: Array.isArray(query.kingdomFilter) ? query.kingdomFilter.join('-') : undefined,
-        playerNameForDistance: query.playerNameForDistance,
-        allianceRankFilter: Array.isArray(query.allianceRankFilter) ? query.allianceRankFilter.join('-') : undefined,
       })
+      .withParams(ApiPlayers.playerFilterCacheParams(query))
       .build();
+  }
+
+  private static buildPlayersCountCacheKey(
+    language: string,
+    cacheVersion: string,
+    query: ReturnType<typeof parseQuery>,
+  ): string {
+    return new CacheKeyBuilder(language)
+      .with(cacheVersion)
+      .with('players')
+      .with('count')
+      .withParams(ApiPlayers.playerFilterCacheParams(query))
+      .build();
+  }
+
+  private static playerFilterCacheParams(
+    query: ReturnType<typeof parseQuery>,
+  ): Record<string, string | number | boolean | null | undefined> {
+    return {
+      alliance: query.alliance,
+      minHonor: query.minHonor,
+      maxHonor: query.maxHonor,
+      minMight: query.minMight,
+      maxMight: query.maxMight,
+      minAllianceMight: query.minAllianceMight,
+      maxAllianceMight: query.maxAllianceMight,
+      minMightAllTime: query.minMightAllTime,
+      maxMightAllTime: query.maxMightAllTime,
+      minLoot: query.minLoot,
+      maxLoot: query.maxLoot,
+      minLevel: query.minLevel ? query.minLevel.join('/') : undefined,
+      maxLevel: query.maxLevel ? query.maxLevel.join('/') : undefined,
+      minFame: query.minFame,
+      maxFame: query.maxFame,
+      castleCountMin: query.castleCountMin,
+      castleCountMax: query.castleCountMax,
+      stormyIslandsFilter: query.stormyIslandsFilter,
+      allianceFilter: query.allianceFilter,
+      protectionFilter: query.protectionFilter,
+      banFilter: query.banFilter,
+      inactiveFilter: query.inactiveFilter,
+      kingdomFilter: Array.isArray(query.kingdomFilter) ? query.kingdomFilter.join('-') : undefined,
+      playerNameForDistance: query.playerNameForDistance,
+      allianceRankFilter: Array.isArray(query.allianceRankFilter) ? query.allianceRankFilter.join('-') : undefined,
+    };
   }
 
   private static async countPlayers(request: express.Request, countQuery: string, values: any[]): Promise<number> {

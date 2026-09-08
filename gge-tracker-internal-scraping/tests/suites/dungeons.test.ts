@@ -259,6 +259,24 @@ describe('updateDungeonsList', () => {
       assert.deepEqual(sandbox.db.matching(UPDATE_DUNGEONS), []);
     });
   });
+
+  it('bumps the scan version so the API drops what it cached for this server', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.db.when(READY_DUNGEONS, { rows: [readyRow] });
+      sandbox.api.on('gaa', () => areaResponse([dungeonAt(700, 710, 60, 1)]));
+      await sandbox.call('updateDungeonsList');
+      assert.equal(sandbox.redis.store.get('dungeon-version:TEST1'), '1');
+    });
+  });
+
+  it('leaves the scan version alone when the sweep aborted', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.db.when(READY_DUNGEONS, { rows: [readyRow, { ...readyRow, position_x: 800 }] });
+      sandbox.api.on('gaa', () => ({ return_code: '-1', content: {} }));
+      await sandbox.call('updateDungeonsList');
+      assert.equal(sandbox.redis.store.get('dungeon-version:TEST1'), undefined);
+    });
+  });
 });
 
 describe('isDungeonDiscoveryDue', () => {

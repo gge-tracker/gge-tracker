@@ -3,10 +3,13 @@ import * as pg from 'pg';
 import { ApiHelper } from '../helper/api-helper';
 import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
+import { CacheKeyBuilder } from '../helper/cache/cache-key-builder';
 
 type GuessDirection = 'correct' | 'higher' | 'lower';
 
 export abstract class ApiMiniGame implements ApiHelper {
+  private static readonly AUTOCOMPLETE_CACHE_TTL_SECONDS = 600;
+
   public static async getDailyMiniGame(request: express.Request, response: express.Response): Promise<void> {
     try {
       /* ---------------------------------
@@ -78,6 +81,20 @@ export abstract class ApiMiniGame implements ApiHelper {
         return;
       }
 
+      /* ---------------------------------
+       * Cache validation
+       * --------------------------------- */
+      const cacheKey = new CacheKeyBuilder(request['language'])
+        .with('mini-games')
+        .with('autocomplete')
+        .with(query.trim().toLowerCase())
+        .build();
+      const cached = await ApiHelper.redisClient.get(cacheKey).catch(() => null);
+      if (cached) {
+        response.status(ApiHelper.HTTP_OK).json(JSON.parse(cached));
+        return;
+      }
+
       const searchQuery = `
         SELECT name FROM players
         WHERE LOWER(name) LIKE LOWER($1)
@@ -87,7 +104,9 @@ export abstract class ApiMiniGame implements ApiHelper {
         LIMIT 10;
       `;
       const result: pg.QueryResult = await request['pg_pool'].query(searchQuery, [`%${query}%`]);
-      response.status(ApiHelper.HTTP_OK).json(result.rows.map((row) => row.name));
+      const names = result.rows.map((row) => row.name);
+      void ApiHelper.updateCache(cacheKey, names, ApiMiniGame.AUTOCOMPLETE_CACHE_TTL_SECONDS);
+      response.status(ApiHelper.HTTP_OK).json(names);
     } catch (error) {
       console.error('Error fetching player names:', error);
       response

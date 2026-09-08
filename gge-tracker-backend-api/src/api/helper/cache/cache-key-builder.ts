@@ -23,6 +23,17 @@ export class CacheKeyBuilder {
     return this;
   }
 
+  public withQuery(query: Record<string, unknown>): this {
+    Object.keys(query)
+      .sort()
+      .forEach((key) => {
+        const value = query[key];
+        if (value === undefined || value === null) return;
+        this.parts.push(`${key}-${Array.isArray(value) ? value.join(',') : String(value)}`);
+      });
+    return this;
+  }
+
   public build(): string {
     return this.parts.join(':');
   }

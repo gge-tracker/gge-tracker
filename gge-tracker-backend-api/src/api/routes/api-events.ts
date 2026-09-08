@@ -7,6 +7,9 @@ import { EventTypes } from '../enums/event-types.enums';
 import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { CacheKeyBuilder } from '../helper/cache/cache-key-builder';
+import { CachedResponse } from '../helper/cache/cached-response';
+import { OuterRealmsBoard, OuterRealmsBoardCache } from '../helper/cache/outer-realms-board';
+import { HttpCache } from '../helper/http-cache';
 import { qFlag, qNumber } from '../helper/parse-query';
 import { ApiInputErrorType, ApiInvalidInputType } from '../types/parameter.types';
 import { TEMP_SERVER_SETTINGS } from '../interfaces/temporary-server-events.config';
@@ -86,14 +89,13 @@ export abstract class ApiEvents implements ApiHelper {
   private static readonly WOA_CACHE_TTL = 60 * 60;
 
   private static readonly OUTER_REALMS_ITEMS_PER_PAGE = 10;
-  private static readonly OUTER_REALMS_CACHE_TTL_RANKING = 60;
   private static readonly OUTER_REALMS_CACHE_TTL_PLAYER = 2 * 60;
-  private static readonly OUTER_REALMS_RECENT_WINDOW_HOURS = 2;
-  private static readonly OUTER_REALMS_FALLBACK_WINDOW_HOURS = 24 * 30;
+  private static readonly OUTER_REALMS_LIVE_WINDOW_MINUTES = 10;
 
   private static readonly SMALLINT_MAX = 32_767;
   private static readonly STORMY_ISLES_ITEMS_PER_PAGE = 15;
   private static readonly STORMY_ISLES_CACHE_TTL_LEADERBOARD = 60 * 60;
+  private static readonly STORMY_ISLES_CACHE_TTL_SNAPSHOT_DATE = 5 * 60;
   private static readonly STORMY_ISLES_ALLOWED_METRIC_IDS = new Set([15, 16, 17, 18, 19, 20, 100]);
   private static readonly STORMY_ISLES_PG_SORT_EXPRESSIONS: Record<string, string> = {
     player_name: 'P.name',
@@ -110,7 +112,9 @@ export abstract class ApiEvents implements ApiHelper {
         SUM(might_current) AS alliance_might,
         COUNT(*)           AS alliance_player_count
       FROM players
-      WHERE alliance_id IS NOT NULL
+      WHERE alliance_id IN (
+        SELECT alliance_id FROM players WHERE id = ANY($1) AND alliance_id IS NOT NULL
+      )
       GROUP BY alliance_id
     ) AGG ON AGG.alliance_id = P.alliance_id`;
   private static readonly STORMY_ISLES_PG_COLUMNS = `
@@ -1232,40 +1236,17 @@ export abstract class ApiEvents implements ApiHelper {
       const clickhouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
 
       const cachedKey = new CacheKeyBuilder('outer-realms:live-ranking:player').with(playerId).build();
-      const cachedData = await ApiHelper.redisClient.get(cachedKey);
-      if (cachedData) {
-        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
-        return;
-      }
+      if (await CachedResponse.serveCached(response, cachedKey)) return;
 
       /* ---------------------------------
        * Database query for player data
        * --------------------------------- */
-      const playersQuery = `
-        SELECT
-          player_id,
-          player_name,
-          server,
-          score,
-          rank,
-          level,
-          legendary_level,
-          might,
-          fetch_date,
-          castle_position_x,
-          castle_position_y
-        FROM ggetracker_global.outer_realms_ranking
-        WHERE player_id = {playerId:UInt32}
-        ORDER BY fetch_date DESC
-      `;
-      const rawResult = await clickhouseClient.query({
-        query: playersQuery,
-        query_params: {
-          playerId: playerId,
-        },
-      });
-
-      const json = await rawResult.json();
+      const board = await OuterRealmsBoardCache.current(clickhouseClient);
+      const json = await ApiEvents.readOuterRealmsPlayerHistory(
+        clickhouseClient,
+        playerId,
+        board?.serverOf(playerId) ?? null,
+      );
 
       if (json.data.length === 0) {
         response.status(ApiHelper.HTTP_NOT_FOUND).send({ player: null });
@@ -1294,8 +1275,7 @@ export abstract class ApiEvents implements ApiHelper {
 
       const currentOuterRealmsEvent = await this.getCurrentOuterRealmsEvent();
       const responseData = { player: finalEntry, current_event: currentOuterRealmsEvent };
-      void ApiHelper.updateCache(cachedKey, responseData, ApiEvents.OUTER_REALMS_CACHE_TTL_PLAYER);
-      response.status(ApiHelper.HTTP_OK).send(responseData);
+      await CachedResponse.serve(response, cachedKey, responseData, ApiEvents.OUTER_REALMS_CACHE_TTL_PLAYER);
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
@@ -1313,125 +1293,51 @@ export abstract class ApiEvents implements ApiHelper {
         maxLength: 50,
         toLowerCase: false,
       });
+      const nameFilter = ApiHelper.isValidInput(searchPlayerName) ? searchPlayerName.toLowerCase() : null;
       const sizePerPage = ApiEvents.OUTER_REALMS_ITEMS_PER_PAGE;
       const offset = (page - 1) * sizePerPage;
       const clickhouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
 
       /* ---------------------------------
-       * Cache check
+       * Whole ranking of the current collection instant
        * --------------------------------- */
-      const cachedKey = new CacheKeyBuilder('outer-realms:live-ranking')
-        .with(page)
-        .with(ApiHelper.isValidInput(searchPlayerName) ? searchPlayerName.toLowerCase() : 'all')
-        .build();
-      const cachedData = await ApiHelper.redisClient.get(cachedKey);
-      if (cachedData) {
-        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
-        return;
-      }
-
-      /* ---------------------------------
-       * Query database for players
-       * --------------------------------- */
-      const { lastDate, previousDate } = await ApiEvents.getOuterRealmsFetchDates(clickhouseClient);
-      if (!lastDate) {
+      const board = await OuterRealmsBoardCache.current(clickhouseClient);
+      if (!board) {
         response.status(ApiHelper.HTTP_FORBIDDEN).send({ error: RouteErrorMessagesEnum.EventNotActive });
         return;
       }
-
-      const playersQuery = `
-        SELECT
-          now.player_id,
-          now.player_name,
-          now.server,
-          now.score,
-          now.rank,
-          now.level,
-          now.legendary_level,
-          now.might,
-          now.castle_position_x,
-          now.castle_position_y,
-          now.fetch_date,
-          (now.score - coalesce(before.score, now.score)) AS score_diff,
-          (coalesce(before.rank, now.rank) - now.rank) AS rank_diff,
-          count() OVER () AS total_count
-        FROM ggetracker_global.outer_realms_ranking AS now
-        LEFT JOIN
-        (
-          SELECT player_id, score, rank
-          FROM ggetracker_global.outer_realms_ranking
-          WHERE fetch_date = {previousDate:DateTime}
-        ) AS before
-        ON before.player_id = now.player_id
-        WHERE now.fetch_date = {lastDate:DateTime}
-        ${ApiHelper.isValidInput(searchPlayerName) ? `AND now.player_name_lower LIKE {searchPlayerName:String}` : ''}
-        ORDER BY now.rank ASC
-        LIMIT ${sizePerPage} OFFSET ${offset};
-      `;
-      const rawPlayersResult = await clickhouseClient.query({
-        query: playersQuery,
-        query_params: {
-          lastDate,
-          previousDate: previousDate ?? lastDate,
-          ...(ApiHelper.isValidInput(searchPlayerName)
-            ? { searchPlayerName: `%${searchPlayerName.toLowerCase()}%` }
-            : {}),
-        },
-      });
-      const jsonPlayers = await rawPlayersResult.json();
-      const playersResult: any = jsonPlayers.data;
+      const { players, totalItems } = board.slice(nameFilter, offset, sizePerPage);
 
       /* ---------------------------------
        * Event active verification
        * --------------------------------- */
-      const nowTs = new Date();
-      const tenMinutesAgo = new Date(nowTs.getTime() - 10 * 60 * 1000);
-
-      if (
-        (!ApiHelper.isValidInput(searchPlayerName) || playersResult.length > 0) &&
-        (!playersResult[0]?.fetch_date || new Date(playersResult[0]?.fetch_date) < tenMinutesAgo)
-      ) {
+      if (ApiEvents.isOuterRealmsRankingStale(board, players.length, nameFilter)) {
         response.status(ApiHelper.HTTP_FORBIDDEN).send({ error: RouteErrorMessagesEnum.EventNotActive });
         return;
       }
 
-      /* ---------------------------------
-       * Format results
-       * --------------------------------- */
-      const players = playersResult.map((row: any) => ({
-        player_id: row.player_id,
-        player_name: row.player_name,
-        server: row.server,
-        score: row.score,
-        rank: row.rank,
-        level: row.level,
-        legendary_level: row.legendary_level,
-        might: row.might,
-        rank_diff: row.rank_diff,
-        score_diff: row.score_diff,
-        castle_position: [row.castle_position_x, row.castle_position_y],
-      }));
+      const etag = HttpCache.etagFromCacheKey(
+        new CacheKeyBuilder('outer-realms:live-ranking')
+          .with(board.snapshot)
+          .with(page)
+          .with(nameFilter ?? 'all')
+          .build(),
+      );
+      if (HttpCache.handleConditional(request, response, { etag, maxAgeSeconds: 0, lastModified: board.collectedAt })) {
+        return;
+      }
 
-      /* ---------------------------------
-       * Query database for total count
-       * --------------------------------- */
       const currentOuterRealmsEvent = await this.getCurrentOuterRealmsEvent();
-      const total_items = playersResult[0]?.total_count || 0;
-      const total_pages = Math.ceil(total_items / sizePerPage);
-
-      const responseData = {
+      response.status(ApiHelper.HTTP_OK).send({
         players,
         current_event: currentOuterRealmsEvent,
         pagination: {
           current_page: page,
-          total_pages,
+          total_pages: Math.ceil(totalItems / sizePerPage),
           current_items_count: players.length,
-          total_items_count: total_items,
+          total_items_count: totalItems,
         },
-      };
-
-      void ApiHelper.updateCache(cachedKey, responseData, ApiEvents.OUTER_REALMS_CACHE_TTL_RANKING);
-      response.status(ApiHelper.HTTP_OK).send(responseData);
+      });
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
@@ -1942,21 +1848,13 @@ export abstract class ApiEvents implements ApiHelper {
        * Cache check
        * --------------------------------- */
       const cachedKey = `stormy-isles:lb:${code}:l:${limit}:p:${page}:o:${orderMetricId}:${orderDirection}:${playerFilter.cacheKey}:${metricFilter.cacheKey}`;
-      const cachedData = await ApiHelper.redisClient.get(cachedKey);
-      if (cachedData) {
-        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
-        return;
-      }
+      if (await CachedResponse.serveCached(response, cachedKey)) return;
 
       const clickhouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
       const table = `${database}.${ApiEvents.CLICKHOUSE_PLAYER_METRICS_TABLE_NAME}`;
       const offset = (page - 1) * limit;
 
-      const latestDateResult = await clickhouseClient.query({
-        query: `SELECT toDate(MAX(collected_at)) AS latest_date FROM ${table}`,
-      });
-      const latestDateJson = await latestDateResult.json();
-      const latestDate = (latestDateJson.data as Array<{ latest_date: string }>)[0]?.latest_date;
+      const latestDate = await ApiEvents.readStormyIslesSnapshotDate(clickhouseClient, table, code);
       if (!latestDate) {
         response.status(ApiHelper.HTTP_OK).send(ApiEvents.emptyStormyIslesLeaderboard(page, null));
         return;
@@ -2028,8 +1926,7 @@ export abstract class ApiEvents implements ApiHelper {
             total_items_count: totalItems,
           },
         };
-        void ApiHelper.updateCache(cachedKey, responseData, ApiEvents.STORMY_ISLES_CACHE_TTL_LEADERBOARD);
-        response.status(ApiHelper.HTTP_OK).send(responseData);
+        await CachedResponse.serve(response, cachedKey, responseData, ApiEvents.STORMY_ISLES_CACHE_TTL_LEADERBOARD);
         return;
       }
 
@@ -2044,78 +1941,63 @@ export abstract class ApiEvents implements ApiHelper {
         ...metricFilter.queryParameters,
         ...(eligiblePlayerIds ? { eligiblePlayerIds } : {}),
       };
-      const [rawCount, rawData] = await Promise.all([
-        clickhouseClient.query({
+
+      /* ---------------------------------
+       * Rank the whole board once
+       * --------------------------------- */
+      const orderCacheKey = `stormy-isles:order:${code}:${latestDate}:${orderMetricId}:${orderDirection}:${playerFilter.cacheKey}:${metricFilter.cacheKey}`;
+      const orderedPlayerIds = await ApiEvents.resolveStormyIslesOrder(orderCacheKey, async () => {
+        const rawOrder = await clickhouseClient.query({
           query: `
-            SELECT COUNT() AS total
-            FROM (
-              SELECT player_id
-              FROM ${table}
-              WHERE toDate(collected_at) = {latestDate:String}
-              ${playerIdClause}
-              GROUP BY player_id
-              ${metricFilter.having}
-            )
-          `,
-          query_params: chQueryParameters,
-        }),
-        clickhouseClient.query({
-          query: `
-            SELECT
-              player_id,
-              groupArray(metric_id)    AS metric_ids,
-              groupArray(value)        AS metric_values,
-              any(collected_at)        AS latest_collected_at,
-              sumIf(value, metric_id = {orderMetricId:Int64}) AS order_metric_value
-            FROM ${table}
-            WHERE toDate(collected_at) = {latestDate:String}
-            ${playerIdClause}
+            SELECT player_id
+            FROM (${ApiEvents.stormyIslesLatestReadings(table, playerIdClause)})
             GROUP BY player_id
             ${metricFilter.having}
-            ORDER BY order_metric_value ${orderDirection}, player_id
-            LIMIT ${limit} OFFSET ${offset}
+            ORDER BY sumIf(value, metric_id = {orderMetricId:Int64}) ${orderDirection}, player_id
           `,
           query_params: chQueryParameters,
-        }),
-      ]);
-      const jsonCount = await rawCount.json();
-      const total_items = Number((jsonCount.data as Array<{ total: number }>)[0]?.total ?? 0);
+          format: 'JSONCompact',
+        });
+        const jsonOrder = await rawOrder.json();
+        return (jsonOrder.data as Array<[number]>).map((r) => Number(r[0]));
+      });
+
+      const total_items = orderedPlayerIds.length;
       if (total_items === 0) {
         response.status(ApiHelper.HTTP_OK).send(ApiEvents.emptyStormyIslesLeaderboard(page, latestDate));
         return;
       }
-      const jsonData = await rawData.json();
-      const rows = jsonData.data as StormyIslesClickhouseRow[];
+      const pagePlayerIds = orderedPlayerIds.slice(offset, offset + limit);
 
       /* ---------------------------------
-       * Enrich with PostgreSQL player data
+       * The metrics and the player rows are independent lookups of the same ids
        * --------------------------------- */
-      const playerIds = rows.map((r) => Number(r.player_id));
-      const pgResult = await pgPool.query(
-        `SELECT ${ApiEvents.STORMY_ISLES_PG_COLUMNS}
-          FROM players P
-          LEFT JOIN alliances A ON P.alliance_id = A.id
-          ${ApiEvents.STORMY_ISLES_ALLIANCE_AGGREGATE_JOIN}
-          WHERE P.id = ANY($1)`,
-        [playerIds],
-      );
+      const [metricsByPlayerId, pgResult] = await Promise.all([
+        ApiEvents.readStormyIslesMetrics(clickhouseClient, table, latestDate, pagePlayerIds),
+        pgPool.query(
+          `SELECT ${ApiEvents.STORMY_ISLES_PG_COLUMNS}
+            FROM players P
+            LEFT JOIN alliances A ON P.alliance_id = A.id
+            ${ApiEvents.STORMY_ISLES_ALLIANCE_AGGREGATE_JOIN}
+            WHERE P.id = ANY($1)`,
+          [pagePlayerIds],
+        ),
+      ]);
       const pgById = new Map<number, StormyIslesPgRow>(
         (pgResult.rows as StormyIslesPgRow[]).map((r) => [Number(r.id), r]),
       );
 
-      /* ---------------------------------
-       * Format and respond
-       * --------------------------------- */
-      const players = rows.map((row, index) =>
-        ApiEvents.formatStormyIslesPlayer(
-          pgById.get(Number(row.player_id)),
+      const players = pagePlayerIds.map((playerId, index) => {
+        const chRow = metricsByPlayerId.get(playerId);
+        return ApiEvents.formatStormyIslesPlayer(
+          pgById.get(playerId),
           offset + index + 1,
           code,
-          ApiEvents.mapStormyIslesMetrics(row),
-          new Date(row.latest_collected_at).toISOString(),
-          Number(row.player_id),
-        ),
-      );
+          chRow?.metrics ?? {},
+          chRow ? new Date(chRow.collectedAt).toISOString() : null,
+          playerId,
+        );
+      });
 
       const responseData = {
         players,
@@ -2127,8 +2009,7 @@ export abstract class ApiEvents implements ApiHelper {
           total_items_count: total_items,
         },
       };
-      void ApiHelper.updateCache(cachedKey, responseData, ApiEvents.STORMY_ISLES_CACHE_TTL_LEADERBOARD);
-      response.status(ApiHelper.HTTP_OK).send(responseData);
+      await CachedResponse.serve(response, cachedKey, responseData, ApiEvents.STORMY_ISLES_CACHE_TTL_LEADERBOARD);
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
@@ -2596,46 +2477,48 @@ export abstract class ApiEvents implements ApiHelper {
   }
 
   /**
-   * Resolves the two most recent collection instants of the Outer Realms ranking
-   *
-   * @param clickhouseClient The shared ClickHouse client
-   * @returns The latest fetch instant and the one before it, both null when the table is empty
+   * Reads a player's whole Outer Realms history
    */
-  private static async getOuterRealmsFetchDates(
+  private static async readOuterRealmsPlayerHistory(
     clickhouseClient: NodeClickHouseClient,
-  ): Promise<{ lastDate: string | null; previousDate: string | null }> {
-    const windows = [ApiEvents.OUTER_REALMS_RECENT_WINDOW_HOURS, ApiEvents.OUTER_REALMS_FALLBACK_WINDOW_HOURS];
-    for (const hours of windows) {
-      const dates = await ApiEvents.readOuterRealmsFetchDates(
-        clickhouseClient,
-        'WHERE fetch_date >= now() - INTERVAL {hours:UInt32} HOUR',
-        { hours },
-      );
-      if (dates.length > 0) {
-        return { lastDate: dates[0], previousDate: dates[1] ?? null };
-      }
-    }
-    const anyDates = await ApiEvents.readOuterRealmsFetchDates(clickhouseClient, '', {});
-    return { lastDate: anyDates[0] ?? null, previousDate: anyDates[1] ?? null };
+    playerId: number,
+    server: string | null,
+  ): Promise<{ data: unknown[] }> {
+    const rawResult = await clickhouseClient.query({
+      query: `
+        SELECT
+          player_id,
+          player_name,
+          server,
+          score,
+          rank,
+          level,
+          legendary_level,
+          might,
+          fetch_date,
+          castle_position_x,
+          castle_position_y
+        FROM ggetracker_global.outer_realms_ranking
+        WHERE ${server === null ? '' : 'server = {server:String} AND '}player_id = {playerId:UInt32}
+        ORDER BY fetch_date DESC
+      `,
+      query_params: { playerId, ...(server === null ? {} : { server }) },
+    });
+    return (await rawResult.json()) as { data: unknown[] };
   }
 
-  private static async readOuterRealmsFetchDates(
-    clickhouseClient: NodeClickHouseClient,
-    whereClause: string,
-    queryParameters: Record<string, number>,
-  ): Promise<string[]> {
-    const rawDates = await clickhouseClient.query({
-      query: `
-        SELECT DISTINCT fetch_date
-        FROM ggetracker_global.outer_realms_ranking
-        ${whereClause}
-        ORDER BY fetch_date DESC
-        LIMIT 2
-      `,
-      query_params: queryParameters,
-    });
-    const parsedDates = await rawDates.json();
-    return (parsedDates.data as { fetch_date: string }[]).map((row) => row.fetch_date);
+  /**
+   * The event is over once the newest instant stops being refreshed
+   */
+  private static isOuterRealmsRankingStale(
+    board: OuterRealmsBoard,
+    pageSize: number,
+    nameFilter: string | null,
+  ): boolean {
+    const collectedRecently =
+      board.collectedAt.getTime() >= Date.now() - ApiEvents.OUTER_REALMS_LIVE_WINDOW_MINUTES * 60 * 1000;
+    if (nameFilter !== null) return pageSize > 0 && !collectedRecently;
+    return pageSize === 0 || !collectedRecently;
   }
 
   /**
@@ -2683,6 +2566,24 @@ export abstract class ApiEvents implements ApiHelper {
     };
   }
 
+  private static async readStormyIslesSnapshotDate(
+    clickhouseClient: any,
+    table: string,
+    code: string,
+  ): Promise<string | null> {
+    const cacheKey = `stormy-isles:snapshot-date:${code}`;
+    const cached = await ApiHelper.redisClient.get(cacheKey).catch(() => null);
+    if (cached !== null) return cached === '' ? null : cached;
+
+    const result = await clickhouseClient.query({
+      query: `SELECT toDate(MAX(collected_at)) AS latest_date FROM ${table}`,
+    });
+    const json = await result.json();
+    const latestDate = (json.data as Array<{ latest_date: string }>)[0]?.latest_date ?? null;
+    void ApiHelper.updateCache(cacheKey, latestDate ?? '', ApiEvents.STORMY_ISLES_CACHE_TTL_SNAPSHOT_DATE, true);
+    return latestDate;
+  }
+
   private static async resolveEligibleStormyIslesPlayers(
     clickhouseClient: any,
     pgPool: pg.Pool,
@@ -2694,8 +2595,7 @@ export abstract class ApiEvents implements ApiHelper {
     const chIdsResult = await clickhouseClient.query({
       query: `
         SELECT player_id
-        FROM ${table}
-        WHERE toDate(collected_at) = {latestDate:String}
+        FROM (${ApiEvents.stormyIslesLatestReadings(table, '')})
         GROUP BY player_id
         ${metricFilter.having}
       `,
@@ -2716,6 +2616,25 @@ export abstract class ApiEvents implements ApiHelper {
     return pgFilterResult.rows.map((r: { id: number }) => Number(r.id));
   }
 
+  private static stormyIslesLatestReadings(table: string, playerIdClause: string): string {
+    return `
+      SELECT player_id, metric_id,
+        argMax(value, collected_at) AS value,
+        max(collected_at)           AS reading_at
+      FROM ${table}
+      WHERE toDate(collected_at) = {latestDate:String}
+      ${playerIdClause}
+      GROUP BY player_id, metric_id`;
+  }
+
+  private static async resolveStormyIslesOrder(cacheKey: string, rank: () => Promise<number[]>): Promise<number[]> {
+    const cached = await ApiHelper.redisClient.get(cacheKey).catch(() => null);
+    if (cached !== null) return JSON.parse(cached) as number[];
+    const orderedPlayerIds = await rank();
+    void ApiHelper.updateCache(cacheKey, orderedPlayerIds, ApiEvents.STORMY_ISLES_CACHE_TTL_LEADERBOARD);
+    return orderedPlayerIds;
+  }
+
   private static async readStormyIslesMetrics(
     clickhouseClient: any,
     table: string,
@@ -2731,10 +2650,8 @@ export abstract class ApiEvents implements ApiHelper {
           player_id,
           groupArray(metric_id) AS metric_ids,
           groupArray(value) AS metric_values,
-          any(collected_at) AS latest_collected_at
-        FROM ${table}
-        WHERE toDate(collected_at) = {latestDate:String}
-          AND player_id IN ({pagePlayerIds:Array(Int64)})
+          max(reading_at) AS latest_collected_at
+        FROM (${ApiEvents.stormyIslesLatestReadings(table, 'AND player_id IN ({pagePlayerIds:Array(Int64)})')})
         GROUP BY player_id
       `,
       query_params: { latestDate, pagePlayerIds },

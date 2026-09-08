@@ -34,11 +34,6 @@ export class DatabaseManager {
    *
    * @param dbName - The name of the PostgreSQL database to connect to
    * @returns A new instance of `pg.Pool` configured with the provided database name and environment variables for connection details
-   *
-   * @remarks
-   * The pool is configured with a maximum of 100 connections, an idle timeout of 10 seconds,
-   * and a connection timeout of 10 seconds. Connection details such as host, user, and password
-   * are sourced from environment variables: `POSTGRES_HOST`, `POSTGRES_USER`, and `POSTGRES_PASSWORD`
    */
   protected createPostgresPool(databaseName: string): pg.Pool {
     return new pg.Pool({
@@ -47,9 +42,10 @@ export class DatabaseManager {
       password: process.env.POSTGRES_PASSWORD,
       database: databaseName,
       port: 5432,
-      max: 100,
-      idleTimeoutMillis: 10 * 1000,
+      max: Number(process.env.POSTGRES_POOL_MAX) || 20,
+      idleTimeoutMillis: (Number(process.env.POSTGRES_POOL_IDLE_SECONDS) || 300) * 1000,
       connectionTimeoutMillis: 10 * 1000,
+      keepAlive: true,
     });
   }
 
