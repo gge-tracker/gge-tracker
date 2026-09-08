@@ -728,6 +728,11 @@ publicRoutes.get('/servers', routingInstance.getServers.bind(routingInstance));
  *     responses:
  *       200:
  *         description: A list of recorded events
+ *         headers:
+ *           ETag:
+ *             description: Send back as If-None-Match to skip an unchanged page
+ *             schema:
+ *               type: string
  *         content:
  *           application/json:
  *             schema:
@@ -756,6 +761,8 @@ publicRoutes.get('/servers', routingInstance.getServers.bind(routingInstance));
  *                         example: "2025-06-01 16:00:00"
  *                 pagination:
  *                   $ref: '#/components/schemas/Pagination'
+ *       304:
+ *         description: The If-None-Match ETag still matches, so this page has not changed
  */
 publicRoutes.get('/events/list', routingInstance.getEvents.bind(routingInstance));
 

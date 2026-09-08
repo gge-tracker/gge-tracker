@@ -8,6 +8,7 @@ import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { CacheKeyBuilder } from '../helper/cache/cache-key-builder';
 import { CachedResponse } from '../helper/cache/cached-response';
+import { EventsCatalogCache } from '../helper/cache/events-catalog';
 import { OuterRealmsBoard, OuterRealmsBoardCache } from '../helper/cache/outer-realms-board';
 import { HttpCache } from '../helper/http-cache';
 import { qFlag, qNumber } from '../helper/parse-query';
@@ -80,6 +81,9 @@ export abstract class ApiEvents implements ApiHelper {
   public static readonly CLICKHOUSE_WOA_TABLE_NAME = 'wheel_unimaginable_affluence';
   public static readonly CLICKHOUSE_PLAYER_METRICS_TABLE_NAME = 'player_metrics';
 
+  private static readonly EVENT_LIST_ITEMS_PER_PAGE = 8;
+  private static readonly EVENT_LIST_MAX_AGE_SECONDS = 60;
+
   private static readonly AQUAMARINE_ITEMS_PER_PAGE = 15;
   private static readonly AQUAMARINE_CACHE_TTL_LEADERBOARD = 60 * 60;
   private static readonly AQUAMARINE_CACHE_TTL_PLAYER = 10 * 60;
@@ -130,11 +134,7 @@ export abstract class ApiEvents implements ApiHelper {
     COALESCE(AGG.alliance_player_count, 0) AS alliance_player_count`;
 
   /**
-   * Retrieves a list of events from the database, combining results from both
-   * "outer realms" and "beyond the horizon" event sources. Results are cached
-   * in Redis for performance optimization. If cached data is available, it is
-   * returned immediately; otherwise, the data is queried from the database,
-   * formatted, cached, and then returned
+   * Retrieves a page of the combined "outer realms" and "beyond the horizon" event list
    *
    * @param request - The Express request object
    * @param response - The Express response object
@@ -147,7 +147,6 @@ export abstract class ApiEvents implements ApiHelper {
     eventPgDbpool: pg.Pool,
   ): Promise<void> {
     try {
-      const itemsPerPage = 8;
       /* ---------------------------------
        * Validate request
        * --------------------------------- */
@@ -157,113 +156,58 @@ export abstract class ApiEvents implements ApiHelper {
         return;
       }
       const page = ApiHelper.validatePageNumber(request.query.page);
+
       /* ---------------------------------
-       * Cache check
+       * Read the catalog, filter it by type
        * --------------------------------- */
-      const cachedKey = `events:list:${eventType || 'all'}:page:${page}`;
-      const cachedData = await ApiHelper.redisClient.get(cachedKey);
-      if (cachedData) {
-        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+      const catalog = await EventsCatalogCache.current(eventPgDbpool);
+      if (catalog === null) {
+        response
+          .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+          .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
         return;
       }
-
-      /* ---------------------------------
-       * Construct Count SQL Query
-       * --------------------------------- */
-      let whereClause = '';
-      if (eventType === EventTypes.OUTER_REALMS) {
-        whereClause = `WHERE type = 'outer_realms'`;
-      } else if (eventType === EventTypes.BEYOND_THE_HORIZON) {
-        whereClause = `WHERE type = 'beyond_the_horizon'`;
-      }
-
-      const countQuery = `
-        SELECT COUNT(*) AS total_count FROM (
-          SELECT DISTINCT event_num,
-          'outer_realms' AS type
-          FROM outer_realms_event
-          UNION ALL
-          SELECT event_num,
-          'beyond_the_horizon' AS type
-          FROM beyond_the_horizon_event
-        ) AS combined_events
-        ${whereClause}
-      `;
-      const countResult = await eventPgDbpool.query(countQuery);
-      const totalCount = Number(countResult.rows[0]?.total_count || 0);
+      const requestedType = EVENT_TABLE_PREFIXES[eventType];
+      const selected = requestedType ? catalog.filter((entry) => entry.type === requestedType) : catalog;
+      const totalCount = selected.length;
       if (totalCount === 0) {
         response.status(ApiHelper.HTTP_OK).send({
           events: [],
           pagination: { current_page: page, total_pages: 0, current_items_count: 0, total_items_count: 0 },
         });
         return;
-      } else if (totalCount < (page - 1) * itemsPerPage) {
+      } else if (totalCount < (page - 1) * ApiEvents.EVENT_LIST_ITEMS_PER_PAGE) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.PageOutOfRange });
         return;
       }
 
       /* ---------------------------------
-       * Construct SQL Query
+       * Slice the requested page
        * --------------------------------- */
-      const query = `
-        SELECT * FROM (
-          SELECT
-            e.event_num,
-            e.collect_date,
-            COUNT(*) AS player_count,
-            'outer_realms' AS type
-          FROM outer_realms_event e
-          INNER JOIN outer_realms_ranking r
-            ON e.event_num = r.event_num
-          GROUP BY e.event_num, e.collect_date
-          UNION ALL
-          SELECT
-            e.event_num,
-            e.collect_date,
-            COUNT(*) AS player_count,
-            'beyond_the_horizon' AS type
-          FROM beyond_the_horizon_event e
-          INNER JOIN beyond_the_horizon_ranking r
-            ON e.event_num = r.event_num
-          GROUP BY e.event_num, e.collect_date
-        ) AS combined_events
-        ${whereClause}
-        ORDER BY collect_date DESC
-        LIMIT ${itemsPerPage} OFFSET ${(page - 1) * itemsPerPage};
-      `;
+      const offset = (page - 1) * ApiEvents.EVENT_LIST_ITEMS_PER_PAGE;
+      const events = selected
+        .filter((entry) => entry.player_count !== '0')
+        .slice(offset, offset + ApiEvents.EVENT_LIST_ITEMS_PER_PAGE);
+      const pagination = {
+        current_page: page,
+        total_pages: Math.ceil(totalCount / ApiEvents.EVENT_LIST_ITEMS_PER_PAGE),
+        current_items_count: events.length,
+        total_items_count: totalCount,
+      };
 
       /* ---------------------------------
-       * Query from DB
+       * Send response
        * --------------------------------- */
-      eventPgDbpool.query(query, (error, results) => {
-        if (error) {
-          response
-            .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
-            .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
-        } else {
-          /* ---------------------------------
-           * Format results
-           * --------------------------------- */
-          const events = results.rows.map((result: any) => ({
-            event_num: result.event_num,
-            player_count: result.player_count,
-            type: result.type,
-            collect_date: new Date(result.collect_date).toISOString(),
-          }));
-          const pagination = {
-            current_page: page,
-            total_pages: Math.ceil(totalCount / itemsPerPage),
-            current_items_count: events.length,
-            total_items_count: totalCount,
-          };
-
-          /* ---------------------------------
-           * Update cache and send response
-           * --------------------------------- */
-          void ApiHelper.updateCache(cachedKey, { events, pagination }, 3600 * 3);
-          response.status(ApiHelper.HTTP_OK).send({ events, pagination });
-        }
-      });
+      const body = { events, pagination };
+      if (
+        HttpCache.handleConditional(request, response, {
+          etag: HttpCache.etagFromPayload(body),
+          maxAgeSeconds: ApiEvents.EVENT_LIST_MAX_AGE_SECONDS,
+        })
+      ) {
+        return;
+      }
+      response.status(ApiHelper.HTTP_OK).send(body);
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
