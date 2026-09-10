@@ -4572,6 +4572,11 @@ publicRoutes.get(
  *     responses:
  *       200:
  *         description: Paginated list of WOA events
+ *         headers:
+ *           ETag:
+ *             description: Send back as If-None-Match to skip an unchanged page
+ *             schema:
+ *               type: string
  *         content:
  *           application/json:
  *             schema:
@@ -4593,6 +4598,8 @@ publicRoutes.get(
  *                         example: 25000
  *                 pagination:
  *                   $ref: '#/components/schemas/Pagination'
+ *       304:
+ *         description: The If-None-Match ETag still matches, so this page has not changed
  *       400:
  *         $ref: '#/components/responses/BadRequest'
  *       500:

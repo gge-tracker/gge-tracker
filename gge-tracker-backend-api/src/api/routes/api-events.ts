@@ -10,6 +10,7 @@ import { CacheKeyBuilder } from '../helper/cache/cache-key-builder';
 import { CachedResponse } from '../helper/cache/cached-response';
 import { EventsCatalogCache } from '../helper/cache/events-catalog';
 import { OuterRealmsBoard, OuterRealmsBoardCache } from '../helper/cache/outer-realms-board';
+import { WoaEventsCatalogCache } from '../helper/cache/woa-events-catalog';
 import { HttpCache } from '../helper/http-cache';
 import { qFlag, qNumber } from '../helper/parse-query';
 import { ApiInputErrorType, ApiInvalidInputType } from '../types/parameter.types';
@@ -83,6 +84,9 @@ export abstract class ApiEvents implements ApiHelper {
 
   private static readonly EVENT_LIST_ITEMS_PER_PAGE = 8;
   private static readonly EVENT_LIST_MAX_AGE_SECONDS = 60;
+
+  private static readonly WOA_EVENT_LIST_ITEMS_PER_PAGE = 8;
+  private static readonly WOA_EVENT_LIST_MAX_AGE_SECONDS = 60;
 
   private static readonly AQUAMARINE_ITEMS_PER_PAGE = 15;
   private static readonly AQUAMARINE_CACHE_TTL_LEADERBOARD = 60 * 60;
@@ -1457,7 +1461,6 @@ export abstract class ApiEvents implements ApiHelper {
        * --------------------------------- */
       const code = request['code'];
       const page = ApiHelper.validatePageNumber(request.query.page) || 1;
-      const itemsPerPage = 8;
       if (!ApiHelper.ggeTrackerManager.isValidCode(code)) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
         return;
@@ -1469,24 +1472,17 @@ export abstract class ApiEvents implements ApiHelper {
       }
 
       /* ---------------------------------
-       * Cache check
-       * --------------------------------- */
-      const cachedKey = `woa_events:${code}-page:${page}`;
-      const cachedData = await ApiHelper.redisClient.get(cachedKey);
-      if (cachedData) {
-        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
-        return;
-      }
-
-      /* ---------------------------------
-       * Query database for WOA events list
+       * Read the catalog of this server
        * --------------------------------- */
       const clickhouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
-      const rawCountResult = await clickhouseClient.query({
-        query: `SELECT COUNT(DISTINCT created_at) AS total FROM ${database}.${ApiEvents.CLICKHOUSE_WOA_TABLE_NAME}`,
-      });
-      const jsonCount: any = await rawCountResult.json();
-      const total = jsonCount.data[0] ? Number(jsonCount.data[0].total) : 0;
+      const snapshots = await WoaEventsCatalogCache.current(code, database, clickhouseClient);
+      if (snapshots === null) {
+        response
+          .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
+          .send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
+        return;
+      }
+      const total = snapshots.length;
       if (total === 0) {
         response.status(ApiHelper.HTTP_OK).send({
           events: [],
@@ -1496,40 +1492,30 @@ export abstract class ApiEvents implements ApiHelper {
       }
 
       /* ---------------------------------
-       * Construct and execute query
+       * Slice the requested page
        * --------------------------------- */
-      const rawResult = await clickhouseClient.query({
-        query: `
-          SELECT
-            created_at,
-            COUNT(DISTINCT player_id) AS participants,
-            SUM(point) AS total_points
-          FROM ${database}.${ApiEvents.CLICKHOUSE_WOA_TABLE_NAME}
-          GROUP BY created_at
-          ORDER BY created_at DESC
-          LIMIT ${itemsPerPage} OFFSET ${(page - 1) * itemsPerPage}
-        `,
-      });
-      const json = await rawResult.json();
-
-      /* ---------------------------------
-       * Format results
-       * --------------------------------- */
-      const events = json.data.map((row: any) => ({
-        date: new Date(row.created_at).toISOString(),
-        participants: row.participants || 0,
-        total_tickets: row.total_points || 0,
-        id: ApiHelper.encodeDate(new Date(row.created_at).toISOString()),
-      }));
-      const total_pages = Math.ceil(total / itemsPerPage);
+      const offset = (page - 1) * ApiEvents.WOA_EVENT_LIST_ITEMS_PER_PAGE;
+      const events = WoaEventsCatalogCache.page(snapshots, offset, ApiEvents.WOA_EVENT_LIST_ITEMS_PER_PAGE);
       const pagination = {
         current_page: page,
-        total_pages,
+        total_pages: Math.ceil(total / ApiEvents.WOA_EVENT_LIST_ITEMS_PER_PAGE),
         current_items_count: events.length,
         total_items_count: total,
       };
-      void ApiHelper.updateCache(cachedKey, { events, pagination }, 60 * 60);
-      response.status(ApiHelper.HTTP_OK).send({ events, pagination });
+
+      /* ---------------------------------
+       * Send response
+       * --------------------------------- */
+      const body = { events, pagination };
+      if (
+        HttpCache.handleConditional(request, response, {
+          etag: HttpCache.etagFromPayload(body),
+          maxAgeSeconds: ApiEvents.WOA_EVENT_LIST_MAX_AGE_SECONDS,
+        })
+      ) {
+        return;
+      }
+      response.status(ApiHelper.HTTP_OK).send(body);
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
