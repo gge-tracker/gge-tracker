@@ -1,7 +1,7 @@
 import * as express from 'express';
 import * as pg from 'pg';
-import { GgeTrackerSqlBaseNameEnum } from '../enums/gge-tracker-sql-base-name.enums';
 import { ApiHelper } from '../helper/api-helper';
+import { HttpCache } from '../helper/http-cache';
 
 interface ParameterRow {
   identifier: string;
@@ -49,6 +49,7 @@ interface StatusCore {
  */
 export abstract class ApiStatus implements ApiHelper {
   private static readonly CACHE_KEY_PREFIX = 'api_status:v2:';
+  private static readonly CATALOG_MAX_AGE_SECONDS = 300;
   private static readonly CACHE_TTL_SECONDS = 60;
   private static readonly LAST_DURATION_KEY_PREFIX = 'api_status:last-duration:';
   private static readonly LAST_DURATION_TTL_SECONDS = 7 * 24 * 3600;
@@ -150,6 +151,43 @@ export abstract class ApiStatus implements ApiHelper {
   }
 
   /**
+   * Serves the public server catalog
+   */
+  public static getServersCatalog(request: express.Request, response: express.Response): void {
+    try {
+      const document = this.renderServersCatalog();
+      const etag = HttpCache.etagFromPayload(document);
+      if (HttpCache.handleConditional(request, response, { etag, maxAgeSeconds: this.CATALOG_MAX_AGE_SECONDS })) return;
+      response.status(ApiHelper.HTTP_OK).type('application/xml').send(document);
+    } catch (error) {
+      const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
+      response.status(code).send({ error: message });
+      ApiHelper.logError(error, 'getServersCatalog', request);
+    }
+  }
+
+  private static renderServersCatalog(): string {
+    const servers = ApiHelper.ggeTrackerManager.getPublicServerDefinitions().map(
+      (server) => `\t\t<server>
+\t\t\t<enabled>${server.enabled}</enabled>
+\t\t\t<featured>${server.featured}</featured>
+\t\t\t<gge-server-name>${this.escapeXml(server.ggeServerName)}</gge-server-name>
+\t\t\t<name>${this.escapeXml(server.name)}</name>
+\t\t</server>`,
+    );
+    return `<root>\n\t<servers>\n${servers.join('\n')}\n\t</servers>\n</root>\n`;
+  }
+
+  private static escapeXml(value: string): string {
+    return value
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&apos;');
+  }
+
+  /**
    * The fill counter is part of the cache key, so a completed collection invalidates the entry the
    * moment it lands rather than at the end of the TTL, a client watching that counter would
    * otherwise learn about new data up to a minute late. The TTL still bounds everything that moves
@@ -184,7 +222,7 @@ export abstract class ApiStatus implements ApiHelper {
       server: language,
       server_code: code,
       zone: server?.zone ?? '',
-      platform: this.resolvePlatform(server?.databases?.olap),
+      platform: this.resolvePlatform(language),
       discord_member_count: discordMemberCount,
       data_version: dataVersion,
       weekly_reset_offset_hours: ApiHelper.ggeTrackerManager.getServerResetOffsetByCode(code),
@@ -321,9 +359,10 @@ export abstract class ApiStatus implements ApiHelper {
     }
   }
 
-  private static resolvePlatform(olapDatabase: string | undefined): string {
-    if (olapDatabase?.startsWith(GgeTrackerSqlBaseNameEnum.BASE_OLAP_E4K_DB_NAME)) return 'E4K';
-    if (olapDatabase?.startsWith(GgeTrackerSqlBaseNameEnum.BASE_OLAP_SPECIAL_SERVER_NAME)) return 'PARTNER';
+  private static resolvePlatform(serverName: string): string {
+    const kind = ApiHelper.ggeTrackerManager.getServerDefinition(serverName)?.kind;
+    if (kind === 'e4k') return 'E4K';
+    if (kind === 'partner') return 'PARTNER';
     return 'EP';
   }
 

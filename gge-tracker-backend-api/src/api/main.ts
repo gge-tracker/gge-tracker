@@ -702,6 +702,41 @@ publicRoutes.get('/servers', routingInstance.getServers.bind(routingInstance));
 
 /**
  * @swagger
+ * /servers/catalog:
+ *   get:
+ *     summary: Retrieve the catalog of Goodgame Empire servers as an XML document
+ *     description: |
+ *       Each server carries its display name, whether GGE Tracker advertises it (`enabled`)
+ *       Send the `ETag` back as `If-None-Match` to be answered `304` while nothing changed
+ *     tags:
+ *       - Servers
+ *     responses:
+ *       200:
+ *         description: The server catalog, as an XML document
+ *         content:
+ *           application/xml:
+ *             schema:
+ *               type: string
+ *               example: |
+ *                 <root>
+ *                   <servers>
+ *                     <server>
+ *                       <enabled>true</enabled>
+ *                       <featured>true</featured>
+ *                       <gge-server-name>France</gge-server-name>
+ *                       <name>FR1</name>
+ *                     </server>
+ *                   </servers>
+ *                 </root>
+ *       304:
+ *         description: The If-None-Match ETag still matches - the catalog has not changed, empty body
+ *       500:
+ *         description: The catalog could not be rendered
+ */
+publicRoutes.get('/servers/catalog', routingInstance.getServersCatalog.bind(routingInstance));
+
+/**
+ * @swagger
  * /events/list:
  *   get:
  *     summary: Retrieve the list of events (Beyond the Horizon and Outer Realms) for Goodgame Empire Desktop Version (EP)
@@ -6041,9 +6076,13 @@ const ggeServerMiddleware = (request: Request, response: Response, next: NextFun
     });
     return;
   } else if (!managerInstance.isValidServer(language)) {
+    // A server the file describes but disables is not set up yet, which is not the same mistake
+    const known = managerInstance.getServerDefinition(language) !== null;
     response.status(400).json({
-      error: "Invalid server. Please provide a valid server name with the 'gge-server' header.",
-      code: 'INVALID_SERVER',
+      error: known
+        ? 'This server is not available. GGE Tracker does not collect data for it yet.'
+        : "Invalid server. Please provide a valid server name with the 'gge-server' header.",
+      code: known ? 'SERVER_UNAVAILABLE' : 'INVALID_SERVER',
     });
     return;
   }

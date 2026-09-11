@@ -10,34 +10,16 @@
 #
 
 BASE_SCRIPT_DIR="$(cd "$(dirname "$0")/.."; pwd)"
-CONF_FILE="$BASE_SCRIPT_DIR/config/servers.conf"
 SERVER="$1"
 
-get_conf_value() {
-    local section=$1
-    local key=$2
-    awk -F= -v section="[$section]" -v key="$key" '
-        $0 == section {in_section=1; next}
-        /^\[/ {in_section=0}
-        in_section && $1 == key {gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2; exit}
-    ' "$CONF_FILE"
-    return
-}
+. "$BASE_SCRIPT_DIR/scripts/lib/servers.sh"
 
-ID_SERVER=$(get_conf_value "$SERVER" "zone")
-PG_DB=$(get_conf_value "$SERVER" "sql")
-MYSQL_DB=$(get_conf_value "$SERVER" "sql")
-CLICKHOUSE_DB=$(get_conf_value "$SERVER" "olap")
+load_server_config "$SERVER"
 LOG_SUFFIX=$SERVER
-CONNECTION_LIMIT=$(get_conf_value "$SERVER" "limit")
 
 OUTER_REALMS_SERVER="ORREALTIME"
-TARGET_ID_SERVER=$(get_conf_value "$OUTER_REALMS_SERVER" "zone")
-TARGET_PG_DB=$(get_conf_value "$OUTER_REALMS_SERVER" "sql")
-TARGET_MYSQL_DB=$(get_conf_value "$OUTER_REALMS_SERVER" "sql")
-TARGET_CLICKHOUSE_DB=$(get_conf_value "$OUTER_REALMS_SERVER" "olap")
+load_server_config "$OUTER_REALMS_SERVER" TARGET_
 TARGET_LOG_SUFFIX="$OUTER_REALMS_SERVER"
-TARGET_CONNECTION_LIMIT=$(get_conf_value "$OUTER_REALMS_SERVER" "limit")
 
 exec docker run --rm --init --network backend --env-file=$BASE_SCRIPT_DIR/.env \
     --name ic-fetch-token-$SERVER \

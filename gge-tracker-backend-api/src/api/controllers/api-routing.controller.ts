@@ -95,6 +95,10 @@ export class ApiRoutingController {
     void ApiStatus.getServers(request, response);
   }
 
+  public getServersCatalog(request: express.Request, response: express.Response): void {
+    ApiStatus.getServersCatalog(request, response);
+  }
+
   public updateAssets(request: express.Request, response: express.Response): void {
     void ApiAssets.updateAssets(request, response);
   }

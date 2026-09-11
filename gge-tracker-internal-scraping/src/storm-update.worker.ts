@@ -7,17 +7,11 @@
 //
 //  Copyrights (c) 2026 - gge-tracker.com & gge-tracker contributors
 //
-import { readFileSync } from 'node:fs';
 import { GenericFetchAndSaveBackend } from './main';
+import { ScrapingServer, readScrapingServers } from './servers-file';
 
-export interface ServerConfig {
-  name: string;
-  zone: string;
-  sql: string;
-  limit: number;
-}
+export type ServerConfig = ScrapingServer;
 
-const CONFIG_PATH = '/app/config/servers.conf';
 const INTERVAL_MS = Number(process.env.INTERVAL_MS || 120_000);
 const BASE_API_HOST = 'http://empire-api-realtime:3000';
 
@@ -55,61 +49,9 @@ function logStep(msg: string): void {
 }
 
 export function parseServersConf(): ServerConfig[] {
-  const content = readFileSync(CONFIG_PATH, 'utf-8');
-  const lines = content.split('\n');
-  const servers: ServerConfig[] = [];
-  let current: Partial<ServerConfig> | null = null;
-
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith('#')) continue;
-
-    if (line.startsWith('[')) {
-      if (isValidServer(current)) {
-        servers.push(current);
-      }
-      current = { name: line.slice(1, -1) };
-      continue;
-    }
-    if (!current) continue;
-    const [key, value] = parseKeyValue(line);
-    applyConfig(current, key, value);
-  }
-  if (isValidServer(current)) {
-    servers.push(current);
-  }
-
+  const servers = readScrapingServers().filter((server) => server.storm);
   logInfo(`Loaded ${servers.length} servers from config`);
-
   return servers;
-}
-
-function parseKeyValue(line: string): [string, string] {
-  const [key, value] = line.split('=');
-  return [key.trim(), value.trim()];
-}
-
-function applyConfig(target: Partial<ServerConfig>, key: string, value: string): void {
-  switch (key) {
-    case 'zone':
-      target.zone = value;
-      break;
-    case 'sql':
-      target.sql = value;
-      break;
-    case 'limit':
-      target.limit = Number(value);
-      break;
-    case 'storm':
-      if (value.toLowerCase() === 'false') {
-        Object.assign(target, { name: undefined });
-      }
-      break;
-  }
-}
-
-function isValidServer(server: Partial<ServerConfig> | null): server is ServerConfig {
-  return !!server?.name;
 }
 
 async function processServer(server: ServerConfig, index: string, total: number): Promise<boolean> {

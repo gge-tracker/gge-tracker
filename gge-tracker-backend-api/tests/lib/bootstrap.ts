@@ -4,7 +4,7 @@
  */
 import { request } from './http';
 import { config } from '../config';
-import { AuthorizedSpecialServersEnum } from '../../src/api/enums/gge-tracker-special-servers.enums';
+import { specialServers } from './servers-source';
 
 export interface Seeds {
   server?: string;
@@ -32,7 +32,7 @@ export interface Seeds {
   statusEtag?: string;
 }
 
-const SPECIAL_SERVERS = new Set<string>(Object.values(AuthorizedSpecialServersEnum));
+const SPECIAL_SERVERS = new Set<string>(specialServers());
 
 let cached: Seeds | undefined;
 

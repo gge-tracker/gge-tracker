@@ -1,7 +1,6 @@
 import * as express from 'express';
 import * as pg from 'pg';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
-import { AuthorizedSpecialServersEnum } from '../enums/gge-tracker-special-servers.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { CachedResponse } from '../helper/cache/cached-response';
 import { CacheKeyBuilder } from '../helper/cache/cache-key-builder';
@@ -866,8 +865,8 @@ export abstract class ApiStorms implements ApiHelper {
   }
 
   private static validateRequest(request: express.Request, response: express.Response): boolean {
-    const authorizedServers = Object.values(AuthorizedSpecialServersEnum);
-    if (!authorizedServers.includes(request['language'])) {
+    if (!ApiHelper.ggeTrackerManager.isSpecialServer(request['language'])) {
+      const authorizedServers = ApiHelper.ggeTrackerManager.getSpecialServerNames();
       response
         .status(ApiHelper.HTTP_BAD_REQUEST)
         .send({ error: 'Invalid server. Currently, only ' + authorizedServers.join(', ') + ' are supported.' });

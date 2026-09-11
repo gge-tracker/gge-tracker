@@ -106,6 +106,7 @@ services:
     restart: always
     volumes:
       - backend-assets:/app/dist/assets
+      - ./../gge-tracker-backend-api/config:/app/config:ro
     environment:
       - MYSQL_HOST=${MARIADB_HOST}
       - MYSQL_DATABASE=${SQL_DATABASE}
@@ -168,7 +169,7 @@ services:
     networks:
       - backend
     volumes:
-      - ./../gge-tracker-internal-scraping/config:/app/config
+      - ./../gge-tracker-backend-api/config:/app/config:ro
     command: ["dist/dungeon-update.worker.js"]
     environment:
       - INTERVAL_MS=${DUNGEON_UPDATE_INTERVAL_MS:-120000}
@@ -194,7 +195,7 @@ services:
     networks:
       - backend
     volumes:
-      - ./../gge-tracker-internal-scraping/config:/app/config
+      - ./../gge-tracker-backend-api/config:/app/config:ro
     command: ["dist/storm-update.worker.js"]
     environment:
       - INTERVAL_MS=${STORM_UPDATE_INTERVAL_MS:-120000}

@@ -10,26 +10,12 @@
 #
 
 BASE_SCRIPT_DIR="$(cd "$(dirname "$0")/.."; pwd)"
-CONF_FILE="$BASE_SCRIPT_DIR/config/servers.conf"
 SERVER="$1"
 
-get_conf_value() {
-    local section=$1
-    local key=$2
-    awk -F= -v section="[$section]" -v key="$key" '
-        $0 == section {in_section=1; next}
-        /^\[/ {in_section=0}
-        in_section && $1 == key {gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2; exit}
-    ' "$CONF_FILE"
-    return
-}
+. "$BASE_SCRIPT_DIR/scripts/lib/servers.sh"
 
-ID_SERVER=$(get_conf_value "$SERVER" "zone")
-PG_DB=$(get_conf_value "$SERVER" "sql")
-MYSQL_DB=$(get_conf_value "$SERVER" "sql")
-CLICKHOUSE_DB=$(get_conf_value "$SERVER" "olap")
+load_server_config "$SERVER"
 LOG_SUFFIX=$SERVER
-CONNECTION_LIMIT=$(get_conf_value "$SERVER" "limit")
 
 docker run --rm --network backend --env-file=$BASE_SCRIPT_DIR/.env \
     --name ic-fetch-$SERVER \

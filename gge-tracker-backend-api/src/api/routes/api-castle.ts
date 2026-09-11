@@ -1,7 +1,6 @@
 import * as express from 'express';
 import * as pg from 'pg';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
-import { AuthorizedSpecialServersEnum } from '../enums/gge-tracker-special-servers.enums';
 import { ApiHelper } from '../helper/api-helper';
 
 /**
@@ -35,10 +34,7 @@ export abstract class ApiCastle implements ApiHelper {
       } else if (Number.isNaN(kingdomId) || kingdomId < 0 || kingdomId > 3) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidKingdomId });
         return;
-      } else if (
-        kingdomId > 0 &&
-        !Object.values(AuthorizedSpecialServersEnum).includes(serverName as AuthorizedSpecialServersEnum)
-      ) {
+      } else if (kingdomId > 0 && !ApiHelper.ggeTrackerManager.isSpecialServer(serverName ?? '')) {
         response
           .status(ApiHelper.HTTP_BAD_REQUEST)
           .send({ error: RouteErrorMessagesEnum.UnavailableForSpecialServers });
@@ -290,14 +286,12 @@ export abstract class ApiCastle implements ApiHelper {
         .filter((c: any) => [0, 1, 2, 3].includes(c.KID))
         .map((c: any) => c.AI.map((ai: any) => ({ ...ai, KID: c.KID })));
       const castlesAI = castlesAIBase.flat();
-      const serverName = ApiHelper.ggeTrackerManager.getServerNameFromRequestId(
-        code as number,
-      ) as AuthorizedSpecialServersEnum;
-      const authorizedServers = Object.values(AuthorizedSpecialServersEnum);
+      const serverName = ApiHelper.ggeTrackerManager.getServerNameFromRequestId(code as number) ?? '';
+      const isSpecialServer = ApiHelper.ggeTrackerManager.isSpecialServer(serverName);
       const mappedCastles = castlesAI.reduce((accumulator: any[], castle: any) => {
         accumulator.push({
           kingdomId: castle.KID,
-          isAvailable: castle.KID === 0 ? true : authorizedServers.includes(serverName),
+          isAvailable: castle.KID === 0 ? true : isSpecialServer,
           id: Number(ApiHelper.addCountryCode(castle.AI[3], request['code'])),
           positionX: castle.AI[1],
           positionY: castle.AI[2],

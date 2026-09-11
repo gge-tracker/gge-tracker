@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+	<xs:simpleType name="serverKind">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="ep" />
+			<xs:enumeration value="e4k" />
+			<xs:enumeration value="partner" />
+			<xs:enumeration value="global" />
+			<xs:enumeration value="internal" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:element name="root">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="servers">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="server" maxOccurs="unbounded">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="name" type="xs:string" />
+										<xs:element name="kind" type="serverKind" />
+										<xs:element name="enabled" type="xs:boolean" />
+										<xs:element name="featured" type="xs:boolean" />
+										<xs:element name="special" type="xs:boolean" />
+										<xs:element name="gge-server-name" type="xs:string" />
+										<xs:element name="outer-name" type="xs:string" />
+										<xs:element name="country" type="xs:string" />
+										<xs:element name="code" type="xs:string" />
+										<xs:element name="zone" type="xs:string" />
+										<xs:element name="zone-id" type="xs:string" />
+										<xs:element name="reset-offset" type="xs:string" />
+										<xs:element name="databases">
+											<xs:complexType>
+												<xs:sequence>
+													<xs:element name="sql" type="xs:string" />
+													<xs:element name="olap" type="xs:string" />
+												</xs:sequence>
+											</xs:complexType>
+										</xs:element>
+										<xs:element name="scraping" minOccurs="0">
+											<xs:complexType>
+												<xs:sequence>
+													<xs:element name="section" type="xs:string" />
+													<xs:element name="connection-limit" type="xs:integer" />
+													<xs:element name="dungeon" type="xs:boolean" />
+													<xs:element name="storm" type="xs:boolean" />
+												</xs:sequence>
+											</xs:complexType>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+</xs:schema>

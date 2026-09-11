@@ -23,7 +23,35 @@ export interface IApiToken {
 export interface ILimitedApiToken {
   outer_name: string;
   zone: string;
+  zoneId?: number;
   disabled: boolean;
+}
+
+export type ServerKind = 'ep' | 'e4k' | 'partner' | 'global' | 'internal';
+
+export interface IServerDefinition {
+  name: string;
+  kind: ServerKind;
+  enabled: boolean;
+  featured: boolean;
+  special: boolean;
+  ggeServerName: string;
+  outerName: string;
+  country: string;
+  code: string;
+  zone: string;
+  zoneId?: number;
+  resetOffset?: number;
+  databases: {
+    sql: string;
+    olap: string;
+  };
+  scraping?: {
+    section: string;
+    connectionLimit: number;
+    dungeon: boolean;
+    storm: boolean;
+  };
 }
 
 export type SqlPrimitive = string | number | boolean | Date | null;

@@ -6,7 +6,7 @@ import { Seeds } from '../lib/bootstrap';
 import { config } from '../config';
 import { discard } from '../lib/journal';
 import { ClickHouseTarget, listDatabases, localTarget, probe, query, remoteTarget } from '../lib/clickhouse';
-import { ServerEntry, activatedServers } from '../lib/servers-source';
+import { ServerEntry, activatedServers, serversSourcePath } from '../lib/servers-source';
 import { HOURS_PER_WEEK, buildResetQuery, defaultOptions, describeOffset, measure } from '../lib/reset-offset';
 
 function checkTable(section: Section, servers: ServerEntry[]): void {
@@ -14,7 +14,7 @@ function checkTable(section: Section, servers: ServerEntry[]): void {
   section.expect('every activated server declares a reset offset', {
     ok: undeclared.length === 0,
     detail: undeclared.length === 0 ? `${servers.length} servers` : undeclared.map((s) => `${s.key} (line ${s.line})`).join(', '),
-    expected: 'a serverResetOffset on each of the activated servers - without one the frontend falls back to a default week',
+    expected: 'a reset-offset on each of the activated servers - without one the frontend falls back to a default week',
     actual:
       undeclared.length === 0
         ? `all ${servers.length} activated servers declare one`
@@ -87,7 +87,7 @@ async function measureServer(section: Section, target: ClickHouseTarget, server:
       reading.offset === server.resetOffset
         ? `${declared}, ${reading.gaps} gaps over ${weeks}, ${reading.playerWeeks} player-weeks${blurred}`
         : `declared ${declared}, measured ${reading.offset} (${describeOffset(reading.offset)})`,
-    expected: `serverResetOffset ${declared} - api.manager.ts line ${server.line}`,
+    expected: `reset-offset ${declared} - ${serversSourcePath()} line ${server.line}`,
     actual: `${reading.offset} at ${describeOffset(reading.offset)}, from ${reading.gaps} gaps over ${weeks} (${reading.instants.join(', ')})`,
   });
   return true;

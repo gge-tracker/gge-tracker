@@ -137,6 +137,7 @@ export const CATALOG: Endpoint[] = [
     ],
   },
   { id: 'servers', method: 'GET', scope: 'public', path: () => '/servers', okStatuses: [200] },
+  { id: 'servers-catalog', method: 'GET', scope: 'public', path: () => '/servers/catalog', okStatuses: [200], kind: 'any' },
 
   // Assets (public, rate-limit bypass)
   { id: 'assets-items', method: 'GET', scope: 'public', bypass: true, path: () => '/assets/items', okStatuses: [200], kind: 'any' },

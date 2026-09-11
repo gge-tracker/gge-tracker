@@ -81,6 +81,7 @@ COPY --from=build --chown=node:node /app/dist/api/ ./dist/
 COPY --from=build --chown=node:node /app/dist/documentation.json ./dist/documentation.json
 COPY --from=build --chown=node:node /app/src/api/lib ./dist/lib
 COPY --chown=node:node package.json ./
+COPY --chown=node:node config ./config
 
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
     && dpkg --purge --force-remove-essential --force-depends perl-base \
