@@ -212,6 +212,7 @@ export class GenericFetchAndSaveBackend {
   private readonly DUNGEON_DISCOVERY_WEEKDAY_UTC = 1;
   private readonly DUNGEON_DISCOVERY_HOUR_UTC = 3;
   private readonly DUNGEON_DISCOVERY_PARAMETER = 'dungeons_discovery';
+  private readonly DUNGEON_SCAN_PARAMETER = 'dungeons_scan';
   private readonly DUNGEON_LOCK_KEY = 4242001;
   private readonly STORM_KID = 4;
   private readonly STORM_CENTER_X = 644;
@@ -936,7 +937,7 @@ export class GenericFetchAndSaveBackend {
         const scanned = await this.scanDungeonCooldowns(rows, squares, totalRequests, dungeonsToUpdate);
         if (!scanned) return;
 
-        await this.upsertParameter('dungeons_scan', dungeonsToUpdate.length);
+        await this.upsertParameter(this.DUNGEON_SCAN_PARAMETER, dungeonsToUpdate.length);
         await this.persistDungeonUpdates(pgPool, dungeonsToUpdate);
         await this.bumpScanVersion(`dungeon-version:${this.server}`);
       });
@@ -1638,7 +1639,9 @@ export class GenericFetchAndSaveBackend {
   }
 
   private async withDungeonLock<T>(label: string, action: () => Promise<T>): Promise<T | null> {
-    const client = await this.getPool().connect();
+    const client = new pg.Client(this.PGSQL_CONFIG);
+    client.on('error', (error) => Utils.logMessage(' [WARN] Dungeon lock connection lost:', error.message));
+    await client.connect();
     try {
       const { rows } = await client.query('SELECT pg_try_advisory_lock($1) AS acquired', [this.DUNGEON_LOCK_KEY]);
       if (rows[0]?.acquired !== true) {
@@ -1651,7 +1654,7 @@ export class GenericFetchAndSaveBackend {
         await client.query('SELECT pg_advisory_unlock($1)', [this.DUNGEON_LOCK_KEY]);
       }
     } finally {
-      client.release();
+      await client.end();
     }
   }
 
@@ -4631,13 +4634,13 @@ export class GenericFetchAndSaveBackend {
   }
 
   private async clearParameters(): Promise<void> {
-    //  We clear all parameters in the database
     Utils.logMessage('Database connection successful');
     const pgQuery = `
       UPDATE parameters
       SET value = NULL
+      WHERE identifier <> ALL($1::text[])
     `;
-    await this.pgSqlQuery(pgQuery);
+    await this.pgSqlQuery(pgQuery, [[this.DUNGEON_DISCOVERY_PARAMETER, this.DUNGEON_SCAN_PARAMETER]]);
   }
 
   /**

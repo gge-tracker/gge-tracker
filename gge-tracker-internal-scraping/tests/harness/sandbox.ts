@@ -121,6 +121,11 @@ export function createSandbox(options: SandboxOptions = {}): Sandbox {
       return db.createPool(config ?? {});
     }),
   );
+  restorers.push(
+    patch(pg, 'Client', function FakeClient(config: Record<string, any>) {
+      return db.createClient(config ?? {});
+    }),
+  );
   restorers.push(patch(redis, 'createClient', () => fakeRedis));
 
   async function respondGet(url: string): Promise<{ status: number; data: unknown }> {

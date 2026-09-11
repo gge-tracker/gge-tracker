@@ -30,6 +30,7 @@ export function collapse(sql: string): string {
 export class FakePostgres {
   public readonly queries: RecordedQuery[] = [];
   public readonly pools: FakePostgresPool[] = [];
+  public readonly clients: FakePostgresStandaloneClient[] = [];
   public readonly endedDatabases: string[] = [];
 
   private readonly rules: QueryRule[] = [];
@@ -47,9 +48,15 @@ export class FakePostgres {
   }
 
   public createPool(config: Record<string, any>): FakePostgresPool {
-    const pool = new FakePostgresPool(this, String(config?.database ?? 'default'));
+    const pool = new FakePostgresPool(this, String(config?.database ?? 'default'), Number(config?.max ?? 10));
     this.pools.push(pool);
     return pool;
+  }
+
+  public createClient(config: Record<string, any>): FakePostgresStandaloneClient {
+    const client = new FakePostgresStandaloneClient(this, String(config?.database ?? 'default'));
+    this.clients.push(client);
+    return client;
   }
 
   public matching(pattern: RegExp): RecordedQuery[] {
@@ -87,15 +94,31 @@ export class FakePostgresPool {
   constructor(
     private readonly parent: FakePostgres,
     public readonly database: string,
+    public readonly max: number = 10,
   ) {}
 
   public async query(text: string, params: any[] = []): Promise<{ rows: any[]; rowCount: number }> {
-    return this.parent.run(text, params, this.database);
+    this.takeClient();
+    try {
+      return this.run(text, params);
+    } finally {
+      this.checkedOut--;
+    }
   }
 
   public async connect(): Promise<FakePostgresClient> {
-    this.checkedOut++;
+    this.takeClient();
     return new FakePostgresClient(this);
+  }
+
+  public run(text: string, params: any[] = []): { rows: any[]; rowCount: number } {
+    return this.parent.run(text, params, this.database);
+  }
+
+  // pg-pool answers this way when every client is checked out and connectionTimeoutMillis expires
+  private takeClient(): void {
+    if (this.checkedOut >= this.max) throw new Error('timeout exceeded when trying to connect');
+    this.checkedOut++;
   }
 
   public on(): this {
@@ -114,12 +137,38 @@ export class FakePostgresClient {
   constructor(private readonly pool: FakePostgresPool) {}
 
   public async query(text: string, params: any[] = []): Promise<{ rows: any[]; rowCount: number }> {
-    return this.pool.query(text, params);
+    return this.pool.run(text, params);
   }
 
   public release(): void {
     this.released = true;
     this.pool.checkedOut--;
+  }
+}
+
+export class FakePostgresStandaloneClient {
+  public connected = false;
+  public ended = false;
+
+  constructor(
+    private readonly parent: FakePostgres,
+    public readonly database: string,
+  ) {}
+
+  public async connect(): Promise<void> {
+    this.connected = true;
+  }
+
+  public async query(text: string, params: any[] = []): Promise<{ rows: any[]; rowCount: number }> {
+    return this.parent.run(text, params, this.database);
+  }
+
+  public on(): this {
+    return this;
+  }
+
+  public async end(): Promise<void> {
+    this.ended = true;
   }
 }
 

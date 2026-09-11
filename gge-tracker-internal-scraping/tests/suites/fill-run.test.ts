@@ -54,7 +54,7 @@ describe('executeFillInOrder', () => {
       serveQuietHour(sandbox);
       await sandbox.backend.executeFillInOrder();
       const statements = sandbox.db.queries.map((query) => query.sql);
-      assert.equal(statements[0], 'UPDATE parameters SET value = NULL');
+      assert.equal(statements[0], 'UPDATE parameters SET value = NULL WHERE identifier <> ALL($1::text[])');
       assert.ok(
         /FROM players P LEFT JOIN alliances A/.test(statements[1]),
         'the run compares against the database as it was before the sweep',

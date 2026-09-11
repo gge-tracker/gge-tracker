@@ -84,10 +84,12 @@ describe('getDatabasePlayers', () => {
 });
 
 describe('run parameters', () => {
-  it('clears every parameter before a run starts', async () => {
+  it('clears the run flags before a run starts, and nothing a dungeon job owns', async () => {
     await withSandbox({}, async (sandbox) => {
       await sandbox.call('clearParameters');
-      assert.equal(sandbox.db.one(/UPDATE parameters/).sql, 'UPDATE parameters SET value = NULL');
+      const cleared = sandbox.db.one(/UPDATE parameters/);
+      assert.equal(cleared.sql, 'UPDATE parameters SET value = NULL WHERE identifier <> ALL($1::text[])');
+      assert.deepEqual(cleared.params, [['dungeons_discovery', 'dungeons_scan']]);
     });
   });
 
