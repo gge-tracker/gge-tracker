@@ -197,6 +197,7 @@ export class GenericFetchAndSaveBackend {
   public connection!: mysql.Pool;
   public pgSqlConnection!: pg.Pool;
   public allianceUpdated: { [key: string]: boolean } = {};
+  private jobFailure: { failureStep: string; failureReason: string; failureIdentifier?: string } | null = null;
   private pgSqlPoolEnded: boolean = false;
   private readonly WEBHOOK_URL: string = process.env.WEBHOOK_URL || '';
   private readonly CURRENT_ENV: string = process.env.ENVIRONMENT || 'development';
@@ -558,8 +559,7 @@ export class GenericFetchAndSaveBackend {
         Utils.logMessage('.');
       }
     } catch (error) {
-      Utils.logCritical('411', error, 'Error refreshing Grand Tournament results');
-      this.DB_UPDATES.criticalErrors++;
+      this.recordJobFailure('grand tournament results refresh', error, '411');
     }
     await this.closePool();
     Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, this.server);
@@ -574,6 +574,7 @@ export class GenericFetchAndSaveBackend {
         grandTournamentRecordsInserted: recordsInserted,
         criticalErrors: this.DB_UPDATES.criticalErrors,
         durationMs: Date.now() - start.getTime(),
+        ...this.jobFailure,
       },
     });
   }
@@ -594,8 +595,7 @@ export class GenericFetchAndSaveBackend {
       await this.pgSqlQuery('REFRESH MATERIALIZED VIEW CONCURRENTLY global_ranking;');
       Utils.logMessage('Global rankings refreshed successfully');
     } catch (error) {
-      Utils.logCritical('100', error, 'Error refreshing global rankings');
-      this.DB_UPDATES.criticalErrors++;
+      this.recordJobFailure('global rankings refresh', error, '100');
     }
     const end = new Date();
     const duration = end.getTime() - start.getTime();
@@ -613,6 +613,7 @@ export class GenericFetchAndSaveBackend {
         server: this.server,
         criticalErrors: this.DB_UPDATES.criticalErrors,
         durationMs: Date.now() - start.getTime(),
+        ...this.jobFailure,
       },
     });
   }
@@ -691,8 +692,11 @@ export class GenericFetchAndSaveBackend {
           await this.insertDungeonRows(kid, scan.dungeons);
         }
         if (tilesFailed > 0) {
-          console.error(`Dungeon discovery incomplete for ${this.server}: ${tilesFailed} tile(s) never answered`);
-          this.DB_UPDATES.criticalErrors++;
+          this.recordJobFailure(
+            'dungeon discovery',
+            new Error(`${tilesFailed} of ${tilesScanned} tile(s) never answered`),
+            '431',
+          );
           return false;
         }
         await this.upsertParameter(this.DUNGEON_DISCOVERY_PARAMETER, this.getDungeonDiscoveryBoundaryHours());
@@ -703,8 +707,7 @@ export class GenericFetchAndSaveBackend {
       );
       return stamped === true;
     } catch (error) {
-      console.error('Error while discovering new dungeons:', error);
-      this.DB_UPDATES.criticalErrors++;
+      this.recordJobFailure('dungeon discovery', error, '431');
       return false;
     } finally {
       await this.logToLoki({
@@ -717,6 +720,7 @@ export class GenericFetchAndSaveBackend {
           tilesScanned,
           tilesFailed,
           dungeonsFound,
+          ...this.jobFailure,
         },
       });
     }
@@ -755,12 +759,7 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('=====================================');
       Utils.logMessage('.');
     } catch (error) {
-      Utils.logCritical(
-        '101',
-        error,
-        'Error occurred while executing the event history for Outer Realms + Beyond the Horizon',
-      );
-      this.DB_UPDATES.criticalErrors++;
+      this.recordJobFailure('outer realms and beyond the horizon event history', error, '101');
     } finally {
       if (!dryRunInsertOR || !dryRunInsertBTH) {
         await this.closePool();
@@ -771,6 +770,7 @@ export class GenericFetchAndSaveBackend {
             server: this.server,
             criticalErrors: this.DB_UPDATES.criticalErrors,
             durationMs: Date.now() - start.getTime(),
+            ...this.jobFailure,
           },
         });
         Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, 'OUTER_REALMS_AND_BEYOND_THE_HORIZON_EVENT_HISTORY');
@@ -953,8 +953,7 @@ export class GenericFetchAndSaveBackend {
         await this.bumpScanVersion(`dungeon-version:${this.server}`);
       });
     } catch (error) {
-      console.error('Error while updating dungeons list:', error);
-      this.DB_UPDATES.criticalErrors++;
+      this.recordJobFailure('dungeon cooldown sweep', error, '430');
     } finally {
       await this.closePool();
       const end = new Date();
@@ -979,6 +978,7 @@ export class GenericFetchAndSaveBackend {
           durationMs: elapsedTime,
           squaresCount: Object.keys(squares).length,
           dungeonsUpdated: this.DB_UPDATES.playersCreated,
+          ...this.jobFailure,
         },
       });
     }
@@ -1013,8 +1013,7 @@ export class GenericFetchAndSaveBackend {
       ]);
       await this.bumpScanVersion(`storm-version:${this.server}`);
     } catch (error) {
-      console.error('Error while updating the storm map:', error);
-      this.DB_UPDATES.criticalErrors++;
+      this.recordJobFailure('storm map sweep', error, '420');
       throw error;
     } finally {
       const elapsedTime = Date.now() - start.getTime();
@@ -1032,6 +1031,7 @@ export class GenericFetchAndSaveBackend {
           radius: scan?.radius ?? 0,
           borderReached: scan?.borderReached ?? false,
           seasonRollover,
+          ...this.jobFailure,
         },
       });
     }
@@ -1096,8 +1096,7 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage(' Total unique player entries fetched:', playerEntries.size);
       await this.storeOuterRealmsEntries(playerEntries);
     } catch (error) {
-      Utils.logCritical('', error, 'Error during Outer Realms data fetch:');
-      this.DB_UPDATES.criticalErrors++;
+      this.recordJobFailure('outer realms data fetch', error, '450');
     } finally {
       const end = new Date();
       const duration = end.getTime() - start.getTime();
@@ -1116,6 +1115,7 @@ export class GenericFetchAndSaveBackend {
           playersCreated: this.DB_UPDATES.playersCreated,
           LT,
           durationMs: duration,
+          ...this.jobFailure,
         },
       });
     }
@@ -1225,8 +1225,7 @@ export class GenericFetchAndSaveBackend {
         await this.insertWheelOfUnimaginableAffluenceData(retry + 1);
         return;
       }
-      Utils.logCritical('', error, 'Error fetching Wheel of Unimaginable Affluence data:');
-      this.DB_UPDATES.criticalErrors++;
+      this.recordJobFailure('wheel of affluence collection', error, '440');
     } finally {
       Utils.logMessage('Finished processing Wheel of Unimaginable Affluence data.');
       if (this.DB_UPDATES.criticalErrors > 0) {
@@ -1247,6 +1246,7 @@ export class GenericFetchAndSaveBackend {
           eventActive,
           entriesStored,
           entriesAnnounced,
+          ...this.jobFailure,
         },
       });
     }
@@ -5215,6 +5215,18 @@ export class GenericFetchAndSaveBackend {
       result.push(arr.slice(i, i + size));
     }
     return result;
+  }
+
+  // The closing Loki record is the only trace a job leaves, so it must say what broke, not only that something did.
+  private recordJobFailure(step: string, error: unknown, identifier = ''): void {
+    this.DB_UPDATES.criticalErrors++;
+    Utils.logCritical(identifier, error, `Error during ${step} on ${this.server}`);
+    // The first failure explains the run; the ones after it are usually its fallout.
+    this.jobFailure ??= {
+      failureStep: step,
+      failureReason: Utils.describeError(error).slice(0, 300) || 'no reason reported',
+      ...(identifier ? { failureIdentifier: identifier } : {}),
+    };
   }
 
   private async logToLoki({

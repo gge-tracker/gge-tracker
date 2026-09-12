@@ -20,6 +20,7 @@ const LAST_EVENT = /SELECT event_id, created_at FROM grand_tournament/;
 const STORM_FORT = 25;
 const STORM_ISLE = 24;
 const STORM_BORDER = 31;
+const REALM_CASTLES = /SELECT castles_realm FROM players/;
 
 interface LokiRecord {
   job: string;
@@ -110,6 +111,8 @@ describe('job telemetry', () => {
         const record = recordFor(sandbox, 'wheel-of-affluence');
         assert.equal(record.level, 'error');
         assert.equal(record.criticalErrors, 1);
+        assert.equal(record.failureStep, 'wheel of affluence collection');
+        assert.equal(record.failureReason, 'the bridge is down');
       });
     });
   });
@@ -142,6 +145,20 @@ describe('job telemetry', () => {
       });
     });
 
+    it('names the server, the step and the reason when the sweep fails', async () => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.db.when(STORM_META, { error: new Error('storm_meta is missing on this server') });
+
+        await assert.rejects(sandbox.call('updateStormMap'));
+
+        const record = recordFor(sandbox, 'update-storm-map');
+        assert.equal(record.level, 'error');
+        assert.equal(record.server, 'TEST1');
+        assert.equal(record.failureStep, 'storm map sweep');
+        assert.equal(record.failureReason, 'storm_meta is missing on this server');
+      });
+    });
+
     it('flags the monthly wipe on the run that applied it', async () => {
       await withSandbox({}, async (sandbox) => {
         sandbox.db.when(STORM_META, { rows: [{ scan_radius: 50, season_started_at: new Date(0) }] });
@@ -153,6 +170,25 @@ describe('job telemetry', () => {
         const record = recordFor(sandbox, 'update-storm-map');
         assert.equal(record.seasonRollover, true);
         assert.equal(record.forts, 0);
+      });
+    });
+  });
+
+  describe('dungeon discovery', () => {
+    it('names the tiles that never answered, a failure no exception reports', async () => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.db.when(REALM_CASTLES, { rows: [{ castles_realm: [[1, 555, 555, 12]] }] });
+        sandbox.api.on('gaa', () => {
+          throw new Error('the bridge is down');
+        });
+
+        await sandbox.call('discoverNewDungeons');
+
+        const record = recordFor(sandbox, 'discover-new-dungeons');
+        assert.equal(record.level, 'error');
+        assert.equal(record.failureStep, 'dungeon discovery');
+        assert.equal(record.failureIdentifier, '431');
+        assert.match(String(record.failureReason), /tile\(s\) never answered$/);
       });
     });
   });
