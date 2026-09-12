@@ -15,12 +15,27 @@
       }
     ]
   },
-  "description": "Cloudflare edge traffic for gge-tracker.com. Zone panels are fed by cloudflare-zone-exporter (httpRequests1hGroups + httpRequestsAdaptiveGroups); Worker and account panels by lablabs/cloudflare_exporter. Zone figures describe the last COMPLETE hour, because the free plan exposes no finer granularity than that",
+  "description": "What the CDN saw in front of the site: requests, bandwidth, cache and threats",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
-  "links": [],
+  "links": [
+    {
+      "asDropdown": true,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [
+        "gge-tracker"
+      ],
+      "targetBlank": false,
+      "title": "GGE Tracker",
+      "tooltip": "Every dashboard you can open",
+      "type": "dashboards",
+      "url": ""
+    }
+  ],
   "panels": [
     {
       "collapsed": false,
@@ -1208,7 +1223,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Cloudflare Worker invocations and errors from lablabs/cloudflare_exporter. It samples a fixed 60-second window ending 5 minutes ago, so a low-traffic worker (my-fetcher runs ~13x/hour) leaves this empty most of the time - sparse lines here are expected, not a fault.",
+      "description": "Cloudflare Worker invocations and errors from lablabs/cloudflare_exporter. It samples a fixed 60-second window ending 5 minutes ago, so a low-traffic worker (my-fetcher runs ~13x/hour) leaves this empty most of the time - sparse lines here are expected, not a fault",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1328,7 +1343,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Account HTTP data transfer for the current calendar month, with a linear projection to month end. Served by cloudflare-zone-exporter: the published lablabs image predates its ENABLE_ACCOUNT_USAGE_METRICS flag and ignores it.",
+      "description": "Account HTTP data transfer for the current calendar month, with a linear projection to month end. Served by cloudflare-zone-exporter: the published lablabs image predates its ENABLE_ACCOUNT_USAGE_METRICS flag and ignores it",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1497,9 +1512,9 @@
   "refresh": "1m",
   "schemaVersion": 42,
   "tags": [
-    "Cloudflare",
-    "Infrastructure",
-    "Admin"
+    "gge-tracker",
+    "cdn",
+    "admin"
   ],
   "templating": {
     "list": [
@@ -1532,7 +1547,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "[gge-tracker] Cloudflare",
+  "title": "Cloudflare",
   "uid": "gge-tracker-cloudflare",
   "version": 1
 }

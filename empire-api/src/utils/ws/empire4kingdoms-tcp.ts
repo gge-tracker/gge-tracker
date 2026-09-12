@@ -94,7 +94,7 @@ class GgeEmpire4KingdomsTcp extends BaseSocket implements GgeEmpireSocketImpl {
     }
   }
 
-  protected send(data: string): void {
+  protected transmit(data: string): void {
     this.socket.write(data + '\u0000');
   }
 

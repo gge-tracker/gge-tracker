@@ -67,6 +67,7 @@ class GgeEmpireSocket extends BaseSocket implements GgeEmpireSocketImpl {
    * rate-limited, so none of them may be shortened
    */
   private handleLoginFailure(lliResponse: { payload: { status: number; data?: Record<string, unknown> } }): void {
+    this.countLoginFailure();
     switch (lliResponse.payload.status) {
       case 21: {
         this.kill();

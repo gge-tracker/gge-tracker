@@ -197,6 +197,7 @@ export class GenericFetchAndSaveBackend {
   public connection!: mysql.Pool;
   public pgSqlConnection!: pg.Pool;
   public allianceUpdated: { [key: string]: boolean } = {};
+  private jobFailure: { failureStep: string; failureReason: string; failureIdentifier?: string } | null = null;
   private pgSqlPoolEnded: boolean = false;
   private readonly WEBHOOK_URL: string = process.env.WEBHOOK_URL || '';
   private readonly CURRENT_ENV: string = process.env.ENVIRONMENT || 'development';
@@ -212,6 +213,7 @@ export class GenericFetchAndSaveBackend {
   private readonly DUNGEON_DISCOVERY_WEEKDAY_UTC = 1;
   private readonly DUNGEON_DISCOVERY_HOUR_UTC = 3;
   private readonly DUNGEON_DISCOVERY_PARAMETER = 'dungeons_discovery';
+  private readonly DUNGEON_SCAN_PARAMETER = 'dungeons_scan';
   private readonly DUNGEON_LOCK_KEY = 4242001;
   private readonly STORM_KID = 4;
   private readonly STORM_CENTER_X = 644;
@@ -507,6 +509,9 @@ export class GenericFetchAndSaveBackend {
 
   public async fillGrandTournamentResults(): Promise<void> {
     const start = new Date();
+    let eventId = 0;
+    let recordsInserted = 0;
+    let subdivisions = 0;
     try {
       Utils.logMessage('=====================================');
       Utils.logMessage(' Starting global rankings refresh');
@@ -515,6 +520,7 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('Refreshing Grand Tournament results...');
 
       const currentEventId = await this.resolveGrandTournamentEventId();
+      eventId = currentEventId;
       Utils.logMessage('Current eventId: ', currentEventId);
       const maxLevelCategory = 5;
       const alliances: { [key: string]: any } = {};
@@ -522,9 +528,11 @@ export class GenericFetchAndSaveBackend {
       for (let lc = 1; lc <= maxLevelCategory; lc++) {
         Utils.logMessage(' Processing level category:', lc);
         const subDivisionCount = await this.collectGrandTournamentDivision(lc, currentEventId, dateStr, alliances);
+        subdivisions += subDivisionCount;
         Utils.logMessage(' Total subdivisions processed for level category', lc + ':', subDivisionCount);
       }
       const insertValues: any[] = Object.values(alliances);
+      recordsInserted = insertValues.length;
       Utils.logMessage('Inserting ', insertValues.length, 'records into the database...');
       if (insertValues.length > 0) {
         await this.insertGrandTournamentRows(insertValues);
@@ -551,20 +559,22 @@ export class GenericFetchAndSaveBackend {
         Utils.logMessage('.');
       }
     } catch (error) {
-      Utils.logCritical('411', error, 'Error refreshing Grand Tournament results');
-      this.DB_UPDATES.criticalErrors++;
+      this.recordJobFailure('grand tournament results refresh', error, '411');
     }
     await this.closePool();
     Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, this.server);
 
     await this.logToLoki({
       job: 'grand-tournament',
+      level: this.DB_UPDATES.criticalErrors > 0 ? 'error' : 'info',
       data: {
         server: this.server,
-        grandTournamentRecordsInserted:
-          Object.keys(this.DB_UPDATES).length > 0 ? Object.values(this.DB_UPDATES).length : 0,
+        eventId,
+        subdivisions,
+        grandTournamentRecordsInserted: recordsInserted,
         criticalErrors: this.DB_UPDATES.criticalErrors,
         durationMs: Date.now() - start.getTime(),
+        ...this.jobFailure,
       },
     });
   }
@@ -585,8 +595,7 @@ export class GenericFetchAndSaveBackend {
       await this.pgSqlQuery('REFRESH MATERIALIZED VIEW CONCURRENTLY global_ranking;');
       Utils.logMessage('Global rankings refreshed successfully');
     } catch (error) {
-      Utils.logCritical('100', error, 'Error refreshing global rankings');
-      this.DB_UPDATES.criticalErrors++;
+      this.recordJobFailure('global rankings refresh', error, '100');
     }
     const end = new Date();
     const duration = end.getTime() - start.getTime();
@@ -599,10 +608,12 @@ export class GenericFetchAndSaveBackend {
     Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, 'GLOBAL_RANKING');
     await this.logToLoki({
       job: 'global-rankings-refresh',
+      level: this.DB_UPDATES.criticalErrors > 0 ? 'error' : 'info',
       data: {
         server: this.server,
         criticalErrors: this.DB_UPDATES.criticalErrors,
         durationMs: Date.now() - start.getTime(),
+        ...this.jobFailure,
       },
     });
   }
@@ -681,8 +692,11 @@ export class GenericFetchAndSaveBackend {
           await this.insertDungeonRows(kid, scan.dungeons);
         }
         if (tilesFailed > 0) {
-          console.error(`Dungeon discovery incomplete for ${this.server}: ${tilesFailed} tile(s) never answered`);
-          this.DB_UPDATES.criticalErrors++;
+          this.recordJobFailure(
+            'dungeon discovery',
+            new Error(`${tilesFailed} of ${tilesScanned} tile(s) never answered`),
+            '431',
+          );
           return false;
         }
         await this.upsertParameter(this.DUNGEON_DISCOVERY_PARAMETER, this.getDungeonDiscoveryBoundaryHours());
@@ -693,12 +707,12 @@ export class GenericFetchAndSaveBackend {
       );
       return stamped === true;
     } catch (error) {
-      console.error('Error while discovering new dungeons:', error);
-      this.DB_UPDATES.criticalErrors++;
+      this.recordJobFailure('dungeon discovery', error, '431');
       return false;
     } finally {
       await this.logToLoki({
         job: 'discover-new-dungeons',
+        level: this.DB_UPDATES.criticalErrors > 0 ? 'error' : 'info',
         data: {
           server: this.server,
           criticalErrors: this.DB_UPDATES.criticalErrors,
@@ -706,6 +720,7 @@ export class GenericFetchAndSaveBackend {
           tilesScanned,
           tilesFailed,
           dungeonsFound,
+          ...this.jobFailure,
         },
       });
     }
@@ -744,21 +759,18 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('=====================================');
       Utils.logMessage('.');
     } catch (error) {
-      Utils.logCritical(
-        '101',
-        error,
-        'Error occurred while executing the event history for Outer Realms + Beyond the Horizon',
-      );
-      this.DB_UPDATES.criticalErrors++;
+      this.recordJobFailure('outer realms and beyond the horizon event history', error, '101');
     } finally {
       if (!dryRunInsertOR || !dryRunInsertBTH) {
         await this.closePool();
         await this.logToLoki({
           job: 'outer-realms-and-beyond-the-horizon-event-history',
+          level: this.DB_UPDATES.criticalErrors > 0 ? 'error' : 'info',
           data: {
             server: this.server,
             criticalErrors: this.DB_UPDATES.criticalErrors,
             durationMs: Date.now() - start.getTime(),
+            ...this.jobFailure,
           },
         });
         Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, 'OUTER_REALMS_AND_BEYOND_THE_HORIZON_EVENT_HISTORY');
@@ -936,13 +948,12 @@ export class GenericFetchAndSaveBackend {
         const scanned = await this.scanDungeonCooldowns(rows, squares, totalRequests, dungeonsToUpdate);
         if (!scanned) return;
 
-        await this.upsertParameter('dungeons_scan', dungeonsToUpdate.length);
+        await this.upsertParameter(this.DUNGEON_SCAN_PARAMETER, dungeonsToUpdate.length);
         await this.persistDungeonUpdates(pgPool, dungeonsToUpdate);
         await this.bumpScanVersion(`dungeon-version:${this.server}`);
       });
     } catch (error) {
-      console.error('Error while updating dungeons list:', error);
-      this.DB_UPDATES.criticalErrors++;
+      this.recordJobFailure('dungeon cooldown sweep', error, '430');
     } finally {
       await this.closePool();
       const end = new Date();
@@ -960,12 +971,14 @@ export class GenericFetchAndSaveBackend {
       console.log('Squares count:', Object.keys(squares).length);
       await this.logToLoki({
         job: 'update-dungeons-list',
+        level: this.DB_UPDATES.criticalErrors > 0 ? 'error' : 'info',
         data: {
           server: this.server,
           criticalErrors: this.DB_UPDATES.criticalErrors,
           durationMs: elapsedTime,
           squaresCount: Object.keys(squares).length,
           dungeonsUpdated: this.DB_UPDATES.playersCreated,
+          ...this.jobFailure,
         },
       });
     }
@@ -979,13 +992,15 @@ export class GenericFetchAndSaveBackend {
    */
   public async updateStormMap(): Promise<void> {
     const start = new Date();
+    let scan: StormScanResult | null = null;
+    let seasonRollover = false;
     try {
-      await this.applyStormSeasonRolloverIfNeeded();
+      seasonRollover = await this.applyStormSeasonRolloverIfNeeded();
 
       const { rows: metaRows } = await this.pgSqlQuery('SELECT scan_radius FROM storm_meta WHERE id = TRUE');
       const knownRadius = metaRows.length > 0 ? Number(metaRows[0].scan_radius) : this.STORM_TILE_HALF_SPAN;
 
-      const scan = await this.scanStormMap(knownRadius);
+      scan = await this.scanStormMap(knownRadius);
       console.log(
         `Storm scan done for ${this.server}: ${scan.forts.length} forts, ${scan.isles.length} isles, ` +
           `radius ${scan.radius}${scan.borderReached ? ' (border reached)' : ''}`,
@@ -998,17 +1013,25 @@ export class GenericFetchAndSaveBackend {
       ]);
       await this.bumpScanVersion(`storm-version:${this.server}`);
     } catch (error) {
-      console.error('Error while updating the storm map:', error);
-      this.DB_UPDATES.criticalErrors++;
+      this.recordJobFailure('storm map sweep', error, '420');
       throw error;
     } finally {
       const elapsedTime = Date.now() - start.getTime();
       await this.logToLoki({
         job: 'update-storm-map',
+        level: this.DB_UPDATES.criticalErrors > 0 ? 'error' : 'info',
         data: {
           server: this.server,
           criticalErrors: this.DB_UPDATES.criticalErrors,
           durationMs: elapsedTime,
+          forts: scan?.forts.length ?? 0,
+          isles: scan?.isles.length ?? 0,
+          occupiedIsles: scan?.isles.filter((isle) => (isle.occupierId ?? 0) > 0).length ?? 0,
+          lockedForts: scan?.forts.filter((fort) => !fort.isVisible).length ?? 0,
+          radius: scan?.radius ?? 0,
+          borderReached: scan?.borderReached ?? false,
+          seasonRollover,
+          ...this.jobFailure,
         },
       });
     }
@@ -1073,8 +1096,7 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage(' Total unique player entries fetched:', playerEntries.size);
       await this.storeOuterRealmsEntries(playerEntries);
     } catch (error) {
-      Utils.logCritical('', error, 'Error during Outer Realms data fetch:');
-      this.DB_UPDATES.criticalErrors++;
+      this.recordJobFailure('outer realms data fetch', error, '450');
     } finally {
       const end = new Date();
       const duration = end.getTime() - start.getTime();
@@ -1086,12 +1108,14 @@ export class GenericFetchAndSaveBackend {
       Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, 'LIVE_OUTER_REALMS');
       await this.logToLoki({
         job: 'outer-realms-data-fetch',
+        level: this.DB_UPDATES.criticalErrors > 0 ? 'error' : 'info',
         data: {
           server: this.server,
           criticalErrors: this.DB_UPDATES.criticalErrors,
           playersCreated: this.DB_UPDATES.playersCreated,
           LT,
           durationMs: duration,
+          ...this.jobFailure,
         },
       });
     }
@@ -1166,14 +1190,22 @@ export class GenericFetchAndSaveBackend {
   public async insertWheelOfUnimaginableAffluenceData(retry = 0): Promise<void> {
     const LT = 72;
     const LID = 1;
+    const start = new Date();
+    let eventActive = false;
+    let entriesStored = 0;
+    let entriesAnnounced = 0;
+    let delegatedToRetry = false;
     Utils.logMessage('Start fetching Wheel of Unimaginable Affluence data with LT =', LT);
     try {
       const response = await this.genericFetchData('hgh', { LT, LID, SV: '1' });
       if (response.data.return_code == '0' && response.data.content?.L?.length > 0) {
+        eventActive = true;
         Utils.logMessage('Wheel of Unimaginable Affluence event is active. Start fetching data...');
         const entriesPerPage = response.data.content.L.length;
         const totalEntries = response.data.content.LR || 0;
+        entriesAnnounced = Number(totalEntries) || 0;
         const wheelData = await this.fetchWheelEntries(LT, LID, entriesPerPage, totalEntries);
+        entriesStored = wheelData.length;
         const now = new Date();
         Utils.logMessage(
           'Finished fetching Wheel of Unimaginable Affluence data. Total entries:',
@@ -1189,11 +1221,11 @@ export class GenericFetchAndSaveBackend {
       if (retry < 3) {
         Utils.logMessage(`Error fetching Wheel of Unimaginable Affluence data. Retrying... (Attempt ${retry + 1}/3)`);
         await new Promise((resolve) => setTimeout(resolve, 5000));
+        delegatedToRetry = true;
         await this.insertWheelOfUnimaginableAffluenceData(retry + 1);
         return;
       }
-      Utils.logCritical('', error, 'Error fetching Wheel of Unimaginable Affluence data:');
-      this.DB_UPDATES.criticalErrors++;
+      this.recordJobFailure('wheel of affluence collection', error, '440');
     } finally {
       Utils.logMessage('Finished processing Wheel of Unimaginable Affluence data.');
       if (this.DB_UPDATES.criticalErrors > 0) {
@@ -1203,6 +1235,20 @@ export class GenericFetchAndSaveBackend {
         );
       }
       Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, this.server);
+      if (delegatedToRetry) return;
+      await this.logToLoki({
+        job: 'wheel-of-affluence',
+        level: this.DB_UPDATES.criticalErrors > 0 ? 'error' : 'info',
+        data: {
+          server: this.server,
+          criticalErrors: this.DB_UPDATES.criticalErrors,
+          durationMs: Date.now() - start.getTime(),
+          eventActive,
+          entriesStored,
+          entriesAnnounced,
+          ...this.jobFailure,
+        },
+      });
     }
   }
 
@@ -1638,7 +1684,9 @@ export class GenericFetchAndSaveBackend {
   }
 
   private async withDungeonLock<T>(label: string, action: () => Promise<T>): Promise<T | null> {
-    const client = await this.getPool().connect();
+    const client = new pg.Client(this.PGSQL_CONFIG);
+    client.on('error', (error) => Utils.logMessage(' [WARN] Dungeon lock connection lost:', error.message));
+    await client.connect();
     try {
       const { rows } = await client.query('SELECT pg_try_advisory_lock($1) AS acquired', [this.DUNGEON_LOCK_KEY]);
       if (rows[0]?.acquired !== true) {
@@ -1651,7 +1699,7 @@ export class GenericFetchAndSaveBackend {
         await client.query('SELECT pg_advisory_unlock($1)', [this.DUNGEON_LOCK_KEY]);
       }
     } finally {
-      client.release();
+      await client.end();
     }
   }
 
@@ -2394,11 +2442,11 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
-  private async applyStormSeasonRolloverIfNeeded(): Promise<void> {
+  private async applyStormSeasonRolloverIfNeeded(): Promise<boolean> {
     const boundary = this.getLastStormSeasonBoundary();
     const { rows } = await this.pgSqlQuery('SELECT season_started_at FROM storm_meta WHERE id = TRUE');
     if (rows.length > 0 && new Date(rows[0].season_started_at) >= boundary) {
-      return;
+      return false;
     }
 
     console.log(`New storm season detected for ${this.server}, wiping the previous map...`);
@@ -2431,6 +2479,7 @@ export class GenericFetchAndSaveBackend {
     } else {
       console.log('Info: player already entered island. Continue...');
     }
+    return true;
   }
 
   private getLastStormSeasonBoundary(): Date {
@@ -4631,13 +4680,13 @@ export class GenericFetchAndSaveBackend {
   }
 
   private async clearParameters(): Promise<void> {
-    //  We clear all parameters in the database
     Utils.logMessage('Database connection successful');
     const pgQuery = `
       UPDATE parameters
       SET value = NULL
+      WHERE identifier <> ALL($1::text[])
     `;
-    await this.pgSqlQuery(pgQuery);
+    await this.pgSqlQuery(pgQuery, [[this.DUNGEON_DISCOVERY_PARAMETER, this.DUNGEON_SCAN_PARAMETER]]);
   }
 
   /**
@@ -5166,6 +5215,18 @@ export class GenericFetchAndSaveBackend {
       result.push(arr.slice(i, i + size));
     }
     return result;
+  }
+
+  // The closing Loki record is the only trace a job leaves, so it must say what broke, not only that something did.
+  private recordJobFailure(step: string, error: unknown, identifier = ''): void {
+    this.DB_UPDATES.criticalErrors++;
+    Utils.logCritical(identifier, error, `Error during ${step} on ${this.server}`);
+    // The first failure explains the run; the ones after it are usually its fallout.
+    this.jobFailure ??= {
+      failureStep: step,
+      failureReason: Utils.describeError(error).slice(0, 300) || 'no reason reported',
+      ...(identifier ? { failureIdentifier: identifier } : {}),
+    };
   }
 
   private async logToLoki({

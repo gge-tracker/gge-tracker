@@ -93,10 +93,16 @@ class Utils {
    */
   public static logCritical(identifier: string, error: unknown, ...context: Array<any>): void {
     const detail: string = error === undefined || error === null ? '' : Utils.formatMessage([error]);
-    const reason: string = error instanceof Error ? error.message : detail.split('\n')[0];
+    const reason: string = Utils.describeError(error);
     const summary: string = Utils.formatMessage(context).trim().replace(/:$/, '');
     const msg: string = reason ? `${summary}: ${reason}`.slice(0, 200) : summary;
     logger.error({ identifier: identifier || undefined, detail: detail || undefined }, msg);
+  }
+
+  public static describeError(error: unknown): string {
+    if (error === undefined || error === null) return '';
+    if (error instanceof Error) return error.message;
+    return Utils.formatMessage([error]).split('\n')[0];
   }
 
   /**

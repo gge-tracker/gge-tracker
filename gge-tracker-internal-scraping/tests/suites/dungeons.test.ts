@@ -496,4 +496,26 @@ describe('the dungeon lock', () => {
       assert.equal(sandbox.db.matching(UNLOCK).length, 1);
     });
   });
+
+  it('is held outside the pool, so a discovery still runs on the single connection the worker allows', async () => {
+    await withSandbox({ connectionLimit: 1 }, async (sandbox) => {
+      sandbox.db.when(CASTLES, realmCastles([LONE_TILE_CASTLE, LONE_TILE_CASTLE]));
+      sandbox.api.on('gaa', () => areaResponse([dungeonAt(LONE_TILE_CASTLE, LONE_TILE_CASTLE, 7200, 55)]));
+      assert.equal(await sandbox.call('discoverNewDungeons'), true);
+      assert.equal(sandbox.db.matching(INSERT_DUNGEONS).length, 1);
+      assert.equal(discoveryStamp(sandbox), CURRENT_BOUNDARY_HOURS);
+    });
+  });
+
+  it('leaves that single connection free for the sweep to write through', async () => {
+    await withSandbox({ connectionLimit: 1 }, async (sandbox) => {
+      sandbox.db.when(READY_DUNGEONS, {
+        rows: [{ kid: WORLD, position_x: 700, position_y: 710, global_available_at: new Date(0) }],
+      });
+      sandbox.api.on('gaa', () => areaResponse([dungeonAt(700, 710, 7200, 55)]));
+      await sandbox.call('updateDungeonsList');
+      assert.equal(sandbox.db.matching(UPDATE_DUNGEONS).length, 1);
+      assert.equal(sandbox.db.matching(UNLOCK).length, 1);
+    });
+  });
 });
