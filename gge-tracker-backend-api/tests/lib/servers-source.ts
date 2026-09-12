@@ -54,7 +54,7 @@ export function discoverServers(): ServerEntry[] {
         olapDatabase: text(databases.olap),
         resetOffset: optionalNumber(row['reset-offset']),
         special: text(row.special) === 'true',
-        disabled: text(databases.sql) === '',
+        disabled: text(row.enabled) !== 'true',
         line: lineOf(source, key),
       };
     });
