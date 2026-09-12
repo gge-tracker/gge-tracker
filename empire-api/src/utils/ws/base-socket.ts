@@ -2,6 +2,7 @@ import WebSocket from 'ws';
 import { AsyncEvent } from '../event.js';
 import { HeadersUtilities } from '../nested-headers.js';
 import { Log } from './log.js';
+import { createSocketStats, GgeMetricsSocket, GgeSocketStats } from '../metrics.js';
 import * as net from 'node:net';
 import { randomInt } from 'node:crypto';
 
@@ -24,7 +25,7 @@ export enum SocketState {
   KILLED = 'KILLED',
 }
 
-class BaseSocket extends Log {
+class BaseSocket extends Log implements GgeMetricsSocket {
   private static readonly XML_REGEX = /<msg t='(.*?)'><body action='(.*?)' r='(.*?)'>(.*?)<\/body><\/msg>/;
   public opened: AsyncEvent;
   public closed: AsyncEvent;
@@ -46,6 +47,7 @@ class BaseSocket extends Log {
   protected hasGbl: boolean;
   protected nbReconnects: number;
   protected serverType: GgeServerType;
+  protected readonly stats: GgeSocketStats = createSocketStats();
   protected onSend: (data: string) => void;
   protected onOpen: (ws: WebSocket) => void;
   protected onMessage: (message: string, parsedMessage: { type: string; payload: any }) => Promise<void> | void;
@@ -71,12 +73,33 @@ class BaseSocket extends Log {
     this.reconnect = autoReconnect;
   }
 
+  public get metricsLabels(): { server: string; type: string } {
+    return { server: this.serverHeader, type: this.serverType };
+  }
+
+  public get metricsConnected(): boolean {
+    return this.connected.isSet;
+  }
+
+  public get metricsState(): string {
+    return this.socketState ?? SocketState.CONNECTING;
+  }
+
+  public get metricsStats(): GgeSocketStats {
+    return this.stats;
+  }
+
+  public countLoginFailure(): void {
+    this.stats.loginFailures++;
+  }
+
   public async pingAndCheck(): Promise<void> {
     if (this.socketState === SocketState.KILLED) {
       this.warn('[pingAndCheck] Socket is killed. No ping or connection check will be performed.');
       return;
     }
     this.success('[pingAndCheck] Login successful, checking connection...');
+    this.stats.connectedSinceMs = Date.now();
     this.connected.set();
     this.setSocketState(SocketState.CONNECTED);
     setTimeout(() => this.ping(), 5000);
@@ -101,6 +124,7 @@ class BaseSocket extends Log {
       return;
     }
     this.log('[restart] Disconnecting and restarting socket connection.');
+    this.stats.restarts++;
     this.disconnect();
     const { baseDelaySeconds, jitterSeconds, preSleepMilliseconds } = this.reconnectTiming();
     const nbReconnects = this.nbReconnects++;
@@ -138,6 +162,7 @@ class BaseSocket extends Log {
         this.setSocketState(SocketState.DISCONNECTED);
       }
       this.log(this.url, '[disconnect] Disconnecting from socket (state:', this.socketState, ')...');
+      this.stats.connectedSinceMs = null;
       this.connected.clear();
       this.closed.clear();
       this.opened.clear();
@@ -303,6 +328,8 @@ class BaseSocket extends Log {
     if (needToStringOption) {
       message = message.toString();
     }
+    this.stats.messagesReceived++;
+    this.stats.lastMessageAtMs = Date.now();
     const response = this.parseResponse(message);
     this._processResponse(response);
     if (this.onMessage) void this.onMessage(message, response);
@@ -310,6 +337,11 @@ class BaseSocket extends Log {
 
   protected send(data: string): void {
     if (this.onSend) this.onSend(data);
+    this.stats.messagesSent++;
+    this.transmit(data);
+  }
+
+  protected transmit(data: string): void {
     this.ws.send(data);
   }
 
@@ -362,11 +394,13 @@ class BaseSocket extends Log {
   }
 
   private _onError(error: unknown): void {
+    this.stats.socketErrors++;
     this.disconnect();
     if (this.onError) this.onError(error);
   }
 
   private _onClose(code: number, reason: Buffer<ArrayBufferLike>): void {
+    this.stats.socketCloses++;
     this.disconnect();
     if (this.onClose) this.onClose(code, reason);
   }

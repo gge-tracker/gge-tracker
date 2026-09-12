@@ -508,6 +508,9 @@ export class GenericFetchAndSaveBackend {
 
   public async fillGrandTournamentResults(): Promise<void> {
     const start = new Date();
+    let eventId = 0;
+    let recordsInserted = 0;
+    let subdivisions = 0;
     try {
       Utils.logMessage('=====================================');
       Utils.logMessage(' Starting global rankings refresh');
@@ -516,6 +519,7 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('Refreshing Grand Tournament results...');
 
       const currentEventId = await this.resolveGrandTournamentEventId();
+      eventId = currentEventId;
       Utils.logMessage('Current eventId: ', currentEventId);
       const maxLevelCategory = 5;
       const alliances: { [key: string]: any } = {};
@@ -523,9 +527,11 @@ export class GenericFetchAndSaveBackend {
       for (let lc = 1; lc <= maxLevelCategory; lc++) {
         Utils.logMessage(' Processing level category:', lc);
         const subDivisionCount = await this.collectGrandTournamentDivision(lc, currentEventId, dateStr, alliances);
+        subdivisions += subDivisionCount;
         Utils.logMessage(' Total subdivisions processed for level category', lc + ':', subDivisionCount);
       }
       const insertValues: any[] = Object.values(alliances);
+      recordsInserted = insertValues.length;
       Utils.logMessage('Inserting ', insertValues.length, 'records into the database...');
       if (insertValues.length > 0) {
         await this.insertGrandTournamentRows(insertValues);
@@ -560,10 +566,12 @@ export class GenericFetchAndSaveBackend {
 
     await this.logToLoki({
       job: 'grand-tournament',
+      level: this.DB_UPDATES.criticalErrors > 0 ? 'error' : 'info',
       data: {
         server: this.server,
-        grandTournamentRecordsInserted:
-          Object.keys(this.DB_UPDATES).length > 0 ? Object.values(this.DB_UPDATES).length : 0,
+        eventId,
+        subdivisions,
+        grandTournamentRecordsInserted: recordsInserted,
         criticalErrors: this.DB_UPDATES.criticalErrors,
         durationMs: Date.now() - start.getTime(),
       },
@@ -600,6 +608,7 @@ export class GenericFetchAndSaveBackend {
     Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, 'GLOBAL_RANKING');
     await this.logToLoki({
       job: 'global-rankings-refresh',
+      level: this.DB_UPDATES.criticalErrors > 0 ? 'error' : 'info',
       data: {
         server: this.server,
         criticalErrors: this.DB_UPDATES.criticalErrors,
@@ -700,6 +709,7 @@ export class GenericFetchAndSaveBackend {
     } finally {
       await this.logToLoki({
         job: 'discover-new-dungeons',
+        level: this.DB_UPDATES.criticalErrors > 0 ? 'error' : 'info',
         data: {
           server: this.server,
           criticalErrors: this.DB_UPDATES.criticalErrors,
@@ -756,6 +766,7 @@ export class GenericFetchAndSaveBackend {
         await this.closePool();
         await this.logToLoki({
           job: 'outer-realms-and-beyond-the-horizon-event-history',
+          level: this.DB_UPDATES.criticalErrors > 0 ? 'error' : 'info',
           data: {
             server: this.server,
             criticalErrors: this.DB_UPDATES.criticalErrors,
@@ -961,6 +972,7 @@ export class GenericFetchAndSaveBackend {
       console.log('Squares count:', Object.keys(squares).length);
       await this.logToLoki({
         job: 'update-dungeons-list',
+        level: this.DB_UPDATES.criticalErrors > 0 ? 'error' : 'info',
         data: {
           server: this.server,
           criticalErrors: this.DB_UPDATES.criticalErrors,
@@ -980,13 +992,15 @@ export class GenericFetchAndSaveBackend {
    */
   public async updateStormMap(): Promise<void> {
     const start = new Date();
+    let scan: StormScanResult | null = null;
+    let seasonRollover = false;
     try {
-      await this.applyStormSeasonRolloverIfNeeded();
+      seasonRollover = await this.applyStormSeasonRolloverIfNeeded();
 
       const { rows: metaRows } = await this.pgSqlQuery('SELECT scan_radius FROM storm_meta WHERE id = TRUE');
       const knownRadius = metaRows.length > 0 ? Number(metaRows[0].scan_radius) : this.STORM_TILE_HALF_SPAN;
 
-      const scan = await this.scanStormMap(knownRadius);
+      scan = await this.scanStormMap(knownRadius);
       console.log(
         `Storm scan done for ${this.server}: ${scan.forts.length} forts, ${scan.isles.length} isles, ` +
           `radius ${scan.radius}${scan.borderReached ? ' (border reached)' : ''}`,
@@ -1006,10 +1020,18 @@ export class GenericFetchAndSaveBackend {
       const elapsedTime = Date.now() - start.getTime();
       await this.logToLoki({
         job: 'update-storm-map',
+        level: this.DB_UPDATES.criticalErrors > 0 ? 'error' : 'info',
         data: {
           server: this.server,
           criticalErrors: this.DB_UPDATES.criticalErrors,
           durationMs: elapsedTime,
+          forts: scan?.forts.length ?? 0,
+          isles: scan?.isles.length ?? 0,
+          occupiedIsles: scan?.isles.filter((isle) => (isle.occupierId ?? 0) > 0).length ?? 0,
+          lockedForts: scan?.forts.filter((fort) => !fort.isVisible).length ?? 0,
+          radius: scan?.radius ?? 0,
+          borderReached: scan?.borderReached ?? false,
+          seasonRollover,
         },
       });
     }
@@ -1087,6 +1109,7 @@ export class GenericFetchAndSaveBackend {
       Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, 'LIVE_OUTER_REALMS');
       await this.logToLoki({
         job: 'outer-realms-data-fetch',
+        level: this.DB_UPDATES.criticalErrors > 0 ? 'error' : 'info',
         data: {
           server: this.server,
           criticalErrors: this.DB_UPDATES.criticalErrors,
@@ -1167,14 +1190,22 @@ export class GenericFetchAndSaveBackend {
   public async insertWheelOfUnimaginableAffluenceData(retry = 0): Promise<void> {
     const LT = 72;
     const LID = 1;
+    const start = new Date();
+    let eventActive = false;
+    let entriesStored = 0;
+    let entriesAnnounced = 0;
+    let delegatedToRetry = false;
     Utils.logMessage('Start fetching Wheel of Unimaginable Affluence data with LT =', LT);
     try {
       const response = await this.genericFetchData('hgh', { LT, LID, SV: '1' });
       if (response.data.return_code == '0' && response.data.content?.L?.length > 0) {
+        eventActive = true;
         Utils.logMessage('Wheel of Unimaginable Affluence event is active. Start fetching data...');
         const entriesPerPage = response.data.content.L.length;
         const totalEntries = response.data.content.LR || 0;
+        entriesAnnounced = Number(totalEntries) || 0;
         const wheelData = await this.fetchWheelEntries(LT, LID, entriesPerPage, totalEntries);
+        entriesStored = wheelData.length;
         const now = new Date();
         Utils.logMessage(
           'Finished fetching Wheel of Unimaginable Affluence data. Total entries:',
@@ -1190,6 +1221,7 @@ export class GenericFetchAndSaveBackend {
       if (retry < 3) {
         Utils.logMessage(`Error fetching Wheel of Unimaginable Affluence data. Retrying... (Attempt ${retry + 1}/3)`);
         await new Promise((resolve) => setTimeout(resolve, 5000));
+        delegatedToRetry = true;
         await this.insertWheelOfUnimaginableAffluenceData(retry + 1);
         return;
       }
@@ -1204,6 +1236,19 @@ export class GenericFetchAndSaveBackend {
         );
       }
       Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, this.server);
+      if (delegatedToRetry) return;
+      await this.logToLoki({
+        job: 'wheel-of-affluence',
+        level: this.DB_UPDATES.criticalErrors > 0 ? 'error' : 'info',
+        data: {
+          server: this.server,
+          criticalErrors: this.DB_UPDATES.criticalErrors,
+          durationMs: Date.now() - start.getTime(),
+          eventActive,
+          entriesStored,
+          entriesAnnounced,
+        },
+      });
     }
   }
 
@@ -2397,11 +2442,11 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
-  private async applyStormSeasonRolloverIfNeeded(): Promise<void> {
+  private async applyStormSeasonRolloverIfNeeded(): Promise<boolean> {
     const boundary = this.getLastStormSeasonBoundary();
     const { rows } = await this.pgSqlQuery('SELECT season_started_at FROM storm_meta WHERE id = TRUE');
     if (rows.length > 0 && new Date(rows[0].season_started_at) >= boundary) {
-      return;
+      return false;
     }
 
     console.log(`New storm season detected for ${this.server}, wiping the previous map...`);
@@ -2434,6 +2479,7 @@ export class GenericFetchAndSaveBackend {
     } else {
       console.log('Info: player already entered island. Continue...');
     }
+    return true;
   }
 
   private getLastStormSeasonBoundary(): Date {

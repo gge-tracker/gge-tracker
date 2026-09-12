@@ -84,49 +84,25 @@
       }
     ]
   },
-  "description": "Administrator view of the public API",
+  "description": "Every request the public API answered: traffic, latency, errors, clients and abuse",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
   "links": [
     {
-      "asDropdown": false,
-      "icon": "dashboard",
-      "includeVars": true,
+      "asDropdown": true,
+      "icon": "external link",
+      "includeVars": false,
       "keepTime": true,
       "tags": [
-        "API"
+        "gge-tracker"
       ],
       "targetBlank": false,
-      "title": "API dashboards",
-      "tooltip": "",
+      "title": "GGE Tracker",
+      "tooltip": "Every dashboard you can open",
       "type": "dashboards",
       "url": ""
-    },
-    {
-      "asDropdown": false,
-      "icon": "cloud",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
-      "targetBlank": true,
-      "title": "Cloudflare edge",
-      "tooltip": "Traffic as the CDN saw it, before it reached the API",
-      "type": "link",
-      "url": "/d/gge-tracker-cloudflare"
-    },
-    {
-      "asDropdown": false,
-      "icon": "bolt",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
-      "targetBlank": true,
-      "title": "Explore the raw log stream",
-      "tooltip": "",
-      "type": "link",
-      "url": "/explore?orgId=1&left=%7B%22datasource%22:%22clickhouse%22%7D"
     }
   ],
   "panels": [
@@ -148,7 +124,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "Every request the API logged in the window, after the dashboard filters.",
+      "description": "Every request the API logged in the window, after the dashboard filters",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -225,7 +201,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "Requests whose user agent has the full shape of a browser. Everything else is automation of one kind or another. Ignores the Client type filter so the ratio stays readable.",
+      "description": "Requests whose user agent has the full shape of a browser. Everything else is automation of one kind or another. Ignores the Client type filter so the ratio stays readable",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -302,7 +278,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "Share of requests that did not end in a 5xx. Client errors are not counted against it.",
+      "description": "Share of requests that did not end in a 5xx. Client errors are not counted against it",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -392,7 +368,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "Client errors as a share of all requests. A jump here is usually one integration sending bad parameters, not a user-visible outage.",
+      "description": "Client errors as a share of all requests. A jump here is usually one integration sending bad parameters, not a user-visible outage",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -482,7 +458,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "Server errors as a share of all requests.",
+      "description": "Server errors as a share of all requests",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -572,7 +548,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "95th percentile of the response time morgan measured, over the whole window.",
+      "description": "95th percentile of the response time morgan measured, over the whole window",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -661,7 +637,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "Requests slower than the Slow above (ms) variable, and their share of the window.",
+      "description": "Requests slower than the Slow above (ms) variable, and their share of the window",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -750,7 +726,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "Unique client IPs, taken from the first hop of X-Forwarded-For. The stored ip column holds the whole proxy chain, so counting it raw inflates this by roughly six times.",
+      "description": "Unique client IPs, taken from the first hop of X-Forwarded-For. The stored ip column holds the whole proxy chain, so counting it raw inflates this by roughly six times",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -827,7 +803,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "Requests divided by the span actually covered by the logs in this window.",
+      "description": "Requests divided by the span actually covered by the logs in this window",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -905,7 +881,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "Busiest single minute in the window, expressed in requests per second.",
+      "description": "Busiest single minute in the window, expressed in requests per second",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -983,7 +959,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "Share of 304 responses. High is good: the client honoured the ETag and no body was sent.",
+      "description": "Share of 304 responses. High is good: the client honoured the ETag and no body was sent",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1061,7 +1037,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "Sum of every response time in the window. This is the wall-clock the API spent answering, and the number that tells you which route is worth optimising.",
+      "description": "Sum of every response time in the window. This is the wall-clock the API spent answering, and the number that tells you which route is worth optimising",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1139,7 +1115,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "Distinct normalized routes. Unmatched paths keep their sanitized raw path, so scanner probes inflate this number.",
+      "description": "Distinct normalized routes. Unmatched paths keep their sanitized raw path, so scanner probes inflate this number",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1216,7 +1192,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "Distinct gge-server header values, including the malformed ones and none.",
+      "description": "Distinct gge-server header values, including the malformed ones and none",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1293,7 +1269,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "Requests aimed at paths the API does not serve at all (/.env, /vendor/phpunit, /.git/config). Ignores the Client type filter.",
+      "description": "Requests aimed at paths the API does not serve at all (/.env, /vendor/phpunit, /.git/config). Ignores the Client type filter",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1382,7 +1358,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "Share of traffic from clients that are not browsers and not this API's own internal calls - third-party applications, stock HTTP libraries and declared bots. Ignores the Client type filter.",
+      "description": "Share of traffic from clients that are not browsers and not this API's own internal calls - third-party applications, stock HTTP libraries and declared bots. Ignores the Client type filter",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1460,7 +1436,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "Overall throughput with the failing share drawn on the same axis, so a traffic spike and an error spike can be told apart at a glance.",
+      "description": "Overall throughput with the failing share drawn on the same axis, so a traffic spike and an error spike can be told apart at a glance",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1585,7 +1561,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "Failing requests as a percentage of the traffic in each bucket, split by family. 4xx is normally a caller problem and 5xx is normally ours.",
+      "description": "Failing requests as a percentage of the traffic in each bucket, split by family. 4xx is normally a caller problem and 5xx is normally ours",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1738,7 +1714,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "One series per gge-server header value. none means the caller sent no header, which is normal for the public routes.",
+      "description": "One series per gge-server header value. none means the caller sent no header, which is normal for the public routes",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1847,7 +1823,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "Average requests per hour of day across every day in the window. Timestamps are stored in the API container local time, not the caller's.",
+      "description": "Average requests per hour of day across every day in the window. Timestamps are stored in the API container local time, not the caller's",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1951,7 +1927,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "Requests per weekday and hour over the whole window. Reads as a heatmap: the darker cells are when the API is actually under load, which is when a deploy hurts the most.",
+      "description": "Requests per weekday and hour over the whole window. Reads as a heatmap: the darker cells are when the API is actually under load, which is when a deploy hurts the most",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2068,7 +2044,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "The ten busiest normalized routes. /api/v1/ is the root health probe and is exempt from rate limiting, which is why it usually leads.",
+      "description": "The ten busiest normalized routes. /api/v1/ is the root health probe and is exempt from rate limiting, which is why it usually leads",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2147,7 +2123,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "Where the traffic is aimed. Useful to confirm a new server is being used, and to spot a server that suddenly stops being queried.",
+      "description": "Where the traffic is aimed. Useful to confirm a new server is being used, and to spot a server that suddenly stops being queried",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2226,7 +2202,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "The API only exposes GET (plus one PUT for assets). POST and PUT volume here is either a probe or a caller doing something it should not.",
+      "description": "The API only exposes GET (plus one PUT for assets). POST and PUT volume here is either a probe or a caller doing something it should not",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2301,7 +2277,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "Absolute volume per server, capped to the twenty busiest.",
+      "description": "Absolute volume per server, capped to the twenty busiest",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2384,7 +2360,7 @@
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse"
       },
-      "description": "One line per route with volume, cost and quality side by side. Sort by server_time_s to find what to optimise, by server_err_pct to find what to fix.",
+      "description": "One line per route with volume, cost and quality side by side. Sort by server_time_s to find what to optimise, by server_err_pct to find what to fix",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2726,7 +2702,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "The median tells you what most callers feel; p99 tells you what the worst-served caller feels. A widening gap means a few requests are degrading, not the whole API.",
+          "description": "The median tells you what most callers feel; p99 tells you what the worst-served caller feels. A widening gap means a few requests are degrading, not the whole API",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -2896,7 +2872,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "How the response times are actually spread. Averages hide a bimodal shape; this does not.",
+          "description": "How the response times are actually spread. Averages hide a bimodal shape; this does not",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -3000,7 +2976,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Count of requests over the Slow above (ms) threshold in each bucket. Line up a spike here with the forensics table below to name the cause.",
+          "description": "Count of requests over the Slow above (ms) threshold in each bucket. Line up a spike here with the forensics table below to name the cause",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -3110,7 +3086,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Ranked by p95 rather than by average, so a route that is usually quick but occasionally terrible still shows up. Routes under twenty calls are dropped as noise.",
+          "description": "Ranked by p95 rather than by average, so a route that is usually quick but occasionally terrible still shows up. Routes under twenty calls are dropped as noise",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -3300,7 +3276,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Total seconds the API spent inside each route. This is volume times cost, so it answers where an optimisation actually pays off - which is rarely the slowest route.",
+          "description": "Total seconds the API spent inside each route. This is volume times cost, so it answers where an optimisation actually pays off - which is rarely the slowest route",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -3384,7 +3360,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Every slow request grouped by route, game server and caller, so a latency spike can be attributed. If one client_ip dominates, it is a caller problem; if the same route is slow for many unrelated IPs, it is ours.",
+          "description": "Every slow request grouped by route, game server and caller, so a latency spike can be attributed. If one client_ip dominates, it is a caller problem; if the same route is slow for many unrelated IPs, it is ours",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -3622,7 +3598,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "The individual worst requests with their full query string, which is usually what explains them: an unbounded page size, a rare filter combination, a cold cache key.",
+          "description": "The individual worst requests with their full query string, which is usually what explains them: an unbounded page size, a rare filter combination, a cold cache key",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -3809,7 +3785,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Latency split per game server. A single server degrading points at its database rather than at the API process.",
+          "description": "Latency split per game server. A single server degrading points at its database rather than at the API process",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -3931,7 +3907,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Grouped by the full URL, query string included, because a 500 is usually triggered by one specific parameter value rather than by the route as a whole.",
+          "description": "Grouped by the full URL, query string included, because a 500 is usually triggered by one specific parameter value rather than by the route as a whole",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -4015,7 +3991,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Rejected requests per route. A route dominating this list usually means one caller has the wrong idea of the contract, not that many users are failing.",
+          "description": "Rejected requests per route. A route dominating this list usually means one caller has the wrong idea of the contract, not that many users are failing",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -4099,7 +4075,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Exact status codes rather than families. Status 0 means the client hung up before the response was written.",
+          "description": "Exact status codes rather than families. Status 0 means the client hung up before the response was written",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -4178,7 +4154,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Failures per bucket for the eight routes that fail most, each status code drawn separately. A step change here dates a regression to a deploy.",
+          "description": "Failures per bucket for the eight routes that fail most, each status code drawn separately. A step change here dates a regression to a deploy",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -4286,7 +4262,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Route, status and game server together. One client hitting a bad parameter looks like a single row with one client; a real regression spreads across many clients and servers.",
+          "description": "Route, status and game server together. One client hitting a bad parameter looks like a single row with one client; a real regression spreads across many clients and servers",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -4502,7 +4478,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Who is on the receiving end. A named integration at the top of this list is worth a message to its author; the contract it is calling is probably documented wrong.",
+          "description": "Who is on the receiving end. A named integration at the top of this list is worth a message to its author; the contract it is calling is probably documented wrong",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -4655,7 +4631,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "The raw 5xx stream, newest first. The URL plus the response time usually says whether the handler threw immediately or timed out.",
+          "description": "The raw 5xx stream, newest first. The URL plus the response time usually says whether the handler threw immediately or timed out",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -4842,7 +4818,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "How the load splits between real browsers, third-party applications, stock HTTP libraries, declared bots and this API's own internal calls. The split is inferred from the shape of the user agent, so treat it as a strong hint rather than a fact - anything can claim anything. Ignores the Client type filter so the whole split stays visible.",
+          "description": "How the load splits between real browsers, third-party applications, stock HTTP libraries, declared bots and this API's own internal calls. The split is inferred from the shape of the user agent, so treat it as a strong hint rather than a fact - anything can claim anything. Ignores the Client type filter so the whole split stays visible",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -5012,7 +4988,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Stacked so a new application appearing, or a scraper starting a run, is visible as a band rather than as a bump in the total.",
+          "description": "Stacked so a new application appearing, or a scraper starting a run, is visible as a band rather than as a bump in the total",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -5212,7 +5188,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Every non-browser caller, ranked by volume, listed by the user agent it actually sent. This is the answer to which scraper is costing the most: req_per_min shows how hard it polls, server_time_s what that costs us, and routes tells a broad integration apart from one hammering a single endpoint.",
+          "description": "Every non-browser caller, ranked by volume, listed by the user agent it actually sent. This is the answer to which scraper is costing the most: req_per_min shows how hard it polls, server_time_s what that costs us, and routes tells a broad integration apart from one hammering a single endpoint",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -5526,7 +5502,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "All user agents including browsers, respecting the Client type filter. A high hit count on a single IP is one automated caller; a high count spread over many IPs is a browser release.",
+          "description": "All user agents including browsers, respecting the Client type filter. A high hit count on a single IP is one automated caller; a high count spread over many IPs is a browser release",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -5684,7 +5660,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Ranked by volume, taken from the first hop of X-Forwarded-For. The stored ip column keeps the Cloudflare edge in the chain, so the raw value would split one caller across dozens of rows.",
+          "description": "Ranked by volume, taken from the first hop of X-Forwarded-For. The stored ip column keeps the Cloudflare edge in the chain, so the raw value would split one caller across dozens of rows",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -5894,7 +5870,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "A caller that sustains a high rate against very few routes for hours is polling, not browsing, whatever its user agent claims. A low not_modified_pct on top of that means it ignores the ETag and pays full price on every call, which is the case worth reporting to its author.",
+          "description": "A caller that sustains a high rate against very few routes for hours is polling, not browsing, whatever its user agent claims. A low not_modified_pct on top of that means it ignores the ETag and pays full price on every call, which is the case worth reporting to its author",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -6104,7 +6080,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Non-browser callers whose user agent was absent from the thirty days before this window. New third-party tools show up here on their first run, and so does a scraper that has just changed its user agent to get around a block.",
+          "description": "Non-browser callers whose user agent was absent from the thirty days before this window. New third-party tools show up here on their first run, and so does a scraper that has just changed its user agent to get around a block",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -6257,7 +6233,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "What each population actually costs in server seconds, which is not the same ranking as request counts: an application paging through rankings is far more expensive per call than a browser fetching a cached page.",
+          "description": "What each population actually costs in server seconds, which is not the same ranking as request counts: an application paging through rankings is far more expensive per call than a browser fetching a cached page",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -6432,7 +6408,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Distinct client IPs per day and per population. The browser line is the closest thing to a daily audience figure this data can produce; the others show how many machines each kind of automation runs on.",
+          "description": "Distinct client IPs per day and per population. The browser line is the closest thing to a daily audience figure this data can produce; the others show how many machines each kind of automation runs on",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -6646,7 +6622,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Browser traffic only. This panel deliberately ignores the Client type filter so it always describes real people, whatever the rest of the dashboard is showing. Counting distinct client IPs per day, which over-counts mobile users on changing networks and under-counts a household behind one address, so read the trend rather than the absolute number.",
+          "description": "Browser traffic only. This panel deliberately ignores the Client type filter so it always describes real people, whatever the rest of the dashboard is showing. Counting distinct client IPs per day, which over-counts mobile users on changing networks and under-counts a household behind one address, so read the trend rather than the absolute number",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -6756,7 +6732,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Browser traffic only. This panel deliberately ignores the Client type filter so it always describes real people, whatever the rest of the dashboard is showing. The traffic curve with every application, library and bot removed. Compare it with the total on the Health row to see how much of a spike was actually people.",
+          "description": "Browser traffic only. This panel deliberately ignores the Client type filter so it always describes real people, whatever the rest of the dashboard is showing. The traffic curve with every application, library and bot removed. Compare it with the total on the Health row to see how much of a spike was actually people",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -6866,7 +6842,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Browser traffic only. This panel deliberately ignores the Client type filter so it always describes real people, whatever the rest of the dashboard is showing. Requests carrying no gge-server header are excluded, so this is the audience split per game server rather than a traffic split.",
+          "description": "Browser traffic only. This panel deliberately ignores the Client type filter so it always describes real people, whatever the rest of the dashboard is showing. Requests carrying no gge-server header are excluded, so this is the audience split per game server rather than a traffic split",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -6945,7 +6921,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Browser traffic only. This panel deliberately ignores the Client type filter so it always describes real people, whatever the rest of the dashboard is showing. Which pages the site actually gets used for, and how fast they feel. A high p95 on a route with many users is the one worth fixing first.",
+          "description": "Browser traffic only. This panel deliberately ignores the Client type filter so it always describes real people, whatever the rest of the dashboard is showing. Which pages the site actually gets used for, and how fast they feel. A high p95 on a route with many users is the one worth fixing first",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -7087,7 +7063,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Browser traffic only. This panel deliberately ignores the Client type filter so it always describes real people, whatever the rest of the dashboard is showing. The human daily cycle, free of the automation that runs flat around the clock. This is the curve to read when picking a maintenance window.",
+          "description": "Browser traffic only. This panel deliberately ignores the Client type filter so it always describes real people, whatever the rest of the dashboard is showing. The human daily cycle, free of the automation that runs flat around the clock. This is the curve to read when picking a maintenance window",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -7192,7 +7168,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Browser traffic only. This panel deliberately ignores the Client type filter so it always describes real people, whatever the rest of the dashboard is showing. Derived from the user agent string, so Chromium forks mostly report as Chrome. Good enough to decide which platform a rendering bug is worth reproducing on.",
+          "description": "Browser traffic only. This panel deliberately ignores the Client type filter so it always describes real people, whatever the rest of the dashboard is showing. Derived from the user agent string, so Chromium forks mostly report as Chrome. Good enough to decide which platform a rendering bug is worth reproducing on",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -7336,7 +7312,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Browser traffic only. This panel deliberately ignores the Client type filter so it always describes real people, whatever the rest of the dashboard is showing. Distribution of requests per browser client. The long tail on the right is worth a look: a browser user agent making thousands of calls is usually a script wearing one.",
+          "description": "Browser traffic only. This panel deliberately ignores the Client type filter so it always describes real people, whatever the rest of the dashboard is showing. Distribution of requests per browser client. The long tail on the right is worth a look: a browser user agent making thousands of calls is usually a script wearing one",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -7454,7 +7430,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Ignores the Client type filter, since narrowing the dashboard to browsers would hide exactly the traffic this row is about. Everything here is judged by what was requested, not by what the user agent claimed to be. Requests for paths this API never served - anything outside /api/. They are answered with a 404, so this is noise rather than exposure, but a sharp rise means the host is being worked over.",
+          "description": "Ignores the Client type filter, since narrowing the dashboard to browsers would hide exactly the traffic this row is about. Everything here is judged by what was requested, not by what the user agent claimed to be. Requests for paths this API never served - anything outside /api/. They are answered with a 404, so this is noise rather than exposure, but a sharp rise means the host is being worked over",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -7543,7 +7519,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Ignores the Client type filter, since narrowing the dashboard to browsers would hide exactly the traffic this row is about. Everything here is judged by what was requested, not by what the user agent claimed to be. Distinct client IPs behind those probes.",
+          "description": "Ignores the Client type filter, since narrowing the dashboard to browsers would hide exactly the traffic this row is about. Everything here is judged by what was requested, not by what the user agent claimed to be. Distinct client IPs behind those probes",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -7628,7 +7604,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Ignores the Client type filter, since narrowing the dashboard to browsers would hide exactly the traffic this row is about. Everything here is judged by what was requested, not by what the user agent claimed to be. How many different non-API paths were asked for. A handful means a bot walking a short list; hundreds means a full vulnerability scan was run against the host.",
+          "description": "Ignores the Client type filter, since narrowing the dashboard to browsers would hide exactly the traffic this row is about. Everything here is judged by what was requested, not by what the user agent claimed to be. How many different non-API paths were asked for. A handful means a bot walking a short list; hundreds means a full vulnerability scan was run against the host",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -7713,7 +7689,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Ignores the Client type filter, since narrowing the dashboard to browsers would hide exactly the traffic this row is about. Everything here is judged by what was requested, not by what the user agent claimed to be. 403s. On this API they come from scope checks rather than from authentication, so a burst usually means a caller is reaching for a server it is not allowed to read.",
+          "description": "Ignores the Client type filter, since narrowing the dashboard to browsers would hide exactly the traffic this row is about. Everything here is judged by what was requested, not by what the user agent claimed to be. 403s. On this API they come from scope checks rather than from authentication, so a burst usually means a caller is reaching for a server it is not allowed to read",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -7798,7 +7774,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Ignores the Client type filter, since narrowing the dashboard to browsers would hide exactly the traffic this row is about. Everything here is judged by what was requested, not by what the user agent claimed to be. Scans arrive in bursts. A burst is normal background internet noise; a sustained plateau, or one source that keeps coming back, is somebody actually interested in this host.",
+          "description": "Ignores the Client type filter, since narrowing the dashboard to browsers would hide exactly the traffic this row is about. Everything here is judged by what was requested, not by what the user agent claimed to be. Scans arrive in bursts. A burst is normal background internet noise; a sustained plateau, or one source that keeps coming back, is somebody actually interested in this host",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -7953,7 +7929,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Ignores the Client type filter, since narrowing the dashboard to browsers would hide exactly the traffic this row is about. Everything here is judged by what was requested, not by what the user agent claimed to be. What is being looked for. Anything here answering something other than 404 or 400 deserves a second look, because it means the path resolved.",
+          "description": "Ignores the Client type filter, since narrowing the dashboard to browsers would hide exactly the traffic this row is about. Everything here is judged by what was requested, not by what the user agent claimed to be. What is being looked for. Anything here answering something other than 404 or 400 deserves a second look, because it means the path resolved",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -8129,7 +8105,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Ignores the Client type filter, since narrowing the dashboard to browsers would hide exactly the traffic this row is about. Everything here is judged by what was requested, not by what the user agent claimed to be. Ranked by probe volume. A source with many distinct paths and no real API calls is a pure scanner and can be blocked upstream without any risk to a user.",
+          "description": "Ignores the Client type filter, since narrowing the dashboard to browsers would hide exactly the traffic this row is about. Everything here is judged by what was requested, not by what the user agent claimed to be. Ranked by probe volume. A source with many distinct paths and no real API calls is a pure scanner and can be blocked upstream without any risk to a user",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -8307,7 +8283,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Ignores the Client type filter, since narrowing the dashboard to browsers would hide exactly the traffic this row is about. Everything here is judged by what was requested, not by what the user agent claimed to be. Requests the API refused on purpose. Note that 429 will always be empty here: the rate limiter answers before the logging middleware runs, so throttled requests never reach this table. See the blind spots panel.",
+          "description": "Ignores the Client type filter, since narrowing the dashboard to browsers would hide exactly the traffic this row is about. Everything here is judged by what was requested, not by what the user agent claimed to be. Requests the API refused on purpose. Note that 429 will always be empty here: the rate limiter answers before the logging middleware runs, so throttled requests never reach this table. See the blind spots panel",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -8660,7 +8636,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Rows landing in logs.logs each day. A day that collapses without a matching drop in Cloudflare traffic means the flush failed, not that the traffic did.",
+          "description": "Rows landing in logs.logs each day. A day that collapses without a matching drop in Cloudflare traffic means the flush failed, not that the traffic did",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -8769,7 +8745,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Seconds since the newest row. The flush interval is 5 seconds, so anything past a minute or two means the pipeline is stuck. Ignores the time range and every filter on purpose.",
+          "description": "Seconds since the newest row. The flush interval is 5 seconds, so anything past a minute or two means the pipeline is stuck. Ignores the time range and every filter on purpose",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -8854,7 +8830,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Total rows in logs.logs across every partition, whatever the selected time range. The table is partitioned by day and has no TTL, so it only grows.",
+          "description": "Total rows in logs.logs across every partition, whatever the selected time range. The table is partitioned by day and has no TTL, so it only grows",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -8931,7 +8907,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "Compressed size of logs.logs on the ClickHouse volume, whatever the selected time range.",
+          "description": "Compressed size of logs.logs on the ClickHouse volume, whatever the selected time range",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -9022,7 +8998,7 @@
             "type": "grafana-clickhouse-datasource",
             "uid": "clickhouse"
           },
-          "description": "The last thousand matching requests, newest first. Every variable at the top of the dashboard applies, and the Search box additionally matches a case-insensitive substring against the URL, the user agent and the IP - paste a player id, an IP or a user agent into it to follow one caller end to end.",
+          "description": "The last thousand matching requests, newest first. Every variable at the top of the dashboard applies, and the Search box additionally matches a case-insensitive substring against the URL, the user agent and the IP - paste a player id, an IP or a user agent into it to follow one caller end to end",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -9269,8 +9245,9 @@
   "refresh": "",
   "schemaVersion": 42,
   "tags": [
-    "API",
-    "Admin"
+    "gge-tracker",
+    "api",
+    "admin"
   ],
   "templating": {
     "list": [
@@ -9288,7 +9265,7 @@
           "uid": "clickhouse"
         },
         "definition": "SELECT server\nFROM logs.logs\nWHERE timestamp >= now() - INTERVAL 30 DAY AND job = 'ggetracker-api'\nGROUP BY server\nHAVING count() > 500\nORDER BY count() DESC",
-        "description": "gge-server header carried by the request. Values below 500 hits in the last 30 days are left out of this list but are still counted by All - see the malformed header panel.",
+        "description": "gge-server header carried by the request. Values below 500 hits in the last 30 days are left out of this list but are still counted by All - see the malformed header panel",
         "includeAll": true,
         "label": "Game server",
         "multi": true,
@@ -9336,7 +9313,7 @@
           "uid": "clickhouse"
         },
         "definition": "SELECT route\nFROM logs.logs\nWHERE timestamp >= now() - INTERVAL 30 DAY AND job = 'ggetracker-api'\nGROUP BY route\nHAVING count() > 200\nORDER BY count() DESC",
-        "description": "Normalized route (path parameters collapsed to :id). Only routes above 200 hits in the last 30 days are listed; All still covers every route, including scanner probes.",
+        "description": "Normalized route (path parameters collapsed to :id). Only routes above 200 hits in the last 30 days are listed; All still covers every route, including scanner probes",
         "includeAll": true,
         "label": "Route",
         "multi": true,
@@ -9379,7 +9356,7 @@
             "$__all"
           ]
         },
-        "description": "Derived from the shape of the user agent, not from any list of names: browser (platform, engine and browser token all present), bot (advertises a contact URL, per the robots convention), library (a stock HTTP client or runtime), application (identifies itself as something else - third-party tools built on this API), internal (loopback), unknown (empty or a bare Mozilla token). Pick browser alone to isolate real users, or deselect application and library to drop the automated consumers from every panel.",
+        "description": "Derived from the shape of the user agent, not from any list of names: browser (platform, engine and browser token all present), bot (advertises a contact URL, per the robots convention), library (a stock HTTP client or runtime), application (identifies itself as something else - third-party tools built on this API), internal (loopback), unknown (empty or a bare Mozilla token). Pick browser alone to isolate real users, or deselect application and library to drop the automated consumers from every panel",
         "includeAll": true,
         "label": "Client type",
         "multi": true,
@@ -9397,7 +9374,7 @@
             "$__all"
           ]
         },
-        "description": "HTTP status family. Requests the client aborted before a response are logged with status 0 and fall into other.",
+        "description": "HTTP status family. Requests the client aborted before a response are logged with status 0 and fall into other",
         "includeAll": true,
         "label": "Status class",
         "multi": true,
@@ -9420,7 +9397,7 @@
           "uid": "clickhouse"
         },
         "definition": "SELECT method\nFROM logs.logs\nWHERE timestamp >= now() - INTERVAL 30 DAY AND job = 'ggetracker-api'\nGROUP BY method\nORDER BY count() DESC",
-        "description": "HTTP method. The API only serves GET; anything else is a client bug or a probe.",
+        "description": "HTTP method. The API only serves GET; anything else is a client bug or a probe",
         "includeAll": true,
         "label": "Method",
         "multi": true,
@@ -9458,7 +9435,7 @@
           "text": "1000",
           "value": "1000"
         },
-        "description": "Threshold in milliseconds used by every slow-request panel.",
+        "description": "Threshold in milliseconds used by every slow-request panel",
         "label": "Slow above (ms)",
         "name": "slow_ms",
         "options": [
@@ -9477,7 +9454,7 @@
           "text": "",
           "value": ""
         },
-        "description": "Case-insensitive substring matched against url, user agent and IP in the raw request explorer.",
+        "description": "Case-insensitive substring matched against url, user agent and IP in the raw request explorer",
         "label": "Search",
         "name": "search",
         "options": [
@@ -9511,7 +9488,7 @@
     ]
   },
   "timezone": "",
-  "title": "[gge-tracker] API monitoring - Advanced",
+  "title": "API monitoring",
   "uid": "dashboard-log-backend-clickhouse",
   "version": 42,
   "weekStart": ""

@@ -1,23 +1,32 @@
 apiVersion: 1
 
 providers:
-  - name: 'admin'
+  - name: 'overview'
     orgId: 1
-    folder: 'Admin'
+    folder: 'Overview'
     type: file
     disableDeletion: false
     updateIntervalSeconds: 30
     options:
-      path: /var/lib/grafana/dashboards/admin
+      path: /var/lib/grafana/dashboards/overview
 
-  - name: 'mod'
+  - name: 'scraping'
     orgId: 1
-    folder: 'Mod'
+    folder: 'Scraping'
     type: file
     disableDeletion: false
     updateIntervalSeconds: 30
     options:
-      path: /var/lib/grafana/dashboards/mod
+      path: /var/lib/grafana/dashboards/scraping
+
+  - name: 'platform'
+    orgId: 1
+    folder: 'Platform'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards/platform
 
   - name: 'partner'
     orgId: 1

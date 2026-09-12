@@ -27,20 +27,18 @@
   "id": 2,
   "links": [
     {
+      "asDropdown": true,
       "icon": "external link",
-      "tags": [],
-      "targetBlank": true,
-      "title": "GitHub",
-      "type": "link",
-      "url": "https://github.com/rfmoz/grafana-dashboards"
-    },
-    {
-      "icon": "external link",
-      "tags": [],
-      "targetBlank": true,
-      "title": "Grafana",
-      "type": "link",
-      "url": "https://grafana.com/grafana/dashboards/1860"
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [
+        "gge-tracker"
+      ],
+      "targetBlank": false,
+      "title": "GGE Tracker",
+      "tooltip": "Every dashboard you can open",
+      "type": "dashboards",
+      "url": ""
     }
   ],
   "panels": [
@@ -3626,7 +3624,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "How often tasks experience CPU, memory, or I/O delays. “Some” indicates partial slowdown; “Full” indicates all tasks are stalled. Based on Linux PSI metrics:\nhttps://docs.kernel.org/accounting/psi.html",
+          "description": "How often tasks experience CPU, memory, or I/O delays. \u201cSome\u201d indicates partial slowdown; \u201cFull\u201d indicates all tasks are stalled. Based on Linux PSI metrics:\nhttps://docs.kernel.org/accounting/psi.html",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -3954,7 +3952,7 @@
               "expr": "node_memory_Committed_AS_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "Committed_AS – Memory promised to processes (not necessarily used)",
+              "legendFormat": "Committed_AS \u2013 Memory promised to processes (not necessarily used)",
               "range": true,
               "refId": "A",
               "step": 240
@@ -4072,7 +4070,7 @@
               "expr": "node_memory_Writeback_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "Writeback – Memory currently being flushed to disk",
+              "legendFormat": "Writeback \u2013 Memory currently being flushed to disk",
               "range": true,
               "refId": "A",
               "step": 240
@@ -4086,7 +4084,7 @@
               "expr": "node_memory_WritebackTmp_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "WritebackTmp – FUSE temporary writeback buffers",
+              "legendFormat": "WritebackTmp \u2013 FUSE temporary writeback buffers",
               "range": true,
               "refId": "B",
               "step": 240
@@ -4100,7 +4098,7 @@
               "expr": "node_memory_Dirty_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "Dirty – Memory marked dirty (pending write to disk)",
+              "legendFormat": "Dirty \u2013 Memory marked dirty (pending write to disk)",
               "range": true,
               "refId": "C",
               "step": 240
@@ -4115,7 +4113,7 @@
               "format": "time_series",
               "hide": false,
               "intervalFactor": 1,
-              "legendFormat": "NFS Unstable – Pages sent to NFS server, awaiting storage commit",
+              "legendFormat": "NFS Unstable \u2013 Pages sent to NFS server, awaiting storage commit",
               "range": true,
               "refId": "D",
               "step": 240
@@ -4219,7 +4217,7 @@
               "expr": "node_memory_SUnreclaim_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "SUnreclaim – Non-reclaimable slab memory (kernel objects)",
+              "legendFormat": "SUnreclaim \u2013 Non-reclaimable slab memory (kernel objects)",
               "range": true,
               "refId": "A",
               "step": 240
@@ -4233,7 +4231,7 @@
               "expr": "node_memory_SReclaimable_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "SReclaimable – Potentially reclaimable slab memory (e.g., inode cache)",
+              "legendFormat": "SReclaimable \u2013 Potentially reclaimable slab memory (e.g., inode cache)",
               "range": true,
               "refId": "B",
               "step": 240
@@ -4338,7 +4336,7 @@
               "expr": "node_memory_Mapped_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "Mapped – Memory mapped from files (e.g., libraries, mmap)",
+              "legendFormat": "Mapped \u2013 Memory mapped from files (e.g., libraries, mmap)",
               "range": true,
               "refId": "A",
               "step": 240
@@ -4352,7 +4350,7 @@
               "expr": "node_memory_Shmem_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "Shmem – Shared memory used by processes and tmpfs",
+              "legendFormat": "Shmem \u2013 Shared memory used by processes and tmpfs",
               "range": true,
               "refId": "B",
               "step": 240
@@ -4367,7 +4365,7 @@
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
-              "legendFormat": "ShmemHugePages – Shared memory (shmem/tmpfs) allocated with HugePages",
+              "legendFormat": "ShmemHugePages \u2013 Shared memory (shmem/tmpfs) allocated with HugePages",
               "range": true,
               "refId": "C",
               "step": 240
@@ -4382,7 +4380,7 @@
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
-              "legendFormat": "PMD Mapped – Shmem/tmpfs backed by Transparent HugePages (PMD)",
+              "legendFormat": "PMD Mapped \u2013 Shmem/tmpfs backed by Transparent HugePages (PMD)",
               "range": true,
               "refId": "D",
               "step": 240
@@ -4518,7 +4516,7 @@
               "expr": "(node_memory_Inactive_bytes{instance=\"$node\",job=\"$job\"}) \n/ \n(node_memory_MemTotal_bytes{instance=\"$node\",job=\"$job\"})",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "Inactive – Less recently used memory, more likely to be reclaimed",
+              "legendFormat": "Inactive \u2013 Less recently used memory, more likely to be reclaimed",
               "range": true,
               "refId": "A",
               "step": 240
@@ -4532,7 +4530,7 @@
               "expr": "(node_memory_Active_bytes{instance=\"$node\",job=\"$job\"}) \n/ \n(node_memory_MemTotal_bytes{instance=\"$node\",job=\"$job\"})\n",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "Active – Recently used memory, retained unless under pressure",
+              "legendFormat": "Active \u2013 Recently used memory, retained unless under pressure",
               "range": true,
               "refId": "B",
               "step": 240
@@ -4546,7 +4544,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Breakdown of memory pages in the kernel's active and inactive LRU lists, separated by anonymous (heap, tmpfs) and file-backed (caches, mmap) pages.",
+          "description": "Breakdown of memory pages in the kernel's active and inactive LRU lists, separated by anonymous (heap, tmpfs) and file-backed (caches, mmap) pages",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -4653,7 +4651,7 @@
               "format": "time_series",
               "hide": false,
               "intervalFactor": 1,
-              "legendFormat": "Inactive_anon – Anonymous memory on inactive LRU (incl. tmpfs & swap cache)",
+              "legendFormat": "Inactive_anon \u2013 Anonymous memory on inactive LRU (incl. tmpfs & swap cache)",
               "range": true,
               "refId": "B",
               "step": 240
@@ -4683,7 +4681,7 @@
               "format": "time_series",
               "hide": false,
               "intervalFactor": 1,
-              "legendFormat": "Active_anon – Anonymous memory on active LRU (incl. tmpfs & swap cache)",
+              "legendFormat": "Active_anon \u2013 Anonymous memory on active LRU (incl. tmpfs & swap cache)",
               "range": true,
               "refId": "D",
               "step": 240
@@ -4788,7 +4786,7 @@
               "expr": "node_memory_KernelStack_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "KernelStack – Kernel stack memory (per-thread, non-reclaimable)",
+              "legendFormat": "KernelStack \u2013 Kernel stack memory (per-thread, non-reclaimable)",
               "range": true,
               "refId": "A",
               "step": 240
@@ -4803,7 +4801,7 @@
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
-              "legendFormat": "PerCPU – Dynamically allocated per-CPU memory (used by kernel modules)",
+              "legendFormat": "PerCPU \u2013 Dynamically allocated per-CPU memory (used by kernel modules)",
               "range": true,
               "refId": "B",
               "step": 240
@@ -4819,7 +4817,7 @@
               "hide": false,
               "interval": "",
               "intervalFactor": 1,
-              "legendFormat": "Bounce Memory – I/O buffer for DMA-limited devices",
+              "legendFormat": "Bounce Memory \u2013 I/O buffer for DMA-limited devices",
               "range": true,
               "refId": "C",
               "step": 240
@@ -4954,7 +4952,7 @@
               "format": "time_series",
               "hide": false,
               "intervalFactor": 1,
-              "legendFormat": "Vmalloc Free Chunk – Largest available block in vmalloc area",
+              "legendFormat": "Vmalloc Free Chunk \u2013 Largest available block in vmalloc area",
               "range": true,
               "refId": "A",
               "step": 240
@@ -4969,7 +4967,7 @@
               "format": "time_series",
               "hide": false,
               "intervalFactor": 1,
-              "legendFormat": "Vmalloc Total – Total size of the vmalloc memory area",
+              "legendFormat": "Vmalloc Total \u2013 Total size of the vmalloc memory area",
               "range": true,
               "refId": "B",
               "step": 240
@@ -4984,7 +4982,7 @@
               "format": "time_series",
               "hide": false,
               "intervalFactor": 1,
-              "legendFormat": "Vmalloc Used – Portion of vmalloc area currently in use",
+              "legendFormat": "Vmalloc Used \u2013 Portion of vmalloc area currently in use",
               "range": true,
               "refId": "C",
               "step": 240
@@ -5088,7 +5086,7 @@
               "expr": "node_memory_AnonHugePages_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "AnonHugePages – Anonymous memory using HugePages",
+              "legendFormat": "AnonHugePages \u2013 Anonymous memory using HugePages",
               "range": true,
               "refId": "A",
               "step": 240
@@ -5102,7 +5100,7 @@
               "expr": "node_memory_AnonPages_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "AnonPages – Anonymous memory (non-file-backed)",
+              "legendFormat": "AnonPages \u2013 Anonymous memory (non-file-backed)",
               "range": true,
               "refId": "B",
               "step": 240
@@ -5223,7 +5221,7 @@
               "expr": "node_memory_Unevictable_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "Unevictable – Kernel-pinned memory (not swappable)",
+              "legendFormat": "Unevictable \u2013 Kernel-pinned memory (not swappable)",
               "range": true,
               "refId": "A",
               "step": 240
@@ -5237,7 +5235,7 @@
               "expr": "node_memory_Mlocked_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "Mlocked – Application-locked memory via mlock()",
+              "legendFormat": "Mlocked \u2013 Application-locked memory via mlock()",
               "range": true,
               "refId": "B",
               "step": 240
@@ -5616,7 +5614,7 @@
               "expr": "node_memory_DirectMap1G_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "DirectMap 1G – Memory mapped with 1GB pages",
+              "legendFormat": "DirectMap 1G \u2013 Memory mapped with 1GB pages",
               "range": true,
               "refId": "A",
               "step": 240
@@ -5631,7 +5629,7 @@
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
-              "legendFormat": "DirectMap 2M – Memory mapped with 2MB pages",
+              "legendFormat": "DirectMap 2M \u2013 Memory mapped with 2MB pages",
               "range": true,
               "refId": "B",
               "step": 240
@@ -5646,7 +5644,7 @@
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
-              "legendFormat": "DirectMap 4K – Memory mapped with 4KB pages",
+              "legendFormat": "DirectMap 4K \u2013 Memory mapped with 4KB pages",
               "range": true,
               "refId": "C",
               "step": 240
@@ -5750,7 +5748,7 @@
               "expr": "node_memory_HugePages_Free{instance=\"$node\",job=\"$job\"} * node_memory_Hugepagesize_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "HugePages Used – Currently allocated",
+              "legendFormat": "HugePages Used \u2013 Currently allocated",
               "range": true,
               "refId": "A",
               "step": 240
@@ -5764,7 +5762,7 @@
               "expr": "node_memory_HugePages_Rsvd{instance=\"$node\",job=\"$job\"} * node_memory_Hugepagesize_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "HugePages Reserved – Promised but unused",
+              "legendFormat": "HugePages Reserved \u2013 Promised but unused",
               "range": true,
               "refId": "B",
               "step": 240
@@ -5778,7 +5776,7 @@
               "expr": "node_memory_HugePages_Surp{instance=\"$node\",job=\"$job\"} * node_memory_Hugepagesize_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "HugePages Surplus – Dynamic pool extension",
+              "legendFormat": "HugePages Surplus \u2013 Dynamic pool extension",
               "range": true,
               "refId": "C",
               "step": 240
@@ -5793,7 +5791,7 @@
               "format": "time_series",
               "hide": false,
               "intervalFactor": 1,
-              "legendFormat": "HugePages Total – Reserved memory",
+              "legendFormat": "HugePages Total \u2013 Reserved memory",
               "range": true,
               "refId": "D",
               "step": 240
@@ -7188,7 +7186,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Processes currently in runnable or blocked states. Helps identify CPU contention or I/O wait bottlenecks.",
+          "description": "Processes currently in runnable or blocked states. Helps identify CPU contention or I/O wait bottlenecks",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -7500,7 +7498,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Rate of new processes being created on the system (forks/sec).",
+          "description": "Rate of new processes being created on the system (forks/sec)",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -7605,7 +7603,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Shows CPU saturation per core, calculated as the proportion of time spent waiting to run relative to total time demanded (running + waiting).",
+          "description": "Shows CPU saturation per core, calculated as the proportion of time spent waiting to run relative to total time demanded (running + waiting)",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -10075,7 +10073,7 @@
                 "axisBorderShow": false,
                 "axisCenteredZero": false,
                 "axisColorMode": "text",
-                "axisLabel": "read (–) / write (+)",
+                "axisLabel": "read (\u2013) / write (+)",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
                 "barWidthFactor": 0.6,
@@ -10218,7 +10216,7 @@
                 "axisBorderShow": false,
                 "axisCenteredZero": false,
                 "axisColorMode": "text",
-                "axisLabel": "read (–) / write (+)",
+                "axisLabel": "read (\u2013) / write (+)",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
                 "barWidthFactor": 0.6,
@@ -10355,7 +10353,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Average time for requests issued to the device to be served. This includes the time spent by the requests in queue and the time spent servicing them.",
+          "description": "Average time for requests issued to the device to be served. This includes the time spent by the requests in queue and the time spent servicing them",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -10365,7 +10363,7 @@
                 "axisBorderShow": false,
                 "axisCenteredZero": false,
                 "axisColorMode": "text",
-                "axisLabel": "read (–) / write (+)",
+                "axisLabel": "read (\u2013) / write (+)",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
                 "barWidthFactor": 0.6,
@@ -10632,7 +10630,7 @@
                 "axisBorderShow": false,
                 "axisCenteredZero": false,
                 "axisColorMode": "text",
-                "axisLabel": "read (–) / write (+)",
+                "axisLabel": "read (\u2013) / write (+)",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
                 "barWidthFactor": 0.6,
@@ -11568,7 +11566,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Indicates filesystems mounted in read-only mode or reporting device-level I/O errors.",
+          "description": "Indicates filesystems mounted in read-only mode or reporting device-level I/O errors",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -11807,7 +11805,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Number of network packets received and transmitted per second, by interface.",
+          "description": "Number of network packets received and transmitted per second, by interface",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -17054,7 +17052,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Shows whether each Node Exporter collector scraped successfully (1 = success, 0 = failure), and whether the textfile collector returned an error.",
+          "description": "Shows whether each Node Exporter collector scraped successfully (1 = success, 0 = failure), and whether the textfile collector returned an error",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -17160,8 +17158,9 @@
   "refresh": "1m",
   "schemaVersion": 41,
   "tags": [
-    "Infrastructure",
-    "Admin"
+    "gge-tracker",
+    "infra",
+    "admin"
   ],
   "templating": {
     "list": [
@@ -17274,7 +17273,8 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "[gge-tracker] Node Exporter Full Metrics",
+  "title": "Host",
   "uid": "rYdddlPWk",
-  "version": 1
+  "version": 1,
+  "description": "The production machine itself: CPU, memory, disks, filesystems and network."
 }

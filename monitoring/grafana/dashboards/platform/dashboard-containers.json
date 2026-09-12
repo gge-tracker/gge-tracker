@@ -15,12 +15,27 @@
       }
     ]
   },
-  "description": "Docker monitoring with Prometheus and cAdvisor",
+  "description": "CPU, memory and network of every container on the host",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": 1,
-  "links": [],
+  "links": [
+    {
+      "asDropdown": true,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [
+        "gge-tracker"
+      ],
+      "targetBlank": false,
+      "title": "GGE Tracker",
+      "tooltip": "Every dashboard you can open",
+      "type": "dashboards",
+      "url": ""
+    }
+  ],
   "panels": [
     {
       "datasource": {
@@ -674,8 +689,9 @@
   "refresh": "10s",
   "schemaVersion": 42,
   "tags": [
-    "Infrastructure",
-    "Admin"
+    "gge-tracker",
+    "infra",
+    "admin"
   ],
   "templating": {
     "list": []
@@ -686,7 +702,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "[gge-tracker] Docker Containers Monitoring",
+  "title": "Containers",
   "uid": "deksb4lti6whsd",
   "version": 1
 }

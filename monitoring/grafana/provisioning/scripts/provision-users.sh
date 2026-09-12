@@ -61,44 +61,49 @@ else
   echo "[provision] GF_PARTNER_VIEWER_USER is not set, skipping the partner account" >&2
 fi
 
-ADMIN_FOLDER=""
-MOD_FOLDER=""
+OVERVIEW_FOLDER=""
+SCRAPING_FOLDER=""
+PLATFORM_FOLDER=""
 PARTNER_FOLDER=""
 _tries=0
 while [ "$_tries" -lt 30 ]; do
-  ADMIN_FOLDER=$(folder_uid "Admin")
-  MOD_FOLDER=$(folder_uid "Mod")
+  OVERVIEW_FOLDER=$(folder_uid "Overview")
+  SCRAPING_FOLDER=$(folder_uid "Scraping")
+  PLATFORM_FOLDER=$(folder_uid "Platform")
   PARTNER_FOLDER=$(folder_uid "Partner")
-  [ -n "$ADMIN_FOLDER" ] && [ -n "$MOD_FOLDER" ] && [ -n "$PARTNER_FOLDER" ] && break
+  [ -n "$OVERVIEW_FOLDER" ] && [ -n "$SCRAPING_FOLDER" ] && [ -n "$PLATFORM_FOLDER" ] && [ -n "$PARTNER_FOLDER" ] && break
   _tries=$((_tries + 1))
   sleep 2
 done
 
-if [ -z "$ADMIN_FOLDER" ] || [ -z "$MOD_FOLDER" ] || [ -z "$PARTNER_FOLDER" ]; then
-  echo "[provision] ERROR: could not resolve the dashboard folder uids (Admin='${ADMIN_FOLDER}' Mod='${MOD_FOLDER}' Partner='${PARTNER_FOLDER}')" >&2
+if [ -z "$OVERVIEW_FOLDER" ] || [ -z "$SCRAPING_FOLDER" ] || [ -z "$PLATFORM_FOLDER" ] || [ -z "$PARTNER_FOLDER" ]; then
+  echo "[provision] ERROR: could not resolve the dashboard folder uids (Overview='${OVERVIEW_FOLDER}' Scraping='${SCRAPING_FOLDER}' Platform='${PLATFORM_FOLDER}' Partner='${PARTNER_FOLDER}')" >&2
   exit 1
 fi
 
-echo "[provision] Admin folder=${ADMIN_FOLDER}  Mod folder=${MOD_FOLDER}  Partner folder=${PARTNER_FOLDER}"
+echo "[provision] Overview=${OVERVIEW_FOLDER}  Scraping=${SCRAPING_FOLDER}  Platform=${PLATFORM_FOLDER}  Partner=${PARTNER_FOLDER}"
 
 viewers() {
   jq -n --argjson ids "$1" '{items: [$ids[] | {userId: ., permission: 1}]}'
 }
 
-ADMIN_IDS="[${ADMIN_VIEWER_ID}]"
-MOD_IDS="[${ADMIN_VIEWER_ID},${MOD_VIEWER_ID}]"
+# Platform carries the host, the containers, the CDN and the raw request log, so it stays admin-only
+PLATFORM_IDS="[${ADMIN_VIEWER_ID}]"
+SHARED_IDS="[${ADMIN_VIEWER_ID},${MOD_VIEWER_ID}]"
 PARTNER_IDS="[${ADMIN_VIEWER_ID}]"
 PARTNER_SUFFIX=""
 if [ -n "$PARTNER_VIEWER_ID" ]; then
-  MOD_IDS="[${ADMIN_VIEWER_ID},${MOD_VIEWER_ID},${PARTNER_VIEWER_ID}]"
+  SHARED_IDS="[${ADMIN_VIEWER_ID},${MOD_VIEWER_ID},${PARTNER_VIEWER_ID}]"
   PARTNER_IDS="[${ADMIN_VIEWER_ID},${PARTNER_VIEWER_ID}]"
   PARTNER_SUFFIX=" + partner viewer"
 fi
 
-api POST "/api/folders/${ADMIN_FOLDER}/permissions" "$(viewers "$ADMIN_IDS")" >/dev/null
-echo "[provision] Admin folder permissions set (admin viewer)."
-api POST "/api/folders/${MOD_FOLDER}/permissions" "$(viewers "$MOD_IDS")" >/dev/null
-echo "[provision] Mod folder permissions set (admin viewer + mod viewer${PARTNER_SUFFIX})."
+api POST "/api/folders/${PLATFORM_FOLDER}/permissions" "$(viewers "$PLATFORM_IDS")" >/dev/null
+echo "[provision] Platform folder permissions set (admin viewer)."
+api POST "/api/folders/${OVERVIEW_FOLDER}/permissions" "$(viewers "$SHARED_IDS")" >/dev/null
+echo "[provision] Overview folder permissions set (admin viewer + mod viewer${PARTNER_SUFFIX})."
+api POST "/api/folders/${SCRAPING_FOLDER}/permissions" "$(viewers "$SHARED_IDS")" >/dev/null
+echo "[provision] Scraping folder permissions set (admin viewer + mod viewer${PARTNER_SUFFIX})."
 api POST "/api/folders/${PARTNER_FOLDER}/permissions" "$(viewers "$PARTNER_IDS")" >/dev/null
 echo "[provision] Partner folder permissions set (admin viewer${PARTNER_SUFFIX})."
 

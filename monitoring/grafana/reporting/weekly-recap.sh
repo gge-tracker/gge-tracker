@@ -298,6 +298,6 @@ scr_desc=$(printf 'Slowest servers (max minutes per cycle)\n%s\n\nCritical error
   "$(or_empty "$(ch "SELECT server, sum(playersCreated) AS created FROM logs.scrapes WHERE timestamp >= toDateTime($FROM) AND timestamp < toDateTime($NOW) GROUP BY server HAVING created > 0 ORDER BY created DESC LIMIT 5 FORMAT TSV" | bullets)")" \
   "$(count "$SCR_PLAYERS_UPD")" "$(count "$SCR_ALLIANCES_UPD")")
 # shellcheck disable=SC2046
-post "$(embed "Scraping monitoring" "$scr_desc")" $(render_section scraping)
+post "$(embed "Scraping throughput" "$scr_desc")" $(render_section scraping)
 
 log "done"

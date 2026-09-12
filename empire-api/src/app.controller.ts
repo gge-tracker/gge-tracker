@@ -7,6 +7,7 @@ import { GgeEmpire4KingdomsSocket } from './utils/ws/empire4kingdoms-socket.js';
 import { GgeLiveTemporaryServerSocket } from './utils/ws/live-temporary-server-socket.js';
 import { GgeEmpire4KingdomsTcp } from './utils/ws/empire4kingdoms-tcp.js';
 import { SocketService } from './utils/ws/sockets.js';
+import { GgeCommandOutcome, recordCommand, renderMetrics, startEventLoopLagProbe } from './utils/metrics.js';
 
 interface CommandInterface {
   [key: string]: {
@@ -30,6 +31,7 @@ function isDryRunRequested(request: express.Request): boolean {
 }
 
 loadCommands();
+startEventLoopLagProbe();
 
 /**
  * Maps the headers of a sent command onto the headers the answer is matched against
@@ -208,11 +210,20 @@ export default function createApp(sockets: {
   });
 
   app.get('/:server/:command/:headers', async (request, response) => {
-    if (!(request.params.server in sockets)) {
+    const startedAt = process.hrtime.bigint();
+    const requestedServer = request.params.server;
+    const requestedCommand = request.params.command;
+    const settle = (outcome: GgeCommandOutcome): void => {
+      recordCommand(requestedServer, requestedCommand, outcome, Number(process.hrtime.bigint() - startedAt) / 1e9);
+    };
+
+    if (!(requestedServer in sockets)) {
+      settle('not_found');
       response.status(404).json({ error: 'Server not found' });
       return;
     }
-    if (!sockets[request.params.server]?.connected.isSet) {
+    if (!sockets[requestedServer]?.connected.isSet) {
+      settle('not_connected');
       response.status(500).json({ error: 'Server not connected' });
       return;
     }
@@ -223,28 +234,30 @@ export default function createApp(sockets: {
         request.params.headers = '';
       }
       const messageHeaders = JSON.parse(`{${request.params.headers}}`);
-      sockets[request.params.server].sendJsonCommand(request.params.command, messageHeaders);
+      sockets[requestedServer].sendJsonCommand(request.params.command, messageHeaders);
       responseHeaders = buildResponseHeaders(request.params.command, messageHeaders);
 
       // Transformations
       if (request.params.command === 'jca') {
         request.params.command = 'jaa';
       }
-      const jsonResponse = await sockets[request.params.server].waitForJsonResponse(
+      const jsonResponse = await sockets[requestedServer].waitForJsonResponse(
         request.params.command,
         responseHeaders,
         1000,
       );
+      settle('ok');
       response.status(200).json({
-        server: request.params.server,
+        server: requestedServer,
         command: request.params.command,
         return_code: jsonResponse.payload.status,
         content: jsonResponse.payload.data,
       });
     } catch {
+      settle('timeout');
       response.status(200).json({
         error: 'Timeout',
-        server: request.params.server,
+        server: requestedServer,
         command: request.params.command,
         response_headers: responseHeaders,
         return_code: -1,
@@ -258,6 +271,10 @@ export default function createApp(sockets: {
       status[server] = socket.connected.isSet;
     }
     response.status(200).json(status);
+  });
+
+  app.get('/metrics', (request, response) => {
+    response.status(200).type('text/plain; version=0.0.4').send(renderMetrics(sockets));
   });
 
   app.get('/', (request, response) => response.status(200).send('API running'));
