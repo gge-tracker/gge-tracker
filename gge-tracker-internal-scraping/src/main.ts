@@ -154,6 +154,7 @@ export interface DiscordApiMessageBody {
  * Comments and logs should be standardized to English.
  */
 export class GenericFetchAndSaveBackend {
+  private static readonly GLOBAL_REGION_PATTERN = /^[a-z0-9_]+$/;
   private static readonly PG_TRANSIENT_ERRORS = [
     'Connection terminated unexpectedly',
     'Connection terminated due to connection timeout',
@@ -592,6 +593,7 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage(' Current environment:', this.CURRENT_ENV);
       Utils.logMessage('=====================================');
       Utils.logMessage('Refreshing global rankings...');
+      await this.copyRegionsIntoGlobalPlayers();
       await this.pgSqlQuery('REFRESH MATERIALIZED VIEW CONCURRENTLY global_ranking;');
       Utils.logMessage('Global rankings refreshed successfully');
     } catch (error) {
@@ -2214,6 +2216,54 @@ export class GenericFetchAndSaveBackend {
       this.createNewPool();
     }
     return this.pgSqlConnection;
+  }
+
+  private async copyRegionsIntoGlobalPlayers(): Promise<void> {
+    const client = await this.getPool().connect();
+    try {
+      const { rows } = await client.query("SELECT to_regclass('public.global_players') IS NOT NULL AS present");
+      if (rows[0]?.present !== true) {
+        throw new Error('global_players is missing, run map_global_ranking.sh first');
+      }
+      const regions = await this.listGlobalRegions(client);
+      for (const region of regions) {
+        await this.copyRegionIntoGlobalPlayers(client, region);
+      }
+      await client.query('DELETE FROM global_players WHERE NOT (region = ANY($1::text[]))', [regions]);
+    } finally {
+      client.release();
+    }
+  }
+
+  private async listGlobalRegions(client: pg.PoolClient): Promise<string[]> {
+    const { rows } = await client.query<{ relname: string }>(
+      `SELECT c.relname
+      FROM pg_foreign_table f
+      JOIN pg_class c ON c.oid = f.ftrelid
+      WHERE c.relname LIKE 'players\\_%'
+      ORDER BY c.relname`,
+    );
+    return rows
+      .map((row) => row.relname.slice('players_'.length))
+      .filter((region) => GenericFetchAndSaveBackend.GLOBAL_REGION_PATTERN.test(region));
+  }
+
+  private async copyRegionIntoGlobalPlayers(client: pg.PoolClient, region: string): Promise<void> {
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM global_players WHERE region = $1', [region]);
+      await client.query(
+        `INSERT INTO global_players (region, id, might_current)
+        SELECT $1::text, id, might_current FROM "players_${region}"`,
+        [region],
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      this.recordJobFailure(`global players copy of ${region}`, error, '100');
+    } finally {
+      await client.query('SELECT postgres_fdw_disconnect_all()').catch(() => undefined);
+    }
   }
 
   private async scanStormRing(
