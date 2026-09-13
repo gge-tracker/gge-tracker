@@ -43,6 +43,7 @@ export interface IServerDefinition {
   zoneId?: number;
   resetOffset?: number;
   globalName: string;
+  trackedSince: string;
   databases: {
     sql: string;
     olap: string;

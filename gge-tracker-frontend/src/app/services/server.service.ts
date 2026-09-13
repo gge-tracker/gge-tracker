@@ -59,6 +59,7 @@ export class ServerService {
     SKN: 'https://flagsapi.com/SE/flat/64.png',
     TR: 'https://flagsapi.com/TR/flat/64.png',
     US: 'https://flagsapi.com/US/flat/64.png',
+    PARTNER: '/assets/icons/icon-72x72.png',
   };
   public ggeEmpireActiveServerPrefixes = [
     'AE1',
@@ -115,8 +116,8 @@ export class ServerService {
   public getFlagUrl(server: string): string {
     if (server.startsWith('E4K_')) {
       server = server.slice(4);
-    } else if (server.startsWith('PARTNER_')) {
-      server = 'SP';
+    } else if (server.startsWith('PARTNER')) {
+      server = 'PARTNER';
     }
     server = stripTrailingDigits(server);
     return this.flagsUrl[server] || '/assets/int_flag.png';

@@ -72,6 +72,12 @@ export class ServersCatalog {
     return missing.length > 0 ? [`GgeTrackerServersEnum declares ${missing.join(', ')}, the file does not`] : [];
   }
 
+  private static isCalendarDate(value: string): boolean {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const date = new Date(`${value}T00:00:00Z`);
+    return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
+  }
+
   public getFile(): string {
     return this.file;
   }
@@ -160,6 +166,7 @@ export class ServersCatalog {
       zoneId: this.number(row['zone-id']),
       resetOffset: this.number(row['reset-offset']),
       globalName: this.text(row['global-name']),
+      trackedSince: this.text(row['tracked-since']),
       databases: { sql: this.text(databases.sql), olap: this.text(databases.olap) },
       scraping: scraping
         ? {
@@ -215,6 +222,9 @@ export class ServersCatalog {
       const twinName = globalNames.get(definition.globalName);
       if (twinName) problems.push(`${definition.name} shares global-name ${definition.globalName} with ${twinName}`);
       globalNames.set(definition.globalName, definition.name);
+      if (definition.trackedSince !== '' && !ServersCatalog.isCalendarDate(definition.trackedSince)) {
+        problems.push(`${definition.name} needs a tracked-since as YYYY-MM-DD, got "${definition.trackedSince}"`);
+      }
     }
     problems.push(...ServersCatalog.enumDrift(definitions));
     return problems;
