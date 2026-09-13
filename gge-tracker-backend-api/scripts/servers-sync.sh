@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-API_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/." && pwd)"
+API_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../." && pwd)"
 ENV_FILE="${SERVERS_ENV_FILE:-$API_DIR/../.env}"
 
 env_value() {
