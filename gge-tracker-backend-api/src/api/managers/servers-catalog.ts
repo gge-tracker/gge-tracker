@@ -10,6 +10,7 @@ import { IServerDefinition, ServerKind } from '../interfaces/interfaces';
 export class ServersCatalog {
   private static readonly WATCH_INTERVAL_MS = 10_000;
   private static readonly CODE_LENGTH = 3;
+  private static readonly GLOBAL_NAME_PATTERN = /^[\d_a-z]+$/;
 
   private readonly parser = new XMLParser({ ignoreAttributes: true, parseTagValue: false, trimValues: true });
   private readonly listeners: (() => void)[] = [];
@@ -158,6 +159,7 @@ export class ServersCatalog {
       zone: this.text(row.zone),
       zoneId: this.number(row['zone-id']),
       resetOffset: this.number(row['reset-offset']),
+      globalName: this.text(row['global-name']),
       databases: { sql: this.text(databases.sql), olap: this.text(databases.olap) },
       scraping: scraping
         ? {
@@ -190,6 +192,7 @@ export class ServersCatalog {
     const kinds = new Set<ServerKind>(['ep', 'e4k', 'partner', 'global', 'internal']);
     const seen = new Set<string>();
     const codes = new Map<string, string>();
+    const globalNames = new Map<string, string>();
     for (const definition of definitions) {
       if (!definition.name) problems.push('a server has no name');
       if (seen.has(definition.name)) problems.push(`${definition.name} is declared twice`);
@@ -205,6 +208,13 @@ export class ServersCatalog {
       const twin = definition.code === '' ? undefined : codes.get(definition.code);
       if (twin) problems.push(`${definition.name} shares the code ${definition.code} with ${twin}`);
       if (definition.code !== '') codes.set(definition.code, definition.name);
+      if (definition.kind === 'global') continue;
+      if (!ServersCatalog.GLOBAL_NAME_PATTERN.test(definition.globalName)) {
+        problems.push(`${definition.name} needs a global-name made of a-z, 0-9 and _, got "${definition.globalName}"`);
+      }
+      const twinName = globalNames.get(definition.globalName);
+      if (twinName) problems.push(`${definition.name} shares global-name ${definition.globalName} with ${twinName}`);
+      globalNames.set(definition.globalName, definition.name);
     }
     problems.push(...ServersCatalog.enumDrift(definitions));
     return problems;

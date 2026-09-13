@@ -135,7 +135,7 @@ export class ServerService {
   }
 
   public async init(): Promise<void> {
-    const url = environment.i18nBaseUrl + 'servers.xml';
+    const url = environment.apiUrl + 'servers/catalog';
     await fetch(url)
       .then((response) => response.text())
       .then((xml) => {

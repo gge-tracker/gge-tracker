@@ -30,6 +30,7 @@
 										<xs:element name="zone" type="xs:string" />
 										<xs:element name="zone-id" type="xs:string" />
 										<xs:element name="reset-offset" type="xs:string" />
+										<xs:element name="global-name" type="xs:string" />
 										<xs:element name="databases">
 											<xs:complexType>
 												<xs:sequence>

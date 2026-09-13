@@ -26,6 +26,9 @@
     "test:api:security": "ts-node --project tests/tsconfig.json tests/run.ts security",
     "test:api:load": "ts-node --project tests/tsconfig.json tests/run.ts timing load",
     "test:api:full": "ts-node --project tests/tsconfig.json tests/run.ts all",
+    "servers:diff": "./scripts/servers-sync.sh diff",
+    "servers:pull": "./scripts/servers-sync.sh pull",
+    "servers:push": "./scripts/servers-sync.sh push",
     "fixtures:dump": "../database/fixtures/dump-fixtures.sh",
     "fixtures:load": "../database/fixtures/load-fixtures.sh",
     "fixtures:capture-empire-api": "../database/fixtures/capture-empire-api.sh"

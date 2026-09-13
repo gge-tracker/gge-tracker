@@ -698,7 +698,8 @@ export abstract class ApiStatistics implements ApiHelper {
        * --------------------------------- */
       const pool = ApiHelper.ggeTrackerManager.getPgSqlPoolFromRequestId(playerId);
       const globalPool = ApiHelper.ggeTrackerManager.getGlobalPgSqlPool();
-      if (!pool || !globalPool) {
+      const globalName = ApiHelper.ggeTrackerManager.getServerDefinition(server)?.globalName;
+      if (!pool || !globalPool || !globalName) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
         return;
       }
@@ -712,15 +713,8 @@ export abstract class ApiStatistics implements ApiHelper {
           }
         });
       });
-      let region = server.trim().toLowerCase();
-      if (region.startsWith('partner_')) {
-        region = region.slice(8);
-        region = region.replaceAll(/([A-Za-z])(\d)/g, '$1_$2');
-      } else if (region === 'arab1') {
-        region = 'ar1';
-      }
       const p2 = new Promise((resolve, reject) => {
-        globalPool.query(query_global_rank, [ApiHelper.removeCountryCode(playerId), region], (error, results) => {
+        globalPool.query(query_global_rank, [ApiHelper.removeCountryCode(playerId), globalName], (error, results) => {
           if (error) {
             ApiHelper.logError(error, 'getRankingByPlayerId_query', request);
             reject(new Error(RouteErrorMessagesEnum.GenericInternalServerError));
