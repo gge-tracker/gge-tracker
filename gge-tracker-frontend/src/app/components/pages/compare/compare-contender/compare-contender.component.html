@@ -1,0 +1,51 @@
+@if (contender(); as current) {
+  <article class="contender">
+    <div class="contender-top">
+      <span class="contender-server">{{ current.server }}</span>
+      <button type="button" class="contender-clear" (click)="clear.emit()"
+        [attr.aria-label]="'Réinitialiser' | translate" [title]="'Réinitialiser' | translate">
+        <lucide-icon [img]="X" [size]="16"></lucide-icon>
+      </button>
+    </div>
+    <h2 class="contender-name" [title]="current.name">{{ current.name }}</h2>
+    <div class="contender-meta">
+      @if (current.level) {
+        <span class="contender-level">
+          <span>{{ current.level.level }}</span>
+          @if (current.level.legendary) {
+            <span class="contender-level-legendary">{{ current.level.legendary }}</span>
+          }
+        </span>
+      }
+      @if (current.detailLink) {
+        <a class="contender-detail contender-detail-link" [routerLink]="current.detailLink">{{ current.detail }}</a>
+      } @else if (current.detail) {
+        <span class="contender-detail">{{ current.detail | translate }}</span>
+      }
+    </div>
+    <a class="contender-profile" [routerLink]="current.profileLink">
+      <lucide-icon [img]="OpenProfile" [size]="14"></lucide-icon>
+      <span>{{ (subject() === 'players' ? 'Voir le joueur' : 'Voir le détail') | translate }}</span>
+    </a>
+  </article>
+} @else if (loading()) {
+  <output class="contender contender--loading" [attr.aria-label]="'Chargement' | translate">
+    <span class="contender-skeleton contender-skeleton-tag"></span>
+    <span class="contender-skeleton contender-skeleton-name"></span>
+    <span class="contender-skeleton contender-skeleton-meta"></span>
+  </output>
+} @else {
+  <form class="contender contender--empty" (ngSubmit)="submit()">
+    <label class="visually-hidden" [for]="'compare-search-' + side()">{{ placeholder | translate }}</label>
+    <div class="contender-search">
+      <input [id]="'compare-search-' + side()" name="query" type="search" autocomplete="off" enterkeyhint="search"
+        [(ngModel)]="query" [placeholder]="placeholder | translate">
+      <button type="submit" [attr.aria-label]="'Rechercher' | translate" [disabled]="!query.trim()">
+        <lucide-icon [img]="Search" [size]="18"></lucide-icon>
+      </button>
+    </div>
+    @if (error(); as message) {
+      <p class="contender-error" role="alert">{{ message | translate }}</p>
+    }
+  </form>
+}

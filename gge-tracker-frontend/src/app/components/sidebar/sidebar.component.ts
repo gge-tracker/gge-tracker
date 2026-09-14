@@ -42,6 +42,7 @@ export class SidebarComponent implements AfterViewInit, OnDestroy {
       items: [
         { label: 'Joueurs', id: 'players', iconUrl: '/assets/tools/players.webp' },
         { label: 'Alliances', id: 'alliances', iconUrl: '/assets/tools/alliances.webp' },
+        { label: 'Comparer', id: 'compare', iconUrl: '/assets/tools/ranking.webp' },
         { label: 'Changements de nom', id: 'renames', iconUrl: '/assets/tools/renames.webp' },
         { label: 'Mouvements', id: 'movements', iconUrl: '/assets/tools/movements.webp' },
       ],

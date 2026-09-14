@@ -465,6 +465,19 @@ div[after] {
   z-index: 1;
 }
 
+.alliance-compare-link {
+  color: #f2c14e;
+  text-decoration: none;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.alliance-compare-link:hover,
+.alliance-compare-link:focus-visible {
+  background: #5b4b1bb0;
+  border-color: #f2c14e;
+  color: #ffd978;
+}
+
 .cardIcon {
   height: 50px;
   width: 50px;

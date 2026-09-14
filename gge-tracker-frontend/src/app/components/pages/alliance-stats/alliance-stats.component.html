@@ -47,6 +47,11 @@
       <em class="ms-1">{{ 'Données récupérées le' | translate: { date: (lastUpdate | date: ('Date_5' | translate)) }
       }}</em>
     </span>
+    <a class="badge bg-custom-font alliance-compare-link mt-3 ms-2" [routerLink]="['/compare', 'alliances']"
+      [queryParams]="{ a: allianceId }">
+      <i class="fas fa-scale-balanced"></i>
+      <span class="ms-1">{{ 'Comparer' | translate }}</span>
+    </a>
     <div class="stats-grid">
       @for (card of cards; track card; let i = $index) {
         <div class="stat-card pointer" [style.--i]="i">

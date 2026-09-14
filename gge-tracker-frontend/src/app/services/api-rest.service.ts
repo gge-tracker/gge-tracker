@@ -33,6 +33,8 @@ import {
   ApiOuterRealmEvent,
   ApiOuterRealmPlayers,
   ApiAllianceSearchResponse,
+  ApiAllianceProfile,
+  ApiPlayerProfile,
   ApiRankingStatsPlayer,
   ApiPlayerCastleNameResponse,
   ApiPlayerCastleDataResponse,
@@ -998,6 +1000,14 @@ export class ApiRestService {
     );
     if (!response.success) return response;
     return { success: true, data: response.data };
+  }
+
+  public async getPlayerProfile(playerId: string, include: string): Promise<ApiResponse<ApiPlayerProfile>> {
+    return this.apiFetch<ApiPlayerProfile>(`${ApiRestService.apiUrl}players/${playerId}/profile?include=${include}`);
+  }
+
+  public async getAllianceProfile(allianceId: string): Promise<ApiResponse<ApiAllianceProfile>> {
+    return this.apiFetch<ApiAllianceProfile>(`${ApiRestService.apiUrl}alliances/${allianceId}/profile?include=none`);
   }
 
   private updateResponseMs(requestStartMs: number, requestEndMs: number): void {

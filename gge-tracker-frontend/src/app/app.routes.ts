@@ -24,6 +24,7 @@ import { GuessDailyPlayerComponent } from '@ggetracker-pages/guess-daily-player/
 import { WoaComponent } from '@ggetracker-pages/events/woa/woa.component';
 import { StormTrackerComponent } from '@ggetracker-pages/storm-tracker/storm-tracker.component';
 import { StormyIslesComponent } from '@ggetracker-pages/stormy-isles/stormy-isles.component';
+import { CompareComponent } from '@ggetracker-pages/compare/compare.component';
 
 export const routes: Routes = [
   {
@@ -87,6 +88,20 @@ export const routes: Routes = [
           description: 'View detailed statistics of an alliance on Goodgame Empire.',
         },
         resolve: { titleResolver },
+      },
+      {
+        path: 'compare',
+        pathMatch: 'full',
+        redirectTo: 'compare/players',
+      },
+      {
+        path: 'compare/:type',
+        component: CompareComponent,
+        resolve: { titleResolver },
+        data: {
+          description: 'Compare two players or two alliances of Goodgame Empire side by side',
+          titleKey: 'Comparer',
+        },
       },
       {
         path: 'dungeons',

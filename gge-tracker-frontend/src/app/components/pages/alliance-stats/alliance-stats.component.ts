@@ -40,6 +40,7 @@ import { formatThousands } from '@ggetracker-services/text-format.utilities';
 import { LanguageService } from '@ggetracker-services/language.service';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
 import { WindowService } from '@ggetracker-services/window.service';
+import { RouterLink } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { format } from 'date-fns';
 import katex from 'katex';
@@ -149,6 +150,7 @@ const WHITESPACE = /\s/;
     StatsCardContentComponent,
     TranslateModule,
     DecodeHtmlPipe,
+    RouterLink,
   ],
   standalone: true,
   templateUrl: './alliance-stats.component.html',

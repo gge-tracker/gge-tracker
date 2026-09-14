@@ -2,6 +2,9 @@
   @if (!isInLoading) {
   <div class="d-none d-md-block">
     <div class="btn-exit right">
+      <a class="btn btn-primary mt-3 me-2" [routerLink]="['/compare', 'players']" [queryParams]="{ a: playerId }">
+        <i class="fas fa-scale-balanced"></i>
+        {{ 'Comparer' | translate }}</a>
       @if (!isInFavorites()) {
       <button class="btn btn-primary mt-3" (click)="addPlayerToFavorites()">
         <i class="fas fa-star"></i>

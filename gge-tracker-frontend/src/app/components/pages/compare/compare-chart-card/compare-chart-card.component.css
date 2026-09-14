@@ -1,0 +1,117 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.chart-card {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: rgba(9, 14, 11, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+  color: #eef2ee;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  height: 100%;
+  padding: 1rem 1rem 0.5rem;
+}
+
+.chart-card-header {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  justify-content: space-between;
+}
+
+.chart-card-header h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.chart-card-caption {
+  color: #9aa49a;
+  font-size: 0.8rem;
+}
+
+.chart-card-choices {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 3px;
+}
+
+.chart-card-choice {
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  color: #c8d0c8;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.chart-card-choice:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.chart-card-choice.active {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.chart-card-body {
+  display: flex;
+  min-height: 335px;
+}
+
+.chart-card-message {
+  align-items: center;
+  color: #b9c2b9;
+  justify-content: center;
+  margin: 0;
+}
+
+.chart-card-skeleton {
+  animation: chart-card-pulse 1.4s ease-in-out infinite;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  flex: 1;
+  margin-bottom: 0.5rem;
+}
+
+@keyframes chart-card-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .chart-card-choices {
+    align-self: stretch;
+    border-radius: 12px;
+    flex-wrap: nowrap;
+  }
+
+  .chart-card-choice {
+    border-radius: 9px;
+    flex: 1 1 0;
+    padding: 6px 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-card-skeleton {
+    animation: none;
+  }
+}

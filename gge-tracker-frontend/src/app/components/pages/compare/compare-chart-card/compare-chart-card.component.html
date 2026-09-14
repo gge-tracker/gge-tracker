@@ -1,0 +1,40 @@
+<article class="chart-card">
+  <header class="chart-card-header">
+    <h3>{{ heading() | translate }}</h3>
+    @if (caption(); as text) {
+      <span class="chart-card-caption">{{ text | translate }}</span>
+    }
+  </header>
+
+  @if (choices().length > 0) {
+    <div class="chart-card-choices" role="group" [attr.aria-label]="heading() | translate">
+      @for (option of choices(); track option.value) {
+        <button type="button" class="chart-card-choice" [class.active]="choice() === option.value"
+          [attr.aria-pressed]="choice() === option.value" (click)="choose.emit(option.value)">
+          {{ option.label | translate }}
+        </button>
+      }
+    </div>
+  }
+
+  @switch (state()) {
+    @case ('loading') {
+      <output class="chart-card-body" [attr.aria-label]="'Chargement' | translate">
+        <span class="chart-card-skeleton"></span>
+      </output>
+    }
+    @case ('error') {
+      <p class="chart-card-body chart-card-message" role="alert">{{ 'Une erreur est survenue' | translate }}</p>
+    }
+    @default {
+      @for (chart of options() ? [options()!] : []; track chart) {
+        <app-charts-wrapper [series]="chart.series" [chart]="chart.chart" [xaxis]="chart.xaxis" [yaxis]="chart.yaxis"
+          [dataLabels]="chart.dataLabels" [plotOptions]="chart.plotOptions" [grid]="chart.grid" [colors]="chart.colors"
+          [markers]="chart.markers || {}" [fill]="chart.fill" [stroke]="chart.stroke" [title]="chart.title"
+          [tooltip]="chart.tooltip" [legend]="chart.legend"></app-charts-wrapper>
+      } @empty {
+        <p class="chart-card-body chart-card-message">{{ 'Aucun résultat' | translate }}</p>
+      }
+    }
+  }
+</article>

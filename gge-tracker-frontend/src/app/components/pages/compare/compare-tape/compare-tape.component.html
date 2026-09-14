@@ -1,0 +1,57 @@
+<section class="tape">
+  @if (score().total > 0) {
+    <header class="tape-verdict">
+      <p class="tape-verdict-text">
+        @if (leader() === null) {
+          <strong>{{ 'Égalité' | translate }}</strong>
+        } @else {
+          <strong class="tape-verdict-leader" [class.side-a]="leader() === 0" [class.side-b]="leader() === 1">
+            {{ names()[leader()!] }}</strong>
+          <span>{{ 'En tête' | translate }}</span>
+        }
+      </p>
+      <div class="tape-verdict-score" role="img"
+        [attr.aria-label]="names()[0] + ' ' + score().wins[0] + ' - ' + score().wins[1] + ' ' + names()[1]">
+        @if (score().wins[0] > 0) {
+          <span class="tape-verdict-segment side-a" [style.flex-grow]="score().wins[0]">{{ score().wins[0] }}</span>
+        }
+        @if (score().ties > 0) {
+          <span class="tape-verdict-segment tape-verdict-tie" [style.flex-grow]="score().ties">=&nbsp;{{ score().ties }}</span>
+        }
+        @if (score().wins[1] > 0) {
+          <span class="tape-verdict-segment side-b" [style.flex-grow]="score().wins[1]">{{ score().wins[1] }}</span>
+        }
+      </div>
+    </header>
+  }
+
+  <ol class="tape-rows">
+    @for (row of rows(); track row.label) {
+      <li class="tape-row">
+        <div class="tape-value side-a" [class.is-winner]="row.winner === 0" [class.is-loser]="row.winner === 1">
+          <span class="tape-number" [title]="exact(row, 0)">{{ display(row, 0) }}</span>
+          @if (row.winner === 0) {
+            <span class="tape-delta">{{ delta(row) }}</span>
+          }
+        </div>
+        <div class="tape-metric">
+          <span class="tape-label">
+            <img [src]="row.icon" alt="" width="22" height="22" loading="lazy">
+            <span>{{ row.label | translate }}</span>
+          </span>
+          @if (row.shareA !== null) {
+            <span class="tape-share" aria-hidden="true">
+              <span class="tape-share-a" [style.width.%]="row.shareA * 100"></span>
+            </span>
+          }
+        </div>
+        <div class="tape-value side-b" [class.is-winner]="row.winner === 1" [class.is-loser]="row.winner === 0">
+          <span class="tape-number" [title]="exact(row, 1)">{{ display(row, 1) }}</span>
+          @if (row.winner === 1) {
+            <span class="tape-delta">{{ delta(row) }}</span>
+          }
+        </div>
+      </li>
+    }
+  </ol>
+</section>

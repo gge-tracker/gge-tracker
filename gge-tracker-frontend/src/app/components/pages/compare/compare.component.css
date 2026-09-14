@@ -1,0 +1,210 @@
+:host {
+  display: block;
+}
+
+.compare-page {
+  --compare-side-a: #f2c14e;
+  --compare-side-a-soft: rgba(242, 193, 78, 0.16);
+  --compare-side-b: #5aa8ff;
+  --compare-side-b-soft: rgba(90, 168, 255, 0.16);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 0 auto;
+  max-width: 1180px;
+  padding: 1.25rem 1rem 4rem;
+}
+
+.compare-header {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  justify-content: space-between;
+}
+
+.compare-title {
+  color: #fff;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 800;
+  margin: 0;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
+}
+
+.compare-subjects {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: rgba(9, 14, 11, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+}
+
+.compare-subject {
+  align-items: center;
+  border-radius: 999px;
+  color: #c8d0c8;
+  display: inline-flex;
+  font-weight: 600;
+  gap: 8px;
+  padding: 6px 16px 6px 8px;
+  text-decoration: none;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.compare-subject img {
+  height: 24px;
+  object-fit: contain;
+  width: 24px;
+}
+
+.compare-subject:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.compare-subject.active {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.compare-arena {
+  align-items: stretch;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+
+.compare-versus {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.compare-versus-badge {
+  align-items: center;
+  background:
+    radial-gradient(circle at 35% 30%, #fff3c4, transparent 45%),
+    linear-gradient(135deg, var(--compare-side-a) 0%, #b07d1a 48%, #2a5fa8 52%, var(--compare-side-b) 100%);
+  border: 3px solid #0a0e0b;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.25),
+    0 8px 24px rgba(0, 0, 0, 0.45);
+  color: #fff;
+  display: flex;
+  font-size: 1.35rem;
+  font-style: italic;
+  font-weight: 900;
+  height: 68px;
+  justify-content: center;
+  letter-spacing: -0.02em;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+  width: 68px;
+}
+
+.compare-swap {
+  align-items: center;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: rgba(9, 14, 11, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 50%;
+  color: #dfe6df;
+  cursor: pointer;
+  display: flex;
+  height: 40px;
+  justify-content: center;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.3s ease;
+  width: 40px;
+}
+
+.compare-swap:hover:not(:disabled),
+.compare-swap:focus-visible {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  transform: rotate(180deg);
+}
+
+.compare-swap:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.compare-charts {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.compare-charts--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.compare-hint {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: rgba(9, 14, 11, 0.62);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 16px;
+  color: #dfe6df;
+  font-size: 1rem;
+  margin: 0;
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .compare-swap {
+    transition: none;
+  }
+
+  .compare-swap:hover:not(:disabled),
+  .compare-swap:focus-visible {
+    transform: none;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .compare-charts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 767.98px) {
+  .compare-page {
+    padding-top: 1rem;
+  }
+
+  .compare-header {
+    justify-content: center;
+  }
+
+  .compare-arena {
+    gap: 0.5rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .compare-versus {
+    flex-direction: row;
+  }
+
+  .compare-versus-badge {
+    font-size: 1.05rem;
+    height: 52px;
+    width: 52px;
+  }
+
+  .compare-swap {
+    transform: rotate(90deg);
+  }
+
+  .compare-swap:hover:not(:disabled),
+  .compare-swap:focus-visible {
+    transform: rotate(270deg);
+  }
+}

@@ -503,6 +503,53 @@ export interface ApiAllianceSearchResponse {
   is_searching_players: boolean;
 }
 
+export interface ApiProfileServer {
+  server: string;
+  server_code: string;
+  server_name: string | null;
+}
+
+export interface ApiPlayerProfileIdentity {
+  player_id: string;
+  player_name: string;
+  alliance_id: string | null;
+  alliance_name: string | null;
+  alliance_rank: number | null;
+  might_current: number;
+  might_all_time: number;
+  loot_current: number;
+  loot_all_time: number;
+  honor: number;
+  max_honor: number;
+  highest_fame: number;
+  current_fame: number;
+  level: number;
+  legendary_level: number;
+  peace_disabled_at: string | null;
+  updated_at: string;
+}
+
+export interface ApiPlayerProfile extends ApiProfileServer {
+  player: ApiPlayerProfileIdentity;
+  castles?: { kingdom_id: number; castle_type: number }[];
+  rank?: { might_current: number; loot_current: number; honor: number; current_fame: number; ranked_players: number };
+}
+
+export interface ApiAllianceProfile extends ApiProfileServer {
+  alliance: { alliance_id: string; alliance_name: string; language: string | null };
+  statistics: {
+    player_count: number;
+    active_player_count: number;
+    might_current: number;
+    might_all_time: number;
+    loot_current: number;
+    loot_all_time: number;
+    current_fame: number;
+    highest_fame: number;
+    average_level: number;
+  };
+}
+
 export interface ApiAllianceDescriptionHistory {
   created_at: string;
   old_description: string;
