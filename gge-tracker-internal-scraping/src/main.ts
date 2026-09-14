@@ -58,6 +58,12 @@ interface OuterRealmsEntry {
   castlePositionY: number;
 }
 
+interface GlobalRegion {
+  name: string;
+  mapped: boolean;
+  role: string;
+}
+
 interface DungeonCooldownUpdate {
   kid: number;
   position_x: number;
@@ -2226,26 +2232,47 @@ export class GenericFetchAndSaveBackend {
         throw new Error('global_players is missing, run map_global_ranking.sh first');
       }
       const regions = await this.listGlobalRegions(client);
-      for (const region of regions) {
-        await this.copyRegionIntoGlobalPlayers(client, region);
+      this.reportUnmappedRegions(regions);
+      for (const region of regions.filter((candidate) => candidate.mapped)) {
+        await this.copyRegionIntoGlobalPlayers(client, region.name);
       }
-      await client.query('DELETE FROM global_players WHERE NOT (region = ANY($1::text[]))', [regions]);
+      await client.query('DELETE FROM global_players WHERE NOT (region = ANY($1::text[]))', [
+        regions.map((region) => region.name),
+      ]);
     } finally {
       client.release();
     }
   }
 
-  private async listGlobalRegions(client: pg.PoolClient): Promise<string[]> {
-    const { rows } = await client.query<{ relname: string }>(
-      `SELECT c.relname
+  private async listGlobalRegions(client: pg.PoolClient): Promise<GlobalRegion[]> {
+    const { rows } = await client.query<{ relname: string; mapped: boolean; role: string }>(
+      `SELECT
+        c.relname,
+        EXISTS (
+          SELECT 1 FROM pg_user_mappings m
+          WHERE m.srvid = f.ftserver
+          AND m.umuser IN (0, (SELECT oid FROM pg_roles WHERE rolname = current_user))
+        ) AS mapped,
+        current_user AS role
       FROM pg_foreign_table f
       JOIN pg_class c ON c.oid = f.ftrelid
       WHERE c.relname LIKE 'players\\_%'
       ORDER BY c.relname`,
     );
     return rows
-      .map((row) => row.relname.slice('players_'.length))
-      .filter((region) => GenericFetchAndSaveBackend.GLOBAL_REGION_PATTERN.test(region));
+      .map((row) => ({ name: row.relname.slice('players_'.length), mapped: row.mapped, role: row.role }))
+      .filter((region) => GenericFetchAndSaveBackend.GLOBAL_REGION_PATTERN.test(region.name));
+  }
+
+  private reportUnmappedRegions(regions: GlobalRegion[]): void {
+    const unmapped = regions.filter((region) => !region.mapped);
+    if (unmapped.length === 0) return;
+    const names = unmapped.map((region) => region.name).join(', ');
+    this.recordJobFailure(
+      'global players copy',
+      new Error(`no user mapping for role ${unmapped[0].role} on ${names}, run map_global_ranking.sh`),
+      '100',
+    );
   }
 
   private async copyRegionIntoGlobalPlayers(client: pg.PoolClient, region: string): Promise<void> {

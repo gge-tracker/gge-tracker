@@ -20,9 +20,11 @@ const INSERT = /INSERT INTO global_players/;
 const COPY_STEP =
   /^(BEGIN|COMMIT|DELETE FROM global_players WHERE region = \$1|INSERT INTO global_players|SELECT postgres_fdw_disconnect_all)/;
 
-function mapRegions(sandbox: Sandbox, relnames: string[], present = true): void {
+function mapRegions(sandbox: Sandbox, relnames: string[], present = true, unmapped: string[] = []): void {
   sandbox.db.when(TABLE_PRESENT, { rows: [{ present }] });
-  sandbox.db.when(FOREIGN_TABLES, { rows: relnames.map((relname) => ({ relname })) });
+  sandbox.db.when(FOREIGN_TABLES, {
+    rows: relnames.map((relname) => ({ relname, mapped: !unmapped.includes(relname), role: 'scraper' })),
+  });
 }
 
 function statements(sandbox: Sandbox): string[] {
@@ -99,6 +101,37 @@ describe('refreshGlobalRankings', () => {
       assert.equal(sandbox.db.matching(/FROM "players_de1"/).length, 1);
       assert.equal(sandbox.db.matching(REFRESH).length, 1);
       assert.equal(sandbox.state<any>('jobFailure').failureStep, 'global players copy of fr1');
+    });
+  });
+
+  it('reports every region the session role has no user mapping for as one failure, and keeps their rows', async () => {
+    await withSandbox({ clickhouse: false }, async (sandbox) => {
+      mapRegions(sandbox, ['players_ae1', 'players_ar1', 'players_fr1'], true, ['players_ae1', 'players_ar1']);
+      await sandbox.call('refreshGlobalRankings');
+
+      assert.deepEqual(
+        sandbox.db.matching(INSERT).map((query) => query.params[0]),
+        ['fr1'],
+      );
+      assert.equal(sandbox.state<any>('DB_UPDATES').criticalErrors, 1);
+      assert.equal(
+        sandbox.state<any>('jobFailure').failureReason,
+        'no user mapping for role scraper on ae1, ar1, run map_global_ranking.sh',
+      );
+      assert.deepEqual(sandbox.db.one(/WHERE NOT \(region = ANY/).params, [['ae1', 'ar1', 'fr1']]);
+      assert.equal(sandbox.db.matching(REFRESH).length, 1);
+    });
+  });
+
+  it('checks the mapping of the session role, which is the one a foreign scan uses', async () => {
+    await withSandbox({ clickhouse: false }, async (sandbox) => {
+      mapRegions(sandbox, ['players_fr1']);
+      await sandbox.call('refreshGlobalRankings');
+
+      assert.match(
+        sandbox.db.one(FOREIGN_TABLES).sql,
+        /m\.umuser IN \(0, \(SELECT oid FROM pg_roles WHERE rolname = current_user\)\)/,
+      );
     });
   });
 
