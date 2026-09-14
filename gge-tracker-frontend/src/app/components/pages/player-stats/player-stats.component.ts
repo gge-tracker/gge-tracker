@@ -252,6 +252,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   private readonly LOOT_TAB_DAYS = 182;
   private readonly LOOT_OVERVIEW_WEEKS = 5;
   private readonly CONTINUOUS_CHARTS = new Set(['might', 'loot']);
+  private readonly WEEKLY_RESET_CHARTS = new Set(['loot']);
   private readonly FULL_HISTORY_DAYS = 1825;
   private seriesWindow: Partial<Record<ApiPlayerStatsType, number>> = {};
 
@@ -374,7 +375,8 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     if ((this.seriesWindow[source.table] ?? 0) >= wanted || this.seriesState[chartName] === 'loading') return;
     this.seriesState[chartName] = 'loading';
     this.cdr.detectChanges();
-    const needsOccurrences = !this.CONTINUOUS_CHARTS.has(chartName) && !this.eventOccurrences[chartName];
+    const hasOccurrences = !this.CONTINUOUS_CHARTS.has(chartName) || this.WEEKLY_RESET_CHARTS.has(chartName);
+    const needsOccurrences = hasOccurrences && !this.eventOccurrences[chartName];
     const [response, occurrences] = await Promise.all([
       this.apiRestService.getPlayerStatsSeriesByPlayerId(this.playerId, [source.table], wanted),
       needsOccurrences
@@ -1720,8 +1722,29 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     });
   }
 
+  private buildLootWeeklyScoresSeries(weeks: ApiPlayerEventOccurrence[]): { data: number[]; categories: string[] } {
+    const newestFirst = [...weeks].reverse();
+    return {
+      data: newestFirst.map((week) => Number(week.point)),
+      categories: newestFirst.map((week) =>
+        new Date(week.ended_at).getTime() > Date.now()
+          ? this.translateService.instant('Semaine courante')
+          : `${this.formatLootWeekRange(new Date(week.started_at))} (${this.getUnitByValue(Number(week.point))})`,
+      ),
+    };
+  }
+
+  private formatLootWeekRange(weekStart: Date): string {
+    const locale = this.languageService.getCurrentLang();
+    return this.translateService.instant('Semaine du 0 au 0', {
+      start: weekStart.toLocaleDateString(locale).slice(0, -5),
+      end: new Date(weekStart.getTime() + 6 * 24 * MS_PER_HOUR).toLocaleDateString(locale).slice(0, -5),
+    });
+  }
+
   private initLootHistoryData(): void {
     const maxPoints: { week: string; points: number }[] = [];
+    const weeklyTotals: ApiPlayerEventOccurrence[] = [];
     const lootPoints = this.data['player_loot_history'];
     if (!lootPoints || lootPoints.length === 0) {
       return;
@@ -1765,6 +1788,11 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
         week: weekStartDate.toISOString().slice(0, 10),
         points: maxPoint,
       });
+      weeklyTotals.push({
+        started_at: weekStartDate.toISOString(),
+        ended_at: new Date(weekStartDate.getTime() + HOURS_PER_WEEK * MS_PER_HOUR - 1).toISOString(),
+        point: maxPoint,
+      });
       if (index === allWeeksData.length - 1) {
         return {
           name: this.translateService.instant('Semaine courante') + ' (' + this.getUnitByValue(maxPoint) + ')',
@@ -1781,17 +1809,8 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
         };
       }
 
-      const locale = this.languageService.getCurrentLang();
-
       return {
-        name:
-          this.translateService.instant('Semaine du 0 au 0', {
-            start: weekStartDate.toLocaleDateString(locale).slice(0, -5),
-            end: new Date(weekStartDate.getTime() + 6 * 24 * 3_600_000).toLocaleDateString(locale).slice(0, -5),
-          }) +
-          ' (' +
-          this.getUnitByValue(maxPoint) +
-          ')',
+        name: this.formatLootWeekRange(weekStartDate) + ' (' + this.getUnitByValue(maxPoint) + ')',
         data: weekData,
         color: colors[0],
         hidden: true,
@@ -1884,6 +1903,11 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     this.initChartOption('loot', seriesNewestFirst.slice(0, this.LOOT_OVERVIEW_WEEKS), colors);
     this.charts['loot-weeks'] = { ...this.charts['loot'], series: seriesNewestFirst };
     this.spinnerLoadingByChart['loot-weeks'] = false;
+    const { data: weeklyScores, categories: weeklyLabels } = this.buildLootWeeklyScoresSeries(
+      this.eventOccurrences['loot'] ?? weeklyTotals,
+    );
+    this.initFinalScoresChartOption('loot-scores', weeklyScores, weeklyLabels, colors[1]);
+    this.buildEventCharts('loot', weeklyScores.length);
     this.charts['loot'].xaxis.type = 'datetime';
     const weekHoursReference = allWeeksHours[0];
     for (let index = 1; index < allWeeksHours.length; index++) {
