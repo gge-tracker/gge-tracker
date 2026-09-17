@@ -36,9 +36,11 @@ class GgeEmpire4KingdomsTcp extends BaseSocket implements GgeEmpireSocketImpl {
       this.onError = (error): void => this.handleErrorState(error);
       this.onClose = (code, reason): void => this.handleCloseState(code, reason);
 
+      const connectStartedAt = Date.now();
       this.socket = net
         .createConnection(port, host, () => {
           this.log('✅ [connect] TCP socket connected to', this.url);
+          this.recordRoundTrip(Date.now() - connectStartedAt);
           this.opened.set();
         })
         .on('close', (code, reason) => this.handleCloseState(code, reason))

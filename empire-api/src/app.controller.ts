@@ -244,7 +244,7 @@ export default function createApp(sockets: {
       const jsonResponse = await sockets[requestedServer].waitForJsonResponse(
         request.params.command,
         responseHeaders,
-        1000,
+        sockets[requestedServer].responseTimeoutMs,
       );
       settle('ok');
       response.status(200).json({

@@ -95,6 +95,31 @@ export interface StormScanResult {
   isles: StormIsle[];
   radius: number;
   borderReached: boolean;
+  failedTiles: number;
+  saturatedTiles: number;
+  complete: boolean;
+}
+
+export interface StormOwnIsle {
+  objectId: number;
+  positionX: number;
+  positionY: number;
+}
+
+export interface StormMeta {
+  scanRadius: number;
+  seasonStartedAt: Date | null;
+  seasonCheckedAt: Date | null;
+  ownIsle: StormOwnIsle | null;
+  mapIsEmpty: boolean;
+  databaseNow: Date;
+}
+
+export type StormSeasonState = 'settled' | 'running' | 'rolled' | 'entered' | 'closed' | 'unreachable';
+
+export interface StormSeasonReport {
+  state: StormSeasonState;
+  ownIsle: StormOwnIsle | null;
 }
 
 export type HighScoreKey = (typeof HIGH_SCORE_KEYS)[number];

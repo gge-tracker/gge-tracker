@@ -487,7 +487,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "One row per game socket, worst first. \"Last frame age\" is the honest liveness signal: the bridge pings every minute, so a socket that has said nothing for several minutes is gone whatever its state says",
+      "description": "One row per game socket, worst first. \"Last frame age\" is the honest liveness signal: the bridge pings every minute, so a socket that has said nothing for several minutes is gone whatever its state says. \"Answer budget\" is how long this server is given to answer one command, derived from its measured round trip",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -557,6 +557,24 @@
               {
                 "id": "unit",
                 "value": "s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "include",
+                "names": [
+                  "Round trip",
+                  "Answer budget"
+                ]
+              }
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
               }
             ]
           },
@@ -742,6 +760,30 @@
           "range": false,
           "refId": "G",
           "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "max by (server) (empire_api_socket_round_trip_ms{bridge=~\"$bridge\"})",
+          "instant": true,
+          "range": false,
+          "refId": "H",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "max by (server) (empire_api_socket_response_timeout_ms{bridge=~\"$bridge\"})",
+          "instant": true,
+          "range": false,
+          "refId": "I",
+          "format": "table"
         }
       ],
       "title": "Socket status",
@@ -766,7 +808,9 @@
               "Time 4": true,
               "Time 5": true,
               "Time 6": true,
-              "Time 7": true
+              "Time 7": true,
+              "Time 8": true,
+              "Time 9": true
             },
             "indexByName": {},
             "renameByName": {
@@ -780,7 +824,9 @@
               "Value #D": "Last frame age",
               "Value #E": "Restarts",
               "Value #F": "Logins refused",
-              "Value #G": "Frames in"
+              "Value #G": "Frames in",
+              "Value #H": "Round trip",
+              "Value #I": "Answer budget"
             }
           }
         }

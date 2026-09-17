@@ -123,3 +123,71 @@ export function timeout(command: string): Record<string, unknown> {
 function unknownCommand(request: ApiRequest): Record<string, unknown> {
   return timeout(request.command);
 }
+
+export const STORM_FORT_OBJECT = 25;
+export const STORM_ISLE_OBJECT = 24;
+export const STORM_BORDER_OBJECT = 31;
+
+export function stormArea(objects: unknown[][]): Record<string, unknown> {
+  return { return_code: '0', content: { AI: objects } };
+}
+
+export function stormFort(x: number, y: number, { locked = false } = {}): unknown[] {
+  return [STORM_FORT_OBJECT, x, y, 0, 0, 1, 0, 3, locked ? 1 : 0];
+}
+
+export function stormIsle(x: number, y: number, occupierId = 0): unknown[] {
+  return [STORM_ISLE_OBJECT, x, y, 900, occupierId, 0, 0, 0, 2, 0];
+}
+
+export interface OwnCastle {
+  kid: number;
+  x?: number;
+  y?: number;
+  objectId?: number;
+}
+
+export function ownCastles(castles: OwnCastle[]): Record<string, unknown> {
+  return {
+    return_code: 0,
+    content: {
+      gcl: {
+        C: castles.map((castle) => ({
+          KID: castle.kid,
+          AI: [
+            {
+              AI: [
+                12,
+                castle.x ?? 0,
+                castle.y ?? 0,
+                castle.objectId ?? 0,
+                SCRAPER_PLAYER_ID,
+                1,
+                2,
+                2,
+                2,
+                0,
+                'SCRAPER',
+                0,
+                0,
+                -1,
+                -1,
+                -1,
+                castle.kid,
+                0,
+                [],
+                0,
+              ],
+            },
+          ],
+        })),
+      },
+    },
+  };
+}
+
+export const SCRAPER_PLAYER_ID = 5500473;
+
+export function ownPlayerInfo(playerId = SCRAPER_PLAYER_ID): Record<string, unknown> {
+  return { return_code: 0, content: { UID: 10_422, PID: playerId, PN: 'SCRAPER' } };
+}

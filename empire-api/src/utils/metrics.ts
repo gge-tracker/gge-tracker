@@ -11,6 +11,7 @@ export interface GgeSocketStats {
   loginFailures: number;
   connectedSinceMs: number | null;
   lastMessageAtMs: number | null;
+  roundTripMs: number | null;
 }
 
 export interface GgeMetricsSocket {
@@ -18,6 +19,7 @@ export interface GgeMetricsSocket {
   metricsConnected: boolean;
   metricsState: string;
   metricsStats: GgeSocketStats;
+  metricsResponseTimeoutMs: number;
 }
 
 export function createSocketStats(): GgeSocketStats {
@@ -30,6 +32,7 @@ export function createSocketStats(): GgeSocketStats {
     loginFailures: 0,
     connectedSinceMs: null,
     lastMessageAtMs: null,
+    roundTripMs: null,
   };
 }
 
@@ -166,6 +169,18 @@ const SOCKET_METRICS: SocketMetricDefinition[] = [
     help: 'Seconds since the socket last logged in, -1 when it is not connected',
     read: (socket, nowMs) =>
       socket.metricsStats.connectedSinceMs === null ? -1 : (nowMs - socket.metricsStats.connectedSinceMs) / 1000,
+  },
+  {
+    name: 'empire_api_socket_round_trip_ms',
+    type: 'gauge',
+    help: 'Measured round trip of a trivial command, -1 when none was measured yet',
+    read: (socket) => socket.metricsStats.roundTripMs ?? -1,
+  },
+  {
+    name: 'empire_api_socket_response_timeout_ms',
+    type: 'gauge',
+    help: 'How long the bridge waits for this server to answer, derived from its round trip',
+    read: (socket) => socket.metricsResponseTimeoutMs,
   },
   {
     name: 'empire_api_socket_last_message_age_seconds',

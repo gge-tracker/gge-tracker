@@ -28,7 +28,10 @@ import {
   StormFort,
   StormIsle,
   StormIsleState,
+  StormMeta,
+  StormOwnIsle,
   StormScanResult,
+  StormSeasonReport,
 } from './interfaces';
 import Utils from './utils';
 
@@ -235,6 +238,10 @@ export class GenericFetchAndSaveBackend {
   private readonly STORM_RESET_HOUR_UTC = 0;
   private readonly STORM_RESET_MINUTE_UTC = 30;
   private readonly STORM_CHUNK_SIZE = 500;
+  private readonly STORM_ENTRY_EVENT_ID = 16;
+  private readonly STORM_SEASON_CHECK_BACKOFF_MINUTES = 15;
+  private readonly STORM_MAX_FAILED_TILES = 10;
+  private readonly STORM_TILE_OBJECT_CEILING = 1000;
   private readonly BASE_API_URL: string;
   private readonly CLICKHOUSE_CONFIG: { [key: string]: string | number | undefined } | undefined;
   private readonly PGSQL_CONFIG: pg.PoolConfig | undefined;
@@ -1001,14 +1008,14 @@ export class GenericFetchAndSaveBackend {
   public async updateStormMap(): Promise<void> {
     const start = new Date();
     let scan: StormScanResult | null = null;
-    let seasonRollover = false;
+    let season: StormSeasonReport = { state: 'settled', ownIsle: null };
     try {
-      seasonRollover = await this.applyStormSeasonRolloverIfNeeded();
+      const meta = await this.readStormMeta();
+      season = await this.resolveStormSeason(meta);
+      if (season.state === 'closed' || season.state === 'unreachable') return;
 
-      const { rows: metaRows } = await this.pgSqlQuery('SELECT scan_radius FROM storm_meta WHERE id = TRUE');
-      const knownRadius = metaRows.length > 0 ? Number(metaRows[0].scan_radius) : this.STORM_TILE_HALF_SPAN;
-
-      scan = await this.scanStormMap(knownRadius);
+      const wiped = season.state === 'entered' || season.state === 'rolled';
+      scan = await this.scanStormMap(wiped ? this.STORM_TILE_HALF_SPAN : meta.scanRadius);
       console.log(
         `Storm scan done for ${this.server}: ${scan.forts.length} forts, ${scan.isles.length} isles, ` +
           `radius ${scan.radius}${scan.borderReached ? ' (border reached)' : ''}`,
@@ -1016,10 +1023,7 @@ export class GenericFetchAndSaveBackend {
 
       await this.persistStormForts(scan.forts);
       await this.persistStormIsles(scan.isles);
-      await this.pgSqlQuery('UPDATE storm_meta SET scan_radius = $1, last_scan_at = NOW() WHERE id = TRUE', [
-        scan.radius,
-      ]);
-      await this.bumpScanVersion(`storm-version:${this.server}`);
+      await this.finishStormScan(scan, meta.databaseNow);
     } catch (error) {
       this.recordJobFailure('storm map sweep', error, '420');
       throw error;
@@ -1027,18 +1031,31 @@ export class GenericFetchAndSaveBackend {
       const elapsedTime = Date.now() - start.getTime();
       await this.logToLoki({
         job: 'update-storm-map',
-        level: this.DB_UPDATES.criticalErrors > 0 ? 'error' : 'info',
+        level: this.stormRunLevel(season),
         data: {
           server: this.server,
           criticalErrors: this.DB_UPDATES.criticalErrors,
           durationMs: elapsedTime,
-          forts: scan?.forts.length ?? 0,
-          isles: scan?.isles.length ?? 0,
-          occupiedIsles: scan?.isles.filter((isle) => (isle.occupierId ?? 0) > 0).length ?? 0,
-          lockedForts: scan?.forts.filter((fort) => !fort.isVisible).length ?? 0,
-          radius: scan?.radius ?? 0,
-          borderReached: scan?.borderReached ?? false,
-          seasonRollover,
+          seasonState: season.state,
+          seasonRollover: season.state === 'entered' || season.state === 'rolled',
+          ...(season.ownIsle
+            ? {
+                ownIsleObjectId: season.ownIsle.objectId,
+                ownIsle: `${season.ownIsle.positionX}:${season.ownIsle.positionY}`,
+              }
+            : {}),
+          ...(scan
+            ? {
+                forts: scan.forts.length,
+                isles: scan.isles.length,
+                occupiedIsles: scan.isles.filter((isle) => (isle.occupierId ?? 0) > 0).length,
+                lockedForts: scan.forts.filter((fort) => !fort.isVisible).length,
+                radius: scan.radius,
+                borderReached: scan.borderReached,
+                failedTiles: scan.failedTiles,
+                saturatedTiles: scan.saturatedTiles,
+              }
+            : {}),
           ...this.jobFailure,
         },
       });
@@ -2298,18 +2315,28 @@ export class GenericFetchAndSaveBackend {
     forts: Map<string, StormFort>,
     isles: Map<string, StormIsle>,
     requestsSoFar: number,
-  ): Promise<{ ringHasObjects: boolean; borderReached: boolean; requests: number }> {
+  ): Promise<{
+    ringHasObjects: boolean;
+    borderReached: boolean;
+    requests: number;
+    failedTiles: number;
+    saturatedTiles: number;
+  }> {
     let ringHasObjects = false;
     let borderReached = false;
+    let failedTiles = 0;
+    let saturatedTiles = 0;
     let done = requestsSoFar;
     for (const tile of this.getStormRingTiles(ring)) {
       const json = `"KID":${this.STORM_KID},"AX1":${tile.AX1},"AY1":${tile.AY1},"AX2":${tile.AX2},"AY2":${tile.AY2}`;
       console.log('Fetching zone: ' + json);
       const url: string = encodeURI(this.BASE_API_URL + 'gaa/' + json);
-      const areaInfos = await this.fetchStormArea(url);
+      const area = await this.fetchStormArea(url);
+      if (area.failed) failedTiles++;
+      if (this.isSaturatedStormTile(area.objects)) saturatedTiles++;
       const currentTime = new Date();
 
-      for (const object of areaInfos) {
+      for (const object of area.objects) {
         const objectType = Number(object[0]);
         if (objectType === this.STORM_BORDER_OBJECT_ID) {
           borderReached = true;
@@ -2332,7 +2359,7 @@ export class GenericFetchAndSaveBackend {
         await this.sleep(1000);
       }
     }
-    return { ringHasObjects, borderReached, requests: done };
+    return { ringHasObjects, borderReached, requests: done, failedTiles, saturatedTiles };
   }
 
   private async scanStormMap(knownRadius: number): Promise<StormScanResult> {
@@ -2343,15 +2370,26 @@ export class GenericFetchAndSaveBackend {
     let ring = 0;
     let reachedRings = knownRings;
     let done = 0;
+    let failedTiles = 0;
+    let saturatedTiles = 0;
 
     while (ring <= this.STORM_MAX_RINGS) {
       const scan = await this.scanStormRing(ring, forts, isles, done);
       done = scan.requests;
+      failedTiles += scan.failedTiles;
+      saturatedTiles += scan.saturatedTiles;
       borderReached = borderReached || scan.borderReached;
       const ringHasObjects = scan.ringHasObjects;
 
       if (ringHasObjects && ring > reachedRings) {
         reachedRings = ring;
+      }
+      if (failedTiles >= this.STORM_MAX_FAILED_TILES) {
+        throw new Error('Too many errors encountered while scanning the storm map.');
+      }
+      if (scan.failedTiles > 0 && !ringHasObjects) {
+        console.log('Storm ring answered nothing, stopping scan.');
+        break;
       }
       // Keep growing only while the frontier still yields
       // storm objects and the edge is not met
@@ -2367,6 +2405,9 @@ export class GenericFetchAndSaveBackend {
       isles: [...isles.values()],
       radius: this.stormRingsToRadius(reachedRings),
       borderReached,
+      failedTiles,
+      saturatedTiles,
+      complete: failedTiles === 0 && saturatedTiles === 0,
     };
   }
 
@@ -2375,31 +2416,30 @@ export class GenericFetchAndSaveBackend {
    * retrying once on an invalid payload
    *
    * @param url The gaa URL
-   * @returns The AI array of the area
+   * @returns The AI array of the area, and whether the tile answered at all
    */
-  private async fetchStormArea(url: string): Promise<any[]> {
+  private async fetchStormArea(url: string): Promise<{ objects: any[]; failed: boolean }> {
     try {
       const response = await axios.get(url);
       if (response.data?.['return_code'] == '0') {
-        return response.data.content?.AI ?? [];
+        return { objects: response.data.content?.AI ?? [], failed: false };
       }
       console.error('Invalid storm response for URL:', url, response.data);
       await this.sleep(3000);
       const retryResponse = await axios.get(url);
       if (retryResponse.data?.['return_code'] == '0') {
-        return retryResponse.data.content?.AI ?? [];
+        return { objects: retryResponse.data.content?.AI ?? [], failed: false };
       }
       console.error('Storm retry failed for URL:', url, retryResponse.data);
-      this.DB_UPDATES.criticalErrors++;
-      return [];
+      return { objects: [], failed: true };
     } catch (error: any) {
       console.error('Error on storm URL:', url, error instanceof AxiosError ? error.message : error);
-      this.DB_UPDATES.criticalErrors++;
-      if (this.DB_UPDATES.criticalErrors >= 10) {
-        throw new Error('Too many errors encountered while scanning the storm map.');
-      }
-      return [];
+      return { objects: [], failed: true };
     }
+  }
+
+  private isSaturatedStormTile(objects: any[]): boolean {
+    return objects.length >= this.STORM_TILE_OBJECT_CEILING;
   }
 
   /**
@@ -2519,13 +2559,196 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
-  private async applyStormSeasonRolloverIfNeeded(): Promise<boolean> {
-    const boundary = this.getLastStormSeasonBoundary();
-    const { rows } = await this.pgSqlQuery('SELECT season_started_at FROM storm_meta WHERE id = TRUE');
-    if (rows.length > 0 && new Date(rows[0].season_started_at) >= boundary) {
-      return false;
+  private stormRunLevel(season: StormSeasonReport): 'info' | 'warn' | 'error' {
+    if (this.DB_UPDATES.criticalErrors > 0) return 'error';
+    if (season.state === 'closed' || season.state === 'unreachable') return 'warn';
+    return 'info';
+  }
+
+  /**
+   * Stamps the scan on storm_meta and retires the objects it no longer found
+   *
+   * @param scan The result of the sweep that just ran
+   * @param scanStartedAt The database clock read before the sweep started
+   */
+  private async finishStormScan(scan: StormScanResult, scanStartedAt: Date): Promise<void> {
+    if (scan.failedTiles > 0) {
+      this.recordJobFailure('storm map scan', new Error(`${scan.failedTiles} tile(s) never answered`), '421');
+    }
+    if (scan.forts.length === 0 && scan.isles.length === 0) return;
+    // Only a sweep that answered everywhere proves an absent object is gone rather than unseen
+    if (scan.complete) await this.pruneVanishedStormObjects(scanStartedAt);
+    await this.pgSqlQuery('UPDATE storm_meta SET scan_radius = $1, last_scan_at = NOW() WHERE id = TRUE', [
+      scan.radius,
+    ]);
+    await this.bumpScanVersion(`storm-version:${this.server}`);
+  }
+
+  private async pruneVanishedStormObjects(scanStartedAt: Date): Promise<void> {
+    const { rowCount: forts } = await this.pgSqlQuery('DELETE FROM storm_forts WHERE updated_at < $1', [scanStartedAt]);
+    const { rowCount: isles } = await this.pgSqlQuery('DELETE FROM storm_isles WHERE updated_at < $1', [scanStartedAt]);
+    if ((forts ?? 0) + (isles ?? 0) > 0) {
+      console.log(`Retired ${forts} fort(s) and ${isles} isle(s) the storm map no longer holds on ${this.server}`);
+    }
+  }
+
+  /**
+   * Reads everything a sweep needs to decide what to do, on one database clock
+   *
+   * @returns The stored season state, whether the map is empty, and the database time
+   */
+  private async readStormMeta(): Promise<StormMeta> {
+    const { rows } = await this.pgSqlQuery(
+      `SELECT NOW() AS database_now,
+          NOT EXISTS (SELECT 1 FROM storm_forts) AS map_is_empty,
+          M.scan_radius, M.season_started_at, M.season_checked_at,
+          M.own_isle_object_id, M.own_isle_x, M.own_isle_y
+      FROM (SELECT TRUE) AS anchor
+      LEFT JOIN storm_meta AS M ON M.id = TRUE`,
+    );
+    const row = rows[0] ?? {};
+    return {
+      scanRadius:
+        row.scan_radius === null || row.scan_radius === undefined ? this.STORM_TILE_HALF_SPAN : Number(row.scan_radius),
+      seasonStartedAt: row.season_started_at ? new Date(row.season_started_at) : null,
+      seasonCheckedAt: row.season_checked_at ? new Date(row.season_checked_at) : null,
+      ownIsle:
+        row.own_isle_object_id === null || row.own_isle_object_id === undefined
+          ? null
+          : {
+              objectId: Number(row.own_isle_object_id),
+              positionX: Number(row.own_isle_x),
+              positionY: Number(row.own_isle_y),
+            },
+      mapIsEmpty: row.map_is_empty !== false,
+      databaseNow: row.database_now ? new Date(row.database_now) : new Date(),
+    };
+  }
+
+  /**
+   * Decides where this server stands in the storm season, asking the game only when the
+   * stored state leaves a doubt
+   *
+   * @param meta The storm state read at the start of the sweep
+   * @returns The season state and the isle it was read from
+   */
+  private async resolveStormSeason(meta: StormMeta): Promise<StormSeasonReport> {
+    if (!this.stormSeasonCheckIsDue(meta)) return { state: 'settled', ownIsle: meta.ownIsle };
+
+    const playerId = await this.fetchScraperPlayerId();
+    if (playerId === null) {
+      console.log(`Storm season check skipped on ${this.server}: the bridge did not answer`);
+      return { state: 'unreachable', ownIsle: meta.ownIsle };
     }
 
+    const probe = await this.fetchOwnStormIsle(playerId);
+    if (probe.failed) return { state: 'unreachable', ownIsle: meta.ownIsle };
+    if (probe.isle === null) return this.enterStormSeason(playerId);
+
+    if (meta.ownIsle && !this.isSameStormIsle(meta.ownIsle, probe.isle)) {
+      await this.startNewStormSeason(probe.isle);
+      return { state: 'rolled', ownIsle: probe.isle };
+    }
+    await this.recordStormSeasonCheck(probe.isle);
+    return { state: 'running', ownIsle: probe.isle };
+  }
+
+  /**
+   * The scan can only see the storm kingdom while the account holds an isle there, so an empty
+   * map is the one state worth re-asking the game about - and the backoff keeps that cheap
+   *
+   * @param meta The storm state read at the start of the sweep
+   */
+  private stormSeasonCheckIsDue(meta: StormMeta): boolean {
+    const sinceLastCheck = meta.seasonCheckedAt
+      ? meta.databaseNow.getTime() - meta.seasonCheckedAt.getTime()
+      : Number.POSITIVE_INFINITY;
+    if (sinceLastCheck < this.STORM_SEASON_CHECK_BACKOFF_MINUTES * 60_000) return false;
+    if (meta.mapIsEmpty || meta.ownIsle === null) return true;
+    return meta.seasonStartedAt === null || meta.seasonStartedAt < this.getLastStormSeasonBoundary();
+  }
+
+  private isSameStormIsle(stored: StormOwnIsle, observed: StormOwnIsle): boolean {
+    return (
+      stored.objectId === observed.objectId &&
+      stored.positionX === observed.positionX &&
+      stored.positionY === observed.positionY
+    );
+  }
+
+  /**
+   * Takes an isle in the storm kingdom, which the game only grants while a season is open
+   *
+   * @param playerId The scraper account id on this server
+   * @returns 'entered' with the isle the season was dated from, or 'closed'
+   */
+  private async enterStormSeason(playerId: number): Promise<StormSeasonReport> {
+    await this.recordStormSeasonCheck(null);
+    if (!(await this.enterStormEvent())) return { state: 'closed', ownIsle: null };
+
+    await this.sleep(1000);
+    const probe = await this.fetchOwnStormIsle(playerId);
+    await this.startNewStormSeason(probe.isle);
+    return { state: 'entered', ownIsle: probe.isle };
+  }
+
+  private async fetchScraperPlayerId(): Promise<number | null> {
+    const response = await this.genericFetchData('gpi', null).catch(() => null);
+    const playerId = Number(response?.data?.content?.PID);
+    return Number.isFinite(playerId) && playerId > 0 ? playerId : null;
+  }
+
+  /**
+   * Reads the scraper's own castle list and picks the storm kingdom entry
+   *
+   * @param playerId The scraper account id on this server
+   * @returns The isle, or null when the account is out of the event; failed when nothing answered
+   */
+  private async fetchOwnStormIsle(playerId: number): Promise<{ isle: StormOwnIsle | null; failed: boolean }> {
+    const response = await this.genericFetchData('gdi', { PID: playerId }).catch(() => null);
+    const castles = response?.data?.content?.gcl?.C;
+    if (!Array.isArray(castles)) return { isle: null, failed: true };
+
+    const castle = castles.find((entry: any) => Number(entry?.KID) === this.STORM_KID);
+    const row = castle?.AI?.[0]?.AI;
+    if (!Array.isArray(row)) return { isle: null, failed: false };
+    return {
+      isle: { positionX: Number(row[1]), positionY: Number(row[2]), objectId: Number(row[3]) },
+      failed: false,
+    };
+  }
+
+  private async enterStormEvent(): Promise<boolean> {
+    const response = await this.genericFetchData('ksc', {
+      ID: this.STORM_ENTRY_EVENT_ID,
+      D: 0,
+      PWR: 0,
+      OC2: 0,
+      SID: this.STORM_KID,
+    }).catch(() => null);
+    const entered = Number(response?.data?.return_code) === 0;
+    console.log(
+      entered
+        ? `Entered the storm islands event on ${this.server}`
+        : `The storm islands event is not open on ${this.server}, nothing to scan`,
+    );
+    return entered;
+  }
+
+  private async recordStormSeasonCheck(isle: StormOwnIsle | null): Promise<void> {
+    await this.pgSqlQuery(
+      `INSERT INTO storm_meta (id, season_checked_at, own_isle_object_id, own_isle_x, own_isle_y)
+      VALUES (TRUE, NOW(), $1, $2, $3)
+      ON CONFLICT (id) DO UPDATE SET
+        season_checked_at  = EXCLUDED.season_checked_at,
+        own_isle_object_id = EXCLUDED.own_isle_object_id,
+        own_isle_x         = EXCLUDED.own_isle_x,
+        own_isle_y         = EXCLUDED.own_isle_y`,
+      [isle?.objectId ?? null, isle?.positionX ?? null, isle?.positionY ?? null],
+    );
+  }
+
+  private async startNewStormSeason(isle: StormOwnIsle | null): Promise<void> {
     console.log(`New storm season detected for ${this.server}, wiping the previous map...`);
     const pool = this.getPool();
     const client = await pool.connect();
@@ -2533,13 +2756,18 @@ export class GenericFetchAndSaveBackend {
       await client.query('BEGIN');
       await client.query('TRUNCATE storm_forts, storm_isles');
       await client.query(
-        `INSERT INTO storm_meta (id, season_started_at, scan_radius, last_scan_at)
-        VALUES (TRUE, $1, $2, NULL)
+        `INSERT INTO storm_meta (id, season_started_at, season_checked_at, scan_radius, last_scan_at,
+          own_isle_object_id, own_isle_x, own_isle_y)
+        VALUES (TRUE, NOW(), NOW(), $1, NULL, $2, $3, $4)
         ON CONFLICT (id) DO UPDATE SET
-          season_started_at = EXCLUDED.season_started_at,
-          scan_radius       = EXCLUDED.scan_radius,
-          last_scan_at      = NULL`,
-        [boundary, this.STORM_TILE_HALF_SPAN],
+          season_started_at  = EXCLUDED.season_started_at,
+          season_checked_at  = EXCLUDED.season_checked_at,
+          scan_radius        = EXCLUDED.scan_radius,
+          last_scan_at       = NULL,
+          own_isle_object_id = EXCLUDED.own_isle_object_id,
+          own_isle_x         = EXCLUDED.own_isle_x,
+          own_isle_y         = EXCLUDED.own_isle_y`,
+        [this.STORM_TILE_HALF_SPAN, isle?.objectId ?? null, isle?.positionX ?? null, isle?.positionY ?? null],
       );
       await client.query('COMMIT');
     } catch (error) {
@@ -2548,15 +2776,6 @@ export class GenericFetchAndSaveBackend {
     } finally {
       client.release();
     }
-    // Enter in storm islands event
-    const kscContent = await axios.get(encodeURI(this.BASE_API_URL + 'ksc/' + '"ID":16,"D":0,"PWR":0,"OC2":0,"SID":4'));
-    if (kscContent.data.return_code === 0) {
-      console.log('Success: player entered island');
-      await this.sleep(1000);
-    } else {
-      console.log('Info: player already entered island. Continue...');
-    }
-    return true;
   }
 
   private getLastStormSeasonBoundary(): Date {

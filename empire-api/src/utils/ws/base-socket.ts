@@ -18,6 +18,15 @@ function readEnvironmentInteger(name: string, fallback: number): number {
   return Number.isNaN(parsed) ? fallback : parsed;
 }
 
+const RESPONSE_TIMEOUT_BASE_MS = readEnvironmentInteger('RESPONSE_TIMEOUT_BASE_MS', 800);
+const RESPONSE_TIMEOUT_ROUND_TRIPS = readEnvironmentInteger('RESPONSE_TIMEOUT_ROUND_TRIPS', 8);
+const RESPONSE_TIMEOUT_MIN_MS = readEnvironmentInteger('RESPONSE_TIMEOUT_MIN_MS', 1000);
+const RESPONSE_TIMEOUT_MAX_MS = readEnvironmentInteger('RESPONSE_TIMEOUT_MAX_MS', 3000);
+// A fixed budget for every server, for debugging: 0 keeps the per-server one
+const RESPONSE_TIMEOUT_FIXED_MS = readEnvironmentInteger('RESPONSE_TIMEOUT_MS', 0);
+const ROUND_TRIP_SAMPLES = 5;
+const ROUND_TRIP_CEILING_MS = 5000;
+
 export enum SocketState {
   CONNECTING = 'CONNECTING',
   CONNECTED = 'CONNECTED',
@@ -48,6 +57,7 @@ class BaseSocket extends Log implements GgeMetricsSocket {
   protected nbReconnects: number;
   protected serverType: GgeServerType;
   protected readonly stats: GgeSocketStats = createSocketStats();
+  private readonly roundTripSamples: number[] = [];
   protected onSend: (data: string) => void;
   protected onOpen: (ws: WebSocket) => void;
   protected onMessage: (message: string, parsedMessage: { type: string; payload: any }) => Promise<void> | void;
@@ -87,6 +97,28 @@ class BaseSocket extends Log implements GgeMetricsSocket {
 
   public get metricsStats(): GgeSocketStats {
     return this.stats;
+  }
+
+  public get metricsResponseTimeoutMs(): number {
+    return this.responseTimeoutMs;
+  }
+
+  /**
+   * How long this socket is given to answer one command
+   */
+  public get responseTimeoutMs(): number {
+    if (RESPONSE_TIMEOUT_FIXED_MS > 0) return RESPONSE_TIMEOUT_FIXED_MS;
+    if (this.stats.roundTripMs === null) return RESPONSE_TIMEOUT_MAX_MS;
+    const budget = RESPONSE_TIMEOUT_BASE_MS + RESPONSE_TIMEOUT_ROUND_TRIPS * this.stats.roundTripMs;
+    return Math.round(Math.min(Math.max(budget, RESPONSE_TIMEOUT_MIN_MS), RESPONSE_TIMEOUT_MAX_MS));
+  }
+
+  protected recordRoundTrip(milliseconds: number): void {
+    if (!Number.isFinite(milliseconds) || milliseconds < 0 || milliseconds > ROUND_TRIP_CEILING_MS) return;
+    this.roundTripSamples.push(milliseconds);
+    if (this.roundTripSamples.length > ROUND_TRIP_SAMPLES) this.roundTripSamples.shift();
+    const sorted = [...this.roundTripSamples].sort((left, right) => left - right);
+    this.stats.roundTripMs = sorted[Math.floor(sorted.length / 2)];
   }
 
   public countLoginFailure(): void {
@@ -216,8 +248,10 @@ class BaseSocket extends Log implements GgeMetricsSocket {
       return;
     }
     try {
+      const startedAt = Date.now();
       this.sendJsonCommand('gpi', {});
       await this.waitForJsonResponse('gpi');
+      this.recordRoundTrip(Date.now() - startedAt);
       clearTimeout(this.checkConnectionTimeout);
       this.checkConnectionTimeout = setTimeout(() => this.checkConnection(), 15 * 60 * 1000);
       // this.muted('[checkConnection] Connection check successful. Next check in 15 minutes.');

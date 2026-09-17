@@ -10,16 +10,21 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { ApiRequest } from '../harness/fake-api';
+import {
+  ApiRequest,
+  STORM_BORDER_OBJECT,
+  ownCastles,
+  ownPlayerInfo,
+  stormArea,
+  stormFort,
+  stormIsle,
+} from '../harness/fake-api';
 import { fixtures, ranking } from '../harness/fixtures';
 import { withSandbox } from '../harness/sandbox';
 
 const WHEEL_LT = 72;
-const STORM_META = /FROM storm_meta/;
+const STORM_STATE = /NOT EXISTS \(SELECT 1 FROM storm_forts\)/;
 const LAST_EVENT = /SELECT event_id, created_at FROM grand_tournament/;
-const STORM_FORT = 25;
-const STORM_ISLE = 24;
-const STORM_BORDER = 31;
 const REALM_CASTLES = /SELECT castles_realm FROM players/;
 
 interface LokiRecord {
@@ -47,17 +52,22 @@ function recordFor(sandbox: TelemetrySandbox, job: string): LokiRecord {
   return found[0];
 }
 
-function stormArea(objects: unknown[][]): Record<string, unknown> {
-  return { return_code: '0', content: { AI: objects } };
-}
-
-// The AI rows the game answers with: type, x, y, objectId, occupier, isleId, cooldown, victories, flag
-function fort(x: number, y: number, { locked = false } = {}): unknown[] {
-  return [STORM_FORT, x, y, 0, 0, 1, 0, 3, locked ? 1 : 0];
-}
-
-function isle(x: number, y: number, occupierId = 0): unknown[] {
-  return [STORM_ISLE, x, y, 900, occupierId, 0, 0, 0, 2, 0];
+function settledStorm(now: Date, fields: Record<string, unknown> = {}): { rows: Record<string, unknown>[] } {
+  return {
+    rows: [
+      {
+        database_now: now,
+        map_is_empty: false,
+        scan_radius: 50,
+        season_started_at: now,
+        season_checked_at: now,
+        own_isle_object_id: 515,
+        own_isle_x: 619,
+        own_isle_y: 609,
+        ...fields,
+      },
+    ],
+  };
 }
 
 function subdivision(alliances: { id: number; name: string; rank: number; score: number }[]): Record<string, unknown> {
@@ -120,14 +130,14 @@ describe('job telemetry', () => {
   describe('storm map', () => {
     it('reports what the scan found, not just how long it took', async () => {
       await withSandbox({}, async (sandbox) => {
-        sandbox.db.when(STORM_META, { rows: [{ scan_radius: 50, season_started_at: sandbox.now }] });
+        sandbox.db.when(STORM_STATE, settledStorm(sandbox.now));
         sandbox.api.on('gaa', () =>
           stormArea([
-            fort(644, 644),
-            fort(645, 644, { locked: true }),
-            isle(646, 644, 77),
-            isle(647, 644),
-            [STORM_BORDER, 0, 0],
+            stormFort(644, 644),
+            stormFort(645, 644, { locked: true }),
+            stormIsle(646, 644, 77),
+            stormIsle(647, 644),
+            [STORM_BORDER_OBJECT, 0, 0],
           ]),
         );
 
@@ -140,6 +150,8 @@ describe('job telemetry', () => {
         assert.equal(record.occupiedIsles, 1);
         assert.equal(record.lockedForts, 1);
         assert.equal(record.borderReached, true);
+        assert.equal(record.failedTiles, 0);
+        assert.equal(record.seasonState, 'settled');
         assert.equal(record.seasonRollover, false);
         assert.equal(record.radius, 50);
       });
@@ -147,7 +159,7 @@ describe('job telemetry', () => {
 
     it('names the server, the step and the reason when the sweep fails', async () => {
       await withSandbox({}, async (sandbox) => {
-        sandbox.db.when(STORM_META, { error: new Error('storm_meta is missing on this server') });
+        sandbox.db.when(STORM_STATE, { error: new Error('storm_meta is missing on this server') });
 
         await assert.rejects(sandbox.call('updateStormMap'));
 
@@ -159,17 +171,55 @@ describe('job telemetry', () => {
       });
     });
 
-    it('flags the monthly wipe on the run that applied it', async () => {
+    it('names the tiles that never answered, which no exception reports', async () => {
       await withSandbox({}, async (sandbox) => {
-        sandbox.db.when(STORM_META, { rows: [{ scan_radius: 50, season_started_at: new Date(0) }] });
-        sandbox.api.on('ksc', () => ({ return_code: 0 }));
-        sandbox.api.on('gaa', () => stormArea([[STORM_BORDER, 0, 0]]));
+        sandbox.db.when(STORM_STATE, settledStorm(sandbox.now));
+        sandbox.api.on('gaa', () => ({ return_code: -1, error: 'Timeout' }));
 
         await sandbox.call('updateStormMap');
 
         const record = recordFor(sandbox, 'update-storm-map');
+        assert.equal(record.level, 'error');
+        assert.equal(record.failedTiles, 1);
+        assert.equal(record.failureStep, 'storm map scan');
+        assert.equal(record.failureIdentifier, '421');
+        assert.match(String(record.failureReason), /tile\(s\) never answered$/);
+      });
+    });
+
+    it('flags the season on the run that entered it, and dates it from the isle', async () => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.db.when(STORM_STATE, settledStorm(sandbox.now, { map_is_empty: true, season_checked_at: null }));
+        sandbox.api.on('gpi', () => ownPlayerInfo());
+        sandbox.api.on('gdi', (request, callIndex) =>
+          callIndex === 0
+            ? ownCastles([{ kid: 0 }])
+            : ownCastles([{ kid: 0 }, { kid: 4, x: 619, y: 609, objectId: 515 }]),
+        );
+        sandbox.api.on('ksc', () => ({ return_code: 0 }));
+        sandbox.api.on('gaa', () => stormArea([[STORM_BORDER_OBJECT, 0, 0]]));
+
+        await sandbox.call('updateStormMap');
+
+        const record = recordFor(sandbox, 'update-storm-map');
+        assert.equal(record.seasonState, 'entered');
         assert.equal(record.seasonRollover, true);
-        assert.equal(record.forts, 0);
+        assert.equal(record.ownIsle, '619:609');
+        assert.equal(record.ownIsleObjectId, 515);
+      });
+    });
+
+    it('reports no counts at all when the run never scanned', async () => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.db.when(STORM_STATE, settledStorm(sandbox.now, { map_is_empty: true, season_checked_at: null }));
+
+        await sandbox.call('updateStormMap');
+
+        const record = recordFor(sandbox, 'update-storm-map');
+        assert.equal(record.level, 'warn');
+        assert.equal(record.seasonState, 'unreachable');
+        assert.equal(record.forts, undefined);
+        assert.equal(record.isles, undefined);
       });
     });
   });

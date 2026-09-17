@@ -34,8 +34,10 @@ class GgeEmpireSocket extends BaseSocket implements GgeEmpireSocketImpl {
       this.raiseForStatus(nfoResponse);
       this.sendXmlMessage('sys', 'autoJoin', '-1', '');
       await this.waitForXmlResponse('sys', 'joinOK', '1');
+      const roundTripStartedAt = Date.now();
       this.sendXmlMessage('sys', 'roundTrip', '1', '');
       await this.waitForXmlResponse('sys', 'roundTripRes', '1');
+      this.recordRoundTrip(Date.now() - roundTripStartedAt);
       this.sendLoginMessage();
       this.log('[connect] Sent login command to socket with username:', this.username);
       const lliResponse = await this.waitForJsonResponse('lli');
