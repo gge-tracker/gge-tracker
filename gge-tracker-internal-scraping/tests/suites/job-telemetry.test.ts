@@ -256,7 +256,7 @@ describe('job telemetry', () => {
           ]);
         });
 
-        await sandbox.call('fillGrandTournamentResults');
+        await sandbox.call('fillGrandTournamentResults', 'ep');
 
         const record = recordFor(sandbox, 'grand-tournament');
         assert.equal(record.eventId, 12);

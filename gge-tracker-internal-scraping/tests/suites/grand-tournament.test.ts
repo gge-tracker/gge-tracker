@@ -64,9 +64,9 @@ describe('fillGrandTournamentResults', () => {
   it('numbers the first event 1 when the table is empty', async () => {
     await withSandbox({}, async (sandbox) => {
       serveDivisions(sandbox);
-      await sandbox.call('fillGrandTournamentResults');
+      await sandbox.call('fillGrandTournamentResults', 'ep');
       const insert = sandbox.db.one(INSERT);
-      const eventIds = insert.params.filter((_, index) => index % 9 === 8);
+      const eventIds = insert.params.filter((_, index) => index % 10 === 9);
       assert.deepEqual([...new Set(eventIds)], [1]);
     });
   });
@@ -77,8 +77,8 @@ describe('fillGrandTournamentResults', () => {
         rows: [{ event_id: 7, created_at: new Date(sandbox.now.getTime() - 25 * 3600 * 1000) }],
       });
       serveDivisions(sandbox);
-      await sandbox.call('fillGrandTournamentResults');
-      const eventIds = sandbox.db.one(INSERT).params.filter((_, index) => index % 9 === 8);
+      await sandbox.call('fillGrandTournamentResults', 'ep');
+      const eventIds = sandbox.db.one(INSERT).params.filter((_, index) => index % 10 === 9);
       assert.deepEqual([...new Set(eventIds)], [8]);
     });
   });
@@ -89,8 +89,8 @@ describe('fillGrandTournamentResults', () => {
         rows: [{ event_id: 7, created_at: new Date(sandbox.now.getTime() - 3600 * 1000) }],
       });
       serveDivisions(sandbox);
-      await sandbox.call('fillGrandTournamentResults');
-      const eventIds = sandbox.db.one(INSERT).params.filter((_, index) => index % 9 === 8);
+      await sandbox.call('fillGrandTournamentResults', 'ep');
+      const eventIds = sandbox.db.one(INSERT).params.filter((_, index) => index % 10 === 9);
       assert.deepEqual([...new Set(eventIds)], [7]);
     });
   });
@@ -98,7 +98,7 @@ describe('fillGrandTournamentResults', () => {
   it('walks every division and stops each one on its first empty subdivision', async () => {
     await withSandbox({}, async (sandbox) => {
       serveDivisions(sandbox);
-      await sandbox.call('fillGrandTournamentResults');
+      await sandbox.call('fillGrandTournamentResults', 'ep');
       const calls = sandbox.api.callsFor('llsp');
       const byDivision = new Map<number, number[]>();
       for (const call of calls) {
@@ -111,7 +111,7 @@ describe('fillGrandTournamentResults', () => {
         // retried three times before the division is treated as finished
         assert.deepEqual(subdivisions, [1, 2, 2, 2]);
       }
-      assert.equal(sandbox.db.one(INSERT).params.length, DIVISIONS * 2 * 9);
+      assert.equal(sandbox.db.one(INSERT).params.length, DIVISIONS * 2 * 10);
     });
   });
 
@@ -123,13 +123,14 @@ describe('fillGrandTournamentResults', () => {
           { serverId: 1, allianceId: 42, name: 'Twice', rank: Number(request.parameters.SDI), score: 500 },
         ]);
       });
-      await sandbox.call('fillGrandTournamentResults');
+      await sandbox.call('fillGrandTournamentResults', 'ep');
       const insert = sandbox.db.one(INSERT);
-      assert.equal(insert.params.length, 9, 'the alliance is inserted once');
-      const [serverId, name, subdivisionId, divisionId, allianceId, , rank] = insert.params;
+      assert.equal(insert.params.length, 10, 'the alliance is inserted once');
+      const [game, serverId, name, subdivisionId, divisionId, allianceId, , rank] = insert.params;
       assert.deepEqual(
-        { serverId, name, subdivisionId, divisionId, allianceId, rank },
+        { game, serverId, name, subdivisionId, divisionId, allianceId, rank },
         {
+          game: 'ep',
           serverId: 1,
           name: 'Twice',
           subdivisionId: 1,
@@ -141,14 +142,34 @@ describe('fillGrandTournamentResults', () => {
     });
   });
 
+  it('stamps the rows with the universe it read and asks the table for that one only', async () => {
+    await withSandbox({}, async (sandbox) => {
+      serveDivisions(sandbox);
+      await sandbox.call('fillGrandTournamentResults', 'e4k');
+      const games = sandbox.db.one(INSERT).params.filter((_, index) => index % 10 === 0);
+      assert.deepEqual([...new Set(games)], ['e4k']);
+      assert.deepEqual(sandbox.db.one(LAST_EVENT).params, ['e4k']);
+    });
+  });
+
+  it('numbers the e4k event on its own, ignoring how far the ep one got', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.db.when(LAST_EVENT, { rows: [] });
+      serveDivisions(sandbox);
+      await sandbox.call('fillGrandTournamentResults', 'e4k');
+      const eventIds = sandbox.db.one(INSERT).params.filter((_, index) => index % 10 === 9);
+      assert.deepEqual([...new Set(eventIds)], [1]);
+    });
+  });
+
   it('splits the insert into batches of fifty', async () => {
     await withSandbox({}, async (sandbox) => {
       serveDivisions(sandbox, 24);
-      await sandbox.call('fillGrandTournamentResults');
+      await sandbox.call('fillGrandTournamentResults', 'ep');
       const inserts = sandbox.db.matching(INSERT);
       assert.equal(inserts.length, 3, '120 alliances across 5 divisions land in three batches');
       assert.deepEqual(
-        inserts.map((query) => query.params.length / 9),
+        inserts.map((query) => query.params.length / 10),
         [50, 50, 20],
       );
     });
@@ -157,7 +178,7 @@ describe('fillGrandTournamentResults', () => {
   it('bumps the cache version and refreshes the view once records were written', async () => {
     await withSandbox({}, async (sandbox) => {
       serveDivisions(sandbox);
-      await sandbox.call('fillGrandTournamentResults');
+      await sandbox.call('fillGrandTournamentResults', 'ep');
       assert.equal(sandbox.redis.store.get('grand-tournament:event-dates:version'), '1');
       assert.equal(sandbox.db.matching(REFRESH).length, 1);
     });
@@ -166,7 +187,7 @@ describe('fillGrandTournamentResults', () => {
   it('leaves the cache and the view alone when the tournament is not running', async () => {
     await withSandbox({}, async (sandbox) => {
       sandbox.api.on('llsp', () => ({ content: {} }));
-      await sandbox.call('fillGrandTournamentResults');
+      await sandbox.call('fillGrandTournamentResults', 'ep');
       assert.deepEqual(sandbox.db.matching(INSERT), []);
       assert.deepEqual(sandbox.db.matching(REFRESH), []);
       assert.equal(sandbox.redis.store.has('grand-tournament:event-dates:version'), false);
@@ -177,7 +198,7 @@ describe('fillGrandTournamentResults', () => {
     await withSandbox({}, async (sandbox) => {
       serveDivisions(sandbox);
       sandbox.db.when(INSERT, { error: new Error('the table is gone') });
-      await sandbox.call('fillGrandTournamentResults');
+      await sandbox.call('fillGrandTournamentResults', 'ep');
       assert.equal(sandbox.state('DB_UPDATES').criticalErrors, 1);
       assert.equal(sandbox.db.matching(REFRESH).length, 1, 'the run carries on past a failed batch');
     });
@@ -190,7 +211,7 @@ describe('fillGrandTournamentResults', () => {
         attempts++;
         throw new Error('the bridge is down');
       });
-      await sandbox.call('fillGrandTournamentResults');
+      await sandbox.call('fillGrandTournamentResults', 'ep');
       assert.equal(attempts, DIVISIONS * 3, 'three tries per division, then the division ends');
       assert.deepEqual(sandbox.db.matching(INSERT), []);
     });

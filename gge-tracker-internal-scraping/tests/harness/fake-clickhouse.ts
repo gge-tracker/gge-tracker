@@ -41,7 +41,7 @@ export class FakeClickHouse {
     return url.startsWith(this.baseUrl);
   }
 
-  public post(url: string, payload: string, config: any): { status: number; data: string } {
+  public post(url: string, payload: string, config: any): { status: number; data: unknown } {
     const parsed = new URL(url);
     const params = Object.fromEntries(parsed.searchParams.entries());
     const query = params.query ?? '';
@@ -61,8 +61,17 @@ export class FakeClickHouse {
     const outcome = this.failures.shift();
     if (outcome) throw outcome;
     const answer = this.answers.find((candidate) => candidate.pattern.test(query));
-    if (!answer) return { status: 200, data: '' };
-    return { status: 200, data: answer.rows.map((row) => JSON.stringify(row)).join('\n') };
+    const body = answer ? answer.rows.map((row) => JSON.stringify(row)).join('\n') : '';
+    return { status: 200, data: FakeClickHouse.asAxiosDecodes(body, config) };
+  }
+
+  private static asAxiosDecodes(body: string, config: any): unknown {
+    if (config?.responseType === 'text') return body;
+    try {
+      return JSON.parse(body);
+    } catch {
+      return body;
+    }
   }
 
   public selects(pattern: RegExp): ClickHouseCall[] {

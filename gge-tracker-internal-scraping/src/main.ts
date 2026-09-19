@@ -61,10 +61,16 @@ interface OuterRealmsEntry {
   castlePositionY: number;
 }
 
-type RiftRaidGame = 'ep' | 'e4k';
+type GameUniverse = 'ep' | 'e4k';
+
+interface GrandTournamentSnapshot {
+  game: GameUniverse;
+  currentEventId: number;
+  dateStr: string;
+}
 
 interface RiftRaidSnapshot {
-  game: RiftRaidGame;
+  game: GameUniverse;
   eventId: number;
   createdAt: string;
 }
@@ -77,7 +83,7 @@ interface RiftRaidReport {
 }
 
 interface RiftRaidRow extends Record<string, unknown> {
-  game: RiftRaidGame;
+  game: GameUniverse;
   event_id: number;
   created_at: string;
   division_id: number;
@@ -560,7 +566,7 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
-  public async fillGrandTournamentResults(): Promise<void> {
+  public async fillGrandTournamentResults(game: GameUniverse): Promise<void> {
     const start = new Date();
     let eventId = 0;
     let recordsInserted = 0;
@@ -572,7 +578,7 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('=====================================');
       Utils.logMessage('Refreshing Grand Tournament results...');
 
-      const currentEventId = await this.resolveGrandTournamentEventId();
+      const currentEventId = await this.resolveGrandTournamentEventId(game);
       eventId = currentEventId;
       Utils.logMessage('Current eventId: ', currentEventId);
       const maxLevelCategory = 5;
@@ -580,7 +586,11 @@ export class GenericFetchAndSaveBackend {
       const dateStr = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
       for (let lc = 1; lc <= maxLevelCategory; lc++) {
         Utils.logMessage(' Processing level category:', lc);
-        const subDivisionCount = await this.collectGrandTournamentDivision(lc, currentEventId, dateStr, alliances);
+        const subDivisionCount = await this.collectGrandTournamentDivision(
+          lc,
+          { game, currentEventId, dateStr },
+          alliances,
+        );
         subdivisions += subDivisionCount;
         Utils.logMessage(' Total subdivisions processed for level category', lc + ':', subDivisionCount);
       }
@@ -622,6 +632,7 @@ export class GenericFetchAndSaveBackend {
       level: this.DB_UPDATES.criticalErrors > 0 ? 'error' : 'info',
       data: {
         server: this.server,
+        game,
         eventId,
         subdivisions,
         grandTournamentRecordsInserted: recordsInserted,
@@ -632,7 +643,7 @@ export class GenericFetchAndSaveBackend {
     });
   }
 
-  public async fillRiftRaidResults(game: RiftRaidGame): Promise<void> {
+  public async fillRiftRaidResults(game: GameUniverse): Promise<void> {
     const start = new Date();
     let eventId = 0;
     let recordsInserted = 0;
@@ -1387,14 +1398,15 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
-  private async resolveGrandTournamentEventId(): Promise<number> {
+  private async resolveGrandTournamentEventId(game: GameUniverse): Promise<number> {
     const getLastEventQuery = `
         SELECT event_id, created_at
         FROM grand_tournament
+        WHERE game = $1
         ORDER BY created_at DESC
         LIMIT 1;
       `;
-    const result = await this.pgSqlQuery(getLastEventQuery);
+    const result = await this.pgSqlQuery(getLastEventQuery, [game]);
     const lastEvent = result.rows[0];
     if (!lastEvent) return 1;
 
@@ -1406,8 +1418,7 @@ export class GenericFetchAndSaveBackend {
 
   private async collectGrandTournamentDivision(
     lc: number,
-    currentEventId: number,
-    dateStr: string,
+    snapshot: GrandTournamentSnapshot,
     alliances: { [key: string]: any },
   ): Promise<number> {
     const key = 'llsp';
@@ -1424,13 +1435,7 @@ export class GenericFetchAndSaveBackend {
         const response = await this.fetchGrandTournamentSubdivision(url);
         const data = response?.data;
         if (data.content?.L) {
-          this.collectSubdivisionAlliances(data.content.L || [], {
-            lc,
-            subdivisionId,
-            currentEventId,
-            dateStr,
-            alliances,
-          });
+          this.collectSubdivisionAlliances(data.content.L || [], { ...snapshot, lc, subdivisionId, alliances });
         } else {
           hasMore = false;
         }
@@ -1471,21 +1476,20 @@ export class GenericFetchAndSaveBackend {
 
   private collectSubdivisionAlliances(
     results: any[],
-    context: {
+    context: GrandTournamentSnapshot & {
       lc: number;
       subdivisionId: number;
-      currentEventId: number;
-      dateStr: string;
       alliances: { [key: string]: any };
     },
   ): void {
-    const { lc, subdivisionId, currentEventId, dateStr, alliances } = context;
+    const { game, lc, subdivisionId, currentEventId, dateStr, alliances } = context;
     for (const result of results) {
       const SIelements = String(result.SI).trim().split('-');
       const allianceId = Number.parseInt(String(SIelements.at(-1)));
       const token = String(allianceId) + '_' + String(result.I);
       if (allianceId && !alliances[token]) {
         alliances[token] = {
+          game,
           server_id: Number.parseInt(String(result.I)),
           alliance_name: String(result.A),
           subdivision_id: subdivisionId,
@@ -1504,6 +1508,7 @@ export class GenericFetchAndSaveBackend {
     const tableName = 'grand_tournament';
     const batchSize = 50;
     const requiredKeys = [
+      'game',
       'server_id',
       'alliance_name',
       'subdivision_id',
@@ -1547,7 +1552,7 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
-  private async resolveRiftRaidEventId(game: RiftRaidGame): Promise<number> {
+  private async resolveRiftRaidEventId(game: GameUniverse): Promise<number> {
     const rows = await this.selectRowsClickHouse<{ event_id: number; last_seen: number }>(
       `SELECT event_id, toUnixTimestamp(max(hour)) AS last_seen FROM rift_raid_hours
        WHERE game = '${game}' GROUP BY event_id ORDER BY last_seen DESC LIMIT 1`,
@@ -2458,6 +2463,7 @@ export class GenericFetchAndSaveBackend {
     const { data } = await axios.post(this.clickhouseUrl(`${query} FORMAT JSONEachRow`), '', {
       headers: { 'Content-Type': 'text/plain' },
       auth: this.clickhouseAuth(),
+      responseType: 'text',
       timeout: 30000,
     });
     return String(data ?? '')

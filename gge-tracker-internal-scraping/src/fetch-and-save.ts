@@ -55,11 +55,13 @@ async function executeFillInOrder(): Promise<void> {
     const generic2 = new GenericFetchAndSaveBackend(BASE_API_URL, null, genericPostgresConfig, 'GLOBAL_RANKING');
     await generic2.refreshGlobalRankings();
     const generic3 = new GenericFetchAndSaveBackend(BASE_API_URL, null, genericPostgresConfig, 'GT_TOURNAMENT');
-    await generic3.fillGrandTournamentResults();
+    await generic3.fillGrandTournamentResults('ep');
     const generic4 = new GenericFetchAndSaveBackend(BASE_API_URL, globalClickhouseConfig, null, 'RIFT_RAID');
     await generic4.fillRiftRaidResults('ep');
   }
   if (logSuffix === 'E4KDE1') {
+    const genericE4kGt = new GenericFetchAndSaveBackend(BASE_API_URL, null, genericPostgresConfig, 'E4K_GT_TOURNAMENT');
+    await genericE4kGt.fillGrandTournamentResults('e4k');
     const genericE4k = new GenericFetchAndSaveBackend(BASE_API_URL, globalClickhouseConfig, null, 'E4K_RIFT_RAID');
     await genericE4k.fillRiftRaidResults('e4k');
   }
