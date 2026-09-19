@@ -5,6 +5,7 @@ import { config } from './config.js';
 import { Report } from './lib/report.js';
 import { runHandshake } from './suites/handshake.js';
 import { runRoundtrip } from './suites/roundtrip.js';
+import { runMatching } from './suites/matching.js';
 import { runReconnect } from './suites/reconnect.js';
 import { runLifecycle } from './suites/lifecycle.js';
 import { runLogin } from './suites/login.js';
@@ -15,6 +16,7 @@ import { runLatency } from './suites/latency.js';
 const SUITES: Record<string, (r: Report) => Promise<void>> = {
   handshake: runHandshake,
   roundtrip: runRoundtrip,
+  matching: runMatching,
   latency: runLatency,
   lifecycle: runLifecycle,
   login: runLogin,
@@ -23,7 +25,7 @@ const SUITES: Record<string, (r: Report) => Promise<void>> = {
   live: runLive,
 };
 
-const DEFAULT_SUITES = ['handshake', 'roundtrip', 'latency', 'lifecycle', 'login', 'reconnect', 'memory', 'live'];
+const DEFAULT_SUITES = ['handshake', 'roundtrip', 'matching', 'latency', 'lifecycle', 'login', 'reconnect', 'memory', 'live'];
 
 function parseSuites(argv: string[]): string[] {
   const names = argv.filter((a) => !a.startsWith('--'));

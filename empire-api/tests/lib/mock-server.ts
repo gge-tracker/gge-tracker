@@ -13,6 +13,10 @@ export interface MockServerOptions {
   lliStatus?: number;
   /** Extra payload object merged into the `lli` response */
   lliData?: Record<string, unknown>;
+  /**
+   * Answers a command with a payload of the test's choosing
+   */
+  respond?: (command: string, data: any) => { status?: number; data?: unknown; delayMs?: number } | null | undefined;
 }
 
 export class MockGgeServer {
@@ -20,7 +24,8 @@ export class MockGgeServer {
   public readonly received: string[] = [];
   public readonly receivedCommands: string[] = [];
 
-  private readonly options: Required<Omit<MockServerOptions, 'lliData'>> & Pick<MockServerOptions, 'lliData'>;
+  private readonly options: Required<Omit<MockServerOptions, 'lliData' | 'respond'>> &
+    Pick<MockServerOptions, 'lliData' | 'respond'>;
   private wss: WebSocketServer | undefined;
   private readonly connections = new Set<WebSocket>();
   private readonly sendChains = new WeakMap<WebSocket, Promise<void>>();
@@ -31,6 +36,7 @@ export class MockGgeServer {
       nfoStatus: options.nfoStatus ?? 0,
       lliStatus: options.lliStatus ?? 0,
       lliData: options.lliData,
+      respond: options.respond,
     };
   }
 
@@ -104,10 +110,39 @@ export class MockGgeServer {
           break;
         }
         default: {
-          // Echo any other command back with status 0
-          this.sendEcho(ws, message, command);
+          if (!this.sendScripted(ws, command, message)) {
+            // Echo any other command back with status 0
+            this.sendEcho(ws, message, command);
+          }
         }
       }
+    }
+  }
+
+  public pushRaw(frame: string): void {
+    const active = [...this.connections].at(-1);
+    if (active?.readyState === active?.OPEN) active.send(frame);
+  }
+
+  private sendScripted(ws: WebSocket, command: string, message: string): boolean {
+    if (!this.options.respond) return false;
+    const scripted = this.options.respond(command, this.dataOf(message));
+    if (scripted === undefined) return false;
+    if (scripted === null) return true;
+    const body = scripted.data === undefined ? '' : `%${JSON.stringify(scripted.data)}`;
+    const frame = `%xt%${command}%1%${scripted.status ?? 0}${body}%`;
+    setTimeout(() => {
+      if (ws.readyState === ws.OPEN) ws.send(frame);
+    }, scripted.delayMs ?? 2);
+    return true;
+  }
+
+  private dataOf(message: string): any {
+    const body = message.split('%').filter(Boolean).slice(4).join('%');
+    try {
+      return body ? JSON.parse(body) : {};
+    } catch {
+      return {};
     }
   }
 

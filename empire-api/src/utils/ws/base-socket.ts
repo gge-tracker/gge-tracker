@@ -30,6 +30,13 @@ const ROUND_TRIP_CEILING_MS = 5000;
 const ANSWER_SAMPLES = readEnvironmentInteger('RESPONSE_TIMEOUT_SAMPLES', 100);
 const ANSWER_MIN_SAMPLES = 5;
 
+export interface GgeFrame {
+  type: 'json' | 'xml';
+  payload: any;
+  body: string | null;
+  materialized: boolean;
+}
+
 export enum SocketState {
   CONNECTING = 'CONNECTING',
   CONNECTED = 'CONNECTED',
@@ -60,6 +67,7 @@ class BaseSocket extends Log implements GgeMetricsSocket {
   protected nbReconnects: number;
   protected serverType: GgeServerType;
   protected readonly stats: GgeSocketStats = createSocketStats();
+  protected readonly watchedCommands = new Set<string>();
   private readonly roundTripSamples: number[] = [];
   private readonly answerSamples = new Map<string, number[]>();
   protected onSend: (data: string) => void;
@@ -393,9 +401,14 @@ class BaseSocket extends Log implements GgeMetricsSocket {
     }
     this.stats.messagesReceived++;
     this.stats.lastMessageAtMs = Date.now();
-    const response = this.parseResponse(message);
-    this._processResponse(response);
-    if (this.onMessage) void this.onMessage(message, response);
+    const frame = this.parseFrame(message);
+    if (!this.isFrameWanted(frame)) {
+      this.stats.framesUnmatched++;
+      return;
+    }
+    this.materializeFrame(frame);
+    this._processResponse(frame);
+    if (this.onMessage) void this.onMessage(message, frame);
   }
 
   protected send(data: string): void {
@@ -486,33 +499,67 @@ class BaseSocket extends Log implements GgeMetricsSocket {
     return message.response;
   }
 
-  private parseResponse(response: string): { type: string; payload: any } {
+  /**
+   * Reads the frame envelope without touching its payload
+   * A game frame is '%xt%<command>%<id>%<status>%<body>%'
+   */
+  private parseFrame(response: string): GgeFrame {
     if (response.startsWith('<')) {
       const parsed = BaseSocket.XML_REGEX.exec(response);
       return {
         type: 'xml',
-        payload: {
-          t: parsed[1],
-          action: parsed[2],
-          r: parsed[3],
-          data: parsed[4],
-        },
+        payload: { t: parsed[1], action: parsed[2], r: parsed[3], data: parsed[4] },
+        body: null,
+        materialized: true,
       };
-    } else {
-      const parsed = response.split('%').filter(Boolean);
-      const payload = {
-        command: parsed[1],
-        status: +parsed[3],
-        data: parsed.length > 4 ? parsed.slice(4).join('%') : null,
-      };
-      if (payload.data?.startsWith('{')) {
-        payload.data = JSON.parse(payload.data);
-      }
-      return { type: 'json', payload };
     }
+    const fields: string[] = [];
+    let cursor = response.startsWith('%') ? 1 : 0;
+    let truncated = false;
+    for (let index = 0; index < 4 && !truncated; index++) {
+      const separator = response.indexOf('%', cursor);
+      truncated = separator === -1;
+      if (!truncated) {
+        fields.push(response.slice(cursor, separator));
+        cursor = separator + 1;
+      }
+    }
+    if (truncated) {
+      return {
+        type: 'json',
+        payload: { command: '', id: '', status: Number.NaN, data: null },
+        body: null,
+        materialized: true,
+      };
+    }
+    const end = response.endsWith('%') ? response.length - 1 : response.length;
+    const body = cursor < end ? response.slice(cursor, end) : null;
+    return {
+      type: 'json',
+      payload: { command: fields[1], id: fields[2], status: +fields[3], data: null },
+      body,
+      materialized: false,
+    };
   }
 
-  private _processResponse(response: { type: string; payload: any }): void {
+  /**
+   * Whether anything in this process would read the frame's payload
+   */
+  private isFrameWanted(frame: GgeFrame): boolean {
+    if (frame.type === 'xml') return true;
+    if (this.watchedCommands.has(frame.payload.command)) return true;
+    return this.messages.some(
+      (message) => message.type === 'json' && message.conditions.command === frame.payload.command,
+    );
+  }
+
+  private materializeFrame(frame: GgeFrame): void {
+    if (frame.materialized) return;
+    frame.materialized = true;
+    frame.payload.data = frame.body?.startsWith('{') ? JSON.parse(frame.body) : frame.body;
+  }
+
+  private _processResponse(response: GgeFrame): void {
     for (const message of this.messages) {
       if (
         (response.type === 'json' &&

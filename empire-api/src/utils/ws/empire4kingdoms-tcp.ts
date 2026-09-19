@@ -3,13 +3,16 @@ import { GgeEmpireSocketImpl } from './gge-socket-impl.js';
 import * as net from 'node:net';
 import { randomInt } from 'node:crypto';
 
+const EMPTY_BUFFER: Buffer<ArrayBufferLike> = Buffer.alloc(0);
+
 const E4kEnumLoginStatus = {
   SUCCESS: 10_005,
   PLAYER_NOT_FOUND: 10_010,
 };
 
 class GgeEmpire4KingdomsTcp extends BaseSocket implements GgeEmpireSocketImpl {
-  private _buffer = Buffer.alloc(0);
+  private static readonly MAX_PENDING_BYTES = 16 * 1024 * 1024;
+  private _buffer: Buffer<ArrayBufferLike> = EMPTY_BUFFER;
   constructor(url: string, serverHeader: string, username: string, password: string, autoReconnect = true) {
     super(url, serverHeader, GgeServerType.E4K, autoReconnect);
     this.url = url;
@@ -101,14 +104,19 @@ class GgeEmpire4KingdomsTcp extends BaseSocket implements GgeEmpireSocketImpl {
   }
 
   private handleTcpData(data: Buffer): void {
-    this._buffer = Buffer.concat([this._buffer, data]);
+    this._buffer = this._buffer.length === 0 ? data : Buffer.concat([this._buffer, data]);
     let nullIndex: number;
     while ((nullIndex = this._buffer.indexOf(0)) !== -1) {
-      const messageBuffer = this._buffer.subarray(0, nullIndex);
+      const message = this._buffer.toString('utf8', 0, nullIndex);
       this._buffer = this._buffer.subarray(nullIndex + 1);
-      const message = messageBuffer.toString();
       this._onMessage(message, false);
     }
+    if (this._buffer.length > GgeEmpire4KingdomsTcp.MAX_PENDING_BYTES) {
+      this.error('[handleTcpData] Dropping an unterminated frame of', this._buffer.length, 'bytes');
+      this._buffer = EMPTY_BUFFER;
+      return;
+    }
+    this._buffer = this._buffer.length === 0 ? EMPTY_BUFFER : Buffer.from(this._buffer);
   }
 
   private sendLoginMessage(): void {

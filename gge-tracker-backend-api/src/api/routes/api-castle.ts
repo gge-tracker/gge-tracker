@@ -3,6 +3,19 @@ import * as pg from 'pg';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
 
+const GGE_BRIDGE_TIMEOUT_MS = 10_000;
+
+function fetchFromBridge(url: string): Promise<globalThis.Response> {
+  return fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    signal: AbortSignal.timeout(GGE_BRIDGE_TIMEOUT_MS),
+  });
+}
+
 /**
  * Abstract class providing API endpoints related to castle data retrieval and analysis
  *
@@ -57,30 +70,12 @@ export abstract class ApiCastle implements ApiHelper {
        * --------------------------------- */
       const basePath = kingdomId === 0 ? process.env.GGE_API_URL : process.env.GGE_API_URL_REALTIME;
       // Step 1 : Send 'gbl' request  to clear previous context
-      await fetch(`${basePath}/${ApiHelper.ggeTrackerManager.getZoneFromRequestId(castleId)}/gbl/null`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-      });
+      await fetchFromBridge(`${basePath}/${ApiHelper.ggeTrackerManager.getZoneFromRequestId(castleId)}/gbl/null`);
       // Step 2 : Send 'jca' request to get castle analysis data
       const apiUrl = `${basePath}/${ApiHelper.ggeTrackerManager.getZoneFromRequestId(castleId)}/jca/"CID":${globalCastleId},"KID":${kingdomId}`;
-      const responseData = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-      });
+      const responseData = await fetchFromBridge(apiUrl);
       // Step 3 : Send 'gbl' request to clear context again. This parts needs to be optimized in the future
-      await fetch(`${basePath}/${ApiHelper.ggeTrackerManager.getZoneFromRequestId(castleId)}/gbl/null`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-      });
+      await fetchFromBridge(`${basePath}/${ApiHelper.ggeTrackerManager.getZoneFromRequestId(castleId)}/gbl/null`);
       if (!responseData.ok) {
         response.status(responseData.status).send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
         return;
@@ -262,13 +257,7 @@ export abstract class ApiCastle implements ApiHelper {
       const basePath = process.env.GGE_API_URL;
       // We send directly request to internal GGE API proxy, because this data is not stored in our DB
       const apiUrl = `${basePath}/${targetEmpireEx}/gdi/"PID":${playerId}`;
-      const responseData = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-      });
+      const responseData = await fetchFromBridge(apiUrl);
       if (!responseData.ok) {
         response.status(responseData.status).send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
         return;
@@ -344,13 +333,7 @@ export abstract class ApiCastle implements ApiHelper {
       const castlePromises = result.rows.map(async (row: { id: number }) => {
         try {
           const apiUrl = `${basePath}/${targetEmpireEx}/gdi/"PID":${row.id}`;
-          const responseData = await fetch(apiUrl, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              Accept: 'application/json',
-            },
-          });
+          const responseData = await fetchFromBridge(apiUrl);
           if (!responseData.ok) return null;
           const data = await responseData.json();
           if (!data?.content?.gcl?.C) return null;

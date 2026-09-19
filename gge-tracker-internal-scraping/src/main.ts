@@ -219,7 +219,8 @@ export class GenericFetchAndSaveBackend {
   private readonly DUNGEON_SCAN_ZONE = 101;
   private readonly DUNGEON_SPAWN_RADIUS = 30;
   private readonly DUNGEON_DISCOVERY_MARGIN = 20;
-  private readonly DUNGEON_DISCOVERY_CONCURRENCY = 5;
+  // Note: a gaa answer names its kingdom and not its box, so two tiles of one kingdom are interchangeable
+  private readonly DUNGEON_DISCOVERY_CONCURRENCY = 1;
   private readonly DUNGEON_DISCOVERY_WEEKDAY_UTC = 1;
   private readonly DUNGEON_DISCOVERY_HOUR_UTC = 3;
   private readonly DUNGEON_DISCOVERY_PARAMETER = 'dungeons_discovery';

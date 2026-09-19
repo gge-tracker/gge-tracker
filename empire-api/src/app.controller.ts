@@ -7,7 +7,13 @@ import { GgeEmpire4KingdomsSocket } from './utils/ws/empire4kingdoms-socket.js';
 import { GgeLiveTemporaryServerSocket } from './utils/ws/live-temporary-server-socket.js';
 import { GgeEmpire4KingdomsTcp } from './utils/ws/empire4kingdoms-tcp.js';
 import { SocketService } from './utils/ws/sockets.js';
-import { GgeCommandOutcome, recordCommand, renderMetrics, startEventLoopLagProbe } from './utils/metrics.js';
+import {
+  GgeCommandOutcome,
+  recordCommand,
+  recordCommandSerialized,
+  renderMetrics,
+  startEventLoopLagProbe,
+} from './utils/metrics.js';
 
 interface CommandInterface {
   [key: string]: {
@@ -18,6 +24,35 @@ interface CommandInterface {
 const __dirname = import.meta.dirname;
 let commands: CommandInterface;
 let instancesSyncRunning = false;
+
+class QueueOverflowError extends Error {}
+
+const MAX_QUEUED_PER_MATCH = 16;
+const inFlight = new Map<string, { chain: Promise<unknown>; queued: number }>();
+
+/**
+ * Serializes requests the game answer could not be told apart from each other
+ */
+async function withExclusiveMatch<T>(key: string, run: () => Promise<T>): Promise<T> {
+  const pending = inFlight.get(key);
+  if (pending && pending.queued >= MAX_QUEUED_PER_MATCH) {
+    throw new QueueOverflowError('Too many identical requests are already queued');
+  }
+  const entry = pending ?? { chain: Promise.resolve(), queued: 0 };
+  entry.queued++;
+  const result = entry.chain.then(run, run);
+  entry.chain = result.then(
+    () => undefined,
+    () => undefined,
+  );
+  inFlight.set(key, entry);
+  try {
+    return await result;
+  } finally {
+    entry.queued--;
+    if (entry.queued === 0 && inFlight.get(key) === entry) inFlight.delete(key);
+  }
+}
 
 function loadCommands(): void {
   commands = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'commands.json')).toString());
@@ -234,18 +269,24 @@ export default function createApp(sockets: {
         request.params.headers = '';
       }
       const messageHeaders = JSON.parse(`{${request.params.headers}}`);
-      sockets[requestedServer].sendJsonCommand(request.params.command, messageHeaders);
       responseHeaders = buildResponseHeaders(request.params.command, messageHeaders);
 
       // Transformations
       if (request.params.command === 'jca') {
         request.params.command = 'jaa';
       }
-      const jsonResponse = await sockets[requestedServer].waitForJsonResponse(
-        request.params.command,
-        responseHeaders,
-        sockets[requestedServer].answerBudgetMs(requestedCommand),
-      );
+      const answeringCommand = request.params.command;
+      const matchKey = `${requestedServer}|${answeringCommand}|${JSON.stringify(responseHeaders)}`;
+      if (inFlight.has(matchKey)) recordCommandSerialized(requestedServer, requestedCommand);
+
+      const jsonResponse = await withExclusiveMatch(matchKey, async () => {
+        sockets[requestedServer].sendJsonCommand(requestedCommand, messageHeaders);
+        return sockets[requestedServer].waitForJsonResponse(
+          answeringCommand,
+          responseHeaders,
+          sockets[requestedServer].answerBudgetMs(requestedCommand),
+        );
+      });
       sockets[requestedServer].recordCommandAnswer(
         requestedCommand,
         Number(process.hrtime.bigint() - startedAt) / 1e6,
@@ -257,10 +298,11 @@ export default function createApp(sockets: {
         return_code: jsonResponse.payload.status,
         content: jsonResponse.payload.data,
       });
-    } catch {
-      settle('timeout');
-      response.status(200).json({
-        error: 'Timeout',
+    } catch (error: unknown) {
+      const rejected = error instanceof QueueOverflowError;
+      settle(rejected ? 'rejected' : 'timeout');
+      response.status(rejected ? 503 : 200).json({
+        error: rejected ? error.message : 'Timeout',
         server: requestedServer,
         command: request.params.command,
         response_headers: responseHeaders,

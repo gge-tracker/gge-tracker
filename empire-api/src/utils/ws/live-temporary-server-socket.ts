@@ -11,6 +11,7 @@ class GgeLiveTemporaryServerSocket extends BaseSocket implements GgeEmpireSocket
     this.password = password;
     this.reconnect = false;
     this.connectMethod = this.connect.bind(this);
+    this.watchedCommands.add('gbd');
     this.onMessage = (message: string, parsedMessage: { type: string; payload: any }): void =>
       void this.handleMessage(message, parsedMessage);
   }

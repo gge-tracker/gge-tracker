@@ -1,9 +1,10 @@
 import { performance } from 'node:perf_hooks';
 
-export type GgeCommandOutcome = 'ok' | 'timeout' | 'not_found' | 'not_connected';
+export type GgeCommandOutcome = 'ok' | 'timeout' | 'not_found' | 'not_connected' | 'rejected';
 
 export interface GgeSocketStats {
   messagesReceived: number;
+  framesUnmatched: number;
   messagesSent: number;
   restarts: number;
   socketErrors: number;
@@ -26,6 +27,7 @@ export interface GgeMetricsSocket {
 export function createSocketStats(): GgeSocketStats {
   return {
     messagesReceived: 0,
+    framesUnmatched: 0,
     messagesSent: 0,
     restarts: 0,
     socketErrors: 0,
@@ -46,6 +48,7 @@ interface CommandSample {
 }
 
 const commandSamples = new Map<string, CommandSample>();
+const serializedSamples = new Map<string, { server: string; command: string; count: number }>();
 let eventLoopLagSeconds = 0;
 
 export function recordCommand(
@@ -59,6 +62,13 @@ export function recordCommand(
   sample.count++;
   sample.durationSeconds += durationSeconds;
   commandSamples.set(key, sample);
+}
+
+export function recordCommandSerialized(server: string, command: string): void {
+  const key = `${server} ${command}`;
+  const sample = serializedSamples.get(key) ?? { server, command, count: 0 };
+  sample.count++;
+  serializedSamples.set(key, sample);
 }
 
 export function startEventLoopLagProbe(intervalMs = 200): NodeJS.Timeout {
@@ -141,6 +151,12 @@ const SOCKET_METRICS: SocketMetricDefinition[] = [
     read: (socket) => socket.metricsStats.messagesSent,
   },
   {
+    name: 'empire_api_socket_frames_unmatched_total',
+    type: 'counter',
+    help: 'Frames no pending request wanted, discarded without parsing their payload',
+    read: (socket) => socket.metricsStats.framesUnmatched,
+  },
+  {
     name: 'empire_api_socket_restarts_total',
     type: 'counter',
     help: 'Reconnection attempts started',
@@ -218,6 +234,18 @@ function addCommandBudgetMetrics(writer: MetricsWriter, sockets: Record<string, 
   }
 }
 
+function addSerializedMetrics(writer: MetricsWriter): void {
+  for (const sample of serializedSamples.values()) {
+    writer.add(
+      'empire_api_command_serialized_total',
+      'counter',
+      'Requests queued behind an identical in-flight one, which the game answer could not be told apart from',
+      sample.count,
+      { server: sample.server, command: sample.command },
+    );
+  }
+}
+
 function addCommandMetrics(writer: MetricsWriter): void {
   const samples = [...commandSamples.values()];
   const tagsOf = (sample: CommandSample): Record<string, string> => ({
@@ -273,6 +301,7 @@ export function renderMetrics(sockets: Record<string, GgeMetricsSocket>): string
   addSocketMetrics(writer, sockets, nowMs);
   addCommandBudgetMetrics(writer, sockets);
   addCommandMetrics(writer);
+  addSerializedMetrics(writer);
   addProcessMetrics(writer);
   return writer.render();
 }
