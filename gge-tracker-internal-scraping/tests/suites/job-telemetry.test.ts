@@ -266,4 +266,51 @@ describe('job telemetry', () => {
       });
     });
   });
+
+  describe('rift raid', () => {
+    it('reports the event it wrote into and how much of the map it could read', async () => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.clickhouse.when(/FROM rift_raid_hours/, [
+          { event_id: 3, last_seen: Math.floor(sandbox.now.getTime() / 1000) - 3600 },
+        ]);
+        sandbox.api.on('llsp', (request: ApiRequest) => {
+          const lid = Number(request.parameters.LID);
+          if (Number(request.parameters.SDI) > 1) return subdivision([]);
+          return subdivision([
+            { id: lid * 100 + 1, name: `Alliance ${lid}-1`, rank: 1, score: 900 },
+            { id: lid * 100 + 2, name: `Alliance ${lid}-2`, rank: 2, score: 800 },
+          ]);
+        });
+
+        await sandbox.call('fillRiftRaidResults', 'e4k');
+
+        const record = recordFor(sandbox, 'rift-raid');
+        assert.equal(record.game, 'e4k');
+        assert.equal(record.eventId, 3);
+        assert.equal(record.riftRaidRecordsInserted, 12, 'six divisions of two alliances');
+        assert.equal(record.subdivisions, 6, 'each division stops on the subdivision that answers empty');
+        assert.equal(record.partialSubdivisions, 0);
+        assert.equal(record.missingEntries, 0);
+        assert.equal(record.unreadableDivisions, 0);
+        assert.equal(record.criticalErrors, 0);
+      });
+    });
+
+    it('names the division whose page never came back instead of reporting a short map', async () => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.api.on('llsp', (request: ApiRequest) => {
+          if (Number(request.parameters.LID) === 4) throw new Error('the bridge is down');
+          if (Number(request.parameters.SDI) > 1) return subdivision([]);
+          return subdivision([{ id: 1, name: 'Alliance', rank: 1, score: 900 }]);
+        });
+
+        await sandbox.call('fillRiftRaidResults', 'e4k');
+
+        const record = recordFor(sandbox, 'rift-raid');
+        assert.equal(record.unreadableDivisions, 1);
+        assert.equal(record.subdivisions, 5, 'the five readable divisions still count');
+        assert.equal(record.criticalErrors, 0, 'one silent division is not a failed run');
+      });
+    });
+  });
 });

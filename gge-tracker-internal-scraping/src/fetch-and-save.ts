@@ -46,6 +46,7 @@ const genericPostgresConfig = {
   port: 5432,
   max: 5,
 };
+const globalClickhouseConfig = { ...CLICKHOUSE_CONFIG, database: 'ggetracker_global' };
 
 async function executeFillInOrder(): Promise<void> {
   const generic = new GenericFetchAndSaveBackend(BASE_API_URL, CLICKHOUSE_CONFIG, postgresConfig, logSuffix);
@@ -55,6 +56,12 @@ async function executeFillInOrder(): Promise<void> {
     await generic2.refreshGlobalRankings();
     const generic3 = new GenericFetchAndSaveBackend(BASE_API_URL, null, genericPostgresConfig, 'GT_TOURNAMENT');
     await generic3.fillGrandTournamentResults();
+    const generic4 = new GenericFetchAndSaveBackend(BASE_API_URL, globalClickhouseConfig, null, 'RIFT_RAID');
+    await generic4.fillRiftRaidResults('ep');
+  }
+  if (logSuffix === 'E4KDE1') {
+    const genericE4k = new GenericFetchAndSaveBackend(BASE_API_URL, globalClickhouseConfig, null, 'E4K_RIFT_RAID');
+    await genericE4k.fillRiftRaidResults('e4k');
   }
   setTimeout(() => {
     console.log('Timeout reached, forcing exit.');

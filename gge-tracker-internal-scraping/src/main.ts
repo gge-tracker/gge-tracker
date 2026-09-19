@@ -61,6 +61,34 @@ interface OuterRealmsEntry {
   castlePositionY: number;
 }
 
+type RiftRaidGame = 'ep' | 'e4k';
+
+interface RiftRaidSnapshot {
+  game: RiftRaidGame;
+  eventId: number;
+  createdAt: string;
+}
+
+interface RiftRaidReport {
+  subdivisions: number;
+  partialSubdivisions: number;
+  missingEntries: number;
+  unreadableDivisions: number;
+}
+
+interface RiftRaidRow extends Record<string, unknown> {
+  game: RiftRaidGame;
+  event_id: number;
+  created_at: string;
+  division_id: number;
+  subdivision_id: number;
+  rank: number;
+  server_id: number;
+  alliance_id: number;
+  alliance_name: string;
+  score: number;
+}
+
 interface GlobalRegion {
   name: string;
   mapped: boolean;
@@ -243,6 +271,16 @@ export class GenericFetchAndSaveBackend {
   private readonly STORM_SEASON_CHECK_BACKOFF_MINUTES = 15;
   private readonly STORM_MAX_FAILED_TILES = 10;
   private readonly STORM_TILE_OBJECT_CEILING = 1000;
+  private readonly RIFT_RAID_LT = 89;
+  private readonly RIFT_RAID_DIVISIONS = 6;
+  private readonly RIFT_RAID_PAGE_SIZE = 1000;
+  private readonly RIFT_RAID_MIN_PAGE_SIZE = 10;
+  private readonly RIFT_RAID_PAGE_SHRINK_FACTOR = 4;
+  private readonly RIFT_RAID_MAX_PAGES = 12;
+  private readonly RIFT_RAID_MAX_SUBDIVISIONS = 64;
+  private readonly RIFT_RAID_FETCH_ATTEMPTS = 3;
+  private readonly RIFT_RAID_RETRY_DELAY_MS = 2000;
+  private readonly RIFT_RAID_NEW_EVENT_AFTER_HOURS = 24;
   private readonly BASE_API_URL: string;
   private readonly CLICKHOUSE_CONFIG: { [key: string]: string | number | undefined } | undefined;
   private readonly PGSQL_CONFIG: pg.PoolConfig | undefined;
@@ -587,6 +625,77 @@ export class GenericFetchAndSaveBackend {
         eventId,
         subdivisions,
         grandTournamentRecordsInserted: recordsInserted,
+        criticalErrors: this.DB_UPDATES.criticalErrors,
+        durationMs: Date.now() - start.getTime(),
+        ...this.jobFailure,
+      },
+    });
+  }
+
+  public async fillRiftRaidResults(game: RiftRaidGame): Promise<void> {
+    const start = new Date();
+    let eventId = 0;
+    let recordsInserted = 0;
+    const report: RiftRaidReport = {
+      subdivisions: 0,
+      partialSubdivisions: 0,
+      missingEntries: 0,
+      unreadableDivisions: 0,
+    };
+    try {
+      Utils.logMessage('=====================================');
+      Utils.logMessage(' Starting Rift Raid results refresh');
+      Utils.logMessage(' Current environment:', this.CURRENT_ENV);
+      Utils.logMessage('=====================================');
+
+      eventId = await this.resolveRiftRaidEventId(game);
+      Utils.logMessage('Current eventId: ', eventId);
+      const runAt = new Date();
+      const createdAt = format(runAt, 'yyyy-MM-dd HH:mm:ss');
+      const alliances = new Map<string, RiftRaidRow>();
+      for (let divisionId = 1; divisionId <= this.RIFT_RAID_DIVISIONS; divisionId++) {
+        Utils.logMessage(' Processing division:', divisionId);
+        const read = await this.collectRiftRaidDivision(divisionId, { game, eventId, createdAt }, alliances, report);
+        Utils.logMessage(' Subdivisions read for division', divisionId + ':', read);
+      }
+
+      const rows = [...alliances.values()];
+      recordsInserted = rows.length;
+      Utils.logMessage('Inserting ', rows.length, 'records into ClickHouse...');
+      if (rows.length > 0) {
+        await this.insertRowsClickHouse('rift_raid_ranking', rows);
+        await this.insertRowsClickHouse('rift_raid_hours', [
+          { game, event_id: eventId, hour: format(runAt, 'yyyy-MM-dd HH:00:00') },
+        ]);
+        await this.bumpScanVersion('rift-raid:event-dates:version');
+        Utils.logMessage('Rift Raid results updated successfully');
+      } else {
+        Utils.logMessage('Rift Raid is not running, nothing was stored');
+      }
+
+      const durationInSeconds = Math.floor((Date.now() - start.getTime()) / 1000);
+      Utils.logMessage(
+        'Duration of Rift Raid results update:',
+        durationInSeconds + ' seconds, with ' + rows.length + ' records inserted',
+      );
+      for (let i = 0; i < 9; i++) {
+        Utils.logMessage('.');
+      }
+    } catch (error) {
+      this.recordJobFailure('rift raid results refresh', error, '412');
+    }
+    await this.closePool();
+    Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, this.server);
+
+    await this.logToLoki({
+      job: 'rift-raid',
+      level: this.DB_UPDATES.criticalErrors > 0 ? 'error' : 'info',
+      data: {
+        server: this.server,
+        game,
+        eventId,
+        ...report,
+        riftRaidRecordsInserted: recordsInserted,
         criticalErrors: this.DB_UPDATES.criticalErrors,
         durationMs: Date.now() - start.getTime(),
         ...this.jobFailure,
@@ -1438,6 +1547,136 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
+  private async resolveRiftRaidEventId(game: RiftRaidGame): Promise<number> {
+    const rows = await this.selectRowsClickHouse<{ event_id: number; last_seen: number }>(
+      `SELECT event_id, toUnixTimestamp(max(hour)) AS last_seen FROM rift_raid_hours
+       WHERE game = '${game}' GROUP BY event_id ORDER BY last_seen DESC LIMIT 1`,
+    );
+    const lastEvent = rows.at(0);
+    if (!lastEvent) return 1;
+    const elapsedHours = (Date.now() - Number(lastEvent.last_seen) * 1000) / (1000 * 60 * 60);
+    const eventId = Number(lastEvent.event_id);
+    return elapsedHours > this.RIFT_RAID_NEW_EVENT_AFTER_HOURS ? eventId + 1 : eventId;
+  }
+
+  private async collectRiftRaidDivision(
+    divisionId: number,
+    snapshot: RiftRaidSnapshot,
+    alliances: Map<string, RiftRaidRow>,
+    report: RiftRaidReport,
+  ): Promise<number> {
+    let subdivisions = 0;
+    for (let subdivisionId = 1; subdivisionId <= this.RIFT_RAID_MAX_SUBDIVISIONS; subdivisionId++) {
+      const read = await this.collectRiftRaidSubdivision(divisionId, subdivisionId, {
+        ...snapshot,
+        alliances,
+      });
+      if (!read) {
+        report.unreadableDivisions++;
+        break;
+      }
+      if (!read.found) break;
+      subdivisions++;
+      report.subdivisions++;
+      const missing = Math.max(read.total - read.collected, 0);
+      if (missing > 0) {
+        report.partialSubdivisions++;
+        report.missingEntries += missing;
+      }
+    }
+    return subdivisions;
+  }
+
+  private async collectRiftRaidSubdivision(
+    divisionId: number,
+    subdivisionId: number,
+    context: RiftRaidSnapshot & { alliances: Map<string, RiftRaidRow> },
+  ): Promise<{ found: boolean; collected: number; total: number } | null> {
+    const ranksRead = new Set<number>();
+    let pageSize = this.RIFT_RAID_PAGE_SIZE;
+    let total = 0;
+    let startRank = 1;
+    for (let page = 0; page < this.RIFT_RAID_MAX_PAGES; page++) {
+      const answer = await this.fetchRiftRaidPage(divisionId, subdivisionId, page === 0 ? null : startRank, pageSize);
+      if (!answer) return page === 0 ? null : { found: true, collected: ranksRead.size, total };
+      if (answer.entries.length === 0) return { found: page > 0, collected: ranksRead.size, total };
+      pageSize = answer.pageSize;
+      total = answer.total || total;
+      this.collectRiftRaidEntries(answer.entries, { divisionId, subdivisionId, ...context });
+      const ranks = answer.entries.map((entry) => Number(entry.R));
+      for (const rank of ranks) ranksRead.add(rank);
+      const lastRank = Math.max(...ranks);
+      if (lastRank >= total) break;
+      startRank = lastRank + 1;
+    }
+    return { found: true, collected: ranksRead.size, total };
+  }
+
+  private async fetchRiftRaidPage(
+    divisionId: number,
+    subdivisionId: number,
+    startRank: number | null,
+    pageSize: number,
+  ): Promise<{ entries: any[]; total: number; pageSize: number } | null> {
+    let size = pageSize;
+    for (let attempt = 1; attempt <= this.RIFT_RAID_FETCH_ATTEMPTS; attempt++) {
+      const answer = await this.readRiftRaidPage(divisionId, subdivisionId, startRank, size);
+      if (answer) return { ...answer, pageSize: size };
+      const page = `${divisionId}-${subdivisionId}@${startRank ?? 1}`;
+      Utils.logMessage('   Unreadable Rift Raid page', page, 'of', size, '- attempt', attempt);
+      size = Math.max(Math.floor(size / this.RIFT_RAID_PAGE_SHRINK_FACTOR), this.RIFT_RAID_MIN_PAGE_SIZE);
+      if (attempt < this.RIFT_RAID_FETCH_ATTEMPTS) await this.sleep(this.RIFT_RAID_RETRY_DELAY_MS);
+    }
+    return null;
+  }
+
+  private async readRiftRaidPage(
+    divisionId: number,
+    subdivisionId: number,
+    startRank: number | null,
+    pageSize: number,
+  ): Promise<{ entries: any[]; total: number } | null> {
+    try {
+      const response = await this.genericFetchData('llsp', {
+        LT: this.RIFT_RAID_LT,
+        LID: divisionId,
+        M: pageSize,
+        ...(startRank === null ? {} : { R: startRank }),
+        SDI: subdivisionId,
+      });
+      const content = response.data?.content;
+      const entries = content?.L;
+      return Array.isArray(entries) ? { entries, total: Number(content.T) || 0 } : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private collectRiftRaidEntries(
+    entries: any[],
+    context: RiftRaidSnapshot & { divisionId: number; subdivisionId: number; alliances: Map<string, RiftRaidRow> },
+  ): void {
+    const { divisionId, subdivisionId, game, eventId, createdAt, alliances } = context;
+    for (const entry of entries) {
+      const allianceId = Number.parseInt(String(entry.SI).trim().split('-').at(-1) ?? '');
+      const serverId = Number.parseInt(String(entry.I));
+      const token = `${serverId}_${allianceId}`;
+      if (!allianceId || alliances.has(token)) continue;
+      alliances.set(token, {
+        game,
+        event_id: eventId,
+        created_at: createdAt,
+        division_id: divisionId,
+        subdivision_id: subdivisionId,
+        rank: Number.parseInt(String(entry.R)),
+        server_id: serverId,
+        alliance_id: allianceId,
+        alliance_name: String(entry.A),
+        score: Number.parseInt(String(entry.S)),
+      });
+    }
+  }
+
   private async collectRealmCastles(worldNumber: number): Promise<Castle[] | null> {
     const pgSqlPlayerCastles = 'SELECT castles_realm FROM players WHERE castles IS NOT NULL';
     const pgSqlPlayerCastlesResult = await this.pgSqlQuery(pgSqlPlayerCastles);
@@ -2212,6 +2451,19 @@ export class GenericFetchAndSaveBackend {
       await this.clickhousePost(url, payload, `insert into ${table}`, options.maxAttempts);
       Utils.logMessage(' [info] Inserted', chunk.length, 'rows into', table);
     }
+  }
+
+  private async selectRowsClickHouse<T>(query: string): Promise<T[]> {
+    if (!this.CLICKHOUSE_CONFIG) throw new Error('ClickHouse configuration is missing.');
+    const { data } = await axios.post(this.clickhouseUrl(`${query} FORMAT JSONEachRow`), '', {
+      headers: { 'Content-Type': 'text/plain' },
+      auth: this.clickhouseAuth(),
+      timeout: 30000,
+    });
+    return String(data ?? '')
+      .split('\n')
+      .filter((line) => line.length > 0)
+      .map((line) => JSON.parse(line) as T);
   }
 
   private async pingClickHouse(): Promise<void> {

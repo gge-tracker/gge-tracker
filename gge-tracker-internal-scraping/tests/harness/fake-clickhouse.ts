@@ -23,11 +23,17 @@ export class FakeClickHouse {
   public readonly calls: ClickHouseCall[] = [];
 
   private failures: (Error | null)[] = [];
+  private readonly answers: { pattern: RegExp; rows: Record<string, unknown>[] }[] = [];
 
   constructor(private readonly baseUrl: string) {}
 
   public failWith(...outcomes: (Error | null)[]): this {
     this.failures = outcomes;
+    return this;
+  }
+
+  public when(pattern: RegExp, rows: Record<string, unknown>[]): this {
+    this.answers.push({ pattern, rows });
     return this;
   }
 
@@ -54,7 +60,13 @@ export class FakeClickHouse {
     });
     const outcome = this.failures.shift();
     if (outcome) throw outcome;
-    return { status: 200, data: '' };
+    const answer = this.answers.find((candidate) => candidate.pattern.test(query));
+    if (!answer) return { status: 200, data: '' };
+    return { status: 200, data: answer.rows.map((row) => JSON.stringify(row)).join('\n') };
+  }
+
+  public selects(pattern: RegExp): ClickHouseCall[] {
+    return this.calls.filter((call) => call.table === null && pattern.test(call.query));
   }
 
   public rows(table: string): Record<string, unknown>[] {
