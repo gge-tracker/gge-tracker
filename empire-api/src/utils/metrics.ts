@@ -20,6 +20,7 @@ export interface GgeMetricsSocket {
   metricsState: string;
   metricsStats: GgeSocketStats;
   metricsResponseTimeoutMs: number;
+  metricsCommandBudgets: { command: string; budgetMs: number }[];
 }
 
 export function createSocketStats(): GgeSocketStats {
@@ -203,6 +204,20 @@ function addSocketMetrics(writer: MetricsWriter, sockets: Record<string, GgeMetr
   }
 }
 
+function addCommandBudgetMetrics(writer: MetricsWriter, sockets: Record<string, GgeMetricsSocket>): void {
+  for (const socket of Object.values(sockets)) {
+    for (const budget of socket.metricsCommandBudgets) {
+      writer.add(
+        'empire_api_socket_command_timeout_ms',
+        'gauge',
+        'How long the bridge waits for one command on this server, widened by what that command has answered in',
+        budget.budgetMs,
+        { ...socket.metricsLabels, command: budget.command },
+      );
+    }
+  }
+}
+
 function addCommandMetrics(writer: MetricsWriter): void {
   const samples = [...commandSamples.values()];
   const tagsOf = (sample: CommandSample): Record<string, string> => ({
@@ -256,6 +271,7 @@ export function renderMetrics(sockets: Record<string, GgeMetricsSocket>): string
     all.filter((socket) => socket.metricsConnected).length,
   );
   addSocketMetrics(writer, sockets, nowMs);
+  addCommandBudgetMetrics(writer, sockets);
   addCommandMetrics(writer);
   addProcessMetrics(writer);
   return writer.render();

@@ -11,6 +11,8 @@ const FLOOR_MS = 1000;
 const CEILING_MS = 3000;
 const SINGAPORE_ROUND_TRIP_MS = 155;
 const AMERICAS_ROUND_TRIP_MS = 90;
+const NEARBY_ROUND_TRIP_MS = 10;
+const ANSWER_MIN_SAMPLES = 5;
 
 function feedRoundTrip(socket: GgeEmpireSocket, milliseconds: number): void {
   (socket as unknown as { recordRoundTrip: (ms: number) => void }).recordRoundTrip(milliseconds);
@@ -86,6 +88,49 @@ export async function runLatency(report: Report): Promise<void> {
       ok: socket.metricsResponseTimeoutMs === socket.responseTimeoutMs,
       detail: `metric=${socket.metricsResponseTimeoutMs} getter=${socket.responseTimeoutMs}`,
     });
+
+    const nearby = createEmpireSocket(server.url(), 'PerCommand');
+    try {
+      for (let sample = 0; sample < 5; sample++) feedRoundTrip(nearby, NEARBY_ROUND_TRIP_MS);
+      const serverBudget = nearby.responseTimeoutMs;
+
+      section.expect('a command the game never answers keeps the server budget, so a probe still fails fast', {
+        ok: nearby.answerBudgetMs('probe') === serverBudget,
+        detail: `probe=${nearby.answerBudgetMs('probe')}ms server=${serverBudget}ms`,
+      });
+
+      for (let sample = 0; sample < ANSWER_MIN_SAMPLES; sample++) nearby.recordCommandAnswer('hgh', 40);
+      section.expect('a command that answers at once is not given room it does not need', {
+        ok: nearby.answerBudgetMs('hgh') === serverBudget,
+        detail: `hgh=${nearby.answerBudgetMs('hgh')}ms server=${serverBudget}ms`,
+      });
+
+      for (let sample = 0; sample < ANSWER_MIN_SAMPLES; sample++) nearby.recordCommandAnswer('gaa', 600);
+      const heavyBudget = nearby.answerBudgetMs('gaa');
+      section.expect('a heavy command on a nearby server earns room its round trip never showed', {
+        ok: heavyBudget > serverBudget && heavyBudget <= CEILING_MS,
+        detail: `gaa=${heavyBudget}ms server=${serverBudget}ms`,
+      });
+
+      section.expect('the room is earned per command, not handed to the whole socket', {
+        ok: nearby.answerBudgetMs('probe') === serverBudget && nearby.answerBudgetMs('hgh') === serverBudget,
+        detail: `probe=${nearby.answerBudgetMs('probe')}ms hgh=${nearby.answerBudgetMs('hgh')}ms gaa=${heavyBudget}ms`,
+      });
+
+      for (let sample = 0; sample < ANSWER_MIN_SAMPLES; sample++) nearby.recordCommandAnswer('gaa', 2500);
+      section.expect('even a very slow command is still capped at the ceiling', {
+        ok: nearby.answerBudgetMs('gaa') === CEILING_MS,
+        detail: `gaa=${nearby.answerBudgetMs('gaa')}ms`,
+      });
+
+      const published = new Map(nearby.metricsCommandBudgets.map((entry) => [entry.command, entry.budgetMs]));
+      section.expect('every command that answered publishes its own budget', {
+        ok: published.get('gaa') === nearby.answerBudgetMs('gaa') && published.get('hgh') === serverBudget,
+        detail: [...published].map(([command, budget]) => `${command}=${budget}ms`).join(' '),
+      });
+    } finally {
+      disposeSocket(nearby);
+    }
   } finally {
     disposeSocket(socket);
     await server.stop();

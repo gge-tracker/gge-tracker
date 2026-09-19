@@ -280,6 +280,22 @@ describe('storm season', () => {
       });
     });
 
+    it('retries a tile the bridge refused while its socket was down, not only a timed-out one', async () => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.db.when(STORM_STATE, stormState(sandbox.now));
+        sandbox.api.on('gaa', (request, callIndex) => {
+          if (callIndex === 0) throw new Error('Request failed with status code 500');
+          return stormArea([stormFort(644, 644), stormIsle(645, 644), [STORM_BORDER_OBJECT, 0, 0]]);
+        });
+
+        await sandbox.call('updateStormMap');
+
+        assert.equal(sandbox.api.callsFor('gaa').length, 2);
+        assert.equal(sandbox.db.matching(PRUNE_FORTS).length, 1);
+        assert.equal(sandbox.db.matching(SCAN_STAMP).length, 1);
+      });
+    });
+
     it('keeps them when the game cut a tile at its object ceiling', async () => {
       await withSandbox({}, async (sandbox) => {
         sandbox.db.when(STORM_STATE, stormState(sandbox.now));

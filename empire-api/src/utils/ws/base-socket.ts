@@ -24,8 +24,11 @@ const RESPONSE_TIMEOUT_MIN_MS = readEnvironmentInteger('RESPONSE_TIMEOUT_MIN_MS'
 const RESPONSE_TIMEOUT_MAX_MS = readEnvironmentInteger('RESPONSE_TIMEOUT_MAX_MS', 3000);
 // A fixed budget for every server, for debugging: 0 keeps the per-server one
 const RESPONSE_TIMEOUT_FIXED_MS = readEnvironmentInteger('RESPONSE_TIMEOUT_MS', 0);
+const RESPONSE_TIMEOUT_HEADROOM = readEnvironmentInteger('RESPONSE_TIMEOUT_HEADROOM', 3);
 const ROUND_TRIP_SAMPLES = 5;
 const ROUND_TRIP_CEILING_MS = 5000;
+const ANSWER_SAMPLES = readEnvironmentInteger('RESPONSE_TIMEOUT_SAMPLES', 100);
+const ANSWER_MIN_SAMPLES = 5;
 
 export enum SocketState {
   CONNECTING = 'CONNECTING',
@@ -58,6 +61,7 @@ class BaseSocket extends Log implements GgeMetricsSocket {
   protected serverType: GgeServerType;
   protected readonly stats: GgeSocketStats = createSocketStats();
   private readonly roundTripSamples: number[] = [];
+  private readonly answerSamples = new Map<string, number[]>();
   protected onSend: (data: string) => void;
   protected onOpen: (ws: WebSocket) => void;
   protected onMessage: (message: string, parsedMessage: { type: string; payload: any }) => Promise<void> | void;
@@ -111,6 +115,31 @@ class BaseSocket extends Log implements GgeMetricsSocket {
     if (this.stats.roundTripMs === null) return RESPONSE_TIMEOUT_MAX_MS;
     const budget = RESPONSE_TIMEOUT_BASE_MS + RESPONSE_TIMEOUT_ROUND_TRIPS * this.stats.roundTripMs;
     return Math.round(Math.min(Math.max(budget, RESPONSE_TIMEOUT_MIN_MS), RESPONSE_TIMEOUT_MAX_MS));
+  }
+
+  public get metricsCommandBudgets(): { command: string; budgetMs: number }[] {
+    return [...this.answerSamples.keys()].map((command) => ({ command, budgetMs: this.answerBudgetMs(command) }));
+  }
+
+  /**
+   * How long this socket is given to answer one command
+   */
+  public answerBudgetMs(command: string): number {
+    if (RESPONSE_TIMEOUT_FIXED_MS > 0) return RESPONSE_TIMEOUT_FIXED_MS;
+    const samples = this.answerSamples.get(command);
+    // A command the game never answers earns no headroom : a deliberate probe still fails fast
+    if (!samples || samples.length < ANSWER_MIN_SAMPLES) return this.responseTimeoutMs;
+    const slowest = Math.max(...samples);
+    const budget = Math.max(slowest * RESPONSE_TIMEOUT_HEADROOM, this.responseTimeoutMs);
+    return Math.round(Math.min(budget, RESPONSE_TIMEOUT_MAX_MS));
+  }
+
+  public recordCommandAnswer(command: string, milliseconds: number): void {
+    if (!Number.isFinite(milliseconds) || milliseconds < 0 || milliseconds > ROUND_TRIP_CEILING_MS) return;
+    const samples = this.answerSamples.get(command) ?? [];
+    samples.push(milliseconds);
+    if (samples.length > ANSWER_SAMPLES) samples.shift();
+    this.answerSamples.set(command, samples);
   }
 
   protected recordRoundTrip(milliseconds: number): void {

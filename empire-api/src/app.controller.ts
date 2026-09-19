@@ -244,7 +244,11 @@ export default function createApp(sockets: {
       const jsonResponse = await sockets[requestedServer].waitForJsonResponse(
         request.params.command,
         responseHeaders,
-        sockets[requestedServer].responseTimeoutMs,
+        sockets[requestedServer].answerBudgetMs(requestedCommand),
+      );
+      sockets[requestedServer].recordCommandAnswer(
+        requestedCommand,
+        Number(process.hrtime.bigint() - startedAt) / 1e6,
       );
       settle('ok');
       response.status(200).json({

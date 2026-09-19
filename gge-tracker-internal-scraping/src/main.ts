@@ -2419,23 +2419,25 @@ export class GenericFetchAndSaveBackend {
    * @returns The AI array of the area, and whether the tile answered at all
    */
   private async fetchStormArea(url: string): Promise<{ objects: any[]; failed: boolean }> {
+    const attempt = await this.requestStormArea(url);
+    if (!attempt.failed) return attempt;
+    await this.sleep(3000);
+    const retry = await this.requestStormArea(url);
+    if (retry.failed) console.error('Storm retry failed for URL:', url);
+    return retry;
+  }
+
+  private async requestStormArea(url: string): Promise<{ objects: any[]; failed: boolean }> {
     try {
       const response = await axios.get(url);
       if (response.data?.['return_code'] == '0') {
         return { objects: response.data.content?.AI ?? [], failed: false };
       }
       console.error('Invalid storm response for URL:', url, response.data);
-      await this.sleep(3000);
-      const retryResponse = await axios.get(url);
-      if (retryResponse.data?.['return_code'] == '0') {
-        return { objects: retryResponse.data.content?.AI ?? [], failed: false };
-      }
-      console.error('Storm retry failed for URL:', url, retryResponse.data);
-      return { objects: [], failed: true };
     } catch (error: any) {
       console.error('Error on storm URL:', url, error instanceof AxiosError ? error.message : error);
-      return { objects: [], failed: true };
     }
+    return { objects: [], failed: true };
   }
 
   private isSaturatedStormTile(objects: any[]): boolean {
