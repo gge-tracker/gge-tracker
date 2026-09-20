@@ -50,9 +50,7 @@
           <tr>
             <td>{{ entry.date }}</td>
             <td>
-              <img src="/assets/gt/division{{ entry.division }}.png" [width]="32"
-                [title]="('Division' | translate) + ' ' + (divisionNames()[entry.division-1] | translate)"
-                [alt]="('Division' | translate) + ' ' + (divisionNames()[entry.division-1] | translate)" />
+              <app-division-badge [division]="entry.division" [nameKey]="divisionNames()[entry.division - 1]" [size]="32" />
             </td>
             <td>{{ 'Sous-division' | translate }} <em>{{ entry.subdivision }}</em></td>
             <td>{{ entry.rank }}</td>

@@ -1,0 +1,22 @@
+.division-row .division-button {
+  min-width: 56px;
+  width: auto;
+}
+
+.subdivision-toggle:focus-visible,
+.action-icon:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.144);
+  outline-offset: 2px;
+}
+
+.subdivision-toggle,
+.action-icon {
+  background: none;
+  border: 0;
+  color: inherit;
+  padding: 0;
+}
+
+.empty-state {
+  color: var(--tracker-muted);
+}

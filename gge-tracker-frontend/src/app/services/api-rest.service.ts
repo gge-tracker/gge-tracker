@@ -42,6 +42,10 @@ import {
   ApiGrandTournamentAlliancesResponse,
   ApiGrandTournamentAlliancesSearchResponse,
   ApiGrandTournamenAllianceAnalysisResponse,
+  ApiRiftRaidAllianceAnalysisResponse,
+  ApiRiftRaidAlliancesResponse,
+  ApiRiftRaidDatesResponse,
+  ApiRiftRaidSearchResponse,
   ApiLiveRankingResponse,
   ApiLiveRankingSpecificPlayerResponse,
   ApiEventsByPlayerIdResponse,
@@ -848,6 +852,39 @@ export class ApiRestService {
     );
     if (!response.success) return response;
     return { success: true, data: response.data };
+  }
+
+  public async getRiftRaidDates(): Promise<ApiResponse<ApiRiftRaidDatesResponse>> {
+    return this.apiFetch<ApiRiftRaidDatesResponse>(`${ApiRestService.apiUrl}rift-raid/dates`);
+  }
+
+  public async getRiftRaidAlliances(
+    date: string,
+    division: number,
+    page: number,
+    subdivision?: number,
+  ): Promise<ApiResponse<ApiRiftRaidAlliancesResponse>> {
+    const parameters = new URLSearchParams({ date, division_id: String(division), page: String(page) });
+    if (subdivision) parameters.set('subdivision_id', String(subdivision));
+    return this.apiFetch<ApiRiftRaidAlliancesResponse>(`${ApiRestService.apiUrl}rift-raid/alliances?${parameters}`);
+  }
+
+  public async searchRiftRaidAlliances(
+    date: string,
+    allianceName: string,
+    page: number,
+  ): Promise<ApiResponse<ApiRiftRaidSearchResponse>> {
+    const parameters = new URLSearchParams({ date, alliance_name: allianceName, page: String(page) });
+    return this.apiFetch<ApiRiftRaidSearchResponse>(`${ApiRestService.apiUrl}rift-raid/search?${parameters}`);
+  }
+
+  public async getRiftRaidAllianceAnalysis(
+    allianceId: number,
+    eventId: number,
+  ): Promise<ApiResponse<ApiRiftRaidAllianceAnalysisResponse>> {
+    return this.apiFetch<ApiRiftRaidAllianceAnalysisResponse>(
+      `${ApiRestService.apiUrl}rift-raid/alliance/${allianceId}/${eventId}`,
+    );
   }
 
   /**

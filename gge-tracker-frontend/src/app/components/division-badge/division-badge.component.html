@@ -1,0 +1,8 @@
+@if (emblemUrl; as url) {
+  <img [src]="url" [width]="size()" [title]="('Division' | translate) + ' ' + (nameKey() | translate)"
+    [alt]="('Division' | translate) + ' ' + (nameKey() | translate)" />
+} @else {
+  <span class="division-name" [style.min-height.px]="size()" [title]="('Division' | translate) + ' ' + (nameKey() | translate)">
+    {{ nameKey() | translate }}
+  </span>
+}

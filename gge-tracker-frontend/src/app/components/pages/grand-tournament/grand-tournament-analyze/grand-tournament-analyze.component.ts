@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, input, OnInit, output } from '@angular/core';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { DivisionBadgeComponent } from '@ggetracker-components/division-badge/division-badge.component';
 import { ChartsWrapperComponent } from '@ggetracker-modules/charts-client/charts-wrapper.component';
 import { LanguageService } from '@ggetracker-services/language.service';
 import { TranslateModule } from '@ngx-translate/core';
@@ -23,7 +24,7 @@ interface GenericChartConfig {
 @Component({
   standalone: true,
   selector: 'app-grand-tournament-analyze',
-  imports: [CommonModule, TranslateModule, LucideAngularModule, ChartsWrapperComponent],
+  imports: [CommonModule, TranslateModule, LucideAngularModule, ChartsWrapperComponent, DivisionBadgeComponent],
   templateUrl: './grand-tournament-analyze.component.html',
   styleUrls: ['./grand-tournament-analyze.component.css'],
 })

@@ -210,6 +210,13 @@ export const CATALOG: Endpoint[] = [
   { id: 'gt-alliance-analysis', method: 'GET', scope: 'public', path: (s) => `/grand-tournament/alliance/${s.allianceId ?? '1'}/1`, okStatuses: [200, 400, 404], needs: ['alliance'] },
   { id: 'gt-search', method: 'GET', scope: 'public', path: () => '/grand-tournament/search' + q({ date: '2026-01-01T00:00:00.000Z', alliance_name: 'a', page: 1 }), okStatuses: [200, 400], fuzzQuery: ['alliance_name', 'date'] },
 
+  // Rift Tournament (protected)
+  { id: 'rift-raid-dates', method: 'GET', scope: 'protected', path: () => '/rift-raid/dates', okStatuses: [200], needs: ['server'] },
+  { id: 'rift-raid-alliances', method: 'GET', scope: 'protected', path: () => '/rift-raid/alliances' + q({ date: '2026-09-19T17:00:00.000Z', division_id: 6, page: 1 }), okStatuses: [200, 400], needs: ['server'], fuzzQuery: ['date', 'division_id', 'subdivision_id'] },
+  { id: 'rift-raid-alliances-subdivision', method: 'GET', scope: 'protected', path: () => '/rift-raid/alliances' + q({ date: '2026-09-19T17:00:00.000Z', division_id: 1, subdivision_id: 1, page: 1 }), okStatuses: [200, 400], needs: ['server'] },
+  { id: 'rift-raid-search', method: 'GET', scope: 'protected', path: () => '/rift-raid/search' + q({ date: '2026-09-19T17:00:00.000Z', alliance_name: 'a', page: 1 }), okStatuses: [200, 400], needs: ['server'], fuzzQuery: ['alliance_name', 'date'] },
+  { id: 'rift-raid-alliance-analysis', method: 'GET', scope: 'protected', path: (s) => `/rift-raid/alliance/${s.allianceId ?? '1'}/1`, okStatuses: [200, 400, 404], needs: ['server', 'alliance'] },
+
   // Updates (public)
   { id: 'updates-alliance-players', method: 'GET', scope: 'public', path: (s) => `/updates/alliances/${s.allianceId ?? '1'}/players`, okStatuses: [200, 400, 404], needs: ['server', 'alliance'] },
   { id: 'updates-player-names', method: 'GET', scope: 'public', path: (s) => `/updates/players/${s.playerId ?? '1'}/names`, okStatuses: [200, 400, 404], needs: ['server', 'player'] },

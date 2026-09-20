@@ -14,6 +14,10 @@
               [routerLink]="item.id" [title]="item.label | translate | titlecase">
               @if (item.iconUrl) {
                 <img [src]="item.iconUrl" alt="{{ item.label | translate | titlecase }}" class="img-icon" />
+              } @else if (item.iconClass) {
+                <span class="img-icon icon-glyph" aria-hidden="true">
+                  <i [class]="item.iconClass"></i>
+                </span>
               }
               <span>{{ item.label | translate }}</span>
               @if (item.frequency) {

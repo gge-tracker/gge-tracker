@@ -16,6 +16,7 @@ import { ApiExport } from '../routes/api-export';
 import { ApiOffers } from '../routes/api-offers';
 import { ApiPlayers } from '../routes/api-players';
 import { ApiProfiles } from '../routes/api-profiles';
+import { ApiRiftRaid } from '../routes/api-rift-raid';
 import { ApiServer } from '../routes/api-server';
 import { ApiStatistics } from '../routes/api-statistics';
 import { ApiStatus } from '../routes/api-status';
@@ -145,6 +146,22 @@ export class ApiRoutingController {
 
   public searchGrandTournamentDataByAllianceName(request: express.Request, response: express.Response): void {
     void ApiEvents.searchGrandTournamentDataByAllianceName(request, response);
+  }
+
+  public getRiftRaidEventDates(request: express.Request, response: express.Response): void {
+    void ApiRiftRaid.getEventDates(request, response);
+  }
+
+  public getRiftRaidAlliances(request: express.Request, response: express.Response): void {
+    void ApiRiftRaid.getAlliances(request, response);
+  }
+
+  public searchRiftRaidAlliances(request: express.Request, response: express.Response): void {
+    void ApiRiftRaid.searchAlliances(request, response);
+  }
+
+  public getRiftRaidAllianceAnalysis(request: express.Request, response: express.Response): void {
+    void ApiRiftRaid.getAllianceAnalysis(request, response);
   }
 
   public getEvents(request: express.Request, response: express.Response): void {

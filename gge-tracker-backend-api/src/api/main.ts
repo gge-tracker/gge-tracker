@@ -1080,6 +1080,238 @@ publicRoutes.get(
 
 /**
  * @swagger
+ * /rift-raid/dates:
+ *   get:
+ *     summary: Retrieve the recorded Rift Tournament events and their hourly snapshots
+ *     description: |
+ *       The Rift Tournament is the alliance ranking of the Rift Raid event, which runs a few days at a time
+ *       Snapshots are collected every hour while it runs. The event ID is an internal GGE Tracker identifier,
+ *       counted separately for each universe
+ *       EP and E4K run two unrelated Rift Tournaments, and the gge-server header picks which one is read:
+ *       an E4K server answers the E4K ranking, every other server answers the EP one
+ *     tags:
+ *       - Events
+ *       - Rift Raid
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *     responses:
+ *       200:
+ *         description: The recorded events, oldest first, each with its snapshot hours in order
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 events:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       event_id:
+ *                         type: integer
+ *                         example: 1
+ *                       dates:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                           example: 2026-09-19T17:00:00.000Z
+ *       400:
+ *         description: Missing or invalid gge-server header
+ */
+protectedRoutes.get('/rift-raid/dates', routingInstance.getRiftRaidEventDates.bind(routingInstance));
+
+/**
+ * @swagger
+ * /rift-raid/alliances:
+ *   get:
+ *     summary: Retrieve the Rift Tournament ranking of one division at one hour
+ *     description: |
+ *       Without subdivision_id the whole division is ranked by score; with it, that subdivision is ranked by its own rank
+ *       The response carries the division and subdivision bounds for navigation
+ *     tags:
+ *       - Events
+ *       - Rift Raid
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - $ref: '#/components/parameters/RiftRaidDate'
+ *       - name: division_id
+ *         in: query
+ *         description: Division, from 1 (Copper) to 6 (Diamond). Defaults to 6
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 6
+ *           example: 6
+ *       - name: subdivision_id
+ *         in: query
+ *         description: Restrict the ranking to one subdivision of the division
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           example: 1
+ *       - name: page
+ *         in: query
+ *         description: Page number for paginated results
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *     responses:
+ *       '200':
+ *         description: One page of the division's ranking
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 event:
+ *                   type: object
+ *                   properties:
+ *                     division:
+ *                       type: object
+ *                       properties:
+ *                         current_division:
+ *                           type: integer
+ *                         min_division:
+ *                           type: integer
+ *                         max_division:
+ *                           type: integer
+ *                     subdivision:
+ *                       type: object
+ *                       properties:
+ *                         current_subdivision:
+ *                           type: integer
+ *                           nullable: true
+ *                         min_subdivision:
+ *                           type: integer
+ *                         max_subdivision:
+ *                           type: integer
+ *                     alliances:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/RiftRaidAlliance'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ *       '400':
+ *         description: Invalid date, division or subdivision, or missing gge-server header
+ */
+protectedRoutes.get('/rift-raid/alliances', routingInstance.getRiftRaidAlliances.bind(routingInstance));
+
+/**
+ * @swagger
+ * /rift-raid/search:
+ *   get:
+ *     summary: Search the Rift Tournament by alliance name at one hour
+ *     description: Case-insensitive substring match on the alliance name, across every division
+ *     tags:
+ *       - Events
+ *       - Rift Raid
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - $ref: '#/components/parameters/RiftRaidDate'
+ *       - name: alliance_name
+ *         in: query
+ *         description: Part of the alliance name
+ *         required: true
+ *         schema:
+ *           type: string
+ *           maxLength: 40
+ *       - name: page
+ *         in: query
+ *         description: Page number for paginated results
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *     responses:
+ *       '200':
+ *         description: One page of matching alliances, highest division first
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 alliances:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/RiftRaidAlliance'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ *       '400':
+ *         description: Invalid date or alliance name, or missing gge-server header
+ */
+protectedRoutes.get('/rift-raid/search', routingInstance.searchRiftRaidAlliances.bind(routingInstance));
+
+/**
+ * @swagger
+ * /rift-raid/alliance/{allianceId}/{eventId}:
+ *   get:
+ *     summary: Retrieve one alliance's hourly Rift Tournament history during an event
+ *     description: |
+ *       The universe (EP or E4K) is read from the server code the alliance id carries, which names exactly
+ *       one server, so this route answers the same document whatever the gge-server header addresses
+ *     tags:
+ *       - Events
+ *       - Rift Raid
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - $ref: '#/components/parameters/AllianceId'
+ *       - name: eventId
+ *         in: path
+ *         description: Identifier of the Rift Tournament event, as listed by /rift-raid/dates
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *     responses:
+ *       '200':
+ *         description: The alliance's snapshots, newest first
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 analysis:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       division:
+ *                         type: integer
+ *                       subdivision:
+ *                         type: integer
+ *                       rank:
+ *                         type: integer
+ *                       score:
+ *                         type: integer
+ *                       date:
+ *                         type: string
+ *                         example: "2026-09-19 17:00:00"
+ *                 meta:
+ *                   type: object
+ *                   properties:
+ *                     alliance_id:
+ *                       type: integer
+ *                     alliance_name:
+ *                       type: string
+ *                       nullable: true
+ *                     server:
+ *                       type: string
+ *                     game:
+ *                       type: string
+ *                       enum: [ep, e4k]
+ *       '400':
+ *         description: Invalid alliance id or event id, or missing gge-server header
+ */
+protectedRoutes.get(
+  '/rift-raid/alliance/:allianceId/:eventId',
+  routingInstance.getRiftRaidAllianceAnalysis.bind(routingInstance),
+);
+
+/**
+ * @swagger
  * /events/{eventType}/{id}/players:
  *   get:
  *     summary: Retrieve paginated player ranking for a specific event (Outer realms or Beyond the Horizon) for Goodgame Empire Desktop Version (EP)

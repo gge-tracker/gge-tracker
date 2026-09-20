@@ -19,6 +19,7 @@ import { PlayerStatsResolver } from '@ggetracker-resolvers/player-stats.resolver
 import { titleResolver } from '@ggetracker-resolvers/title.resolver';
 import { ViewCastleComponent } from '@ggetracker-pages/view-castle/view-castle.component';
 import { GrandTournamentComponent } from '@ggetracker-pages/grand-tournament/grand-tournament.component';
+import { RiftRaidComponent } from '@ggetracker-pages/rift-raid/rift-raid.component';
 import { LiveOuterRealmsComponent } from '@ggetracker-pages/live-outer-realms/live-outer-realms.component';
 import { GuessDailyPlayerComponent } from '@ggetracker-pages/guess-daily-player/guess-daily-player.component';
 import { WoaComponent } from '@ggetracker-pages/events/woa/woa.component';
@@ -187,6 +188,15 @@ export const routes: Routes = [
         data: {
           description: 'Analyze the events of Goodgame Empire: Grand Tournament',
           titleKey: 'Le Grand Tournoi',
+        },
+      },
+      {
+        path: 'rift-raid',
+        component: RiftRaidComponent,
+        resolve: { titleResolver },
+        data: {
+          description: 'Follow the Rift Tournament of the Goodgame Empire Rift Raid, hour by hour',
+          titleKey: 'Tournoi de la Faille',
         },
       },
       {

@@ -1036,6 +1036,57 @@ export interface ApiGrandTournamenAllianceAnalysisResponse {
   analysis: ApiAllianceAnalysis[];
 }
 
+export type RiftRaidGame = 'ep' | 'e4k';
+
+export interface ApiRiftRaidDatesResponse {
+  events: {
+    dates: string[];
+    event_id: number;
+  }[];
+}
+
+export interface ApiRiftRaidAlliance {
+  alliance_id: number | null;
+  alliance_name: string;
+  server: string | null;
+  rank: number;
+  score: number;
+  division: number;
+  subdivision: number;
+}
+
+export interface ApiRiftRaidAlliancesResponse {
+  event: {
+    alliances: ApiRiftRaidAlliance[];
+    division: {
+      current_division: number;
+      max_division: number;
+      min_division: number;
+    };
+    subdivision: {
+      current_subdivision: number | null;
+      max_subdivision: number;
+      min_subdivision: number;
+    };
+  };
+  pagination: ApiPagination;
+}
+
+export interface ApiRiftRaidSearchResponse {
+  alliances: ApiRiftRaidAlliance[];
+  pagination: ApiPagination;
+}
+
+export interface ApiRiftRaidAllianceAnalysisResponse {
+  meta: {
+    alliance_id: number;
+    alliance_name: string | null;
+    server: string;
+    game: RiftRaidGame;
+  };
+  analysis: ApiAllianceAnalysis[];
+}
+
 export interface ApiEventsByPlayerIdResponse {
   events: ApiSpecificEventByPlayerIdResponse[];
 }

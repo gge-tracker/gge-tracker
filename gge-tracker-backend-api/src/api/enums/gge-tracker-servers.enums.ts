@@ -84,6 +84,7 @@ export enum GgeTrackerServersEnum {
   E4K_SKN1 = 'E4K_SKN1',
   E4K_PT1 = 'E4K_PT1',
   E4K_WORLD2 = 'E4K_WORLD2',
+  E4K_PL1_BETA = 'E4K_PL1_BETA',
 
   /* Partners servers */
   PARTNER_SP3 = 'PARTNER_SP3',

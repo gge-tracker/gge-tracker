@@ -71,6 +71,7 @@ export class SidebarComponent implements AfterViewInit, OnDestroy {
           frequency: 'Temps réel',
         },
         { label: 'Le Grand Tournoi', id: 'grand-tournament', iconUrl: '/assets/tools/gt.webp', frequency: 'Par heure' },
+        { label: 'Tournoi de la Faille', id: 'rift-raid', iconUrl: '/assets/tools/rift.webp', frequency: 'Par heure' },
         { label: 'Scores finaux', id: 'events', iconUrl: '/assets/tools/events.webp' },
         {
           label: 'Roue des richesses inimaginables',

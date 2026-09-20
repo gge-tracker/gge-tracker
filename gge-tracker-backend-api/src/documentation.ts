@@ -102,6 +102,16 @@ export const options = {
             default: 'json',
           },
         },
+        RiftRaidDate: {
+          name: 'date',
+          in: 'query',
+          required: true,
+          description: 'Hour of the Rift Tournament snapshot (ISO 8601, hour precision), as listed by /rift-raid/dates',
+          schema: {
+            type: 'string',
+            example: '2026-09-19T17:00:00.000Z',
+          },
+        },
       },
       schemas: {
         KeysetPage: {
@@ -131,6 +141,23 @@ export const options = {
               description: 'Stable machine-readable identifier for this error. Branch on this, not on the message',
               example: 'INVALID_PLAYER_ID',
             },
+          },
+        },
+        RiftRaidAlliance: {
+          type: 'object',
+          properties: {
+            alliance_id: {
+              type: 'integer',
+              nullable: true,
+              description:
+                'Alliance id carrying the GGE Tracker server code, ending in 999 when the server is not tracked',
+            },
+            alliance_name: { type: 'string' },
+            server: { type: 'string', nullable: true },
+            rank: { type: 'integer', description: 'Rank inside the subdivision' },
+            score: { type: 'integer' },
+            division: { type: 'integer', description: '1 (Copper) to 6 (Diamond)' },
+            subdivision: { type: 'integer' },
           },
         },
         Pagination: {
