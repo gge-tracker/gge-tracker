@@ -38,7 +38,7 @@ export class GrandTournamentAnalyzeComponent extends GenericComponent implements
   public languageService = inject(LanguageService);
 
   public get entriesWithDifference(): any[] {
-    const entries = this.entries().reverse();
+    const entries = [...this.entries()].reverse();
     return entries
       .map((entry, index) => {
         const previousEntry = index > 0 ? entries[index - 1] : null;
@@ -65,7 +65,9 @@ export class GrandTournamentAnalyzeComponent extends GenericComponent implements
   }
 
   public getChartTimeSeriesData(entries: any[], field: string): [number, number][] {
-    return entries.map((entry) => [new Date(entry.date).getTime(), entry[field]]);
+    return entries
+      .map((entry) => [new Date(entry.date).getTime(), entry[field]] as [number, number])
+      .sort((first, second) => first[0] - second[0]);
   }
 
   public ngOnInit(): void {
@@ -97,15 +99,19 @@ export class GrandTournamentAnalyzeComponent extends GenericComponent implements
       chart: {
         type: config.type,
         height,
+        background: 'transparent',
+        foreColor: '#c8d0c8',
         animations: { enabled: false },
         locales: this.rankingService.CHART_LOCALES,
         defaultLocale: this.languageService.getCurrentLang(),
-        toolbar: {},
+        toolbar: { show: false },
+        zoom: { enabled: false },
         stacked: false,
       },
       title: { text: config.title ?? '' },
       colors: config.colors,
       tooltip: {
+        theme: 'dark',
         shared: false,
         x: { format: dateFormat },
         y: {
@@ -113,8 +119,9 @@ export class GrandTournamentAnalyzeComponent extends GenericComponent implements
         },
       },
       dataLabels: { enabled: false },
-      stroke: { width: [2, 2, 0], curve: 'smooth' },
-      legend: { show: true, showForZeroSeries: true },
+      stroke: { width: 2.5, curve: 'smooth' },
+      markers: { size: 0, hover: { size: 4 } },
+      legend: { show: true, showForZeroSeries: true, labels: { colors: '#dfe6df' } },
       yaxis: {
         labels: {
           formatter: (value: number) => (value === null ? '?' : formatThousands(value.toString())),
@@ -126,17 +133,14 @@ export class GrandTournamentAnalyzeComponent extends GenericComponent implements
         type: 'gradient',
         gradient: {
           shade: 'dark',
-          gradientToColors: config.colors,
-          shadeIntensity: 0.8,
-          type: 'horizontal',
-          opacityFrom: 0.9,
-          opacityTo: 0.6,
+          shadeIntensity: 0.6,
+          type: 'vertical',
+          opacityFrom: 0.45,
+          opacityTo: 0.05,
           stops: [0, 100],
         },
       },
-      grid: {
-        row: { colors: ['#6d6d6d86', 'transparent'], opacity: 0.5 },
-      },
+      grid: { borderColor: 'rgba(255,255,255,0.08)', strokeDashArray: 3 },
       xaxis: config.xaxisCategories
         ? {
             categories: config.xaxisCategories,
