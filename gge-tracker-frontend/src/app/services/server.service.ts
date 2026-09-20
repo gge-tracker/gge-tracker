@@ -30,6 +30,7 @@ export class ServerService {
 
   public flagsUrl: Record<string, string> = {
     AE: 'https://flagsapi.com/AE/flat/64.png',
+    AR: 'https://flagsapi.com/AR/flat/64.png',
     ARAB: '/assets/arab_flag.png',
     ASIA: 'https://flagsapi.com/AS/flat/64.png',
     AU: 'https://flagsapi.com/AU/flat/64.png',
@@ -120,7 +121,7 @@ export class ServerService {
     } else if (server.startsWith('PARTNER')) {
       server = 'PARTNER';
     }
-    server = stripTrailingDigits(server);
+    server = stripTrailingDigits(server.replaceAll('_BETA', ''));
     return this.flagsUrl[server] || '/assets/int_flag.png';
   }
 
