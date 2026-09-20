@@ -865,8 +865,8 @@ export abstract class ApiStorms implements ApiHelper {
   }
 
   private static validateRequest(request: express.Request, response: express.Response): boolean {
-    if (!ApiHelper.ggeTrackerManager.isSpecialServer(request['language'])) {
-      const authorizedServers = ApiHelper.ggeTrackerManager.getSpecialServerNames();
+    if (!ApiHelper.ggeTrackerManager.hasFeature(request['language'], 'storm')) {
+      const authorizedServers = ApiHelper.ggeTrackerManager.getFeatureServerNames('storm');
       response
         .status(ApiHelper.HTTP_BAD_REQUEST)
         .send({ error: 'Invalid server. Currently, only ' + authorizedServers.join(', ') + ' are supported.' });

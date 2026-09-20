@@ -2,7 +2,7 @@ import { NodeClickHouseClient } from '@clickhouse/client/dist/client';
 import * as pg from 'pg';
 import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
 import { ApiHelper } from '../helper/api-helper';
-import { IApiToken, ILimitedApiToken, IServerDefinition } from '../interfaces/interfaces';
+import { IApiToken, ILimitedApiToken, IServerDefinition, ServerFeature } from '../interfaces/interfaces';
 import { DatabaseManager } from './database.manager';
 import { ServersCatalog } from './servers-catalog';
 
@@ -405,24 +405,26 @@ export class ApiGgeTrackerManager extends DatabaseManager {
   }
 
   /**
-   * Checks whether a server carries the kingdoms data the castle, dungeons and storms routes need
+   * Checks whether a server grants a feature on the channel this backend serves
    *
    * @param serverName - The name of the server to check
-   * @returns `true` when the file marks it special; otherwise, `false`
+   * @param feature - The feature the route needs
+   * @returns `true` when the file grants it; otherwise, `false`
    */
-  public isSpecialServer(serverName: string): boolean {
-    return this.catalog.getDefinition(serverName)?.special === true;
+  public hasFeature(serverName: string, feature: ServerFeature): boolean {
+    return this.catalog.getDefinition(serverName)?.api[feature] === true;
   }
 
   /**
-   * Retrieves the names of the servers the kingdoms routes accept, for the messages that list them
+   * Retrieves the names of the servers granting a feature, for the messages that list them
    *
-   * @returns {string[]} An array containing the names of all special servers
+   * @param feature - The feature the route needs
+   * @returns {string[]} An array containing the names of the servers that grant it
    */
-  public getSpecialServerNames(): string[] {
+  public getFeatureServerNames(feature: ServerFeature): string[] {
     return this.catalog
       .getDefinitions()
-      .filter((definition) => definition.special)
+      .filter((definition) => definition.api[feature])
       .map((definition) => definition.name);
   }
 

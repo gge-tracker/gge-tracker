@@ -1,7 +1,7 @@
 {
   "fixture": "2b8821ebab26a15e",
   "server": "FR1",
-  "recordedAt": "2026-09-20T09:44:32.982Z",
+  "recordedAt": "2026-09-20T15:49:21.253Z",
   "entries": {
     "GET alliance-by-id": {
       "status": 200,
@@ -73,7 +73,7 @@
     "GET alliance-profile": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 1659,
+      "bytes": 1749,
       "kind": "object",
       "count": 5,
       "keys": [
@@ -84,6 +84,7 @@
         "member_changes",
         "members",
         "name_history",
+        "rank",
         "server",
         "server_code",
         "server_name",
@@ -100,7 +101,7 @@
         "position_x",
         "position_y"
       ],
-      "hash": "1659ddd7cb75e361"
+      "hash": "7b0252415ee71b84"
     },
     "GET alliances-list": {
       "status": 200,
@@ -163,6 +164,23 @@
         "player_count"
       ],
       "hash": "4bd0d6bae92dd7dc"
+    },
+    "GET alliances-search": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 468,
+      "kind": "object",
+      "count": 6,
+      "keys": [
+        "suggestions"
+      ],
+      "rowKeys": [
+        "id",
+        "might_current",
+        "name",
+        "player_count"
+      ],
+      "hash": "91acf8f2e5e2ecf4"
     },
     "GET aquamarine": {
       "status": 200,
@@ -31196,6 +31214,25 @@
       ],
       "hash": "49ce768aa4270fc6"
     },
+    "GET players-search": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 1319,
+      "kind": "object",
+      "count": 10,
+      "keys": [
+        "suggestions"
+      ],
+      "rowKeys": [
+        "alliance_name",
+        "id",
+        "legendary_level",
+        "level",
+        "might_current",
+        "name"
+      ],
+      "hash": "225baa609334598d"
+    },
     "GET rift-raid-alliance-analysis": {
       "status": 200,
       "contentType": "application/json",
@@ -31368,9 +31405,9 @@
     "GET servers-catalog": {
       "status": 200,
       "contentType": "application/xml",
-      "bytes": 13024,
+      "bytes": 14910,
       "kind": "binary",
-      "hash": "a5b2b13db320577e"
+      "hash": "4a2352b0064b689f"
     },
     "GET stats-alliance": {
       "status": 200,

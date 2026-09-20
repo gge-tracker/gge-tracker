@@ -29,12 +29,21 @@ export interface ILimitedApiToken {
 
 export type ServerKind = 'ep' | 'e4k' | 'partner' | 'global' | 'internal';
 
+export type ApiChannel = 'beta' | 'public';
+
+export type ServerFeature = 'advancedCastle' | 'storm' | 'fortress';
+
+export interface IServerApiSection {
+  enabled: boolean;
+  advancedCastle: boolean;
+  storm: boolean;
+  fortress: boolean;
+}
+
 export interface IServerDefinition {
   name: string;
   kind: ServerKind;
-  enabled: boolean;
-  featured: boolean;
-  special: boolean;
+  api: IServerApiSection;
   ggeServerName: string;
   outerName: string;
   country: string;

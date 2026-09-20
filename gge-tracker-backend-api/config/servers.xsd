@@ -9,6 +9,14 @@
 			<xs:enumeration value="internal" />
 		</xs:restriction>
 	</xs:simpleType>
+	<xs:complexType name="apiSection">
+		<xs:sequence>
+			<xs:element name="enabled" type="xs:boolean" />
+			<xs:element name="advanced-castle" type="xs:boolean" />
+			<xs:element name="storm" type="xs:boolean" />
+			<xs:element name="fortress" type="xs:boolean" />
+		</xs:sequence>
+	</xs:complexType>
 	<xs:element name="root">
 		<xs:complexType>
 			<xs:sequence>
@@ -20,9 +28,14 @@
 									<xs:sequence>
 										<xs:element name="name" type="xs:string" />
 										<xs:element name="kind" type="serverKind" />
-										<xs:element name="enabled" type="xs:boolean" />
-										<xs:element name="featured" type="xs:boolean" />
-										<xs:element name="special" type="xs:boolean" />
+										<xs:element name="api">
+											<xs:complexType>
+												<xs:sequence>
+													<xs:element name="beta" type="apiSection" />
+													<xs:element name="public" type="apiSection" />
+												</xs:sequence>
+											</xs:complexType>
+										</xs:element>
 										<xs:element name="gge-server-name" type="xs:string" />
 										<xs:element name="outer-name" type="xs:string" />
 										<xs:element name="country" type="xs:string" />

@@ -151,7 +151,7 @@ export class StormTrackerComponent extends GenericComponent implements OnInit {
   }
 
   public get allowedServers(): string[] {
-    return this.serverService.xmlServers.filter((s) => s.featured).map((s) => s.name);
+    return this.serverService.xmlServers.filter((s) => s.storm).map((s) => s.name);
   }
 
   public isInCooldown(item: StormFortRow | StormIsleRow): boolean {

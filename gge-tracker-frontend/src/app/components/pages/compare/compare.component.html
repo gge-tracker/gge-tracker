@@ -14,10 +14,13 @@
 
   <section class="compare-arena">
     <app-compare-contender [side]="0" [subject]="subject()" [contender]="contenders()[0]" [loading]="loading()[0]"
-      [error]="errors()[0]" (searchName)="searchName(0, $event)" (clear)="clear(0)"></app-compare-contender>
+      [error]="errors()[0]" (searchName)="searchName(0, $event)" (pickId)="pick(0, $event)"
+      (clear)="clear(0)"></app-compare-contender>
 
     <div class="compare-versus">
-      <span class="compare-versus-badge" aria-hidden="true">VS</span>
+      <span class="compare-versus-emblem" aria-hidden="true">
+        <img src="/assets/Porteurs_de_bouclier.png" alt="" width="76" height="76">
+      </span>
       <button type="button" class="compare-swap" (click)="swap()" [disabled]="!ids()[0] && !ids()[1]"
         [attr.aria-label]="'Inverser' | translate" [title]="'Inverser' | translate">
         <lucide-icon [img]="ArrowLeftRight" [size]="18"></lucide-icon>
@@ -25,12 +28,16 @@
     </div>
 
     <app-compare-contender [side]="1" [subject]="subject()" [contender]="contenders()[1]" [loading]="loading()[1]"
-      [error]="errors()[1]" (searchName)="searchName(1, $event)" (clear)="clear(1)"></app-compare-contender>
+      [error]="errors()[1]" (searchName)="searchName(1, $event)" (pickId)="pick(1, $event)"
+      (clear)="clear(1)"></app-compare-contender>
   </section>
 
   @if (rows(); as currentRows) {
     <app-compare-tape [rows]="currentRows" [names]="names()"></app-compare-tape>
     @if (isBrowser && readyIds(); as pairIds) {
+      @if (subject() === 'players') {
+        <app-compare-events [ids]="pairIds"></app-compare-events>
+      }
       <section class="compare-charts" [class.compare-charts--single]="subject() === 'alliances'">
         <app-compare-might [subject]="subject()" [ids]="pairIds" [names]="names()"></app-compare-might>
         @if (subject() === 'players') {

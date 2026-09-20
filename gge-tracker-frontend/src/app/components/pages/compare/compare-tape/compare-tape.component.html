@@ -30,9 +30,14 @@
       <li class="tape-row">
         <div class="tape-value side-a" [class.is-winner]="row.winner === 0" [class.is-loser]="row.winner === 1">
           <span class="tape-number" [title]="exact(row, 0)">{{ display(row, 0) }}</span>
-          @if (row.winner === 0) {
-            <span class="tape-delta">{{ delta(row) }}</span>
-          }
+          <span class="tape-sub">
+            @if (rank(row, 0); as position) {
+              <span class="tape-rank">{{ position }}</span>
+            }
+            @if (row.winner === 0) {
+              <span class="tape-delta">{{ delta(row) }}</span>
+            }
+          </span>
         </div>
         <div class="tape-metric">
           <span class="tape-label">
@@ -47,9 +52,14 @@
         </div>
         <div class="tape-value side-b" [class.is-winner]="row.winner === 1" [class.is-loser]="row.winner === 0">
           <span class="tape-number" [title]="exact(row, 1)">{{ display(row, 1) }}</span>
-          @if (row.winner === 1) {
-            <span class="tape-delta">{{ delta(row) }}</span>
-          }
+          <span class="tape-sub">
+            @if (rank(row, 1); as position) {
+              <span class="tape-rank">{{ position }}</span>
+            }
+            @if (row.winner === 1) {
+              <span class="tape-delta">{{ delta(row) }}</span>
+            }
+          </span>
         </div>
       </li>
     }

@@ -140,7 +140,7 @@ export class TrackerComponent extends GenericComponent {
   }
 
   public get allowedServers(): string[] {
-    return this.serverService.xmlServers.filter((s) => s.featured).map((s) => s.name);
+    return this.serverService.xmlServers.filter((s) => s.fortress).map((s) => s.name);
   }
 
   public async nextPage(): Promise<void> {

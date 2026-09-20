@@ -75,6 +75,8 @@
   display: grid;
   gap: 1rem;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  position: relative;
+  z-index: 1;
 }
 
 .compare-versus {
@@ -85,26 +87,31 @@
   justify-content: center;
 }
 
-.compare-versus-badge {
+.compare-versus-emblem {
   align-items: center;
-  background:
-    radial-gradient(circle at 35% 30%, #fff3c4, transparent 45%),
-    linear-gradient(135deg, var(--compare-side-a) 0%, #b07d1a 48%, #2a5fa8 52%, var(--compare-side-b) 100%);
-  border: 3px solid #0a0e0b;
-  border-radius: 50%;
-  box-shadow:
-    0 0 0 2px rgba(255, 255, 255, 0.25),
-    0 8px 24px rgba(0, 0, 0, 0.45);
-  color: #fff;
   display: flex;
-  font-size: 1.35rem;
-  font-style: italic;
-  font-weight: 900;
-  height: 68px;
+  height: 76px;
   justify-content: center;
-  letter-spacing: -0.02em;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
-  width: 68px;
+  position: relative;
+  width: 76px;
+}
+
+.compare-versus-emblem::before {
+  background:
+    radial-gradient(circle at 24% 52%, var(--compare-side-a-soft), transparent 58%),
+    radial-gradient(circle at 76% 52%, var(--compare-side-b-soft), transparent 58%);
+  border-radius: 50%;
+  content: "";
+  inset: -12px;
+  position: absolute;
+}
+
+.compare-versus-emblem img {
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.55));
+  height: 100%;
+  object-fit: contain;
+  position: relative;
+  width: 100%;
 }
 
 .compare-swap {
@@ -193,10 +200,9 @@
     flex-direction: row;
   }
 
-  .compare-versus-badge {
-    font-size: 1.05rem;
-    height: 52px;
-    width: 52px;
+  .compare-versus-emblem {
+    height: 56px;
+    width: 56px;
   }
 
   .compare-swap {

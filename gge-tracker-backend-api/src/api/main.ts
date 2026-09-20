@@ -706,7 +706,8 @@ publicRoutes.get('/servers', routingInstance.getServers.bind(routingInstance));
  *   get:
  *     summary: Retrieve the catalog of Goodgame Empire servers as an XML document
  *     description: |
- *       Each server carries its display name, whether GGE Tracker advertises it (`enabled`)
+ *       Each server carries its display name, whether GGE Tracker advertises it (`enabled`) and
+ *       whether it serves the storm and fortress trackers
  *       Send the `ETag` back as `If-None-Match` to be answered `304` while nothing changed
  *     tags:
  *       - Servers
@@ -722,7 +723,8 @@ publicRoutes.get('/servers', routingInstance.getServers.bind(routingInstance));
  *                   <servers>
  *                     <server>
  *                       <enabled>true</enabled>
- *                       <featured>true</featured>
+ *                       <storm>true</storm>
+ *                       <fortress>true</fortress>
  *                       <gge-server-name>France</gge-server-name>
  *                       <name>FR1</name>
  *                     </server>
@@ -3244,6 +3246,57 @@ protectedRoutes.get('/alliances', routingInstance.getAlliances.bind(routingInsta
 
 /**
  * @swagger
+ * /alliances/search:
+ *   get:
+ *     summary: Suggest alliances whose name matches a partial search string
+ *     description: |
+ *       Returns up to 10 alliances of the requested server whose name contains the search string,
+ *       prefix matches first and then by cumulated might. Each suggestion carries the alliance id, so
+ *       a search box resolves a pick without a second request. A `%` or `_` in the query matches itself
+ *     tags:
+ *       - Alliances
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - name: query
+ *         in: query
+ *         required: true
+ *         description: Partial alliance name to search for, at least 2 characters and at most 40
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: The matching alliances, most powerful first
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 suggestions:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         description: The alliance id, carrying the server code
+ *                       name:
+ *                         type: string
+ *                         description: The alliance name
+ *                       might_current:
+ *                         type: integer
+ *                         description: The cumulated might points of the alliance members
+ *                       player_count:
+ *                         type: integer
+ *                         description: The number of players in the alliance
+ *       '400':
+ *         description: Invalid or missing query parameter
+ *       '500':
+ *         description: Internal server error
+ */
+protectedRoutes.get('/alliances/search', routingInstance.getAllianceSuggestions.bind(routingInstance));
+
+/**
+ * @swagger
  * /top-players/{playerId}:
  *   get:
  *     summary: Retrieve top players' statistics for a specific player
@@ -3568,6 +3621,64 @@ publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayer
  *                   description: Error message describing what went wrong
  */
 protectedRoutes.get('/players', routingInstance.getPlayers.bind(routingInstance));
+
+/**
+ * @swagger
+ * /players/search:
+ *   get:
+ *     summary: Suggest players whose name matches a partial search string
+ *     description: |
+ *       Returns up to 10 players of the requested server whose name contains the search string,
+ *       prefix matches first and then by current might. Each suggestion carries the player id, so a
+ *       search box resolves a pick without a second request. A `%` or `_` in the query matches itself
+ *     tags:
+ *       - Players
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - name: query
+ *         in: query
+ *         required: true
+ *         description: Partial player name to search for, at least 2 characters and at most 40
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: The matching players, most powerful first
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 suggestions:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         description: The player id, carrying the server code
+ *                       name:
+ *                         type: string
+ *                         description: The player name
+ *                       might_current:
+ *                         type: integer
+ *                         description: The current might points of the player
+ *                       level:
+ *                         type: integer
+ *                         description: The level of the player
+ *                       legendary_level:
+ *                         type: integer
+ *                         description: The legendary level of the player
+ *                       alliance_name:
+ *                         type: string
+ *                         nullable: true
+ *                         description: The alliance the player belongs to
+ *       '400':
+ *         description: Invalid or missing query parameter
+ *       '500':
+ *         description: Internal server error
+ */
+protectedRoutes.get('/players/search', routingInstance.getPlayerSuggestions.bind(routingInstance));
 
 /**
  * @openapi
@@ -6106,8 +6217,8 @@ publicRoutes.get('/players/:playerId/profile', routingInstance.getPlayerProfile.
  *         in: query
  *         required: false
  *         description: >
- *           Comma-separated subset of: members, castles, names, descriptions, member_changes. All
- *           of them by default. Use none to return the alliance row and its aggregates alone
+ *           Comma-separated subset of: members, castles, names, descriptions, member_changes, rank.
+ *           All of them by default. Use none to return the alliance row and its aggregates alone
  *         schema:
  *           type: string
  *     responses:
@@ -6124,6 +6235,23 @@ publicRoutes.get('/players/:playerId/profile', routingInstance.getPlayerProfile.
  *                 statistics:
  *                   type: object
  *                   additionalProperties: true
+ *                 rank:
+ *                   type: object
+ *                   description: >
+ *                     The alliance standing on its own server, over the alliances holding at least
+ *                     one member with a castle. Each position is null when this alliance holds none
+ *                   properties:
+ *                     might_current:
+ *                       type: integer
+ *                       nullable: true
+ *                     loot_current:
+ *                       type: integer
+ *                       nullable: true
+ *                     current_fame:
+ *                       type: integer
+ *                       nullable: true
+ *                     ranked_alliances:
+ *                       type: integer
  *                 members:
  *                   type: array
  *                   items:

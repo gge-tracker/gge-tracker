@@ -739,8 +739,8 @@ export abstract class ApiDungeons implements ApiHelper {
    */
   private static validateRequest(request: express.Request, response: express.Response, filterByKid?: string): boolean {
     try {
-      if (!ApiHelper.ggeTrackerManager.isSpecialServer(request['language'])) {
-        const authorizedServers = ApiHelper.ggeTrackerManager.getSpecialServerNames();
+      if (!ApiHelper.ggeTrackerManager.hasFeature(request['language'], 'fortress')) {
+        const authorizedServers = ApiHelper.ggeTrackerManager.getFeatureServerNames('fortress');
         response
           .status(ApiHelper.HTTP_BAD_REQUEST)
           .send({ error: 'Invalid server. Currently, only ' + authorizedServers.join(', ') + ' are supported.' });

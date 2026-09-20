@@ -1,6 +1,5 @@
 import { Component, computed, input } from '@angular/core';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
-import { LevelPipe } from '@ggetracker-pipes/level.pipe';
 import { formatThousands } from '@ggetracker-services/text-format.utilities';
 import { TranslateModule } from '@ngx-translate/core';
 
@@ -27,25 +26,11 @@ export class CompareTapeComponent {
   });
 
   private readonly compactNumber = new FormatNumberPipe();
-  private readonly levelPipe = new LevelPipe();
 
   public display(row: CompareMetricRow, side: CompareSide): string {
     const value = row.values[side];
-    if (value === null) return '—';
-    switch (row.format) {
-      case 'number': {
-        return this.compactNumber.transform(value);
-      }
-      case 'rank': {
-        return '#' + formatThousands(value);
-      }
-      case 'level': {
-        return this.levelPipe.transform(value);
-      }
-      default: {
-        return formatThousands(value);
-      }
-    }
+    if (value === null) return '-';
+    return row.format === 'number' ? this.compactNumber.transform(value) : formatThousands(value);
   }
 
   public exact(row: CompareMetricRow, side: CompareSide): string {
@@ -53,9 +38,13 @@ export class CompareTapeComponent {
     return value === null ? '' : formatThousands(value);
   }
 
+  public rank(row: CompareMetricRow, side: CompareSide): string {
+    const position = row.ranks[side];
+    return position === null ? '' : '#' + formatThousands(position);
+  }
+
   public delta(row: CompareMetricRow): string {
     if (row.difference === null) return '';
-    if (row.format === 'rank') return '▲ ' + formatThousands(row.difference);
     const amount =
       row.format === 'number' ? this.compactNumber.transform(row.difference) : formatThousands(row.difference);
     return row.percent === null ? `+${amount}` : `+${amount} · +${formatThousands(row.percent)}%`;

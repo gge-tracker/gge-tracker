@@ -138,6 +138,30 @@
   color: #8f998f;
 }
 
+.tape-sub {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.4rem;
+  min-height: 1rem;
+}
+
+.tape-value.side-a .tape-sub {
+  justify-content: flex-end;
+}
+
+.tape-rank {
+  color: #8f998f;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tape-value.is-winner .tape-rank {
+  color: var(--side);
+}
+
 .tape-delta {
   color: #b9c2b9;
   font-size: 0.75rem;

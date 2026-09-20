@@ -169,8 +169,10 @@ export abstract class ApiStatus implements ApiHelper {
   private static renderServersCatalog(): string {
     const servers = ApiHelper.ggeTrackerManager.getPublicServerDefinitions().map(
       (server) => `\t\t<server>
-\t\t\t<enabled>${server.enabled}</enabled>
-\t\t\t<featured>${server.featured}</featured>
+\t\t\t<enabled>${server.api.enabled}</enabled>
+\t\t\t<storm>${server.api.storm}</storm>
+\t\t\t<fortress>${server.api.fortress}</fortress>
+\t\t\t<advanced-castle>${server.api.advancedCastle}</advanced-castle>
 \t\t\t<gge-server-name>${this.escapeXml(server.ggeServerName)}</gge-server-name>
 \t\t\t<name>${this.escapeXml(server.name)}</name>
 \t\t</server>`,

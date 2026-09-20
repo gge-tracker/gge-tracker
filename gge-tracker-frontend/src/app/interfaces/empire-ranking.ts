@@ -535,8 +535,34 @@ export interface ApiPlayerProfile extends ApiProfileServer {
   rank?: { might_current: number; loot_current: number; honor: number; current_fame: number; ranked_players: number };
 }
 
+export interface ApiSuggestion {
+  id: string;
+  name: string;
+  might_current: number;
+}
+
+export interface ApiPlayerSuggestion extends ApiSuggestion {
+  level: number;
+  legendary_level: number;
+  alliance_name: string | null;
+}
+
+export interface ApiAllianceSuggestion extends ApiSuggestion {
+  player_count: number;
+}
+
+export interface ApiSuggestionsResponse<T extends ApiSuggestion> {
+  suggestions: T[];
+}
+
 export interface ApiAllianceProfile extends ApiProfileServer {
   alliance: { alliance_id: string; alliance_name: string; language: string | null };
+  rank?: {
+    might_current: number | null;
+    loot_current: number | null;
+    current_fame: number | null;
+    ranked_alliances: number;
+  };
   statistics: {
     player_count: number;
     active_player_count: number;

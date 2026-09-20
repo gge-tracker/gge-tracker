@@ -7,7 +7,8 @@ import { stripTrailingDigits } from './text-format.utilities';
 
 export interface ServerEntry {
   enabled: boolean;
-  featured: boolean;
+  storm: boolean;
+  fortress: boolean;
   ggeServerName: string;
   name: string;
   flagUrl?: string;
@@ -164,13 +165,15 @@ export class ServerService {
     const nodes = [...(document.querySelectorAll('root > servers > server') as unknown as Iterable<Element>)];
     return nodes.map((node) => {
       const enabled = node.querySelector('enabled')?.textContent?.trim() === 'true';
-      const featured = node.querySelector('featured')?.textContent?.trim() !== 'false';
+      const storm = node.querySelector('storm')?.textContent?.trim() !== 'false';
+      const fortress = node.querySelector('fortress')?.textContent?.trim() !== 'false';
       const ggeServerName = node.querySelector('gge-server-name')?.textContent?.trim() ?? '';
       const name = node.querySelector('name')?.textContent?.trim() ?? '';
       const flagUrl = this.getFlagUrl(name);
       return {
         enabled,
-        featured,
+        storm,
+        fortress,
         ggeServerName,
         name,
         flagUrl,

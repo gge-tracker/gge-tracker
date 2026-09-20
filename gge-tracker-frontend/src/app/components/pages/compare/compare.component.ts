@@ -22,6 +22,7 @@ import {
   CompareContenderComponent,
   CompareSubject,
 } from './compare-contender/compare-contender.component';
+import { CompareEventsComponent } from './compare-events/compare-events.component';
 import { CompareLootComponent } from './compare-loot/compare-loot.component';
 import { CompareMightComponent } from './compare-might/compare-might.component';
 import { ALLIANCE_METRICS, buildMetricRows, CompareMetricRow, CompareSide, PLAYER_METRICS } from './compare-metrics';
@@ -46,6 +47,7 @@ const SIDE_PARAMS: Pair<string> = ['a', 'b'];
     CompareTapeComponent,
     CompareMightComponent,
     CompareLootComponent,
+    CompareEventsComponent,
   ],
   templateUrl: './compare.component.html',
   styleUrl: './compare.component.css',
@@ -113,6 +115,11 @@ export class CompareComponent extends GenericComponent implements OnInit {
     this.navigateIds({ [SIDE_PARAMS[side]]: id });
   }
 
+  public pick(side: CompareSide, id: string): void {
+    this.patch(this.errors, side, null);
+    this.navigateIds({ [SIDE_PARAMS[side]]: id });
+  }
+
   public clear(side: CompareSide): void {
     this.navigateIds({ [SIDE_PARAMS[side]]: null });
   }
@@ -171,7 +178,7 @@ export class CompareComponent extends GenericComponent implements OnInit {
       const response = await this.apiRestService.getPlayerProfile(id, 'rank,castles');
       return response.success ? { subject, profile: response.data } : null;
     }
-    const response = await this.apiRestService.getAllianceProfile(id);
+    const response = await this.apiRestService.getAllianceProfile(id, 'rank');
     return response.success ? { subject, profile: response.data } : null;
   }
 
@@ -209,9 +216,10 @@ export class CompareComponent extends GenericComponent implements OnInit {
         detail: null,
         detailLink: null,
         level: null,
+        castleCount: null,
       };
     }
-    const { player, server } = loaded.profile;
+    const { player, server, castles } = loaded.profile;
     return {
       id: player.player_id,
       name: player.player_name,
@@ -220,6 +228,7 @@ export class CompareComponent extends GenericComponent implements OnInit {
       detail: player.alliance_name ?? 'Sans alliance',
       detailLink: player.alliance_id ? ['/alliance', player.alliance_id] : null,
       level: { level: player.level, legendary: player.legendary_level },
+      castleCount: castles?.length ?? null,
     };
   }
 

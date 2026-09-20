@@ -361,6 +361,21 @@ export const CATALOG: Endpoint[] = [
   { id: 'alliance-by-id', method: 'GET', scope: 'public', path: (s) => `/alliances/id/${s.allianceId ?? '1'}`, okStatuses: [200, 400, 404], needs: ['server', 'alliance'], fuzzQuery: ['playerNameForDistance'] },
   { id: 'alliance-by-id-distance', method: 'GET', scope: 'public', path: (s) => `/alliances/id/${s.allianceId ?? '1'}` + q({ playerNameForDistance: s.playerName ?? 'a' }), okStatuses: [200, 400, 404], needs: ['server', 'alliance', 'player'] },
   { id: 'alliance-by-name', method: 'GET', scope: 'protected', path: (s) => `/alliances/name/${encodeURIComponent(s.allianceName ?? 'a')}`, okStatuses: [200, 400, 404], needs: ['server', 'alliance'], fuzzPathParamIndex: 3 },
+  {
+    id: 'alliances-search',
+    method: 'GET',
+    scope: 'protected',
+    path: (s) => '/alliances/search' + q({ query: (s.allianceName ?? 'aa').slice(0, 2) }),
+    okStatuses: [200, 400],
+    shapeKeys: ['suggestions'],
+    needs: ['server', 'alliance'],
+    fuzzQuery: ['query'],
+    cases: [
+      { label: 'a one-character query is refused', path: () => '/alliances/search' + q({ query: 'a' }), expect: [400] },
+      { label: 'a missing query is refused', path: () => '/alliances/search', expect: [400] },
+      { label: 'a wildcard matches itself', path: () => '/alliances/search' + q({ query: '%%' }), expect: [200] },
+    ],
+  },
 
   // Players (protected)
   {
@@ -435,6 +450,21 @@ export const CATALOG: Endpoint[] = [
     needs: ['server', 'alliance'],
   },
   { id: 'players-by-distance', method: 'GET', scope: 'protected', path: (s) => '/players' + q({ page: 1, orderBy: 'distance', orderType: 'ASC', playerNameForDistance: s.playerName ?? 'a' }), okStatuses: [200, 400], needs: ['server', 'player'] },
+  {
+    id: 'players-search',
+    method: 'GET',
+    scope: 'protected',
+    path: (s) => '/players/search' + q({ query: (s.playerName ?? 'aa').slice(0, 2) }),
+    okStatuses: [200, 400],
+    shapeKeys: ['suggestions'],
+    needs: ['server', 'player'],
+    fuzzQuery: ['query'],
+    cases: [
+      { label: 'a one-character query is refused', path: () => '/players/search' + q({ query: 'a' }), expect: [400] },
+      { label: 'a missing query is refused', path: () => '/players/search', expect: [400] },
+      { label: 'a wildcard matches itself', path: () => '/players/search' + q({ query: '%%' }), expect: [200] },
+    ],
+  },
   { id: 'players-by-name', method: 'GET', scope: 'protected', path: (s) => `/players/${encodeURIComponent(s.playerName ?? 'a')}`, okStatuses: [200, 400, 404], needs: ['server', 'player'], fuzzPathParamIndex: 2 },
   { id: 'players-bulk', method: 'POST', scope: 'protected', path: () => '/players', body: (s) => [s.playerId ? Number.parseInt(String(s.playerId).replace(/\D/g, ''), 10) || 1 : 1], okStatuses: [200, 400], needs: ['server'] },
   { id: 'top-players', method: 'GET', scope: 'public', path: (s) => `/top-players/${s.playerId ?? '1'}`, okStatuses: [200, 400, 404], needs: ['server', 'player'] },

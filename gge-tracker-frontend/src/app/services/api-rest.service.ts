@@ -34,7 +34,10 @@ import {
   ApiOuterRealmPlayers,
   ApiAllianceSearchResponse,
   ApiAllianceProfile,
+  ApiAllianceSuggestion,
   ApiPlayerProfile,
+  ApiPlayerSuggestion,
+  ApiSuggestionsResponse,
   ApiRankingStatsPlayer,
   ApiPlayerCastleNameResponse,
   ApiPlayerCastleDataResponse,
@@ -1043,8 +1046,24 @@ export class ApiRestService {
     return this.apiFetch<ApiPlayerProfile>(`${ApiRestService.apiUrl}players/${playerId}/profile?include=${include}`);
   }
 
-  public async getAllianceProfile(allianceId: string): Promise<ApiResponse<ApiAllianceProfile>> {
-    return this.apiFetch<ApiAllianceProfile>(`${ApiRestService.apiUrl}alliances/${allianceId}/profile?include=none`);
+  public async getAllianceProfile(allianceId: string, include = 'none'): Promise<ApiResponse<ApiAllianceProfile>> {
+    return this.apiFetch<ApiAllianceProfile>(
+      `${ApiRestService.apiUrl}alliances/${allianceId}/profile?include=${include}`,
+    );
+  }
+
+  public async getPlayerSuggestions(query: string): Promise<ApiResponse<ApiSuggestionsResponse<ApiPlayerSuggestion>>> {
+    return this.apiFetch<ApiSuggestionsResponse<ApiPlayerSuggestion>>(
+      `${ApiRestService.apiUrl}players/search?query=${encodeURIComponent(query)}`,
+    );
+  }
+
+  public async getAllianceSuggestions(
+    query: string,
+  ): Promise<ApiResponse<ApiSuggestionsResponse<ApiAllianceSuggestion>>> {
+    return this.apiFetch<ApiSuggestionsResponse<ApiAllianceSuggestion>>(
+      `${ApiRestService.apiUrl}alliances/search?query=${encodeURIComponent(query)}`,
+    );
   }
 
   private updateResponseMs(requestStartMs: number, requestEndMs: number): void {

@@ -17,7 +17,9 @@ export interface ServerEntry {
 }
 
 const SERVERS_FILE = process.env.SERVERS_FILE || path.resolve(__dirname, '..', '..', 'config', 'servers.xml');
+const API_CHANNEL = (process.env.API_CHANNEL || 'public').trim().toLowerCase();
 const parser = new XMLParser({ ignoreAttributes: true, parseTagValue: false, trimValues: true });
+const KINGDOM_FEATURES = ['advanced-castle', 'storm', 'fortress'];
 
 export function serversSourcePath(): string {
   return SERVERS_FILE;
@@ -46,6 +48,8 @@ export function discoverServers(): ServerEntry[] {
     .filter((row: Record<string, unknown>) => text(row.kind) !== 'internal')
     .map((row: Record<string, unknown>) => {
       const databases = (row.databases || {}) as Record<string, unknown>;
+      const api = (row.api || {}) as Record<string, unknown>;
+      const section = (api[API_CHANNEL] || {}) as Record<string, unknown>;
       const key = text(row.name);
       return {
         key,
@@ -53,8 +57,8 @@ export function discoverServers(): ServerEntry[] {
         code: text(row.code),
         olapDatabase: text(databases.olap),
         resetOffset: optionalNumber(row['reset-offset']),
-        special: text(row.special) === 'true',
-        disabled: text(row.enabled) !== 'true',
+        special: KINGDOM_FEATURES.every((feature) => text(section[feature]) === 'true'),
+        disabled: text(section.enabled) !== 'true',
         line: lineOf(source, key),
       };
     });
@@ -64,6 +68,9 @@ export function activatedServers(entries = discoverServers()): ServerEntry[] {
   return entries.filter((server) => !server.disabled && server.code !== '' && server.olapDatabase !== '');
 }
 
+/**
+ * The seed the kingdom routes need: one server granting the castle, storm and fortress features
+ */
 export function specialServers(entries = discoverServers()): string[] {
   return entries.filter((server) => server.special).map((server) => server.key);
 }

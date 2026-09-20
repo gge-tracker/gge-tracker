@@ -1,0 +1,54 @@
+@if (state() === 'loading') {
+  <section class="events">
+    <h2 class="events-title">{{ 'Scores et classements' | translate }}</h2>
+    <ol class="events-grid">
+      @for (slot of [1, 2, 3, 4, 5, 6]; track slot) {
+        <li class="events-tile events-tile--loading"></li>
+      }
+    </ol>
+  </section>
+} @else if (tiles().length > 0) {
+  <section class="events">
+    <h2 class="events-title">{{ 'Scores et classements' | translate }}</h2>
+    <ol class="events-grid">
+      @for (tile of tiles(); track tile.key) {
+        <li class="events-tile">
+          <span class="events-tile-head">
+            <img [src]="tile.icon" alt="" width="30" height="30" loading="lazy">
+            <span class="events-tile-name" [title]="tile.label | translate">{{ tile.label | translate }}</span>
+          </span>
+
+          <span class="events-metric">
+            <span class="events-metric-caption">{{ tile.primary.caption | translate }}</span>
+            <span class="events-metric-values">
+              <span class="events-metric-value side-a" [class.is-winner]="tile.primary.winner === 0">
+                <span>{{ display(tile, tile.primary, 0) }}</span>
+                @if (runs(tile, 0); as count) {
+                  <span class="events-metric-runs">{{ count }}</span>
+                }
+              </span>
+              <span class="events-metric-value side-b" [class.is-winner]="tile.primary.winner === 1">
+                <span>{{ display(tile, tile.primary, 1) }}</span>
+                @if (runs(tile, 1); as count) {
+                  <span class="events-metric-runs">{{ count }}</span>
+                }
+              </span>
+            </span>
+          </span>
+
+          <span class="events-metric events-metric--secondary">
+            <span class="events-metric-caption">{{ tile.secondary.caption | translate }}</span>
+            <span class="events-metric-values">
+              <span class="events-metric-value side-a" [class.is-winner]="tile.secondary.winner === 0">
+                {{ display(tile, tile.secondary, 0) }}
+              </span>
+              <span class="events-metric-value side-b" [class.is-winner]="tile.secondary.winner === 1">
+                {{ display(tile, tile.secondary, 1) }}
+              </span>
+            </span>
+          </span>
+        </li>
+      }
+    </ol>
+  </section>
+}

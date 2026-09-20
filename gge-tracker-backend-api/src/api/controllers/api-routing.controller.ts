@@ -22,6 +22,7 @@ import { ApiServer } from '../routes/api-server';
 import { ApiStatistics } from '../routes/api-statistics';
 import { ApiStatus } from '../routes/api-status';
 import { ApiStorms } from '../routes/api-storms';
+import { ApiSuggestions } from '../routes/api-suggestions';
 import { ApiUpdates } from '../routes/api-updates';
 import { QueueService } from '../services/queue-service';
 import { ApiMiniGame } from '../routes/api-mini-game';
@@ -329,6 +330,14 @@ export class ApiRoutingController {
 
   public getPlayersByPlayerName(request: express.Request, response: express.Response): void {
     void ApiPlayers.getPlayersByPlayerName(request, response);
+  }
+
+  public getPlayerSuggestions(request: express.Request, response: express.Response): void {
+    void ApiSuggestions.getPlayerSuggestions(request, response);
+  }
+
+  public getAllianceSuggestions(request: express.Request, response: express.Response): void {
+    void ApiSuggestions.getAllianceSuggestions(request, response);
   }
 
   public getPlayerBulkData(request: express.Request, response: express.Response): void {

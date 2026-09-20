@@ -10,11 +10,17 @@
     <h2 class="contender-name" [title]="current.name">{{ current.name }}</h2>
     <div class="contender-meta">
       @if (current.level) {
-        <span class="contender-level">
+        <span class="contender-chip contender-level">
           <span>{{ current.level.level }}</span>
           @if (current.level.legendary) {
             <span class="contender-level-legendary">{{ current.level.legendary }}</span>
           }
+        </span>
+      }
+      @if (current.castleCount !== null) {
+        <span class="contender-chip contender-castles" [title]="'Nombre de chateaux' | translate">
+          <img src="/assets/castle1.png" alt="" width="16" height="16">
+          <span>{{ current.castleCount }}</span>
         </span>
       }
       @if (current.detailLink) {
@@ -38,8 +44,35 @@
   <form class="contender contender--empty" (ngSubmit)="submit()">
     <label class="visually-hidden" [for]="'compare-search-' + side()">{{ placeholder | translate }}</label>
     <div class="contender-search">
-      <input [id]="'compare-search-' + side()" name="query" type="search" autocomplete="off" enterkeyhint="search"
-        [(ngModel)]="query" [placeholder]="placeholder | translate">
+      <div class="contender-field">
+        <input [id]="'compare-search-' + side()" name="query" type="search" autocomplete="off" enterkeyhint="search"
+          role="combobox" aria-autocomplete="list" [attr.aria-expanded]="suggestions().length > 0"
+          [attr.aria-controls]="'compare-suggestions-' + side()"
+          [attr.aria-activedescendant]="activeIndex() >= 0 ? 'compare-suggestion-' + side() + '-' + activeIndex() : null"
+          [(ngModel)]="query" [placeholder]="placeholder | translate" (ngModelChange)="search($event)"
+          (keydown)="navigate($event)" (blur)="close()">
+        @if (suggestions().length > 0) {
+          <ul class="contender-suggestions" role="listbox" [id]="'compare-suggestions-' + side()">
+            @for (suggestion of suggestions(); track suggestion.id; let index = $index) {
+              <li role="option" [id]="'compare-suggestion-' + side() + '-' + index"
+                [attr.aria-selected]="index === activeIndex()">
+                <button type="button" class="contender-suggestion" [class.active]="index === activeIndex()"
+                  (mousedown)="pick(suggestion)" (mouseenter)="activeIndex.set(index)">
+                  <span class="contender-suggestion-name">{{ suggestion.name }}</span>
+                  <span class="contender-suggestion-meta">
+                    <span>{{ suggestion.might_current | formatNumber }}</span>
+                    @if (allianceOf(suggestion); as alliance) {
+                      <span class="contender-suggestion-alliance">{{ alliance }}</span>
+                    } @else if (membersOf(suggestion); as members) {
+                      <span class="contender-suggestion-alliance">{{ members }}</span>
+                    }
+                  </span>
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      </div>
       <button type="submit" [attr.aria-label]="'Rechercher' | translate" [disabled]="!query.trim()">
         <lucide-icon [img]="Search" [size]="18"></lucide-icon>
       </button>

@@ -15,7 +15,7 @@ interface ProfileContext {
 
 export abstract class ApiProfiles implements ApiHelper {
   public static readonly PLAYER_SECTIONS = ['castles', 'rank', 'names', 'alliances', 'movements'];
-  public static readonly ALLIANCE_SECTIONS = ['members', 'castles', 'names', 'descriptions', 'member_changes'];
+  public static readonly ALLIANCE_SECTIONS = ['members', 'castles', 'names', 'descriptions', 'member_changes', 'rank'];
   public static readonly CACHE_TTL_SECONDS = 3600;
 
   private static readonly HISTORY_LIMIT = 50;
@@ -70,19 +70,21 @@ export abstract class ApiProfiles implements ApiHelper {
         return;
       }
 
-      const [members, names, descriptions, memberChanges] = await Promise.all([
+      const [members, names, descriptions, memberChanges, rank] = await Promise.all([
         this.when(context.sections.has('members') || context.sections.has('castles'), () =>
           this.readAllianceMembers(context),
         ),
         this.when(context.sections.has('names'), () => this.readAllianceNames(context)),
         this.when(context.sections.has('descriptions'), () => this.readAllianceDescriptions(context)),
         this.when(context.sections.has('member_changes'), () => this.readAllianceMemberChanges(context)),
+        this.when(context.sections.has('rank'), () => this.readAllianceRank(context)),
       ]);
 
       const profile = {
         ...this.serverIdentity(context),
         alliance: alliance.identity,
         statistics: alliance.statistics,
+        rank,
         members: context.sections.has('members') ? members?.map((member) => member.identity) : undefined,
         castles: context.sections.has('castles') ? members?.flatMap((member) => member.castles) : undefined,
         name_history: names,
@@ -392,6 +394,39 @@ export abstract class ApiProfiles implements ApiHelper {
         highest_fame: Number(row.highest_fame),
         average_level: Number(row.average_level),
       },
+    };
+  }
+
+  /**
+   * Ranked on the same castle-holding population as readPlayerRank, so an alliance carrying
+   * deleted accounts is not credited with their might
+   */
+  private static async readAllianceRank(context: ProfileContext): Promise<Record<string, unknown>> {
+    const query = `
+      WITH standings AS (
+        SELECT P.alliance_id AS id,
+          SUM(P.might_current) AS might_current,
+          SUM(P.loot_current) AS loot_current,
+          SUM(P.current_fame) AS current_fame
+        FROM players P
+        WHERE P.alliance_id IS NOT NULL AND P.castles IS NOT NULL AND jsonb_array_length(P.castles) > 0
+        GROUP BY P.alliance_id
+      ),
+      subject AS (SELECT * FROM standings WHERE id = $1)
+      SELECT
+        (SELECT COUNT(*) FROM standings S, subject J WHERE S.might_current > J.might_current) + 1 AS might_current,
+        (SELECT COUNT(*) FROM standings S, subject J WHERE S.loot_current > J.loot_current) + 1 AS loot_current,
+        (SELECT COUNT(*) FROM standings S, subject J WHERE S.current_fame > J.current_fame) + 1 AS current_fame,
+        (SELECT COUNT(*) FROM standings) AS ranked_alliances,
+        (SELECT COUNT(*) FROM subject) AS is_ranked`;
+    const results = await context.pool.query(query, [context.localId]);
+    const row = results.rows[0];
+    const ranked = Number(row.is_ranked) > 0;
+    return {
+      might_current: ranked ? Number(row.might_current) : null,
+      loot_current: ranked ? Number(row.loot_current) : null,
+      current_fame: ranked ? Number(row.current_fame) : null,
+      ranked_alliances: Number(row.ranked_alliances),
     };
   }
 

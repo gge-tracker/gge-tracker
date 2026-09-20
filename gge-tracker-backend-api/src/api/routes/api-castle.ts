@@ -47,7 +47,7 @@ export abstract class ApiCastle implements ApiHelper {
       } else if (Number.isNaN(kingdomId) || kingdomId < 0 || kingdomId > 3) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidKingdomId });
         return;
-      } else if (kingdomId > 0 && !ApiHelper.ggeTrackerManager.isSpecialServer(serverName ?? '')) {
+      } else if (kingdomId > 0 && !ApiHelper.ggeTrackerManager.hasFeature(serverName ?? '', 'advancedCastle')) {
         response
           .status(ApiHelper.HTTP_BAD_REQUEST)
           .send({ error: RouteErrorMessagesEnum.UnavailableForSpecialServers });
@@ -276,11 +276,11 @@ export abstract class ApiCastle implements ApiHelper {
         .map((c: any) => c.AI.map((ai: any) => ({ ...ai, KID: c.KID })));
       const castlesAI = castlesAIBase.flat();
       const serverName = ApiHelper.ggeTrackerManager.getServerNameFromRequestId(code as number) ?? '';
-      const isSpecialServer = ApiHelper.ggeTrackerManager.isSpecialServer(serverName);
+      const hasAdvancedCastle = ApiHelper.ggeTrackerManager.hasFeature(serverName, 'advancedCastle');
       const mappedCastles = castlesAI.reduce((accumulator: any[], castle: any) => {
         accumulator.push({
           kingdomId: castle.KID,
-          isAvailable: castle.KID === 0 ? true : isSpecialServer,
+          isAvailable: castle.KID === 0 ? true : hasAdvancedCastle,
           id: Number(ApiHelper.addCountryCode(castle.AI[3], request['code'])),
           positionX: castle.AI[1],
           positionY: castle.AI[2],

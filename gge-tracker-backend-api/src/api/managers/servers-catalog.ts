@@ -2,12 +2,13 @@ import { XMLParser, XMLValidator } from 'fast-xml-parser';
 import * as fs from 'node:fs';
 import path from 'node:path';
 import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
-import { IServerDefinition, ServerKind } from '../interfaces/interfaces';
+import { ApiChannel, IServerApiSection, IServerDefinition, ServerKind } from '../interfaces/interfaces';
 
 /**
  * Reads config/servers.xml, the file is bind-mounted at /app/config
  */
 export class ServersCatalog {
+  private static readonly CHANNELS: ApiChannel[] = ['beta', 'public'];
   private static readonly WATCH_INTERVAL_MS = 10_000;
   private static readonly CODE_LENGTH = 3;
   private static readonly GLOBAL_NAME_PATTERN = /^[\d_a-z]+$/;
@@ -15,12 +16,22 @@ export class ServersCatalog {
   private readonly parser = new XMLParser({ ignoreAttributes: true, parseTagValue: false, trimValues: true });
   private readonly listeners: (() => void)[] = [];
   private readonly file: string;
+  private readonly channel: ApiChannel;
   private definitions: IServerDefinition[] = [];
   private signature = '';
   private watching = false;
 
-  constructor(file: string = ServersCatalog.resolveFile()) {
+  constructor(file: string = ServersCatalog.resolveFile(), channel: ApiChannel = ServersCatalog.resolveChannel()) {
     this.file = file;
+    this.channel = channel;
+  }
+
+  public static resolveChannel(): ApiChannel {
+    const wanted = (process.env.API_CHANNEL || '').trim().toLowerCase();
+    if (wanted === '') return 'public';
+    if ((ServersCatalog.CHANNELS as string[]).includes(wanted)) return wanted as ApiChannel;
+    console.warn(`[SERVERS] unknown API_CHANNEL "${wanted}", serving the public section`);
+    return 'public';
   }
 
   /**
@@ -48,7 +59,7 @@ export class ServersCatalog {
    * A servable server is one the API answers for: provisioned, and enabled in the file
    */
   public static isServable(definition: IServerDefinition): boolean {
-    return definition.enabled && ServersCatalog.isProvisioned(definition);
+    return definition.api.enabled && ServersCatalog.isProvisioned(definition);
   }
 
   /**
@@ -82,6 +93,10 @@ export class ServersCatalog {
     return this.file;
   }
 
+  public getChannel(): ApiChannel {
+    return this.channel;
+  }
+
   public getDefinitions(): IServerDefinition[] {
     return this.definitions;
   }
@@ -96,14 +111,14 @@ export class ServersCatalog {
 
   public load(): void {
     const raw = fs.readFileSync(this.file, 'utf8');
-    const definitions = this.parse(raw);
-    const problems = this.validate(definitions);
+    const { definitions, problems } = this.parse(raw);
+    problems.push(...this.validate(definitions));
     if (problems.length > 0) {
       throw new Error(`Invalid ${this.file}:\n  - ${problems.join('\n  - ')}`);
     }
     this.definitions = definitions;
     this.signature = raw;
-    console.log(`[SERVERS] ${definitions.length} servers read from ${this.file}`);
+    console.log(`[SERVERS] ${definitions.length} servers read from ${this.file} on the ${this.channel} channel`);
   }
 
   /**
@@ -123,8 +138,8 @@ export class ServersCatalog {
     try {
       const raw = fs.readFileSync(this.file, 'utf8');
       if (raw === this.signature) return;
-      const definitions = this.parse(raw);
-      const problems = this.validate(definitions);
+      const { definitions, problems } = this.parse(raw);
+      problems.push(...this.validate(definitions));
       if (problems.length > 0) {
         console.error(`[SERVERS] ${this.file} rejected, keeping the previous one:\n  - ${problems.join('\n  - ')}`);
         return;
@@ -138,7 +153,7 @@ export class ServersCatalog {
     }
   }
 
-  private parse(raw: string): IServerDefinition[] {
+  private parse(raw: string): { definitions: IServerDefinition[]; problems: string[] } {
     const wellFormed = XMLValidator.validate(raw);
     if (wellFormed !== true) {
       throw new Error(`${this.file} is not well formed: ${wellFormed.err.msg} (line ${wellFormed.err.line})`);
@@ -146,18 +161,25 @@ export class ServersCatalog {
     const document = this.parser.parse(raw);
     const rows = document?.root?.servers?.server;
     if (!rows) throw new Error(`No root > servers > server element in ${this.file}`);
-    return (Array.isArray(rows) ? rows : [rows]).map((row) => this.toDefinition(row));
+    const problems: string[] = [];
+    const definitions = (Array.isArray(rows) ? rows : [rows]).map((row) => this.toDefinition(row, problems));
+    return { definitions, problems };
   }
 
-  private toDefinition(row: Record<string, unknown>): IServerDefinition {
+  /**
+   * A section the file forgot would read as every flag false, which is a server silently going dark
+   */
+  private toDefinition(row: Record<string, unknown>, problems: string[]): IServerDefinition {
     const scraping = row.scraping as Record<string, unknown> | undefined;
     const databases = (row.databases || {}) as Record<string, unknown>;
+    const api = (row.api || {}) as Record<string, unknown>;
+    for (const channel of ServersCatalog.CHANNELS) {
+      if (!api[channel]) problems.push(`${this.text(row.name) || 'a server'} has no <api><${channel}> section`);
+    }
     return {
       name: this.text(row.name),
       kind: this.text(row.kind) as ServerKind,
-      enabled: this.flag(row.enabled),
-      featured: this.flag(row.featured),
-      special: this.flag(row.special),
+      api: this.toApiSection(api[this.channel]),
       ggeServerName: this.text(row['gge-server-name']),
       outerName: this.text(row['outer-name']),
       country: this.text(row.country),
@@ -176,6 +198,16 @@ export class ServersCatalog {
             storm: this.flag(scraping.storm),
           }
         : undefined,
+    };
+  }
+
+  private toApiSection(section: unknown): IServerApiSection {
+    const row = (section || {}) as Record<string, unknown>;
+    return {
+      enabled: this.flag(row.enabled),
+      advancedCastle: this.flag(row['advanced-castle']),
+      storm: this.flag(row.storm),
+      fortress: this.flag(row.fortress),
     };
   }
 
