@@ -40,6 +40,11 @@ EXPOSE 3000
 
 ENV HEADER="[DEV]"
 
+
+RUN rm -rf /app/src/api/assets/cache && \
+    mkdir -p /app/src/api/assets/cache && \
+    chown -R node:node /app/src/api/assets
+
 USER node
 
 CMD ["node_modules/.bin/nodemon"]
