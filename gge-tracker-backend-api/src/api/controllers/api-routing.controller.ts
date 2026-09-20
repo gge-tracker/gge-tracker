@@ -16,6 +16,7 @@ import { ApiExport } from '../routes/api-export';
 import { ApiOffers } from '../routes/api-offers';
 import { ApiPlayers } from '../routes/api-players';
 import { ApiProfiles } from '../routes/api-profiles';
+import { ApiGrandTournament } from '../routes/api-grand-tournament';
 import { ApiRiftRaid } from '../routes/api-rift-raid';
 import { ApiServer } from '../routes/api-server';
 import { ApiStatistics } from '../routes/api-statistics';
@@ -133,19 +134,19 @@ export class ApiRoutingController {
   }
 
   public getGrandTournamentEvents(request: express.Request, response: express.Response): void {
-    void ApiEvents.getGrandTournament(request, response);
+    void ApiGrandTournament.getAlliances(request, response);
   }
 
   public getGrandTournamentEventDates(request: express.Request, response: express.Response): void {
-    void ApiEvents.getGrandTournamentEventDates(request, response);
+    void ApiGrandTournament.getEventDates(request, response);
   }
 
   public getGrandTournamentAllianceAnalysis(request: express.Request, response: express.Response): void {
-    void ApiEvents.getGrandTournamentAllianceAnalysis(request, response);
+    void ApiGrandTournament.getAllianceAnalysis(request, response);
   }
 
   public searchGrandTournamentDataByAllianceName(request: express.Request, response: express.Response): void {
-    void ApiEvents.searchGrandTournamentDataByAllianceName(request, response);
+    void ApiGrandTournament.searchAlliances(request, response);
   }
 
   public getRiftRaidEventDates(request: express.Request, response: express.Response): void {

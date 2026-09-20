@@ -1,11 +1,13 @@
 import * as express from 'express';
+import * as pg from 'pg';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
+import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { CacheKeyBuilder } from '../helper/cache/cache-key-builder';
 import { CachedResponse } from '../helper/cache/cached-response';
 import { RankingGame, RankingUniverse } from '../helper/ranking-universe';
 
-interface RiftRaidAllianceRow {
+interface GrandTournamentAllianceRow {
   server_id: number;
   division_id: number;
   subdivision_id: number;
@@ -15,7 +17,7 @@ interface RiftRaidAllianceRow {
   score: string;
 }
 
-interface RiftRaidAnalysisRow {
+interface GrandTournamentAnalysisRow {
   division_id: number;
   subdivision_id: number;
   rank: number;
@@ -24,7 +26,7 @@ interface RiftRaidAnalysisRow {
   alliance_name: string;
 }
 
-interface RiftRaidAlliance {
+interface GrandTournamentAlliance {
   alliance_id: number | null;
   alliance_name: string;
   server: string | null;
@@ -34,50 +36,47 @@ interface RiftRaidAlliance {
   subdivision: number;
 }
 
-export abstract class ApiRiftRaid implements ApiHelper {
-  private static readonly RANKING_TABLE = 'ggetracker_global.rift_raid_ranking';
-  private static readonly HOURS_TABLE = 'ggetracker_global.rift_raid_hours';
-  private static readonly CACHE_VERSION_KEY = 'rift-raid:event-dates:version';
+export abstract class ApiGrandTournament implements ApiHelper {
+  private static readonly RANKING_TABLE = 'grand_tournament';
+  private static readonly HOURS_VIEW = 'grand_tournament_hours_mv';
+  private static readonly CACHE_VERSION_KEY = 'grand-tournament:event-dates:version';
   private static readonly CACHE_TTL_SECONDS = 6 * 60 * 60;
   private static readonly ALLIANCES_PER_PAGE = 10;
   private static readonly MIN_DIVISION = 1;
-  private static readonly MAX_DIVISION = 6;
+  private static readonly MAX_DIVISION = 5;
   private static readonly MAX_EVENT_ID = 65_535;
   private static readonly UNKNOWN_SERVER_CODE = '999';
+  private static readonly ISO_HOUR = `'YYYY-MM-DD"T"HH24:00:00.000"Z"'`;
   private static readonly HOUR_WINDOW = `
-    game = {game:String}
-    AND created_at >= {hour:DateTime} AND created_at < {hour:DateTime} + INTERVAL 1 HOUR`;
+    game = $1
+    AND created_at >= $2::timestamp AND created_at < $2::timestamp + interval '1 hour'`;
 
   public static async getEventDates(request: express.Request, response: express.Response): Promise<void> {
     try {
-      const game = ApiRiftRaid.gameOf(request);
-      const cacheKey = await ApiRiftRaid.cacheKey('event-dates', { game });
+      const game = ApiGrandTournament.gameOf(request);
+      const cacheKey = await ApiGrandTournament.cacheKey('event-dates', { game });
       if (await CachedResponse.serveCached(response, cacheKey)) return;
 
-      const rows = await ApiRiftRaid.select<{ event_id: number; dates: string[] }>(
-        `SELECT event_id, groupArray(hour_iso) AS dates
-          FROM (
-            SELECT DISTINCT event_id, formatDateTime(hour, '%Y-%m-%dT%H:00:00.000Z', 'UTC') AS hour_iso
-            FROM ${ApiRiftRaid.HOURS_TABLE}
-            WHERE game = {game:String}
-            ORDER BY hour_iso
-          )
+      const rows = await ApiGrandTournament.select<{ event_id: number; dates: string[] }>(
+        `SELECT event_id, ARRAY_AGG(to_char(hour, ${ApiGrandTournament.ISO_HOUR}) ORDER BY hour) AS dates
+          FROM ${ApiGrandTournament.HOURS_VIEW}
+          WHERE game = $1
           GROUP BY event_id
           ORDER BY event_id`,
-        { game },
+        [game],
       );
-      await CachedResponse.serve(response, cacheKey, { events: rows }, ApiRiftRaid.CACHE_TTL_SECONDS);
+      await CachedResponse.serve(response, cacheKey, { events: rows }, ApiGrandTournament.CACHE_TTL_SECONDS);
     } catch (error) {
-      ApiRiftRaid.fail(request, response, error, 'getRiftRaidEventDates');
+      ApiGrandTournament.fail(request, response, error, 'getGrandTournamentEventDates');
     }
   }
 
   public static async getAlliances(request: express.Request, response: express.Response): Promise<void> {
     try {
-      const game = ApiRiftRaid.gameOf(request);
-      const hour = ApiRiftRaid.parseHour(request.query.date);
-      const division = ApiRiftRaid.parseDivision(request.query.division_id);
-      const subdivision = ApiRiftRaid.parseOptionalPositiveInteger(request.query.subdivision_id);
+      const game = ApiGrandTournament.gameOf(request);
+      const hour = ApiGrandTournament.parseHour(request.query.date);
+      const division = ApiGrandTournament.parseDivision(request.query.division_id);
+      const subdivision = ApiGrandTournament.parseOptionalPositiveInteger(request.query.subdivision_id);
       if (!hour) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidFlatDateFormat });
         return;
@@ -89,44 +88,37 @@ export abstract class ApiRiftRaid implements ApiHelper {
         return;
       }
       const page = ApiHelper.validatePageNumber(request.query.page);
-      const cacheKey = await ApiRiftRaid.cacheKey('division', { game, hour, division, subdivision, page });
+      const cacheKey = await ApiGrandTournament.cacheKey('division', { game, hour, division, subdivision, page });
       if (await CachedResponse.serveCached(response, cacheKey)) return;
 
-      const parameters = {
-        game,
-        hour,
-        division,
-        subdivision: subdivision ?? 0,
-        limit: ApiRiftRaid.ALLIANCES_PER_PAGE,
-        offset: (page - 1) * ApiRiftRaid.ALLIANCES_PER_PAGE,
-      };
-      const subdivisionFilter = '({subdivision:UInt16} = 0 OR subdivision_id = {subdivision:UInt16})';
+      const parameters = [game, hour, division, subdivision ?? 0];
+      const subdivisionFilter = '($4 = 0 OR subdivision_id = $4)';
       const order = subdivision ? 'subdivision_id, rank' : 'score DESC, rank';
       const [rows, stats] = await Promise.all([
-        ApiRiftRaid.select<RiftRaidAllianceRow>(
+        ApiGrandTournament.select<GrandTournamentAllianceRow>(
           `SELECT server_id, division_id, subdivision_id, alliance_id, alliance_name, rank, score
-            FROM ${ApiRiftRaid.RANKING_TABLE}
-            WHERE ${ApiRiftRaid.HOUR_WINDOW} AND division_id = {division:UInt8} AND ${subdivisionFilter}
+            FROM ${ApiGrandTournament.RANKING_TABLE}
+            WHERE ${ApiGrandTournament.HOUR_WINDOW} AND division_id = $3 AND ${subdivisionFilter}
             ORDER BY ${order}, server_id, alliance_id
-            LIMIT {limit:UInt32} OFFSET {offset:UInt32}`,
-          parameters,
+            LIMIT $5 OFFSET $6`,
+          [...parameters, ApiGrandTournament.ALLIANCES_PER_PAGE, (page - 1) * ApiGrandTournament.ALLIANCES_PER_PAGE],
         ),
-        ApiRiftRaid.select<{ total_items: string; max_subdivision_id: number }>(
-          `SELECT countIf(${subdivisionFilter}) AS total_items, max(subdivision_id) AS max_subdivision_id
-            FROM ${ApiRiftRaid.RANKING_TABLE}
-            WHERE ${ApiRiftRaid.HOUR_WINDOW} AND division_id = {division:UInt8}`,
+        ApiGrandTournament.select<{ total_items: string; max_subdivision_id: number }>(
+          `SELECT COUNT(*) FILTER (WHERE ${subdivisionFilter}) AS total_items, MAX(subdivision_id) AS max_subdivision_id
+            FROM ${ApiGrandTournament.RANKING_TABLE}
+            WHERE ${ApiGrandTournament.HOUR_WINDOW} AND division_id = $3`,
           parameters,
         ),
       ]);
 
-      const alliances = ApiRiftRaid.toAlliances(game, rows);
+      const alliances = ApiGrandTournament.toAlliances(game, rows);
       const totalItems = Number(stats[0]?.total_items ?? 0);
       const body = {
         event: {
           division: {
             current_division: division,
-            min_division: ApiRiftRaid.MIN_DIVISION,
-            max_division: ApiRiftRaid.MAX_DIVISION,
+            min_division: ApiGrandTournament.MIN_DIVISION,
+            max_division: ApiGrandTournament.MAX_DIVISION,
           },
           subdivision: {
             current_subdivision: subdivision ?? null,
@@ -135,18 +127,18 @@ export abstract class ApiRiftRaid implements ApiHelper {
           },
           alliances,
         },
-        pagination: ApiRiftRaid.pagination(page, alliances.length, totalItems),
+        pagination: ApiGrandTournament.pagination(page, alliances.length, totalItems),
       };
-      await CachedResponse.serve(response, cacheKey, body, ApiRiftRaid.CACHE_TTL_SECONDS);
+      await CachedResponse.serve(response, cacheKey, body, ApiGrandTournament.CACHE_TTL_SECONDS);
     } catch (error) {
-      ApiRiftRaid.fail(request, response, error, 'getRiftRaidAlliances');
+      ApiGrandTournament.fail(request, response, error, 'getGrandTournamentAlliances');
     }
   }
 
   public static async searchAlliances(request: express.Request, response: express.Response): Promise<void> {
     try {
-      const game = ApiRiftRaid.gameOf(request);
-      const hour = ApiRiftRaid.parseHour(request.query.date);
+      const game = ApiGrandTournament.gameOf(request);
+      const hour = ApiGrandTournament.parseHour(request.query.date);
       const allianceName = ApiHelper.validateSearchAndSanitize(request.query.alliance_name);
       if (!hour) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidFlatDateFormat });
@@ -156,74 +148,62 @@ export abstract class ApiRiftRaid implements ApiHelper {
         return;
       }
       const page = ApiHelper.validatePageNumber(request.query.page);
-      const cacheKey = await ApiRiftRaid.cacheKey('search', { game, hour, name: allianceName, page });
+      const cacheKey = await ApiGrandTournament.cacheKey('search', { game, hour, name: allianceName, page });
       if (await CachedResponse.serveCached(response, cacheKey)) return;
 
-      const parameters = {
-        game,
-        hour,
-        name: allianceName,
-        limit: ApiRiftRaid.ALLIANCES_PER_PAGE,
-        offset: (page - 1) * ApiRiftRaid.ALLIANCES_PER_PAGE,
-      };
-      const nameFilter = 'positionCaseInsensitiveUTF8(alliance_name, {name:String}) > 0';
+      // A % or _ the caller sends must match itself rather than act as a wildcard
+      const parameters = [game, hour, `%${ApiGrandTournament.escapeLike(String(allianceName))}%`];
+      const nameFilter = `alliance_name ILIKE $3 ESCAPE '\\'`;
       const [rows, stats] = await Promise.all([
-        ApiRiftRaid.select<RiftRaidAllianceRow>(
+        ApiGrandTournament.select<GrandTournamentAllianceRow>(
           `SELECT server_id, division_id, subdivision_id, alliance_id, alliance_name, rank, score
-            FROM ${ApiRiftRaid.RANKING_TABLE}
-            WHERE ${ApiRiftRaid.HOUR_WINDOW} AND ${nameFilter}
+            FROM ${ApiGrandTournament.RANKING_TABLE}
+            WHERE ${ApiGrandTournament.HOUR_WINDOW} AND ${nameFilter}
             ORDER BY division_id DESC, score DESC, rank, server_id, alliance_id
-            LIMIT {limit:UInt32} OFFSET {offset:UInt32}`,
-          parameters,
+            LIMIT $4 OFFSET $5`,
+          [...parameters, ApiGrandTournament.ALLIANCES_PER_PAGE, (page - 1) * ApiGrandTournament.ALLIANCES_PER_PAGE],
         ),
-        ApiRiftRaid.select<{ total_items: string }>(
-          `SELECT count() AS total_items
-            FROM ${ApiRiftRaid.RANKING_TABLE}
-            WHERE ${ApiRiftRaid.HOUR_WINDOW} AND ${nameFilter}`,
+        ApiGrandTournament.select<{ total_items: string }>(
+          `SELECT COUNT(*) AS total_items
+            FROM ${ApiGrandTournament.RANKING_TABLE}
+            WHERE ${ApiGrandTournament.HOUR_WINDOW} AND ${nameFilter}`,
           parameters,
         ),
       ]);
 
-      const alliances = ApiRiftRaid.toAlliances(game, rows);
+      const alliances = ApiGrandTournament.toAlliances(game, rows);
       const body = {
         alliances,
-        pagination: ApiRiftRaid.pagination(page, alliances.length, Number(stats[0]?.total_items ?? 0)),
+        pagination: ApiGrandTournament.pagination(page, alliances.length, Number(stats[0]?.total_items ?? 0)),
       };
-      await CachedResponse.serve(response, cacheKey, body, ApiRiftRaid.CACHE_TTL_SECONDS);
+      await CachedResponse.serve(response, cacheKey, body, ApiGrandTournament.CACHE_TTL_SECONDS);
     } catch (error) {
-      ApiRiftRaid.fail(request, response, error, 'searchRiftRaidAlliances');
+      ApiGrandTournament.fail(request, response, error, 'searchGrandTournamentAlliances');
     }
   }
 
   public static async getAllianceAnalysis(request: express.Request, response: express.Response): Promise<void> {
     try {
       const allianceId = ApiHelper.verifyIdWithCountryCode(String(request.params.allianceId));
-      const eventId = ApiRiftRaid.parseOptionalPositiveInteger(request.params.eventId);
+      const eventId = ApiGrandTournament.parseOptionalPositiveInteger(request.params.eventId);
       const origin = allianceId ? RankingUniverse.originOf(ApiHelper.getCountryCode(String(allianceId))) : null;
       if (!allianceId || !origin) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceId });
         return;
-      } else if (!eventId || eventId > ApiRiftRaid.MAX_EVENT_ID) {
+      } else if (!eventId || eventId > ApiGrandTournament.MAX_EVENT_ID) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventId });
         return;
       }
-      const cacheKey = await ApiRiftRaid.cacheKey('alliance-analysis', { allianceId, eventId });
+      const cacheKey = await ApiGrandTournament.cacheKey('alliance-analysis', { allianceId, eventId });
       if (await CachedResponse.serveCached(response, cacheKey)) return;
 
-      const rows = await ApiRiftRaid.select<RiftRaidAnalysisRow>(
+      const rows = await ApiGrandTournament.select<GrandTournamentAnalysisRow>(
         `SELECT division_id, subdivision_id, rank, score, alliance_name,
-          formatDateTime(created_at, '%Y-%m-%d %H:00:00', 'UTC') AS date
-          FROM ${ApiRiftRaid.RANKING_TABLE}
-          WHERE game = {game:String} AND alliance_id = {alliance:UInt32}
-            AND server_id = {server:UInt16} AND event_id = {event:UInt16}
-          ORDER BY created_at DESC
-          SETTINGS optimize_read_in_order = 0`,
-        {
-          game: origin.game,
-          alliance: Number(ApiHelper.removeCountryCode(allianceId)),
-          server: origin.serverId,
-          event: eventId,
-        },
+          to_char(created_at, 'YYYY-MM-DD HH24:00:00') AS date
+          FROM ${ApiGrandTournament.RANKING_TABLE}
+          WHERE game = $1 AND alliance_id = $2 AND server_id = $3 AND event_id = $4
+          ORDER BY created_at DESC`,
+        [origin.game, Number(ApiHelper.removeCountryCode(allianceId)), origin.serverId, eventId],
       );
 
       const body = {
@@ -241,9 +221,9 @@ export abstract class ApiRiftRaid implements ApiHelper {
           game: origin.game,
         },
       };
-      await CachedResponse.serve(response, cacheKey, body, ApiRiftRaid.CACHE_TTL_SECONDS);
+      await CachedResponse.serve(response, cacheKey, body, ApiGrandTournament.CACHE_TTL_SECONDS);
     } catch (error) {
-      ApiRiftRaid.fail(request, response, error, 'getRiftRaidAllianceAnalysis');
+      ApiGrandTournament.fail(request, response, error, 'getGrandTournamentAllianceAnalysis');
     }
   }
 
@@ -258,9 +238,11 @@ export abstract class ApiRiftRaid implements ApiHelper {
   }
 
   private static parseDivision(value: unknown): number | null {
-    if (value === undefined) return ApiRiftRaid.MAX_DIVISION;
-    const division = ApiRiftRaid.parseOptionalPositiveInteger(value);
-    if (!division || division < ApiRiftRaid.MIN_DIVISION || division > ApiRiftRaid.MAX_DIVISION) return null;
+    if (value === undefined) return ApiGrandTournament.MAX_DIVISION;
+    const division = ApiGrandTournament.parseOptionalPositiveInteger(value);
+    if (!division || division < ApiGrandTournament.MIN_DIVISION || division > ApiGrandTournament.MAX_DIVISION) {
+      return null;
+    }
     return division;
   }
 
@@ -272,11 +254,18 @@ export abstract class ApiRiftRaid implements ApiHelper {
     return parsed > 0 ? parsed : false;
   }
 
-  private static toAlliances(game: RankingGame, rows: RiftRaidAllianceRow[]): RiftRaidAlliance[] {
+  private static escapeLike(value: string): string {
+    return value
+      .replaceAll('\\', '\\\\')
+      .replaceAll('%', String.raw`\%`)
+      .replaceAll('_', String.raw`\_`);
+  }
+
+  private static toAlliances(game: RankingGame, rows: GrandTournamentAllianceRow[]): GrandTournamentAlliance[] {
     const servers = RankingUniverse.serversOf(game);
     return rows.map((row) => {
       const server = servers.get(row.server_id);
-      const code = server?.code || ApiRiftRaid.UNKNOWN_SERVER_CODE;
+      const code = server?.code || ApiGrandTournament.UNKNOWN_SERVER_CODE;
       return {
         alliance_id: Number.parseInt(`${row.alliance_id}${code}`) || null,
         alliance_name: row.alliance_name,
@@ -296,7 +285,7 @@ export abstract class ApiRiftRaid implements ApiHelper {
   ): { current_page: number; total_pages: number; current_items_count: number; total_items_count: number } {
     return {
       current_page: page,
-      total_pages: Math.ceil(totalItems / ApiRiftRaid.ALLIANCES_PER_PAGE),
+      total_pages: Math.ceil(totalItems / ApiGrandTournament.ALLIANCES_PER_PAGE),
       current_items_count: currentItems,
       total_items_count: totalItems,
     };
@@ -306,24 +295,18 @@ export abstract class ApiRiftRaid implements ApiHelper {
     scope: string,
     parameters: Record<string, string | number | false | undefined>,
   ): Promise<string> {
-    const version = (await ApiHelper.redisClient.get(ApiRiftRaid.CACHE_VERSION_KEY).catch(() => null)) ?? '-1';
-    return new CacheKeyBuilder('rift-raid')
+    const version = (await ApiHelper.redisClient.get(ApiGrandTournament.CACHE_VERSION_KEY).catch(() => null)) ?? '-1';
+    return new CacheKeyBuilder('grand-tournament')
       .with(scope)
       .withParams(Object.fromEntries(Object.entries(parameters).map(([key, value]) => [key, value || undefined])))
       .with(`v${version}`)
       .build();
   }
 
-  private static async select<T>(query: string, parameters: Record<string, string | number>): Promise<T[]> {
-    const clickhouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
-    const result = await clickhouseClient.query({
-      query,
-      query_params: parameters,
-      format: 'JSONEachRow',
-      // Note: clickHouse fails any ORDER BY ... LIMIT 10 on a table with a projection while this is on
-      clickhouse_settings: { query_plan_optimize_lazy_materialization: 0 },
-    });
-    return result.json<T>();
+  private static async select<T>(query: string, parameters: (string | number)[]): Promise<T[]> {
+    const pgPool: pg.Pool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServersEnum.GLOBAL);
+    const { rows } = await pgPool.query(query, parameters);
+    return rows as T[];
   }
 
   private static fail(request: express.Request, response: express.Response, error: unknown, origin: string): void {

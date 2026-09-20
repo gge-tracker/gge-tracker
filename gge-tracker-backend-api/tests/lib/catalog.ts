@@ -203,12 +203,12 @@ export const CATALOG: Endpoint[] = [
   { id: 'events-type-data', method: 'GET', scope: 'public', path: () => '/events/outer-realms/1/data', okStatuses: [200, 400, 404] },
   { id: 'events-player', method: 'GET', scope: 'public', path: (s) => `/events/player/${s.playerId ?? '1'}`, okStatuses: [200, 400, 404], needs: ['player'] },
 
-  // Grand Tournament (public)
-  { id: 'gt-dates', method: 'GET', scope: 'public', path: () => '/grand-tournament/dates', okStatuses: [200] },
-  { id: 'gt-alliances', method: 'GET', scope: 'public', path: () => '/grand-tournament/alliances' + q({ date: '2026-01-01T00:00:00.000Z', division_id: 5, page: 1 }), okStatuses: [200, 400], fuzzQuery: ['date', 'division_id', 'subdivision_id'] },
-  { id: 'gt-alliances-subdivision', method: 'GET', scope: 'public', path: () => '/grand-tournament/alliances' + q({ date: '2026-01-01T00:00:00.000Z', division_id: 5, subdivision_id: 1, page: 1 }), okStatuses: [200, 400] },
-  { id: 'gt-alliance-analysis', method: 'GET', scope: 'public', path: (s) => `/grand-tournament/alliance/${s.allianceId ?? '1'}/1`, okStatuses: [200, 400, 404], needs: ['alliance'] },
-  { id: 'gt-search', method: 'GET', scope: 'public', path: () => '/grand-tournament/search' + q({ date: '2026-01-01T00:00:00.000Z', alliance_name: 'a', page: 1 }), okStatuses: [200, 400], fuzzQuery: ['alliance_name', 'date'] },
+  // Grand Tournament (protected)
+  { id: 'gt-dates', method: 'GET', scope: 'protected', path: () => '/grand-tournament/dates', okStatuses: [200], needs: ['server'] },
+  { id: 'gt-alliances', method: 'GET', scope: 'protected', path: () => '/grand-tournament/alliances' + q({ date: '2026-01-01T00:00:00.000Z', division_id: 5, page: 1 }), okStatuses: [200, 400], needs: ['server'], fuzzQuery: ['date', 'division_id', 'subdivision_id'] },
+  { id: 'gt-alliances-subdivision', method: 'GET', scope: 'protected', path: () => '/grand-tournament/alliances' + q({ date: '2026-01-01T00:00:00.000Z', division_id: 5, subdivision_id: 1, page: 1 }), okStatuses: [200, 400], needs: ['server'] },
+  { id: 'gt-alliance-analysis', method: 'GET', scope: 'protected', path: (s) => `/grand-tournament/alliance/${s.allianceId ?? '1'}/1`, okStatuses: [200, 400, 404], needs: ['server', 'alliance'] },
+  { id: 'gt-search', method: 'GET', scope: 'protected', path: () => '/grand-tournament/search' + q({ date: '2026-01-01T00:00:00.000Z', alliance_name: 'a', page: 1 }), okStatuses: [200, 400], needs: ['server'], fuzzQuery: ['alliance_name', 'date'] },
 
   // Rift Tournament (protected)
   { id: 'rift-raid-dates', method: 'GET', scope: 'protected', path: () => '/rift-raid/dates', okStatuses: [200], needs: ['server'] },

@@ -42,6 +42,7 @@ interface IGrandTournamentSearchAlliances extends ApiGrandTournamentSearchAllian
 })
 export class GrandTournamentComponent extends GenericComponent implements OnInit {
   public isDataLoading = false;
+  public isEventMissing = false;
   public isSubDivisionFilterActivated = false;
   public search = '';
   public alliances: (IGrandTournamentAlliances | IGrandTournamentSearchAlliances)[] = [];
@@ -114,6 +115,7 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
       { page: 1, date: this.defaultDate, subdivision: 0, division: 5 },
     );
     if (!response.success) {
+      this.isDataLoading = false;
       this.toastService.add(ErrorType.ERROR_OCCURRED, 5000, 'error');
       return;
     }
@@ -161,10 +163,7 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
 
   public updateDates(eventId: string): void {
     this.currentEventId = Number(eventId);
-    const event = this.events.find(
-      (event: { dates: string[]; event_id: number }) => event.event_id === Number(eventId),
-    );
-    this.currentDates = event ? event.dates : [];
+    this.currentDates = this.datesOf(this.currentEventId);
   }
 
   public loadDate(date: string): void {
@@ -215,24 +214,24 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
       return;
     }
     this.events = response.data.events;
-    const dates = this.events.at(-1)?.dates;
-    if (!dates || dates.length === 0) {
-      this.toastService.add(ErrorType.ERROR_OCCURRED, 5000, 'error');
+    const latestEvent = this.events.at(-1);
+    // A universe with no recorded tournament is an empty page, not a failure
+    this.isEventMissing = !latestEvent || latestEvent.dates.length === 0;
+    if (this.isEventMissing) {
+      this.isInLoading = false;
       return;
     }
-    this.currentDates = [...dates].reverse();
-    this.currentDate = dates.at(0) || '';
-    this.defaultDate = this.currentDate;
+    this.defaultDate = latestEvent?.dates.at(0) ?? '';
     const urlParameters = this.route.snapshot.queryParams;
     const page = urlParameters['page'] ? Number(urlParameters['page']) : 1;
     const subdivision = urlParameters['subdivision'] ? Number(urlParameters['subdivision']) : 0;
-    const division = urlParameters['division'] ? Number(urlParameters['division']) : 5;
-    const date = urlParameters['date'] ?? this.currentDate;
-    this.currentDate = date;
+    const division = this.parseDivision(urlParameters['division']);
+    const requestedEvent = this.eventOfDate(urlParameters['date']);
+    this.currentDate = requestedEvent ? urlParameters['date'] : this.defaultDate;
+    this.currentEventId = (requestedEvent ?? latestEvent)?.event_id ?? 0;
+    this.currentDates = this.datesOf(this.currentEventId);
     this.division.current_division = division;
     this.subdivision.current_subdivision = subdivision;
-    this.currentEventId =
-      this.events.find((event) => event.dates.includes(this.currentDate))?.event_id || this.currentEventId;
     if (subdivision > 0) {
       this.isSubDivisionFilterActivated = true;
     }
@@ -274,5 +273,18 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
       };
     });
     this.pagination = response.data.pagination;
+  }
+
+  private parseDivision(value: unknown): number {
+    const division = Number(value);
+    return division >= 1 && division <= this.divisionNames.length ? division : this.divisionNames.length;
+  }
+
+  private eventOfDate(date: string | undefined): { dates: string[]; event_id: number } | undefined {
+    return date ? this.events.find((event) => event.dates.includes(date)) : undefined;
+  }
+
+  private datesOf(eventId: number): string[] {
+    return [...(this.events.find((event) => event.event_id === eventId)?.dates ?? [])].reverse();
   }
 }

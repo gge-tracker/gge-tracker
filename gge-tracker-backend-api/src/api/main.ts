@@ -805,15 +805,17 @@ publicRoutes.get('/events/list', routingInstance.getEvents.bind(routingInstance)
  * @swagger
  * /grand-tournament/dates:
  *   get:
- *     summary: Retrieve the list of Grand Tournament event dates for Goodgame Empire Desktop Version (EP)
+ *     summary: Retrieve the list of Grand Tournament event dates
  *     description: |
  *       This endpoint returns a list of recorded Grand Tournament events,
  *       including their unique event ID and the corresponding dates and times when the events took place
  *       Generally, data are collected for Grand Tournament events every hour, but the frequency may vary based on the event schedule and data availability
- *       The event ID is an internal identifier used by GGE Tracker to differentiate between different Grand Tournament events
+ *       The event ID is an internal identifier used by GGE Tracker to differentiate between different Grand Tournament events, counted separately for each universe
  *     tags:
  *       - Events
  *       - Grand Tournament
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
  *     responses:
  *       200:
  *         description: A list of recorded events
@@ -838,7 +840,7 @@ publicRoutes.get('/events/list', routingInstance.getEvents.bind(routingInstance)
  *                           description: The date and time of the Grand Tournament event snapshot. Data are generally collected every hour during the event, but the frequency may vary
  *                           example: ["2025-06-01T16:00:00.000Z", "2025-06-01T17:00:00.000Z", "2025-06-01T18:00:00.000Z"]
  */
-publicRoutes.get('/grand-tournament/dates', routingInstance.getGrandTournamentEventDates.bind(routingInstance));
+protectedRoutes.get('/grand-tournament/dates', routingInstance.getGrandTournamentEventDates.bind(routingInstance));
 
 /**
  * @swagger
@@ -854,6 +856,7 @@ publicRoutes.get('/grand-tournament/dates', routingInstance.getGrandTournamentEv
  *       - Events
  *       - Grand Tournament
  *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - name: date
  *         in: query
  *         description: |
@@ -939,7 +942,7 @@ publicRoutes.get('/grand-tournament/dates', routingInstance.getGrandTournamentEv
  *                 pagination:
  *                   $ref: '#/components/schemas/Pagination'
  */
-publicRoutes.get('/grand-tournament/alliances', routingInstance.getGrandTournamentEvents.bind(routingInstance));
+protectedRoutes.get('/grand-tournament/alliances', routingInstance.getGrandTournamentEvents.bind(routingInstance));
 
 /**
  * @swagger
@@ -955,6 +958,7 @@ publicRoutes.get('/grand-tournament/alliances', routingInstance.getGrandTourname
  *       - Events
  *       - Grand Tournament
  *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - $ref: '#/components/parameters/AllianceId'
  *       - name: eventId
  *         in: path
@@ -1002,7 +1006,7 @@ publicRoutes.get('/grand-tournament/alliances', routingInstance.getGrandTourname
  *                     server:
  *                       type: string
  */
-publicRoutes.get(
+protectedRoutes.get(
   '/grand-tournament/alliance/:allianceId/:eventId',
   routingInstance.getGrandTournamentAllianceAnalysis.bind(ApiRoutingController),
 );
@@ -1020,6 +1024,7 @@ publicRoutes.get(
  *       - Events
  *       - Grand Tournament
  *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - name: date
  *         in: query
  *         description: |-
@@ -1073,7 +1078,7 @@ publicRoutes.get(
  *                         type: integer
  *
  */
-publicRoutes.get(
+protectedRoutes.get(
   '/grand-tournament/search',
   routingInstance.searchGrandTournamentDataByAllianceName.bind(ApiRoutingController),
 );
