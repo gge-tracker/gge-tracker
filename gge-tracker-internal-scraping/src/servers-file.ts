@@ -21,6 +21,9 @@ export interface ScrapingServer {
   limit: number;
   dungeon: boolean;
   storm: boolean;
+  kind: string;
+  enabledBeta: boolean;
+  enabledPublic: boolean;
 }
 
 const parser = new XMLParser({ ignoreAttributes: true, parseTagValue: false, trimValues: true });
@@ -31,6 +34,11 @@ function text(value: unknown): string {
 
 function flag(value: unknown): boolean {
   return text(value).toLowerCase() === 'true';
+}
+
+function apiEnabled(row: Record<string, unknown>, channel: 'beta' | 'public'): boolean {
+  const api = (row.api || {}) as Record<string, Record<string, unknown> | undefined>;
+  return flag(api[channel]?.enabled);
 }
 
 function toServer(row: Record<string, unknown>): ScrapingServer | null {
@@ -46,6 +54,9 @@ function toServer(row: Record<string, unknown>): ScrapingServer | null {
     limit: Number(text(scraping['connection-limit'])) || 1,
     dungeon: flag(scraping.dungeon),
     storm: flag(scraping.storm),
+    kind: text(row.kind),
+    enabledBeta: apiEnabled(row, 'beta'),
+    enabledPublic: apiEnabled(row, 'public'),
   };
 }
 

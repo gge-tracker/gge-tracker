@@ -42,6 +42,9 @@ function list(filter: string | undefined): string {
         server.limit,
         server.dungeon,
         server.storm,
+        server.kind,
+        server.enabledBeta,
+        server.enabledPublic,
       ].join('\t'),
     )
     .join('\n');
