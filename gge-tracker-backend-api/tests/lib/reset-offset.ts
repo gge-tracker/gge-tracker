@@ -94,6 +94,10 @@ interface ResetEvent {
   blurred: boolean;
 }
 
+function heaviest(cluster: Bucket[]): Bucket {
+  return cluster.reduce((best, bucket) => (bucket.gaps > best.gaps ? bucket : best));
+}
+
 function resetEvents(buckets: Bucket[]): ResetEvent[] {
   const clusters: Bucket[][] = [];
   for (const bucket of buckets) {
@@ -108,7 +112,7 @@ function resetEvents(buckets: Bucket[]): ResetEvent[] {
   return clusters.map((cluster) => {
     const gaps = cluster.reduce((total, bucket) => total + bucket.gaps, 0);
     const weighty = cluster.filter((bucket) => bucket.gaps >= gaps * CLUSTER_SHARE);
-    const reset = weighty.at(-1) as Bucket;
+    const reset = weighty.at(-1) ?? heaviest(cluster);
     return {
       hour: reset.hour,
       offset: offsetOfResetInstant(reset.instant),

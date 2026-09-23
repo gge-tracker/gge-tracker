@@ -1,7 +1,7 @@
 {
   "fixture": "2b8821ebab26a15e",
   "server": "FR1",
-  "recordedAt": "2026-09-20T15:49:21.253Z",
+  "recordedAt": "2026-09-23T19:40:12.058Z",
   "entries": {
     "GET alliance-by-id": {
       "status": 200,
@@ -31397,17 +31397,17 @@
     "GET servers": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 465,
+      "bytes": 475,
       "kind": "array",
-      "count": 57,
-      "hash": "5177cf7a14897a3a"
+      "count": 58,
+      "hash": "ea72e15923931865"
     },
     "GET servers-catalog": {
       "status": 200,
       "contentType": "application/xml",
-      "bytes": 14910,
+      "bytes": 18396,
       "kind": "binary",
-      "hash": "4a2352b0064b689f"
+      "hash": "572d6c57564b24b1"
     },
     "GET stats-alliance": {
       "status": 200,
