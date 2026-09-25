@@ -3,6 +3,7 @@ import { RedisClientType } from 'redis';
 import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { ApiGgeTrackerManager } from '../managers/api.manager';
+import { ApiAllianceTournaments } from '../routes/api-alliance-tournaments';
 import { ApiAlliances } from '../routes/api-alliances';
 import { ApiAssets } from '../routes/api-assets';
 import { ApiBulk } from '../routes/api-bulk';
@@ -164,6 +165,10 @@ export class ApiRoutingController {
 
   public getRiftRaidAllianceAnalysis(request: express.Request, response: express.Response): void {
     void ApiRiftRaid.getAllianceAnalysis(request, response);
+  }
+
+  public getAllianceTournamentStandings(request: express.Request, response: express.Response): void {
+    void ApiAllianceTournaments.getLatestStandings(request, response);
   }
 
   public getEvents(request: express.Request, response: express.Response): void {

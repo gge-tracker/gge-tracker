@@ -3,10 +3,19 @@ import { IServerDefinition } from '../interfaces/interfaces';
 
 export type RankingGame = 'ep' | 'e4k';
 
-interface RankingOrigin {
+export interface RankingOrigin {
   game: RankingGame;
   serverId: number;
   server: IServerDefinition;
+}
+
+export interface RankingStanding {
+  event_id: number;
+  division: number;
+  subdivision: number;
+  rank: number;
+  score: number;
+  date: string;
 }
 
 export abstract class RankingUniverse {

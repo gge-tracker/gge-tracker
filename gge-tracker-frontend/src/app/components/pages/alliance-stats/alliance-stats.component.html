@@ -5,15 +5,19 @@
     <div class="container-fluid container-xxl alliance-stats-container mb-5 mb-lg-3" aria-hidden="true">
       <span class="gge-skeleton alliance-skeleton-title"></span>
       <span class="gge-skeleton alliance-skeleton-badge"></span>
-      <div class="stats-grid">
-        @for (placeholder of skeletonStatCards; track $index) {
-          <div class="stat-card stat-card--skeleton" [style.--i]="$index">
-            <div class="stat-card-content">
+      <div class="stat-ledgers">
+        @for (rows of skeletonLedgers; track $index) {
+          <div class="stat-ledger stat-ledger--skeleton" [style.--i]="$index">
+            <div class="stat-ledger-header">
               <span class="gge-skeleton gge-skeleton--parchment alliance-skeleton-icon"></span>
-              <span class="gge-skeleton gge-skeleton--parchment alliance-skeleton-value"></span>
-              <span class="gge-skeleton gge-skeleton--parchment alliance-skeleton-change"></span>
               <span class="gge-skeleton gge-skeleton--parchment alliance-skeleton-label"></span>
             </div>
+            @for (row of rows; track $index) {
+              <div class="stat-ledger-row">
+                <span class="gge-skeleton gge-skeleton--parchment alliance-skeleton-change"></span>
+                <span class="gge-skeleton gge-skeleton--parchment alliance-skeleton-value"></span>
+              </div>
+            }
           </div>
         }
       </div>
@@ -52,19 +56,63 @@
       <i class="fas fa-scale-balanced"></i>
       <span class="ms-1">{{ 'Comparer' | translate }}</span>
     </a>
-    <div class="stats-grid">
-      @for (card of cards; track card; let i = $index) {
-        <div class="stat-card pointer" [style.--i]="i">
-          <div class="stat-card-content">
-            <img [src]="card.logo" class="icon" [alt]="card.label | translate">
-            <div class="value">{{ card.value }}</div>
-        <div class="change" [ngClass]="{
-      'text-success': card.valueCompare > 0,
-      'text-danger': card.valueCompare < 0
-      }">{{ card.avg }}</div>
-            <div class="label">{{ card.label | translate }}</div>
-          </div>
-        </div>
+    <div class="stat-ledgers">
+      @for (ledger of ledgers; track ledger.titleKey; let i = $index) {
+        <section class="stat-ledger" [style.--i]="i">
+          <header class="stat-ledger-header">
+            <img class="stat-ledger-icon" [src]="ledger.icon" alt="" />
+            <h3 class="stat-ledger-title">{{ ledger.titleKey | translate }}</h3>
+          </header>
+          <dl class="stat-ledger-rows">
+            @for (row of ledger.rows; track row.labelKey) {
+              <div class="stat-ledger-row">
+                <dt class="stat-ledger-label">{{ row.labelKey | translate }}</dt>
+                <dd class="stat-ledger-figure">
+                  <span class="stat-ledger-value">{{ row.value }}</span>
+                  @if (row.detail; as detail) {
+                    <span class="stat-ledger-detail" [class.is-up]="detail.trend === 'up'"
+                      [class.is-down]="detail.trend === 'down'">
+                      @if (detail.trend === 'up') {
+                        <span class="stat-ledger-trend" aria-hidden="true">▲</span>
+                      } @else if (detail.trend === 'down') {
+                        <span class="stat-ledger-trend" aria-hidden="true">▼</span>
+                      }
+                      @if (detail.prefixKey) {
+                        {{ detail.prefixKey | translate }} :
+                      }
+                      {{ detail.value }}{{ detail.suffixKey ? (detail.suffixKey | translate) : '' }}
+                    </span>
+                  }
+                </dd>
+              </div>
+            }
+          </dl>
+        </section>
+      }
+      @if (tournamentBadges.length > 0) {
+        <section class="stat-ledger" [style.--i]="ledgers.length">
+          <header class="stat-ledger-header">
+            <img class="stat-ledger-icon" src="/assets/gt/division5.png" alt="" />
+            <h3 class="stat-ledger-title">{{ 'Tournois' | translate }}</h3>
+          </header>
+          <dl class="stat-ledger-rows">
+            @for (badge of tournamentBadges; track badge.route) {
+              <div class="stat-ledger-row">
+                <dt class="stat-ledger-label">{{ badge.labelKey | translate }}</dt>
+                <dd class="stat-ledger-figure">
+                  <a class="stat-ledger-division" [routerLink]="badge.route" [queryParams]="badge.queryParams">
+                    <app-division-badge [division]="badge.standing.division" [nameKey]="badge.divisionNameKey"
+                      [size]="26" />
+                    <span class="stat-ledger-value">{{ badge.divisionNameKey | translate }}</span>
+                  </a>
+                  <span class="stat-ledger-detail">
+                    {{ 'Sous-division' | translate }} {{ badge.standing.subdivision }} · #{{ badge.standing.rank }}
+                  </span>
+                </dd>
+              </div>
+            }
+          </dl>
+        </section>
       }
     </div>
     </div>

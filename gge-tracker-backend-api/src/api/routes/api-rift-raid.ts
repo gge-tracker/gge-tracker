@@ -3,7 +3,8 @@ import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { CacheKeyBuilder } from '../helper/cache/cache-key-builder';
 import { CachedResponse } from '../helper/cache/cached-response';
-import { RankingGame, RankingUniverse } from '../helper/ranking-universe';
+import { CachedValue } from '../helper/cache/cached-value';
+import { RankingGame, RankingOrigin, RankingStanding, RankingUniverse } from '../helper/ranking-universe';
 
 interface RiftRaidAllianceRow {
   server_id: number;
@@ -22,6 +23,10 @@ interface RiftRaidAnalysisRow {
   score: string;
   date: string;
   alliance_name: string;
+}
+
+interface RiftRaidStandingRow extends RiftRaidAnalysisRow {
+  event_id: number;
 }
 
 interface RiftRaidAlliance {
@@ -245,6 +250,38 @@ export abstract class ApiRiftRaid implements ApiHelper {
     } catch (error) {
       ApiRiftRaid.fail(request, response, error, 'getRiftRaidAllianceAnalysis');
     }
+  }
+
+  public static async latestStandingOf(origin: RankingOrigin, allianceId: number): Promise<RankingStanding | null> {
+    const cacheKey = await ApiRiftRaid.cacheKey('alliance-latest', {
+      game: origin.game,
+      server: origin.serverId,
+      alliance: allianceId,
+    });
+    return CachedValue.remember(cacheKey, ApiRiftRaid.CACHE_TTL_SECONDS, async () => {
+      const rows = await ApiRiftRaid.select<RiftRaidStandingRow>(
+        `SELECT event_id, division_id, subdivision_id, rank, score, alliance_name,
+          formatDateTime(created_at, '%Y-%m-%d %H:00:00', 'UTC') AS date
+          FROM ${ApiRiftRaid.RANKING_TABLE}
+          WHERE game = {game:String} AND server_id = {server:UInt16} AND alliance_id = {alliance:UInt32}
+            AND created_at >= (SELECT max(hour) FROM ${ApiRiftRaid.HOURS_TABLE} WHERE game = {game:String})
+          ORDER BY created_at DESC
+          LIMIT 1`,
+        { game: origin.game, server: origin.serverId, alliance: allianceId },
+      );
+      return rows.length === 0 ? null : ApiRiftRaid.toStanding(rows[0]);
+    });
+  }
+
+  private static toStanding(row: RiftRaidStandingRow): RankingStanding {
+    return {
+      event_id: row.event_id,
+      division: row.division_id,
+      subdivision: row.subdivision_id,
+      rank: row.rank,
+      score: Number(row.score),
+      date: row.date,
+    };
   }
 
   private static gameOf(request: express.Request): RankingGame {

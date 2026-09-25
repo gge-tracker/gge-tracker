@@ -10,10 +10,12 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Title } from '@angular/platform-browser';
+import { DivisionBadgeComponent } from '@ggetracker-components/division-badge/division-badge.component';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
 import {
   ApiAllianceDescriptionHistory,
+  ApiAllianceTournamentStandingsResponse,
   ApiAlliancePlayersSearchResponse,
   ApiGenericData,
   ApiMovementsResponse,
@@ -23,7 +25,6 @@ import {
   ApiPlayerStatsType,
   ApiServerStats,
   ApiUpdateAlliancePlayers,
-  Card,
   ChartOptions,
   ChartTypes,
   ErrorType,
@@ -34,6 +35,7 @@ import {
   Movement,
   Player,
   SearchType,
+  ApiTournamentStanding,
 } from '@ggetracker-interfaces/empire-ranking';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { formatThousands } from '@ggetracker-services/text-format.utilities';
@@ -69,6 +71,35 @@ enum ChartTypeHeights {
   LARGE = 650,
 }
 
+type StatTrend = 'up' | 'down' | null;
+
+interface StatLedgerDetail {
+  value: string;
+  prefixKey?: string;
+  suffixKey?: string;
+  trend?: StatTrend;
+}
+
+interface StatLedgerRow {
+  labelKey: string;
+  value: string;
+  detail?: StatLedgerDetail;
+}
+
+interface StatLedger {
+  titleKey: string;
+  icon: string;
+  rows: StatLedgerRow[];
+}
+
+interface TournamentBadge {
+  labelKey: string;
+  route: string;
+  divisionNameKey: string;
+  standing: ApiTournamentStanding;
+  queryParams: Record<string, string | number>;
+}
+
 interface DescriptionSegment {
   text: string;
   changed: boolean;
@@ -83,6 +114,7 @@ interface DescriptionChange {
 const DESCRIPTION_DIFF_MAX_TOKENS = 600;
 const HERO_BACKDROP_URL = '/assets/8wwypaix4da0lxjeozb0dkzr135u5zy4khoqm2lmhh25grfe96mzr07jatchq7gpicb7.png';
 const HERO_BACKDROP_GRACE_MS = 1200;
+const SKELETON_LEDGERS = [3, 3, 2, 2, 3].map((rows) => Array.from({ length: rows }));
 
 interface CardConfig {
   chartKey: keyof typeof ApiPlayerStatsType;
@@ -151,6 +183,7 @@ const WHITESPACE = /\s/;
     TranslateModule,
     DecodeHtmlPipe,
     RouterLink,
+    DivisionBadgeComponent,
   ],
   standalone: true,
   templateUrl: './alliance-stats.component.html',
@@ -298,10 +331,10 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   public updatesPlayers: ApiUpdateAlliancePlayers[] = [];
   public countQueryFinished = 0;
   public totalQuery = 0;
-  public cards: Card[] = [];
+  public ledgers: StatLedger[] = [];
   public isHeroBackdropReady = false;
   public isInMovementLoading = false;
-  public readonly skeletonStatCards = Array.from({ length: 13 });
+  public readonly skeletonLedgers = SKELETON_LEDGERS;
   public readonly skeletonRows = Array.from({ length: 8 });
   public readonly skeletonCells = Array.from({ length: 8 });
   public readonly skeletonPulseTables = Array.from({ length: 4 });
@@ -453,6 +486,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     ['', '', undefined, true],
   ];
   public defaultMembersTableHeaderSize = this.membersTableHeader.length;
+  public tournamentBadges: TournamentBadge[] = [];
   private readonly windowService = inject(WindowService);
   private readonly languageService = inject(LanguageService);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -956,6 +990,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
 
   private async processAllianceInit(allianceId: number): Promise<void> {
     const heroBackdrop = this.preloadHeroBackdrop();
+    void this.loadTournamentBadges(allianceId);
     const data = await this.getAllianceMembers();
     if (!data) return;
     this.players = this.mapPlayersFromApi(data.players);
@@ -981,7 +1016,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     const globalData = globalResponse.data;
     const lastGlobalData = globalData.at(-1);
     if (lastGlobalData) {
-      this.initCards(lastGlobalData);
+      this.initLedgers(lastGlobalData);
     }
     await Promise.race([heroBackdrop, new Promise((resolve) => setTimeout(resolve, HERO_BACKDROP_GRACE_MS))]);
     if (this.isDestroyed) {
@@ -989,6 +1024,45 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     }
     this.isInLoading = false;
     this.cdr.detectChanges();
+  }
+
+  private async loadTournamentBadges(allianceId: number): Promise<void> {
+    const response = await this.apiRestService.getAllianceTournamentStandings(allianceId);
+    if (response.success === false || this.isDestroyed) return;
+    this.tournamentBadges = this.buildTournamentBadges(response.data);
+    this.cdr.detectChanges();
+  }
+
+  private buildTournamentBadges(standings: ApiAllianceTournamentStandingsResponse): TournamentBadge[] {
+    const badges: TournamentBadge[] = [];
+    if (standings.grand_tournament) {
+      badges.push(
+        this.buildTournamentBadge('Le Grand Tournoi', '/grand-tournament', 'ame', standings.grand_tournament),
+      );
+    }
+    if (standings.rift_raid) {
+      badges.push(this.buildTournamentBadge('Tournoi de la Faille', '/rift-raid', 'arme', standings.rift_raid));
+    }
+    return badges;
+  }
+
+  private buildTournamentBadge(
+    labelKey: string,
+    route: string,
+    divisionKeyPrefix: string,
+    standing: ApiTournamentStanding,
+  ): TournamentBadge {
+    return {
+      labelKey,
+      route,
+      divisionNameKey: `${divisionKeyPrefix}_division_name_${standing.division}`,
+      standing,
+      queryParams: {
+        date: `${standing.date.replace(' ', 'T')}.000Z`,
+        division: standing.division,
+        subdivision: standing.subdivision,
+      },
+    };
   }
 
   private init(): void {
@@ -2406,164 +2480,117 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     this.initBerimondKingdomData(playersData);
   }
 
-  private initCards(serverStatsToCompare: ApiServerStats): void {
-    const translatedTitle = this.translateService.instant('Moy. globale');
-    const avgHonor = this.players.reduce((accumulator, player) => accumulator + player.honor, 0) / this.players.length;
-    const avgMightCurrent =
-      this.players.reduce((accumulator, player) => accumulator + player.mightCurrent, 0) / this.players.length;
-    const maxMightByAPlayer = this.players.reduce(
-      (accumulator, player) => Math.max(accumulator, player.mightCurrent),
-      0,
-    );
-    const maxMightPlayerName = this.players.find((player) => player.mightCurrent === maxMightByAPlayer)?.playerName;
-    const avgLevelNormal =
-      this.players.reduce((accumulator, player) => accumulator + Number(player.level) || 0, 0) / this.players.length;
-    const avgLegendaryLevel =
-      this.players.reduce((accumulator, player) => accumulator + Number(player.legendaryLevel) || 0, 0) /
-      this.players.length;
-    const avgLevel = avgLevelNormal + avgLegendaryLevel;
-    const avgLevelFormat =
-      Number(avgLevel) > 70
-        ? '70/' + this.customFormatter(Number(avgLevel) - 70, 0)
-        : this.customFormatter(Number(avgLevel), 0);
-    const avgServerLevel = serverStatsToCompare.avg_level;
-    const avgServerLevelFormat =
-      Number(avgServerLevel) > 70
-        ? '70/' + this.customFormatter(Number(avgServerLevel) - 70, 0)
-        : this.customFormatter(Number(avgServerLevel), 0);
-    const maxLootByAPlayer = this.players.reduce((accumulator, player) => Math.max(accumulator, player.lootCurrent), 0);
-    const maxLootPlayerName = this.players.find((player) => player.lootCurrent === maxLootByAPlayer)?.playerName;
-    const percentOfTotalLoot =
-      this.players.reduce((accumulator, player) => accumulator + player.lootCurrent, 0) /
-      serverStatsToCompare.total_loot;
-    this.cards.push(
-      {
-        identifier: 'avg_honor',
-        label: 'Honneur moyen',
-        logo: 'assets/honor2.png',
-        value: this.customFormatter(avgHonor, 0),
-        valueCompare: avgHonor - serverStatsToCompare.avg_honor,
-        avg: translatedTitle + ' : ' + this.formatAvg(serverStatsToCompare.avg_honor, 0),
-      },
-      {
-        identifier: 'total_honor',
-        label: 'Honneur cumulé',
-        logo: 'assets/honor2.png',
-        value: this.customFormatter(
-          this.players.reduce((accumulator, player) => accumulator + player.honor, 0),
-          0,
-        ),
-        valueCompare: 0,
-        avg: '',
-      },
-      {
-        identifier: 'avg_might',
-        label: 'Puissance moyenne',
-        logo: 'assets/pp3.png',
-        value: this.customFormatter(avgMightCurrent, 0),
-        valueCompare: avgMightCurrent - serverStatsToCompare.avg_might,
-        avg: translatedTitle + ' : ' + this.formatAvg(serverStatsToCompare.avg_might, 0),
-      },
-      {
-        identifier: 'max_might',
-        label: 'Puissance maximale',
-        logo: 'assets/pp3.png',
-        value: this.customFormatter(maxMightByAPlayer, 0),
-        valueCompare: 0,
-        avg: maxMightPlayerName || '-',
-      },
-      {
-        identifier: 'total_might',
-        label: 'Puissance cumulée',
-        logo: 'assets/pp3.png',
-        value: this.customFormatter(
-          this.players.reduce((accumulator, player) => accumulator + player.mightCurrent, 0),
-          0,
-        ),
-        valueCompare: 0,
-        avg: '',
-      },
-      {
-        identifier: 'avg_level',
-        label: 'Niveau moyen',
-        logo: 'assets/xp2.png',
-        value: avgLevelFormat,
-        valueCompare: Number(avgLevel) - Number(avgServerLevel),
-        avg: translatedTitle + ' : ' + avgServerLevelFormat,
-      },
-      {
-        identifier: 'avg_loot',
-        label: 'Pillage hebdo moyen',
-        logo: 'assets/loot4.png',
-        value: this.customFormatter(
-          this.players.reduce((accumulator, player) => accumulator + player.lootCurrent, 0),
-          0,
-        ),
-        valueCompare: serverStatsToCompare.avg_loot,
-        avg: translatedTitle + ' : ' + this.formatAvg(serverStatsToCompare.avg_loot, 0),
-      },
-      {
-        identifier: 'max_loot',
-        label: 'Pillage hebdo maximal',
-        logo: 'assets/loot4.png',
-        value: this.customFormatter(maxLootByAPlayer, 0),
-        valueCompare: 0,
-        avg: maxLootPlayerName || '-',
-      },
-      {
-        identifier: 'total_loot',
-        label: 'Pillage hebdo cumulé',
-        logo: 'assets/loot4.png',
-        value: this.customFormatter(
-          this.players.reduce((accumulator, player) => accumulator + player.lootCurrent, 0),
-          0,
-        ),
-        valueCompare: 0,
-        avg: this.formatAvg(percentOfTotalLoot * 100, 2) + this.translateService.instant('% du total'),
-      },
-      {
-        identifier: 'players_count',
-        label: 'Nombre de joueurs',
-        logo: 'assets/players.png',
-        value: this.players.length.toString(),
-        valueCompare: 0,
-        avg: '',
-      },
-    );
-    const now = new Date();
-    const playersInPeace = this.players.filter(
-      (player) => player.peaceDisabledAt && new Date(player.peaceDisabledAt).getTime() > now.getTime(),
+  private initLedgers(server: ApiServerStats): void {
+    const count = this.players.length;
+    const totalMight = this.sumOf((player) => player.mightCurrent);
+    const totalLoot = this.sumOf((player) => player.lootCurrent);
+    const totalHonor = this.sumOf((player) => player.honor);
+    const totalFame = this.sumOf((player) => player.currentFame);
+    const averageLevel =
+      this.sumOf((player) => (Number(player.level) || 0) + (Number(player.legendaryLevel) || 0)) / count;
+    const now = Date.now();
+    const inProtection = this.players.filter(
+      (player) => player.peaceDisabledAt && new Date(player.peaceDisabledAt).getTime() > now,
     ).length;
-    const maxFameByAPlayer = this.players.reduce((accumulator, player) => Math.max(accumulator, player.currentFame), 0);
-    const maxFamePlayerName = this.players.find((player) => player.currentFame === maxFameByAPlayer)?.playerName;
-    const totalFame = this.players.reduce((accumulator, player) => accumulator + player.currentFame, 0);
-    this.cards.push(
+    const topMight = this.holderOf((player) => player.mightCurrent);
+    const topLoot = this.holderOf((player) => player.lootCurrent);
+    const topFame = this.holderOf((player) => player.currentFame);
+
+    this.ledgers = [
       {
-        identifier: 'players_in_peace',
-        label: 'En protection',
-        logo: 'assets/peace.png',
-        value:
-          playersInPeace.toString() + ' (' + this.formatAvg((playersInPeace / this.players.length) * 100, 1) + '%)',
-        valueCompare: 0,
-        avg: '',
+        titleKey: 'Puissance',
+        icon: 'assets/pp3.png',
+        rows: [
+          this.averageRow(totalMight / count, server.avg_might),
+          this.holderRow(topMight),
+          { labelKey: 'Total', value: this.customFormatter(totalMight, 0) },
+        ],
       },
       {
-        identifier: 'max_fame',
-        label: 'Gloire max.',
-        logo: 'assets/glory.png',
-        value: this.customFormatter(maxFameByAPlayer, 0),
-        valueCompare: 0,
-        avg: maxFamePlayerName || '-',
+        titleKey: 'Pillage hebdomadaire',
+        icon: 'assets/loot4.png',
+        rows: [
+          this.averageRow(totalLoot / count, server.avg_loot),
+          this.holderRow(topLoot),
+          {
+            labelKey: 'Total',
+            value: this.customFormatter(totalLoot, 0),
+            detail: { value: this.formatAvg((totalLoot / server.total_loot) * 100, 2), suffixKey: '% du total' },
+          },
+        ],
       },
       {
-        identifier: 'total_fame',
-        label: 'Gloire cumulée',
-        logo: 'assets/glory.png',
-        value: this.customFormatter(totalFame, 0),
-        valueCompare: 0,
-        avg: '',
+        titleKey: 'Honneur',
+        icon: 'assets/honor2.png',
+        rows: [
+          this.averageRow(totalHonor / count, server.avg_honor),
+          { labelKey: 'Total', value: this.customFormatter(totalHonor, 0) },
+        ],
       },
+      {
+        titleKey: 'Points de gloire',
+        icon: 'assets/glory.png',
+        rows: [this.holderRow(topFame), { labelKey: 'Total', value: this.customFormatter(totalFame, 0) }],
+      },
+      {
+        titleKey: 'Membres',
+        icon: 'assets/players.png',
+        rows: [
+          { labelKey: 'Nombre de joueurs', value: String(count) },
+          {
+            labelKey: 'Niveau moyen',
+            value: this.formatLevel(averageLevel),
+            detail: {
+              prefixKey: 'Moy. globale',
+              value: this.formatLevel(server.avg_level),
+              trend: this.trendOf(averageLevel, server.avg_level),
+            },
+          },
+          {
+            labelKey: 'En protection',
+            value: String(inProtection),
+            detail: { value: `${this.formatAvg((inProtection / count) * 100, 1)} %` },
+          },
+        ],
+      },
+    ];
+  }
+
+  private sumOf(read: (player: Player) => number): number {
+    return this.players.reduce((accumulator, player) => accumulator + (read(player) || 0), 0);
+  }
+
+  private holderOf(read: (player: Player) => number): { value: number; name: string } {
+    const holder = this.players.reduce<Player | null>(
+      (best, player) => (best === null || read(player) > read(best) ? player : best),
+      null,
     );
+    return { value: holder ? read(holder) : 0, name: holder?.playerName ?? '-' };
+  }
+
+  private averageRow(average: number, serverAverage: number): StatLedgerRow {
+    return {
+      labelKey: 'Moyenne',
+      value: this.customFormatter(average, 0),
+      detail: {
+        prefixKey: 'Moy. globale',
+        value: this.formatAvg(serverAverage, 0),
+        trend: this.trendOf(average, serverAverage),
+      },
+    };
+  }
+
+  private holderRow(holder: { value: number; name: string }): StatLedgerRow {
+    return { labelKey: 'Maximum', value: this.customFormatter(holder.value, 0), detail: { value: holder.name } };
+  }
+
+  private trendOf(value: number, reference: number): StatTrend {
+    if (value > reference) return 'up';
+    return value < reference ? 'down' : null;
+  }
+
+  private formatLevel(level: number): string {
+    return level > 70 ? '70/' + this.customFormatter(level - 70, 0) : this.customFormatter(level, 0);
   }
 
   private buildDescriptionHistory(history: ApiAllianceDescriptionHistory[] | undefined): DescriptionChange[] {

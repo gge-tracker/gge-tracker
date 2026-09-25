@@ -1319,6 +1319,41 @@ protectedRoutes.get(
 
 /**
  * @swagger
+ * /alliances/{allianceId}/tournaments:
+ *   get:
+ *     summary: Retrieve an alliance's latest Grand Tournament and Rift Tournament standing
+ *     description: |
+ *       Reads the latest snapshot of each ranking
+ *     tags:
+ *       - Alliances
+ *       - Grand Tournament
+ *       - Rift Raid
+ *     parameters:
+ *       - $ref: '#/components/parameters/AllianceId'
+ *     responses:
+ *       '200':
+ *         description: The alliance's standing in each event
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 grand_tournament:
+ *                   $ref: '#/components/schemas/TournamentStanding'
+ *                 rift_raid:
+ *                   $ref: '#/components/schemas/TournamentStanding'
+ *       '400':
+ *         $ref: '#/components/responses/BadRequest'
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+publicRoutes.get(
+  '/alliances/:allianceId/tournaments',
+  routingInstance.getAllianceTournamentStandings.bind(routingInstance),
+);
+
+/**
+ * @swagger
  * /events/{eventType}/{id}/players:
  *   get:
  *     summary: Retrieve paginated player ranking for a specific event (Outer realms or Beyond the Horizon) for Goodgame Empire Desktop Version (EP)

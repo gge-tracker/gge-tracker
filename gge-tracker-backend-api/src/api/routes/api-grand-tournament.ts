@@ -5,7 +5,8 @@ import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { CacheKeyBuilder } from '../helper/cache/cache-key-builder';
 import { CachedResponse } from '../helper/cache/cached-response';
-import { RankingGame, RankingUniverse } from '../helper/ranking-universe';
+import { CachedValue } from '../helper/cache/cached-value';
+import { RankingGame, RankingOrigin, RankingStanding, RankingUniverse } from '../helper/ranking-universe';
 
 interface GrandTournamentAllianceRow {
   server_id: number;
@@ -24,6 +25,10 @@ interface GrandTournamentAnalysisRow {
   score: string;
   date: string;
   alliance_name: string;
+}
+
+interface GrandTournamentStandingRow extends GrandTournamentAnalysisRow {
+  event_id: number;
 }
 
 interface GrandTournamentAlliance {
@@ -225,6 +230,44 @@ export abstract class ApiGrandTournament implements ApiHelper {
     } catch (error) {
       ApiGrandTournament.fail(request, response, error, 'getGrandTournamentAllianceAnalysis');
     }
+  }
+
+  public static async latestStandingOf(origin: RankingOrigin, allianceId: number): Promise<RankingStanding | null> {
+    const cacheKey = await ApiGrandTournament.cacheKey('alliance-latest', {
+      game: origin.game,
+      server: origin.serverId,
+      alliance: allianceId,
+    });
+    return CachedValue.remember(cacheKey, ApiGrandTournament.CACHE_TTL_SECONDS, async () => {
+      const [latest] = await ApiGrandTournament.select<{ hour: string | null }>(
+        `SELECT to_char(MAX(hour), 'YYYY-MM-DD HH24:MI:SS') AS hour
+          FROM ${ApiGrandTournament.HOURS_VIEW}
+          WHERE game = $1`,
+        [origin.game],
+      );
+      if (!latest?.hour) return null;
+      const rows = await ApiGrandTournament.select<GrandTournamentStandingRow>(
+        `SELECT event_id, division_id, subdivision_id, rank, score, alliance_name,
+          to_char(created_at, 'YYYY-MM-DD HH24:00:00') AS date
+          FROM ${ApiGrandTournament.RANKING_TABLE}
+          WHERE game = $1 AND created_at >= $2::timestamp AND server_id = $3 AND alliance_id = $4
+          ORDER BY created_at DESC
+          LIMIT 1`,
+        [origin.game, latest.hour, origin.serverId, allianceId],
+      );
+      return rows.length === 0 ? null : ApiGrandTournament.toStanding(rows[0]);
+    });
+  }
+
+  private static toStanding(row: GrandTournamentStandingRow): RankingStanding {
+    return {
+      event_id: row.event_id,
+      division: row.division_id,
+      subdivision: row.subdivision_id,
+      rank: row.rank,
+      score: Number(row.score),
+      date: row.date,
+    };
   }
 
   private static gameOf(request: express.Request): RankingGame {

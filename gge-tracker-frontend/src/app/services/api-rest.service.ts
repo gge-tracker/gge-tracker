@@ -46,6 +46,7 @@ import {
   ApiGrandTournamentAlliancesSearchResponse,
   ApiGrandTournamenAllianceAnalysisResponse,
   ApiRiftRaidAllianceAnalysisResponse,
+  ApiAllianceTournamentStandingsResponse,
   ApiRiftRaidAlliancesResponse,
   ApiRiftRaidDatesResponse,
   ApiRiftRaidSearchResponse,
@@ -887,6 +888,14 @@ export class ApiRestService {
   ): Promise<ApiResponse<ApiRiftRaidAllianceAnalysisResponse>> {
     return this.apiFetch<ApiRiftRaidAllianceAnalysisResponse>(
       `${ApiRestService.apiUrl}rift-raid/alliance/${allianceId}/${eventId}`,
+    );
+  }
+
+  public async getAllianceTournamentStandings(
+    allianceId: number,
+  ): Promise<ApiResponse<ApiAllianceTournamentStandingsResponse>> {
+    return this.apiFetch<ApiAllianceTournamentStandingsResponse>(
+      `${ApiRestService.apiUrl}alliances/${allianceId}/tournaments`,
     );
   }
 

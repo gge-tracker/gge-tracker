@@ -440,7 +440,6 @@ div[after] {
   margin-bottom: 50px;
 }
 
-
 .alliances-stats-content .subtitle {
   color: white;
   font-size: 1.5rem;
@@ -476,6 +475,200 @@ div[after] {
   background: #5b4b1bb0;
   border-color: #f2c14e;
   color: #ffd978;
+}
+
+.stat-ledgers {
+  align-items: stretch;
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 1.5rem;
+}
+
+.stat-ledger {
+  animation: fadeInUp 380ms cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 60ms) backwards;
+  border: 22px solid transparent;
+  border-image: url(/assets/bg-default.png) 34 fill / 22px / 4px stretch;
+  color: #3b2a14;
+  container-type: inline-size;
+  filter: drop-shadow(0 8px 14px rgb(0 0 0 / 45%));
+  min-width: 0;
+  padding: 0 0.35rem 0.1rem;
+}
+
+.stat-ledger-header {
+  align-items: center;
+  border-bottom: 1px solid rgb(110 78 36 / 35%);
+  display: flex;
+  gap: 0.65rem;
+  margin-bottom: 0.35rem;
+  padding-bottom: 0.55rem;
+}
+
+.stat-ledger-icon {
+  filter: drop-shadow(0 2px 2px rgb(60 36 10 / 35%));
+  flex: none;
+  height: 36px;
+  object-fit: contain;
+  width: 36px;
+}
+
+.stat-ledger-title {
+  color: #5a3d17;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  margin: 0;
+  min-width: 0;
+  text-transform: uppercase;
+}
+
+.stat-ledger-rows {
+  margin: 0;
+}
+
+.stat-ledger-row {
+  align-items: baseline;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  padding: 0.45rem 0;
+}
+
+.stat-ledger-row + .stat-ledger-row {
+  border-top: 1px dashed rgb(110 78 36 / 25%);
+}
+
+.stat-ledger-label {
+  color: #6b5433;
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.stat-ledger-figure {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin: 0;
+  min-width: 0;
+  text-align: right;
+}
+
+.stat-ledger-value {
+  color: #2a1c0b;
+  font-size: 1.2rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.stat-ledger-detail {
+  color: #6b5433;
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+
+.stat-ledger-detail.is-up {
+  color: #2f6a1e;
+}
+
+.stat-ledger-detail.is-down {
+  color: #8e2a19;
+}
+
+.stat-ledger-trend {
+  font-size: 0.65rem;
+  margin-right: 0.15rem;
+}
+
+.stat-ledger-division {
+  align-items: center;
+  border-radius: 6px;
+  color: inherit;
+  display: inline-flex;
+  gap: 0.4rem;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.2s ease;
+}
+
+.stat-ledger-division:hover,
+.stat-ledger-division:focus-visible {
+  background: rgb(110 78 36 / 14%);
+  outline: none;
+}
+
+.stat-ledger-division:hover .stat-ledger-value,
+.stat-ledger-division:focus-visible .stat-ledger-value {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+@container (max-width: 250px) {
+  .stat-ledger-row {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  .stat-ledger-figure {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .stat-ledger-header {
+    gap: 0.5rem;
+  }
+
+  .stat-ledger-icon {
+    height: 30px;
+    width: 30px;
+  }
+
+  .stat-ledger-title {
+    font-size: 0.74rem;
+    letter-spacing: 0.02em;
+  }
+}
+
+.stat-ledger--skeleton {
+  pointer-events: none;
+}
+
+.stat-ledger--skeleton .stat-ledger-row {
+  align-items: center;
+}
+
+@media (max-width: 1199.98px) {
+  .stat-ledgers {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 575.98px) {
+  .stat-ledgers {
+    gap: 0.9rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .stat-ledger {
+    border-width: 18px;
+    border-image-width: 18px;
+  }
+
+  .stat-ledger-value {
+    font-size: 1.05rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stat-ledger {
+    animation: none;
+  }
 }
 
 .cardIcon {
@@ -677,106 +870,6 @@ div[after] {
   left: 0;
 }
 
-.stat-card {
-  animation: fadeInUp 380ms cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 40ms) backwards;
-  isolation: isolate;
-  position: relative;
-  transition: box-shadow 0.3s ease;
-}
-
-.stat-card .change {
-  font-size: 0.9rem;
-  margin-bottom: 0.5rem;
-}
-
-.stat-card .change.negative {
-  color: #dc3545;
-}
-
-.stat-card .change.positive {
-  color: #28a745;
-}
-
-.stat-card .icon {
-  max-height: 35px;
-  max-width: 35px;
-}
-
-.stat-card .label {
-  color: #555;
-  font-size: 0.9rem;
-}
-
-.stat-card .stat-card-content img {
-  transition: all 0.2s ease;
-}
-
-.stat-card .value {
-  font-size: 1.5rem;
-  font-weight: bold;
-  margin-bottom: 0.25rem;
-}
-
-.stat-card-content {
-  --bs-danger-rgb: 119, 25, 25;
-  padding: 1rem;
-  text-align: center;
-  transition: all 0.3s ease;
-  z-index: 1;
-}
-
-.stat-card::before {
-  background-size: 100% 100%;
-  background-image: url(/assets/bg-default.png);
-  border-radius: 15px;
-  bottom: -10px;
-  content: "";
-  left: -10px;
-  position: absolute;
-  right: -10px;
-  top: -10px;
-  z-index: -6;
-}
-
-.stat-card:hover {
-  box-shadow: 0 6px 12px rgb(0 0 0 / 35%);
-}
-
-.stat-card:hover .stat-card-content {
-  transform: translateY(5px);
-}
-
-.stat-card:hover .stat-card-content img {
-  transform: scale(1.1);
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-.stats-grid {
-  display: grid;
-  gap: 1.5rem;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  padding: 1rem;
-}
-
 .stats-title {
   font-size: 2rem;
   font-weight: bold;
@@ -847,10 +940,6 @@ div[after] {
   z-index: 1;
 }
 
-.value {
-  overflow: hidden;
-}
-
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -896,25 +985,6 @@ div[after] {
     gap: 5px;
   }
 
-  .stats-grid {
-    gap: 1.25rem;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    padding: 0.75rem;
-  }
-
-  .stat-card .value {
-    font-size: 1.15rem;
-  }
-
-  .stat-card .change,
-  .stat-card .label {
-    font-size: 0.78rem;
-  }
-
-  .stat-card-content {
-    padding: 0.75rem 0.5rem;
-  }
-
   .stats-title {
     font-size: 1.5rem;
   }
@@ -924,7 +994,6 @@ div[after] {
     flex-direction: column;
   }
 }
-
 
 .gge-skeleton {
   --skeleton-base: rgba(0, 0, 0, 0.34);
@@ -963,17 +1032,6 @@ div[after] {
   height: 1.1rem;
   margin: 0.9rem auto 0;
   width: min(240px, 48%);
-}
-
-.stat-card--skeleton {
-  pointer-events: none;
-}
-
-.stat-card--skeleton .stat-card-content {
-  align-items: center;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
 }
 
 .alliance-skeleton-icon {

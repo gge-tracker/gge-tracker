@@ -216,6 +216,19 @@ export const CATALOG: Endpoint[] = [
   { id: 'rift-raid-alliances-subdivision', method: 'GET', scope: 'protected', path: () => '/rift-raid/alliances' + q({ date: '2026-09-19T17:00:00.000Z', division_id: 1, subdivision_id: 1, page: 1 }), okStatuses: [200, 400], needs: ['server'] },
   { id: 'rift-raid-search', method: 'GET', scope: 'protected', path: () => '/rift-raid/search' + q({ date: '2026-09-19T17:00:00.000Z', alliance_name: 'a', page: 1 }), okStatuses: [200, 400], needs: ['server'], fuzzQuery: ['alliance_name', 'date'] },
   { id: 'rift-raid-alliance-analysis', method: 'GET', scope: 'protected', path: (s) => `/rift-raid/alliance/${s.allianceId ?? '1'}/1`, okStatuses: [200, 400, 404], needs: ['server', 'alliance'] },
+  {
+    id: 'alliance-tournaments',
+    method: 'GET',
+    scope: 'public',
+    path: (s) => `/alliances/${s.allianceId ?? '1'}/tournaments`,
+    okStatuses: [200, 400],
+    shapeKeys: ['grand_tournament', 'rift_raid'],
+    needs: ['server', 'alliance'],
+    cases: [
+      { label: 'an unparseable id is refused', path: () => '/alliances/not-an-id/tournaments', expect: [400] },
+      { label: 'an id carrying an unknown server code is refused', path: () => '/alliances/12345999/tournaments', expect: [400] },
+    ],
+  },
 
   // Updates (public)
   { id: 'updates-alliance-players', method: 'GET', scope: 'public', path: (s) => `/updates/alliances/${s.allianceId ?? '1'}/players`, okStatuses: [200, 400, 404], needs: ['server', 'alliance'] },

@@ -160,6 +160,18 @@ export const options = {
             subdivision: { type: 'integer' },
           },
         },
+        TournamentStanding: {
+          type: 'object',
+          nullable: true,
+          properties: {
+            event_id: { type: 'integer', description: 'Event identifier, counted per universe' },
+            division: { type: 'integer' },
+            subdivision: { type: 'integer' },
+            rank: { type: 'integer', description: 'Rank inside the subdivision' },
+            score: { type: 'integer' },
+            date: { type: 'string', description: 'Snapshot hour, UTC', example: '2026-01-01 0:00:00' },
+          },
+        },
         Pagination: {
           type: 'object',
           properties: {

@@ -1113,6 +1113,20 @@ export interface ApiRiftRaidAllianceAnalysisResponse {
   analysis: ApiAllianceAnalysis[];
 }
 
+export interface ApiTournamentStanding {
+  event_id: number;
+  division: number;
+  subdivision: number;
+  rank: number;
+  score: number;
+  date: string;
+}
+
+export interface ApiAllianceTournamentStandingsResponse {
+  grand_tournament: ApiTournamentStanding | null;
+  rift_raid: ApiTournamentStanding | null;
+}
+
 export interface ApiEventsByPlayerIdResponse {
   events: ApiSpecificEventByPlayerIdResponse[];
 }
