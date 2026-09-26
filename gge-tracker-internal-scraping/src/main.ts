@@ -729,6 +729,7 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('Refreshing global rankings...');
       await this.copyRegionsIntoGlobalPlayers();
       await this.pgSqlQuery('REFRESH MATERIALIZED VIEW CONCURRENTLY global_ranking;');
+      await this.bumpScanVersion('global-ranking:version');
       Utils.logMessage('Global rankings refreshed successfully');
     } catch (error) {
       this.recordJobFailure('global rankings refresh', error, '100');
@@ -2556,8 +2557,17 @@ export class GenericFetchAndSaveBackend {
       await client.query('BEGIN');
       await client.query('DELETE FROM global_players WHERE region = $1', [region]);
       await client.query(
-        `INSERT INTO global_players (region, id, might_current)
-        SELECT $1::text, id, might_current FROM "players_${region}"`,
+        `INSERT INTO global_players (
+          region, id, name, alliance_id, alliance_name, alliance_rank, level, legendary_level,
+          might_current, might_all_time, loot_current, loot_all_time, current_fame, highest_fame,
+          honor, max_honor, peace_disabled_at, active
+        )
+        SELECT
+          $1::text, P.id, P.name, P.alliance_id, A.name, P.alliance_rank, P.level, P.legendary_level,
+          P.might_current, P.might_all_time, P.loot_current, P.loot_all_time, P.current_fame, P.highest_fame,
+          P.honor, P.max_honor, P.peace_disabled_at, COALESCE(jsonb_array_length(P.castles) > 0, false)
+        FROM "players_${region}" P
+        LEFT JOIN "alliances_${region}" A ON A.id = P.alliance_id`,
         [region],
       );
       await client.query('COMMIT');
