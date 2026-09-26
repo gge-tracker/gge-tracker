@@ -3659,6 +3659,171 @@ protectedRoutes.get('/players', routingInstance.getPlayers.bind(routingInstance)
 
 /**
  * @swagger
+ * /global-ranking/players:
+ *   get:
+ *     summary: Ranking of the players of every server
+ *     description: |
+ *       Lists the players of every enabled server in one ranking, 15 per page
+ *       Only players who still hold a castle are listed. The data is copied from each server once an hour
+ *       No gge-server header is needed: the server of each player is part of the answer
+ *     tags:
+ *       - Players
+ *     parameters:
+ *       - name: page
+ *         in: query
+ *         required: false
+ *         description: Page number (default 1)
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           example: 1
+ *       - name: orderBy
+ *         in: query
+ *         required: false
+ *         description: Column to sort by (default might_current). Ties are broken by server and player id
+ *         schema:
+ *           type: string
+ *           enum: [might_current, might_all_time, loot_current, loot_all_time, current_fame, highest_fame, honor, level, player_name]
+ *       - name: orderType
+ *         in: query
+ *         required: false
+ *         description: Sort direction (default DESC)
+ *         schema:
+ *           type: string
+ *           enum: [ASC, DESC]
+ *       - name: game
+ *         in: query
+ *         required: false
+ *         description: Restrict the ranking to one universe. ep includes the partner servers
+ *         schema:
+ *           type: string
+ *           enum: [ep, e4k]
+ *       - name: servers
+ *         in: query
+ *         required: false
+ *         description: Comma-separated server names to restrict the ranking to. An unknown or disabled server is a 400
+ *         schema:
+ *           type: string
+ *           example: "FR1,DE1"
+ *       - name: playerName
+ *         in: query
+ *         required: false
+ *         description: Case-insensitive part of the player name
+ *         schema:
+ *           type: string
+ *           maxLength: 40
+ *       - name: minMight
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: integer
+ *       - name: maxMight
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: integer
+ *       - name: minLoot
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: integer
+ *       - name: maxLoot
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: integer
+ *       - name: minFame
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: integer
+ *       - name: maxFame
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: integer
+ *       - name: minLevel
+ *         in: query
+ *         required: false
+ *         description: Minimum level, optionally followed by a minimum legendary level (70/500)
+ *         schema:
+ *           type: string
+ *       - name: maxLevel
+ *         in: query
+ *         required: false
+ *         description: Maximum level, optionally followed by a maximum legendary level (70/500)
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: One page of the ranking
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ *                 players:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       player_id:
+ *                         type: string
+ *                         description: The player id, suffixed with the code of its server
+ *                         example: "96560001"
+ *                       player_name:
+ *                         type: string
+ *                       server:
+ *                         type: string
+ *                         description: The server the player plays on
+ *                         example: "FR1"
+ *                       alliance_id:
+ *                         type: string
+ *                         nullable: true
+ *                       alliance_name:
+ *                         type: string
+ *                         nullable: true
+ *                       alliance_rank:
+ *                         type: integer
+ *                         nullable: true
+ *                       level:
+ *                         type: integer
+ *                         nullable: true
+ *                       legendary_level:
+ *                         type: integer
+ *                         nullable: true
+ *                       might_current:
+ *                         type: integer
+ *                       might_all_time:
+ *                         type: integer
+ *                       loot_current:
+ *                         type: integer
+ *                       loot_all_time:
+ *                         type: integer
+ *                       current_fame:
+ *                         type: integer
+ *                       highest_fame:
+ *                         type: integer
+ *                       honor:
+ *                         type: integer
+ *                         nullable: true
+ *                       max_honor:
+ *                         type: integer
+ *                         nullable: true
+ *                       peace_disabled_at:
+ *                         type: string
+ *                         nullable: true
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+publicRoutes.get('/global-ranking/players', routingInstance.getGlobalRankingPlayers.bind(routingInstance));
+
+/**
+ * @swagger
  * /players/search:
  *   get:
  *     summary: Suggest players whose name matches a partial search string

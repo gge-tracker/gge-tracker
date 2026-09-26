@@ -17,6 +17,7 @@ import { ApiExport } from '../routes/api-export';
 import { ApiOffers } from '../routes/api-offers';
 import { ApiPlayers } from '../routes/api-players';
 import { ApiProfiles } from '../routes/api-profiles';
+import { ApiGlobalRanking } from '../routes/api-global-ranking';
 import { ApiGrandTournament } from '../routes/api-grand-tournament';
 import { ApiRiftRaid } from '../routes/api-rift-raid';
 import { ApiServer } from '../routes/api-server';
@@ -137,6 +138,10 @@ export class ApiRoutingController {
 
   public getGrandTournamentEvents(request: express.Request, response: express.Response): void {
     void ApiGrandTournament.getAlliances(request, response);
+  }
+
+  public getGlobalRankingPlayers(request: express.Request, response: express.Response): void {
+    void ApiGlobalRanking.getPlayers(request, response);
   }
 
   public getGrandTournamentEventDates(request: express.Request, response: express.Response): void {

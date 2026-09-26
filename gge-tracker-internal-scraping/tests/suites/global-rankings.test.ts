@@ -66,6 +66,31 @@ describe('refreshGlobalRankings', () => {
     });
   });
 
+  it('copies the profile with the alliance name of the same region and flags players holding a castle', async () => {
+    await withSandbox({ clickhouse: false }, async (sandbox) => {
+      mapRegions(sandbox, ['players_fr1']);
+      await sandbox.call('refreshGlobalRankings');
+
+      const insert = sandbox.db.one(INSERT).sql;
+      assert.match(insert, /LEFT JOIN "alliances_fr1" A ON A\.id = P\.alliance_id/);
+      assert.match(insert, /COALESCE\(jsonb_array_length\(P\.castles\) > 0, false\)/);
+      assert.match(insert, /alliance_name, alliance_rank, level, legendary_level/);
+    });
+  });
+
+  it('publishes a new cache version once the view is refreshed, and none when the copy cannot start', async () => {
+    await withSandbox({ clickhouse: false }, async (sandbox) => {
+      mapRegions(sandbox, ['players_fr1']);
+      await sandbox.call('refreshGlobalRankings');
+      assert.equal(sandbox.redis.store.get('global-ranking:version'), '1');
+    });
+    await withSandbox({ clickhouse: false }, async (sandbox) => {
+      mapRegions(sandbox, ['players_fr1'], false);
+      await sandbox.call('refreshGlobalRankings');
+      assert.equal(sandbox.redis.store.has('global-ranking:version'), false);
+    });
+  });
+
   it('removes the rows of regions no longer mapped', async () => {
     await withSandbox({ clickhouse: false }, async (sandbox) => {
       mapRegions(sandbox, ['players_fr1', 'players_de1']);

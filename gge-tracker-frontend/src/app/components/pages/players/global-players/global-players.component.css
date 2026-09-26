@@ -1,0 +1,69 @@
+.global-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+.game-filter {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+}
+
+.game-chip {
+  background: transparent;
+  border: none;
+  border-radius: 9px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 0.35rem 0.9rem;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.game-chip:hover:not(.game-chip--on):not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.game-chip--on {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-weight: 600;
+}
+
+.game-chip:focus-visible {
+  box-shadow: 0 0 0 3px rgba(90, 120, 255, 0.45);
+  outline: none;
+}
+
+.global-count {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.col-server {
+  color: #fff;
+  white-space: nowrap;
+}
+
+.col-server img {
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.col-level {
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-chip {
+    transition: none;
+  }
+}

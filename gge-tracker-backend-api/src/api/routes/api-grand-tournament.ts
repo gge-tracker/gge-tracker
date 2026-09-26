@@ -157,7 +157,7 @@ export abstract class ApiGrandTournament implements ApiHelper {
       if (await CachedResponse.serveCached(response, cacheKey)) return;
 
       // A % or _ the caller sends must match itself rather than act as a wildcard
-      const parameters = [game, hour, `%${ApiGrandTournament.escapeLike(String(allianceName))}%`];
+      const parameters = [game, hour, `%${ApiHelper.escapeLike(String(allianceName))}%`];
       const nameFilter = `alliance_name ILIKE $3 ESCAPE '\\'`;
       const [rows, stats] = await Promise.all([
         ApiGrandTournament.select<GrandTournamentAllianceRow>(
@@ -295,13 +295,6 @@ export abstract class ApiGrandTournament implements ApiHelper {
     if (typeof value !== 'string' || !/^\d{1,5}$/.test(value)) return false;
     const parsed = Number(value);
     return parsed > 0 ? parsed : false;
-  }
-
-  private static escapeLike(value: string): string {
-    return value
-      .replaceAll('\\', '\\\\')
-      .replaceAll('%', String.raw`\%`)
-      .replaceAll('_', String.raw`\_`);
   }
 
   private static toAlliances(game: RankingGame, rows: GrandTournamentAllianceRow[]): GrandTournamentAlliance[] {

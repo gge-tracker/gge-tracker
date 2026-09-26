@@ -1,11 +1,16 @@
 import { registerLocaleData } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import localeAr from '@angular/common/locales/ar';
 import localeDe from '@angular/common/locales/de';
 import localeEnGb from '@angular/common/locales/en-GB';
+import localeEs from '@angular/common/locales/es';
 import localeFr from '@angular/common/locales/fr';
+import localeIt from '@angular/common/locales/it';
 import localeNl from '@angular/common/locales/nl';
 import localePl from '@angular/common/locales/pl';
+import localePt from '@angular/common/locales/pt';
 import localeRo from '@angular/common/locales/ro';
+import localeTr from '@angular/common/locales/tr';
 import { TranslateLoader } from '@ngx-translate/core';
 import { environment } from 'environments/environment';
 import { Observable } from 'rxjs/internal/Observable';
@@ -17,6 +22,11 @@ registerLocaleData(localeNl, 'nl-NL');
 registerLocaleData(localePl, 'pl-PL');
 registerLocaleData(localeRo, 'ro-RO');
 registerLocaleData(localeDe, 'de-DE');
+registerLocaleData(localeAr, 'ar-SA');
+registerLocaleData(localePt, 'pt-BR');
+registerLocaleData(localeEs, 'es-ES');
+registerLocaleData(localeIt, 'it-IT');
+registerLocaleData(localeTr, 'tr-TR');
 
 export class CustomHttpLoader implements TranslateLoader {
   constructor(private readonly http: HttpClient) {}

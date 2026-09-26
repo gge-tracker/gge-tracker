@@ -45,6 +45,23 @@
   <script async="" src="https://www.googletagmanager.com/gtag/js?id=G-G105XZJ8PP"></script>
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#060d1f">
+  <script>
+    (function () {
+      var supported = ['en', 'fr', 'nl', 'pl', 'ro', 'de', 'ar', 'pt', 'es', 'it', 'tr'];
+      var saved = null;
+      try {
+        saved = localStorage.getItem('lang');
+      } catch (e) {}
+      var candidates = saved ? [saved] : navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language];
+      for (var i = 0; i < candidates.length; i++) {
+        var code = String(candidates[i] || '').toLowerCase().split('-')[0];
+        if (supported.indexOf(code) !== -1) {
+          document.documentElement.lang = code;
+          return;
+        }
+      }
+    })();
+  </script>
 </head>
 
 <body>

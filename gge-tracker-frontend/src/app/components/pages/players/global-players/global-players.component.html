@@ -1,0 +1,117 @@
+<div [ngClass]="{ 'loading': isInLoading }">
+  <app-search-form [formFilters]="null" [isInLoading]="isInLoading" [inputTip]="'Rechercher un joueur' | translate"
+    [defaultSearch]="search" [searchTypes]="{ player: true, alliance: false }"
+    (searchPlayer)="searchPlayer($event)"></app-search-form>
+
+  <div class="global-toolbar mt-2">
+    <div class="game-filter" role="group">
+      @for (option of games; track option.value) {
+        <button type="button" class="game-chip" [class.game-chip--on]="game === option.value"
+          [attr.aria-pressed]="game === option.value" [disabled]="isInLoading" (click)="selectGame(option.value)">
+          {{ option.label | translate }}
+        </button>
+      }
+    </div>
+    <span class="global-count">{{ playerCount | formatNumber:'visual' }} {{ 'joueurs' | translate }}</span>
+  </div>
+
+  <div class="flex flex-col justify-between gap-6 mt-2">
+    <app-table [sort]="sort" [reverse]="reverse" [isInLoading]="isInLoading" [maxPage]="maxPage" [page]="page"
+      [search]="search" [headers]="headers" (sortOutput)="sortPlayers($event)" (navigateToPage)="navigateTo($event)"
+      (previousPage)="navigateTo(page - 1)" (nextPage)="navigateTo(page + 1)">
+      @if (players.length === 0 && !isInLoading) {
+        <tr>
+          <td colspan="12" class="no-data">{{ 'Aucun joueur trouvé' | translate }}</td>
+        </tr>
+      }
+      @for (player of players; track player.player_id; let index = $index) {
+        <tr class="player-row">
+          <td class="col-rank">
+            <span class="mobile-only">#</span>
+            {{ rankOf(index) }}
+          </td>
+          <td class="col-name">
+            @if (player.peace_disabled_at) {
+              @if (isPeaceDisabledBefore63days(player.peace_disabled_at)) {
+                <span class="badge-peace"
+                  [title]="('Actuellement en protection Fin le' | translate) + ' ' + (player.peace_disabled_at | date: ('Date_3' | translate))">
+                  <i class="fa-solid fa-dove" [style.opacity]="getOpacityForPeaceTime(player.peace_disabled_at)"></i>
+                  <span>&nbsp;{{ 'En protection' | translate }}</span>
+                </span>
+              } @else {
+                <span class="badge-ban"
+                  [title]="'Banni jusqu\'au ' + (player.peace_disabled_at | date: ('Date_3' | translate))">
+                  <i class="fa-solid fa-ban"></i>
+                  <span>&nbsp;{{ 'Banni' | translate }}</span>
+                </span>
+              }
+            }
+            <span class="name">{{ player.player_name }}</span>
+          </td>
+          <td class="col-server">
+            <img [src]="serverService.getFlagUrl(player.server)" alt="" height="20">
+            {{ player.server }}
+          </td>
+          <td class="col-level">
+            <div class="level-box" [ngClass]="{ 'level-legendary': player.legendary_level }">
+              <span class="level-main">{{ player.level }}</span>
+              @if (player.legendary_level) {
+                <div class="level-separator"></div>
+                <span class="level-legendary" [attr.data-level]="player.legendary_level">{{ player.legendary_level }}</span>
+              }
+            </div>
+          </td>
+          <td class="col-metric px-2" [title]="player.might_all_time | formatNumber:'visual'">
+            <div class="metric">
+              <div class="metric-header">
+                <span class="metric-current"><span class="mobile-only">{{ 'Puissance' | translate }}:&nbsp;</span>{{ player.might_current | formatNumber }}</span>
+                <span class="metric-max">{{ player.might_all_time | formatNumber }}</span>
+              </div>
+              <div class="metric-bar-bg">
+                <div class="metric-bar bar-yellow" [style.width.%]="player.might_all_time ? (player.might_current / player.might_all_time) * 100 : 0"></div>
+              </div>
+            </div>
+          </td>
+          <td class="col-metric px-2" [title]="player.loot_all_time | formatNumber:'visual'">
+            <div class="metric">
+              <div class="metric-header">
+                <span class="metric-current"><span class="mobile-only">{{ 'Pillage hebdomadaire' | translate }}:&nbsp;</span>{{ player.loot_current | formatNumber }}</span>
+                <span class="metric-max">{{ player.loot_all_time | formatNumber }}</span>
+              </div>
+              <div class="metric-bar-bg">
+                <div class="metric-bar bar-gray" [style.width.%]="player.loot_all_time ? (player.loot_current / player.loot_all_time) * 100 : 0"></div>
+              </div>
+            </div>
+          </td>
+          <td class="col-metric px-2" [title]="player.highest_fame | formatNumber:'visual'">
+            <div class="metric">
+              <div class="metric-header">
+                <span class="metric-current"><span class="mobile-only">{{ 'Points de gloire' | translate }}:&nbsp;</span>{{ player.current_fame | formatNumber }}</span>
+                <span class="metric-max">{{ player.highest_fame | formatNumber }}</span>
+              </div>
+              <div class="metric-bar-bg">
+                <div class="metric-bar bar-blue" [style.width.%]="player.highest_fame ? (player.current_fame / player.highest_fame) * 100 : 0"></div>
+              </div>
+            </div>
+          </td>
+          <td class="col-alliance">
+            @if (player.alliance_id) {
+              <a class="alliance-link" [routerLink]="['/', 'alliance', player.alliance_id]">
+                <img src="/assets/alliance_ranks/{{ player.alliance_rank ?? 0 }}.png" class="alliance-rank-icon"
+                  [alt]="'Rank ' + (player.alliance_rank ?? 0)">
+                {{ player.alliance_name }}
+              </a>
+            } @else {
+              -
+            }
+          </td>
+          <td class="col-actions">
+            <a [routerLink]="['/', 'player', player.player_id]">
+              <img src="/assets/icon_analyze.png" class="btn-icon" alt="">
+            </a>
+          </td>
+        </tr>
+      }
+    </app-table>
+  </div>
+</div>

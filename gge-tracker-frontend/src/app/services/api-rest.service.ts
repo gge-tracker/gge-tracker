@@ -7,6 +7,7 @@ import {
   ApiResponse,
   ApiTop3EventsById,
   ApiPlayersResponse,
+  ApiGlobalPlayersResponse,
   ApiAllianceResponse,
   ApiServerStats,
   ApiPlayerUpdatesByPlayerId,
@@ -369,6 +370,17 @@ export class ApiRestService {
     const response = await this.apiFetch<ApiPlayersResponse>(request);
     if (!response.success) return response;
     return { success: true, data: response.data };
+  }
+
+  public async getGlobalPlayers(
+    page: number,
+    orderBy: string,
+    orderType: 'ASC' | 'DESC',
+    filters: Record<string, string | number>,
+  ): Promise<ApiResponse<ApiGlobalPlayersResponse>> {
+    const parameters = new URLSearchParams({ page: String(page), orderBy, orderType });
+    for (const [key, value] of Object.entries(filters)) parameters.set(key, String(value));
+    return this.apiFetch<ApiGlobalPlayersResponse>(`${ApiRestService.apiUrl}global-ranking/players?${parameters}`);
   }
 
   /**

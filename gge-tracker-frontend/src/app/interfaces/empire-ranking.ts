@@ -702,6 +702,31 @@ export interface ApiPlayersResponse extends ApiGenericResponse {
   players: ApiPlayerSearchResponse[];
 }
 
+export interface ApiGlobalPlayer {
+  player_id: string;
+  player_name: string;
+  server: string;
+  alliance_id: string | null;
+  alliance_name: string | null;
+  alliance_rank: number | null;
+  level: number | null;
+  legendary_level: number | null;
+  might_current: number;
+  might_all_time: number;
+  loot_current: number;
+  loot_all_time: number;
+  current_fame: number;
+  highest_fame: number;
+  honor: number | null;
+  max_honor: number | null;
+  peace_disabled_at: string | null;
+}
+
+export interface ApiGlobalPlayersResponse {
+  pagination: ApiPagination;
+  players: ApiGlobalPlayer[];
+}
+
 export interface ApiAllianceResponse extends ApiGenericResponse {
   alliances: ApiAllianceSearchResponse[];
 }

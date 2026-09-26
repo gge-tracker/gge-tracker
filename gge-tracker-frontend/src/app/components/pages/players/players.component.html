@@ -1,4 +1,21 @@
 <div class="container players my-3">
+  <nav class="scope-switch mb-2" role="tablist">
+    <button type="button" class="scope-tab" role="tab" [attr.aria-selected]="scope === 'server'"
+      [class.scope-tab--on]="scope === 'server'" (click)="switchScope('server')">
+      @if (serverService.currentServer; as server) {
+        <img [src]="serverService.getFlagUrl(server.name)" alt="" height="18">
+        <span>{{ server.name }}</span>
+      }
+    </button>
+    <button type="button" class="scope-tab" role="tab" [attr.aria-selected]="scope === 'global'"
+      [class.scope-tab--on]="scope === 'global'" (click)="switchScope('global')">
+      <img src="/assets/icon_world.png" alt="" height="18">
+      <span>{{ 'Classement mondial' | translate }}</span>
+    </button>
+  </nav>
+  @if (scope === 'global') {
+  <app-global-players></app-global-players>
+  } @else {
   <div class="row">
     <div class="col-12" [ngClass]="{'loading': isInLoading}">
       <app-search-form #searchForm [formFilters]="formFilters" [isInLoading]="isInLoading"
@@ -20,6 +37,7 @@
       </div>
     </div>
   </div>
+  }
   <div class="modal fade" id="filtersModal" tabindex="-1" aria-labelledby="filtersModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">

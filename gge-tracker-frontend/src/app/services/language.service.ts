@@ -15,10 +15,13 @@ export class LanguageService {
     { code: 'ro', label: 'Română', flagUrl: 'https://flagsapi.com/RO/flat/32.png', locale: 'ro-RO' },
     { code: 'de', label: 'Deutsch', flagUrl: 'https://flagsapi.com/DE/flat/32.png', locale: 'de-DE' },
     { code: 'ar', label: 'العربية', flagUrl: 'https://flagsapi.com/SA/flat/32.png', locale: 'ar-SA' },
+    { code: 'pt', label: 'Português', flagUrl: 'https://flagsapi.com/BR/flat/32.png', locale: 'pt-BR' },
+    { code: 'es', label: 'Español', flagUrl: 'https://flagsapi.com/ES/flat/32.png', locale: 'es-ES' },
+    { code: 'it', label: 'Italiano', flagUrl: 'https://flagsapi.com/IT/flat/32.png', locale: 'it-IT' },
+    { code: 'tr', label: 'Türkçe', flagUrl: 'https://flagsapi.com/TR/flat/32.png', locale: 'tr-TR' },
   ];
 
-  // @ts-expect-error Property 'userLanguage' does not exist on type 'Navigator'.
-  private readonly language = (navigator.language || navigator['userLanguage']).toLowerCase();
+  private readonly browserLanguages = navigator.languages?.length ? navigator.languages : [navigator.language];
   private readonly localStorage = inject(LocalStorageService);
   private readonly defaultLang = 'en';
 
@@ -58,9 +61,10 @@ export class LanguageService {
   }
 
   private getPreferredLanguage(): string {
-    for (const lang of this.langs) {
-      if (this.language.startsWith(lang.code)) {
-        return lang.code;
+    for (const language of this.browserLanguages) {
+      const baseCode = (language || '').toLowerCase().split('-')[0];
+      if (this.acceptLangs.includes(baseCode)) {
+        return baseCode;
       }
     }
     return this.defaultLang;

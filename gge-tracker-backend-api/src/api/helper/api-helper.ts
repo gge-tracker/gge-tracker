@@ -350,6 +350,13 @@ export abstract class ApiHelper {
     return !this.isInvalidInput(value);
   }
 
+  public static escapeLike(value: string): string {
+    return value
+      .replaceAll('\\', '\\\\')
+      .replaceAll('%', String.raw`\%`)
+      .replaceAll('_', String.raw`\_`);
+  }
+
   /**
    * Parses the provided value into a string
    *

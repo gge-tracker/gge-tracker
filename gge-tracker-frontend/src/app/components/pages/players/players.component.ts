@@ -23,6 +23,10 @@ import { IconComponent } from '@ggetracker-components/icon/icon.component';
 import { BoundType, FilterKeyMap } from '@ggetracker-interfaces/filter';
 import { IconToggleComponent } from './icon-toggle/icon-toggle.component';
 import { NgSelectModule } from '@ng-select/ng-select';
+import { ServerService } from '@ggetracker-services/server.service';
+import { GlobalPlayersComponent } from './global-players/global-players.component';
+
+type PlayersScope = 'server' | 'global';
 
 type FilterField = 'honor' | 'loot' | 'level' | 'might' | 'mightAllTime' | 'fame' | 'castleCount' | 'allianceMight';
 
@@ -69,6 +73,7 @@ interface FormFilters {
     IconToggleComponent,
     NgSelectModule,
     ModalFormGroupComponent,
+    GlobalPlayersComponent,
   ],
   templateUrl: './players.component.html',
   styleUrl: './players.component.css',
@@ -102,6 +107,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
   @ViewChild('searchForm') public searchForm!: SearchFormComponent;
   public readonly REALM_ORDER = ['0', '2', '1', '3'];
   public players: Player[] = [];
+  public scope: PlayersScope = 'server';
   public page = 1;
   public maxPage?: number;
   public pageSize = 15;
@@ -174,6 +180,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
   };
   public defaultFormFilters!: FormFilters;
   public readonly ArrowBigRightDash = ArrowBigRightDash;
+  public readonly serverService = inject(ServerService);
   public displayFormValues = {
     might: { min: '', max: '' },
     mightAllTime: { min: '', max: '' },
@@ -205,6 +212,10 @@ export class PlayersComponent extends GenericComponent implements OnInit {
 
   public ngOnInit(): void {
     if (globalThis.window === undefined) return;
+    if (this.route.snapshot.queryParams['scope'] === 'global') {
+      this.scope = 'global';
+      return;
+    }
     const sort = this.localStorage.getItem('sort');
     if (sort && sort === 'distance' && this.formFilters.playerCastleDistance !== '') this.sort = sort;
     const reverse = this.localStorage.getItem('reverse');
@@ -237,6 +248,19 @@ export class PlayersComponent extends GenericComponent implements OnInit {
       void this.init(this.page);
     }
     this.defaultFormFilters = structuredClone(this.formFilters);
+  }
+
+  public async switchScope(scope: PlayersScope): Promise<void> {
+    if (this.scope === scope || this.isInLoading) return;
+    this.scope = scope;
+    this.search = '';
+    this.page = 1;
+    await this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: scope === 'global' ? { scope } : {},
+    });
+    this.cdr.detectChanges();
+    if (scope === 'server') await this.init(1);
   }
 
   public onGenericFocus(type: BoundType, field: FilterField): void {

@@ -69,3 +69,57 @@
 :host ::ng-deep .ng-select.ng-select-opened > .ng-select-container .ng-arrow {
   border-color: transparent transparent #616161 !important;
 }
+
+.scope-switch {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+}
+
+.scope-tab {
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-radius: 9px;
+  color: rgba(255, 255, 255, 0.72);
+  display: inline-flex;
+  flex: 1 1 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  gap: 0.5rem;
+  justify-content: center;
+  min-width: 0;
+  padding: 0.45rem 0.9rem;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.scope-tab span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scope-tab:hover:not(.scope-tab--on) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.scope-tab--on {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-weight: 600;
+}
+
+.scope-tab:focus-visible {
+  box-shadow: 0 0 0 3px rgba(90, 120, 255, 0.45);
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scope-tab {
+    transition: none;
+  }
+}
