@@ -11,6 +11,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { Title } from '@angular/platform-browser';
 import { DivisionBadgeComponent } from '@ggetracker-components/division-badge/division-badge.component';
+import { ShareLinkComponent } from '@ggetracker-components/share-link/share-link.component';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
 import {
@@ -184,6 +185,7 @@ const WHITESPACE = /\s/;
     DecodeHtmlPipe,
     RouterLink,
     DivisionBadgeComponent,
+    ShareLinkComponent,
   ],
   standalone: true,
   templateUrl: './alliance-stats.component.html',

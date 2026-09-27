@@ -35,6 +35,8 @@ services:
       dockerfile: Dockerfile
     image: frontend-angular:latest
     container_name: frontend-container-nginx
+    networks:
+      - backend
     restart: always
     volumes:
       - ./../gge-tracker-frontend/dist/gge-tracker-frontend/browser/sitemaps:/usr/share/nginx/html/gge-tracker-frontend/browser/sitemaps:rw
@@ -127,6 +129,7 @@ services:
       - GGE_API_URL=${GGE_API_URL}:${GGE_API_PORT}
       - GGE_API_URL_REALTIME=${GGE_API_URL_REALTIME}:${GGE_API_PORT_REALTIME}
       - BACKEND_API_URI=${BACKEND_API_URI}
+      - SITE_URL=${SITE_URL:-}
       - LOG_MAX_ENTRIES=${LOG_MAX_ENTRIES}
       - LOG_MAX_BYTES=${LOG_MAX_BYTES}
       - LOG_FLUSH_INTERVAL_MS=${LOG_FLUSH_INTERVAL_MS}

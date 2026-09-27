@@ -1263,3 +1263,19 @@ img::selection {
     transform: none;
   }
 }
+
+.player-share-row {
+  margin-top: 40px;
+}
+
+.player-share-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 20px;
+  border: 2px solid black;
+  border-radius: 999px;
+  background: rgba(6, 13, 31, 0.78);
+  color: #fff;
+  font-weight: 600;
+}

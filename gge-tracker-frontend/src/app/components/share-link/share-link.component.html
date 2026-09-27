@@ -1,0 +1,41 @@
+<dialog #dialog class="share-dialog" aria-labelledby="share-dialog-title" (close)="onDialogClosed()"
+  (click)="onBackdropClick($event)">
+  <div class="share-panel">
+    <header class="share-header">
+      <h2 id="share-dialog-title" class="share-title">{{ 'Partager ce profil' | translate }}</h2>
+      <button type="button" class="share-close" (click)="close()" [attr.aria-label]="'Fermer' | translate">
+        <i class="fas fa-xmark" aria-hidden="true"></i>
+      </button>
+    </header>
+
+    <figure class="share-preview" [class.is-loaded]="isImageLoaded()">
+      @if (isOpen()) {
+        <img [src]="imageUrl" width="1200" height="630" [alt]="name()" (load)="isImageLoaded.set(true)" />
+      }
+      <figcaption class="share-hint">{{ 'Aperçu affiché sur Discord, WhatsApp et les réseaux sociaux' | translate }}
+      </figcaption>
+    </figure>
+
+    <div class="share-link-row">
+      <input class="share-link-field" type="text" readonly [value]="pageUrl" (focus)="selectLinkField($event)"
+        [attr.aria-label]="'Copier le lien' | translate" />
+      <button type="button" class="share-action share-action--primary" (click)="copyLink()">
+        <i class="fas fa-link" aria-hidden="true"></i>
+        <span>{{ 'Copier le lien' | translate }}</span>
+      </button>
+    </div>
+
+    <div class="share-secondary">
+      @if (canShareNatively) {
+        <button type="button" class="share-action" (click)="shareNatively()">
+          <i class="fas fa-share-nodes" aria-hidden="true"></i>
+          <span>{{ 'Partager' | translate }}</span>
+        </button>
+      }
+      <a class="share-action" [href]="imageUrl" target="_blank" rel="noopener" (click)="onImageOpened()">
+        <i class="fas fa-image" aria-hidden="true"></i>
+        <span>{{ 'Télécharger l\'image' | translate }}</span>
+      </a>
+    </div>
+  </div>
+</dialog>

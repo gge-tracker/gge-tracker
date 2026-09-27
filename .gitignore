@@ -3,3 +3,4 @@
 connect.sh
 tmp/
 .env
+docs/

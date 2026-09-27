@@ -38,9 +38,8 @@ COPY --from=build /app/dist /usr/share/nginx/html
 RUN useradd -r -d /var/www -s /sbin/nologin nginx \
     && chown -R nginx:nginx /usr/share/nginx/html
 COPY ./nginx/nginx.conf /etc/nginx/sites-available/default
-
-RUN service nginx reload
+COPY --chmod=755 ./nginx/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["/usr/local/bin/docker-entrypoint.sh"]

@@ -6490,6 +6490,134 @@ publicRoutes.get('/alliances/:allianceId/profile', routingInstance.getAlliancePr
 
 /**
  * @openapi
+ * /seo/player/{playerId}:
+ *   get:
+ *     summary: Link preview document of a player page
+ *     description: >
+ *       A minimal HTML document carrying the title, description, canonical URL and Open Graph and
+ *       Twitter tags of /player/{playerId} on the website. The website's proxy answers it to link
+ *       crawlers (Discord, WhatsApp, search engines) instead of the single-page application. A player
+ *       that cannot be found answers the generic site preview with noindex, never an error
+ *     tags:
+ *       - Previews
+ *     parameters:
+ *       - $ref: '#/components/parameters/PlayerId'
+ *       - $ref: '#/components/parameters/IfNoneMatch'
+ *     responses:
+ *       '200':
+ *         description: The preview document
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
+ *       '304':
+ *         description: The If-None-Match ETag still matches, so this preview has not changed
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+publicRoutes.get('/seo/player/:playerId', routingInstance.getPlayerSeoHead.bind(routingInstance));
+
+/**
+ * @openapi
+ * /seo/alliance/{allianceId}:
+ *   get:
+ *     summary: Link preview document of an alliance page
+ *     description: >
+ *       The alliance counterpart of /seo/player/{playerId}, for /alliance/{allianceId} on the website.
+ *       An alliance that cannot be found answers the generic site preview with noindex, never an error
+ *     tags:
+ *       - Previews
+ *     parameters:
+ *       - $ref: '#/components/parameters/AllianceId'
+ *       - $ref: '#/components/parameters/IfNoneMatch'
+ *     responses:
+ *       '200':
+ *         description: The preview document
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
+ *       '304':
+ *         description: The If-None-Match ETag still matches, so this preview has not changed
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+publicRoutes.get('/seo/alliance/:allianceId', routingInstance.getAllianceSeoHead.bind(routingInstance));
+
+/**
+ * @openapi
+ * /assets/og/player/{playerId}.png:
+ *   get:
+ *     summary: Share card image of a player
+ *     description: >
+ *       A 1200x630 PNG naming the player, their alliance and server, with their might, its trend over
+ *       the last week, their might rank and level. Meant for link previews and for bot embeds: attach it
+ *       and link to https://gge-tracker.com/player/{playerId}. Rendered once per hourly fill and cached,
+ *       so the URL may carry any v= query to bust a client cache. A player that cannot be found
+ *       answers the generic site card
+ *     tags:
+ *       - Previews
+ *     parameters:
+ *       - $ref: '#/components/parameters/PlayerId'
+ *       - $ref: '#/components/parameters/IfNoneMatch'
+ *       - name: v
+ *         in: query
+ *         required: false
+ *         description: Ignored. Lets a client bust its own cache, as the preview documents do with the fill version
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: The card image
+ *         content:
+ *           image/png:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       '304':
+ *         description: The If-None-Match ETag still matches, so this card has not changed
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+publicRoutes.get('/assets/og/player/:playerId.png', routingInstance.getPlayerShareCard.bind(routingInstance));
+
+/**
+ * @openapi
+ * /assets/og/alliance/{allianceId}.png:
+ *   get:
+ *     summary: Share card image of an alliance
+ *     description: >
+ *       A 1200x630 PNG naming the alliance and its server, with its member count, might, might rank and
+ *       average level. Link it to https://gge-tracker.com/alliance/{allianceId}. An alliance that
+ *       cannot be found answers the generic site card
+ *     tags:
+ *       - Previews
+ *     parameters:
+ *       - $ref: '#/components/parameters/AllianceId'
+ *       - $ref: '#/components/parameters/IfNoneMatch'
+ *       - name: v
+ *         in: query
+ *         required: false
+ *         description: Ignored. Lets a client bust its own cache, as the preview documents do with the fill version
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: The card image
+ *         content:
+ *           image/png:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       '304':
+ *         description: The If-None-Match ETag still matches, so this card has not changed
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+publicRoutes.get('/assets/og/alliance/:allianceId.png', routingInstance.getAllianceShareCard.bind(routingInstance));
+
+/**
+ * @openapi
  * /bulk/players:
  *   post:
  *     summary: Read up to 500 players by id, across any number of servers

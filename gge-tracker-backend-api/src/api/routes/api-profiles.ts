@@ -4,7 +4,7 @@ import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { HttpCache } from '../helper/http-cache';
 
-interface ProfileContext {
+export interface ProfileContext {
   id: number;
   localId: number;
   code: string;
@@ -99,6 +99,173 @@ export abstract class ApiProfiles implements ApiHelper {
     }
   }
 
+  public static contextFor(id: number, sections: Set<string>): ProfileContext | null {
+    const pool = ApiHelper.ggeTrackerManager.getPgSqlPoolFromRequestId(id);
+    const code = ApiHelper.getCountryCode(String(id));
+    const server = ApiHelper.ggeTrackerManager.getServerNameFromRequestId(id);
+    if (!pool || !code || !server) return null;
+    return {
+      id,
+      localId: Number(ApiHelper.removeCountryCode(String(id))),
+      code,
+      server,
+      pool,
+      sections,
+    };
+  }
+
+  public static async readPlayer(
+    context: ProfileContext,
+  ): Promise<{ identity: Record<string, unknown>; castles: Record<string, unknown>[] } | null> {
+    const query = `
+      SELECT P.id, P.name, P.alliance_id, A.name AS alliance_name, P.alliance_rank,
+        P.might_current, P.might_all_time, P.loot_current, P.loot_all_time,
+        P.honor, P.max_honor, P.highest_fame, P.current_fame,
+        P.level, P.legendary_level, P.remaining_relocation_time,
+        P.peace_disabled_at, P.updated_at, P.castles, P.castles_realm
+      FROM players P
+      LEFT JOIN alliances A ON P.alliance_id = A.id
+      WHERE P.id = $1`;
+    const results = await context.pool.query(query, [context.localId]);
+    const row = results.rows[0];
+    if (!row) return null;
+    return {
+      identity: {
+        player_id: ApiHelper.addCountryCode(row.id, context.code),
+        player_name: row.name,
+        alliance_id: ApiHelper.addCountryCode(row.alliance_id, context.code),
+        alliance_name: row.alliance_name,
+        alliance_rank: row.alliance_rank,
+        might_current: Number(row.might_current),
+        might_all_time: Number(row.might_all_time),
+        loot_current: Number(row.loot_current),
+        loot_all_time: Number(row.loot_all_time),
+        honor: Number(row.honor),
+        max_honor: Number(row.max_honor),
+        highest_fame: Number(row.highest_fame),
+        current_fame: Number(row.current_fame),
+        level: Number(row.level),
+        legendary_level: Number(row.legendary_level),
+        remaining_relocation_time: Number(row.remaining_relocation_time),
+        peace_disabled_at: row.peace_disabled_at,
+        updated_at: new Date(row.updated_at).toISOString(),
+      },
+      castles: this.flattenCastles(row.castles, row.castles_realm),
+    };
+  }
+
+  /**
+   * Ranked against players who still hold a castle. An account without one is deleted, and
+   * counting it would shift every rank below it
+   */
+  public static async readPlayerRank(
+    context: ProfileContext,
+    player: { identity: Record<string, unknown> },
+  ): Promise<Record<string, unknown>> {
+    const query = `
+      SELECT
+        COUNT(*) FILTER (WHERE might_current > $1) + 1 AS might_current,
+        COUNT(*) FILTER (WHERE loot_current > $2) + 1 AS loot_current,
+        COUNT(*) FILTER (WHERE honor > $3) + 1 AS honor,
+        COUNT(*) FILTER (WHERE current_fame > $4) + 1 AS current_fame,
+        COUNT(*) AS ranked_players
+      FROM players
+      WHERE castles IS NOT NULL AND jsonb_array_length(castles) > 0`;
+    const results = await context.pool.query(query, [
+      player.identity.might_current,
+      player.identity.loot_current,
+      player.identity.honor,
+      player.identity.current_fame,
+    ]);
+    const row = results.rows[0];
+    return {
+      might_current: Number(row.might_current),
+      loot_current: Number(row.loot_current),
+      honor: Number(row.honor),
+      current_fame: Number(row.current_fame),
+      ranked_players: Number(row.ranked_players),
+    };
+  }
+
+  public static async readAlliance(
+    context: ProfileContext,
+  ): Promise<{ identity: Record<string, unknown>; statistics: Record<string, unknown> } | null> {
+    const query = `
+      SELECT A.id, A.name, A.language, A.description, A.is_island_king,
+        A.is_searching_alliance, A.auto_join_enabled,
+        COUNT(P.id) AS player_count,
+        COUNT(P.id) FILTER (WHERE P.loot_current > 0) AS active_player_count,
+        COALESCE(SUM(P.might_current), 0) AS might_current,
+        COALESCE(SUM(P.might_all_time), 0) AS might_all_time,
+        COALESCE(SUM(P.loot_current), 0) AS loot_current,
+        COALESCE(SUM(P.loot_all_time), 0) AS loot_all_time,
+        COALESCE(SUM(P.current_fame), 0) AS current_fame,
+        COALESCE(SUM(P.highest_fame), 0) AS highest_fame,
+        COALESCE(ROUND(AVG(P.level), 2), 0) AS average_level
+      FROM alliances A
+      LEFT JOIN players P ON A.id = P.alliance_id
+      WHERE A.id = $1
+      GROUP BY A.id`;
+    const results = await context.pool.query(query, [context.localId]);
+    const row = results.rows[0];
+    if (!row) return null;
+    return {
+      identity: {
+        alliance_id: ApiHelper.addCountryCode(row.id, context.code),
+        alliance_name: row.name,
+        language: row.language,
+        description: row.description,
+        is_island_king: row.is_island_king,
+        is_searching_players: row.is_searching_alliance,
+        auto_join_enabled: row.auto_join_enabled,
+      },
+      statistics: {
+        player_count: Number(row.player_count),
+        active_player_count: Number(row.active_player_count),
+        might_current: Number(row.might_current),
+        might_all_time: Number(row.might_all_time),
+        loot_current: Number(row.loot_current),
+        loot_all_time: Number(row.loot_all_time),
+        current_fame: Number(row.current_fame),
+        highest_fame: Number(row.highest_fame),
+        average_level: Number(row.average_level),
+      },
+    };
+  }
+
+  /**
+   * Ranked on the same castle-holding population as readPlayerRank, so an alliance carrying
+   * deleted accounts is not credited with their might
+   */
+  public static async readAllianceRank(context: ProfileContext): Promise<Record<string, unknown>> {
+    const query = `
+      WITH standings AS (
+        SELECT P.alliance_id AS id,
+          SUM(P.might_current) AS might_current,
+          SUM(P.loot_current) AS loot_current,
+          SUM(P.current_fame) AS current_fame
+        FROM players P
+        WHERE P.alliance_id IS NOT NULL AND P.castles IS NOT NULL AND jsonb_array_length(P.castles) > 0
+        GROUP BY P.alliance_id
+      ),
+      subject AS (SELECT * FROM standings WHERE id = $1)
+      SELECT
+        (SELECT COUNT(*) FROM standings S, subject J WHERE S.might_current > J.might_current) + 1 AS might_current,
+        (SELECT COUNT(*) FROM standings S, subject J WHERE S.loot_current > J.loot_current) + 1 AS loot_current,
+        (SELECT COUNT(*) FROM standings S, subject J WHERE S.current_fame > J.current_fame) + 1 AS current_fame,
+        (SELECT COUNT(*) FROM standings) AS ranked_alliances,
+        (SELECT COUNT(*) FROM subject) AS is_ranked`;
+    const results = await context.pool.query(query, [context.localId]);
+    const row = results.rows[0];
+    const ranked = Number(row.is_ranked) > 0;
+    return {
+      might_current: ranked ? Number(row.might_current) : null,
+      loot_current: ranked ? Number(row.loot_current) : null,
+      current_fame: ranked ? Number(row.current_fame) : null,
+      ranked_alliances: Number(row.ranked_alliances),
+    };
+  }
+
   private static async resolve(
     request: express.Request,
     response: express.Response,
@@ -113,10 +280,8 @@ export abstract class ApiProfiles implements ApiHelper {
       response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: invalidId });
       return null;
     }
-    const pool = ApiHelper.ggeTrackerManager.getPgSqlPoolFromRequestId(id);
-    const code = ApiHelper.getCountryCode(String(id));
-    const server = ApiHelper.ggeTrackerManager.getServerNameFromRequestId(id);
-    if (!pool || !code || !server) {
+    const context = this.contextFor(id, new Set());
+    if (!context) {
       response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: invalidId });
       return null;
     }
@@ -125,14 +290,7 @@ export abstract class ApiProfiles implements ApiHelper {
       response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: sections.error });
       return null;
     }
-    return {
-      id,
-      localId: Number(ApiHelper.removeCountryCode(String(id))),
-      code,
-      server,
-      pool,
-      sections: sections.sections,
-    };
+    return { ...context, sections: sections.sections };
   }
 
   private static async when<T>(wanted: boolean, read: () => Promise<T>): Promise<T | undefined> {
@@ -206,46 +364,6 @@ export abstract class ApiProfiles implements ApiHelper {
     response.status(ApiHelper.HTTP_OK).send(profile);
   }
 
-  private static async readPlayer(
-    context: ProfileContext,
-  ): Promise<{ identity: Record<string, unknown>; castles: Record<string, unknown>[] } | null> {
-    const query = `
-      SELECT P.id, P.name, P.alliance_id, A.name AS alliance_name, P.alliance_rank,
-        P.might_current, P.might_all_time, P.loot_current, P.loot_all_time,
-        P.honor, P.max_honor, P.highest_fame, P.current_fame,
-        P.level, P.legendary_level, P.remaining_relocation_time,
-        P.peace_disabled_at, P.updated_at, P.castles, P.castles_realm
-      FROM players P
-      LEFT JOIN alliances A ON P.alliance_id = A.id
-      WHERE P.id = $1`;
-    const results = await context.pool.query(query, [context.localId]);
-    const row = results.rows[0];
-    if (!row) return null;
-    return {
-      identity: {
-        player_id: ApiHelper.addCountryCode(row.id, context.code),
-        player_name: row.name,
-        alliance_id: ApiHelper.addCountryCode(row.alliance_id, context.code),
-        alliance_name: row.alliance_name,
-        alliance_rank: row.alliance_rank,
-        might_current: Number(row.might_current),
-        might_all_time: Number(row.might_all_time),
-        loot_current: Number(row.loot_current),
-        loot_all_time: Number(row.loot_all_time),
-        honor: Number(row.honor),
-        max_honor: Number(row.max_honor),
-        highest_fame: Number(row.highest_fame),
-        current_fame: Number(row.current_fame),
-        level: Number(row.level),
-        legendary_level: Number(row.legendary_level),
-        remaining_relocation_time: Number(row.remaining_relocation_time),
-        peace_disabled_at: row.peace_disabled_at,
-        updated_at: new Date(row.updated_at).toISOString(),
-      },
-      castles: this.flattenCastles(row.castles, row.castles_realm),
-    };
-  }
-
   private static flattenCastles(castles: unknown, castlesRealm: unknown): Record<string, unknown>[] {
     const flattened: Record<string, unknown>[] = [];
     for (const castle of Array.isArray(castles) ? castles : []) {
@@ -267,39 +385,6 @@ export abstract class ApiProfiles implements ApiHelper {
       });
     }
     return flattened;
-  }
-
-  /**
-   * Ranked against players who still hold a castle. An account without one is deleted, and
-   * counting it would shift every rank below it
-   */
-  private static async readPlayerRank(
-    context: ProfileContext,
-    player: { identity: Record<string, unknown> },
-  ): Promise<Record<string, unknown>> {
-    const query = `
-      SELECT
-        COUNT(*) FILTER (WHERE might_current > $1) + 1 AS might_current,
-        COUNT(*) FILTER (WHERE loot_current > $2) + 1 AS loot_current,
-        COUNT(*) FILTER (WHERE honor > $3) + 1 AS honor,
-        COUNT(*) FILTER (WHERE current_fame > $4) + 1 AS current_fame,
-        COUNT(*) AS ranked_players
-      FROM players
-      WHERE castles IS NOT NULL AND jsonb_array_length(castles) > 0`;
-    const results = await context.pool.query(query, [
-      player.identity.might_current,
-      player.identity.loot_current,
-      player.identity.honor,
-      player.identity.current_fame,
-    ]);
-    const row = results.rows[0];
-    return {
-      might_current: Number(row.might_current),
-      loot_current: Number(row.loot_current),
-      honor: Number(row.honor),
-      current_fame: Number(row.current_fame),
-      ranked_players: Number(row.ranked_players),
-    };
   }
 
   private static async readPlayerNames(context: ProfileContext): Promise<Record<string, unknown>[]> {
@@ -349,85 +434,6 @@ export abstract class ApiProfiles implements ApiHelper {
       position_new: row.position_x_new === null ? null : { x: row.position_x_new, y: row.position_y_new },
       occurred_at: new Date(row.created_at).toISOString(),
     }));
-  }
-
-  private static async readAlliance(
-    context: ProfileContext,
-  ): Promise<{ identity: Record<string, unknown>; statistics: Record<string, unknown> } | null> {
-    const query = `
-      SELECT A.id, A.name, A.language, A.description, A.is_island_king,
-        A.is_searching_alliance, A.auto_join_enabled,
-        COUNT(P.id) AS player_count,
-        COUNT(P.id) FILTER (WHERE P.loot_current > 0) AS active_player_count,
-        COALESCE(SUM(P.might_current), 0) AS might_current,
-        COALESCE(SUM(P.might_all_time), 0) AS might_all_time,
-        COALESCE(SUM(P.loot_current), 0) AS loot_current,
-        COALESCE(SUM(P.loot_all_time), 0) AS loot_all_time,
-        COALESCE(SUM(P.current_fame), 0) AS current_fame,
-        COALESCE(SUM(P.highest_fame), 0) AS highest_fame,
-        COALESCE(ROUND(AVG(P.level), 2), 0) AS average_level
-      FROM alliances A
-      LEFT JOIN players P ON A.id = P.alliance_id
-      WHERE A.id = $1
-      GROUP BY A.id`;
-    const results = await context.pool.query(query, [context.localId]);
-    const row = results.rows[0];
-    if (!row) return null;
-    return {
-      identity: {
-        alliance_id: ApiHelper.addCountryCode(row.id, context.code),
-        alliance_name: row.name,
-        language: row.language,
-        description: row.description,
-        is_island_king: row.is_island_king,
-        is_searching_players: row.is_searching_alliance,
-        auto_join_enabled: row.auto_join_enabled,
-      },
-      statistics: {
-        player_count: Number(row.player_count),
-        active_player_count: Number(row.active_player_count),
-        might_current: Number(row.might_current),
-        might_all_time: Number(row.might_all_time),
-        loot_current: Number(row.loot_current),
-        loot_all_time: Number(row.loot_all_time),
-        current_fame: Number(row.current_fame),
-        highest_fame: Number(row.highest_fame),
-        average_level: Number(row.average_level),
-      },
-    };
-  }
-
-  /**
-   * Ranked on the same castle-holding population as readPlayerRank, so an alliance carrying
-   * deleted accounts is not credited with their might
-   */
-  private static async readAllianceRank(context: ProfileContext): Promise<Record<string, unknown>> {
-    const query = `
-      WITH standings AS (
-        SELECT P.alliance_id AS id,
-          SUM(P.might_current) AS might_current,
-          SUM(P.loot_current) AS loot_current,
-          SUM(P.current_fame) AS current_fame
-        FROM players P
-        WHERE P.alliance_id IS NOT NULL AND P.castles IS NOT NULL AND jsonb_array_length(P.castles) > 0
-        GROUP BY P.alliance_id
-      ),
-      subject AS (SELECT * FROM standings WHERE id = $1)
-      SELECT
-        (SELECT COUNT(*) FROM standings S, subject J WHERE S.might_current > J.might_current) + 1 AS might_current,
-        (SELECT COUNT(*) FROM standings S, subject J WHERE S.loot_current > J.loot_current) + 1 AS loot_current,
-        (SELECT COUNT(*) FROM standings S, subject J WHERE S.current_fame > J.current_fame) + 1 AS current_fame,
-        (SELECT COUNT(*) FROM standings) AS ranked_alliances,
-        (SELECT COUNT(*) FROM subject) AS is_ranked`;
-    const results = await context.pool.query(query, [context.localId]);
-    const row = results.rows[0];
-    const ranked = Number(row.is_ranked) > 0;
-    return {
-      might_current: ranked ? Number(row.might_current) : null,
-      loot_current: ranked ? Number(row.loot_current) : null,
-      current_fame: ranked ? Number(row.current_fame) : null,
-      ranked_alliances: Number(row.ranked_alliances),
-    };
   }
 
   private static async readAllianceMembers(

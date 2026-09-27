@@ -60,6 +60,7 @@ import { StatsPanelComponent } from './stats-panel/stats-panel.component';
 import { combineLatest, firstValueFrom } from 'rxjs';
 import { CalendarCheck, LucideAngularModule, SquareUser } from 'lucide-angular';
 import { EventCardComponent } from '@ggetracker-pages/events/event-card/event-card.component';
+import { ShareLinkComponent } from '@ggetracker-components/share-link/share-link.component';
 
 const MS_PER_HOUR = 3_600_000;
 const HOURS_PER_WEEK = 168;
@@ -77,6 +78,7 @@ type FillDataState = 'idle' | 'loading' | 'loaded' | 'error';
   imports: [
     NgClass,
     RouterLink,
+    ShareLinkComponent,
     PlayerStatsCardComponent,
     DatePipe,
     TranslateModule,

@@ -56,6 +56,12 @@
       <i class="fas fa-scale-balanced"></i>
       <span class="ms-1">{{ 'Comparer' | translate }}</span>
     </a>
+    <button type="button" class="badge bg-custom-font alliance-compare-link alliance-share-button mt-3 ms-2"
+      aria-haspopup="dialog" (click)="allianceShare.open()">
+      <i class="fas fa-share-nodes"></i>
+      <span class="ms-1">{{ 'Partager' | translate }}</span>
+    </button>
+    <app-share-link #allianceShare="shareLink" subject="alliance" [subjectId]="allianceId" [name]="allianceName" />
     <div class="stat-ledgers">
       @for (ledger of ledgers; track ledger.titleKey; let i = $index) {
         <section class="stat-ledger" [style.--i]="i">

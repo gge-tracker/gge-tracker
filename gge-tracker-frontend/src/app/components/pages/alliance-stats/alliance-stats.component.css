@@ -477,6 +477,13 @@ div[after] {
   color: #ffd978;
 }
 
+.alliance-share-button {
+  font: inherit;
+  font-size: 0.75em;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .stat-ledgers {
   align-items: stretch;
   display: grid;

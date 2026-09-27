@@ -17,6 +17,7 @@ import { ApiExport } from '../routes/api-export';
 import { ApiOffers } from '../routes/api-offers';
 import { ApiPlayers } from '../routes/api-players';
 import { ApiProfiles } from '../routes/api-profiles';
+import { ApiSeo } from '../routes/api-seo';
 import { ApiGlobalRanking } from '../routes/api-global-ranking';
 import { ApiGrandTournament } from '../routes/api-grand-tournament';
 import { ApiRiftRaid } from '../routes/api-rift-raid';
@@ -404,6 +405,22 @@ export class ApiRoutingController {
 
   public getAllianceProfile(request: express.Request, response: express.Response): void {
     void ApiProfiles.getAllianceProfile(request, response);
+  }
+
+  public getPlayerSeoHead(request: express.Request, response: express.Response): void {
+    void ApiSeo.getPlayerHead(request, response);
+  }
+
+  public getAllianceSeoHead(request: express.Request, response: express.Response): void {
+    void ApiSeo.getAllianceHead(request, response);
+  }
+
+  public getPlayerShareCard(request: express.Request, response: express.Response): void {
+    void ApiSeo.getPlayerCard(request, response);
+  }
+
+  public getAllianceShareCard(request: express.Request, response: express.Response): void {
+    void ApiSeo.getAllianceCard(request, response);
   }
 
   public getPlayersBulk(request: express.Request, response: express.Response): void {

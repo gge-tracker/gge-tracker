@@ -9,19 +9,15 @@ import { RegisteredRoute, UNDOCUMENTED_BY_DESIGN, discoverRoutes, mainSourcePath
 
 const HTTP_METHODS = new Set(['get', 'post', 'put', 'delete', 'patch', 'head', 'options', 'trace']);
 
+const EXPRESS_PARAM = /:(\w+)/g;
+
 /** `/players/:playerName` -> `/players/{playerName}` */
 function toOpenApiPath(expressPath: string): string {
-  return expressPath
-    .split('/')
-    .map((segment) => (segment.startsWith(':') ? `{${segment.slice(1)}}` : segment))
-    .join('/');
+  return expressPath.replaceAll(EXPRESS_PARAM, '{$1}');
 }
 
 function pathParamNames(expressPath: string): string[] {
-  return expressPath
-    .split('/')
-    .filter((segment) => segment.startsWith(':'))
-    .map((segment) => segment.slice(1));
+  return [...expressPath.matchAll(EXPRESS_PARAM)].map((match) => match[1]);
 }
 
 interface Operation {

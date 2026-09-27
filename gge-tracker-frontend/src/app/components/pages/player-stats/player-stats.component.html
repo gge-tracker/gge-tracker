@@ -1,10 +1,16 @@
 <div class="player-stats-view position-relative">
+  <app-share-link #playerShare="shareLink" subject="player" [subjectId]="playerId ?? 0" [name]="playerName ?? ''" />
   @if (!isInLoading) {
   <div class="d-none d-md-block">
     <div class="btn-exit right">
       <a class="btn btn-primary mt-3 me-2" [routerLink]="['/compare', 'players']" [queryParams]="{ a: playerId }">
         <i class="fas fa-scale-balanced"></i>
         {{ 'Comparer' | translate }}</a>
+      @if (playerId) {
+      <button type="button" class="btn btn-primary mt-3 me-2" aria-haspopup="dialog" (click)="playerShare.open()">
+        <i class="fas fa-share-nodes"></i>
+        {{ 'Partager' | translate }}</button>
+      }
       @if (!isInFavorites()) {
       <button class="btn btn-primary mt-3" (click)="addPlayerToFavorites()">
         <i class="fas fa-star"></i>
@@ -52,6 +58,14 @@
           }
         </div>
       </div>
+      @if (playerId) {
+      <div class="d-md-none text-center player-share-row">
+        <button type="button" class="player-share-pill" aria-haspopup="dialog" (click)="playerShare.open()">
+          <i class="fas fa-share-nodes"></i>
+          <span class="ms-1">{{ 'Partager' | translate }}</span>
+        </button>
+      </div>
+      }
       <div class="container-fluid mt-3 leaderboard d-flex flex-wrap justify-content-around text-center">
         @for (event of events; track event) {
         <div class="card event-card m-2">

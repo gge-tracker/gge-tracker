@@ -123,7 +123,12 @@ export function discoverRoutes(source = readMainSource()): RegisteredRoute[] {
 export function pathMatcher(routePath: string): RegExp {
   const pattern = routePath
     .split('/')
-    .map((segment) => (segment.startsWith(':') ? '[^/]+' : segment.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)))
+    .map((segment) =>
+      segment
+        .split(/:\w+/)
+        .map((literal) => literal.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`))
+        .join('[^/]+'),
+    )
     .join('/');
   return new RegExp(`^${pattern}$`);
 }

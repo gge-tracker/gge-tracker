@@ -31,9 +31,10 @@ function pathMatches(specPath: string, actual: string): boolean {
   const pattern = specPath
     .split('/')
     .map((segment) =>
-      segment.startsWith('{') && segment.endsWith('}')
-        ? '[^/]+'
-        : segment.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`),
+      segment
+        .split(/\{[^}]+\}/)
+        .map((literal) => literal.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`))
+        .join('[^/]+'),
     )
     .join('/');
   return new RegExp(`^${pattern}$`).test(actual);
