@@ -35,6 +35,8 @@ import {
   ApiOuterRealmPlayers,
   ApiAllianceSearchResponse,
   ApiAllianceProfile,
+  ApiBulkAlliancesResponse,
+  ApiBulkPlayersResponse,
   ApiAllianceSuggestion,
   ApiPlayerProfile,
   ApiPlayerSuggestion,
@@ -347,6 +349,7 @@ export class ApiRestService {
    * @param orderType Optional parameter to specify the order type (asc or desc)
    * @param allianceNameFilter Optional parameter to filter the results by alliance name
    * @param filters Optional parameter to filter the results by specific fields
+   * @param size Optional number of players per page (1 to 100, the API defaults to 15)
    * @returns A promise that resolves to the players data
    */
   public async getPlayers(
@@ -355,8 +358,10 @@ export class ApiRestService {
     orderType?: string,
     allianceNameFilter?: string,
     filters?: Record<string, string | number>,
+    size?: number,
   ): Promise<ApiResponse<ApiPlayersResponse>> {
     let request = `${ApiRestService.apiUrl}players?page=${page}`;
+    if (size) request += `&size=${size}`;
     if (orderBy) request += `&orderBy=${orderBy}`;
     if (orderType) request += `&orderType=${orderType}`;
     if (allianceNameFilter) request += `&alliance=${allianceNameFilter}`;
@@ -377,8 +382,10 @@ export class ApiRestService {
     orderBy: string,
     orderType: 'ASC' | 'DESC',
     filters: Record<string, string | number>,
+    size?: number,
   ): Promise<ApiResponse<ApiGlobalPlayersResponse>> {
     const parameters = new URLSearchParams({ page: String(page), orderBy, orderType });
+    if (size) parameters.set('size', String(size));
     for (const [key, value] of Object.entries(filters)) parameters.set(key, String(value));
     return this.apiFetch<ApiGlobalPlayersResponse>(`${ApiRestService.apiUrl}global-ranking/players?${parameters}`);
   }
@@ -1071,6 +1078,22 @@ export class ApiRestService {
     return this.apiFetch<ApiAllianceProfile>(
       `${ApiRestService.apiUrl}alliances/${allianceId}/profile?include=${include}`,
     );
+  }
+
+  public async getPlayersBulk(ids: string[]): Promise<ApiResponse<ApiBulkPlayersResponse>> {
+    return this.apiFetch<ApiBulkPlayersResponse>(`${ApiRestService.apiUrl}bulk/players`, true, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    });
+  }
+
+  public async getAlliancesBulk(ids: string[]): Promise<ApiResponse<ApiBulkAlliancesResponse>> {
+    return this.apiFetch<ApiBulkAlliancesResponse>(`${ApiRestService.apiUrl}bulk/alliances`, true, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    });
   }
 
   public async getPlayerSuggestions(query: string): Promise<ApiResponse<ApiSuggestionsResponse<ApiPlayerSuggestion>>> {

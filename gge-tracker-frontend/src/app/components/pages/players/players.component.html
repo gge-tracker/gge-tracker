@@ -415,6 +415,17 @@
               </app-modal-form-group>
             </div>
           </div>
+          <div class="row mt-1">
+            <div class="col-12">
+              <app-modal-form-group [label]="'Nombre de résultats par page' | translate">
+                <input field type="number" min="1" max="100" step="1" [(ngModel)]="pageSizeInput"
+                  [placeholder]="'Nombre de résultats' | translate" [attr.aria-label]="'Nombre de résultats' | translate"/>
+                <button action reset (click)="resetPageSize()">
+                  {{ 'Réinitialiser' | translate }}
+                </button>
+              </app-modal-form-group>
+            </div>
+          </div>
           <hr class="my-4">
           <div class="row">
             <div class="col text-center">

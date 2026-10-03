@@ -460,3 +460,9 @@ img,
     transform: scale(1.3);
   }
 }
+
+@media (max-width: 991.98px) {
+  .nav-item {
+    min-height: 44px;
+  }
+}

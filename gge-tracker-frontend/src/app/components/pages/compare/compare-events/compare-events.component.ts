@@ -39,7 +39,7 @@ interface PlayerEvents {
   woa: ApiWoaEventPlayerData[];
 }
 
-const KINGDOM_EVENTS = [
+export const KINGDOM_EVENTS = [
   { table: ApiPlayerStatsType.war_realms, label: 'Guerre des royaumes', icon: '/assets/event-logo-id-44.png' },
   { table: ApiPlayerStatsType.nomad, label: 'Nomades', icon: '/assets/event-logo-id-46.png' },
   { table: ApiPlayerStatsType.samurai, label: 'Samouraïs', icon: '/assets/event-logo-id-51.png' },

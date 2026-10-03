@@ -28,7 +28,14 @@ const MAIN_FILE = path.resolve(__dirname, '..', '..', 'src', 'api', 'main.ts');
 
 const REGISTRATION = /(publicRoutes|protectedRoutes)\s*\.\s*(get|post|put|delete|patch)\s*\(\s*['"]([^'"]+)['"]/g;
 
-export const UNDOCUMENTED_BY_DESIGN = new Set(['GET /docs', 'PUT /assets/update/:token']);
+export const UNDOCUMENTED_BY_DESIGN = new Set([
+  'GET /docs',
+  'PUT /assets/update/:token',
+  'GET /admin/api-keys',
+  'POST /admin/api-keys',
+  'PATCH /admin/api-keys/:keyId',
+  'POST /admin/api-keys/:keyId/revoke',
+]);
 
 const SHARED_PARAMETERS: Record<string, RouteParam> = Object.fromEntries(
   Object.entries((options.definition.components?.parameters ?? {}) as Record<string, any>).map(([key, value]) => [

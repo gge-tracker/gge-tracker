@@ -1,5 +1,7 @@
-<button class="btn-modern btn-filter" data-bs-toggle="modal" data-bs-target="#filtersModal" [title]="'Filtrer' | translate">
-  <lucide-icon class="lucide lucide-funnel" [img]="Funnel"></lucide-icon> {{ 'Filtrer' | translate }}
+<button class="btn-modern btn-filter" data-bs-toggle="modal" data-bs-target="#filtersModal" [title]="'Filtrer' | translate"
+  [attr.aria-label]="'Filtrer' | translate">
+  <lucide-icon class="lucide lucide-funnel" [img]="Funnel"></lucide-icon>
+  <span class="filter-label">{{ 'Filtrer' | translate }}</span>
   @if (countFilterActivated() > 0) {
     <span class="filter-badge">{{ countFilterActivated() }}</span>
   }

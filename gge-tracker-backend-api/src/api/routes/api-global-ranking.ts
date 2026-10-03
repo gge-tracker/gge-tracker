@@ -64,6 +64,7 @@ export abstract class ApiGlobalRanking implements ApiHelper {
         return;
       }
       const page = ApiHelper.validatePageNumber(request.query.page);
+      const pageSize = ApiHelper.parsePageSize(request.query.size);
       const orderBy = qOrderBy(Object.keys(ApiGlobalRanking.ORDER_COLUMNS), 'might_current').parse(
         request.query.orderBy,
       )!;
@@ -78,7 +79,7 @@ export abstract class ApiGlobalRanking implements ApiHelper {
         .with(regions.join(','))
         .withParams({ ...bounds, playerName: playerName?.toLowerCase() })
         .build();
-      const cacheKey = new CacheKeyBuilder(filterKey).withParams({ orderBy, orderType, page }).build();
+      const cacheKey = new CacheKeyBuilder(filterKey).withParams({ orderBy, orderType, page, size: pageSize }).build();
       if (await CachedResponse.serveCached(response, cacheKey)) return;
 
       const filter = ApiGlobalRanking.buildFilter(regions, bounds, playerName);
@@ -93,7 +94,7 @@ export abstract class ApiGlobalRanking implements ApiHelper {
             ${filter.where}
             ORDER BY ${ApiGlobalRanking.ordering(orderBy, orderType)}
             LIMIT $${limitIndex} OFFSET $${limitIndex + 1}`,
-          [...filter.values, ApiHelper.PAGINATION_LIMIT, (page - 1) * ApiHelper.PAGINATION_LIMIT],
+          [...filter.values, pageSize, (page - 1) * pageSize],
         ),
       ]);
 
@@ -101,7 +102,7 @@ export abstract class ApiGlobalRanking implements ApiHelper {
       const body = {
         pagination: {
           current_page: page,
-          total_pages: Math.ceil(total / ApiHelper.PAGINATION_LIMIT),
+          total_pages: Math.ceil(total / pageSize),
           current_items_count: rows.length,
           total_items_count: total,
         },

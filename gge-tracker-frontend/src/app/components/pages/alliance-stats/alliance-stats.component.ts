@@ -41,6 +41,7 @@ import {
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { formatThousands } from '@ggetracker-services/text-format.utilities';
 import { LanguageService } from '@ggetracker-services/language.service';
+import { FollowService } from '@ggetracker-services/follow.service';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
 import { WindowService } from '@ggetracker-services/window.service';
 import { RouterLink } from '@angular/router';
@@ -493,6 +494,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   private readonly languageService = inject(LanguageService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly localStorage = inject(LocalStorageService);
+  private readonly followService = inject(FollowService);
   private readonly playersColors: Record<string, string> = {};
   private statsFinished = false;
   private statsInProgress = false;
@@ -947,6 +949,21 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     }, 0);
   }
 
+  public toggleFavorite(player: Player): void {
+    this.followService.togglePlayer(player.playerId);
+    player.isFavorite = this.followService.isFollowingPlayer(player.playerId);
+    this.cdr.detectChanges();
+  }
+
+  public isFollowingAlliance(): boolean {
+    return this.followService.isFollowingAlliance(this.allianceId);
+  }
+
+  public toggleFollowAlliance(): void {
+    this.followService.toggleAlliance(this.allianceId);
+    this.cdr.detectChanges();
+  }
+
   private async getAllianceMembers(): Promise<ApiAlliancePlayersSearchResponse | undefined> {
     let response = await this.apiRestService.getAllianceStats(
       this.allianceId,
@@ -1011,15 +1028,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     this.updatesPlayers = updatesPlayers.data.updates;
     this.processUpdatesData();
     const globalResponse = await this.apiRestService.getServerGlobalStats();
-    if (globalResponse.success === false) {
-      this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
-      return;
-    }
-    const globalData = globalResponse.data;
-    const lastGlobalData = globalData.at(-1);
-    if (lastGlobalData) {
-      this.initLedgers(lastGlobalData);
-    }
+    this.initLedgers(globalResponse.success ? (globalResponse.data.at(-1) ?? null) : null);
     await Promise.race([heroBackdrop, new Promise((resolve) => setTimeout(resolve, HERO_BACKDROP_GRACE_MS))]);
     if (this.isDestroyed) {
       return;
@@ -2443,7 +2452,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         currentFame: player.current_fame,
         highestFame: player.highest_fame,
         remainingRelocationTime: player.remaining_relocation_time,
-        isFavorite: false,
+        isFavorite: this.followService.isFollowingPlayer(player.player_id),
         peaceDisabledAt: player.peace_disabled_at,
         updatedAt: player.updated_at,
         level: player.level,
@@ -2482,8 +2491,12 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     this.initBerimondKingdomData(playersData);
   }
 
-  private initLedgers(server: ApiServerStats): void {
+  private initLedgers(server: ApiServerStats | null): void {
     const count = this.players.length;
+    if (count === 0) {
+      this.ledgers = [];
+      return;
+    }
     const totalMight = this.sumOf((player) => player.mightCurrent);
     const totalLoot = this.sumOf((player) => player.lootCurrent);
     const totalHonor = this.sumOf((player) => player.honor);
@@ -2503,7 +2516,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         titleKey: 'Puissance',
         icon: 'assets/pp3.png',
         rows: [
-          this.averageRow(totalMight / count, server.avg_might),
+          this.averageRow(totalMight / count, server?.avg_might),
           this.holderRow(topMight),
           { labelKey: 'Total', value: this.customFormatter(totalMight, 0) },
         ],
@@ -2512,12 +2525,14 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         titleKey: 'Pillage hebdomadaire',
         icon: 'assets/loot4.png',
         rows: [
-          this.averageRow(totalLoot / count, server.avg_loot),
+          this.averageRow(totalLoot / count, server?.avg_loot),
           this.holderRow(topLoot),
           {
             labelKey: 'Total',
             value: this.customFormatter(totalLoot, 0),
-            detail: { value: this.formatAvg((totalLoot / server.total_loot) * 100, 2), suffixKey: '% du total' },
+            detail: server?.total_loot
+              ? { value: this.formatAvg((totalLoot / server.total_loot) * 100, 2), suffixKey: '% du total' }
+              : undefined,
           },
         ],
       },
@@ -2525,7 +2540,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         titleKey: 'Honneur',
         icon: 'assets/honor2.png',
         rows: [
-          this.averageRow(totalHonor / count, server.avg_honor),
+          this.averageRow(totalHonor / count, server?.avg_honor),
           { labelKey: 'Total', value: this.customFormatter(totalHonor, 0) },
         ],
       },
@@ -2542,11 +2557,13 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
           {
             labelKey: 'Niveau moyen',
             value: this.formatLevel(averageLevel),
-            detail: {
-              prefixKey: 'Moy. globale',
-              value: this.formatLevel(server.avg_level),
-              trend: this.trendOf(averageLevel, server.avg_level),
-            },
+            detail: server
+              ? {
+                  prefixKey: 'Moy. globale',
+                  value: this.formatLevel(server.avg_level),
+                  trend: this.trendOf(averageLevel, server.avg_level),
+                }
+              : undefined,
           },
           {
             labelKey: 'En protection',
@@ -2570,15 +2587,18 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     return { value: holder ? read(holder) : 0, name: holder?.playerName ?? '-' };
   }
 
-  private averageRow(average: number, serverAverage: number): StatLedgerRow {
+  private averageRow(average: number, serverAverage: number | undefined): StatLedgerRow {
     return {
       labelKey: 'Moyenne',
       value: this.customFormatter(average, 0),
-      detail: {
-        prefixKey: 'Moy. globale',
-        value: this.formatAvg(serverAverage, 0),
-        trend: this.trendOf(average, serverAverage),
-      },
+      detail:
+        serverAverage === undefined
+          ? undefined
+          : {
+              prefixKey: 'Moy. globale',
+              value: this.formatAvg(serverAverage, 0),
+              trend: this.trendOf(average, serverAverage),
+            },
     };
   }
 

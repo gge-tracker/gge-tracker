@@ -21,7 +21,7 @@ type GlobalGame = 'all' | 'ep' | 'e4k';
 })
 export class GlobalPlayersComponent extends GenericComponent implements OnInit {
   private static readonly DEFAULT_SORT = 'might_current';
-  private static readonly PAGE_SIZE = 15;
+  private static readonly PAGE_SIZE = 12;
   public readonly games: { value: GlobalGame; label: string }[] = [
     { value: 'all', label: 'Tous' },
     { value: 'ep', label: 'Empire' },
@@ -105,6 +105,7 @@ export class GlobalPlayersComponent extends GenericComponent implements OnInit {
       this.sort,
       this.reverse ? 'DESC' : 'ASC',
       this.filters(),
+      GlobalPlayersComponent.PAGE_SIZE,
     );
     this.isInLoading = false;
     if (!response.success) {

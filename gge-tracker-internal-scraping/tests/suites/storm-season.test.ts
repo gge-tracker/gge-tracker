@@ -11,6 +11,7 @@ import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
 import { STORM_BORDER_OBJECT, ownCastles, ownPlayerInfo, stormArea, stormFort, stormIsle } from '../harness/fake-api';
+import { withLogSpy } from '../harness/log-spy';
 import { Sandbox, withSandbox } from '../harness/sandbox';
 
 const STORM_STATE = /NOT EXISTS \(SELECT 1 FROM storm_forts\)/;
@@ -319,6 +320,82 @@ describe('storm season', () => {
         await sandbox.call('updateStormMap');
 
         assert.equal(sandbox.db.one(SCAN_STAMP).params[0], 151);
+      });
+    });
+  });
+
+  describe('what a sweep tells the worker', () => {
+    it('reports a sweep that stored the map as refreshed', async () => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.db.when(STORM_STATE, stormState(sandbox.now));
+        servesOneFort(sandbox);
+
+        assert.equal(await sandbox.call('updateStormMap'), 'refreshed');
+        assert.equal(sandbox.backend.lastJobFailure, null);
+      });
+    });
+
+    it('still reports refreshed when only some tiles missed, and keeps the miss below the alert', async () => {
+      await withLogSpy(async (logs) => {
+        await withSandbox({}, async (sandbox) => {
+          sandbox.backend.deferFailureAlerts = true;
+          sandbox.db.when(STORM_STATE, stormState(sandbox.now, { scan_radius: 151 }));
+          sandbox.api.on('gaa', (request, callIndex) =>
+            callIndex === 0 ? stormArea([stormFort(644, 644)]) : { return_code: -1, error: 'Timeout' },
+          );
+
+          assert.equal(await sandbox.call('updateStormMap'), 'refreshed');
+          assert.deepEqual(logs.calls.logCritical, []);
+          assert.equal(logs.calls.logTolerated.length, 1);
+          assert.equal(logs.calls.logTolerated[0][0], '421');
+        });
+      });
+    });
+
+    it('reports blind when not a single tile answered', async () => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.db.when(STORM_STATE, stormState(sandbox.now));
+        sandbox.api.on('gaa', () => ({ return_code: -1, error: 'Timeout' }));
+
+        assert.equal(await sandbox.call('updateStormMap'), 'blind');
+        assert.equal(sandbox.backend.lastJobFailure?.failureReason, '1 tile(s) never answered');
+      });
+    });
+
+    it('reports blind when the season probe went unanswered', async () => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.db.when(
+          STORM_STATE,
+          stormState(sandbox.now, {
+            map_is_empty: true,
+            season_checked_at: null,
+          }),
+        );
+
+        assert.equal(await sandbox.call('updateStormMap'), 'blind');
+      });
+    });
+
+    it('reports closed when the event is not open, which is not a failure', async () => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.db.when(STORM_STATE, dueStorm(sandbox.now));
+        outOfEvent(sandbox);
+        sandbox.api.on('ksc', () => ({ return_code: 21 }));
+
+        assert.equal(await sandbox.call('updateStormMap'), 'closed');
+      });
+    });
+
+    it('raises the failure as an error when nothing defers it, as the one-shot jobs expect', async () => {
+      await withLogSpy(async (logs) => {
+        await withSandbox({}, async (sandbox) => {
+          sandbox.db.when(STORM_STATE, stormState(sandbox.now));
+          sandbox.api.on('gaa', () => ({ return_code: -1, error: 'Timeout' }));
+
+          await sandbox.call('updateStormMap');
+          assert.equal(logs.calls.logCritical.length, 1);
+          assert.deepEqual(logs.calls.logTolerated, []);
+        });
       });
     });
   });

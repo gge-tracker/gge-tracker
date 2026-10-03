@@ -130,6 +130,7 @@ services:
       - GGE_API_URL_REALTIME=${GGE_API_URL_REALTIME}:${GGE_API_PORT_REALTIME}
       - BACKEND_API_URI=${BACKEND_API_URI}
       - SITE_URL=${SITE_URL:-}
+      - ADMIN_API_TOKEN=${ADMIN_API_TOKEN:-}
       - LOG_MAX_ENTRIES=${LOG_MAX_ENTRIES}
       - LOG_MAX_BYTES=${LOG_MAX_BYTES}
       - LOG_FLUSH_INTERVAL_MS=${LOG_FLUSH_INTERVAL_MS}
@@ -177,6 +178,7 @@ services:
     command: ["dist/dungeon-update.worker.js"]
     environment:
       - INTERVAL_MS=${DUNGEON_UPDATE_INTERVAL_MS:-120000}
+      - ALERT_AFTER_FAILED_RUNS=${ALERT_AFTER_FAILED_RUNS:-5}
       - SQL_USER=${SQL_USER}
       - SQL_PASSWORD=${SQL_PASSWORD}
     deploy:
@@ -203,6 +205,7 @@ services:
     command: ["dist/storm-update.worker.js"]
     environment:
       - INTERVAL_MS=${STORM_UPDATE_INTERVAL_MS:-120000}
+      - ALERT_AFTER_FAILED_RUNS=${ALERT_AFTER_FAILED_RUNS:-5}
       - SQL_USER=${SQL_USER}
       - SQL_PASSWORD=${SQL_PASSWORD}
     deploy:

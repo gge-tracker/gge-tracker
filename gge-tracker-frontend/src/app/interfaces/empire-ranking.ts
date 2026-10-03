@@ -507,6 +507,42 @@ export interface ApiProfileServer {
   server: string;
   server_code: string;
   server_name: string | null;
+  weekly_reset_offset_hours?: number | null;
+}
+
+export interface ApiAllianceMemberChange {
+  player_id: string;
+  player_name: string | null;
+  direction: 'joined' | 'left';
+  occurred_at: string;
+}
+
+export interface ApiBulkPlayer {
+  player_id: string;
+  player_name: string;
+  alliance_id: string | null;
+  alliance_name: string | null;
+  might_current: number;
+  loot_current: number;
+  honor: number;
+}
+
+export interface ApiBulkAlliance {
+  alliance_id: string;
+  alliance_name: string;
+  player_count: number;
+  might_current: number;
+  loot_current: number;
+}
+
+export interface ApiBulkPlayersResponse {
+  missing: string[];
+  players: ApiBulkPlayer[];
+}
+
+export interface ApiBulkAlliancesResponse {
+  missing: string[];
+  alliances: ApiBulkAlliance[];
 }
 
 export interface ApiPlayerProfileIdentity {
@@ -555,8 +591,17 @@ export interface ApiSuggestionsResponse<T extends ApiSuggestion> {
   suggestions: T[];
 }
 
+export interface ApiAllianceProfileMember {
+  player_id: string;
+  player_name: string;
+  might_current: number;
+  loot_current: number;
+}
+
 export interface ApiAllianceProfile extends ApiProfileServer {
   alliance: { alliance_id: string; alliance_name: string; language: string | null };
+  members?: ApiAllianceProfileMember[];
+  member_changes?: ApiAllianceMemberChange[];
   rank?: {
     might_current: number | null;
     loot_current: number | null;

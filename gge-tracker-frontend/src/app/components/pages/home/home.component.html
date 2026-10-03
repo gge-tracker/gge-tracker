@@ -1,0 +1,470 @@
+<div class="home">
+  @if (meView(); as me) {
+    <section class="home-banner" aria-labelledby="home-me-name">
+      <div class="home-banner-identity">
+        <p class="home-eyebrow">{{ 'follow.is-me' | translate }} · {{ me.profile.server }}</p>
+        <h1 id="home-me-name" class="home-name">{{ me.profile.player.player_name }}</h1>
+        <p class="home-banner-meta">
+          @if (me.profile.player.alliance_id) {
+            <a class="home-banner-alliance" [routerLink]="['/', 'alliance', me.profile.player.alliance_id]">
+              {{ me.profile.player.alliance_name }}
+            </a>
+            <span aria-hidden="true">·</span>
+          }
+          <span>{{ 'Niveau' | translate }} {{ me.profile.player.level }}@if (me.profile.player.legendary_level > 0) {/{{ me.profile.player.legendary_level }}}</span>
+        </p>
+      </div>
+      <div class="home-banner-actions">
+        <a class="home-action home-action--primary" [routerLink]="['/', 'player', me.profile.player.player_id]">
+          {{ 'home.open-profile' | translate }}
+        </a>
+        <button type="button" class="home-action" (click)="forgetMe()">{{ 'home.not-me' | translate }}</button>
+      </div>
+    </section>
+
+    <div class="home-kpis">
+      <article class="home-card home-kpi" aria-labelledby="home-kpi-might">
+        <header class="home-card-header">
+          <img class="home-card-icon" src="/assets/pp3.png" alt="" />
+          <h2 id="home-kpi-might" class="home-card-title">{{ 'Puissance' | translate }}</h2>
+        </header>
+        <div class="home-kpi-body">
+          <div class="home-kpi-figures">
+            <p class="home-kpi-value">{{ compact(me.might.value) }}</p>
+            @if (me.might.week; as week) {
+              <p class="home-kpi-change" [attr.data-trend]="week.trend">
+                <span aria-hidden="true">{{ arrow(week.trend) }}</span> {{ signed(week.value) }}
+                @if (me.might.weekRatio !== null) {
+                  ({{ signedPercent(me.might.weekRatio) }})
+                }
+                <span class="home-kpi-period">{{ 'home.in-7-days' | translate }}</span>
+              </p>
+            } @else {
+              <p class="home-kpi-change">{{ 'home.no-history' | translate }}</p>
+            }
+            <p class="home-kpi-caption">
+              @if (me.might.day; as day) {
+                {{ 'home.in-24-hours' | translate: { value: signed(day.value) } }}
+              } @else {
+                &nbsp;
+              }
+            </p>
+          </div>
+          <div class="home-kpi-visual">
+            @if (me.might.sparkline; as spark) {
+              <svg class="home-spark" [attr.data-trend]="spark.trend" viewBox="0 0 100 32" preserveAspectRatio="none"
+                aria-hidden="true">
+                <path class="home-spark-area" [attr.d]="spark.area" />
+                <path class="home-spark-line" [attr.d]="spark.line" vector-effect="non-scaling-stroke" />
+              </svg>
+            } @else {
+              <span class="home-spark-empty" aria-hidden="true"></span>
+            }
+          </div>
+        </div>
+      </article>
+
+      <article class="home-card home-kpi" aria-labelledby="home-kpi-rank">
+        <header class="home-card-header">
+          <img class="home-card-icon" src="/assets/ranking.png" alt="" />
+          <h2 id="home-kpi-rank" class="home-card-title">{{ 'Classement' | translate }} · {{ me.profile.server }}</h2>
+        </header>
+        <div class="home-kpi-body">
+          <div class="home-kpi-figures">
+            <p class="home-kpi-value">
+              @if (me.rank.value !== null) {
+                #{{ me.rank.value | number }}
+              } @else {
+                —
+              }
+              @if (me.rank.move; as move) {
+                @if (move.value !== 0) {
+                  <span class="home-kpi-chip" [attr.data-trend]="move.trend"
+                    [attr.title]="'home.since-last-visit' | translate">
+                    {{ arrow(move.trend) }} {{ (move.value < 0 ? -move.value : move.value) | number }}
+                  </span>
+                }
+              }
+            </p>
+            <p class="home-kpi-change">
+              @if (me.rank.total) {
+                {{ 'home.top-share' | translate: { share: topShare(me.rank) } }}
+                <span class="home-kpi-period">{{ 'home.of-players' | translate: { count: (me.rank.total | number) } }}</span>
+              } @else {
+                {{ 'home.no-history' | translate }}
+              }
+            </p>
+            <p class="home-kpi-caption">
+              @if (me.loot.rank !== null && me.loot.value > 0) {
+                {{ 'home.loot-rank' | translate: { rank: (me.loot.rank | number) } }}
+              } @else {
+                &nbsp;
+              }
+            </p>
+          </div>
+          <div class="home-kpi-visual">
+            <div class="home-percentile" role="img"
+              [attr.aria-label]="'home.top-share' | translate: { share: topShare(me.rank) }">
+              <span class="home-percentile-fill" [style.width.%]="(me.rank.share ?? 0) * 100"></span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="home-card home-kpi" aria-labelledby="home-kpi-loot">
+        <header class="home-card-header">
+          <img class="home-card-icon" src="/assets/loot4.png" alt="" />
+          <h2 id="home-kpi-loot" class="home-card-title">{{ 'Pillage hebdomadaire' | translate }}</h2>
+        </header>
+        <div class="home-kpi-body">
+          <div class="home-kpi-figures">
+            <p class="home-kpi-value">{{ compact(me.loot.value) }}</p>
+            @if (me.loot.value === 0) {
+              <p class="home-kpi-change">{{ 'home.no-loot' | translate }}</p>
+            } @else if (me.loot.pace; as pace) {
+              <p class="home-kpi-change" [attr.data-trend]="pace.trend">
+                <span aria-hidden="true">{{ arrow(pace.trend) }}</span> {{ signed(pace.value) }}
+                @if (me.loot.paceRatio !== null) {
+                  ({{ signedPercent(me.loot.paceRatio) }})
+                }
+                <span class="home-kpi-period">{{ 'home.vs-last-week' | translate }}</span>
+              </p>
+            } @else {
+              <p class="home-kpi-change">{{ 'home.no-history' | translate }}</p>
+            }
+            <p class="home-kpi-caption">
+              @if (me.loot.lastWeekTotal !== null) {
+                <span class="home-nowrap">{{ 'home.last-week-total' | translate: { value: compact(me.loot.lastWeekTotal) } }}</span> ·
+              }
+              <span class="home-nowrap">{{ 'home.reset-in' | translate: { time: countdown() } }}</span>
+            </p>
+          </div>
+          <div class="home-kpi-visual">
+            @if (me.loot.current || me.loot.previous) {
+              <svg class="home-spark" [attr.data-trend]="me.loot.pace?.trend ?? 'flat'" viewBox="0 0 100 32"
+                preserveAspectRatio="none" role="img"
+                [attr.aria-label]="'home.loot-chart' | translate">
+                @if (me.loot.previous; as previous) {
+                  <path class="home-spark-ghost" [attr.d]="previous.line" vector-effect="non-scaling-stroke" />
+                }
+                @if (me.loot.current; as current) {
+                  <path class="home-spark-area" [attr.d]="current.area" />
+                  <path class="home-spark-line" [attr.d]="current.line" vector-effect="non-scaling-stroke" />
+                }
+              </svg>
+              @if (me.loot.previous) {
+                <span class="home-spark-legend" aria-hidden="true">
+                  <span class="home-spark-key">{{ 'home.this-week' | translate }}</span>
+                  <span class="home-spark-key home-spark-key--ghost">{{ 'home.last-week' | translate }}</span>
+                </span>
+              }
+            } @else {
+              <span class="home-spark-empty" aria-hidden="true"></span>
+            }
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <div class="home-panels">
+      <section class="home-card home-panel" aria-labelledby="home-events-title">
+        <header class="home-card-header">
+          <img class="home-card-icon" src="/assets/tools/events.webp" alt="" />
+          <h2 id="home-events-title" class="home-card-title">{{ 'home.events-title' | translate }}</h2>
+        </header>
+        @if (weekEvents(); as events) {
+          @if (events.length > 0) {
+            <ul class="home-events">
+              @for (event of events; track event.table) {
+                <li class="home-event">
+                  <img class="home-event-icon" [src]="event.icon" alt="" width="36" height="36" />
+                  <div class="home-event-name">
+                    <span class="home-event-label">{{ event.label | translate }}</span>
+                    @if (event.isLive) {
+                      <span class="home-event-status home-event-status--live">{{ 'home.event-live' | translate }}</span>
+                    } @else {
+                      <span class="home-event-status">{{ 'home.event-ended' | translate: { date: formatDay(event.lastAt) } }}</span>
+                    }
+                  </div>
+                  <div class="home-event-score">
+                    <span class="home-event-points">{{ compact(event.score) }}</span>
+                    @if (event.isRecord) {
+                      <span class="home-event-record home-event-record--best">{{ 'home.event-best' | translate }}</span>
+                    } @else {
+                      <span class="home-event-record">{{ 'home.event-record' | translate: { value: compact(event.record) } }}</span>
+                    }
+                  </div>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="home-panel-empty">{{ 'home.events-empty' | translate }}</p>
+          }
+        } @else {
+          <p class="home-panel-empty">{{ 'home.unavailable' | translate }}</p>
+        }
+        <a class="home-panel-link" [routerLink]="['/', 'player', me.profile.player.player_id]" fragment="events">
+          {{ 'home.events-history' | translate }} <span aria-hidden="true">→</span>
+        </a>
+      </section>
+
+      <section class="home-card home-panel" aria-labelledby="home-alliance-title">
+        <header class="home-card-header">
+          <img class="home-card-icon" src="/assets/tools/alliances.webp" alt="" />
+          <h2 id="home-alliance-title" class="home-card-title">{{ 'home.my-alliance' | translate }}</h2>
+        </header>
+        @if (allianceView(); as alliance) {
+          <div class="home-alliance-head">
+            <a class="home-alliance-name" [routerLink]="['/', 'alliance', alliance.id]">{{ alliance.name }}</a>
+            @if (alliance.rank !== null && alliance.rankedAlliances) {
+              <span class="home-alliance-rank">
+                {{ 'home.alliance-rank' | translate: { rank: (alliance.rank | number), total: (alliance.rankedAlliances | number) } }}
+              </span>
+            }
+          </div>
+          <dl class="home-facts">
+            <div class="home-fact">
+              <dt class="home-fact-label">{{ 'Puissance' | translate }}</dt>
+              <dd class="home-fact-figure">
+                <span class="home-fact-value">{{ compact(alliance.might) }}</span>
+                @if (alliance.week; as week) {
+                  <span class="home-fact-detail" [attr.data-trend]="week.trend">
+                    <span class="home-fact-trend" aria-hidden="true">{{ arrow(week.trend) }}</span>
+                    {{ signed(week.value) }} · {{ 'home.in-7-days' | translate }}
+                  </span>
+                }
+              </dd>
+            </div>
+            <div class="home-fact">
+              <dt class="home-fact-label">{{ 'Membres' | translate }}</dt>
+              <dd class="home-fact-figure">
+                <span class="home-fact-value">{{ alliance.members }}</span>
+                <span class="home-fact-detail">
+                  @if (alliance.moves.joined > 0 || alliance.moves.left > 0) {
+                    <span class="home-move" data-trend="up">{{ 'home.joined' | translate: { count: alliance.moves.joined } }}</span>
+                    · <span class="home-move" data-trend="down">{{ 'home.left' | translate: { count: alliance.moves.left } }}</span>
+                    · {{ 'home.in-7-days' | translate }}
+                  } @else {
+                    {{ 'home.no-moves' | translate }}
+                  }
+                </span>
+              </dd>
+            </div>
+            @if (alliance.myMightRank !== null) {
+              <div class="home-fact">
+                <dt class="home-fact-label">{{ 'home.my-place' | translate }}</dt>
+                <dd class="home-fact-figure">
+                  <span class="home-fact-value">#{{ alliance.myMightRank }} <small class="home-of">/ {{ alliance.members }}</small></span>
+                  @if (alliance.myLootRank !== null) {
+                    <span class="home-fact-detail">{{ 'home.loot-rank' | translate: { rank: alliance.myLootRank } }}</span>
+                  }
+                </dd>
+              </div>
+            }
+          </dl>
+          @if (alliance.gainers.length > 0) {
+            <div class="home-gainers">
+              <h3 class="home-gainers-title">{{ 'home.top-gainers' | translate }}</h3>
+              <ol class="home-gainers-list">
+                @for (gainer of alliance.gainers; track gainer.playerId; let index = $index) {
+                  <li class="home-gainer" [class.is-me]="gainer.isMe">
+                    <span class="home-gainer-rank">{{ index + 1 }}</span>
+                    <a class="home-gainer-name" [routerLink]="['/', 'player', gainer.playerId]">{{ gainer.name }}</a>
+                    @if (gainer.isMe) {
+                      <span class="home-gainer-you">{{ 'home.you' | translate }}</span>
+                    }
+                    <span class="home-gainer-gain">{{ signed(gainer.gain) }}</span>
+                  </li>
+                }
+              </ol>
+            </div>
+          }
+        } @else if (me.profile.player.alliance_id) {
+          <p class="home-panel-empty">{{ 'home.unavailable' | translate }}</p>
+        } @else {
+          <div class="home-panel-empty home-panel-empty--action">
+            <p class="home-panel-empty-title">{{ 'home.no-alliance' | translate }}</p>
+            <p>{{ 'home.no-alliance-hint' | translate }}</p>
+            <a class="home-action home-action--ledger" routerLink="/alliances">{{ 'home.browse-alliances' | translate }}</a>
+          </div>
+        }
+      </section>
+    </div>
+  } @else if (loading() && follow.me()) {
+    <div class="home-skeleton" aria-busy="true" [attr.aria-label]="'home.loading' | translate">
+      <div class="home-banner home-banner--skeleton" aria-hidden="true">
+        <div class="home-banner-identity">
+          <span class="home-shimmer home-skeleton-eyebrow"></span>
+          <span class="home-shimmer home-skeleton-name"></span>
+          <span class="home-shimmer home-skeleton-meta"></span>
+        </div>
+      </div>
+      <div class="home-kpis" aria-hidden="true">
+        @for (index of kpiSkeletons; track index) {
+          <div class="home-card home-kpi">
+            <div class="home-card-header">
+              <span class="home-shimmer home-skeleton-icon"></span>
+              <span class="home-shimmer home-skeleton-title"></span>
+            </div>
+            <div class="home-kpi-body">
+              <div class="home-kpi-figures">
+                <span class="home-shimmer home-skeleton-value"></span>
+                <span class="home-shimmer home-skeleton-line"></span>
+                <span class="home-shimmer home-skeleton-line home-skeleton-line--short"></span>
+              </div>
+              <div class="home-kpi-visual">
+                <span class="home-shimmer home-skeleton-chart"></span>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+      <div class="home-panels" aria-hidden="true">
+        @for (index of panelSkeletons; track index) {
+          <div class="home-card home-panel">
+            <div class="home-card-header">
+              <span class="home-shimmer home-skeleton-icon"></span>
+              <span class="home-shimmer home-skeleton-title"></span>
+            </div>
+            @for (row of kpiSkeletons; track row) {
+              <span class="home-shimmer home-skeleton-row"></span>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  } @else {
+    <section class="home-welcome" aria-labelledby="home-landing-title">
+      <h1 id="home-landing-title" class="home-welcome-title">{{ 'home.landing-title' | translate }}</h1>
+      <p class="home-welcome-intro">{{ 'home.intro' | translate }}</p>
+      <div class="home-me">
+        <label class="home-me-label" for="home-me-input">{{ 'home.me-title' | translate }}</label>
+        <div class="home-me-field">
+          <input id="home-me-input" class="home-input" type="search" autocomplete="off"
+            [placeholder]="'home.me-placeholder' | translate" [ngModel]="meQuery"
+            (ngModelChange)="onQueryChange($event)" aria-controls="home-me-suggestions" />
+          @if (suggestions().length > 0) {
+            <ul id="home-me-suggestions" class="home-suggestions">
+              @for (suggestion of suggestions(); track suggestion.id) {
+                <li>
+                  <button type="button" class="home-suggestion" (click)="pickMe(suggestion)">
+                    <span class="home-suggestion-name">{{ suggestion.name }}</span>
+                    <span class="home-suggestion-detail">
+                      {{ suggestion.alliance_name ?? '—' }} · {{ compact(suggestion.might_current) }}
+                    </span>
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+        @if (meNotFound()) {
+          <p class="home-me-error" role="status">{{ 'home.me-not-found' | translate: { server: currentServer } }}</p>
+        } @else {
+          <p class="home-me-hint">{{ 'home.me-hint' | translate: { server: currentServer } }}</p>
+        }
+      </div>
+    </section>
+  }
+
+  @if (!loading() && (meView() || hasFollowed)) {
+    <section class="home-card home-followed" aria-labelledby="home-followed-title">
+      <header class="home-card-header home-followed-header">
+        <img class="home-card-icon" src="/assets/players.png" alt="" />
+        <h2 id="home-followed-title" class="home-card-title">{{ 'home.followed' | translate }}</h2>
+        <p class="home-followed-since">
+          @if (previousVisitAt(); as since) {
+            {{ 'home.since' | translate: { date: formatDate(since) } }}
+          } @else {
+            {{ 'home.first-visit' | translate }}
+          }
+        </p>
+      </header>
+      <div class="home-followed-groups">
+        <div class="home-followed-group">
+          <div class="home-followed-row home-followed-row--head" aria-hidden="true">
+            <span>{{ 'Joueurs' | translate }}</span>
+            <span>{{ 'Puissance' | translate }}</span>
+            <span>{{ 'home.change' | translate }}</span>
+          </div>
+          @for (row of followedPlayers(); track row.player.player_id) {
+            <div class="home-followed-row">
+              <span class="home-followed-subject">
+                <a class="home-followed-name" [routerLink]="['/', 'player', row.player.player_id]">{{ row.player.player_name }}</a>
+                <span class="home-followed-meta">{{ row.player.alliance_name ?? '—' }}</span>
+              </span>
+              <span class="home-followed-value">{{ compact(row.player.might_current) }}</span>
+              <span class="home-followed-delta" [attr.data-trend]="row.might?.trend ?? 'flat'">
+                {{ row.might && row.might.value !== 0 ? signed(row.might.value) : '—' }}
+              </span>
+            </div>
+          } @empty {
+            <p class="home-followed-empty">{{ 'home.followed-players-empty' | translate }}</p>
+          }
+        </div>
+        <div class="home-followed-group">
+          <div class="home-followed-row home-followed-row--head" aria-hidden="true">
+            <span>{{ 'Alliances' | translate }}</span>
+            <span>{{ 'Puissance' | translate }}</span>
+            <span>{{ 'home.change' | translate }}</span>
+          </div>
+          @for (row of followedAlliances(); track row.alliance.alliance_id) {
+            <div class="home-followed-row">
+              <span class="home-followed-subject">
+                <a class="home-followed-name" [routerLink]="['/', 'alliance', row.alliance.alliance_id]">{{ row.alliance.alliance_name }}</a>
+                <span class="home-followed-meta">
+                  {{ 'home.members-count' | translate: { count: row.alliance.player_count } }}
+                  @if (row.members; as members) {
+                    @if (members.value !== 0) {
+                      <span class="home-move" [attr.data-trend]="members.trend">({{ signed(members.value) }})</span>
+                    }
+                  }
+                </span>
+              </span>
+              <span class="home-followed-value">{{ compact(row.alliance.might_current) }}</span>
+              <span class="home-followed-delta" [attr.data-trend]="row.might?.trend ?? 'flat'">
+                {{ row.might && row.might.value !== 0 ? signed(row.might.value) : '—' }}
+              </span>
+            </div>
+          } @empty {
+            <p class="home-followed-empty">{{ 'home.followed-alliances-empty' | translate }}</p>
+          }
+        </div>
+      </div>
+    </section>
+  }
+
+  @if (!meView() && !(loading() && follow.me())) {
+    <nav class="home-card home-explore" aria-labelledby="home-explore-title">
+      <header class="home-card-header">
+        <img class="home-card-icon" src="/assets/compass.png" alt="" />
+        <h2 id="home-explore-title" class="home-card-title">{{ 'home.explore' | translate }}</h2>
+      </header>
+      <div class="home-explore-groups">
+        @for (section of exploreSections; track section.title) {
+          <section class="home-explore-group" [attr.aria-labelledby]="'home-explore-' + $index">
+            <h3 [id]="'home-explore-' + $index" class="home-explore-group-title">{{ section.title | translate }}</h3>
+            <ul class="home-explore-list">
+              @for (item of section.items; track item.id) {
+                <li>
+                  <a class="home-explore-link" [routerLink]="item.id">
+                    @if (item.iconUrl) {
+                      <img class="home-explore-icon" [src]="item.iconUrl" alt="" width="28" height="28" />
+                    }
+                    <span class="home-explore-text">
+                      <span class="home-explore-label">{{ item.label | translate }}</span>
+                      @if (item.frequency) {
+                        <span class="home-explore-badge">{{ item.frequency | translate }}</span>
+                      }
+                    </span>
+                    <i class="home-explore-chevron fa-solid fa-chevron-right" aria-hidden="true"></i>
+                  </a>
+                </li>
+              }
+            </ul>
+          </section>
+        }
+      </div>
+    </nav>
+  }
+</div>

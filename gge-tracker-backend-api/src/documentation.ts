@@ -11,6 +11,21 @@ export const options = {
       description: `**API documentation for gge-tracker.com**
                 A service that provides statistics and updates for the game Goodgame Empire.
                 This API is designed to be used by developers and enthusiasts who want to integrate gge-tracker.com data into their applications or services.
+
+                ## Partners
+
+                **API keys.** Anonymous access needs no key and keeps its limit (see the X-RateLimit-* headers).
+                An integration that needs more sends \`X-Api-Key: ggt_...\` on every request: the key carries its
+                own limit, reported by the same headers, and names the integration in our monitoring. Request one
+                on Discord (https://discord.gg/eb6WSHQqYh) or at contact@gge-tracker.com. A revoked or mistyped key
+                is answered \`401\` with code \`INVALID_API_KEY\`, never silently downgraded. Keep it server side.
+
+                **Card images.** \`/assets/og/player/{playerId}.jpg\` and \`/assets/og/alliance/{allianceId}.jpg\`
+                are 1200x630 images made for embeds. Attach them rather than rebuilding one.
+
+                **Link back.** Every entity has a stable page: \`https://gge-tracker.com/player/{playerId}\` and
+                \`https://gge-tracker.com/alliance/{allianceId}\`. Add \`?utm_source=<your-integration>\` to the links
+                you render, so the visits you send can be counted and credited.
                 `,
       license: {
         name: 'MIT',
@@ -29,6 +44,14 @@ export const options = {
       },
     ],
     components: {
+      securitySchemes: {
+        ApiKey: {
+          type: 'apiKey',
+          in: 'header',
+          name: 'X-Api-Key',
+          description: 'Optional partner key. Raises the rate limit; absent, the anonymous limit applies',
+        },
+      },
       parameters: {
         GgeServerHeader: {
           name: 'gge-server',

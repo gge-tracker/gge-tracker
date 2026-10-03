@@ -60,6 +60,7 @@
 													<xs:element name="connection-limit" type="xs:integer" />
 													<xs:element name="dungeon" type="xs:boolean" />
 													<xs:element name="storm" type="xs:boolean" />
+													<xs:element name="alert-after-failures" type="xs:positiveInteger" minOccurs="0" />
 												</xs:sequence>
 											</xs:complexType>
 										</xs:element>

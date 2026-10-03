@@ -246,7 +246,113 @@
   text-transform: uppercase;
 }
 
+.integrations-title {
+  font-size: 1.45rem;
+  font-weight: 650;
+  color: #19342c;
+  margin-bottom: 0.6rem;
+}
+
+.integrations-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.1rem;
+  margin-top: 1.2rem;
+}
+
+.integration-card {
+  display: flex;
+  flex-direction: column;
+  padding: 1.2rem 1.3rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(25, 52, 44, 0.12);
+}
+
+.integration-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 650;
+  color: #19342c;
+  margin-bottom: 0.5rem;
+}
+
+.integration-name .fa-discord {
+  color: #5865f2;
+}
+
+.integration-facts {
+  padding-left: 1.1rem;
+  margin-bottom: 0.8rem;
+  font-size: 0.92rem;
+}
+
+.integration-facts code {
+  color: #1e5f4b;
+  background: rgba(30, 143, 107, 0.08);
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.integration-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: auto;
+}
+
+.integration-action {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 1rem;
+  border-radius: 10px;
+  border: 1px solid rgba(25, 52, 44, 0.25);
+  color: #19342c;
+  font-weight: 600;
+  font-size: 0.92rem;
+  transition: background 0.2s ease;
+}
+
+.integration-action:hover,
+.integration-action:focus-visible {
+  background: rgba(30, 143, 107, 0.1);
+  color: #19342c;
+}
+
+.integration-action--primary {
+  background: #1e8f6b;
+  border-color: #1e8f6b;
+  color: #fff;
+}
+
+.integration-action--primary:hover,
+.integration-action--primary:focus-visible {
+  background: #187a5b;
+  color: #fff;
+}
+
+.integration-action:focus-visible {
+  outline: 2px solid #1e8f6b;
+  outline-offset: 2px;
+}
+
 @media (max-width: 576px) {
+  .integrations-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .about-container .integrations {
+    padding: 1.1rem 0.9rem;
+  }
+
+  .integration-card {
+    padding: 1rem 0.9rem;
+  }
+
   .seal-medal {
     height: 28px;
     width: 28px;

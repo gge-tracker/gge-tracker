@@ -61,6 +61,11 @@
       <i class="fas fa-share-nodes"></i>
       <span class="ms-1">{{ 'Partager' | translate }}</span>
     </button>
+    <button type="button" class="badge bg-custom-font alliance-compare-link alliance-share-button mt-3 ms-2"
+      [attr.aria-pressed]="isFollowingAlliance()" (click)="toggleFollowAlliance()">
+      <i class="fas fa-star"></i>
+      <span class="ms-1">{{ (isFollowingAlliance() ? 'follow.unfollow' : 'follow.follow') | translate }}</span>
+    </button>
     <app-share-link #allianceShare="shareLink" subject="alliance" [subjectId]="allianceId" [name]="allianceName" />
     <div class="stat-ledgers">
       @for (ledger of ledgers; track ledger.titleKey; let i = $index) {
@@ -257,6 +262,7 @@
             [players]="players"
             [distanceEnabled]="membersTableHeader.length > defaultMembersTableHeaderSize"
             [playersTableHeader]="membersTableHeader"
+            (toggleFavorite)="toggleFavorite($event)"
           ></app-player-table-content>
         </app-table>
       </div>

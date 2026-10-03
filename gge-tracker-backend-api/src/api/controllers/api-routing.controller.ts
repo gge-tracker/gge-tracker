@@ -3,6 +3,7 @@ import { RedisClientType } from 'redis';
 import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { ApiGgeTrackerManager } from '../managers/api.manager';
+import { ApiAdminKeys } from '../routes/api-admin-keys';
 import { ApiAllianceTournaments } from '../routes/api-alliance-tournaments';
 import { ApiAlliances } from '../routes/api-alliances';
 import { ApiAssets } from '../routes/api-assets';
@@ -107,6 +108,22 @@ export class ApiRoutingController {
 
   public updateAssets(request: express.Request, response: express.Response): void {
     void ApiAssets.updateAssets(request, response);
+  }
+
+  public listApiKeys(request: express.Request, response: express.Response): void {
+    void ApiAdminKeys.listKeys(request, response);
+  }
+
+  public createApiKey(request: express.Request, response: express.Response): void {
+    void ApiAdminKeys.createKey(request, response);
+  }
+
+  public updateApiKey(request: express.Request, response: express.Response): void {
+    void ApiAdminKeys.updateKey(request, response);
+  }
+
+  public revokeApiKey(request: express.Request, response: express.Response): void {
+    void ApiAdminKeys.revokeKey(request, response);
   }
 
   public getGeneratedImage(request: express.Request, response: express.Response): void {

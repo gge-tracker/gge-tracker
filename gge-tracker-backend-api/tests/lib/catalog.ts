@@ -141,8 +141,8 @@ export const CATALOG: Endpoint[] = [
 
   // Assets (public, rate-limit bypass)
   { id: 'assets-items', method: 'GET', scope: 'public', bypass: true, path: () => '/assets/items', okStatuses: [200], kind: 'any' },
-  { id: 'assets-image', method: 'GET', scope: 'public', bypass: true, path: () => '/assets/images/keepbuildinglevel8.png', okStatuses: [200, 404], kind: 'any', fuzzPathParamIndex: 3 },
-  { id: 'assets-image-variant', method: 'GET', scope: 'public', bypass: true, path: () => '/assets/images/castlewall.png' + q({ level: '3', type: 'gate', quality: 'basic' }), okStatuses: [200, 404], kind: 'any', fuzzQuery: ['level', 'type', 'quality'] },
+  { id: 'assets-image', method: 'GET', scope: 'public', bypass: true, path: () => '/assets/images/keepbuildinglevel8.jpg', okStatuses: [200, 404], kind: 'any', fuzzPathParamIndex: 3 },
+  { id: 'assets-image-variant', method: 'GET', scope: 'public', bypass: true, path: () => '/assets/images/castlewall.jpg' + q({ level: '3', type: 'gate', quality: 'basic' }), okStatuses: [200, 404], kind: 'any', fuzzQuery: ['level', 'type', 'quality'] },
   { id: 'assets-common', method: 'GET', scope: 'public', bypass: true, path: () => '/assets/common/keepbuildinglevel8.json', okStatuses: [200, 404], kind: 'any', fuzzPathParamIndex: 3 },
   { id: 'assets-update', method: 'PUT', scope: 'public', token: true, path: () => '/assets/update/not-a-valid-token', okStatuses: [400, 401, 403, 404] },
 
@@ -526,6 +526,8 @@ export const CATALOG: Endpoint[] = [
     okStatuses: [200],
     needs: ['server', 'player'],
   },
+  { id: 'players-page-size', method: 'GET', scope: 'protected', path: () => '/players' + q({ page: 2, size: 7, orderBy: 'might_current', orderType: 'DESC' }), okStatuses: [200], needs: ['server'] },
+  { id: 'global-ranking-players-page-size', method: 'GET', scope: 'public', path: () => '/global-ranking/players' + q({ page: 2, size: 7 }), okStatuses: [200] },
   { id: 'players-by-distance', method: 'GET', scope: 'protected', path: (s) => '/players' + q({ page: 1, orderBy: 'distance', orderType: 'ASC', playerNameForDistance: s.playerName ?? 'a' }), okStatuses: [200, 400], needs: ['server', 'player'] },
   {
     id: 'players-search',
@@ -987,6 +989,10 @@ export const CATALOG: Endpoint[] = [
       { label: 'an unparseable id is refused', path: () => '/alliances/not-an-id/profile', expect: [400] },
     ],
   },
+  { id: 'admin-keys-list', snapshot: 'none', method: 'GET', scope: 'public', token: true, path: () => '/admin/api-keys', okStatuses: [401, 404] },
+  { id: 'admin-keys-create', snapshot: 'none', method: 'POST', scope: 'public', token: true, path: () => '/admin/api-keys', body: () => ({ partner: 'harness' }), okStatuses: [401, 404] },
+  { id: 'admin-keys-update', snapshot: 'none', method: 'PATCH', scope: 'public', token: true, path: () => '/admin/api-keys/1', body: () => ({ note: 'harness' }), okStatuses: [401, 404] },
+  { id: 'admin-keys-revoke', snapshot: 'none', method: 'POST', scope: 'public', token: true, path: () => '/admin/api-keys/1/revoke', okStatuses: [401, 404] },
   {
     id: 'seo-player-head',
     snapshot: 'shape',
@@ -1024,14 +1030,14 @@ export const CATALOG: Endpoint[] = [
     method: 'GET',
     scope: 'public',
     bypass: true,
-    path: (s) => `/assets/og/player/${s.playerId ?? '1'}.png`,
+    path: (s) => `/assets/og/player/${s.playerId ?? '1'}.jpg`,
     okStatuses: [200],
     kind: 'binary',
     needs: ['server', 'player'],
     cases: [
-      { label: 'an unparseable id answers the generic card', path: () => '/assets/og/player/not-an-id.png', expect: [200] },
-      { label: 'a cache-busting version is ignored', path: (s) => `/assets/og/player/${s.playerId ?? '1'}.png` + q({ v: 'anything' }), expect: [200] },
-      { label: 'If-None-Match * is answered 304', path: (s) => `/assets/og/player/${s.playerId ?? '1'}.png`, expect: [304], headers: () => ({ 'If-None-Match': '*' }) },
+      { label: 'an unparseable id answers the generic card', path: () => '/assets/og/player/not-an-id.jpg', expect: [200] },
+      { label: 'a cache-busting version is ignored', path: (s) => `/assets/og/player/${s.playerId ?? '1'}.jpg` + q({ v: 'anything' }), expect: [200] },
+      { label: 'If-None-Match * is answered 304', path: (s) => `/assets/og/player/${s.playerId ?? '1'}.jpg`, expect: [304], headers: () => ({ 'If-None-Match': '*' }) },
     ],
   },
   {
@@ -1040,13 +1046,13 @@ export const CATALOG: Endpoint[] = [
     method: 'GET',
     scope: 'public',
     bypass: true,
-    path: (s) => `/assets/og/alliance/${s.allianceId ?? '1'}.png`,
+    path: (s) => `/assets/og/alliance/${s.allianceId ?? '1'}.jpg`,
     okStatuses: [200],
     kind: 'binary',
     needs: ['server', 'alliance'],
     cases: [
-      { label: 'an unknown alliance answers the generic card', path: () => '/assets/og/alliance/99999999020.png', expect: [200] },
-      { label: 'a cache-busting version is ignored', path: (s) => `/assets/og/alliance/${s.allianceId ?? '1'}.png` + q({ v: 'anything' }), expect: [200] },
+      { label: 'an unknown alliance answers the generic card', path: () => '/assets/og/alliance/99999999020.jpg', expect: [200] },
+      { label: 'a cache-busting version is ignored', path: (s) => `/assets/og/alliance/${s.allianceId ?? '1'}.jpg` + q({ v: 'anything' }), expect: [200] },
     ],
   },
   {

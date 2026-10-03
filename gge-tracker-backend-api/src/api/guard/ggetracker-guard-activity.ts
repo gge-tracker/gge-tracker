@@ -8,6 +8,7 @@ import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { ApiGgeTrackerManager } from '../managers/api.manager';
 import { RoutesManager, sortBySpecificity } from '../managers/routes.manager';
+import { ApiKey, ApiKeyRegistry } from '../services/api-key-registry';
 import { GgeTrackerApiGuardActivityDefaultParameters } from './ggetracker-guard-activity.parameters';
 
 interface LogEntry {
@@ -27,6 +28,12 @@ interface LogEntryRow {
   response_time: any;
   user_agent: any;
   ip: any;
+  partner: string;
+}
+
+interface RateLimit {
+  points: number;
+  windowSeconds: number;
 }
 
 /**
@@ -51,6 +58,7 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
   private approxBufferBytes: number = 0;
   private rateLimiter: RateLimiterRedis;
   private managerInstance: ApiGgeTrackerManager;
+  private readonly partnerLimiters = new Map<number, { limit: RateLimit; limiter: RateLimiterRedis }>();
 
   /**
    * Returns the singleton instance of GgeTrackerApiGuardActivity.
@@ -137,6 +145,12 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
     }
     const normalizedIp = ip.replace(/^::ffff:/, '');
 
+    const apiKey = await this.identifyPartner(request, response);
+    if (apiKey === 'refused') return;
+    const limit: RateLimit = apiKey
+      ? { points: apiKey.points, windowSeconds: apiKey.windowSeconds }
+      : { points: ApiHelper.RATE_LIMIT_POINTS, windowSeconds: ApiHelper.RATE_LIMIT_DURATION_SECONDS };
+
     try {
       const sortedBySpec = sortBySpecificity(bypassRules);
       const url = request.originalUrl || request.url || '/';
@@ -146,24 +160,24 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
         return next();
       }
 
-      const consumed = await this.rateLimiter.consume(normalizedIp);
-      this.applyRateLimitHeaders(response, consumed);
+      const consumed = apiKey
+        ? await this.partnerLimiter(apiKey).consume(`key:${apiKey.id}`)
+        : await this.rateLimiter.consume(normalizedIp);
+      this.applyRateLimitHeaders(response, consumed, limit);
 
       next();
     } catch (error) {
       const state = error instanceof RateLimiterRes ? error : null;
-      const retryAfterSeconds = state
-        ? Math.max(1, Math.ceil(state.msBeforeNext / 1000))
-        : ApiHelper.RATE_LIMIT_DURATION_SECONDS;
-      this.applyRateLimitHeaders(response, state);
+      const retryAfterSeconds = state ? Math.max(1, Math.ceil(state.msBeforeNext / 1000)) : limit.windowSeconds;
+      this.applyRateLimitHeaders(response, state, limit);
       response.setHeader('Retry-After', String(retryAfterSeconds));
       response.status(429).json({
         error: RouteErrorMessagesEnum.RateLimited,
         code: 'RATE_LIMITED',
         retry_after_seconds: retryAfterSeconds,
         limit: {
-          requests: ApiHelper.RATE_LIMIT_POINTS,
-          window_seconds: ApiHelper.RATE_LIMIT_DURATION_SECONDS,
+          requests: limit.points,
+          window_seconds: limit.windowSeconds,
         },
       });
     }
@@ -196,6 +210,7 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
         status: tokens.status(request, response) || '0',
         route,
         level: 'info',
+        partner: (response.locals.partner as string | undefined) ?? 'none',
       };
       const line = {
         url: tokens.url(request, response),
@@ -268,6 +283,7 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
       response_time: logEntry.line.response_time ?? null,
       user_agent: logEntry.line.user_agent ?? null,
       ip: logEntry.line.ip ?? null,
+      partner: logEntry.labels.partner === 'none' ? '' : (logEntry.labels.partner ?? ''),
     };
   }
 
@@ -418,9 +434,46 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
     }
   }
 
-  private applyRateLimitHeaders(response: express.Response, state: RateLimiterRes | null): void {
-    response.setHeader('X-RateLimit-Limit', String(ApiHelper.RATE_LIMIT_POINTS));
-    response.setHeader('X-RateLimit-Window', String(ApiHelper.RATE_LIMIT_DURATION_SECONDS));
+  private async identifyPartner(
+    request: express.Request,
+    response: express.Response,
+  ): Promise<ApiKey | null | 'refused'> {
+    const header = request.headers[ApiKeyRegistry.HEADER];
+    if (header === undefined) return null;
+    const lookup =
+      typeof header === 'string'
+        ? await ApiKeyRegistry.resolve(header.trim(), this.managerInstance.getGlobalPgSqlPool())
+        : 'invalid';
+    if (lookup === 'unverified') return null;
+    if (lookup === 'invalid') {
+      response.status(ApiHelper.HTTP_UNAUTHORIZED).send({ error: RouteErrorMessagesEnum.InvalidApiKey });
+      return 'refused';
+    }
+    response.locals.partner = lookup.partner;
+    return lookup;
+  }
+
+  private partnerLimiter(apiKey: ApiKey): RateLimiterRedis {
+    const existing = this.partnerLimiters.get(apiKey.id);
+    if (existing && existing.limit.points === apiKey.points && existing.limit.windowSeconds === apiKey.windowSeconds) {
+      return existing.limiter;
+    }
+    const limiter = new RateLimiterRedis({
+      storeClient: ApiHelper.redisClient,
+      keyPrefix: 'api-key',
+      points: apiKey.points,
+      duration: apiKey.windowSeconds,
+    });
+    this.partnerLimiters.set(apiKey.id, {
+      limit: { points: apiKey.points, windowSeconds: apiKey.windowSeconds },
+      limiter,
+    });
+    return limiter;
+  }
+
+  private applyRateLimitHeaders(response: express.Response, state: RateLimiterRes | null, limit: RateLimit): void {
+    response.setHeader('X-RateLimit-Limit', String(limit.points));
+    response.setHeader('X-RateLimit-Window', String(limit.windowSeconds));
     if (!state) return;
     response.setHeader('X-RateLimit-Remaining', String(Math.max(0, state.remainingPoints)));
     response.setHeader('X-RateLimit-Reset', String(Math.ceil((Date.now() + state.msBeforeNext) / 1000)));

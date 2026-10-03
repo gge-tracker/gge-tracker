@@ -34,6 +34,7 @@ import {
   StormSeasonReport,
 } from './interfaces';
 import Utils from './utils';
+import { isSocketDown, readBridgeStatus, zoneOf } from './bridge-status';
 
 export interface PlayerUpsertInput {
   playerId: number;
@@ -152,6 +153,14 @@ interface MightRankingPlayer {
   mightPoints: number;
 }
 
+export interface JobFailure {
+  failureStep: string;
+  failureReason: string;
+  failureIdentifier?: string;
+}
+
+export type StormSweepHealth = 'refreshed' | 'blind' | 'closed';
+
 export interface DiscordApiMessageBody {
   channelId: string;
   embeds: {
@@ -241,7 +250,8 @@ export class GenericFetchAndSaveBackend {
   public connection!: mysql.Pool;
   public pgSqlConnection!: pg.Pool;
   public allianceUpdated: { [key: string]: boolean } = {};
-  private jobFailure: { failureStep: string; failureReason: string; failureIdentifier?: string } | null = null;
+  public deferFailureAlerts = false;
+  private jobFailure: JobFailure | null = null;
   private pgSqlPoolEnded: boolean = false;
   private readonly WEBHOOK_URL: string = process.env.WEBHOOK_URL || '';
   private readonly CURRENT_ENV: string = process.env.ENVIRONMENT || 'development';
@@ -276,6 +286,9 @@ export class GenericFetchAndSaveBackend {
   private readonly STORM_ENTRY_EVENT_ID = 16;
   private readonly STORM_SEASON_CHECK_BACKOFF_MINUTES = 15;
   private readonly STORM_MAX_FAILED_TILES = 10;
+  private readonly FILL_BRIDGE_WAIT_ATTEMPTS = 24;
+  private readonly FILL_BRIDGE_POLL_MS = 20_000;
+  private readonly RANKING_FIRST_PAGE_RETRIES = 10;
   private readonly STORM_TILE_OBJECT_CEILING = 1000;
   private readonly RIFT_RAID_LT = 89;
   private readonly RIFT_RAID_DIVISIONS = 6;
@@ -947,7 +960,18 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
-  public async executeFillInOrder(): Promise<void> {
+  public get lastJobFailure(): JobFailure | null {
+    return this.jobFailure;
+  }
+
+  public async executeFillInOrder(): Promise<boolean> {
+    if (!(await this.waitForBridgeSocket())) {
+      Utils.logWarning(
+        `Fill skipped: the bridge socket of ${zoneOf(this.BASE_API_URL)} stayed down for the whole wait`,
+      );
+      await this.closePool();
+      return false;
+    }
     const start = new Date();
     try {
       Utils.logMessage('=====================================');
@@ -1063,6 +1087,7 @@ export class GenericFetchAndSaveBackend {
       await this.closePool();
       Utils.flushRunSummary(criticalErrors, this.server);
     }
+    return true;
   }
 
   public async updateDungeonsList(): Promise<void> {
@@ -1125,16 +1150,17 @@ export class GenericFetchAndSaveBackend {
    * Scans the Storm Islands kingdom and refreshes the current state of every storm fort and
    * resource isle for this server
    *
-   * @returns A Promise that resolves once the storm state has been persisted.
+   * @returns Whether the map was refreshed, so the worker can tell a blind server from a closed event
    */
-  public async updateStormMap(): Promise<void> {
+  public async updateStormMap(): Promise<StormSweepHealth> {
     const start = new Date();
     let scan: StormScanResult | null = null;
     let season: StormSeasonReport = { state: 'settled', ownIsle: null };
     try {
       const meta = await this.readStormMeta();
       season = await this.resolveStormSeason(meta);
-      if (season.state === 'closed' || season.state === 'unreachable') return;
+      if (season.state === 'closed') return 'closed';
+      if (season.state === 'unreachable') return 'blind';
 
       const wiped = season.state === 'entered' || season.state === 'rolled';
       scan = await this.scanStormMap(wiped ? this.STORM_TILE_HALF_SPAN : meta.scanRadius);
@@ -1146,6 +1172,8 @@ export class GenericFetchAndSaveBackend {
       await this.persistStormForts(scan.forts);
       await this.persistStormIsles(scan.isles);
       await this.finishStormScan(scan, meta.databaseNow);
+      const answeredNothing = scan.failedTiles > 0 && scan.forts.length + scan.isles.length === 0;
+      return answeredNothing ? 'blind' : 'refreshed';
     } catch (error) {
       this.recordJobFailure('storm map sweep', error, '420');
       throw error;
@@ -1381,8 +1409,8 @@ export class GenericFetchAndSaveBackend {
           this.DB_UPDATES.criticalErrors,
         );
       }
-      Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, this.server);
       if (delegatedToRetry) return;
+      Utils.flushRunSummary(this.DB_UPDATES.criticalErrors, this.server);
       await this.logToLoki({
         job: 'wheel-of-affluence',
         level: this.DB_UPDATES.criticalErrors > 0 ? 'error' : 'info',
@@ -3152,6 +3180,25 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
+  private async waitForBridgeSocket(): Promise<boolean> {
+    const zone = zoneOf(this.BASE_API_URL);
+    for (let attempt = 0; attempt < this.FILL_BRIDGE_WAIT_ATTEMPTS; attempt++) {
+      if (!isSocketDown(await readBridgeStatus(this.BASE_API_URL), zone)) return true;
+      Utils.logWarning(`The bridge socket of ${zone} is down, waiting before the fill`);
+      await this.sleep(this.FILL_BRIDGE_POLL_MS);
+    }
+    return !isSocketDown(await readBridgeStatus(this.BASE_API_URL), zone);
+  }
+
+  private async fetchFirstRankingPage(lt: number, levelCategory: number, sv: number): Promise<any> {
+    let data = await this.fetchDataAndReturn(lt, levelCategory, sv);
+    for (let retry = 0; retry < this.RANKING_FIRST_PAGE_RETRIES && data?.['return_code'] != '0'; retry++) {
+      await new Promise((resolve) => setTimeout(resolve, 10000));
+      data = await this.fetchDataAndReturn(lt, levelCategory, sv);
+    }
+    return data;
+  }
+
   private rankingPageUrl(lt: string | number, levelCategory: string | number, sv: string | number): string {
     return this.BASE_API_URL + 'hgh' + `/"LT":${lt},"LID":${levelCategory},"SV":"${sv}"`;
   }
@@ -3420,21 +3467,12 @@ export class GenericFetchAndSaveBackend {
       levelCategory + '(out of ' + levelCategorySize + ')',
     );
     const startSV = increment / 2;
-    let data = await this.fetchDataAndReturn(6, levelCategory, startSV);
+    const data = await this.fetchFirstRankingPage(6, levelCategory, startSV);
     if (data?.['return_code'] != '0') {
-      const attempts = 10;
-      let k = 0;
-      while (k < attempts && data?.['return_code'] != '0') {
-        await new Promise((resolve) => setTimeout(resolve, 10000));
-        data = await this.fetchDataAndReturn(6, levelCategory, startSV);
-        k++;
-      }
-      if (data?.['return_code'] != '0') {
-        Utils.logMessage(' [KO] Request failed for category', levelCategory);
-        const messages = ['Url : ' + this.rankingPageUrl(6, levelCategory, startSV), JSON.stringify(data)];
-        void this.stackTraceError('008', messages, true);
-        return false;
-      }
+      Utils.logMessage(' [KO] Request failed for category', levelCategory);
+      const messages = ['Url : ' + this.rankingPageUrl(6, levelCategory, startSV), JSON.stringify(data)];
+      void this.stackTraceError('008', messages, true);
+      return false;
     }
     const max = data?.content?.LR ?? 50000;
     Utils.logMessage('Request succeeded:', max, 'players found');
@@ -3599,7 +3637,7 @@ export class GenericFetchAndSaveBackend {
       levelCategory + '(out of ' + levelCategorySize + ')',
     );
     const startSV = increment / 2;
-    const data = await this.fetchDataAndReturn(2, levelCategory, startSV);
+    const data = await this.fetchFirstRankingPage(2, levelCategory, startSV);
     const max = data?.content?.LR ?? 50000;
     Utils.logMessage(' Request successful: ', max, 'players found');
     if (!data?.content?.L) {
@@ -4737,21 +4775,7 @@ export class GenericFetchAndSaveBackend {
         await this.removePlayerFromDatabase(id);
       }
     } catch (error) {
-      Utils.logCritical('104', error, ' [KO] Error', id);
-      const pgSqlQuery = `
-            UPDATE players
-            SET
-              castles = [],
-              castles_realm = [],
-              alliance_id = NULL
-            WHERE id = $1
-          `;
-      try {
-        await this.pgSqlQuery(pgSqlQuery, [id]);
-      } catch (error) {
-        Utils.logCritical('105', error, ' [KO] Error while updating player', id);
-        this.DB_UPDATES.criticalErrors++;
-      }
+      Utils.logWarning('Inactive player refresh skipped, the bridge did not answer:', id, Utils.describeError(error));
     }
   }
 
@@ -5784,10 +5808,10 @@ export class GenericFetchAndSaveBackend {
     return result;
   }
 
-  // The closing Loki record is the only trace a job leaves, so it must say what broke, not only that something did.
   private recordJobFailure(step: string, error: unknown, identifier = ''): void {
     this.DB_UPDATES.criticalErrors++;
-    Utils.logCritical(identifier, error, `Error during ${step} on ${this.server}`);
+    const log = this.deferFailureAlerts ? Utils.logTolerated : Utils.logCritical;
+    log(identifier, error, `Error during ${step} on ${this.server}`);
     // The first failure explains the run; the ones after it are usually its fallout.
     this.jobFailure ??= {
       failureStep: step,

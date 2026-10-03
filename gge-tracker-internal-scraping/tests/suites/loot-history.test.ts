@@ -109,6 +109,28 @@ describe('fillLootHistory', () => {
     });
   });
 
+  it('asks for the first page again while the bridge does not answer', async () => {
+    await withSandbox({}, async (sandbox) => {
+      const head = fixtures.lootHead();
+      sandbox.api.on('hgh', (request, callIndex) => {
+        if (callIndex < 3) return { return_code: -1, error: 'Timeout' };
+        return rankingResponse(head, Number(request.parameters.SV));
+      });
+      await sandbox.call('fillLootHistory');
+      assert.deepEqual(sandbox.api.svSequence().slice(0, 4), [5, 5, 5, 5], 'three failed asks, then the answer');
+      assert.equal(sandbox.clickhouse.rows(TABLE).length, head.totalRanked);
+      assert.equal(sandbox.state('DB_UPDATES').criticalErrors, 0);
+    });
+  });
+
+  it('does not ask again for a first page the game answered, even without a list', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.api.on('hgh', () => ({ return_code: 0, content: { LR: 0 } }));
+      await sandbox.call('fillLootHistory');
+      assert.equal(sandbox.api.callsFor('hgh').length, 1, 'only a failed answer is worth ten more seconds');
+    });
+  });
+
   it('reports a critical error and inserts nothing when the ranking answers with an empty page', async () => {
     await withSandbox({}, async (sandbox) => {
       const head = fixtures.lootHead();

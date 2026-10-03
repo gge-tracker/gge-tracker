@@ -26,6 +26,7 @@ import { WoaComponent } from '@ggetracker-pages/events/woa/woa.component';
 import { StormTrackerComponent } from '@ggetracker-pages/storm-tracker/storm-tracker.component';
 import { StormyIslesComponent } from '@ggetracker-pages/stormy-isles/stormy-isles.component';
 import { CompareComponent } from '@ggetracker-pages/compare/compare.component';
+import { HomeComponent } from '@ggetracker-pages/home/home.component';
 
 export const routes: Routes = [
   {
@@ -48,6 +49,17 @@ export const routes: Routes = [
     path: '',
     component: SkeletonComponent,
     children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        component: HomeComponent,
+        data: {
+          description:
+            'Goodgame Empire statistics for every server: your might and rank, your alliance and the players you follow',
+          titleKey: 'Accueil',
+        },
+        resolve: { titleResolver },
+      },
       {
         path: 'players',
         component: PlayersComponent,

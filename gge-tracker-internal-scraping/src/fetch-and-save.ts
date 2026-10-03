@@ -50,16 +50,18 @@ const globalClickhouseConfig = { ...CLICKHOUSE_CONFIG, database: 'ggetracker_glo
 
 async function executeFillInOrder(): Promise<void> {
   const generic = new GenericFetchAndSaveBackend(BASE_API_URL, CLICKHOUSE_CONFIG, postgresConfig, logSuffix);
-  await generic.executeFillInOrder();
+  const bridgeAnswered = await generic.executeFillInOrder();
   if (logSuffix === 'DE1') {
     const generic2 = new GenericFetchAndSaveBackend(BASE_API_URL, null, genericPostgresConfig, 'GLOBAL_RANKING');
     await generic2.refreshGlobalRankings();
+  }
+  if (logSuffix === 'DE1' && bridgeAnswered) {
     const generic3 = new GenericFetchAndSaveBackend(BASE_API_URL, null, genericPostgresConfig, 'GT_TOURNAMENT');
     await generic3.fillGrandTournamentResults('ep');
     const generic4 = new GenericFetchAndSaveBackend(BASE_API_URL, globalClickhouseConfig, null, 'RIFT_RAID');
     await generic4.fillRiftRaidResults('ep');
   }
-  if (logSuffix === 'E4KDE1') {
+  if (logSuffix === 'E4KDE1' && bridgeAnswered) {
     const genericE4kGt = new GenericFetchAndSaveBackend(BASE_API_URL, null, genericPostgresConfig, 'E4K_GT_TOURNAMENT');
     await genericE4kGt.fillGrandTournamentResults('e4k');
     const genericE4k = new GenericFetchAndSaveBackend(BASE_API_URL, globalClickhouseConfig, null, 'E4K_RIFT_RAID');

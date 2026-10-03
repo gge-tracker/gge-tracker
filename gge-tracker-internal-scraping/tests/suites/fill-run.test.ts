@@ -12,6 +12,7 @@ import { describe, it } from 'node:test';
 
 import { fixtures, ranking } from '../harness/fixtures';
 import { pgError } from '../harness/fake-postgres';
+import { withLogSpy } from '../harness/log-spy';
 import { Sandbox, withSandbox } from '../harness/sandbox';
 
 function serveQuietHour(sandbox: Sandbox): void {
@@ -174,6 +175,47 @@ describe('executeFillInOrder', () => {
         ],
         'the steps are still flagged even though they did nothing',
       );
+    });
+  });
+});
+
+describe('executeFillInOrder, when the bridge socket is down', () => {
+  it('waits for the socket to come back, then runs the whole fill', async () => {
+    await withSandbox({}, async (sandbox) => {
+      serveQuietHour(sandbox);
+      sandbox.bridge.status = (read): Record<string, boolean> => ({ EmpireEx_TEST: read > 3 });
+      assert.equal(await sandbox.backend.executeFillInOrder(), true);
+      assert.equal(sandbox.bridge.statusReads, 4, 'three reads find it down, the fourth finds it back');
+      assert.ok(
+        parameterTrail(sandbox).some(([name]) => name === 'might'),
+        'the fill ran to the end',
+      );
+    });
+  });
+
+  it('skips the hour without touching the database when the socket stays down', async () => {
+    await withLogSpy(async (logs) => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.bridge.status = { EmpireEx_TEST: false };
+        const ran = await sandbox.backend.executeFillInOrder();
+        assert.equal(ran, false);
+        assert.equal(sandbox.bridge.statusReads, 25, 'one read per poll of the eight-minute wait, plus the last');
+        assert.deepEqual(sandbox.api.requests, [], 'nothing is asked of a game server the bridge cannot reach');
+        assert.deepEqual(sandbox.db.queries, []);
+        assert.deepEqual(sandbox.clickhouse.tables, [], 'a skipped hour is not recorded as a run');
+        assert.deepEqual(logs.calls.logCritical, [], 'a world restart is the healthcheck to report, not the fill');
+        assert.deepEqual(logs.calls.flushRunSummary, []);
+      });
+    });
+  });
+
+  it('runs as before when the bridge status cannot be read', async () => {
+    await withSandbox({}, async (sandbox) => {
+      serveQuietHour(sandbox);
+      sandbox.bridge.status = null;
+      assert.equal(await sandbox.backend.executeFillInOrder(), true);
+      assert.equal(sandbox.bridge.statusReads, 1);
+      assert.ok(parameterTrail(sandbox).some(([name]) => name === 'might'));
     });
   });
 });

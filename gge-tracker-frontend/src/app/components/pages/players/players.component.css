@@ -123,3 +123,9 @@
     transition: none;
   }
 }
+
+@media (max-width: 575.98px) {
+  .scope-tab {
+    min-height: 44px;
+  }
+}

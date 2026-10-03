@@ -77,12 +77,13 @@ export abstract class ApiPlayers implements ApiHelper {
         orderType,
       } = parsedQuery;
       let { page } = parsedQuery;
+      const pageSize = ApiHelper.parsePageSize(request.query.size);
 
       /* ---------------------------------
        * Cache validation
        * --------------------------------- */
       const cacheVersion = await ApiHelper.getCacheVersion(ApiHelper.redisClient, request['language']);
-      const cacheKey = ApiPlayers.buildPlayersCacheKey(request['language'], cacheVersion, page, parsedQuery);
+      const cacheKey = ApiPlayers.buildPlayersCacheKey(request['language'], cacheVersion, page, pageSize, parsedQuery);
       const cachedData = await ApiHelper.redisClient.get(cacheKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
@@ -186,7 +187,7 @@ export abstract class ApiPlayers implements ApiHelper {
 
       const { where, values } = qb.build();
       parameterIndex = qb.getLastParameterIndex();
-      const parameters: any[] = [...values, ApiHelper.PAGINATION_LIMIT, (page - 1) * ApiHelper.PAGINATION_LIMIT];
+      const parameters: any[] = [...values, pageSize, (page - 1) * pageSize];
       /* ---------------------------------
        * Execute count query (pagination)
        * --------------------------------- */
@@ -246,7 +247,7 @@ export abstract class ApiPlayers implements ApiHelper {
       }
 
       playerCount = resolvedCount;
-      totalPages = Math.ceil(playerCount / ApiHelper.PAGINATION_LIMIT);
+      totalPages = Math.ceil(playerCount / pageSize);
       if (page > totalPages) page = totalPages;
 
       const pagination = {
@@ -766,6 +767,7 @@ export abstract class ApiPlayers implements ApiHelper {
     language: string,
     cacheVersion: string,
     page: number,
+    pageSize: number,
     query: ReturnType<typeof parseQuery>,
   ): string {
     return new CacheKeyBuilder(language)
@@ -773,6 +775,7 @@ export abstract class ApiPlayers implements ApiHelper {
       .with('players')
       .withParams({
         page,
+        size: pageSize,
         orderBy: query.orderBy,
         orderType: query.orderType,
       })

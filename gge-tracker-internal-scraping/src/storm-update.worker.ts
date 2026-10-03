@@ -7,6 +7,8 @@
 //
 //  Copyrights (c) 2026 - gge-tracker.com & gge-tracker contributors
 //
+import { BridgeStatus, isSocketDown, readBridgeStatus } from './bridge-status';
+import { FailureStreaks } from './failure-streaks';
 import { GenericFetchAndSaveBackend } from './main';
 import { ScrapingServer, readScrapingServers } from './servers-file';
 
@@ -14,6 +16,7 @@ export type ServerConfig = ScrapingServer;
 
 const INTERVAL_MS = Number(process.env.INTERVAL_MS || 120_000);
 const BASE_API_HOST = 'http://empire-api-realtime:3000';
+const blindSweeps = new FailureStreaks('Storm map sweep', '422');
 
 const colors = {
   gray: (type: string): string => `\x1b[90m${type}\x1b[0m`,
@@ -54,7 +57,7 @@ export function parseServersConf(): ServerConfig[] {
   return servers;
 }
 
-async function processServer(server: ServerConfig, index: string, total: number): Promise<boolean> {
+async function processServer(server: ServerConfig, index: string, total: number): Promise<string | null> {
   logStep(`[${index}/${total}] Updating ${server.name}`);
 
   const backend = new GenericFetchAndSaveBackend(
@@ -70,14 +73,20 @@ async function processServer(server: ServerConfig, index: string, total: number)
     },
     server.name,
   );
+  backend.deferFailureAlerts = true;
 
   try {
-    await backend.updateStormMap();
-    logInfo(`${server.name} updated`);
-    return true;
+    const health = await backend.updateStormMap();
+    if (health !== 'blind') {
+      logInfo(`${server.name} updated`);
+      return null;
+    }
+    const reason = backend.lastJobFailure?.failureReason ?? 'the season probe went unanswered';
+    logWarn(`${server.name} could not be refreshed: ${reason}`);
+    return reason;
   } catch (err) {
     logError(`${server.name} failed: ${(err as Error).message}`);
-    return false;
+    return (err as Error).message;
   } finally {
     await safeCloseConnections(backend);
   }
@@ -92,14 +101,27 @@ async function safeCloseConnections(backend: GenericFetchAndSaveBackend): Promis
 
 async function runOnce(): Promise<void> {
   const servers = parseServersConf();
+  const bridge: BridgeStatus | null = await readBridgeStatus(BASE_API_HOST);
   let success = 0;
   let failed = 0;
+  let skipped = 0;
   for (const [index, server] of servers.entries()) {
     const cleanIndex: string = `${index + 1}`.padStart(servers.length.toString().length, ' ');
-    const ok = await processServer(server, cleanIndex, servers.length);
-    ok ? success++ : failed++;
+    if (isSocketDown(bridge, server.zone)) {
+      logWarn(`[${cleanIndex}/${servers.length}] ${server.name} skipped: its bridge socket is down`);
+      skipped++;
+      continue;
+    }
+    const failure = await processServer(server, cleanIndex, servers.length);
+    if (failure === null) {
+      blindSweeps.recordSuccess(server);
+      success++;
+    } else {
+      blindSweeps.recordFailure(server, failure);
+      failed++;
+    }
   }
-  logInfo(`Run completed : ${success} success / ${failed} failed`);
+  logInfo(`Run completed : ${success} success / ${failed} failed / ${skipped} skipped`);
 }
 
 async function sleep(ms: number): Promise<void> {

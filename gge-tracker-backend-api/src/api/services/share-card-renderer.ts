@@ -50,7 +50,7 @@ export abstract class ShareCardRenderer {
       });
       await page.setViewport({ width: SHARE_CARD_WIDTH, height: SHARE_CARD_HEIGHT, deviceScaleFactor: 1 });
       await page.setContent(this.toHtml(card), { waitUntil: 'load' });
-      const image = await page.screenshot({ type: 'png', omitBackground: false });
+      const image = await page.screenshot({ type: 'jpeg', quality: 85 });
       return Buffer.from(image);
     });
   }

@@ -34,6 +34,7 @@ import { RateLimiterRedis } from 'rate-limiter-flexible';
 import { createClient } from 'redis';
 import { ApiRoutingController } from './controllers/api-routing.controller';
 import { GgeTrackerApiGuardActivity } from './guard/ggetracker-guard-activity';
+import { AdminGuard } from './guard/admin-guard';
 import { ApiGgeTrackerManager } from './managers/api.manager';
 import { RoutesManager } from './managers/routes.manager';
 import { errorCodeMiddleware } from './helper/error-codes';
@@ -148,6 +149,15 @@ const publicRoutes = express.Router();
 publicRoutes.get('/docs', routingInstance.getDocumentation.bind(routingInstance));
 
 publicRoutes.put('/assets/update/:token', routingInstance.updateAssets.bind(routingInstance));
+
+publicRoutes.get('/admin/api-keys', AdminGuard.require, routingInstance.listApiKeys.bind(routingInstance));
+publicRoutes.post('/admin/api-keys', AdminGuard.require, routingInstance.createApiKey.bind(routingInstance));
+publicRoutes.patch('/admin/api-keys/:keyId', AdminGuard.require, routingInstance.updateApiKey.bind(routingInstance));
+publicRoutes.post(
+  '/admin/api-keys/:keyId/revoke',
+  AdminGuard.require,
+  routingInstance.revokeApiKey.bind(routingInstance),
+);
 
 /**
  * @swagger
@@ -3387,6 +3397,15 @@ publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayer
  *         schema:
  *           type: integer
  *           default: 1
+ *       - name: size
+ *         in: query
+ *         description: Number of players per page, between 1 and 100 (default is 15). Out-of-range values fall back to the default
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 15
  *       - name: orderBy
  *         in: query
  *         description: |
@@ -3663,7 +3682,7 @@ protectedRoutes.get('/players', routingInstance.getPlayers.bind(routingInstance)
  *   get:
  *     summary: Ranking of the players of every server
  *     description: |
- *       Lists the players of every enabled server in one ranking, 15 per page
+ *       Lists the players of every enabled server in one ranking, 15 per page unless size says otherwise
  *       Only players who still hold a castle are listed. The data is copied from each server once an hour
  *       No gge-server header is needed: the server of each player is part of the answer
  *     tags:
@@ -3677,6 +3696,15 @@ protectedRoutes.get('/players', routingInstance.getPlayers.bind(routingInstance)
  *           type: integer
  *           minimum: 1
  *           example: 1
+ *       - name: size
+ *         in: query
+ *         required: false
+ *         description: Number of players per page, between 1 and 100 (default is 15). Out-of-range values fall back to the default
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 15
  *       - name: orderBy
  *         in: query
  *         required: false
@@ -6546,14 +6574,15 @@ publicRoutes.get('/seo/alliance/:allianceId', routingInstance.getAllianceSeoHead
 
 /**
  * @openapi
- * /assets/og/player/{playerId}.png:
+ * /assets/og/player/{playerId}.jpg:
  *   get:
  *     summary: Share card image of a player
  *     description: >
- *       A 1200x630 PNG naming the player, their alliance and server, with their might, its trend over
+ *       A 1200x630 JPEG naming the player, their alliance and server, with their might, its trend over
  *       the last week, their might rank and level. Meant for link previews and for bot embeds: attach it
- *       and link to https://gge-tracker.com/player/{playerId}. Rendered once per hourly fill and cached,
- *       so the URL may carry any v= query to bust a client cache. A player that cannot be found
+ *       and link to https://gge-tracker.com/player/{playerId}. Rendered only when what it shows changes,
+ *       then cached, so the URL may carry any v= query to bust a client cache. A new render is budgeted
+ *       per caller, and one over budget is answered 429. A player that cannot be found
  *       answers the generic site card
  *     tags:
  *       - Previews
@@ -6563,32 +6592,34 @@ publicRoutes.get('/seo/alliance/:allianceId', routingInstance.getAllianceSeoHead
  *       - name: v
  *         in: query
  *         required: false
- *         description: Ignored. Lets a client bust its own cache, as the preview documents do with the fill version
+ *         description: Ignored. Lets a client bust its own cache, as the preview documents do with a hash of the card
  *         schema:
  *           type: string
  *     responses:
  *       '200':
  *         description: The card image
  *         content:
- *           image/png:
+ *           image/jpeg:
  *             schema:
  *               type: string
  *               format: binary
  *       '304':
  *         description: The If-None-Match ETag still matches, so this card has not changed
+ *       '429':
+ *         description: A new render was needed and this caller spent its render budget; retry after Retry-After seconds
  *       '500':
  *         $ref: '#/components/responses/InternalServerError'
  */
-publicRoutes.get('/assets/og/player/:playerId.png', routingInstance.getPlayerShareCard.bind(routingInstance));
+publicRoutes.get('/assets/og/player/:playerId.jpg', routingInstance.getPlayerShareCard.bind(routingInstance));
 
 /**
  * @openapi
- * /assets/og/alliance/{allianceId}.png:
+ * /assets/og/alliance/{allianceId}.jpg:
  *   get:
  *     summary: Share card image of an alliance
  *     description: >
- *       A 1200x630 PNG naming the alliance and its server, with its member count, might, might rank and
- *       average level. Link it to https://gge-tracker.com/alliance/{allianceId}. An alliance that
+ *       A 1200x630 JPEG naming the alliance and its server, with its might, might rank and member count.
+ *       Link it to https://gge-tracker.com/alliance/{allianceId}. An alliance that
  *       cannot be found answers the generic site card
  *     tags:
  *       - Previews
@@ -6598,23 +6629,25 @@ publicRoutes.get('/assets/og/player/:playerId.png', routingInstance.getPlayerSha
  *       - name: v
  *         in: query
  *         required: false
- *         description: Ignored. Lets a client bust its own cache, as the preview documents do with the fill version
+ *         description: Ignored. Lets a client bust its own cache, as the preview documents do with a hash of the card
  *         schema:
  *           type: string
  *     responses:
  *       '200':
  *         description: The card image
  *         content:
- *           image/png:
+ *           image/jpeg:
  *             schema:
  *               type: string
  *               format: binary
  *       '304':
  *         description: The If-None-Match ETag still matches, so this card has not changed
+ *       '429':
+ *         description: A new render was needed and this caller spent its render budget; retry after Retry-After seconds
  *       '500':
  *         $ref: '#/components/responses/InternalServerError'
  */
-publicRoutes.get('/assets/og/alliance/:allianceId.png', routingInstance.getAllianceShareCard.bind(routingInstance));
+publicRoutes.get('/assets/og/alliance/:allianceId.jpg', routingInstance.getAllianceShareCard.bind(routingInstance));
 
 /**
  * @openapi

@@ -36,9 +36,20 @@ export interface SandboxOptions {
   env?: Record<string, string | undefined>;
 }
 
+export const BRIDGE_STATUS_URL = new URL('/status', API_BASE_URL).toString();
+
+type BridgeStatusAnswer = Record<string, boolean> | null;
+
+export interface FakeBridge {
+  // null: /status does not answer, the way it behaved before the scraper read it
+  status: BridgeStatusAnswer | ((read: number) => BridgeStatusAnswer);
+  statusReads: number;
+}
+
 export interface Sandbox {
   backend: GenericFetchAndSaveBackend;
   api: FakeGameApi;
+  bridge: FakeBridge;
   db: FakePostgres;
   clickhouse: FakeClickHouse;
   redis: FakeRedis;
@@ -88,6 +99,7 @@ export function createSandbox(options: SandboxOptions = {}): Sandbox {
   const clickhouse = new FakeClickHouse(`${CLICKHOUSE_URL}:${CLICKHOUSE_PORT}`);
   const fakeRedis = new FakeRedis();
   const outbound: OutboundCall[] = [];
+  const bridge: FakeBridge = { status: null, statusReads: 0 };
   const restorers: (() => void)[] = [];
 
   const env = {
@@ -129,6 +141,12 @@ export function createSandbox(options: SandboxOptions = {}): Sandbox {
   restorers.push(patch(redis, 'createClient', () => fakeRedis));
 
   async function respondGet(url: string): Promise<{ status: number; data: unknown }> {
+    if (url === BRIDGE_STATUS_URL) {
+      bridge.statusReads++;
+      const answer = typeof bridge.status === 'function' ? bridge.status(bridge.statusReads) : bridge.status;
+      if (answer === null) throw new Error('connect ECONNREFUSED');
+      return { status: 200, data: answer };
+    }
     if (api.handles(url)) return api.get(url);
     throw new Error(`Unexpected GET outside the sandbox: ${url}`);
   }
@@ -167,6 +185,7 @@ export function createSandbox(options: SandboxOptions = {}): Sandbox {
   return {
     backend,
     api,
+    bridge,
     db,
     clickhouse,
     redis: fakeRedis,

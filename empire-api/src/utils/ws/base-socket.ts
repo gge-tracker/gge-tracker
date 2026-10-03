@@ -45,6 +45,7 @@ export enum SocketState {
 }
 
 class BaseSocket extends Log implements GgeMetricsSocket {
+  private static readonly RECONNECT_BACKOFF_STEPS = [0, 3, 5, 20, 30];
   private static readonly XML_REGEX = /<msg t='(.*?)'><body action='(.*?)' r='(.*?)'>(.*?)<\/body><\/msg>/;
   public opened: AsyncEvent;
   public closed: AsyncEvent;
@@ -65,6 +66,7 @@ class BaseSocket extends Log implements GgeMetricsSocket {
   protected reconnect: boolean;
   protected hasGbl: boolean;
   protected nbReconnects: number;
+  private restartScheduled = false;
   protected serverType: GgeServerType;
   protected readonly stats: GgeSocketStats = createSocketStats();
   protected readonly watchedCommands = new Set<string>();
@@ -187,6 +189,10 @@ class BaseSocket extends Log implements GgeMetricsSocket {
   }
 
   public async restart(instant = false): Promise<void> {
+    if (!instant && this.restartScheduled) {
+      this.muted('[restart] A restart is already scheduled. No action will be taken.');
+      return;
+    }
     clearTimeout(this.restartTimeout);
     if (this.socketState === SocketState.KILLED) {
       this.warn('[restart] Socket is killed. Restart will not be performed.');
@@ -195,25 +201,26 @@ class BaseSocket extends Log implements GgeMetricsSocket {
     this.log('[restart] Disconnecting and restarting socket connection.');
     this.stats.restarts++;
     this.disconnect();
-    const { baseDelaySeconds, jitterSeconds, preSleepMilliseconds } = this.reconnectTiming();
+    this.restartScheduled = true;
+    const { baseDelaySeconds, jitterSeconds, preSleepMilliseconds, backoffStepMilliseconds } = this.reconnectTiming();
     const nbReconnects = this.nbReconnects++;
     const randomDelay = jitterSeconds > 0 ? randomInt(jitterSeconds) : 0;
-    let defaultDelay = baseDelaySeconds;
+    let delayMilliseconds = (baseDelaySeconds + randomDelay) * 1000;
     if (!instant && nbReconnects > 0) {
-      if (nbReconnects < 5) {
-        const incrementalDelay = [0, 3, 5, 20, 30][Math.min(nbReconnects, 4)];
-        this.log(`[restart] Incremental delay: ${incrementalDelay} minutes`);
-        defaultDelay += incrementalDelay * 60;
-      } else {
-        this.log(`[restart] Max incremental delay reached. Keeping at 60 minutes.`);
-        defaultDelay = 60 * 60;
-      }
+      const backoffSteps = BaseSocket.RECONNECT_BACKOFF_STEPS[Math.min(nbReconnects, 4)];
+      this.log(`[restart] Incremental delay: ${(backoffSteps * backoffStepMilliseconds) / 60_000} minutes`);
+      delayMilliseconds += backoffSteps * backoffStepMilliseconds;
     }
-    const finalDelay = instant ? 0 : defaultDelay + randomDelay;
+    const finalDelay = instant ? 0 : delayMilliseconds / 1000;
     await this.sleep(preSleepMilliseconds);
+    if (!this.restartScheduled) {
+      this.muted('[restart] Restart was cancelled while waiting. No action will be taken.');
+      return;
+    }
     clearTimeout(this.restartTimeout);
     this.log(`[restart] Attempting to restart socket connection in ${finalDelay} seconds...`);
     this.restartTimeout = setTimeout(async () => {
+      this.restartScheduled = false;
       await this.connectMethod();
     }, finalDelay * 1000);
   }
@@ -351,7 +358,6 @@ class BaseSocket extends Log implements GgeMetricsSocket {
     this.connected.clear();
     this.setSocketState(SocketState.CONNECTING);
     this.ws = new WebSocket(this.url);
-    this.nbReconnects = 0;
     this.ws.on('open', () => this._onOpen());
     this.ws.on('message', (message) => this._onMessage(message));
     this.ws.on('error', (error) => this._onError(error));
@@ -375,6 +381,7 @@ class BaseSocket extends Log implements GgeMetricsSocket {
 
   public handleErrorResponse(message: string, timeout: number = 5 * 60 * 1000): void {
     this.error('[connect]', message);
+    if (this.restartScheduled) return;
     clearTimeout(this.restartTimeout);
     this.restartTimeout = setTimeout(() => {
       void this.restart();
@@ -421,11 +428,17 @@ class BaseSocket extends Log implements GgeMetricsSocket {
     this.ws.send(data);
   }
 
-  private reconnectTiming(): { baseDelaySeconds: number; jitterSeconds: number; preSleepMilliseconds: number } {
+  private reconnectTiming(): {
+    baseDelaySeconds: number;
+    jitterSeconds: number;
+    preSleepMilliseconds: number;
+    backoffStepMilliseconds: number;
+  } {
     return {
       baseDelaySeconds: readEnvironmentInteger('EMPIRE_RECONNECT_BASE_DELAY_SEC', 120),
       jitterSeconds: readEnvironmentInteger('EMPIRE_RECONNECT_JITTER_SEC', 30),
       preSleepMilliseconds: readEnvironmentInteger('EMPIRE_RECONNECT_PRESLEEP_MS', 3000),
+      backoffStepMilliseconds: readEnvironmentInteger('EMPIRE_RECONNECT_BACKOFF_STEP_MS', 60_000),
     };
   }
 
@@ -465,6 +478,7 @@ class BaseSocket extends Log implements GgeMetricsSocket {
   private clearTimeouts(): void {
     clearTimeout(this.pingTimeout);
     clearTimeout(this.restartTimeout);
+    this.restartScheduled = false;
     clearTimeout(this.sendGblTimeout);
     clearTimeout(this.checkConnectionTimeout);
   }

@@ -82,6 +82,10 @@ div[data-chart] {
 .tabs-container > button:hover:not(.active) {
   background: rgba(233, 233, 233, 0.041);
 }
+#allianceList a {
+  display: inline-block;
+}
+
 #allianceList img {
   cursor: pointer;
   transition: opacity 0.1s;
@@ -1265,7 +1269,16 @@ img::selection {
 }
 
 .player-share-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
   margin-top: 40px;
+  padding: 0 12px;
+}
+
+.player-me-badge {
+  cursor: default;
 }
 
 .player-share-pill {

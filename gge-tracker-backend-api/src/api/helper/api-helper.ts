@@ -9,7 +9,7 @@ import { Status } from '../enums/http-status.enums';
 import { ApiGgeTrackerManager } from '../managers/api.manager';
 import { ApiInputErrorType, ApiInvalidInputType, ApiUndefinedInputType } from '../types/parameter.types';
 import * as cacheVersion from './cache/cache-version';
-import { toQueryText } from './parse-query';
+import { qNumber, toQueryText } from './parse-query';
 
 /**
  * Abstract utility class providing helper methods and constants for API operations
@@ -28,6 +28,7 @@ export abstract class ApiHelper {
   public static readonly API_PUBLIC_TOKEN = 0x5F_37_59_DFn;
   public static readonly PRIME = 11_400_714_819_323_198_485n;
   public static readonly PAGINATION_LIMIT = 15;
+  public static readonly MAX_PAGE_SIZE = 100;
   public static readonly RATE_LIMIT_POINTS = Number(process.env.RATE_LIMIT_POINTS) || 30;
   public static readonly RATE_LIMIT_DURATION_SECONDS = Number(process.env.RATE_LIMIT_DURATION) || 5;
   public static readonly REDIS_KEY_GGE_VERSION = 'gge_build_version';
@@ -40,6 +41,7 @@ export abstract class ApiHelper {
   public static readonly HTTP_UNAUTHORIZED = Status.UNAUTHORIZED;
   public static readonly HTTP_FORBIDDEN = Status.FORBIDDEN;
   public static readonly HTTP_NOT_FOUND = Status.NOT_FOUND;
+  public static readonly HTTP_TOO_MANY_REQUESTS = Status.TOO_MANY_REQUESTS;
   public static readonly HTTP_INTERNAL_SERVER_ERROR = Status.INTERNAL_SERVER_ERROR;
   public static readonly HTTP_SERVICE_UNAVAILABLE = Status.SERVICE_UNAVAILABLE;
   public static readonly GGE_BASE_URL = 'https://empire-html5.goodgamestudios.com';
@@ -382,6 +384,10 @@ export abstract class ApiHelper {
       return defaultValue;
     }
     return pageNumber;
+  }
+
+  public static parsePageSize(size: unknown): number {
+    return qNumber({ min: 1, max: ApiHelper.MAX_PAGE_SIZE, default: ApiHelper.PAGINATION_LIMIT }).parse(size)!;
   }
 
   /**

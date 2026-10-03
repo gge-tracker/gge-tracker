@@ -92,11 +92,15 @@ class Utils {
    * @param context What failed
    */
   public static logCritical(identifier: string, error: unknown, ...context: Array<any>): void {
-    const detail: string = error === undefined || error === null ? '' : Utils.formatMessage([error]);
-    const reason: string = Utils.describeError(error);
-    const summary: string = Utils.formatMessage(context).trim().replace(/:$/, '');
-    const msg: string = reason ? `${summary}: ${reason}`.slice(0, 200) : summary;
-    logger.error({ identifier: identifier || undefined, detail: detail || undefined }, msg);
+    Utils.logFailure('error', identifier, error, context);
+  }
+
+  public static logTolerated(identifier: string, error: unknown, ...context: Array<any>): void {
+    Utils.logFailure('warn', identifier, error, context);
+  }
+
+  public static logPersistentFailure(server: string, identifier: string, msg: string, detail: string): void {
+    logger.error({ server, identifier, detail: detail || undefined }, msg);
   }
 
   public static describeError(error: unknown): string {
@@ -411,6 +415,14 @@ class Utils {
         return String(part);
       })
       .join(' ');
+  }
+
+  private static logFailure(level: 'error' | 'warn', identifier: string, error: unknown, context: Array<any>): void {
+    const detail: string = error === undefined || error === null ? '' : Utils.formatMessage([error]);
+    const reason: string = Utils.describeError(error);
+    const summary: string = Utils.formatMessage(context).trim().replace(/:$/, '');
+    const msg: string = reason ? `${summary}: ${reason}`.slice(0, 200) : summary;
+    logger[level]({ identifier: identifier || undefined, detail: detail || undefined }, msg);
   }
 }
 

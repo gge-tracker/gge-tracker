@@ -459,10 +459,36 @@ a:visited {
   .about-btn, .github-btn, .api-btn {
     display: none !important;
   }
+
+  .topbar {
+    padding: 0 0.75rem;
+  }
+
+  .topbar .gap-4 {
+    gap: 0.6rem;
+  }
+
+  .topbar .divider {
+    display: none;
+  }
 }
 
 @media (max-width: 640px) {
   .search-wrapper {
     display: none !important;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .sidebar-btn,
+  .topbar-actions .action-icon {
+    min-height: 44px;
+    min-width: 44px;
+    justify-content: center;
+  }
+
+  .server-selector,
+  .lang-pill {
+    min-height: 44px;
   }
 }

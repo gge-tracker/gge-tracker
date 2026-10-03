@@ -128,7 +128,7 @@ export default function createApp(sockets: {
         return;
       }
       if (server in sockets) {
-        await sockets[server].restart();
+        await sockets[server].restart(true);
         response.status(200).json({ message: 'Server reconnecting' });
       } else {
         response.status(404).json({ error: 'Server not found' });

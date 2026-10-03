@@ -1152,3 +1152,27 @@ div[after] {
     background: var(--skeleton-base);
   }
 }
+
+@media (max-width: 575.98px) {
+  .alliance-tab {
+    min-height: 44px;
+    min-width: 44px;
+    justify-content: center;
+  }
+
+  .alliance-compare-link {
+    align-items: center;
+    display: inline-flex;
+    gap: 0.25rem;
+    min-height: 44px;
+    padding-left: 0.9rem;
+    padding-right: 0.9rem;
+  }
+
+  .distance-input,
+  .distance-action-btn,
+  .world-btn,
+  .stat-ledger-division {
+    min-height: 44px;
+  }
+}

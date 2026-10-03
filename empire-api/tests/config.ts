@@ -1,6 +1,7 @@
 process.env.EMPIRE_RECONNECT_BASE_DELAY_SEC ??= '0';
 process.env.EMPIRE_RECONNECT_JITTER_SEC ??= '0';
 process.env.EMPIRE_RECONNECT_PRESLEEP_MS ??= '50';
+process.env.EMPIRE_RECONNECT_BACKOFF_STEP_MS ??= '20';
 
 function envInt(name: string, fallback: number): number {
   const raw = process.env[name];

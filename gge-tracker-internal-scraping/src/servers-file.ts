@@ -21,6 +21,7 @@ export interface ScrapingServer {
   limit: number;
   dungeon: boolean;
   storm: boolean;
+  alertAfterFailures: number | null;
   kind: string;
   enabledBeta: boolean;
   enabledPublic: boolean;
@@ -54,6 +55,7 @@ function toServer(row: Record<string, unknown>): ScrapingServer | null {
     limit: Number(text(scraping['connection-limit'])) || 1,
     dungeon: flag(scraping.dungeon),
     storm: flag(scraping.storm),
+    alertAfterFailures: Number(text(scraping['alert-after-failures'])) || null,
     kind: text(row.kind),
     enabledBeta: apiEnabled(row, 'beta'),
     enabledPublic: apiEnabled(row, 'public'),

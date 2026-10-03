@@ -129,14 +129,15 @@
       <!-- Actions -->
       <td class="col-actions">
         <div class="action-buttons d-flex">
-          <a [routerLink]="['/', 'player', player.playerId]">
+          <a [routerLink]="['/', 'player', player.playerId]" [attr.aria-label]="'Analyser le joueur' | translate">
             <img src="/assets/icon_analyze.png" class="btn-icon" alt="">
           </a>
-          <a [routerLink]="['/', 'castles']" [queryParams]="{ search: player.playerName }">
+          <a [routerLink]="['/', 'castles']" [queryParams]="{ search: player.playerName }"
+            [attr.aria-label]="'Voir les châteaux' | translate">
             <img src="/assets/icon_castles.png" class="btn-icon" alt="">
           </a>
           <button type="button" class="button-reset d-inline-flex" (click)="toggleFavorite.emit(player)"
-            [attr.aria-label]="'Favori' | translate">
+            [attr.aria-label]="(player.isFavorite ? 'follow.unfollow' : 'follow.follow') | translate">
             <img [src]="'/assets/icon_friends' + (player.isFavorite ? '2' : '') + '.png'" alt=""
               class="btn-icon btn-favorite" [ngClass]="player.isFavorite ? 'is-favorite' : ''">
           </button>

@@ -186,6 +186,17 @@ describe('refreshInactivePlayer', () => {
     });
   });
 
+  it('leaves the player untouched when the bridge fails', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.api.on('gdi', () => {
+        throw new Error('Request failed with status code 500');
+      });
+      await sandbox.call('refreshInactivePlayer', 900001);
+      assert.deepEqual(sandbox.db.queries, [], 'an unanswered request says nothing about the player');
+      assert.equal(sandbox.state('DB_UPDATES').criticalErrors, 0);
+    });
+  });
+
   it('empties a player the game no longer has a record of', async () => {
     await withSandbox({}, async (sandbox) => {
       sandbox.api.on('gdi', () => ({ return_code: 0, content: {} }));

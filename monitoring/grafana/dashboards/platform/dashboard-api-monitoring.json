@@ -9239,6 +9239,253 @@
       ],
       "title": "Raw data",
       "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 63
+      },
+      "id": 196,
+      "panels": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "description": "Requests per second sent with an X-Api-Key, one series per partner. Keys are issued and revoked with dist/scripts/api-keys.js; a partner missing here has not called since its key was issued",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "lineWidth": 1,
+                "showPoints": "never",
+                "spanNulls": true,
+                "lineInterpolation": "smooth",
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                }
+              },
+              "unit": "reqps",
+              "color": {
+                "mode": "palette-classic"
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 64
+          },
+          "id": 197,
+          "options": {
+            "legend": {
+              "calcs": [
+                "mean",
+                "max"
+              ],
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "4.12.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-clickhouse-datasource",
+                "uid": "clickhouse"
+              },
+              "editorType": "sql",
+              "format": 0,
+              "meta": {
+                "builderOptions": {
+                  "columns": [],
+                  "database": "logs",
+                  "limit": 1000,
+                  "mode": "list",
+                  "queryType": "timeseries",
+                  "table": "logs"
+                }
+              },
+              "pluginVersion": "4.12.0",
+              "queryType": "timeseries",
+              "refId": "A",
+              "rawSql": "SELECT\n  $__timeInterval(timestamp) AS t,\n  partner,\n  count() / $__interval_s AS requests\nFROM logs.logs\nWHERE $__timeFilter(timestamp)\n  AND job = 'ggetracker-api'\n  AND partner != ''\n  AND match(server, '^(${server:regex})$')\n  AND match(route, '^(${route:regex})$')\nGROUP BY t, partner\nORDER BY t"
+            }
+          ],
+          "title": "Requests per partner",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "description": "One line per partner key: volume, error share, breadth, what it costs us and when it was last seen. Requests refused with 429 never reach this log, so a partner hitting its limit shows as a flat top on the graph above, not as errors here",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": true,
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "requests"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "mode": "gradient",
+                      "type": "gauge"
+                    }
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "continuous-BlPu"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "error_pct"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "server_time_s"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "s"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "p95_ms"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "ms"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "last_seen"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "dateTimeAsIso"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 72
+          },
+          "id": 198,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": [
+                "requests"
+              ],
+              "reducer": [
+                "sum"
+              ],
+              "show": true
+            },
+            "showHeader": true
+          },
+          "pluginVersion": "4.12.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-clickhouse-datasource",
+                "uid": "clickhouse"
+              },
+              "editorType": "sql",
+              "format": 1,
+              "meta": {
+                "builderOptions": {
+                  "columns": [],
+                  "database": "logs",
+                  "limit": 1000,
+                  "mode": "list",
+                  "queryType": "table",
+                  "table": "logs"
+                }
+              },
+              "pluginVersion": "4.12.0",
+              "queryType": "table",
+              "refId": "A",
+              "rawSql": "SELECT\n  partner,\n  count() AS requests,\n  round(100.0 * countIf(status >= 400) / count(), 2) AS error_pct,\n  uniqExact(route) AS routes,\n  uniqExact(trim(splitByChar(',', ip)[1])) AS ips,\n  round(sum(response_time) / 1000.0, 0) AS server_time_s,\n  round(quantile(0.95)(response_time), 0) AS p95_ms,\n  max(timestamp) AS last_seen\nFROM logs.logs\nWHERE $__timeFilter(timestamp)\n  AND job = 'ggetracker-api'\n  AND partner != ''\n  AND match(server, '^(${server:regex})$')\n  AND match(route, '^(${route:regex})$')\nGROUP BY partner\nORDER BY requests DESC"
+            }
+          ],
+          "title": "Partners",
+          "type": "table"
+        }
+      ],
+      "title": "Partners (API keys)",
+      "type": "row"
     }
   ],
   "preload": false,

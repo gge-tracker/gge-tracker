@@ -50,7 +50,7 @@ import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { formatThousands } from '@ggetracker-services/text-format.utilities';
 import { LevelPipe } from '@ggetracker-pipes/level.pipe';
 import { LanguageService } from '@ggetracker-services/language.service';
-import { LocalStorageService } from '@ggetracker-services/local-storage.service';
+import { FollowService } from '@ggetracker-services/follow.service';
 import { TranslateModule } from '@ngx-translate/core';
 import Gradient from 'javascript-color-gradient';
 import { ApexAxisChartSeries } from 'ng-apexcharts';
@@ -158,7 +158,6 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   public allianceId?: number;
   public fillDataState: FillDataState = 'idle';
   public fillPlayerHistoryState: FillDataState = 'idle';
-  public favories: Record<number, string> = {};
   public activeOptionButton = '';
   public currentSemaine?: string;
   public isAtRisk = false;
@@ -290,7 +289,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   }
 
   private animationFrames: Partial<Record<keyof IRankingStatsPlayer, number>> = {};
-  private readonly localStorage = inject(LocalStorageService);
+  private readonly followService = inject(FollowService);
   private readonly languageService = inject(LanguageService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly worlds = [
@@ -305,11 +304,6 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
 
   constructor() {
     super();
-    this.favories = {};
-    const favories = this.localStorage.getItem('favories');
-    if (favories) {
-      this.favories = JSON.parse(favories);
-    }
   }
 
   public ngAfterViewInit(): void {
@@ -681,28 +675,25 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   }
 
   public isInFavorites(): boolean {
-    if (this.playerId === undefined) {
-      return false;
-    }
-    const favoriesString = this.localStorage.getItem('favories');
-    let favoriteIds: string[] = favoriesString ? JSON.parse(favoriesString) : [];
-    if (!Array.isArray(favoriteIds)) {
-      this.localStorage.setItem('favories', JSON.stringify([]));
-      favoriteIds = [];
-    }
-    return favoriteIds.includes(this.playerId.toString());
+    return this.playerId !== undefined && this.followService.isFollowingPlayer(this.playerId);
   }
 
   public removePlayerFromFavorites(): void {
-    const favoriesString = this.localStorage.getItem('favories');
-    let favoriteIds: string[] = favoriesString ? JSON.parse(favoriesString) : [];
-    if (!Array.isArray(favoriteIds)) {
-      this.localStorage.setItem('favories', JSON.stringify([]));
-      favoriteIds = [];
-    }
-    const playerIdNumber = Number(this.playerId);
-    favoriteIds = favoriteIds.filter((id) => id !== playerIdNumber.toString());
-    this.localStorage.setItem('favories', JSON.stringify(favoriteIds));
+    if (this.isInFavorites()) this.followService.togglePlayer(this.playerId!);
+    this.cdr.detectChanges();
+  }
+
+  public isMe(): boolean {
+    return this.playerId !== undefined && this.followService.me()?.playerId === String(this.playerId);
+  }
+
+  public setAsMe(): void {
+    if (this.playerId === undefined || !this.playerName) return;
+    this.followService.setMe({
+      playerId: String(this.playerId),
+      playerName: this.playerName,
+      server: this.apiRestService.serverService.currentServer?.name ?? '',
+    });
     this.cdr.detectChanges();
   }
 
@@ -732,19 +723,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   }
 
   public addPlayerToFavorites(): void {
-    const favoriesString = this.localStorage.getItem('favories');
-    let favoriteIds: string[] = favoriesString ? JSON.parse(favoriesString) : [];
-
-    if (!Array.isArray(favoriteIds)) {
-      this.localStorage.setItem('favories', JSON.stringify([]));
-      favoriteIds = [];
-    }
-
-    const playerIdNumber = Number(this.playerId);
-    if (!favoriteIds.includes(playerIdNumber.toString())) {
-      favoriteIds.push(playerIdNumber.toString());
-    }
-    this.localStorage.setItem('favories', JSON.stringify(favoriteIds));
+    if (!this.isInFavorites() && this.playerId !== undefined) this.followService.togglePlayer(this.playerId);
     this.cdr.detectChanges();
   }
 

@@ -240,7 +240,7 @@
   transition: background 0.2s ease;
 }
 
-::ng-deep #table-component tbody tr:hover {
+::ng-deep #table-component tbody tr:not(.row-favorite):hover {
   background: #0e1212cc !important;
 }
 
@@ -481,6 +481,15 @@
 @media (max-width: 900px) {
   ::ng-deep #table-component .mobile-only {
     display: inline;
+  }
+
+  ::ng-deep #table-component a:has(> img:only-child),
+  ::ng-deep #table-component button:has(> img:only-child) {
+    align-items: center;
+    display: inline-flex;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 44px;
   }
 
   ::ng-deep #table-component .table-custom td {

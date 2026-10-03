@@ -35,29 +35,36 @@
       }
     </div>
     @if (searchTypes()['player']) {
-      <div class="col-auto">
-        <button class="btn-modern btn-player" (click)="onPlayerSearch()">
-          <lucide-icon class="lucide lucide-search" [img]="Search"></lucide-icon> {{ 'Rechercher le joueur' | translate }}
+      <div class="col-auto search-action">
+        <button class="btn-modern btn-player" (click)="onPlayerSearch()"
+          [attr.aria-label]="'Rechercher le joueur' | translate">
+          <lucide-icon class="lucide lucide-search" [img]="Search"></lucide-icon>
+          <span class="label-long">{{ 'Rechercher le joueur' | translate }}</span>
+          <span class="label-short">{{ 'Joueur' | translate }}</span>
         </button>
       </div>
     }
     @if (searchTypes()['alliance']) {
-      <div class="col-auto">
-        <button class="btn-modern btn-alliance" (click)="onAllianceSearch()">
-          <lucide-icon class="lucide lucide-search" [img]="Search"></lucide-icon> {{ !alliancePlaceholder() ? ('Rechercher l\'alliance' | translate) : alliancePlaceholder() }}
+      <div class="col-auto search-action">
+        <button class="btn-modern btn-alliance" (click)="onAllianceSearch()"
+          [attr.aria-label]="!alliancePlaceholder() ? ('Rechercher l\'alliance' | translate) : alliancePlaceholder()">
+          <lucide-icon class="lucide lucide-search" [img]="Search"></lucide-icon>
+          <span class="label-long">{{ !alliancePlaceholder() ? ('Rechercher l\'alliance' | translate) : alliancePlaceholder() }}</span>
+          <span class="label-short">{{ !alliancePlaceholder() ? ('Alliance' | translate) : alliancePlaceholder() }}</span>
         </button>
       </div>
     }
     @if (formFilters() !== null && searchFixed === '') {
-      <div class="col-auto">
+      <div class="col-auto search-tool">
         <app-filter
           [countFilterActivated]="countFilterActivated"
         ></app-filter>
       </div>
     }
     @if (exportDataEnabled()) {
-      <div class="col-auto">
-        <button class="btn-modern btn-filter" (click)="exportData.emit()" [title]="'Exporter les données' | translate">
+      <div class="col-auto search-tool">
+        <button class="btn-modern btn-filter" (click)="exportData.emit()" [title]="'Exporter les données' | translate"
+          [attr.aria-label]="'Exporter les données' | translate">
           <lucide-icon class="lucide lucide-download" [img]="Download"></lucide-icon>
         </button>
       </div>

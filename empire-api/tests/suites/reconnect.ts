@@ -1,3 +1,5 @@
+import { createServer, type Server } from 'node:net';
+import type { AddressInfo } from 'node:net';
 import { Report } from '../lib/report.js';
 import { config } from '../config.js';
 import { MockGgeServer } from '../lib/mock-server.js';
@@ -22,6 +24,21 @@ async function connectFresh(server: MockGgeServer): Promise<ReturnType<typeof cr
   await waitFor(() => gpiCount(server) >= 2, config.connectTimeoutMs);
   await sleep(80);
   return socket;
+}
+
+async function startRefusingListener(): Promise<{ server: Server; url: string; attempts: () => number }> {
+  let attempts = 0;
+  const server = createServer((connection) => {
+    attempts++;
+    connection.destroy();
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address() as AddressInfo;
+  return { server, url: `ws://127.0.0.1:${port}`, attempts: () => attempts };
+}
+
+function reconnectCount(socket: ReturnType<typeof createEmpireSocket>): number {
+  return (socket as unknown as { nbReconnects: number }).nbReconnects;
 }
 
 export async function runReconnect(report: Report): Promise<void> {
@@ -112,6 +129,27 @@ export async function runReconnect(report: Report): Promise<void> {
     } finally {
       disposeSocket(socket);
       await server.stop();
+    }
+  }
+
+  {
+    const listener = await startRefusingListener();
+    const socket = createEmpireSocket(listener.url);
+    try {
+      void socket.connect();
+      const climbed = await waitFor(() => listener.attempts() >= 4, config.reconnectTimeoutMs);
+      await sleep(100);
+      section.expect('climbs the backoff ladder across failed attempts', {
+        ok: climbed && reconnectCount(socket) >= 4,
+        detail: `attempts=${listener.attempts()} backoffStep=${reconnectCount(socket)}`,
+      });
+      section.expect('one failed attempt is one backoff step', {
+        ok: reconnectCount(socket) === listener.attempts(),
+        detail: `attempts=${listener.attempts()} backoffStep=${reconnectCount(socket)}`,
+      });
+    } finally {
+      disposeSocket(socket);
+      await new Promise((resolve) => listener.server.close(resolve));
     }
   }
 }

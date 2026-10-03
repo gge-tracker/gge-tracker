@@ -17,6 +17,51 @@
   <div class="section">
     <p>{{ 'about.host' | translate }}</p>
   </div>
+  <section id="integrations" class="section integrations" aria-labelledby="integrations-title">
+    <h2 id="integrations-title" class="integrations-title">{{ 'about.integrations-title' | translate }}</h2>
+    <p>{{ 'about.integrations-intro' | translate }}</p>
+    <div class="integrations-grid">
+      <article class="integration-card">
+        <h3 class="integration-name">
+          <i class="fa-brands fa-discord" aria-hidden="true"></i>
+          GGE Assistant
+        </h3>
+        <p>{{ 'about.integrations-assistant' | translate }}</p>
+        <div class="integration-actions">
+          <a class="integration-action integration-action--primary text-decoration-none"
+            href="https://top.gg/bot/1472309793065533493" target="_blank" rel="noopener">
+            {{ 'about.integrations-assistant-add' | translate }}
+          </a>
+          <a class="integration-action text-decoration-none" href="https://discord.gg/zrrhxp6wDj" target="_blank"
+            rel="noopener">
+            {{ 'about.integrations-assistant-support' | translate }}
+          </a>
+        </div>
+      </article>
+      <article class="integration-card">
+        <h3 class="integration-name">
+          <i class="fa-solid fa-code" aria-hidden="true"></i>
+          {{ 'about.integrations-build-title' | translate }}
+        </h3>
+        <p>{{ 'about.integrations-build' | translate }}</p>
+        <ul class="integration-facts">
+          <li>{{ 'about.integrations-key' | translate }}</li>
+          <li>{{ 'about.integrations-links' | translate }} <code>?utm_source=…</code></li>
+          <li>{{ 'about.integrations-cards' | translate }}</li>
+        </ul>
+        <div class="integration-actions">
+          <a class="integration-action integration-action--primary text-decoration-none"
+            href="https://docs.gge-tracker.com" target="_blank" rel="noopener">
+            {{ 'about.integrations-docs' | translate }}
+          </a>
+          <a class="integration-action text-decoration-none" href="https://discord.gg/eb6WSHQqYh" target="_blank"
+            rel="noopener">
+            {{ 'about.integrations-request-key' | translate }}
+          </a>
+        </div>
+      </article>
+    </div>
+  </section>
   <div class="contrib-heading mt-5">
     <h1 class="text-center mb-0">{{ 'about.contributors-title' | translate }}</h1>
     @if (contribs.length) {

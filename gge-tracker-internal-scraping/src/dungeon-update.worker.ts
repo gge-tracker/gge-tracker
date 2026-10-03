@@ -7,6 +7,8 @@
 //
 //  Copyrights (c) 2026 - gge-tracker.com & gge-tracker contributors
 //
+import { BridgeStatus, isSocketDown, readBridgeStatus } from './bridge-status';
+import { FailureStreaks } from './failure-streaks';
 import { GenericFetchAndSaveBackend } from './main';
 import { ScrapingServer, readScrapingServers } from './servers-file';
 
@@ -14,6 +16,7 @@ export type ServerConfig = ScrapingServer;
 
 const INTERVAL_MS = Number(process.env.INTERVAL_MS || 120_000);
 const BASE_API_HOST = 'http://empire-api-realtime:3000';
+const failedSweeps = new FailureStreaks('Dungeon cooldown sweep', '432');
 
 const colors = {
   gray: (type: string): string => `\x1b[90m${type}\x1b[0m`,
@@ -55,7 +58,7 @@ export function parseServersConf(): ServerConfig[] {
 }
 
 export interface ServerRunResult {
-  ok: boolean;
+  failure: string | null;
   discoveryAttempted: boolean;
   discoveryCompleted: boolean;
 }
@@ -81,6 +84,7 @@ async function processServer(
     },
     server.name,
   );
+  backend.deferFailureAlerts = true;
 
   let discoveryAttempted = false;
   let discoveryCompleted = false;
@@ -92,11 +96,17 @@ async function processServer(
       if (!discoveryCompleted) logWarn(`${server.name} discovery incomplete, it stays due`);
     }
     await backend.updateDungeonsList();
-    logInfo(`${server.name} updated`);
-    return { ok: true, discoveryAttempted, discoveryCompleted };
+    const failure = backend.lastJobFailure?.failureReason ?? null;
+    if (failure === null) logInfo(`${server.name} updated`);
+    else logWarn(`${server.name} failed: ${failure}`);
+    return { failure, discoveryAttempted, discoveryCompleted };
   } catch (err) {
     logError(`${server.name} failed: ${(err as Error).message}`);
-    return { ok: false, discoveryAttempted, discoveryCompleted };
+    return {
+      failure: (err as Error).message,
+      discoveryAttempted,
+      discoveryCompleted,
+    };
   } finally {
     await safeCloseConnections(backend);
   }
@@ -115,17 +125,30 @@ const DISCOVERY_ATTEMPTS_PER_CYCLE = 3;
 
 async function runOnce(): Promise<void> {
   const servers = parseServersConf();
+  const bridge: BridgeStatus | null = await readBridgeStatus(BASE_API_HOST);
   let success = 0;
   let failed = 0;
+  let skipped = 0;
   let attemptsLeft = DISCOVERY_ATTEMPTS_PER_CYCLE;
   for (const [index, server] of servers.entries()) {
     const cleanIndex: string = `${index + 1}`.padStart(servers.length.toString().length, ' ');
+    if (isSocketDown(bridge, server.zone)) {
+      logWarn(`[${cleanIndex}/${servers.length}] ${server.name} skipped: its bridge socket is down`);
+      skipped++;
+      continue;
+    }
     const result = await processServer(server, cleanIndex, servers.length, attemptsLeft > 0);
     if (result.discoveryAttempted) attemptsLeft--;
     if (result.discoveryCompleted) attemptsLeft = 0;
-    result.ok ? success++ : failed++;
+    if (result.failure === null) {
+      failedSweeps.recordSuccess(server);
+      success++;
+    } else {
+      failedSweeps.recordFailure(server, result.failure);
+      failed++;
+    }
   }
-  logInfo(`Run completed : ${success} success / ${failed} failed`);
+  logInfo(`Run completed : ${success} success / ${failed} failed / ${skipped} skipped`);
 }
 
 async function sleep(ms: number): Promise<void> {

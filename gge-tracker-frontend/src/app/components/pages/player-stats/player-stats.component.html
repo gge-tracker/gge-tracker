@@ -12,13 +12,22 @@
         {{ 'Partager' | translate }}</button>
       }
       @if (!isInFavorites()) {
-      <button class="btn btn-primary mt-3" (click)="addPlayerToFavorites()">
+      <button class="btn btn-primary mt-3 me-2" (click)="addPlayerToFavorites()">
         <i class="fas fa-star"></i>
-        {{ 'Ajouter en favoris' | translate }}</button>
+        {{ 'follow.follow' | translate }}</button>
       } @else {
-      <button class="btn btn-primary mt-3" (click)="removePlayerFromFavorites()">
+      <button class="btn btn-primary mt-3 me-2" (click)="removePlayerFromFavorites()" [attr.aria-pressed]="true">
         <i class="fas fa-star"></i>
-        {{ 'Retirer des favoris' | translate }}</button>
+        {{ 'follow.unfollow' | translate }}</button>
+      }
+      @if (isMe()) {
+      <span class="btn btn-primary mt-3 player-me-badge">
+        <i class="fas fa-user-check"></i>
+        {{ 'follow.is-me' | translate }}</span>
+      } @else {
+      <button class="btn btn-primary mt-3" (click)="setAsMe()">
+        <i class="fas fa-user"></i>
+        {{ 'home.me-submit' | translate }}</button>
       }
     </div>
   </div>
@@ -59,11 +68,22 @@
         </div>
       </div>
       @if (playerId) {
-      <div class="d-md-none text-center player-share-row">
+      <div class="d-md-none player-share-row">
         <button type="button" class="player-share-pill" aria-haspopup="dialog" (click)="playerShare.open()">
           <i class="fas fa-share-nodes"></i>
           <span class="ms-1">{{ 'Partager' | translate }}</span>
         </button>
+        <button type="button" class="player-share-pill" [attr.aria-pressed]="isInFavorites()"
+          (click)="isInFavorites() ? removePlayerFromFavorites() : addPlayerToFavorites()">
+          <i class="fas fa-star"></i>
+          <span class="ms-1">{{ (isInFavorites() ? 'follow.unfollow' : 'follow.follow') | translate }}</span>
+        </button>
+        @if (!isMe()) {
+          <button type="button" class="player-share-pill" (click)="setAsMe()">
+            <i class="fas fa-user"></i>
+            <span class="ms-1">{{ 'home.me-submit' | translate }}</span>
+          </button>
+        }
       </div>
       }
       <div class="container-fluid mt-3 leaderboard d-flex flex-wrap justify-content-around text-center">

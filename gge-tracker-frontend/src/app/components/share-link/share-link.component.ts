@@ -30,7 +30,7 @@ export class ShareLinkComponent {
   }
 
   public get imageUrl(): string {
-    return `${ApiRestService.apiUrl}assets/og/${this.subject()}/${this.subjectId()}.png`;
+    return `${ApiRestService.apiUrl}assets/og/${this.subject()}/${this.subjectId()}.jpg`;
   }
 
   private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');

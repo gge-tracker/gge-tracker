@@ -15,6 +15,7 @@ import {
   SearchType,
 } from '@ggetracker-interfaces/empire-ranking';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
+import { FollowService } from '@ggetracker-services/follow.service';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { ArrowBigRightDash, LucideAngularModule } from 'lucide-angular';
@@ -104,13 +105,17 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     'banFilter',
     'inactiveFilter',
   ] as const;
+  private static readonly PAGE_SIZE_STORAGE_KEY = 'playersPageSize';
+  private static readonly DEFAULT_PAGE_SIZE = 12;
+  private static readonly MAX_PAGE_SIZE = 100;
   @ViewChild('searchForm') public searchForm!: SearchFormComponent;
   public readonly REALM_ORDER = ['0', '2', '1', '3'];
   public players: Player[] = [];
   public scope: PlayersScope = 'server';
   public page = 1;
   public maxPage?: number;
-  public pageSize = 15;
+  public pageSize = PlayersComponent.DEFAULT_PAGE_SIZE;
+  public pageSizeInput = PlayersComponent.DEFAULT_PAGE_SIZE;
   public responseTime = 0;
   public playerCount = 0;
   public search = '';
@@ -203,6 +208,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
   };
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly localStorage = inject(LocalStorageService);
+  private readonly followService = inject(FollowService);
   private readonly formatNumberPipe = inject(FormatNumberPipe);
 
   constructor() {
@@ -216,6 +222,8 @@ export class PlayersComponent extends GenericComponent implements OnInit {
       this.scope = 'global';
       return;
     }
+    this.pageSize = this.readStoredPageSize();
+    this.pageSizeInput = this.pageSize;
     const sort = this.localStorage.getItem('sort');
     if (sort && sort === 'distance' && this.formFilters.playerCastleDistance !== '') this.sort = sort;
     const reverse = this.localStorage.getItem('reverse');
@@ -448,6 +456,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     this.popupIsInLoading = true;
     this.isInLoading = true;
     this.page = 1;
+    this.applyPageSize();
     this.cdr.detectChanges();
     if (this.formFilters.playerCastleDistance === '') {
       this.resetDistanceColumn();
@@ -599,24 +608,14 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     }
   }
 
-  public toggleFavorite(player: Player): void {
-    const favoriesString = this.localStorage.getItem('favories');
-    let favoriteIds: number[] = favoriesString ? JSON.parse(favoriesString) : [];
-    if (!Array.isArray(favoriteIds)) {
-      this.localStorage.setItem('favories', JSON.stringify([]));
-      favoriteIds = [];
-    }
-    const index = favoriteIds.indexOf(player.playerId);
-    if (index === -1) {
-      favoriteIds.push(player.playerId);
-      player.isFavorite = true;
-    } else {
-      favoriteIds.splice(index, 1);
-      player.isFavorite = false;
-    }
+  public resetPageSize(): void {
+    this.pageSizeInput = PlayersComponent.DEFAULT_PAGE_SIZE;
+  }
 
+  public toggleFavorite(player: Player): void {
+    this.followService.togglePlayer(player.playerId);
+    player.isFavorite = this.followService.isFollowingPlayer(player.playerId);
     this.cdr.detectChanges();
-    this.localStorage.setItem('favories', JSON.stringify(favoriteIds));
   }
 
   public exportData(): void {
@@ -670,6 +669,26 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     );
   }
 
+  private applyPageSize(): void {
+    this.pageSize = this.clampPageSize(this.pageSizeInput);
+    this.pageSizeInput = this.pageSize;
+    if (this.pageSize === PlayersComponent.DEFAULT_PAGE_SIZE) {
+      this.localStorage.removeItem(PlayersComponent.PAGE_SIZE_STORAGE_KEY);
+    } else {
+      this.localStorage.setItem(PlayersComponent.PAGE_SIZE_STORAGE_KEY, String(this.pageSize));
+    }
+  }
+
+  private readStoredPageSize(): number {
+    const stored = this.localStorage.getItem(PlayersComponent.PAGE_SIZE_STORAGE_KEY);
+    return stored ? this.clampPageSize(Number.parseInt(stored, 10)) : PlayersComponent.DEFAULT_PAGE_SIZE;
+  }
+
+  private clampPageSize(value: number): number {
+    if (!Number.isFinite(value)) return PlayersComponent.DEFAULT_PAGE_SIZE;
+    return Math.min(PlayersComponent.MAX_PAGE_SIZE, Math.max(1, Math.trunc(value)));
+  }
+
   private addHeaderTableBlock(): void {
     if (this.playersTableHeader.length === 8) {
       const block: [string, string, (string | undefined)?, (boolean | undefined)?] = [
@@ -698,7 +717,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
       },
       { page: 1, player: '', alliance: '' },
     );
-    const favoriePlayers: string[] = JSON.parse(this.localStorage.getItem('favories') || '[]');
+    const favoriePlayers = this.followService.followedPlayers();
     return players.players.map((player, index) => {
       return {
         rank: rankFunction(index),
@@ -757,6 +776,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
         this.reverse ? 'DESC' : 'ASC',
         this.search ?? undefined,
         this.constructFilters(),
+        this.pageSize,
       );
     } catch (error: unknown) {
       this.isInLoading = false;

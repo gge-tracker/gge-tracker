@@ -1,6 +1,10 @@
 import * as express from 'express';
+import * as crypto from 'node:crypto';
+import { RateLimiterRedis, RateLimiterRes } from 'rate-limiter-flexible';
+import { commandOptions } from 'redis';
 import { ApiHelper } from '../helper/api-helper';
 import { HttpCache } from '../helper/http-cache';
+import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiProfiles, ProfileContext } from './api-profiles';
 import {
   SHARE_CARD_HEIGHT,
@@ -33,12 +37,14 @@ export abstract class ApiSeo implements ApiHelper {
   public static readonly CARD_MAX_AGE_SECONDS = 3600;
 
   private static readonly PREVIEW_TTL_SECONDS = 3600;
-  private static readonly CARD_TTL_SECONDS = 2 * 3600;
-  private static readonly GENERIC_CARD_TTL_SECONDS = 24 * 3600;
+  private static readonly CARD_TTL_SECONDS = 24 * 3600;
+  private static readonly RENDERS_PER_MINUTE = Number(process.env.SEO_RENDERS_PER_MINUTE) || 60;
   private static readonly SITE_NAME = 'GGE Tracker';
   private static readonly GENERIC_TITLE = 'GGE Tracker - Advanced Stats for Goodgame Empire';
   private static readonly GENERIC_DESCRIPTION =
     'Community analytics tool for Goodgame Empire. Visualize your castles, explore interactive maps, track alliances, dungeons, and analyze event statistics.';
+
+  private static renderLimiter: RateLimiterRedis | null = null;
 
   public static async getPlayerHead(request: express.Request, response: express.Response): Promise<void> {
     await this.sendHead(request, response, 'player', request.params.playerId);
@@ -91,7 +97,7 @@ export abstract class ApiSeo implements ApiHelper {
   ): Promise<void> {
     try {
       const preview = await this.preview(subject, rawId);
-      const key = `seo:card:${preview.cacheKey}`;
+      const key = this.cardKey(preview.card);
       if (
         HttpCache.handleConditional(request, response, {
           etag: HttpCache.etagFromCacheKey(key),
@@ -101,8 +107,13 @@ export abstract class ApiSeo implements ApiHelper {
       ) {
         return;
       }
-      const image = await this.cardImage(key, preview);
-      response.setHeader('Content-Type', 'image/png');
+      const image = await this.cardImage(request, key, preview.card);
+      if (!image) {
+        response.setHeader('Retry-After', '60');
+        response.status(ApiHelper.HTTP_TOO_MANY_REQUESTS).send({ error: RouteErrorMessagesEnum.RateLimited });
+        return;
+      }
+      response.setHeader('Content-Type', 'image/jpeg');
       response.setHeader('Content-Length', String(image.length));
       response.status(ApiHelper.HTTP_OK).end(image);
     } catch (error) {
@@ -112,13 +123,39 @@ export abstract class ApiSeo implements ApiHelper {
     }
   }
 
-  private static async cardImage(key: string, preview: SharePreview): Promise<Buffer> {
-    const cached = await ApiHelper.redisClient.get(key).catch((): null => null);
-    if (cached) return Buffer.from(cached, 'base64');
-    const image = await ShareCardRenderer.render(key, preview.card);
-    const ttl = preview.found ? this.CARD_TTL_SECONDS : this.GENERIC_CARD_TTL_SECONDS;
-    void ApiHelper.updateCache(key, image.toString('base64'), ttl, true);
+  private static async cardImage(request: express.Request, key: string, card: ShareCard): Promise<Buffer | null> {
+    const cached = await ApiHelper.redisClient
+      .get(commandOptions({ returnBuffers: true }), key)
+      .catch((): null => null);
+    if (cached) return cached;
+    if (!(await this.withinRenderBudget(request))) return null;
+    const image = await ShareCardRenderer.render(key, card);
+    void ApiHelper.redisClient.setEx(key, this.CARD_TTL_SECONDS, image).catch((): null => null);
     return image;
+  }
+
+  private static async withinRenderBudget(request: express.Request): Promise<boolean> {
+    this.renderLimiter ??= new RateLimiterRedis({
+      storeClient: ApiHelper.redisClient,
+      keyPrefix: 'seo-render',
+      points: this.RENDERS_PER_MINUTE,
+      duration: 60,
+    });
+    try {
+      await this.renderLimiter.consume(request.ip || 'unknown');
+      return true;
+    } catch (error) {
+      if (error instanceof RateLimiterRes) return false;
+      throw error;
+    }
+  }
+
+  private static cardKey(card: ShareCard): string {
+    return `seo:card:${this.cardDigest(card)}`;
+  }
+
+  private static cardDigest(card: ShareCard): string {
+    return crypto.createHash('sha1').update(JSON.stringify(card)).digest('hex').slice(0, 20);
   }
 
   private static async preview(subject: ShareSubject, rawId: unknown): Promise<SharePreview> {
@@ -217,7 +254,6 @@ export abstract class ApiSeo implements ApiHelper {
     const members = Number(alliance.statistics.player_count);
     const activeMembers = Number(alliance.statistics.active_player_count);
     const might = Number(alliance.statistics.might_current);
-    const averageLevel = Number(alliance.statistics.average_level);
     const mightRank = rank.might_current === null ? null : Number(rank.might_current);
     const rankedAlliances = Number(rank.ranked_alliances);
     const path = `/alliance/${context.id}`;
@@ -237,7 +273,7 @@ export abstract class ApiSeo implements ApiHelper {
       card: {
         kind: 'Alliance',
         title: name,
-        subtitle: `${this.grouped(members)} members · ${this.grouped(activeMembers)} looting this week`,
+        subtitle: null,
         server,
         stats: [
           { label: 'Might', value: this.compact(might) },
@@ -248,7 +284,11 @@ export abstract class ApiSeo implements ApiHelper {
                 value: `#${this.grouped(mightRank)}`,
                 detail: `of ${this.grouped(rankedAlliances)} alliances`,
               },
-          { label: 'Average level', value: averageLevel.toFixed(0) },
+          {
+            label: 'Members',
+            value: this.grouped(members),
+            detail: `${this.grouped(activeMembers)} looting this week`,
+          },
         ],
         footer: this.displayUrl(path),
       },
@@ -307,7 +347,8 @@ export abstract class ApiSeo implements ApiHelper {
   }
 
   private static trendDetail(trend: MightTrend): Pick<ShareCardStat, 'detail' | 'trend'> {
-    const sign = trend.delta > 0 ? '+' : trend.delta < 0 ? '-' : '';
+    if (trend.delta === 0) return { detail: `No change in ${trend.days}d`, trend: 'flat' };
+    const sign = trend.delta > 0 ? '+' : '-';
     return {
       detail: `${sign}${this.compact(Math.abs(trend.delta))} in ${trend.days}d`,
       trend: trend.delta > 0 ? 'up' : trend.delta < 0 ? 'down' : 'flat',
@@ -318,8 +359,8 @@ export abstract class ApiSeo implements ApiHelper {
     const escape = ShareCardRenderer.escape.bind(ShareCardRenderer);
     const canonical = `${this.siteUrl()}${preview.path}`;
     const image = preview.found
-      ? `${this.apiUrl()}/assets/og${preview.path}.png?v=${encodeURIComponent(preview.dataVersion ?? '')}`
-      : `${this.apiUrl()}/assets/og/player/0.png`;
+      ? `${this.apiUrl()}/assets/og${preview.path}.jpg?v=${this.cardDigest(preview.card)}`
+      : `${this.apiUrl()}/assets/og/player/0.jpg`;
     const meta: [string, string, string][] = [
       ['name', 'description', preview.description],
       ['name', 'robots', preview.found ? 'index, follow' : 'noindex, follow'],
@@ -331,7 +372,7 @@ export abstract class ApiSeo implements ApiHelper {
       ['property', 'og:description', preview.description],
       ['property', 'og:url', canonical],
       ['property', 'og:image', image],
-      ['property', 'og:image:type', 'image/png'],
+      ['property', 'og:image:type', 'image/jpeg'],
       ['property', 'og:image:width', String(SHARE_CARD_WIDTH)],
       ['property', 'og:image:height', String(SHARE_CARD_HEIGHT)],
       ['property', 'og:image:alt', preview.imageAlt],

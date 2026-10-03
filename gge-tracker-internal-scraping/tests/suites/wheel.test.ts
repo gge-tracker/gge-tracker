@@ -12,6 +12,7 @@ import { describe, it } from 'node:test';
 
 import { fixtures, ranking } from '../harness/fixtures';
 import { rankingResponse } from '../harness/fake-api';
+import { withLogSpy } from '../harness/log-spy';
 import { withSandbox } from '../harness/sandbox';
 
 const WHEEL_LT = 72;
@@ -74,6 +75,18 @@ describe('insertWheelOfUnimaginableAffluenceData', () => {
       assert.equal(attempts, 4, 'the first try plus three retries');
       assert.equal(sandbox.state('DB_UPDATES').criticalErrors, 1);
       assert.deepEqual(sandbox.clickhouse.calls, []);
+    });
+  });
+
+  it('closes a retried run with a single summary', async () => {
+    await withLogSpy(async (logs) => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.api.on('hgh', () => {
+          throw new Error('the bridge is down');
+        });
+        await sandbox.call('insertWheelOfUnimaginableAffluenceData');
+        assert.deepEqual(logs.calls.flushRunSummary, [[1, 'TEST1']], 'one run, one summary, whatever the retries');
+      });
     });
   });
 
