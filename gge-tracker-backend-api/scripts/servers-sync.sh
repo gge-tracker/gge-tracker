@@ -21,11 +21,13 @@ ASSUME_YES=false
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") <diff|pull|push> [--yes]
+Usage: $(basename "$0") <diff|pull|push|channels> [--yes] [--prod]
 
-  diff   what a push would change on production (exit 1 when the two files differ)
-  pull   replace the local file with the production one
-  push   validate the local file, then replace the production one
+  diff       what a push would change on production (exit 1 when the two files differ)
+  pull       replace the local file with the production one
+  push       validate the local file, then replace the production one
+  channels   per server, every <api> flag where beta and public disagree (exit 1 when any does)
+             reads the local file, or the production one with --prod
 
 Both sides keep the last $BACKUPS_KEPT copies as servers.xml.bak-<date>.
 SERVERS_REMOTE_HOST and SERVERS_REMOTE_FILE are read from the repository .env when not exported.
@@ -108,6 +110,39 @@ print('Identical.')
 PY
 }
 
+channel_diff() {
+  python3 - "$1" "$2" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+def flags(section):
+    return {} if section is None else {flag.tag: (flag.text or '').strip() for flag in section}
+
+path, label = sys.argv[1:3]
+rows = []
+for server in ET.parse(path).getroot().iter('server'):
+    name = (server.findtext('name') or '').strip()
+    beta, public = flags(server.find('api/beta')), flags(server.find('api/public'))
+    for flag in dict.fromkeys([*beta, *public]):
+        on_beta, on_public = beta.get(flag, '<absent>'), public.get(flag, '<absent>')
+        if on_beta != on_public:
+            rows.append((name, flag, on_beta, on_public))
+
+if not rows:
+    print(f'beta and public agree on every server ({label}).')
+    sys.exit(0)
+print(f'beta and public differ ({label}):')
+print(f'  {"server":<14} {"flag":<16} {"beta":<9} public')
+for name, flag, on_beta, on_public in rows:
+    print(f'  {name:<14} {flag:<16} {on_beta:<9} {on_public}')
+for on_beta, verdict in (('true', 'enabled on beta only'), ('false', 'enabled on public only')):
+    names = [name for name, flag, value, _ in rows if flag == 'enabled' and value == on_beta]
+    if names:
+        print(f'{verdict}: {", ".join(names)}')
+sys.exit(1)
+PY
+}
+
 confirm() {
   $ASSUME_YES && return 0
   read -r -p "$1 [y/N] " answer
@@ -149,6 +184,7 @@ run_push() {
   if semantic_diff "$REMOTE_COPY" "$LOCAL_FILE" prod local; then
     return 0
   fi
+  channel_diff "$LOCAL_FILE" local || true
   confirm "Replace the production file with this one?" || exit 1
 
   local incoming="$REMOTE_FILE.push-$STAMP"
@@ -176,9 +212,27 @@ echo "Pushed. Previous production copy: $file.bak-$stamp"
 REMOTE
 }
 
+run_channels() {
+  if $FROM_PROD; then
+    require_remote
+    fetch_remote
+    channel_diff "$REMOTE_COPY" prod
+  else
+    channel_diff "$LOCAL_FILE" local
+  fi
+}
+
 command="${1:-}"
-[ "${2:-}" = "--yes" ] && ASSUME_YES=true
+FROM_PROD=false
+for option in "${@:2}"; do
+  case "$option" in
+    --yes) ASSUME_YES=true ;;
+    --prod) FROM_PROD=true ;;
+    *) usage; exit 2 ;;
+  esac
+done
 case "$command" in
+  channels) run_channels ;;
   diff) require_remote; run_diff ;;
   pull) require_remote; run_pull ;;
   push) require_remote; run_push ;;
