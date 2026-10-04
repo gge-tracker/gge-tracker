@@ -168,6 +168,8 @@ async function generateSitemaps() {
     buildUrlXml("https://gge-tracker.com/renames/alliances"),
     buildUrlXml("https://gge-tracker.com/dungeons"),
     buildUrlXml("https://gge-tracker.com/about"),
+    buildUrlXml("https://gge-tracker.com/legal", "yearly", "0.3"),
+    buildUrlXml("https://gge-tracker.com/privacy", "yearly", "0.3"),
     buildUrlXml("https://gge-tracker.com/release-notes", "monthly", "0.8"),
   ];
   const staticSitemap = buildSitemapXml(staticUrls);

@@ -5,8 +5,6 @@ import { ToastService } from '@ggetracker-services/toast.service';
 
 export type ShareSubject = 'player' | 'alliance';
 
-type ShareMethod = 'copy' | 'native' | 'image';
-
 @Component({
   selector: 'app-share-link',
   exportAs: 'shareLink',
@@ -59,7 +57,6 @@ export class ShareLinkComponent {
     try {
       await globalThis.navigator.clipboard.writeText(this.pageUrl);
       this.toastService.info(this.translateService.instant('Lien copié'));
-      this.track('copy');
     } catch {
       this.selectLinkField();
     }
@@ -68,12 +65,7 @@ export class ShareLinkComponent {
   public async shareNatively(): Promise<void> {
     try {
       await globalThis.navigator.share({ title: this.name() || undefined, url: this.pageUrl });
-      this.track('native');
     } catch {}
-  }
-
-  public onImageOpened(): void {
-    this.track('image');
   }
 
   public selectLinkField(event?: Event): void {
@@ -83,10 +75,5 @@ export class ShareLinkComponent {
 
   private linkField(): HTMLInputElement | null {
     return this.dialog().nativeElement.querySelector('input');
-  }
-
-  private track(method: ShareMethod): void {
-    const dataLayer = (globalThis as { dataLayer?: unknown[] }).dataLayer;
-    dataLayer?.push({ event: 'share', method, content_type: this.subject(), item_id: String(this.subjectId()) });
   }
 }

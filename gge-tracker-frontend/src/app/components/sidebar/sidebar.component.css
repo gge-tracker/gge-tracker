@@ -327,6 +327,30 @@ img,
   width: 8px;
 }
 
+.sidebar-legal {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.sidebar-legal a {
+  align-items: center;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.5);
+  display: inline-flex;
+  font-size: 12px;
+  height: 24px;
+  justify-content: center;
+  transition: color 150ms ease, background 150ms ease;
+  width: 24px;
+}
+
+.sidebar-legal a:hover,
+.sidebar-legal a:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
+}
+
 .sidebar-status-text {
   color: #34d399;
   font-family: monospace;

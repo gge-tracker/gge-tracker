@@ -31,6 +31,16 @@
               "src/manifest.webmanifest"
             ],
             "styles": [
+              "node_modules/bootstrap/dist/css/bootstrap.min.css",
+              "node_modules/@fortawesome/fontawesome-free/css/all.min.css",
+              "node_modules/@fontsource/inter/300.css",
+              "node_modules/@fontsource/inter/400.css",
+              "node_modules/@fontsource/inter/500.css",
+              "node_modules/@fontsource/inter/600.css",
+              "node_modules/@fontsource/inter/700.css",
+              "node_modules/@fontsource/inter/800.css",
+              "node_modules/@fontsource/outfit/400.css",
+              "node_modules/@fontsource/outfit/600.css",
               "src/app/stylesheets/font-faces.css",
               "src/app/stylesheets/styles.css",
               "src/app/stylesheets/website-beta-preview.css",
@@ -39,6 +49,7 @@
               "node_modules/@ng-select/ng-select/themes/default.theme.css"
             ],
             "scripts": [
+              "node_modules/bootstrap/dist/js/bootstrap.bundle.min.js",
               "node_modules/katex/dist/katex.min.js"
             ]
           },

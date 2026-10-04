@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 
 import { MaintenanceComponent } from '@ggetracker-components/maintenance/maintenance.component';
 import { AboutComponent } from '@ggetracker-pages/about/about.component';
+import { LegalDocumentComponent } from '@ggetracker-pages/legal/legal-document.component';
 import { AllianceStatsComponent } from '@ggetracker-pages/alliance-stats/alliance-stats.component';
 import { AlliancesComponent } from '@ggetracker-pages/alliances/alliances.component';
 import { EventsComponent } from '@ggetracker-pages/events/events.component';
@@ -182,6 +183,26 @@ export const routes: Routes = [
           description:
             'Discover the modern analysis tool for Goodgame Empire, with detailed statistics and interactive graphs.',
           titleKey: 'A propos',
+        },
+      },
+      {
+        path: 'legal',
+        component: LegalDocumentComponent,
+        resolve: { titleResolver },
+        data: {
+          document: 'legal',
+          description: 'Legal notice and terms of use of gge-tracker.com.',
+          titleKey: 'Mentions légales',
+        },
+      },
+      {
+        path: 'privacy',
+        component: LegalDocumentComponent,
+        resolve: { titleResolver },
+        data: {
+          document: 'privacy',
+          description: 'How gge-tracker.com handles personal data: request logs, game data, retention and your rights.',
+          titleKey: 'Confidentialité',
         },
       },
       {

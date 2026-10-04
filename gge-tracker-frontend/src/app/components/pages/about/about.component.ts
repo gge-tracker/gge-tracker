@@ -1,5 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { ServerService } from '@ggetracker-services/server.service';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -22,7 +23,7 @@ const LANE_MIN_ITEMS = 16;
 
 @Component({
   selector: 'app-about',
-  imports: [NgTemplateOutlet, TranslatePipe],
+  imports: [NgTemplateOutlet, RouterLink, TranslatePipe],
   templateUrl: './about.component.html',
   standalone: true,
   styleUrl: './about.component.css',

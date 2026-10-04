@@ -1,0 +1,60 @@
+<article class="container legal-container my-5">
+  <nav class="legal-tabs" [attr.aria-label]="'legal.navigation' | translate">
+    <a class="legal-tab" routerLink="/legal" routerLinkActive="legal-tab--active" ariaCurrentWhenActive="page">
+      {{ 'legal.title' | translate }}
+    </a>
+    <a class="legal-tab" routerLink="/privacy" routerLinkActive="legal-tab--active" ariaCurrentWhenActive="page">
+      {{ 'privacy.title' | translate }}
+    </a>
+  </nav>
+
+  <header class="legal-header">
+    <h1>{{ document.titleKey | translate }}</h1>
+    <p class="legal-updated">{{ 'legal.updated' | translate: { date: updatedOn } }}</p>
+    @for (key of document.introKeys; track key) {
+      <p class="legal-intro">{{ key | translate }}</p>
+    }
+  </header>
+
+  @for (section of document.sections; track section.titleKey) {
+    <section class="legal-section" [class.legal-section--nested]="section.level === 3">
+      @if (section.level === 2) {
+        <h2>{{ section.titleKey | translate }}</h2>
+      } @else {
+        <h3>{{ section.titleKey | translate }}</h3>
+      }
+      @for (block of section.blocks; track $index) {
+        @switch (block.kind) {
+          @case ('paragraph') {
+            <p [innerHTML]="block.key | translate: links"></p>
+          }
+          @case ('list') {
+            @if (block.introKey) {
+              <p [innerHTML]="block.introKey | translate: links"></p>
+            }
+            <ul class="legal-list">
+              @for (key of block.keys; track key) {
+                <li [innerHTML]="key | translate: links"></li>
+              }
+            </ul>
+          }
+          @case ('facts') {
+            <dl class="legal-facts">
+              @for (fact of block.facts; track fact.key) {
+                <div class="legal-fact">
+                  <dt>{{ fact.labelKey | translate }}</dt>
+                  <dd [innerHTML]="fact.key | translate: links"></dd>
+                </div>
+              }
+            </dl>
+          }
+          @case ('link') {
+            <p>
+              <a class="legal-cross-link" [routerLink]="block.route">{{ block.key | translate }}</a>
+            </p>
+          }
+        }
+      }
+    </section>
+  }
+</article>

@@ -55,6 +55,14 @@
         ({{
         apiRestService.responseMs }} {{'ms' | translate}})
       }</span>
+      <nav class="sidebar-legal" [attr.aria-label]="'legal.navigation' | translate">
+        <a routerLink="/legal" [title]="'legal.title' | translate" [attr.aria-label]="'legal.title' | translate">
+          <i class="fa-solid fa-scale-balanced" aria-hidden="true"></i>
+        </a>
+        <a routerLink="/privacy" [title]="'privacy.title' | translate" [attr.aria-label]="'privacy.title' | translate">
+          <i class="fa-solid fa-user-shield" aria-hidden="true"></i>
+        </a>
+      </nav>
     </div>
   </div>
 </aside>

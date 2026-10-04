@@ -15,7 +15,11 @@
     <ng-container *ngTemplateOutlet="contact"></ng-container>
   </div>
   <div class="section">
-    <p>{{ 'about.host' | translate }}</p>
+    <p>{{ 'about.legal-intro' | translate }}</p>
+    <div class="integration-actions">
+      <a class="integration-action text-decoration-none" routerLink="/legal">{{ 'legal.title' | translate }}</a>
+      <a class="integration-action text-decoration-none" routerLink="/privacy">{{ 'privacy.title' | translate }}</a>
+    </div>
   </div>
   <section id="integrations" class="section integrations" aria-labelledby="integrations-title">
     <h2 id="integrations-title" class="integrations-title">{{ 'about.integrations-title' | translate }}</h2>

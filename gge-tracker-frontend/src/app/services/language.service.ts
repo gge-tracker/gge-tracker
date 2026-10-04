@@ -8,17 +8,17 @@ import { LocalStorageService } from './local-storage.service';
 export class LanguageService {
   public currentLang = 'en';
   public langs = [
-    { code: 'en', label: 'English', flagUrl: 'https://flagsapi.com/GB/flat/32.png', locale: 'en-GB' },
-    { code: 'fr', label: 'Français', flagUrl: 'https://flagsapi.com/FR/flat/32.png', locale: 'fr-FR' },
-    { code: 'nl', label: 'Nederlands', flagUrl: 'https://flagsapi.com/NL/flat/32.png', locale: 'nl-NL' },
-    { code: 'pl', label: 'Polski', flagUrl: 'https://flagsapi.com/PL/flat/32.png', locale: 'pl-PL' },
-    { code: 'ro', label: 'Română', flagUrl: 'https://flagsapi.com/RO/flat/32.png', locale: 'ro-RO' },
-    { code: 'de', label: 'Deutsch', flagUrl: 'https://flagsapi.com/DE/flat/32.png', locale: 'de-DE' },
-    { code: 'ar', label: 'العربية', flagUrl: 'https://flagsapi.com/SA/flat/32.png', locale: 'ar-SA' },
-    { code: 'pt', label: 'Português', flagUrl: 'https://flagsapi.com/BR/flat/32.png', locale: 'pt-BR' },
-    { code: 'es', label: 'Español', flagUrl: 'https://flagsapi.com/ES/flat/32.png', locale: 'es-ES' },
-    { code: 'it', label: 'Italiano', flagUrl: 'https://flagsapi.com/IT/flat/32.png', locale: 'it-IT' },
-    { code: 'tr', label: 'Türkçe', flagUrl: 'https://flagsapi.com/TR/flat/32.png', locale: 'tr-TR' },
+    { code: 'en', label: 'English', flagUrl: '/assets/flags/GB.png', locale: 'en-GB' },
+    { code: 'fr', label: 'Français', flagUrl: '/assets/flags/FR.png', locale: 'fr-FR' },
+    { code: 'nl', label: 'Nederlands', flagUrl: '/assets/flags/NL.png', locale: 'nl-NL' },
+    { code: 'pl', label: 'Polski', flagUrl: '/assets/flags/PL.png', locale: 'pl-PL' },
+    { code: 'ro', label: 'Română', flagUrl: '/assets/flags/RO.png', locale: 'ro-RO' },
+    { code: 'de', label: 'Deutsch', flagUrl: '/assets/flags/DE.png', locale: 'de-DE' },
+    { code: 'ar', label: 'العربية', flagUrl: '/assets/flags/SA.png', locale: 'ar-SA' },
+    { code: 'pt', label: 'Português', flagUrl: '/assets/flags/BR.png', locale: 'pt-BR' },
+    { code: 'es', label: 'Español', flagUrl: '/assets/flags/ES.png', locale: 'es-ES' },
+    { code: 'it', label: 'Italiano', flagUrl: '/assets/flags/IT.png', locale: 'it-IT' },
+    { code: 'tr', label: 'Türkçe', flagUrl: '/assets/flags/TR.png', locale: 'tr-TR' },
   ];
 
   private readonly browserLanguages = navigator.languages?.length ? navigator.languages : [navigator.language];
