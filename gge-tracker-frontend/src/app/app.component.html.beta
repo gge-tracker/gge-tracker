@@ -1,10 +1,18 @@
-<div class="beta-gge-tracker">
-  <i class="fa-solid fa-triangle-exclamation"></i>
-  <span>
-    <strong>Beta Preview</strong> - You are using the <strong>next version</strong> of GGE-Tracker.
-    Bugs, errors, or data issues may occur.
-    Please report them to <span class="discord-user"><i class="fa-brands fa-discord"></i> angelotmx</span>.
-    <strong>Use with caution.</strong>
-  </span>
-</div>
+@if (betaBannerVisible()) {
+  <div class="beta-gge-tracker">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <span class="beta-message">
+      <strong>Beta Preview</strong> - You are using the <strong>next version</strong> of GGE-Tracker.
+      Bugs, errors, or data issues may occur.
+      Please report them to <span class="discord-user"><i class="fa-brands fa-discord"></i> angelotmx</span>.
+      <strong>Use with caution.</strong>
+    </span>
+    <button type="button" class="beta-close" aria-label="Close" (click)="hideBetaBanner()">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+} @else {
+  <div class="beta-edge"></div>
+  <button type="button" class="beta-tab" title="Beta Preview" (click)="showBetaBanner()">BETA</button>
+}
 <router-outlet></router-outlet>
