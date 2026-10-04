@@ -6524,7 +6524,7 @@ publicRoutes.get('/alliances/:allianceId/profile', routingInstance.getAlliancePr
  *     description: >
  *       A minimal HTML document carrying the title, description, canonical URL and Open Graph and
  *       Twitter tags of /player/{playerId} on the website. The website's proxy answers it to link
- *       crawlers (Discord, WhatsApp, search engines) instead of the single-page application. A player
+ *       crawlers (Discord, social networks, search engines) instead of the single-page application. A player
  *       that cannot be found answers the generic site preview with noindex, never an error
  *     tags:
  *       - Previews

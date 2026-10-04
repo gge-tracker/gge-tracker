@@ -17,6 +17,33 @@ export enum EnumTypeReleaseNote {
 export class ReleaseNotesComponent {
   public readonly releaseNotes = [
     {
+      version: 'v26-10-04',
+      type: EnumTypeReleaseNote.MAJOR,
+      date: '2026-10-04',
+      items: [
+        '📦 [Server] Added new servers: E4K-AR1, E4K-KR1, E4K-PL1, E4K-PL1-Beta, E4K-WORLD1, PARTNER-SA',
+        '📦 [Server] Added EP-PT1 and E4K-PL1-Beta to advanced tools',
+        '🛠️ [Tools] Added new home page: a personal dashboard (your might and rank, weekly loot, your alliance, your events this week and the players and alliances you follow)',
+        '🛠️ [Tools] Added new tool: Compare : two players or two alliances side by side (might, loot aligned on the weekly reset, glory, events and rankings)',
+        '🛠️ [Tools] Added new tool: Rift Tournament : the Rift Raid alliance ranking, hour by hour, with divisions and subdivisions (EP and E4K)',
+        '🛠️ [Tools] Grand Tournament is now available on E4K servers, with its own ranking',
+        '🛠️ [Player List] Added a global ranking tab: players from every server in one ranking',
+        '🛠️ [Player List] Number of results per page can now be changed',
+        '✨ [Player Analysis] Added "Follow", "This is me", "Compare" and "Share" buttons',
+        '✨ [Player Analysis] Participation tab now shows the full weekly loot history, week by week',
+        '✨ [Alliance Analysis] Added "Follow", "Compare" and "Share" buttons',
+        '✨ [Alliance Analysis] Latest Grand Tournament and Rift Tournament divisions displayed as statistics cards',
+        '✨ [Miscellaneous] Player and alliance links now show a preview card on Discord and other social networks',
+        '✨ [Miscellaneous] Restyled tournament score view',
+        '✨ [Miscellaneous] Home, search and landing pages are now usable on phones',
+        '✨ [About] New "Integrations" section: GGE Assistant and the public API',
+        '🌍 [Translation] New translations available: Português, Español, Italiano, Türkçe',
+        '🐞 [Bugfix] Fixed several in-game names in English (events, levels)',
+        '🐞 [Bugfix] Fixed missing chart texts (months, days, menu) in some languages',
+        '🐞 [Bugfix] Fixed missing flags for some servers',
+      ],
+    },
+    {
       version: 'v26-08-23',
       type: EnumTypeReleaseNote.MAJOR,
       date: '2026-08-23',

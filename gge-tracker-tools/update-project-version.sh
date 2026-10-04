@@ -23,9 +23,8 @@ set -e
 YEAR=$(date +"%y")
 MONTH=$(date +"%m")
 DAY=$(date +"%d")
-# Note : Using -beta suffix for pre-release versions, but
-# will be removed for stable releases.
-VERSION="${YEAR}.${MONTH}.${DAY}-beta"
+
+VERSION="${YEAR}.${MONTH}.${DAY}"
 RED_COLOR='\033[0;31m'
 PINK_COLOR='\033[1;35m'
 BLUE_COLOR='\033[1;34m'

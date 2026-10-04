@@ -1,6 +1,6 @@
 {
   "name": "sitemap-generator",
-  "version": "26.08.23-beta",
+  "version": "26.10.04",
   "engines": {
     "node": ">=24"
   },
