@@ -19,6 +19,7 @@ LOG_SUFFIX=$SERVER
 
 docker run --rm --network backend --env-file=$BASE_SCRIPT_DIR/.env \
     --name ic-fetch-outer-realms \
+    -v "$SERVERS_CONFIG_DIR:/app/config:ro" \
     -e ID_SERVER=$ID_SERVER \
     -e PG_DB=$PG_DB \
     -e CLICKHOUSE_DB=$CLICKHOUSE_DB \
