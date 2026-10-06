@@ -18,6 +18,7 @@ export interface Seeds {
   castleId?: string;
   castlePlayerName?: string;
   eventPlayerName?: string;
+  outerRealmsEventNumber?: number;
   woaEventId?: string;
   woaEventDate?: string;
   woaPlayerId?: string;
@@ -130,6 +131,9 @@ export async function bootstrap(): Promise<Seeds> {
     path: `/events/outer-realms/1/players?page=1${seeds.server ? `&server=${encodeURIComponent(seeds.server)}` : ''}`,
   });
   seeds.eventPlayerName = eventPlayersRes.body?.players?.[0]?.player_name ?? undefined;
+
+  const outerRealmsRes = await request({ path: '/events/list?page=1&type=outer-realms' });
+  seeds.outerRealmsEventNumber = outerRealmsRes.body?.events?.[0]?.event_num ?? undefined;
 
   if (seeds.specialServer) {
     const occupied = await request({

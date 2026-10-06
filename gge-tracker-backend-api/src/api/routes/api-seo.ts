@@ -62,6 +62,27 @@ export abstract class ApiSeo implements ApiHelper {
     await this.sendCard(request, response, 'alliance', request.params.allianceId);
   }
 
+  public static async sendCachedCard(
+    request: express.Request,
+    response: express.Response,
+    key: string,
+    render: () => Promise<Buffer>,
+  ): Promise<void> {
+    const image = await this.cachedCard(request, key, render);
+    if (!image) {
+      response.setHeader('Retry-After', '60');
+      response.status(ApiHelper.HTTP_TOO_MANY_REQUESTS).send({ error: RouteErrorMessagesEnum.RateLimited });
+      return;
+    }
+    response.setHeader('Content-Type', 'image/jpeg');
+    response.setHeader('Content-Length', String(image.length));
+    response.status(ApiHelper.HTTP_OK).end(image);
+  }
+
+  public static displayUrl(path: string): string {
+    return `${this.siteUrl().replace(/^https?:\/\//, '')}${path === '/' ? '' : path}`;
+  }
+
   private static async sendHead(
     request: express.Request,
     response: express.Response,
@@ -107,15 +128,7 @@ export abstract class ApiSeo implements ApiHelper {
       ) {
         return;
       }
-      const image = await this.cardImage(request, key, preview.card);
-      if (!image) {
-        response.setHeader('Retry-After', '60');
-        response.status(ApiHelper.HTTP_TOO_MANY_REQUESTS).send({ error: RouteErrorMessagesEnum.RateLimited });
-        return;
-      }
-      response.setHeader('Content-Type', 'image/jpeg');
-      response.setHeader('Content-Length', String(image.length));
-      response.status(ApiHelper.HTTP_OK).end(image);
+      await this.sendCachedCard(request, response, key, () => ShareCardRenderer.render(key, preview.card));
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
@@ -123,13 +136,18 @@ export abstract class ApiSeo implements ApiHelper {
     }
   }
 
-  private static async cardImage(request: express.Request, key: string, card: ShareCard): Promise<Buffer | null> {
+  /** Null when the image must be rendered and the caller spent its render budget */
+  private static async cachedCard(
+    request: express.Request,
+    key: string,
+    render: () => Promise<Buffer>,
+  ): Promise<Buffer | null> {
     const cached = await ApiHelper.redisClient
       .get(commandOptions({ returnBuffers: true }), key)
       .catch((): null => null);
     if (cached) return cached;
     if (!(await this.withinRenderBudget(request))) return null;
-    const image = await ShareCardRenderer.render(key, card);
+    const image = await render();
     void ApiHelper.redisClient.setEx(key, this.CARD_TTL_SECONDS, image).catch((): null => null);
     return image;
   }
@@ -204,19 +222,19 @@ export abstract class ApiSeo implements ApiHelper {
     const levelText = legendaryLevel > 0 ? `legendary level ${legendaryLevel}` : `level ${level}`;
     const allianceText = allianceName ? ` of ${allianceName}` : '';
     const description =
-      `${name}${allianceText} on ${server}: ${this.compact(might)} might, ranked #${this.grouped(mightRank)} ` +
-      `of ${this.grouped(rankedPlayers)} players, ${levelText}. Might history, castles and alliance moves on GGE Tracker.`;
+      `${name}${allianceText} on ${server}: ${ShareCardRenderer.compact(might)} might, ranked #${ShareCardRenderer.grouped(mightRank)} ` +
+      `of ${ShareCardRenderer.grouped(rankedPlayers)} players, ${levelText}. Might history, castles and alliance moves on GGE Tracker.`;
 
     const stats: ShareCardStat[] = [
       {
         label: 'Might',
-        value: this.compact(might),
+        value: ShareCardRenderer.compact(might),
         ...(trend ? this.trendDetail(trend) : {}),
       },
       {
         label: 'Might rank',
-        value: `#${this.grouped(mightRank)}`,
-        detail: `of ${this.grouped(rankedPlayers)} players`,
+        value: `#${ShareCardRenderer.grouped(mightRank)}`,
+        detail: `of ${ShareCardRenderer.grouped(rankedPlayers)} players`,
       },
       legendaryLevel > 0
         ? { label: 'Level', value: String(legendaryLevel), detail: 'Legendary' }
@@ -227,7 +245,7 @@ export abstract class ApiSeo implements ApiHelper {
       path,
       title: `${name}${allianceName ? ` (${allianceName})` : ''} · ${server} · ${this.SITE_NAME}`,
       description,
-      imageAlt: `${name}, ${this.compact(might)} might, rank #${this.grouped(mightRank)} on ${server}`,
+      imageAlt: `${name}, ${ShareCardRenderer.compact(might)} might, rank #${ShareCardRenderer.grouped(mightRank)} on ${server}`,
       card: {
         kind: 'Player',
         title: name,
@@ -259,9 +277,11 @@ export abstract class ApiSeo implements ApiHelper {
     const path = `/alliance/${context.id}`;
 
     const rankText =
-      mightRank === null ? 'unranked' : `ranked #${this.grouped(mightRank)} of ${this.grouped(rankedAlliances)}`;
+      mightRank === null
+        ? 'unranked'
+        : `ranked #${ShareCardRenderer.grouped(mightRank)} of ${ShareCardRenderer.grouped(rankedAlliances)}`;
     const description =
-      `${name} on ${server}: ${this.grouped(members)} members, ${this.compact(might)} might, ${rankText}. ` +
+      `${name} on ${server}: ${ShareCardRenderer.grouped(members)} members, ${ShareCardRenderer.compact(might)} might, ${rankText}. ` +
       `Members, joins and departures, castles and rankings on GGE Tracker.`;
 
     return {
@@ -269,25 +289,25 @@ export abstract class ApiSeo implements ApiHelper {
       path,
       title: `${name} · ${server} alliance · ${this.SITE_NAME}`,
       description,
-      imageAlt: `${name}, ${this.grouped(members)} members, ${this.compact(might)} might on ${server}`,
+      imageAlt: `${name}, ${ShareCardRenderer.grouped(members)} members, ${ShareCardRenderer.compact(might)} might on ${server}`,
       card: {
         kind: 'Alliance',
         title: name,
         subtitle: null,
         server,
         stats: [
-          { label: 'Might', value: this.compact(might) },
+          { label: 'Might', value: ShareCardRenderer.compact(might) },
           mightRank === null
             ? { label: 'Might rank', value: '-', detail: 'Unranked' }
             : {
                 label: 'Might rank',
-                value: `#${this.grouped(mightRank)}`,
-                detail: `of ${this.grouped(rankedAlliances)} alliances`,
+                value: `#${ShareCardRenderer.grouped(mightRank)}`,
+                detail: `of ${ShareCardRenderer.grouped(rankedAlliances)} alliances`,
               },
           {
             label: 'Members',
-            value: this.grouped(members),
-            detail: `${this.grouped(activeMembers)} looting this week`,
+            value: ShareCardRenderer.grouped(members),
+            detail: `${ShareCardRenderer.grouped(activeMembers)} looting this week`,
           },
         ],
         footer: this.displayUrl(path),
@@ -350,7 +370,7 @@ export abstract class ApiSeo implements ApiHelper {
     if (trend.delta === 0) return { detail: `No change in ${trend.days}d`, trend: 'flat' };
     const sign = trend.delta > 0 ? '+' : '-';
     return {
-      detail: `${sign}${this.compact(Math.abs(trend.delta))} in ${trend.days}d`,
+      detail: `${sign}${ShareCardRenderer.compact(Math.abs(trend.delta))} in ${trend.days}d`,
       trend: trend.delta > 0 ? 'up' : trend.delta < 0 ? 'down' : 'flat',
     };
   }
@@ -414,29 +434,5 @@ ${tags}
 
   private static apiUrl(): string {
     return `${(process.env.BACKEND_API_URI || 'https://api.gge-tracker.com').replace(/\/+$/, '')}/api/v1`;
-  }
-
-  private static displayUrl(path: string): string {
-    return `${this.siteUrl().replace(/^https?:\/\//, '')}${path === '/' ? '' : path}`;
-  }
-
-  private static compact(value: number): string {
-    const units: [number, string][] = [
-      [1e12, 'T'],
-      [1e9, 'B'],
-      [1e6, 'M'],
-      [1e3, 'K'],
-    ];
-    for (const [threshold, suffix] of units) {
-      if (Math.abs(value) >= threshold) {
-        const scaled = value / threshold;
-        return `${scaled.toFixed(Math.abs(scaled) >= 100 ? 0 : 1)}${suffix}`;
-      }
-    }
-    return String(Math.round(value));
-  }
-
-  private static grouped(value: number): string {
-    return value.toLocaleString('en-US');
   }
 }

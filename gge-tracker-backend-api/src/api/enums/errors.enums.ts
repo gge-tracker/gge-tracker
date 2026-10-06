@@ -15,6 +15,7 @@ export enum RouteErrorMessagesEnum {
   ApiKeyStoreMissing = 'The api_keys table does not exist',
   AssetNotFound = 'Asset not found',
   EventNotActive = 'The event is not active',
+  EventNotFound = 'Event not found',
   InvalidAllianceId = 'Invalid alliance ID',
   InvalidAllianceName = 'Invalid alliance name',
   InvalidApiKey = 'Invalid or revoked API key. Remove the X-Api-Key header to use the anonymous limits',

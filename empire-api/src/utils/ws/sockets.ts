@@ -8,6 +8,8 @@ enum GgeXmlServerDescriptionUrls {
   E4K = 'https://gge-tracker.github.io/gge-cdn-mirror-files/e4k.xml',
   EP = 'https://gge-tracker.github.io/gge-cdn-mirror-files/1.xml',
   SP = 'https://gge-tracker.github.io/gge-cdn-mirror-files/39.xml',
+  SP_2 = 'https://gge-tracker.github.io/gge-cdn-mirror-files/34.xml',
+  NK = 'https://gge-tracker.github.io/gge-cdn-mirror-files/11.xml',
   KA = 'https://gge-tracker.github.io/gge-cdn-mirror-files/68.xml',
   SA_2 = 'https://gge-tracker.github.io/gge-cdn-mirror-files/65.xml',
   VZ = 'https://gge-tracker.github.io/gge-cdn-mirror-files/5.xml',
@@ -84,6 +86,8 @@ interface GgeNetworkDefinition {
 const GGE_NETWORKS: GgeNetworkDefinition[] = [
   { network: 'EP',    url: GgeXmlServerDescriptionUrls.EP,    protocol: 'wss', socketClass: GgeEmpireSocket },
   { network: 'SP',    url: GgeXmlServerDescriptionUrls.SP,    protocol: 'wss', socketClass: GgeEmpireSocket },
+  { network: 'SP_2',  url: GgeXmlServerDescriptionUrls.SP_2,  protocol: 'wss', socketClass: GgeEmpireSocket },
+  { network: 'NK',    url: GgeXmlServerDescriptionUrls.NK,    protocol: 'wss', socketClass: GgeEmpireSocket },
   { network: 'KA',    url: GgeXmlServerDescriptionUrls.KA,    protocol: 'wss', socketClass: GgeEmpireSocket },
   { network: 'SA_2',  url: GgeXmlServerDescriptionUrls.SA_2 , protocol: 'wss', socketClass: GgeEmpireSocket },
   { network: 'VZ',    url: GgeXmlServerDescriptionUrls.VZ ,   protocol: 'wss', socketClass: GgeEmpireSocket },

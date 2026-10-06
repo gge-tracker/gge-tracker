@@ -9,11 +9,15 @@
 //
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import { GenericFetchAndSaveBackend } from '../../src/main';
 import { StormIsleState } from '../../src/interfaces';
 import { clickHouseError, networkError } from '../harness/fake-clickhouse';
 import { withSandbox } from '../harness/sandbox';
+import { readPublicPlayerIdCodes } from '../../src/servers-file';
 
 const MAP_SIZE = 1286;
 const TILE_SPAN = 100;
@@ -235,6 +239,7 @@ describe('small helpers', () => {
     await withSandbox({}, async (sandbox) => {
       const escape = (value?: string | number): string => (sandbox.backend as any).formatValueForDiscord(value);
       assert.equal(escape('a_b*c~d`e>f|g@h#i'), String.raw`a\_b\*c\~d\`e\>f\|g\@h\#i`);
+      assert.equal(escape('[x]'), String.raw`\[x\]`, 'brackets would close a player link early');
       assert.equal(escape(42), '42');
       assert.equal(escape(undefined), '');
       assert.equal(escape(null as any), '');
@@ -269,23 +274,54 @@ describe('getDiscordApiMessageBody', () => {
   it('builds the embed the bot posts for a finished event', async () => {
     await withSandbox({}, async (sandbox) => {
       const body = sandbox.backend.getDiscordApiMessageBody('Outer Realms', 1234, 42, players as any);
+      const embed = body.embeds[0];
       assert.equal(body.channelId, '1234567890');
-      assert.equal(body.embeds[0].title, 'Outer Realms Leaderboard Update');
-      assert.equal(body.embeds[0].image?.url, 'https://gge-tracker.com/assets/outer-realms.png');
-      assert.equal(body.embeds[0].footer?.text, 'gge-tracker.com - 1234 players');
-      assert.equal(body.embeds[0].timestamp, sandbox.now.toISOString());
-      assert.ok(body.embeds[0].fields[0].value.includes('https://gge-tracker.com/events/outer-realms/42'));
+      assert.equal(embed.title, 'Outer Realms Leaderboard Update');
+      assert.equal(embed.url, 'https://gge-tracker.com/events/outer-realms/42');
+      assert.equal(embed.image?.url, 'https://api.gge-tracker.com/api/v1/assets/og/event/outer-realms/42.jpg');
+      assert.equal(embed.thumbnail?.url, 'https://i.imgur.com/FcLmF5K.png');
+      assert.equal(embed.footer?.text, 'gge-tracker.com - 1234 players');
+      assert.equal(embed.timestamp, sandbox.now.toISOString());
+      assert.ok(embed.fields[0].value.includes('https://gge-tracker.com/events/outer-realms/42'));
+    });
+  });
+
+  it('points the podium image at the API the environment names', async () => {
+    await withSandbox({ env: { GGE_TRACKER_API_URL: 'http://localhost:3002/api/v1' } }, async (sandbox) => {
+      const body = sandbox.backend.getDiscordApiMessageBody('Beyond the Horizon', 2, 7, players as any);
+      assert.equal(body.embeds[0].image?.url, 'http://localhost:3002/api/v1/assets/og/event/beyond-the-horizon/7.jpg');
+      assert.equal(body.embeds[0].thumbnail?.url, 'https://i.imgur.com/dlkPT1S.png');
     });
   });
 
   it('medals the podium, shows the legendary level and falls back for a player with no alliance', async () => {
     await withSandbox({}, async (sandbox) => {
       const body = sandbox.backend.getDiscordApiMessageBody('Beyond the Horizon', 2, 1, players as any);
-      const description = body.embeds[0].fields[0].value;
+      const description = body.embeds[0].description ?? '';
       assert.ok(description.includes(':first_place: '));
       assert.ok(description.includes('(Level: 70/950, Alliance: _Alliance\\_1_)'));
       assert.ok(description.includes(':second_place: '));
       assert.ok(description.includes('(Level: 70, Alliance: _-_)'), 'no legendary level and no alliance');
+    });
+  });
+
+  it('links a player whose server GGE Tracker serves and leaves the others plain', async () => {
+    await withSandbox({}, async (sandbox) => {
+      const codes = new Map([['FR1', '001']]);
+      const body = sandbox.backend.getDiscordApiMessageBody('Outer Realms', 2, 1, players as any, codes);
+      const description = body.embeds[0].description ?? '';
+      assert.ok(description.includes('[Player\\_1](https://gge-tracker.com/player/1001)'));
+      assert.ok(description.includes('Player\\_2 :flag_de:'), 'DE1 has no code, so no link');
+      assert.ok(!description.includes('/player/2'));
+    });
+  });
+
+  it('does not link a player whose id the event lookup did not resolve', async () => {
+    await withSandbox({}, async (sandbox) => {
+      const unresolved = [{ ...players[0], realPlayerId: undefined }];
+      const codes = new Map([['FR1', '001']]);
+      const body = sandbox.backend.getDiscordApiMessageBody('Outer Realms', 1, 1, unresolved as any, codes);
+      assert.ok(!(body.embeds[0].description ?? '').includes('/player/'));
     });
   });
 
@@ -296,5 +332,27 @@ describe('getDiscordApiMessageBody', () => {
         /Missing Discord Channel ID/,
       );
     });
+  });
+});
+
+describe('readPublicPlayerIdCodes', () => {
+  const server = (name: string, code: string, publicEnabled: boolean): string => `
+    <server><name>${name}</name><kind>ep</kind>
+      <api><beta><enabled>true</enabled></beta><public><enabled>${publicEnabled}</enabled></public></api>
+      <outer-name>${name}</outer-name><code>${code}</code>
+    </server>`;
+
+  it('maps every server the public API serves to its player id code', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'servers-'));
+    const file = join(directory, 'servers.xml');
+    try {
+      writeFileSync(
+        file,
+        `<root><servers>${server('FR1', '001', true)}${server('XX1', '999', false)}</servers></root>`,
+      );
+      assert.deepEqual([...readPublicPlayerIdCodes(file)], [['FR1', '001']]);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 });

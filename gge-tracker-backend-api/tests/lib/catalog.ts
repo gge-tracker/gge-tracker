@@ -1056,6 +1056,22 @@ export const CATALOG: Endpoint[] = [
     ],
   },
   {
+    id: 'og-event-podium-card',
+    snapshot: 'shape',
+    method: 'GET',
+    scope: 'public',
+    bypass: true,
+    path: (s) => `/assets/og/event/outer-realms/${s.outerRealmsEventNumber ?? 1}.jpg`,
+    okStatuses: [200],
+    kind: 'binary',
+    cases: [
+      { label: 'an unknown event type is refused', path: () => '/assets/og/event/grand-tournament/1.jpg', expect: [400] },
+      { label: 'a non-numeric event number is refused', path: () => '/assets/og/event/outer-realms/1e3.jpg', expect: [400] },
+      { label: 'an event never collected answers 404', path: () => '/assets/og/event/beyond-the-horizon/999999.jpg', expect: [404] },
+      { label: 'If-None-Match * is answered 304', path: (s) => `/assets/og/event/outer-realms/${s.outerRealmsEventNumber ?? 1}.jpg`, expect: [304], headers: () => ({ 'If-None-Match': '*' }) },
+    ],
+  },
+  {
     id: 'bulk-players',
     method: 'POST',
     scope: 'public',

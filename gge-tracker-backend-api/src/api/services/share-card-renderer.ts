@@ -23,9 +23,13 @@ export abstract class ShareCardRenderer {
   private static readonly inFlight = new Map<string, Promise<Buffer>>();
 
   public static render(key: string, card: ShareCard): Promise<Buffer> {
+    return this.renderHtml(key, this.toHtml(card));
+  }
+
+  public static renderHtml(key: string, html: string): Promise<Buffer> {
     const running = this.inFlight.get(key);
     if (running !== undefined) return running;
-    const job = this.renderOnce(card).finally(() => this.inFlight.delete(key));
+    const job = this.renderOnce(html).finally(() => this.inFlight.delete(key));
     this.inFlight.set(key, job);
     return job;
   }
@@ -39,7 +43,27 @@ export abstract class ShareCardRenderer {
       .replaceAll("'", '&#39;');
   }
 
-  private static async renderOnce(card: ShareCard): Promise<Buffer> {
+  public static compact(value: number): string {
+    const units: [number, string][] = [
+      [1e12, 'T'],
+      [1e9, 'B'],
+      [1e6, 'M'],
+      [1e3, 'K'],
+    ];
+    for (const [threshold, suffix] of units) {
+      if (Math.abs(value) >= threshold) {
+        const scaled = value / threshold;
+        return `${scaled.toFixed(Math.abs(scaled) >= 100 ? 0 : 1)}${suffix}`;
+      }
+    }
+    return String(Math.round(value));
+  }
+
+  public static grouped(value: number): string {
+    return value.toLocaleString('en-US');
+  }
+
+  private static async renderOnce(html: string): Promise<Buffer> {
     return puppeteerManagerInstance.withPage(async (page) => {
       // Names are player input: the page runs no script and reaches nothing outside itself
       await page.setJavaScriptEnabled(false);
@@ -49,7 +73,7 @@ export abstract class ShareCardRenderer {
         else void request.abort();
       });
       await page.setViewport({ width: SHARE_CARD_WIDTH, height: SHARE_CARD_HEIGHT, deviceScaleFactor: 1 });
-      await page.setContent(this.toHtml(card), { waitUntil: 'load' });
+      await page.setContent(html, { waitUntil: 'load' });
       const image = await page.screenshot({ type: 'jpeg', quality: 85 });
       return Buffer.from(image);
     });

@@ -35,6 +35,7 @@ import {
 } from './interfaces';
 import Utils from './utils';
 import { isSocketDown, readBridgeStatus, zoneOf } from './bridge-status';
+import { readPublicPlayerIdCodes } from './servers-file';
 
 export interface PlayerUpsertInput {
   playerId: number;
@@ -165,6 +166,8 @@ export interface DiscordApiMessageBody {
   channelId: string;
   embeds: {
     title: string;
+    url?: string;
+    description?: string;
     color: number;
     fields: {
       name: string;
@@ -257,6 +260,13 @@ export class GenericFetchAndSaveBackend {
   private readonly CURRENT_ENV: string = process.env.ENVIRONMENT || 'development';
   private readonly DISCORD_OR_CHANNEL_ID: string = process.env.DISCORD_OR_CHANNEL_ID || '';
   private readonly DISCORD_OR_API_URL: string = process.env.DISCORD_OR_API_URL || '';
+  private readonly SITE_URL: string = 'https://gge-tracker.com';
+  private readonly EVENT_THUMBNAILS: Record<'Beyond the Horizon' | 'Outer Realms', string> = {
+    'Outer Realms': 'https://i.imgur.com/FcLmF5K.png',
+    'Beyond the Horizon': 'https://i.imgur.com/dlkPT1S.png',
+  };
+  private readonly GGE_TRACKER_API_URL: string =
+    process.env.GGE_TRACKER_API_URL || 'https://api.gge-tracker.com/api/v1';
   private readonly MAP_SIZE = 1286;
   private readonly DUNGEON_REALM_KIDS = [1, 2, 3];
   private readonly DUNGEON_SCAN_STEP = 100;
@@ -1324,34 +1334,41 @@ export class GenericFetchAndSaveBackend {
       playerName: string;
       allianceName: string;
     }[],
+    playerIdCodes: Map<string, string> = new Map(),
   ): DiscordApiMessageBody {
     if (!this.DISCORD_OR_CHANNEL_ID) {
       console.error('Missing Discord Channel ID environment variable');
       throw new Error('Missing Discord Channel ID environment variable');
     }
-    const description = `**Top 10 Players: ** \n${players
+    const eventSlug = eventType.toLowerCase().replace(/\s/g, '-');
+    const eventUrl = `${this.SITE_URL}/events/${eventSlug}/${eventNum}`;
+    const ranking = players
       .slice(0, 10)
       .map(
         (p, index) =>
-          `**${index + 1}. ${Utils.medalForRank(index)}${this.formatValueForDiscord(p.playerName)} ${this.transformServerNameToEmoji(p.server)}** (Level: ${p.legendaryLevel ? p.level + '/' + p.legendaryLevel : p.level}, Alliance: _${this.formatValueForDiscord(p.allianceName) || '-'}_)`,
+          `**${index + 1}. ${Utils.medalForRank(index)}${this.discordPlayerName(p, playerIdCodes)} ${this.transformServerNameToEmoji(p.server)}** (Level: ${p.legendaryLevel ? p.level + '/' + p.legendaryLevel : p.level}, Alliance: _${this.formatValueForDiscord(p.allianceName) || '-'}_)`,
       )
-      .join('\n')}`;
-    const baseImageUrl = 'https://gge-tracker.com/assets/';
+      .join('\n');
     return {
       channelId: this.DISCORD_OR_CHANNEL_ID,
       embeds: [
         {
           title: `${eventType} Leaderboard Update`,
+          url: eventUrl,
           color: 11027200,
+          description: `:trophy: The final ranking for '${eventType}' event is available!\n\n**Top 10 Players:**\n${ranking}`,
           fields: [
             {
-              name: `:trophy: The final ranking for '${eventType}' event is available!`,
-              value: `\n${description}\n\n :arrow_right: https://gge-tracker.com/events/${eventType.toLowerCase().replace(/\s/g, '-')}/${eventNum}`,
+              name: 'Full ranking',
+              value: `:arrow_right: ${eventUrl}`,
               inline: false,
             },
           ],
+          thumbnail: {
+            url: this.EVENT_THUMBNAILS[eventType],
+          },
           image: {
-            url: baseImageUrl + eventType.toLowerCase().replace(/\s/g, '-') + '.png',
+            url: `${this.GGE_TRACKER_API_URL}/assets/og/event/${eventSlug}/${eventNum}.jpg`,
           },
           footer: {
             text: 'gge-tracker.com - ' + playersAdded + ' players',
@@ -3589,7 +3606,7 @@ export class GenericFetchAndSaveBackend {
   private formatValueForDiscord(value?: string | number): string {
     if (value === undefined || value === null) return '';
     const strValue = value.toString();
-    return strValue.replace(/([\\_*~`>|@#])/g, String.raw`\$1`);
+    return strValue.replace(/([\\_*~`>|@#[\]])/g, String.raw`\$1`);
   }
 
   private async fillLootHistory(): Promise<void> {
@@ -5600,11 +5617,36 @@ export class GenericFetchAndSaveBackend {
       const top10Players = Object.values(entities)
         .sort((a, b) => b.point - a.point)
         .slice(0, 10);
-      const discordMessage = this.getDiscordApiMessageBody(eventName, playersCount, eventNum, top10Players);
+      const discordMessage = this.getDiscordApiMessageBody(
+        eventName,
+        playersCount,
+        eventNum,
+        top10Players,
+        this.readPlayerIdCodes(),
+      );
       await this.sendDiscordNotification(discordMessage);
     } catch (error) {
       Utils.logMessage('Error while sending Discord notification for event ' + eventName);
       Utils.logMessage(error);
+    }
+  }
+
+  private discordPlayerName(
+    player: { server: string; realPlayerId: number; playerName: string },
+    playerIdCodes: Map<string, string>,
+  ): string {
+    const name = this.formatValueForDiscord(player.playerName);
+    const code = playerIdCodes.get(String(player.server).toUpperCase());
+    if (!player.realPlayerId || !code) return name;
+    return `[${name}](${this.SITE_URL}/player/${player.realPlayerId}${code})`;
+  }
+
+  private readPlayerIdCodes(): Map<string, string> {
+    try {
+      return readPublicPlayerIdCodes();
+    } catch (error) {
+      Utils.logMessage(' [WARN] Servers file unreadable, the Discord ranking will carry no player links:', error);
+      return new Map();
     }
   }
 

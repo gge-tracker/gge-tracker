@@ -62,10 +62,14 @@ function toServer(row: Record<string, unknown>): ScrapingServer | null {
   };
 }
 
-export function readScrapingServers(file: string = SERVERS_FILE): ScrapingServer[] {
+function readServerRows(file: string): Record<string, unknown>[] {
   const rows = parser.parse(readFileSync(file, 'utf8'))?.root?.servers?.server;
   if (!rows) throw new Error(`No root > servers > server element in ${file}`);
-  return (Array.isArray(rows) ? rows : [rows])
+  return Array.isArray(rows) ? rows : [rows];
+}
+
+export function readScrapingServers(file: string = SERVERS_FILE): ScrapingServer[] {
+  return readServerRows(file)
     .map((row: Record<string, unknown>) => toServer(row))
     .filter((server: ScrapingServer | null): server is ScrapingServer => server !== null && server.name !== '');
 }
@@ -82,4 +86,14 @@ export function findScrapingServer(wanted: string, file: string = SERVERS_FILE):
     servers.find((server) => server.server.toUpperCase() === target) ||
     null
   );
+}
+
+export function readPublicPlayerIdCodes(file: string = SERVERS_FILE): Map<string, string> {
+  const codes = new Map<string, string>();
+  for (const row of readServerRows(file)) {
+    const outerName = text(row['outer-name']).toUpperCase();
+    const code = text(row.code);
+    if (outerName && code && apiEnabled(row, 'public')) codes.set(outerName, code);
+  }
+  return codes;
 }

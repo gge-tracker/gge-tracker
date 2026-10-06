@@ -6651,6 +6651,58 @@ publicRoutes.get('/assets/og/alliance/:allianceId.jpg', routingInstance.getAllia
 
 /**
  * @openapi
+ * /assets/og/event/{eventType}/{eventNumber}.jpg:
+ *   get:
+ *     summary: Podium card image of a finished Outer Realms or Beyond the Horizon event
+ *     description: >
+ *       A 1200x630 JPEG of the event's top three: name, alliance, server, level and event points, plus
+ *       their current might and might rank on their own server when GGE Tracker serves it, or a question
+ *       mark when it does not. Link it to https://gge-tracker.com/events/{eventType}/{eventNumber}.
+ *       Rendered only when what it shows changes, then cached; a new render is budgeted per caller,
+ *       and one over budget is answered 429
+ *     tags:
+ *       - Previews
+ *     parameters:
+ *       - name: eventType
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [outer-realms, beyond-the-horizon]
+ *       - name: eventNumber
+ *         in: path
+ *         required: true
+ *         description: The event number, as listed by /events/list
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *       - $ref: '#/components/parameters/IfNoneMatch'
+ *     responses:
+ *       '200':
+ *         description: The card image
+ *         content:
+ *           image/jpeg:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       '304':
+ *         description: The If-None-Match ETag still matches, so this card has not changed
+ *       '400':
+ *         $ref: '#/components/responses/BadRequest'
+ *       '404':
+ *         $ref: '#/components/responses/NotFound'
+ *       '429':
+ *         description: A new render was needed and this caller spent its render budget; retry after Retry-After seconds
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+publicRoutes.get(
+  '/assets/og/event/:eventType/:eventNumber.jpg',
+  routingInstance.getEventPodiumCard.bind(routingInstance),
+);
+
+/**
+ * @openapi
  * /bulk/players:
  *   post:
  *     summary: Read up to 500 players by id, across any number of servers
