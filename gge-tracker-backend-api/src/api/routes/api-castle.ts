@@ -69,13 +69,8 @@ export abstract class ApiCastle implements ApiHelper {
        * Fetch from GGE API
        * --------------------------------- */
       const basePath = kingdomId === 0 ? process.env.GGE_API_URL : process.env.GGE_API_URL_REALTIME;
-      // Step 1 : Send 'gbl' request  to clear previous context
-      await fetchFromBridge(`${basePath}/${ApiHelper.ggeTrackerManager.getZoneFromRequestId(castleId)}/gbl/null`);
-      // Step 2 : Send 'jca' request to get castle analysis data
-      const apiUrl = `${basePath}/${ApiHelper.ggeTrackerManager.getZoneFromRequestId(castleId)}/jca/"CID":${globalCastleId},"KID":${kingdomId}`;
-      const responseData = await fetchFromBridge(apiUrl);
-      // Step 3 : Send 'gbl' request to clear context again. This parts needs to be optimized in the future
-      await fetchFromBridge(`${basePath}/${ApiHelper.ggeTrackerManager.getZoneFromRequestId(castleId)}/gbl/null`);
+      const zone = ApiHelper.ggeTrackerManager.getZoneFromRequestId(castleId);
+      const responseData = await fetchFromBridge(`${basePath}/${zone}/jca/"CID":${globalCastleId},"KID":${kingdomId}`);
       if (!responseData.ok) {
         response.status(responseData.status).send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
         return;
@@ -253,54 +248,33 @@ export abstract class ApiCastle implements ApiHelper {
         response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.PlayerNotFound });
         return;
       }
-      const playerId = result.rows[0].id;
-      const basePath = process.env.GGE_API_URL;
-      // We send directly request to internal GGE API proxy, because this data is not stored in our DB
-      const apiUrl = `${basePath}/${targetEmpireEx}/gdi/"PID":${playerId}`;
-      const responseData = await fetchFromBridge(apiUrl);
-      if (!responseData.ok) {
-        response.status(responseData.status).send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
-        return;
-      }
-      const data = await responseData.json();
-      if (!data?.content?.O?.AP) {
-        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.PlayerNotFound });
-        return;
-      }
-      /* ---------------------------------
-       * Format results
-       * --------------------------------- */
-      const castleObject = data['content']['gcl']['C'];
-      const castlesAIBase = castleObject
-        .filter((c: any) => [0, 1, 2, 3].includes(c.KID))
-        .map((c: any) => c.AI.map((ai: any) => ({ ...ai, KID: c.KID })));
-      const castlesAI = castlesAIBase.flat();
-      const serverName = ApiHelper.ggeTrackerManager.getServerNameFromRequestId(code as number) ?? '';
-      const hasAdvancedCastle = ApiHelper.ggeTrackerManager.hasFeature(serverName, 'advancedCastle');
-      const mappedCastles = castlesAI.reduce((accumulator: any[], castle: any) => {
-        accumulator.push({
-          kingdomId: castle.KID,
-          isAvailable: castle.KID === 0 ? true : hasAdvancedCastle,
-          id: Number(ApiHelper.addCountryCode(castle.AI[3], request['code'])),
-          positionX: castle.AI[1],
-          positionY: castle.AI[2],
-          type: castle.AI[0],
-          name: castle.AI[10],
-          keepLevel: castle.AI[5],
-          wallLevel: castle.AI[6],
-          gateLevel: castle.AI[7],
-          towerLevel: castle.AI[8],
-          moatLevel: castle.AI[9],
-          equipmentUniqueIdSkin: castle.AI[17],
-        });
-        return accumulator;
-      }, []);
-      response.status(ApiHelper.HTTP_OK).send(mappedCastles);
-      void ApiHelper.updateCache(cachedKey, mappedCastles, 3600);
+      await ApiCastle.sendPlayerCastles(response, result.rows[0].id, code, cachedKey);
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getCastleByPlayerName', request);
+    }
+  }
+
+  public static async getCastleByPlayerId(request: express.Request, response: express.Response): Promise<void> {
+    try {
+      const playerId = ApiHelper.verifyIdWithCountryCode(request.params.playerId);
+      if (!playerId || !ApiHelper.ggeTrackerManager.getZoneFromRequestId(playerId)) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
+        return;
+      }
+      const cachedKey = `castle:playerId:${playerId}`;
+      const cachedData = await ApiHelper.redisClient.get(cachedKey);
+      if (cachedData) {
+        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        return;
+      }
+      const code = ApiHelper.getCountryCode(String(playerId));
+      await ApiCastle.sendPlayerCastles(response, Number(ApiHelper.removeCountryCode(playerId)), code, cachedKey);
+    } catch (error) {
+      const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
+      response.status(code).send({ error: message });
+      ApiHelper.logError(error, 'getCastleByPlayerId', request);
     }
   }
 
@@ -377,5 +351,52 @@ export abstract class ApiCastle implements ApiHelper {
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getRandomCastle', request);
     }
+  }
+
+  private static async sendPlayerCastles(
+    response: express.Response,
+    gamePlayerId: number,
+    code: string,
+    cachedKey: string,
+  ): Promise<void> {
+    const targetEmpireEx = ApiHelper.ggeTrackerManager.getZoneFromCode(code);
+    // We send directly request to internal GGE API proxy, because this data is not stored in our DB
+    const apiUrl = `${process.env.GGE_API_URL}/${targetEmpireEx}/gdi/"PID":${gamePlayerId}`;
+    const responseData = await fetchFromBridge(apiUrl);
+    if (!responseData.ok) {
+      response.status(responseData.status).send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
+      return;
+    }
+    const data = await responseData.json();
+    if (!data?.content?.O?.AP) {
+      response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.PlayerNotFound });
+      return;
+    }
+    const mappedCastles = ApiCastle.mapPlayerCastles(data['content']['gcl']['C'], code);
+    response.status(ApiHelper.HTTP_OK).send(mappedCastles);
+    void ApiHelper.updateCache(cachedKey, mappedCastles, 3600);
+  }
+
+  private static mapPlayerCastles(castleObject: any[], code: string): any[] {
+    const castlesAI = castleObject
+      .filter((c: any) => [0, 1, 2, 3].includes(c.KID))
+      .flatMap((c: any) => c.AI.map((ai: any) => ({ ...ai, KID: c.KID })));
+    const serverName = ApiHelper.ggeTrackerManager.getServerNameFromCode(code) ?? '';
+    const hasAdvancedCastle = ApiHelper.ggeTrackerManager.hasFeature(serverName, 'advancedCastle');
+    return castlesAI.map((castle: any) => ({
+      kingdomId: castle.KID,
+      isAvailable: castle.KID === 0 ? true : hasAdvancedCastle,
+      id: Number(ApiHelper.addCountryCode(castle.AI[3], code)),
+      positionX: castle.AI[1],
+      positionY: castle.AI[2],
+      type: castle.AI[0],
+      name: castle.AI[10],
+      keepLevel: castle.AI[5],
+      wallLevel: castle.AI[6],
+      gateLevel: castle.AI[7],
+      towerLevel: castle.AI[8],
+      moatLevel: castle.AI[9],
+      equipmentUniqueIdSkin: castle.AI[17],
+    }));
   }
 }

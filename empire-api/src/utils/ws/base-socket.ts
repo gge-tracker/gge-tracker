@@ -1,6 +1,7 @@
 import WebSocket from 'ws';
 import { AsyncEvent } from '../event.js';
 import { HeadersUtilities } from '../nested-headers.js';
+import { JsonFramePayload } from './json-frame-payload.js';
 import { Log } from './log.js';
 import { createSocketStats, GgeMetricsSocket, GgeSocketStats } from '../metrics.js';
 import * as net from 'node:net';
@@ -30,11 +31,17 @@ const ROUND_TRIP_CEILING_MS = 5000;
 const ANSWER_SAMPLES = readEnvironmentInteger('RESPONSE_TIMEOUT_SAMPLES', 100);
 const ANSWER_MIN_SAMPLES = 5;
 
-export interface GgeFrame {
+export type GgeFrame =
+  | { type: 'json'; payload: JsonFramePayload }
+  | { type: 'xml'; payload: { t: string; action: string; r: string; data: string } };
+
+interface PendingResponse {
   type: 'json' | 'xml';
-  payload: any;
-  body: string | null;
-  materialized: boolean;
+  conditions: { [key: string]: any };
+  // Scalars of the conditions, searched in the raw body before anything is parsed
+  tokens: string[];
+  response: GgeFrame | null;
+  event: AsyncEvent;
 }
 
 export enum SocketState {
@@ -58,7 +65,7 @@ class BaseSocket extends Log implements GgeMetricsSocket {
   public sendGblTimeout: NodeJS.Timeout;
   protected url: string;
   protected serverHeader: string;
-  protected messages: any[];
+  protected messages: PendingResponse[];
   protected socket: net.Socket;
   protected ws: WebSocket;
   protected username: string;
@@ -413,7 +420,6 @@ class BaseSocket extends Log implements GgeMetricsSocket {
       this.stats.framesUnmatched++;
       return;
     }
-    this.materializeFrame(frame);
     this._processResponse(frame);
     if (this.onMessage) void this.onMessage(message, frame);
   }
@@ -505,7 +511,9 @@ class BaseSocket extends Log implements GgeMetricsSocket {
     timeout = 5000,
   ): Promise<any> {
     const event = new AsyncEvent();
-    const message = { type, conditions, response: null, event };
+    const hasHeaders = type === 'json' && conditions.data !== null && typeof conditions.data === 'object';
+    const tokens = hasHeaders ? HeadersUtilities.literalTokens(conditions.data) : [];
+    const message: PendingResponse = { type, conditions, tokens, response: null, event };
     this.messages.push(message);
     const result = await event.wait(timeout);
     this.messages = this.messages.filter((message_) => message_ !== message);
@@ -520,12 +528,7 @@ class BaseSocket extends Log implements GgeMetricsSocket {
   private parseFrame(response: string): GgeFrame {
     if (response.startsWith('<')) {
       const parsed = BaseSocket.XML_REGEX.exec(response);
-      return {
-        type: 'xml',
-        payload: { t: parsed[1], action: parsed[2], r: parsed[3], data: parsed[4] },
-        body: null,
-        materialized: true,
-      };
+      return { type: 'xml', payload: { t: parsed[1], action: parsed[2], r: parsed[3], data: parsed[4] } };
     }
     const fields: string[] = [];
     let cursor = response.startsWith('%') ? 1 : 0;
@@ -539,21 +542,11 @@ class BaseSocket extends Log implements GgeMetricsSocket {
       }
     }
     if (truncated) {
-      return {
-        type: 'json',
-        payload: { command: '', id: '', status: Number.NaN, data: null },
-        body: null,
-        materialized: true,
-      };
+      return { type: 'json', payload: new JsonFramePayload('', '', Number.NaN, null) };
     }
     const end = response.endsWith('%') ? response.length - 1 : response.length;
     const body = cursor < end ? response.slice(cursor, end) : null;
-    return {
-      type: 'json',
-      payload: { command: fields[1], id: fields[2], status: +fields[3], data: null },
-      body,
-      materialized: false,
-    };
+    return { type: 'json', payload: new JsonFramePayload(fields[1], fields[2], +fields[3], body) };
   }
 
   /**
@@ -562,39 +555,38 @@ class BaseSocket extends Log implements GgeMetricsSocket {
   private isFrameWanted(frame: GgeFrame): boolean {
     if (frame.type === 'xml') return true;
     if (this.watchedCommands.has(frame.payload.command)) return true;
-    return this.messages.some(
-      (message) => message.type === 'json' && message.conditions.command === frame.payload.command,
-    );
+    return this.messages.some((message) => this.couldAnswer(message, frame.payload));
   }
 
-  private materializeFrame(frame: GgeFrame): void {
-    if (frame.materialized) return;
-    frame.materialized = true;
-    frame.payload.data = frame.body?.startsWith('{') ? JSON.parse(frame.body) : frame.body;
+  private couldAnswer(message: PendingResponse, payload: JsonFramePayload): boolean {
+    if (message.type !== 'json' || message.conditions.command !== payload.command) return false;
+    return message.tokens.length === 0 || HeadersUtilities.containsAllTokens(payload.body ?? '', message.tokens);
+  }
+
+  private answers(message: PendingResponse, frame: GgeFrame): boolean {
+    if (frame.type === 'xml') {
+      return (
+        message.type === 'xml' &&
+        message.conditions.t === frame.payload.t &&
+        message.conditions.action === frame.payload.action &&
+        message.conditions.r === frame.payload.r
+      );
+    }
+    if (!this.couldAnswer(message, frame.payload)) return false;
+    const expected = message.conditions.data;
+    if (expected === false) return true;
+    if (expected === true) return frame.payload.body !== null;
+    if (expected === null || typeof expected !== 'object') {
+      return !frame.payload.carriesObject && expected === frame.payload.body;
+    }
+    return frame.payload.carriesObject && HeadersUtilities.compareNestedHeaders(expected, frame.payload.data);
   }
 
   private _processResponse(response: GgeFrame): void {
-    for (const message of this.messages) {
-      if (
-        (response.type === 'json' &&
-          message.type === 'json' &&
-          message.conditions.command === response.payload.command &&
-          (message.conditions.data === false ||
-            (message.conditions.data === true && response.payload.data !== null) ||
-            message.conditions.data === response.payload.data ||
-            (typeof response.payload.data === 'object' &&
-              typeof message.conditions.data === 'object' &&
-              HeadersUtilities.compareNestedHeaders(message.conditions.data, response.payload.data)))) ||
-        (response.type === 'xml' &&
-          message.type === 'xml' &&
-          message.conditions.t === response.payload.t &&
-          message.conditions.action === response.payload.action &&
-          message.conditions.r === response.payload.r)
-      ) {
-        message.response = response;
-        message.event.set();
-        break;
-      }
+    const message = this.messages.find((candidate) => this.answers(candidate, response));
+    if (message) {
+      message.response = response;
+      message.event.set();
     }
   }
 }

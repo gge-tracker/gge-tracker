@@ -33,6 +33,7 @@ export function seedsSatisfied(ep: Endpoint, seeds: Seeds): boolean {
     alliance: seeds.allianceId,
     castle: seeds.castleId,
     castlePlayer: seeds.castlePlayerName,
+    castlePlayerId: seeds.castlePlayerId,
   };
   return (ep.needs ?? []).every((need) => available[need]);
 }

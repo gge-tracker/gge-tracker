@@ -188,6 +188,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   public constructionItems: { [key: string]: ConstructionItem[] } = {};
   public castleObject: ApiPlayerCastleDataMapped | null = null;
   public search = '';
+  public searchedPlayerId: number | null = null;
   public canvasReady = false;
   public activeView: 'canvas' | 'grid' = 'canvas';
   public calculatedCastleProperties = {
@@ -259,9 +260,13 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     this.cid = cid ? +cid : null;
     const kid = this.route.snapshot.queryParamMap.get('kid');
     const search = this.route.snapshot.queryParamMap.get('search');
+    const playerId = this.route.snapshot.queryParamMap.get('player');
     await this.translateKeys();
     if (cid && !Number.isNaN(+cid)) {
       void this.fetchCastleData(+cid, +(kid || 0));
+    } else if (playerId && !Number.isNaN(+playerId)) {
+      this.search = search ?? '';
+      void this.searchPlayerById(+playerId);
     } else if (search) {
       this.search = search;
       void this.searchPlayer(search);
@@ -291,6 +296,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
 
   public async searchPlayer(playerName: string): Promise<void> {
     this.clearAllParameters();
+    this.searchedPlayerId = null;
     if (!playerName) {
       // Reset state if search is empty
       await this.router.navigate([], { queryParams: { search: null } });
@@ -300,26 +306,15 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     this.loadItemPlaceholder = true;
     await this.router.navigate([], { queryParams: { search: playerName } });
     this.search = playerName;
-    const castleJsonData = await this.fetchCastleJsonItems();
-    const castleResponse = await this.getCastleData();
-    if (!castleResponse.success) {
-      console.error('Failed to fetch player data:', castleResponse);
-      this.toastService.add(ErrorType.NO_PLAYER_FOUND, 5000, 'error');
-      this.loadItemPlaceholder = false;
-      this.cdr.detectChanges();
-      return;
-    }
-    this.castles = castleResponse.data.map((castle) => ({
-      ...castle,
-      equipment: castle.equipmentUniqueIdSkin
-        ? this.getSkinFromUniqueId(castleJsonData, String(castle.equipmentUniqueIdSkin))
-        : null,
-    }));
-    this.isInLoading = false;
-    this.cdr.detectChanges();
-    this.drawMiniMaps();
-    this.loadItemPlaceholder = false;
-    this.cdr.detectChanges();
+    await this.displayPlayerCastles(this.apiRestService.getCastlePlayerDataByName(playerName));
+  }
+
+  public async searchPlayerById(playerId: number): Promise<void> {
+    this.clearAllParameters();
+    this.searchedPlayerId = playerId;
+    this.loadItemPlaceholder = true;
+    await this.router.navigate([], { queryParams: { player: playerId, search: this.search || null } });
+    await this.displayPlayerCastles(this.apiRestService.getCastlePlayerDataByPlayerId(playerId));
   }
 
   public formatValue(value: RawBuildingValue): string {
@@ -549,6 +544,11 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
 
   public async onBackButtonClick(): Promise<void> {
     const search = this.search || this.calculatedCastleProperties.playerName;
+    this.search = search;
+    if (this.searchedPlayerId) {
+      await this.searchPlayerById(this.searchedPlayerId);
+      return;
+    }
     await this.router.navigate([], { queryParams: { analysis: null, search } });
     this.clearAllParameters();
     this.cdr.detectChanges();
@@ -640,8 +640,27 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     }
   }
 
-  private async getCastleData(): Promise<ApiResponse<ApiPlayerCastleNameResponse[]>> {
-    return await this.apiRestService.getCastlePlayerDataByName(this.search);
+  private async displayPlayerCastles(request: Promise<ApiResponse<ApiPlayerCastleNameResponse[]>>): Promise<void> {
+    const castleJsonData = await this.fetchCastleJsonItems();
+    const castleResponse = await request;
+    if (!castleResponse.success) {
+      console.error('Failed to fetch player data:', castleResponse);
+      this.toastService.add(ErrorType.NO_PLAYER_FOUND, 5000, 'error');
+      this.loadItemPlaceholder = false;
+      this.cdr.detectChanges();
+      return;
+    }
+    this.castles = castleResponse.data.map((castle) => ({
+      ...castle,
+      equipment: castle.equipmentUniqueIdSkin
+        ? this.getSkinFromUniqueId(castleJsonData, String(castle.equipmentUniqueIdSkin))
+        : null,
+    }));
+    this.isInLoading = false;
+    this.cdr.detectChanges();
+    this.drawMiniMaps();
+    this.loadItemPlaceholder = false;
+    this.cdr.detectChanges();
   }
 
   private async fetchCastleData(cid: number, kid: number): Promise<void> {

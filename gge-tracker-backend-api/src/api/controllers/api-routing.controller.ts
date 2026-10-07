@@ -324,8 +324,11 @@ export class ApiRoutingController {
   }
 
   public getCastleByPlayerName(request: express.Request, response: express.Response): void {
-    // Queue the castle requests to avoid overloading the server with multiple requests at the same time
     this.castleQueue.enqueue(request, response, ApiCastle.getCastleByPlayerName);
+  }
+
+  public getCastleByPlayerId(request: express.Request, response: express.Response): void {
+    this.castleQueue.enqueue(request, response, ApiCastle.getCastleByPlayerId);
   }
 
   public getRandomCastle(request: express.Request, response: express.Response): void {

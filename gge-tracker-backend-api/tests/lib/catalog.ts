@@ -18,7 +18,7 @@ export interface Endpoint {
   shapeKeys?: string[];
   /** Expected payload kind for a 200 */
   kind?: 'json' | 'binary' | 'any';
-  needs?: ('server' | 'specialServer' | 'player' | 'alliance' | 'castle' | 'castlePlayer')[];
+  needs?: ('server' | 'specialServer' | 'player' | 'alliance' | 'castle' | 'castlePlayer' | 'castlePlayerId')[];
   /** Path segment that the security suite should replace with malicious text */
   fuzzPathParamIndex?: number;
   /** Query param names the security suite should inject malicious text into */
@@ -345,6 +345,7 @@ export const CATALOG: Endpoint[] = [
   { id: 'castle-analysis', method: 'GET', scope: 'public', path: (s) => `/castle/analysis/${s.castleId ?? '1'}`, okStatuses: [200, 400, 404], needs: ['server', 'castle'], fuzzQuery: ['kingdomId'] },
   { id: 'castle-analysis-kingdom', method: 'GET', scope: 'public', path: (s) => `/castle/analysis/${s.castleId ?? '1'}` + q({ kingdomId: 0 }), okStatuses: [200, 400, 404], needs: ['server', 'castle'] },
   { id: 'castle-search', method: 'GET', scope: 'protected', path: (s) => `/castle/search/${encodeURIComponent(s.castlePlayerName ?? s.playerName ?? 'a')}`, okStatuses: [200, 400, 404], needs: ['server', 'castlePlayer'], fuzzPathParamIndex: 3 },
+  { id: 'castle-player', method: 'GET', scope: 'public', path: (s) => `/castle/player/${s.castlePlayerId ?? s.playerId ?? '1'}`, okStatuses: [200, 400, 404], needs: ['castlePlayerId'], fuzzPathParamIndex: 3 },
   { id: 'castle-random', snapshot: 'none', method: 'GET', scope: 'protected', path: () => '/castle/random', okStatuses: [200, 404], needs: ['server'] },
 
   // Offers (protected)

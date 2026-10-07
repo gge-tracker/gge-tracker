@@ -17,6 +17,7 @@ export interface Seeds {
   allianceName?: string;
   castleId?: string;
   castlePlayerName?: string;
+  castlePlayerId?: string;
   eventPlayerName?: string;
   outerRealmsEventNumber?: number;
   woaEventId?: string;
@@ -86,13 +87,14 @@ export async function bootstrap(): Promise<Seeds> {
       seeds.castleId = String(castle.castle_id ?? castle.id);
     }
 
-    const candidates: string[] = (playersRes.body?.players ?? [])
-      .map((p: any) => p?.player_name)
-      .filter((name: unknown): name is string => typeof name === 'string' && name !== '');
-    for (const name of candidates.slice(0, 15)) {
+    const candidates: { name: string; id: unknown }[] = (playersRes.body?.players ?? [])
+      .map((p: any) => ({ name: p?.player_name, id: p?.player_id }))
+      .filter((p: { name: unknown }) => typeof p.name === 'string' && p.name !== '');
+    for (const { name, id } of candidates.slice(0, 15)) {
       const found = await request({ path: `/castle/search/${encodeURIComponent(name)}`, headers: header, timeoutMs: 3000 });
       if (found.status === 200) {
         seeds.castlePlayerName = name;
+        if (id) seeds.castlePlayerId = String(id);
         break;
       }
     }

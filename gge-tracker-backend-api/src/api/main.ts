@@ -2929,6 +2929,64 @@ protectedRoutes.get('/castle/search/:playerName', routingInstance.getCastleByPla
 
 /**
  * @swagger
+ * /castle/player/{playerId}:
+ *   get:
+ *     summary: Retrieve realtime castle information for a specific player based on their ID
+ *     description: This endpoint retrieves a list of castles owned by a specified player. The player ID carries its server code, so no gge-server header is needed
+ *     tags:
+ *       - Castle
+ *     parameters:
+ *       - in: path
+ *         name: playerId
+ *         required: true
+ *         description: The ID of the player to retrieve data for
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       '200':
+ *         description: Successfully retrieved the castle information for the specified player
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   kingdomId:
+ *                     type: integer
+ *                     description: The ID of the kingdom the castle belongs to
+ *                   id:
+ *                     type: integer
+ *                     description: The ID of the castle
+ *                   positionX:
+ *                     type: integer
+ *                     description: The X position of the castle
+ *                   positionY:
+ *                     type: integer
+ *                     description: The Y position of the castle
+ *                   keepLevel:
+ *                     type: integer
+ *                     description: The level of the castle keep
+ *                   wallLevel:
+ *                     type: integer
+ *                     description: The level of the castle walls
+ *                   gateLevel:
+ *                     type: integer
+ *                     description: The level of the castle gate
+ *                   towerLevel:
+ *                     type: integer
+ *                     description: The level of the castle towers
+ *                   moatLevel:
+ *                     type: integer
+ *                     description: The level of the castle moat
+ *                   equipmentUniqueIdSkin:
+ *                     type: integer
+ *                     description: The unique ID of the castle's skin equipment. If not present, defaults to 0
+ */
+publicRoutes.get('/castle/player/:playerId', routingInstance.getCastleByPlayerId.bind(routingInstance));
+
+/**
+ * @swagger
  * /castle/random:
  *   get:
  *     summary: Retrieve 12 random level-70 player main castles

@@ -784,6 +784,14 @@ export class ApiRestService {
     return { success: true, data: response.data };
   }
 
+  public async getCastlePlayerDataByPlayerId(playerId: number): Promise<ApiResponse<ApiPlayerCastleNameResponse[]>> {
+    const response = await this.apiFetch<ApiPlayerCastleNameResponse[]>(
+      `${ApiRestService.apiUrl}castle/player/${playerId}`,
+    );
+    if (!response.success) return response;
+    return { success: true, data: response.data };
+  }
+
   public async getRandomCastles(): Promise<ApiResponse<ApiPlayerCastleNameResponse[]>> {
     const response = await this.apiFetch<ApiPlayerCastleNameResponse[]>(`${ApiRestService.apiUrl}castle/random`);
     if (!response.success) return response;

@@ -6,6 +6,7 @@ import { GgeEmpireSocket } from './utils/ws/empire-socket.js';
 import { GgeEmpire4KingdomsSocket } from './utils/ws/empire4kingdoms-socket.js';
 import { GgeLiveTemporaryServerSocket } from './utils/ws/live-temporary-server-socket.js';
 import { GgeEmpire4KingdomsTcp } from './utils/ws/empire4kingdoms-tcp.js';
+import { JsonFramePayload } from './utils/ws/json-frame-payload.js';
 import { SocketService } from './utils/ws/sockets.js';
 import {
   GgeCommandOutcome,
@@ -81,6 +82,12 @@ function buildResponseHeaders(command: string, messageHeaders: Record<string, un
     }
   }
   return responseHeaders;
+}
+
+// Spliced by hand so a payload the game already serialized is never parsed into objects and stringified again
+function answerBody(server: string, command: string, payload: JsonFramePayload): string {
+  const envelope = `{"server":${JSON.stringify(server)},"command":${JSON.stringify(command)}`;
+  return `${envelope},"return_code":${JSON.stringify(payload.status)},"content":${payload.toJson()}}`;
 }
 
 export default function createApp(sockets: {
@@ -292,12 +299,10 @@ export default function createApp(sockets: {
         Number(process.hrtime.bigint() - startedAt) / 1e6,
       );
       settle('ok');
-      response.status(200).json({
-        server: requestedServer,
-        command: request.params.command,
-        return_code: jsonResponse.payload.status,
-        content: jsonResponse.payload.data,
-      });
+      response
+        .status(200)
+        .type('application/json')
+        .send(answerBody(requestedServer, answeringCommand, jsonResponse.payload));
     } catch (error: unknown) {
       const rejected = error instanceof QueueOverflowError;
       settle(rejected ? 'rejected' : 'timeout');

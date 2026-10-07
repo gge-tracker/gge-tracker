@@ -164,9 +164,154 @@ async function payloadPercentSignsSurvive(report: Report): Promise<void> {
   }
 }
 
+const OWNED_CASTLES = [101, 202];
+
+function jaaFrame(castleId: number, kingdomId = 0): string {
+  const data = {
+    KID: kingdomId,
+    gca: {
+      O: { OID: 42, N: 'owner', AP: OWNED_CASTLES.map((id) => [kingdomId, id, 10, 10, 1]) },
+      A: [1, 10, 10, castleId, 42, 4, 4, 4, 4, 1, 'castle', 0],
+    },
+  };
+  return `%xt%jaa%1%0%${JSON.stringify(data)}%`;
+}
+
+function analysedCastle(answer: any): unknown {
+  return answer?.content?.gca?.A?.[3];
+}
+
+async function castleAnalysesAreMatchedByCastle(report: Report): Promise<void> {
+  const section = report.section('matching');
+  let inFlight = 0;
+  let observedParallel = false;
+  let stand: Stage;
+  stand = await stage({
+    respond: (command, data) => {
+      if (command !== 'jca') return undefined;
+      inFlight++;
+      if (inFlight > 1) observedParallel = true;
+      setTimeout(() => stand.server.pushRaw(jaaFrame(data.CID, data.KID)), data.CID === OWNED_CASTLES[0] ? 120 : 10);
+      return null;
+    },
+  });
+
+  try {
+    const [a, b] = await Promise.all(
+      OWNED_CASTLES.map((id) => call(stand.base, `/TestSrv/jca/"CID":${id},"KID":0`)),
+    );
+    section.expect('two jca on one kingdom each get their own castle back', {
+      ok: analysedCastle(a) === OWNED_CASTLES[0] && analysedCastle(b) === OWNED_CASTLES[1],
+      detail: `first=${String(analysedCastle(a))} second=${String(analysedCastle(b))}`,
+    });
+    section.expect('two jca on different castles run at once', {
+      ok: observedParallel,
+      detail: observedParallel ? 'both reached the game before either answered' : 'they were serialized',
+    });
+  } finally {
+    await stand.close();
+  }
+}
+
+async function aStrayAnalysisIsIgnored(report: Report): Promise<void> {
+  const section = report.section('matching');
+  let stand: Stage;
+  stand = await stage({
+    respond: (command, data) => {
+      if (command !== 'jca') return undefined;
+      stand.server.pushRaw(jaaFrame(OWNED_CASTLES[1], data.KID));
+      setTimeout(() => stand.server.pushRaw(jaaFrame(data.CID, data.KID)), 30);
+      return null;
+    },
+  });
+
+  try {
+    const answer = await call(stand.base, `/TestSrv/jca/"CID":${OWNED_CASTLES[0]},"KID":0`);
+    section.expect('the analysis of another castle arriving first is skipped', {
+      ok: analysedCastle(answer) === OWNED_CASTLES[0],
+      detail: `got castle ${String(analysedCastle(answer))}, asked for ${OWNED_CASTLES[0]}`,
+    });
+  } finally {
+    await stand.close();
+  }
+}
+
+async function framesMissingAWaitedValueAreNotParsed(report: Report): Promise<void> {
+  const section = report.section('matching');
+  let stand: Stage;
+  stand = await stage({
+    respond: (command, data) => {
+      if (command !== 'jca') return undefined;
+      // A body no JSON parser would accept: parsing it would throw inside the socket
+      stand.server.pushRaw('%xt%jaa%1%0%{"KID":0, not json, castle 999%');
+      setTimeout(() => stand.server.pushRaw(jaaFrame(data.CID, data.KID)), 30);
+      return null;
+    },
+  });
+
+  try {
+    const before = framesUnmatched(stand.socket);
+    const answer = await call(stand.base, `/TestSrv/jca/"CID":${OWNED_CASTLES[0]},"KID":0`);
+    section.expect('a jaa without the castle id is counted unmatched, unparsed', {
+      ok: framesUnmatched(stand.socket) > before && analysedCastle(answer) === OWNED_CASTLES[0],
+      detail: `framesUnmatched ${before} -> ${framesUnmatched(stand.socket)}, castle ${String(analysedCastle(answer))}`,
+    });
+  } finally {
+    await stand.close();
+  }
+}
+
+async function payloadIsRelayedVerbatim(report: Report): Promise<void> {
+  const section = report.section('matching');
+  const body = String.raw`{"O":{"OID":7,"N":"café"}}`;
+  let stand: Stage;
+  stand = await stage({
+    respond: (command) => {
+      if (command !== 'gdi') return undefined;
+      stand.server.pushRaw(`%xt%gdi%1%0%${body}%`);
+      return null;
+    },
+  });
+
+  try {
+    const response = await fetch(`${stand.base}/TestSrv/gdi/"PID":7`);
+    const text = await response.text();
+    const parsed = JSON.parse(text);
+    section.expect('the game text reaches the caller byte for byte', {
+      ok: text.includes(`"content":${body}`) && parsed?.content?.O?.N === 'café',
+      detail: text,
+    });
+  } finally {
+    await stand.close();
+  }
+}
+
+async function listKeysStillMatchAnyItem(report: Report): Promise<void> {
+  const section = report.section('matching');
+  const stand = await stage({
+    respond: (command, data) =>
+      command === 'llsp' ? { data: { LT: data.LT, LID: data.LID, L: [{ R: data.R - 1 }, { R: data.R }] } } : undefined,
+  });
+
+  try {
+    const answer = await call(stand.base, '/TestSrv/llsp/"LT":89,"LID":1,"R":5');
+    section.expect('an llsp answer is matched on any entry of its list', {
+      ok: answer?.content?.L?.[1]?.R === 5,
+      detail: JSON.stringify(answer?.content),
+    });
+  } finally {
+    await stand.close();
+  }
+}
+
 export async function runMatching(report: Report): Promise<void> {
   await ambiguousCommandsAreSerialized(report);
   await distinguishableCommandsStayParallel(report);
   await unwantedFramesAreDropped(report);
   await payloadPercentSignsSurvive(report);
+  await castleAnalysesAreMatchedByCastle(report);
+  await aStrayAnalysisIsIgnored(report);
+  await framesMissingAWaitedValueAreNotParsed(report);
+  await payloadIsRelayedVerbatim(report);
+  await listKeysStillMatchAnyItem(report);
 }
