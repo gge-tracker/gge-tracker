@@ -16,6 +16,11 @@ interface PodiumEvent {
   tablePrefix: string;
 }
 
+interface PodiumSnapshot {
+  podium: EventPodium;
+  frozen: boolean;
+}
+
 interface PodiumRow {
   player_id: number | null;
   server: string;
@@ -26,8 +31,10 @@ interface PodiumRow {
   legendary_level: number | null;
 }
 
+const UNDEFINED_TABLE = '42P01';
+
 export abstract class ApiEventPodium implements ApiHelper {
-  private static readonly PODIUM_TTL_SECONDS = 3600;
+  private static readonly FROZEN_CARD_MAX_AGE_SECONDS = 7 * 24 * 3600;
   private static readonly PODIUM_SIZE = 3;
   private static readonly EVENTS: Record<string, PodiumEvent> = {
     [EventTypes.OUTER_REALMS]: { name: 'Outer Realms', tablePrefix: 'outer_realms' },
@@ -51,18 +58,18 @@ export abstract class ApiEventPodium implements ApiHelper {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventId });
         return;
       }
-      const podium = await this.podium(eventPgDbpool, eventType, event, eventNumber);
-      if (!podium) {
+      const snapshot = await this.snapshot(eventPgDbpool, eventType, event, eventNumber);
+      if (!snapshot) {
         response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.EventNotFound });
         return;
       }
-      const html = EventPodiumCard.toHtml(podium, ApiSeo.displayUrl(podium.path));
+      const html = EventPodiumCard.toHtml(snapshot.podium, ApiSeo.displayUrl(snapshot.podium.path));
       const key = `seo:podium:${crypto.createHash('sha1').update(html).digest('hex').slice(0, 20)}`;
       if (
         HttpCache.handleConditional(request, response, {
           etag: HttpCache.etagFromCacheKey(key),
           dataVersion: null,
-          maxAgeSeconds: ApiSeo.CARD_MAX_AGE_SECONDS,
+          maxAgeSeconds: snapshot.frozen ? this.FROZEN_CARD_MAX_AGE_SECONDS : HttpCache.DEFAULT_MAX_AGE_SECONDS,
         })
       ) {
         return;
@@ -75,16 +82,59 @@ export abstract class ApiEventPodium implements ApiHelper {
     }
   }
 
-  private static async podium(
+  private static async snapshot(
     pool: pg.Pool,
     eventType: string,
     event: PodiumEvent,
     eventNumber: number,
-  ): Promise<EventPodium | null> {
-    const cacheKey = `seo:podium-data:${eventType}:${eventNumber}`;
-    const cached = await ApiHelper.redisClient.get(cacheKey).catch((): null => null);
-    if (cached) return JSON.parse(cached) as EventPodium;
+  ): Promise<PodiumSnapshot | null> {
+    const stored = await this.readFrozen(pool, eventType, eventNumber);
+    if (stored) return { podium: stored, frozen: true };
+    const computed = await this.compute(pool, eventType, event, eventNumber);
+    if (!computed) return null;
+    if (!computed.complete) return { podium: computed.podium, frozen: false };
+    const frozen = await this.freeze(pool, eventType, eventNumber, computed.podium);
+    return frozen ? { podium: frozen, frozen: true } : { podium: computed.podium, frozen: false };
+  }
 
+  private static async readFrozen(pool: pg.Pool, eventType: string, eventNumber: number): Promise<EventPodium | null> {
+    try {
+      const result = await pool.query<{ podium: EventPodium }>(
+        'SELECT podium FROM event_podium WHERE event_type = $1 AND event_num = $2',
+        [eventType, eventNumber],
+      );
+      return result.rows[0]?.podium ?? null;
+    } catch (error) {
+      if ((error as { code?: string })?.code === UNDEFINED_TABLE) return null;
+      throw error;
+    }
+  }
+
+  private static async freeze(
+    pool: pg.Pool,
+    eventType: string,
+    eventNumber: number,
+    podium: EventPodium,
+  ): Promise<EventPodium | null> {
+    try {
+      await pool.query(
+        `INSERT INTO event_podium (event_type, event_num, podium) VALUES ($1, $2, $3)
+        ON CONFLICT (event_type, event_num) DO NOTHING`,
+        [eventType, eventNumber, JSON.stringify(podium)],
+      );
+      return await this.readFrozen(pool, eventType, eventNumber);
+    } catch (error) {
+      if ((error as { code?: string })?.code === UNDEFINED_TABLE) return null;
+      throw error;
+    }
+  }
+
+  private static async compute(
+    pool: pg.Pool,
+    eventType: string,
+    event: PodiumEvent,
+    eventNumber: number,
+  ): Promise<{ podium: EventPodium; complete: boolean } | null> {
     const [top, totals, header] = await Promise.all([
       pool.query<PodiumRow>(
         `SELECT player_id, server, player_name, alliance_name, point, level, legendary_level
@@ -107,7 +157,8 @@ export abstract class ApiEventPodium implements ApiHelper {
     ]);
     if (top.rows.length === 0) return null;
 
-    const entries = await Promise.all(top.rows.map((row, index) => this.entry(row, index + 1)));
+    const lookups = await Promise.all(top.rows.map((row, index) => this.entry(row, index + 1)));
+    const entries = lookups.map((lookup) => lookup.entry);
     const podium: EventPodium = {
       eventName: event.name,
       eventNumber,
@@ -117,12 +168,17 @@ export abstract class ApiEventPodium implements ApiHelper {
       path: `/events/${eventType}/${eventNumber}`,
       entries,
     };
-    void ApiHelper.updateCache(cacheKey, podium, this.PODIUM_TTL_SECONDS);
-    return podium;
+    return { podium, complete: lookups.every((lookup) => lookup.complete) };
   }
 
-  private static async entry(row: PodiumRow, rank: number): Promise<PodiumEntry> {
-    return {
+  private static async entry(row: PodiumRow, rank: number): Promise<{ entry: PodiumEntry; complete: boolean }> {
+    let complete = true;
+    const tracked = await this.tracked(row).catch((error: unknown): null => {
+      complete = false;
+      ApiHelper.logError(error, 'getEventPodiumCard');
+      return null;
+    });
+    const entry: PodiumEntry = {
       rank,
       name: row.player_name,
       server: row.server,
@@ -130,8 +186,9 @@ export abstract class ApiEventPodium implements ApiHelper {
       points: Number(row.point),
       level: Number(row.level ?? 0),
       legendaryLevel: Number(row.legendary_level ?? 0),
-      tracked: await this.tracked(row).catch((): null => null),
+      tracked,
     };
+    return { entry, complete };
   }
 
   private static async tracked(row: PodiumRow): Promise<PodiumTrackedStats | null> {
