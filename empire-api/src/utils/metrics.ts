@@ -1,10 +1,11 @@
 import { performance } from 'node:perf_hooks';
 
-export type GgeCommandOutcome = 'ok' | 'timeout' | 'not_found' | 'not_connected' | 'rejected';
+export type GgeCommandOutcome = 'ok' | 'game_error' | 'timeout' | 'not_found' | 'not_connected' | 'rejected';
 
 export interface GgeSocketStats {
   messagesReceived: number;
   framesUnmatched: number;
+  lateAnswers: number;
   messagesSent: number;
   restarts: number;
   socketErrors: number;
@@ -18,6 +19,7 @@ export interface GgeSocketStats {
 export interface GgeMetricsSocket {
   metricsLabels: { server: string; type: string };
   metricsConnected: boolean;
+  metricsCompressed: boolean;
   metricsState: string;
   metricsStats: GgeSocketStats;
   metricsResponseTimeoutMs: number;
@@ -28,6 +30,7 @@ export function createSocketStats(): GgeSocketStats {
   return {
     messagesReceived: 0,
     framesUnmatched: 0,
+    lateAnswers: 0,
     messagesSent: 0,
     restarts: 0,
     socketErrors: 0,
@@ -153,8 +156,20 @@ const SOCKET_METRICS: SocketMetricDefinition[] = [
   {
     name: 'empire_api_socket_frames_unmatched_total',
     type: 'counter',
-    help: 'Frames no pending request wanted, discarded without parsing their payload',
+    help: 'Frames no pending request took',
     read: (socket) => socket.metricsStats.framesUnmatched,
+  },
+  {
+    name: 'empire_api_socket_late_answers_total',
+    type: 'counter',
+    help: 'Refusals that arrived after their request timed out, absorbed instead of reaching the next caller',
+    read: (socket) => socket.metricsStats.lateAnswers,
+  },
+  {
+    name: 'empire_api_socket_compressed',
+    type: 'gauge',
+    help: 'The game negotiated permessage-deflate on this socket',
+    read: (socket) => (socket.metricsCompressed ? 1 : 0),
   },
   {
     name: 'empire_api_socket_restarts_total',

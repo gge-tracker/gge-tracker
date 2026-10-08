@@ -12,6 +12,9 @@ import { runLogin } from './suites/login.js';
 import { runMemory } from './suites/memory.js';
 import { runLive } from './suites/live.js';
 import { runLatency } from './suites/latency.js';
+import { runLiveCastle } from './suites/live-castle.js';
+import { runFrameCost } from './suites/frame-cost.js';
+import { runTcpFraming } from './suites/tcp-framing.js';
 
 const SUITES: Record<string, (r: Report) => Promise<void>> = {
   handshake: runHandshake,
@@ -22,10 +25,13 @@ const SUITES: Record<string, (r: Report) => Promise<void>> = {
   login: runLogin,
   reconnect: runReconnect,
   memory: runMemory,
+  'frame-cost': runFrameCost,
+  'tcp-framing': runTcpFraming,
   live: runLive,
+  'live-castle': runLiveCastle,
 };
 
-const DEFAULT_SUITES = ['handshake', 'roundtrip', 'matching', 'latency', 'lifecycle', 'login', 'reconnect', 'memory', 'live'];
+const DEFAULT_SUITES = ['handshake', 'roundtrip', 'matching', 'latency', 'lifecycle', 'login', 'reconnect', 'memory', 'frame-cost', 'tcp-framing', 'live', 'live-castle'];
 
 function parseSuites(argv: string[]): string[] {
   const names = argv.filter((a) => !a.startsWith('--'));

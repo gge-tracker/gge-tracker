@@ -3,7 +3,7 @@ import type { Server } from 'node:http';
 import { Report } from '../lib/report.js';
 import { config } from '../config.js';
 import { MockGgeServer, MockServerOptions } from '../lib/mock-server.js';
-import { createEmpireSocket, disposeSocket, isConnected, waitFor } from '../lib/harness.js';
+import { createEmpireSocket, disposeSocket, isConnected, sleep, waitFor } from '../lib/harness.js';
 import createApp from '../../src/app.controller.js';
 import { GgeEmpireSocket } from '../../src/utils/ws/empire-socket.js';
 
@@ -304,6 +304,182 @@ async function listKeysStillMatchAnyItem(report: Report): Promise<void> {
   }
 }
 
+async function refusedAnalysesAreAnswered(report: Report): Promise<void> {
+  const section = report.section('matching');
+  const refusals: Record<number, string> = { 101: '%xt%jaa%1%106%', 202: '%xt%jca%1%6%' };
+  let stand: Stage;
+  stand = await stage({
+    respond: (command, data) => {
+      if (command !== 'jca') return undefined;
+      setTimeout(() => stand.server.pushRaw(refusals[data.CID]), 10);
+      return null;
+    },
+  });
+
+  try {
+    for (const [castleId, frame] of Object.entries(refusals)) {
+      const startedAt = Date.now();
+      const answer = await call(stand.base, `/TestSrv/jca/"CID":${castleId},"KID":0`);
+      const [, , command, , status] = frame.split('%');
+      section.expect(`a refusal sent as ${frame} reaches the caller instead of a timeout`, {
+        ok: answer?.return_code === Number(status) && answer?.command === command && answer?.content === null,
+        detail: `${JSON.stringify(answer)} in ${Date.now() - startedAt}ms`,
+      });
+    }
+  } finally {
+    await stand.close();
+  }
+}
+
+async function refusalsGoToTheOldestPendingAnalysis(report: Report): Promise<void> {
+  const section = report.section('matching');
+  const order = [101, 999, 202];
+  let stand: Stage;
+  stand = await stage({
+    respond: (command, data) => {
+      if (command !== 'jca') return undefined;
+      const answer = data.CID === 999 ? '%xt%jca%1%6%' : jaaFrame(data.CID, data.KID);
+      setTimeout(() => stand.server.pushRaw(answer), 20 + order.indexOf(data.CID) * 20);
+      return null;
+    },
+  });
+
+  try {
+    const answers: any[] = [];
+    const calls = order.map((castleId, index) =>
+      new Promise((resolve) => setTimeout(resolve, index * 5)).then(async () => {
+        answers[index] = await call(stand.base, `/TestSrv/jca/"CID":${castleId},"KID":0`);
+      }),
+    );
+    await Promise.all(calls);
+    section.expect('a refusal between two analyses lands on the castle it refused', {
+      ok:
+        analysedCastle(answers[0]) === 101 &&
+        answers[1]?.return_code === 6 &&
+        answers[1]?.content === null &&
+        analysedCastle(answers[2]) === 202,
+      detail: answers.map((answer) => `${String(analysedCastle(answer))}/${String(answer?.return_code)}`).join(', '),
+    });
+  } finally {
+    await stand.close();
+  }
+}
+
+async function unknownPlayerIsAnswered(report: Report): Promise<void> {
+  const section = report.section('matching');
+  let stand: Stage;
+  stand = await stage({
+    respond: (command) => {
+      if (command !== 'gdi') return undefined;
+      stand.server.pushRaw('%xt%gdi%1%21%');
+      return null;
+    },
+  });
+
+  try {
+    const answer = await call(stand.base, '/TestSrv/gdi/"PID":7');
+    section.expect('gdi on a player that does not exist answers 21, not a timeout', {
+      ok: answer?.return_code === 21 && answer?.command === 'gdi' && answer?.content === null,
+      detail: JSON.stringify(answer),
+    });
+  } finally {
+    await stand.close();
+  }
+}
+
+async function otherCommandsKeepTimingOutOnBareErrors(report: Report): Promise<void> {
+  const section = report.section('matching');
+  let stand: Stage;
+  stand = await stage({
+    respond: (command) => {
+      if (command !== 'hgh') return undefined;
+      stand.server.pushRaw('%xt%hgh%1%5%');
+      return null;
+    },
+  });
+
+  try {
+    const answer = await call(stand.base, '/TestSrv/hgh/"LT":6,"LID":1,"SV":1');
+    section.expect('a bare hgh error still ends in a Timeout', {
+      ok: answer?.error === 'Timeout' && answer?.return_code === -1,
+      detail: JSON.stringify(answer),
+    });
+  } finally {
+    await stand.close();
+  }
+}
+
+async function lateRefusalIsAbsorbed(report: Report): Promise<void> {
+  const section = report.section('matching');
+  const socket = createEmpireSocket('ws://127.0.0.1:9', 'LateAnswer');
+  const ask = (playerId: number, timeoutMs: number): Promise<any> =>
+    socket.waitForJsonResponse('gdi', { O: { OID: playerId } }, timeoutMs, ['gdi']).catch(() => null);
+  try {
+    await ask(1, 20);
+    const second = ask(2, 1000);
+    socket._onMessage('%xt%gdi%1%21%', false);
+    socket._onMessage('%xt%gdi%1%0%{"O":{"OID":2}}%', false);
+    const answer = await second;
+    const player = answer?.payload?.data?.O?.OID;
+    section.expect('a refusal arriving after its request timed out is absorbed, the next player gets its own', {
+      ok: player === 2 && socket.metricsStats.lateAnswers === 1,
+      detail: `second got ${String(player)}, late answers ${socket.metricsStats.lateAnswers}`,
+    });
+
+    await ask(3, 20);
+    await sleep(400);
+    const fourth = ask(4, 1000);
+    socket._onMessage('%xt%gdi%1%21%', false);
+    const refused = await fourth;
+    section.expect('past its window, a timed-out request no longer holds its place', {
+      ok: refused?.payload?.status === 21 && socket.metricsStats.lateAnswers === 1,
+      detail: `fourth got ${String(refused?.payload?.status)}, late answers ${socket.metricsStats.lateAnswers}`,
+    });
+  } finally {
+    disposeSocket(socket);
+  }
+}
+
+async function twoRefusalsInOneReadReachTwoCallers(report: Report): Promise<void> {
+  const section = report.section('matching');
+  const socket = createEmpireSocket('ws://127.0.0.1:9', 'SameTick');
+  try {
+    const waitRefusal = (castleId: number): Promise<any> =>
+      socket
+        .waitForJsonResponse('jaa', { gca: { A: { 3: castleId } }, KID: 0 }, 1000, ['jaa', 'jca'])
+        .catch(() => null);
+    const first = waitRefusal(101);
+    const second = waitRefusal(202);
+    socket._onMessage('%xt%jaa%1%106%', false);
+    socket._onMessage('%xt%jca%1%6%', false);
+    const [a, b] = await Promise.all([first, second]);
+    section.expect('two refusals read in one tick go to two callers, in send order', {
+      ok: a?.payload?.status === 106 && b?.payload?.status === 6,
+      detail: `first ${String(a?.payload?.status)}, second ${String(b?.payload?.status)}`,
+    });
+  } finally {
+    disposeSocket(socket);
+  }
+}
+
+async function metricsDoNotGrowWithUnknownNames(report: Report): Promise<void> {
+  const section = report.section('matching');
+  const stand = await stage();
+  try {
+    for (let index = 0; index < 50; index++) await call(stand.base, `/NoSuchServer${index}/gpi/null`);
+    const metrics = await (await fetch(`${stand.base}/metrics`)).text();
+    const series = metrics.split('\n').filter((line) => line.startsWith('empire_api_commands_total{'));
+    const named = series.filter((line) => line.includes('NoSuchServer')).length;
+    const unknown = series.filter((line) => line.includes('server="unknown"')).length;
+    section.expect('requests to 50 unknown servers add one metric series, not fifty', {
+      ok: named === 0 && unknown === 1,
+      detail: `${named} series named after a requested server, ${unknown} under server="unknown"`,
+    });
+  } finally {
+    await stand.close();
+  }
+}
+
 export async function runMatching(report: Report): Promise<void> {
   await ambiguousCommandsAreSerialized(report);
   await distinguishableCommandsStayParallel(report);
@@ -314,4 +490,11 @@ export async function runMatching(report: Report): Promise<void> {
   await framesMissingAWaitedValueAreNotParsed(report);
   await payloadIsRelayedVerbatim(report);
   await listKeysStillMatchAnyItem(report);
+  await refusedAnalysesAreAnswered(report);
+  await refusalsGoToTheOldestPendingAnalysis(report);
+  await unknownPlayerIsAnswered(report);
+  await otherCommandsKeepTimingOutOnBareErrors(report);
+  await lateRefusalIsAbsorbed(report);
+  await twoRefusalsInOneReadReachTwoCallers(report);
+  await metricsDoNotGrowWithUnknownNames(report);
 }

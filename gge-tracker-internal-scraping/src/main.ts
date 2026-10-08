@@ -281,6 +281,7 @@ export class GenericFetchAndSaveBackend {
   private readonly DUNGEON_SCAN_PARAMETER = 'dungeons_scan';
   private readonly DUNGEON_LOCK_KEY = 4242001;
   private readonly STORM_KID = 4;
+  private readonly GDI_PLAYER_NOT_FOUND = 21;
   private readonly STORM_CENTER_X = 644;
   private readonly STORM_CENTER_Y = 644;
   private readonly STORM_TILE_SPAN = 100;
@@ -4787,9 +4788,11 @@ export class GenericFetchAndSaveBackend {
         } else {
           await this.removePlayerFromDatabase(id);
         }
-      } else if (data?.error === 'Timeout') {
-        Utils.logMessage(' [Info] Player data timeout, removing player from database', id);
+      } else if (Number(data?.return_code) === this.GDI_PLAYER_NOT_FOUND) {
+        Utils.logMessage(' [Info] The game no longer knows this player, removing it from database', id);
         await this.removePlayerFromDatabase(id);
+      } else if (data?.error === 'Timeout') {
+        Utils.logWarning('Inactive player refresh skipped, the game did not answer in time:', id);
       }
     } catch (error) {
       Utils.logWarning('Inactive player refresh skipped, the bridge did not answer:', id, Utils.describeError(error));

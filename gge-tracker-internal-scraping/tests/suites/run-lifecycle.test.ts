@@ -197,6 +197,23 @@ describe('refreshInactivePlayer', () => {
     });
   });
 
+  it('empties a player the game answers 21 for', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.api.on('gdi', () => ({ return_code: 21, content: null }));
+      await sandbox.call('refreshInactivePlayer', 900001);
+      const wipe = sandbox.db.one(/UPDATE players SET castles/);
+      assert.deepEqual(wipe.params, [900001]);
+    });
+  });
+
+  it('leaves the player untouched when the game does not answer in time', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.api.on('gdi', () => ({ error: 'Timeout', return_code: -1 }));
+      await sandbox.call('refreshInactivePlayer', 900001);
+      assert.deepEqual(sandbox.db.queries, [], 'a timeout says nothing about the player');
+    });
+  });
+
   it('empties a player the game no longer has a record of', async () => {
     await withSandbox({}, async (sandbox) => {
       sandbox.api.on('gdi', () => ({ return_code: 0, content: {} }));

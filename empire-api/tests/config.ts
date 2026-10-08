@@ -2,6 +2,7 @@ process.env.EMPIRE_RECONNECT_BASE_DELAY_SEC ??= '0';
 process.env.EMPIRE_RECONNECT_JITTER_SEC ??= '0';
 process.env.EMPIRE_RECONNECT_PRESLEEP_MS ??= '50';
 process.env.EMPIRE_RECONNECT_BACKOFF_STEP_MS ??= '20';
+process.env.EMPIRE_LATE_ANSWER_WINDOW_MS ??= '300';
 
 function envInt(name: string, fallback: number): number {
   const raw = process.env[name];
@@ -32,6 +33,13 @@ export const config = {
   },
   live: process.env.EMPIRE_TEST_LIVE === '1',
   liveConnectTimeoutMs: envInt('TEST_LIVE_CONNECT_TIMEOUT_MS', 90_000),
+  liveCastle: {
+    owners: envInt('TEST_LIVE_CASTLE_OWNERS', 3),
+    gapMs: envInt('TEST_LIVE_GAP_MS', 2000),
+    maxCommands: envInt('TEST_LIVE_MAX_COMMANDS', 30),
+    burst: envInt('TEST_LIVE_BURST', 6),
+  },
+  trackerApiUrl: envStr('TEST_TRACKER_API_URL', 'https://api.gge-tracker.com/api/v1'),
   serverDescriptionUrls: {
     EP: envStr('TEST_EP_XML_URL', 'https://gge-tracker.github.io/gge-cdn-mirror-files/1.xml'),
     SP: envStr('TEST_SP_XML_URL', 'https://gge-tracker.github.io/gge-cdn-mirror-files/39.xml'),

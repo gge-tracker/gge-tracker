@@ -29,6 +29,7 @@ let instancesSyncRunning = false;
 class QueueOverflowError extends Error {}
 
 const MAX_QUEUED_PER_MATCH = 16;
+const UNKNOWN_SERVER_LABELS = { server: 'unknown', command: '-' };
 const inFlight = new Map<string, { chain: Promise<unknown>; queued: number }>();
 
 /**
@@ -83,6 +84,9 @@ function buildResponseHeaders(command: string, messageHeaders: Record<string, un
   }
   return responseHeaders;
 }
+
+const ANSWERED_AS: Record<string, string> = { jca: 'jaa' };
+const BODYLESS_ERRORS: Record<string, readonly string[]> = { jca: ['jaa', 'jca'], gdi: ['gdi'] };
 
 // Spliced by hand so a payload the game already serialized is never parsed into objects and stringified again
 function answerBody(server: string, command: string, payload: JsonFramePayload): string {
@@ -255,12 +259,13 @@ export default function createApp(sockets: {
     const startedAt = process.hrtime.bigint();
     const requestedServer = request.params.server;
     const requestedCommand = request.params.command;
-    const settle = (outcome: GgeCommandOutcome): void => {
-      recordCommand(requestedServer, requestedCommand, outcome, Number(process.hrtime.bigint() - startedAt) / 1e9);
+    const requestLabels = { server: requestedServer, command: requestedCommand };
+    const settle = (outcome: GgeCommandOutcome, labels = requestLabels): void => {
+      recordCommand(labels.server, labels.command, outcome, Number(process.hrtime.bigint() - startedAt) / 1e9);
     };
 
     if (!(requestedServer in sockets)) {
-      settle('not_found');
+      settle('not_found', UNKNOWN_SERVER_LABELS);
       response.status(404).json({ error: 'Server not found' });
       return;
     }
@@ -278,11 +283,7 @@ export default function createApp(sockets: {
       const messageHeaders = JSON.parse(`{${request.params.headers}}`);
       responseHeaders = buildResponseHeaders(request.params.command, messageHeaders);
 
-      // Transformations
-      if (request.params.command === 'jca') {
-        request.params.command = 'jaa';
-      }
-      const answeringCommand = request.params.command;
+      const answeringCommand = ANSWERED_AS[requestedCommand] ?? requestedCommand;
       const matchKey = `${requestedServer}|${answeringCommand}|${JSON.stringify(responseHeaders)}`;
       if (inFlight.has(matchKey)) recordCommandSerialized(requestedServer, requestedCommand);
 
@@ -292,24 +293,25 @@ export default function createApp(sockets: {
           answeringCommand,
           responseHeaders,
           sockets[requestedServer].answerBudgetMs(requestedCommand),
+          BODYLESS_ERRORS[requestedCommand],
         );
       });
       sockets[requestedServer].recordCommandAnswer(
         requestedCommand,
         Number(process.hrtime.bigint() - startedAt) / 1e6,
       );
-      settle('ok');
+      settle(jsonResponse.payload.status === 0 ? 'ok' : 'game_error');
       response
         .status(200)
         .type('application/json')
-        .send(answerBody(requestedServer, answeringCommand, jsonResponse.payload));
+        .send(answerBody(requestedServer, jsonResponse.payload.command, jsonResponse.payload));
     } catch (error: unknown) {
       const rejected = error instanceof QueueOverflowError;
       settle(rejected ? 'rejected' : 'timeout');
       response.status(rejected ? 503 : 200).json({
         error: rejected ? error.message : 'Timeout',
         server: requestedServer,
-        command: request.params.command,
+        command: ANSWERED_AS[requestedCommand] ?? requestedCommand,
         response_headers: responseHeaders,
         return_code: -1,
       });

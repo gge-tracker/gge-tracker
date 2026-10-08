@@ -3,8 +3,6 @@ import { GgeEmpireSocketImpl } from './gge-socket-impl.js';
 import * as net from 'node:net';
 import { randomInt } from 'node:crypto';
 
-const EMPTY_BUFFER: Buffer<ArrayBufferLike> = Buffer.alloc(0);
-
 const E4kEnumLoginStatus = {
   SUCCESS: 10_005,
   PLAYER_NOT_FOUND: 10_010,
@@ -12,7 +10,8 @@ const E4kEnumLoginStatus = {
 
 class GgeEmpire4KingdomsTcp extends BaseSocket implements GgeEmpireSocketImpl {
   private static readonly MAX_PENDING_BYTES = 16 * 1024 * 1024;
-  private _buffer: Buffer<ArrayBufferLike> = EMPTY_BUFFER;
+  private pendingChunks: Buffer[] = [];
+  private pendingBytes = 0;
   constructor(url: string, serverHeader: string, username: string, password: string, autoReconnect = true) {
     super(url, serverHeader, GgeServerType.E4K, autoReconnect);
     this.url = url;
@@ -40,6 +39,7 @@ class GgeEmpire4KingdomsTcp extends BaseSocket implements GgeEmpireSocketImpl {
       this.onClose = (code, reason): void => this.handleCloseState(code, reason);
 
       const connectStartedAt = Date.now();
+      this.resetPendingFrame();
       this.socket = net
         .createConnection(port, host, () => {
           this.log('✅ [connect] TCP socket connected to', this.url);
@@ -104,19 +104,33 @@ class GgeEmpire4KingdomsTcp extends BaseSocket implements GgeEmpireSocketImpl {
   }
 
   private handleTcpData(data: Buffer): void {
-    this._buffer = this._buffer.length === 0 ? data : Buffer.concat([this._buffer, data]);
+    let start = 0;
     let nullIndex: number;
-    while ((nullIndex = this._buffer.indexOf(0)) !== -1) {
-      const message = this._buffer.toString('utf8', 0, nullIndex);
-      this._buffer = this._buffer.subarray(nullIndex + 1);
-      this._onMessage(message, false);
+    while ((nullIndex = data.indexOf(0, start)) !== -1) {
+      this._onMessage(this.takeFrame(data.subarray(start, nullIndex)), false);
+      start = nullIndex + 1;
     }
-    if (this._buffer.length > GgeEmpire4KingdomsTcp.MAX_PENDING_BYTES) {
-      this.error('[handleTcpData] Dropping an unterminated frame of', this._buffer.length, 'bytes');
-      this._buffer = EMPTY_BUFFER;
-      return;
+    if (start === data.length) return;
+    // A copy, so a pending frame never pins the whole read buffer it arrived in
+    const rest = Buffer.from(data.subarray(start));
+    this.pendingChunks.push(rest);
+    this.pendingBytes += rest.length;
+    if (this.pendingBytes > GgeEmpire4KingdomsTcp.MAX_PENDING_BYTES) {
+      this.error('[handleTcpData] Dropping an unterminated frame of', this.pendingBytes, 'bytes');
+      this.resetPendingFrame();
     }
-    this._buffer = this._buffer.length === 0 ? EMPTY_BUFFER : Buffer.from(this._buffer);
+  }
+
+  private takeFrame(tail: Buffer): string {
+    if (this.pendingBytes === 0) return tail.toString('utf8');
+    const frame = Buffer.concat([...this.pendingChunks, tail], this.pendingBytes + tail.length);
+    this.resetPendingFrame();
+    return frame.toString('utf8');
+  }
+
+  private resetPendingFrame(): void {
+    this.pendingChunks = [];
+    this.pendingBytes = 0;
   }
 
   private sendLoginMessage(): void {

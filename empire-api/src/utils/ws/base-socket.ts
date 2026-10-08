@@ -30,6 +30,10 @@ const ROUND_TRIP_SAMPLES = 5;
 const ROUND_TRIP_CEILING_MS = 5000;
 const ANSWER_SAMPLES = readEnvironmentInteger('RESPONSE_TIMEOUT_SAMPLES', 100);
 const ANSWER_MIN_SAMPLES = 5;
+const LOG_UNMATCHED_FRAMES = process.env.LOG_UNMATCHED_FRAMES === '1';
+const TEXT_CHECKS_BEFORE_PARSE = 8;
+const LATE_ANSWER_WINDOW_MS = readEnvironmentInteger('EMPIRE_LATE_ANSWER_WINDOW_MS', 30_000);
+const WS_PER_MESSAGE_DEFLATE = process.env.WS_PER_MESSAGE_DEFLATE !== '0';
 
 export type GgeFrame =
   | { type: 'json'; payload: JsonFramePayload }
@@ -40,8 +44,9 @@ interface PendingResponse {
   conditions: { [key: string]: any };
   // Scalars of the conditions, searched in the raw body before anything is parsed
   tokens: string[];
-  response: GgeFrame | null;
-  event: AsyncEvent;
+  errorCommands: readonly string[];
+  settle: (frame: GgeFrame) => void;
+  expiresAt: number | null;
 }
 
 export enum SocketState {
@@ -110,6 +115,10 @@ class BaseSocket extends Log implements GgeMetricsSocket {
 
   public get metricsConnected(): boolean {
     return this.connected.isSet;
+  }
+
+  public get metricsCompressed(): boolean {
+    return this.ws?.extensions?.includes('permessage-deflate') ?? false;
   }
 
   public get metricsState(): string {
@@ -364,7 +373,7 @@ class BaseSocket extends Log implements GgeMetricsSocket {
     this.closed.clear();
     this.connected.clear();
     this.setSocketState(SocketState.CONNECTING);
-    this.ws = new WebSocket(this.url);
+    this.ws = new WebSocket(this.url, { perMessageDeflate: WS_PER_MESSAGE_DEFLATE });
     this.ws.on('open', () => this._onOpen());
     this.ws.on('message', (message) => this._onMessage(message));
     this.ws.on('error', (error) => this._onError(error));
@@ -395,12 +404,17 @@ class BaseSocket extends Log implements GgeMetricsSocket {
     }, timeout);
   }
 
-  public waitForJsonResponse(command: string, data: any = false, timeout = 5000): Promise<any> {
-    return this._waitForResponse('json', { command, data }, timeout);
+  public waitForJsonResponse(
+    command: string,
+    data: any = false,
+    timeout = 5000,
+    errorCommands: readonly string[] = [],
+  ): Promise<any> {
+    return this._waitForResponse('json', { command, data }, timeout, errorCommands);
   }
 
   public waitForXmlResponse(t: string, action: string, r: string, timeout = 5000): Promise<any> {
-    return this._waitForResponse('xml', { t, action, r }, timeout);
+    return this._waitForResponse('xml', { t, action, r }, timeout, []);
   }
 
   public raiseForStatus(response: { type: string; payload: { status: number } }, expectedStatus = 0): void {
@@ -416,12 +430,25 @@ class BaseSocket extends Log implements GgeMetricsSocket {
     this.stats.messagesReceived++;
     this.stats.lastMessageAtMs = Date.now();
     const frame = this.parseFrame(message);
-    if (!this.isFrameWanted(frame)) {
-      this.stats.framesUnmatched++;
+    const forwarded = frame.type === 'xml' || this.watchedCommands.has(frame.payload.command);
+    const waiter = frame.type === 'xml' ? this.xmlWaiterFor(frame) : this.jsonWaiterFor(frame.payload);
+    const delivered = waiter !== undefined;
+    if (delivered) {
+      this.removeWaiter(waiter);
+      waiter.settle(frame);
+    }
+    if (!delivered && !forwarded) {
+      this.recordUnmatchedFrame(frame, message.length);
       return;
     }
-    this._processResponse(frame);
     if (this.onMessage) void this.onMessage(message, frame);
+  }
+
+  private recordUnmatchedFrame(frame: GgeFrame, length: number): void {
+    this.stats.framesUnmatched++;
+    if (LOG_UNMATCHED_FRAMES && frame.type === 'json') {
+      this.muted(`[unmatched] ${frame.payload.command} status=${frame.payload.status} ${length} chars`);
+    }
   }
 
   protected send(data: string): void {
@@ -505,20 +532,50 @@ class BaseSocket extends Log implements GgeMetricsSocket {
     this.send(`%${data.join('%')}%`);
   }
 
-  private async _waitForResponse(
+  private _waitForResponse(
     type: 'json' | 'xml',
     conditions: { [key: string]: any },
-    timeout = 5000,
-  ): Promise<any> {
-    const event = new AsyncEvent();
+    timeout: number,
+    errorCommands: readonly string[],
+  ): Promise<GgeFrame> {
     const hasHeaders = type === 'json' && conditions.data !== null && typeof conditions.data === 'object';
     const tokens = hasHeaders ? HeadersUtilities.literalTokens(conditions.data) : [];
-    const message: PendingResponse = { type, conditions, tokens, response: null, event };
-    this.messages.push(message);
-    const result = await event.wait(timeout);
-    this.messages = this.messages.filter((message_) => message_ !== message);
-    if (!result) throw new Error('Timeout waiting for response');
-    return message.response;
+    return new Promise((resolve, reject) => {
+      const message: PendingResponse = { type, conditions, tokens, errorCommands, settle: resolve, expiresAt: null };
+      if (timeout >= 0) {
+        const timer = setTimeout(() => {
+          this.giveUp(message);
+          reject(new Error('Timeout waiting for response'));
+        }, timeout);
+        message.settle = (frame): void => {
+          clearTimeout(timer);
+          resolve(frame);
+        };
+      }
+      this.messages.push(message);
+    });
+  }
+
+  private giveUp(message: PendingResponse): void {
+    this.pruneExpired();
+    if (message.errorCommands.length === 0) {
+      this.removeWaiter(message);
+      return;
+    }
+    message.expiresAt = Date.now() + LATE_ANSWER_WINDOW_MS;
+    message.settle = (): void => {
+      this.stats.lateAnswers++;
+    };
+  }
+
+  private pruneExpired(): void {
+    const now = Date.now();
+    this.messages = this.messages.filter((message) => message.expiresAt === null || message.expiresAt >= now);
+  }
+
+  private removeWaiter(message: PendingResponse): void {
+    const index = this.messages.indexOf(message);
+    if (index !== -1) this.messages.splice(index, 1);
   }
 
   /**
@@ -552,42 +609,46 @@ class BaseSocket extends Log implements GgeMetricsSocket {
   /**
    * Whether anything in this process would read the frame's payload
    */
-  private isFrameWanted(frame: GgeFrame): boolean {
-    if (frame.type === 'xml') return true;
-    if (this.watchedCommands.has(frame.payload.command)) return true;
-    return this.messages.some((message) => this.couldAnswer(message, frame.payload));
-  }
-
-  private couldAnswer(message: PendingResponse, payload: JsonFramePayload): boolean {
-    if (message.type !== 'json' || message.conditions.command !== payload.command) return false;
-    return message.tokens.length === 0 || HeadersUtilities.containsAllTokens(payload.body ?? '', message.tokens);
-  }
-
-  private answers(message: PendingResponse, frame: GgeFrame): boolean {
-    if (frame.type === 'xml') {
-      return (
+  private xmlWaiterFor(frame: Extract<GgeFrame, { type: 'xml' }>): PendingResponse | undefined {
+    return this.messages.find(
+      (message) =>
         message.type === 'xml' &&
         message.conditions.t === frame.payload.t &&
         message.conditions.action === frame.payload.action &&
-        message.conditions.r === frame.payload.r
-      );
-    }
-    if (!this.couldAnswer(message, frame.payload)) return false;
-    const expected = message.conditions.data;
-    if (expected === false) return true;
-    if (expected === true) return frame.payload.body !== null;
-    if (expected === null || typeof expected !== 'object') {
-      return !frame.payload.carriesObject && expected === frame.payload.body;
-    }
-    return frame.payload.carriesObject && HeadersUtilities.compareNestedHeaders(expected, frame.payload.data);
+        message.conditions.r === frame.payload.r,
+    );
   }
 
-  private _processResponse(response: GgeFrame): void {
-    const message = this.messages.find((candidate) => this.answers(candidate, response));
-    if (message) {
-      message.response = response;
-      message.event.set();
+  private jsonWaiterFor(payload: JsonFramePayload): PendingResponse | undefined {
+    let textChecks = 0;
+    let now = 0;
+    for (const message of this.messages) {
+      if (message.type !== 'json') continue;
+      if (message.expiresAt !== null && message.expiresAt < (now ||= Date.now())) continue;
+      if (BaseSocket.takesErrorOf(message, payload)) return message;
+      if (message.conditions.command !== payload.command) continue;
+      const textCheckApplies = message.tokens.length > 0 && !payload.isParsed && textChecks < TEXT_CHECKS_BEFORE_PARSE;
+      if (textCheckApplies) {
+        textChecks++;
+        if (!HeadersUtilities.containsAllTokens(payload.body ?? '', message.tokens)) continue;
+      }
+      if (BaseSocket.satisfies(message.conditions.data, payload)) return message;
     }
+    return undefined;
+  }
+
+  private static satisfies(expected: unknown, payload: JsonFramePayload): boolean {
+    if (expected === false) return true;
+    if (expected === true) return payload.body !== null;
+    if (expected === null || typeof expected !== 'object') {
+      return !payload.carriesObject && expected === payload.body;
+    }
+    return payload.carriesObject && HeadersUtilities.compareNestedHeaders(expected, payload.data);
+  }
+
+  private static takesErrorOf(message: PendingResponse, payload: JsonFramePayload): boolean {
+    const bodylessError = payload.body === null && payload.status !== 0 && !Number.isNaN(payload.status);
+    return bodylessError && message.errorCommands.includes(payload.command);
   }
 }
 
