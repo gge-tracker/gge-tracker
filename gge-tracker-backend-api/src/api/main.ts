@@ -1006,7 +1006,7 @@ protectedRoutes.get('/grand-tournament/alliances', routingInstance.getGrandTourn
  *                       date:
  *                         type: string
  *                         description: Snapshot timestamp
- *                         example: "2025-06-01 07:00:00"
+ *                         example: "2025-06-01T07:00:00.000Z"
  *                 meta:
  *                   type: object
  *                   properties:
@@ -1305,7 +1305,7 @@ protectedRoutes.get('/rift-raid/search', routingInstance.searchRiftRaidAlliances
  *                         type: integer
  *                       date:
  *                         type: string
- *                         example: "2026-09-19 17:00:00"
+ *                         example: "2026-09-19T17:00:00.000Z"
  *                 meta:
  *                   type: object
  *                   properties:

@@ -192,7 +192,11 @@ export const options = {
             subdivision: { type: 'integer' },
             rank: { type: 'integer', description: 'Rank inside the subdivision' },
             score: { type: 'integer' },
-            date: { type: 'string', description: 'Snapshot hour, UTC', example: '2026-01-01 0:00:00' },
+            date: {
+              type: 'string',
+              description: 'Snapshot hour, ISO 8601 in UTC',
+              example: '2026-01-01T00:00:00.000Z',
+            },
           },
         },
         Pagination: {

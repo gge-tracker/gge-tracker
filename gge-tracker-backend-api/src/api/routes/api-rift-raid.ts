@@ -49,6 +49,7 @@ export abstract class ApiRiftRaid implements ApiHelper {
   private static readonly MAX_DIVISION = 6;
   private static readonly MAX_EVENT_ID = 65_535;
   private static readonly UNKNOWN_SERVER_CODE = '999';
+  private static readonly ISO_HOUR = `'%Y-%m-%dT%H:00:00.000Z'`;
   private static readonly HOUR_WINDOW = `
     game = {game:String}
     AND created_at >= {hour:DateTime} AND created_at < {hour:DateTime} + INTERVAL 1 HOUR`;
@@ -62,7 +63,7 @@ export abstract class ApiRiftRaid implements ApiHelper {
       const rows = await ApiRiftRaid.select<{ event_id: number; dates: string[] }>(
         `SELECT event_id, groupArray(hour_iso) AS dates
           FROM (
-            SELECT DISTINCT event_id, formatDateTime(hour, '%Y-%m-%dT%H:00:00.000Z', 'UTC') AS hour_iso
+            SELECT DISTINCT event_id, formatDateTime(hour, ${ApiRiftRaid.ISO_HOUR}, 'UTC') AS hour_iso
             FROM ${ApiRiftRaid.HOURS_TABLE}
             WHERE game = {game:String}
             ORDER BY hour_iso
@@ -217,7 +218,7 @@ export abstract class ApiRiftRaid implements ApiHelper {
 
       const rows = await ApiRiftRaid.select<RiftRaidAnalysisRow>(
         `SELECT division_id, subdivision_id, rank, score, alliance_name,
-          formatDateTime(created_at, '%Y-%m-%d %H:00:00', 'UTC') AS date
+          formatDateTime(created_at, ${ApiRiftRaid.ISO_HOUR}, 'UTC') AS date
           FROM ${ApiRiftRaid.RANKING_TABLE}
           WHERE game = {game:String} AND alliance_id = {alliance:UInt32}
             AND server_id = {server:UInt16} AND event_id = {event:UInt16}
@@ -261,7 +262,7 @@ export abstract class ApiRiftRaid implements ApiHelper {
     return CachedValue.remember(cacheKey, ApiRiftRaid.CACHE_TTL_SECONDS, async () => {
       const rows = await ApiRiftRaid.select<RiftRaidStandingRow>(
         `SELECT event_id, division_id, subdivision_id, rank, score, alliance_name,
-          formatDateTime(created_at, '%Y-%m-%d %H:00:00', 'UTC') AS date
+          formatDateTime(created_at, ${ApiRiftRaid.ISO_HOUR}, 'UTC') AS date
           FROM ${ApiRiftRaid.RANKING_TABLE}
           WHERE game = {game:String} AND server_id = {server:UInt16} AND alliance_id = {alliance:UInt32}
             AND created_at >= (SELECT max(hour) FROM ${ApiRiftRaid.HOURS_TABLE} WHERE game = {game:String})

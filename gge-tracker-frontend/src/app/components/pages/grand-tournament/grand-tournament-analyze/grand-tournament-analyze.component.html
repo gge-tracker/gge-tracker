@@ -47,7 +47,7 @@
         <tbody>
           @for (entry of entriesWithDifference; track entry.id) {
             <tr>
-              <td>{{ entry.date }}</td>
+              <td>{{ entry.date | date: ('Date_5' | translate) }}</td>
               <td>
                 <app-division-badge [division]="entry.division" [nameKey]="divisionNames()[entry.division - 1]" [size]="32" />
               </td>

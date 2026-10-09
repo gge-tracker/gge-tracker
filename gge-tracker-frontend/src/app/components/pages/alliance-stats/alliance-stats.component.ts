@@ -1069,7 +1069,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       divisionNameKey: `${divisionKeyPrefix}_division_name_${standing.division}`,
       standing,
       queryParams: {
-        date: `${standing.date.replace(' ', 'T')}.000Z`,
+        date: standing.date,
         division: standing.division,
         subdivision: standing.subdivision,
       },

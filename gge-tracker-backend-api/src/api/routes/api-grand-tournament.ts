@@ -204,7 +204,7 @@ export abstract class ApiGrandTournament implements ApiHelper {
 
       const rows = await ApiGrandTournament.select<GrandTournamentAnalysisRow>(
         `SELECT division_id, subdivision_id, rank, score, alliance_name,
-          to_char(created_at, 'YYYY-MM-DD HH24:00:00') AS date
+          to_char(created_at, ${ApiGrandTournament.ISO_HOUR}) AS date
           FROM ${ApiGrandTournament.RANKING_TABLE}
           WHERE game = $1 AND alliance_id = $2 AND server_id = $3 AND event_id = $4
           ORDER BY created_at DESC`,
@@ -248,7 +248,7 @@ export abstract class ApiGrandTournament implements ApiHelper {
       if (!latest?.hour) return null;
       const rows = await ApiGrandTournament.select<GrandTournamentStandingRow>(
         `SELECT event_id, division_id, subdivision_id, rank, score, alliance_name,
-          to_char(created_at, 'YYYY-MM-DD HH24:00:00') AS date
+          to_char(created_at, ${ApiGrandTournament.ISO_HOUR}) AS date
           FROM ${ApiGrandTournament.RANKING_TABLE}
           WHERE game = $1 AND created_at >= $2::timestamp AND server_id = $3 AND alliance_id = $4
           ORDER BY created_at DESC
