@@ -1,0 +1,64 @@
+:host {
+  --tavern-focus-x: 0.46;
+  --tavern-focus-y: 0.4;
+  --tavern-zoom: 1.04;
+  background: #1c130d;
+  display: block;
+  overflow: hidden;
+  position: relative;
+}
+
+.tavern-frame {
+  animation: tavern-enter 1.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  inset: 0;
+  position: absolute;
+}
+
+.tavern-poster,
+.tavern-canvas {
+  display: block;
+  height: 100%;
+  inset: 0;
+  position: absolute;
+  width: 100%;
+}
+
+.tavern-poster {
+  object-fit: cover;
+  object-position: calc(var(--tavern-focus-x) * 100%) calc(var(--tavern-focus-y) * 100%);
+  transform: scale(var(--tavern-zoom));
+  transform-origin: calc(var(--tavern-focus-x) * 100%) calc(var(--tavern-focus-y) * 100%);
+}
+
+.tavern-canvas {
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.tavern-canvas.is-live {
+  opacity: 1;
+}
+
+@keyframes tavern-enter {
+  from {
+    opacity: 0;
+    transform: scale(1.07);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 767.98px) {
+  :host {
+    --tavern-focus-x: 0.42;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tavern-frame {
+    animation: none;
+  }
+}

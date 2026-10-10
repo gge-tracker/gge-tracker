@@ -1,0 +1,132 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="createjs.min.js"></script>
+<script src="easeljs.min.js"></script>
+<script src="tweenjs.min.js"></script>
+<script>
+createjs.TextFormat = function () {};
+createjs.TextField = function () { createjs.Container.call(this); };
+createjs.TextField.prototype = Object.create(createjs.Container.prototype);
+createjs.TextField.prototype.setTextFormat = function () {};
+createjs.ScaleBitmap = function (image) { createjs.Bitmap.call(this, image); };
+createjs.ScaleBitmap.prototype = Object.create(createjs.Bitmap.prototype);
+createjs.ScaleBitmap.prototype.setDrawSize = function () {};
+</script>
+</head>
+<body>
+<script>
+const WIDTH = 1920;
+const HEIGHT = 1080;
+const GAME_UI = new Set(['mc_quests', 'princess_bounds', 'knight_bounds', 'king_bounds', 'mc_rewards', 'btn_info', 'item_0', 'item_1', 'item_2', 'item_rubies', 'btn_close', 'btn_help', 'mc_king_hover', 'mc_knight_hover', 'mc_princess_hover']);
+const CHARACTERS = { mc_king_animation: 'King_Animation', mc_knight_animation: 'Knight_Animation', mc_princess_animation: 'Princess_Animation' };
+const LIGHTS = {
+  mc_beam_back_animation: 'Lightbeams_Back', mc_lightbeams_chandleliers_animation: 'Lightbeams_Chandleliers', mc_lightbeams_middle_animation: 'Lightbeams_Middle',
+  mc_beam_front_1_animation: 'Beam_Front1', mc_beam_front_2_animation: 'Beam_Front2', mc_dust_animation: 'Dust', mc_particles_animation: 'Particles',
+  mc_candlelight_middle_back1: 'CandleLight_Middle_Back1', mc_candlelight_middle_back2: 'CandleLight_Middle_Back2', mc_candlelight_sticks_back_animation: 'CandlelightSticks_Back',
+};
+const PROPS = { Chandleliers1: 'chandelier-1', Chandleliers2: 'chandelier-2', DoorOpened: 'door', Silhouette: 'silhouette', TableSoldier1: 'soldier-1', TableSoldier2: 'soldier-2' };
+const isFlame = (slot) => slot.startsWith('mc_candlelight_animation_');
+const propOf = (child) => Object.entries(PROPS).find(([name]) => (child.constructor.__fname ?? '').startsWith(name))?.[1];
+
+function symbol(namespace, name) {
+  const key = Object.keys(namespace).find((k) => k.toLowerCase().startsWith(name.toLowerCase()) && typeof namespace[k] === 'function');
+  return namespace[key];
+}
+
+function sceneOf(dialog) {
+  if (dialog.mc_king_animation) return dialog;
+  for (const child of dialog.children ?? []) {
+    const found = sceneOf(child);
+    if (found) return found;
+  }
+  return null;
+}
+
+function rewind(node) {
+  if (node.gotoAndStop && node.totalFrames > 1) node.gotoAndStop(0);
+  for (const child of node.children ?? []) rewind(child);
+}
+
+window.bake = async (libraries) => {
+  for (const [file] of libraries) {
+    await new Promise((resolve) => { const s = document.createElement('script'); s.src = file + '.js'; s.onload = resolve; document.head.appendChild(s); });
+  }
+  const loader = window.AssetLoader;
+  for (const [file, id] of libraries) loader.loadFile({ id, type: 'spritesheet', src: file + '.json' }, false);
+  loader.load();
+  while (!libraries.every(([, id]) => loader.getResult(id))) await new Promise((resolve) => setTimeout(resolve, 50));
+
+  const scene = sceneOf(new Library.GeneralsHub.GeneralsHub());
+  const slotOf = (child) => Object.keys(scene).find((key) => scene[key] === child) ?? '';
+  for (const [slot, name] of Object.entries(LIGHTS)) scene[slot].addChild(new (symbol(Library.Codebased_Animation_Elements, name))());
+  for (const [slot, name] of Object.entries(CHARACTERS)) scene[slot].addChild(new (symbol(Library[name], name))());
+  for (const slot of Object.keys(scene).filter(isFlame)) scene[slot].addChild(new Library.Candlelight_Animation.Candlelight_Animation());
+
+  const plan = [];
+  let run = null;
+  scene.children.forEach((child, index) => {
+    const slot = slotOf(child);
+    if (GAME_UI.has(slot)) return;
+    if (CHARACTERS[slot]) { run = null; plan.push({ kind: 'character', library: CHARACTERS[slot], x: child.x, y: child.y }); return; }
+    if (isFlame(slot)) { run = null; plan.push({ kind: 'flame', x: child.x, y: child.y }); return; }
+    if (propOf(child)) { run = null; plan.push({ kind: 'prop', id: propOf(child), members: [index] }); return; }
+    if (LIGHTS[slot]) { run = null; plan.push({ kind: 'light', id: slot.replace(/^mc_|_animation$/g, '').replaceAll('_', '-'), members: [index] }); return; }
+    if (!run) { run = { kind: 'image', members: [] }; plan.push(run); }
+    run.members.push(index);
+  });
+
+  const canvas = document.createElement('canvas');
+  canvas.width = WIDTH;
+  canvas.height = HEIGHT;
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  const stage = new createjs.Stage(canvas);
+  scene.x = WIDTH / 2;
+  scene.y = HEIGHT / 2;
+  stage.addChild(scene);
+  rewind(scene);
+
+  const showOnly = (members) => scene.children.forEach((child, index) => { child.visible = members.has(index); });
+  const cropped = () => {
+    const pixels = context.getImageData(0, 0, WIDTH, HEIGHT).data;
+    let left = WIDTH, top = HEIGHT, right = -1, bottom = -1;
+    for (let y = 0; y < HEIGHT; y++) for (let x = 0; x < WIDTH; x++) {
+      if (pixels[(y * WIDTH + x) * 4 + 3] <= 2) continue;
+      if (x < left) left = x;
+      if (x > right) right = x;
+      if (y < top) top = y;
+      if (y > bottom) bottom = y;
+    }
+    if (right < 0) return null;
+    const crop = document.createElement('canvas');
+    crop.width = right - left + 1;
+    crop.height = bottom - top + 1;
+    crop.getContext('2d').drawImage(canvas, left, top, crop.width, crop.height, 0, 0, crop.width, crop.height);
+    return { x: left, y: top, width: crop.width, height: crop.height, data: crop.toDataURL('image/webp', 0.86) };
+  };
+
+  const layers = [];
+  let images = 0;
+  for (const step of plan) {
+    if (!step.members) {
+      layers.push({ ...step, x: +(step.x + WIDTH / 2).toFixed(2), y: +(step.y + HEIGHT / 2).toFixed(2) });
+      continue;
+    }
+    showOnly(new Set(step.members));
+    stage.update();
+    const picture = cropped();
+    if (!picture) continue;
+    const id = step.id ?? `layer-${images++}`;
+    layers.push({ kind: step.kind, id, ...picture });
+  }
+
+  showOnly(new Set(scene.children.map((child, index) => (GAME_UI.has(slotOf(child)) ? -1 : index))));
+  stage.update();
+  const poster = canvas.toDataURL('image/webp', 0.82);
+  return { width: WIDTH, height: HEIGHT, layers, poster };
+};
+window.ready = true;
+</script>
+</body>
+</html>

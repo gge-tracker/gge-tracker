@@ -38,6 +38,11 @@ body, html {
   padding: 0;
 }
 
+html:has(app-home),
+html:has(app-home) body {
+  background: #100e0c;
+}
+
 html:has(.fullscreen) {
   overflow: hidden;
 }

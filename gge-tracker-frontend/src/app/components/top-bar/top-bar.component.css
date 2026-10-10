@@ -327,6 +327,22 @@ a:visited {
   color: #fbbf24;
 }
 
+.topbar-brand {
+  border-radius: 8px;
+  display: flex;
+  flex: none;
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.topbar-brand:hover,
+.topbar-brand:focus-visible {
+  transform: scale(1.06);
+}
+
+.topbar-brand img {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+
 .sidebar-btn {
   background: transparent;
   border-radius: 8px;
@@ -465,11 +481,34 @@ a:visited {
   }
 
   .topbar .gap-4 {
-    gap: 0.6rem;
+    gap: 0.6rem !important;
+  }
+
+  .breadcrumb-label {
+    display: none;
+  }
+
+  .topbar-brand img {
+    height: 32px;
+    width: 32px;
   }
 
   .topbar .divider {
     display: none;
+  }
+}
+
+@media (max-width: 400px) {
+  .lang-pill {
+    padding-inline: 0.6rem;
+  }
+
+  .lang-pill .chevron {
+    display: none;
+  }
+
+  .topbar .gap-4 {
+    gap: 0.4rem !important;
   }
 }
 

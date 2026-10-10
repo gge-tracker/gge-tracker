@@ -1,27 +1,86 @@
+<div class="home-hero" [class.home-hero--identity]="meView() || (loading() && follow.me())">
+  <app-tavern-scene class="home-hero-scene" />
+  <div class="home-hero-body">
+    @if (meView(); as me) {
+      <section class="home-banner" aria-labelledby="home-me-name">
+        <div class="home-banner-identity">
+          <p class="home-eyebrow">{{ 'follow.is-me' | translate }} · {{ me.profile.server }}</p>
+          <h1 id="home-me-name" class="home-name">{{ me.profile.player.player_name }}</h1>
+          <p class="home-banner-meta">
+            @if (me.profile.player.alliance_id) {
+              <a class="home-banner-alliance" [routerLink]="['/', 'alliance', me.profile.player.alliance_id]">
+                {{ me.profile.player.alliance_name }}
+              </a>
+              <span aria-hidden="true">·</span>
+            }
+            <span>{{ 'Niveau' | translate }} {{ me.profile.player.level }}@if (me.profile.player.legendary_level > 0) {/{{ me.profile.player.legendary_level }}}</span>
+          </p>
+        </div>
+        <div class="home-banner-actions">
+          <a class="home-action home-action--primary" [routerLink]="['/', 'player', me.profile.player.player_id]">
+            {{ 'home.open-profile' | translate }}
+          </a>
+          <button type="button" class="home-action" (click)="forgetMe()">{{ 'home.not-me' | translate }}</button>
+        </div>
+      </section>
+    } @else if (loading() && follow.me()) {
+      <div class="home-banner home-banner--skeleton" aria-hidden="true">
+        <div class="home-banner-identity">
+          <span class="home-shimmer home-skeleton-eyebrow"></span>
+          <span class="home-shimmer home-skeleton-name"></span>
+          <span class="home-shimmer home-skeleton-meta"></span>
+        </div>
+      </div>
+    } @else {
+      <section class="home-welcome" aria-labelledby="home-landing-title">
+        <div class="home-brand-row">
+          <h1 id="home-landing-title" class="home-brand">
+            <img class="home-brand-mascot" src="/assets/seo/signature-logo.png" alt="" width="144" height="144" />
+            <img class="home-brand-wordmark" src="/assets/brand/wordmark.webp" alt="GGE Tracker" width="525"
+              height="94" />
+          </h1>
+          <span class="home-fan-badge">{{ 'home.fan-project' | translate }}</span>
+        </div>
+        <p class="home-welcome-title">{{ 'home.landing-title' | translate }}</p>
+        <p class="home-welcome-intro">{{ 'home.intro' | translate }}</p>
+        <div class="home-me">
+          <label class="home-me-label" for="home-me-input">{{ 'home.me-title' | translate }}</label>
+          <div class="home-me-field">
+            <input id="home-me-input" class="home-input" type="search" autocomplete="off"
+              [placeholder]="'home.me-placeholder' | translate" [ngModel]="meQuery"
+              (ngModelChange)="onQueryChange($event)" aria-controls="home-me-suggestions" />
+            @if (suggestions().length > 0) {
+              <ul id="home-me-suggestions" class="home-suggestions">
+                @for (suggestion of suggestions(); track suggestion.id) {
+                  <li>
+                    <button type="button" class="home-suggestion" (click)="pickMe(suggestion)">
+                      <span class="home-suggestion-name">{{ suggestion.name }}</span>
+                      <span class="home-suggestion-detail">
+                        {{ suggestion.alliance_name ?? '—' }} · {{ compact(suggestion.might_current) }}
+                      </span>
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+          @if (meNotFound()) {
+            <p class="home-me-error" role="status">{{ 'home.me-not-found' | translate: { server: currentServer } }}</p>
+          } @else {
+            <p class="home-me-hint">{{ 'home.me-hint' | translate: { server: currentServer } }}</p>
+          }
+        </div>
+      </section>
+    }
+    <p class="home-hero-credit">
+      {{ 'legal.ip-2' | translate }} {{ 'home.art-credit' | translate }}
+      <a routerLink="/legal">{{ 'legal.ip-title' | translate }}</a>
+    </p>
+  </div>
+</div>
+
 <div class="home">
   @if (meView(); as me) {
-    <section class="home-banner" aria-labelledby="home-me-name">
-      <div class="home-banner-identity">
-        <p class="home-eyebrow">{{ 'follow.is-me' | translate }} · {{ me.profile.server }}</p>
-        <h1 id="home-me-name" class="home-name">{{ me.profile.player.player_name }}</h1>
-        <p class="home-banner-meta">
-          @if (me.profile.player.alliance_id) {
-            <a class="home-banner-alliance" [routerLink]="['/', 'alliance', me.profile.player.alliance_id]">
-              {{ me.profile.player.alliance_name }}
-            </a>
-            <span aria-hidden="true">·</span>
-          }
-          <span>{{ 'Niveau' | translate }} {{ me.profile.player.level }}@if (me.profile.player.legendary_level > 0) {/{{ me.profile.player.legendary_level }}}</span>
-        </p>
-      </div>
-      <div class="home-banner-actions">
-        <a class="home-action home-action--primary" [routerLink]="['/', 'player', me.profile.player.player_id]">
-          {{ 'home.open-profile' | translate }}
-        </a>
-        <button type="button" class="home-action" (click)="forgetMe()">{{ 'home.not-me' | translate }}</button>
-      </div>
-    </section>
-
     <div class="home-kpis">
       <article class="home-card home-kpi" aria-labelledby="home-kpi-might">
         <header class="home-card-header">
@@ -292,13 +351,6 @@
     </div>
   } @else if (loading() && follow.me()) {
     <div class="home-skeleton" aria-busy="true" [attr.aria-label]="'home.loading' | translate">
-      <div class="home-banner home-banner--skeleton" aria-hidden="true">
-        <div class="home-banner-identity">
-          <span class="home-shimmer home-skeleton-eyebrow"></span>
-          <span class="home-shimmer home-skeleton-name"></span>
-          <span class="home-shimmer home-skeleton-meta"></span>
-        </div>
-      </div>
       <div class="home-kpis" aria-hidden="true">
         @for (index of kpiSkeletons; track index) {
           <div class="home-card home-kpi">
@@ -333,38 +385,6 @@
         }
       </div>
     </div>
-  } @else {
-    <section class="home-welcome" aria-labelledby="home-landing-title">
-      <h1 id="home-landing-title" class="home-welcome-title">{{ 'home.landing-title' | translate }}</h1>
-      <p class="home-welcome-intro">{{ 'home.intro' | translate }}</p>
-      <div class="home-me">
-        <label class="home-me-label" for="home-me-input">{{ 'home.me-title' | translate }}</label>
-        <div class="home-me-field">
-          <input id="home-me-input" class="home-input" type="search" autocomplete="off"
-            [placeholder]="'home.me-placeholder' | translate" [ngModel]="meQuery"
-            (ngModelChange)="onQueryChange($event)" aria-controls="home-me-suggestions" />
-          @if (suggestions().length > 0) {
-            <ul id="home-me-suggestions" class="home-suggestions">
-              @for (suggestion of suggestions(); track suggestion.id) {
-                <li>
-                  <button type="button" class="home-suggestion" (click)="pickMe(suggestion)">
-                    <span class="home-suggestion-name">{{ suggestion.name }}</span>
-                    <span class="home-suggestion-detail">
-                      {{ suggestion.alliance_name ?? '—' }} · {{ compact(suggestion.might_current) }}
-                    </span>
-                  </button>
-                </li>
-              }
-            </ul>
-          }
-        </div>
-        @if (meNotFound()) {
-          <p class="home-me-error" role="status">{{ 'home.me-not-found' | translate: { server: currentServer } }}</p>
-        } @else {
-          <p class="home-me-hint">{{ 'home.me-hint' | translate: { server: currentServer } }}</p>
-        }
-      </div>
-    </section>
   }
 
   @if (!loading() && (meView() || hasFollowed)) {

@@ -1,0 +1,272 @@
+{
+  "width": 1920,
+  "height": 1080,
+  "layers": [
+    {
+      "kind": "image",
+      "id": "layer-0",
+      "x": 1,
+      "y": 0,
+      "width": 1919,
+      "height": 1080
+    },
+    {
+      "kind": "light",
+      "id": "beam-back",
+      "x": 514,
+      "y": 0,
+      "width": 843,
+      "height": 356
+    },
+    {
+      "kind": "prop",
+      "id": "door",
+      "x": 1310,
+      "y": 205,
+      "width": 238,
+      "height": 407
+    },
+    {
+      "kind": "prop",
+      "id": "silhouette",
+      "x": 1367,
+      "y": 319,
+      "width": 109,
+      "height": 214
+    },
+    {
+      "kind": "image",
+      "id": "layer-1",
+      "x": 881,
+      "y": 419,
+      "width": 775,
+      "height": 400
+    },
+    {
+      "kind": "prop",
+      "id": "chandelier-1",
+      "x": 634,
+      "y": 0,
+      "width": 266,
+      "height": 155
+    },
+    {
+      "kind": "prop",
+      "id": "chandelier-2",
+      "x": 1285,
+      "y": 0,
+      "width": 279,
+      "height": 141
+    },
+    {
+      "kind": "light",
+      "id": "lightbeams-chandleliers",
+      "x": 789,
+      "y": 0,
+      "width": 1131,
+      "height": 707
+    },
+    {
+      "kind": "light",
+      "id": "dust",
+      "x": 408,
+      "y": 0,
+      "width": 1494,
+      "height": 641
+    },
+    {
+      "kind": "image",
+      "id": "layer-2",
+      "x": 383,
+      "y": 0,
+      "width": 1537,
+      "height": 831
+    },
+    {
+      "kind": "light",
+      "id": "candlelight-middle-back1",
+      "x": 971,
+      "y": 170,
+      "width": 198,
+      "height": 213
+    },
+    {
+      "kind": "light",
+      "id": "candlelight-middle-back2",
+      "x": 1662,
+      "y": 173,
+      "width": 198,
+      "height": 213
+    },
+    {
+      "kind": "flame",
+      "x": 1039.8,
+      "y": 279.3
+    },
+    {
+      "kind": "flame",
+      "x": 1101.7,
+      "y": 279.9
+    },
+    {
+      "kind": "flame",
+      "x": 1726.95,
+      "y": 280.2
+    },
+    {
+      "kind": "flame",
+      "x": 1789.35,
+      "y": 280.05
+    },
+    {
+      "kind": "image",
+      "id": "layer-3",
+      "x": 1024,
+      "y": 297,
+      "width": 782,
+      "height": 125
+    },
+    {
+      "kind": "light",
+      "id": "lightbeams-middle",
+      "x": 285,
+      "y": 41,
+      "width": 1635,
+      "height": 801
+    },
+    {
+      "kind": "image",
+      "id": "layer-4",
+      "x": 1,
+      "y": 0,
+      "width": 572,
+      "height": 694
+    },
+    {
+      "kind": "character",
+      "library": "King_Animation",
+      "x": 570.5,
+      "y": 323.4
+    },
+    {
+      "kind": "light",
+      "id": "candlelight-sticks-back",
+      "x": 26,
+      "y": 0,
+      "width": 465,
+      "height": 415
+    },
+    {
+      "kind": "flame",
+      "x": 307.15,
+      "y": 116.9
+    },
+    {
+      "kind": "image",
+      "id": "layer-5",
+      "x": 268,
+      "y": 139,
+      "width": 74,
+      "height": 362
+    },
+    {
+      "kind": "flame",
+      "x": 277.55,
+      "y": 235.3
+    },
+    {
+      "kind": "image",
+      "id": "layer-6",
+      "x": 239,
+      "y": 249,
+      "width": 72,
+      "height": 368
+    },
+    {
+      "kind": "flame",
+      "x": 234.9,
+      "y": 57.1
+    },
+    {
+      "kind": "image",
+      "id": "layer-7",
+      "x": 0,
+      "y": 70,
+      "width": 1007,
+      "height": 822
+    },
+    {
+      "kind": "character",
+      "library": "Knight_Animation",
+      "x": 832,
+      "y": 548.15
+    },
+    {
+      "kind": "prop",
+      "id": "soldier-2",
+      "x": 1432,
+      "y": 427,
+      "width": 188,
+      "height": 461
+    },
+    {
+      "kind": "flame",
+      "x": 1480.15,
+      "y": 579.6
+    },
+    {
+      "kind": "prop",
+      "id": "soldier-1",
+      "x": 1406,
+      "y": 354,
+      "width": 514,
+      "height": 576
+    },
+    {
+      "kind": "character",
+      "library": "Princess_Animation",
+      "x": 1284.6,
+      "y": 645.6
+    },
+    {
+      "kind": "image",
+      "id": "layer-8",
+      "x": 1016,
+      "y": 847,
+      "width": 126,
+      "height": 62
+    },
+    {
+      "kind": "light",
+      "id": "particles",
+      "x": 17,
+      "y": 55,
+      "width": 972,
+      "height": 997
+    },
+    {
+      "kind": "light",
+      "id": "beam-front-2",
+      "x": 1,
+      "y": 576,
+      "width": 866,
+      "height": 504
+    },
+    {
+      "kind": "light",
+      "id": "beam-front-1",
+      "x": 1,
+      "y": 0,
+      "width": 1389,
+      "height": 1004
+    },
+    {
+      "kind": "image",
+      "id": "layer-9",
+      "x": 0,
+      "y": 779,
+      "width": 1918,
+      "height": 301
+    }
+  ]
+}

@@ -11,6 +11,11 @@
         }
       </button>
     }
+    @if (!isSidebarOpen()) {
+      <a class="topbar-brand" routerLink="/" aria-label="GGE Tracker">
+        <img src="/assets/seo/signature-logo.png" alt="" width="36" height="36" />
+      </a>
+    }
     <div class="hidden md:flex flex-col">
       <span class="breadcrumb-label text-nowrap">{{ 'Serveur actuel' | translate }}</span>
 
