@@ -1,60 +1,12 @@
 'use strict';
 
 (function () {
-  function levelSuffix(level) {
-    return level ? 'Level' + level : '';
-  }
-
-  function capitalize(value) {
-    return value ? value.charAt(0).toUpperCase() + value.slice(1) : '';
-  }
-
   function lookupLoose(container, name) {
     if (!container || !name) return null;
     if (typeof container[name] === 'function') return container[name];
     var wanted = String(name).toLowerCase();
     for (var key in container) {
       if (key.toLowerCase() === wanted && typeof container[key] === 'function') return container[key];
-    }
-    return null;
-  }
-
-  function variantNames(libraryName, options) {
-    var suffix = levelSuffix(options.level);
-    var quality = capitalize(options.quality);
-    var names = [];
-    switch (options.type) {
-      case 'gate': {
-        if (quality) names.push(quality + '_Gate_' + suffix);
-        names.push('Basic_Gate_' + suffix);
-        break;
-      }
-      case 'defence': {
-        if (quality) names.push('Castlewall_' + quality + '_Defence_' + suffix, quality + '_Defence_' + suffix);
-        names.push('Castlewall_Defence_' + suffix, 'Basic_Castlewall_' + suffix);
-        break;
-      }
-      case 'tower': {
-        if (quality) names.push(quality + '_Tower_' + suffix);
-        names.push('Guard_Tower_' + suffix, 'Basic_Tower_Corner' + suffix + '_0');
-        break;
-      }
-      default: {
-        if (!suffix) break;
-        var parts = libraryName.split('_');
-        var last = parts.pop();
-        names.push(parts.join('_') + '_' + suffix + '_' + last);
-      }
-    }
-    return names.filter(Boolean);
-  }
-
-  function resolveConstructor(container, libraryName, options) {
-    if (typeof container[libraryName] === 'function') return container[libraryName];
-    var names = variantNames(libraryName, options);
-    for (const name of names) {
-      var found = lookupLoose(container, name);
-      if (found) return found;
     }
     return null;
   }
@@ -85,8 +37,8 @@
 
       loader.on('complete', function () {
         try {
-          var Symbol_ = resolveConstructor(container, libraryName, options);
-          if (!Symbol_) return reject(new Error('No renderable symbol in ' + libraryName));
+          var Symbol_ = lookupLoose(container, options.symbol);
+          if (!Symbol_) return reject(new Error('No symbol ' + options.symbol + ' in ' + libraryName));
           var display = new Symbol_();
           stage.addChild(display);
           stage.update();

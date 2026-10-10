@@ -30,20 +30,16 @@ export abstract class AssetImageRenderer {
     return parts.join('_');
   }
 
-  public static render(asset: string, variant: AssetImageVariant, baseUrl: string): Promise<RenderedAssetImage> {
-    const key = this.variantKey(asset, variant);
+  public static render(asset: string, symbol: string, baseUrl: string): Promise<RenderedAssetImage> {
+    const key = `${asset}:${symbol}`;
     const running = this.inFlight.get(key);
     if (running !== undefined) return running;
-    const job = this.renderOnce(asset, variant, baseUrl).finally(() => this.inFlight.delete(key));
+    const job = this.renderOnce(asset, symbol, baseUrl).finally(() => this.inFlight.delete(key));
     this.inFlight.set(key, job);
     return job;
   }
 
-  private static async renderOnce(
-    asset: string,
-    variant: AssetImageVariant,
-    baseUrl: string,
-  ): Promise<RenderedAssetImage> {
+  private static async renderOnce(asset: string, symbol: string, baseUrl: string): Promise<RenderedAssetImage> {
     return puppeteerManagerInstance.withPage(async (page) => {
       page.on('pageerror', (error) => console.error('[AssetImageRenderer] page error', asset, String(error)));
       page.on('requestfailed', (request) =>
@@ -59,9 +55,7 @@ export abstract class AssetImageRenderer {
 
       const options = {
         spritesheetUrl: `${baseUrl}/assets/common/${asset}.json`,
-        level: variant.level ?? '',
-        type: variant.type ?? '',
-        quality: variant.quality ?? '',
+        symbol,
         maxDimension: MAX_IMAGE_DIMENSION,
         webpQuality: WEBP_QUALITY,
       };

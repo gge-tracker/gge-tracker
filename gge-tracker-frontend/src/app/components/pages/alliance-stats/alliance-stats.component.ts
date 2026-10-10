@@ -67,6 +67,7 @@ import { PlayerStatsCardComponent } from '../player-stats/player-stats-card/play
 import { StatsCardContentComponent } from './stats-card-content/stats-card-content.component';
 import { PlayerTableContentComponent } from '@ggetracker-pages/players/player-table-content/player-table-content.component';
 import { DecodeHtmlPipe } from '../../../pipes/decode-html.pipe';
+import { GameDescriptionPipe } from '../../../pipes/game-description.pipe';
 
 enum ChartTypeHeights {
   DEFAULT = 450,
@@ -183,7 +184,7 @@ const WHITESPACE = /\s/;
     FormatNumberPipe,
     StatsCardContentComponent,
     TranslateModule,
-    DecodeHtmlPipe,
+    GameDescriptionPipe,
     RouterLink,
     DivisionBadgeComponent,
     ShareLinkComponent,
@@ -2661,7 +2662,10 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
 
   private renderSegments(segments: DescriptionSegment[], highlightClass: string): string {
     return segments
-      .map((segment) => (segment.changed ? `<span class="${highlightClass}">${segment.text}</span>` : segment.text))
+      .map((segment) => {
+        const text = GameDescriptionPipe.toSafeHtml(segment.text);
+        return segment.changed ? `<span class="${highlightClass}">${text}</span>` : text;
+      })
       .join('');
   }
 

@@ -7,6 +7,7 @@ import { ApiHelper } from '../helper/api-helper';
 import { HttpCache } from '../helper/http-cache';
 import { AssetFileCache } from '../services/asset-file-cache';
 import { AssetImageVariant, AssetImageRenderer } from '../services/asset-image-renderer';
+import { AssetSymbolResolver } from '../services/asset-symbol-resolver';
 
 const IMAGE_CACHE_CONTROL = 'public, max-age=2592000, immutable';
 const ASSET_CATALOGUE_MAX_AGE_SECONDS = 7200;
@@ -27,6 +28,8 @@ const WARM_CONCURRENCY = Number(process.env.ASSET_WARM_CONCURRENCY) || 3;
  */
 export abstract class ApiAssets implements ApiHelper {
   private static warming = false;
+  private static parsedMapping: Record<string, string> | null = null;
+  private static parsedMappingSource: Buffer | null = null;
 
   /**
    * Handles the update of Goodgame Empire assets and items
@@ -45,6 +48,10 @@ export abstract class ApiAssets implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
+      if (request.headers['cf-connecting-ip']) {
+        response.status(ApiHelper.HTTP_FORBIDDEN).send({ error: 'Forbidden' });
+        return;
+      }
       const token = request.params.token;
       if (!token || token !== process.env.INTERNAL_SECRET) {
         await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -312,25 +319,22 @@ export abstract class ApiAssets implements ApiHelper {
        * --------------------------------- */
       const version = await ApiHelper.getGgeBuildVersion();
       const wantsWebp = String(request.headers.accept || '').includes('image/webp');
-      const served = await this.sendCachedImage(version, asset, variant, wantsWebp, response);
-      if (served) return;
+      if (await this.sendCachedImage(version, this.variantCacheName(asset, variant), wantsWebp, response)) return;
       /* ---------------------------------
-       * Skip assets already known to be unrenderable
+       * Only a symbol the asset defines is rendered, so a made-up variant can neither start a
+       * render nor add a file: every variant naming the same symbol shares one image
        * --------------------------------- */
-      const missingKey = `assets_image_missing_${version}_${AssetImageRenderer.variantKey(asset, variant)}`;
-      if (await ApiHelper.redisClient.get(missingKey)) {
+      const symbol = await this.resolveSymbol(version, asset, variant);
+      if (!symbol) {
         response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.AssetNotFound });
         return;
       }
+      if (await this.sendCachedImage(version, this.symbolCacheName(asset, symbol), wantsWebp, response)) return;
       /* ---------------------------------
        * Render, cache and serve
        * --------------------------------- */
-      const rendered = await this.renderAndCache(version, asset, variant);
+      const rendered = await this.renderAndCache(version, asset, symbol);
       if (!rendered) {
-        // Only a genuinely absent sprite sheet is remembered, and only for an hour. Without it every
-        // request for an asset that has none pays three upstream retries, and the castle view can ask
-        // for hundreds. A render that threw is left uncached so a timeout cannot blacklist a good asset
-        await ApiHelper.updateCache(missingKey, '1', MISSING_ASSET_TTL_SECONDS, true);
         response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.AssetNotFound });
         return;
       }
@@ -419,7 +423,11 @@ export abstract class ApiAssets implements ApiHelper {
   private static async readAssetMapping(): Promise<Record<string, string> | null> {
     try {
       const mapping = await ApiHelper.getAssets();
-      return JSON.parse(mapping.toString());
+      if (mapping !== this.parsedMappingSource) {
+        this.parsedMapping = JSON.parse(mapping.toString());
+        this.parsedMappingSource = mapping;
+      }
+      return this.parsedMapping;
     } catch {
       try {
         await this.updateGameAssets();
@@ -452,20 +460,47 @@ export abstract class ApiAssets implements ApiHelper {
     return variant;
   }
 
-  private static imageCacheName(asset: string, variant: AssetImageVariant, extension: string): string {
-    return `image_${AssetImageRenderer.variantKey(asset, variant)}${extension}`;
+  private static variantCacheName(asset: string, variant: AssetImageVariant): string {
+    return `image_${AssetImageRenderer.variantKey(asset, variant)}`;
+  }
+
+  private static symbolCacheName(asset: string, symbol: string): string {
+    return `render_${asset}_${symbol.toLowerCase()}`;
+  }
+
+  private static async resolveSymbol(
+    version: string,
+    asset: string,
+    variant: AssetImageVariant,
+  ): Promise<string | null> {
+    const mapping = await this.readAssetMapping();
+    if (!mapping?.[asset]) return null;
+    const script = await this.readAssetScript(version, asset);
+    return script ? AssetSymbolResolver.resolve(`${version}:${asset}`, script, variant) : null;
+  }
+
+  private static async readAssetScript(version: string, asset: string): Promise<string | null> {
+    const cached = await AssetFileCache.read(version, `common_${asset}.js`);
+    if (cached) return cached.toString();
+    const missingKey = `assets_image_missing_${version}_${asset}`;
+    if (await ApiHelper.redisClient.get(missingKey)) return null;
+    const resource = await ApiHelper.fetchWithFallback(
+      `${this.getInternalApiBaseUrl()}/assets/common/${asset}.js`,
+    ).catch(() => null);
+    if (resource?.ok) return resource.text();
+    await ApiHelper.updateCache(missingKey, '1', MISSING_ASSET_TTL_SECONDS, true);
+    return null;
   }
 
   private static async sendCachedImage(
     version: string,
-    asset: string,
-    variant: AssetImageVariant,
+    cacheName: string,
     wantsWebp: boolean,
     response: express.Response,
   ): Promise<boolean> {
     const order = wantsWebp ? ['.webp', '.png'] : ['.png', '.webp'];
     for (const extension of order) {
-      const cached = await AssetFileCache.read(version, this.imageCacheName(asset, variant, extension));
+      const cached = await AssetFileCache.read(version, cacheName + extension);
       if (!cached) continue;
       response.setHeader('Content-Type', extension === '.webp' ? 'image/webp' : 'image/png');
       response.setHeader('Cache-Control', IMAGE_CACHE_CONTROL);
@@ -479,15 +514,16 @@ export abstract class ApiAssets implements ApiHelper {
   private static async renderAndCache(
     version: string,
     asset: string,
-    variant: AssetImageVariant,
+    symbol: string,
   ): Promise<{ webp: Buffer | null; png: Buffer } | null> {
     const baseUrl = this.getInternalApiBaseUrl();
     const spritesheet = await ApiHelper.fetchWithFallback(`${baseUrl}/assets/common/${asset}.json`).catch(() => null);
     if (!spritesheet?.ok) return null;
-    const rendered = await AssetImageRenderer.render(asset, variant, baseUrl);
-    await AssetFileCache.write(version, this.imageCacheName(asset, variant, '.png'), rendered.png);
+    const rendered = await AssetImageRenderer.render(asset, symbol, baseUrl);
+    const cacheName = this.symbolCacheName(asset, symbol);
+    await AssetFileCache.write(version, `${cacheName}.png`, rendered.png);
     if (rendered.webp) {
-      await AssetFileCache.write(version, this.imageCacheName(asset, variant, '.webp'), rendered.webp);
+      await AssetFileCache.write(version, `${cacheName}.webp`, rendered.webp);
     }
     return rendered;
   }
@@ -552,10 +588,15 @@ export abstract class ApiAssets implements ApiHelper {
         while (queue.length > 0) {
           const next = queue.pop();
           if (!next) return;
-          const cached = await AssetFileCache.has(version, this.imageCacheName(next.asset, next.variant, '.png'));
-          if (cached) continue;
+          if (await AssetFileCache.has(version, `${this.variantCacheName(next.asset, next.variant)}.png`)) continue;
           try {
-            const result = await this.renderAndCache(version, next.asset, next.variant);
+            const symbol = await this.resolveSymbol(version, next.asset, next.variant);
+            if (!symbol) {
+              failed++;
+              continue;
+            }
+            if (await AssetFileCache.has(version, `${this.symbolCacheName(next.asset, symbol)}.png`)) continue;
+            const result = await this.renderAndCache(version, next.asset, symbol);
             if (result) rendered++;
             else failed++;
           } catch {
