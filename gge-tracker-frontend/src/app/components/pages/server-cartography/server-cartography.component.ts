@@ -6,13 +6,13 @@ import {
   Component,
   ElementRef,
   inject,
+  OnDestroy,
   ViewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { ModalFormGroupComponent } from '@ggetracker-components/modal-form-group/modal-form-group.component';
 import { ModalTableColumn, ModalTableComponent } from '@ggetracker-components/modal-table/modal-table.component';
-import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import {
   ApiCartoAlliance,
   ApiCartoMap,
@@ -35,7 +35,69 @@ import { combineLatest } from 'rxjs';
 interface ILegend {
   name: string;
   color: string;
+  detail: string;
 }
+
+interface PowerTier {
+  minMight: number;
+  radius: number;
+  players: number;
+  labelZoomOffset: number | null;
+}
+
+interface CastleMarker {
+  marker: L.CircleMarker;
+  baseRadius: number;
+}
+
+interface BuildingMarker {
+  polygon: L.Polygon;
+  x: number;
+  y: number;
+  basePx: number;
+}
+
+interface HeatmapCell {
+  pp: number;
+  players: string[];
+  playerCount: number;
+}
+
+const MAP_GRID_STEP = 100;
+const MAP_TOP_PADDING = 56;
+const OUTPOST_RADIUS = 2.5;
+
+// Share of the loaded players in each tier, strongest first
+const POWER_TIER_SHARES = [0.05, 0.15, 0.3];
+const POWER_TIER_RADII = [9, 6, 4, 2.5];
+const POWER_TIER_LABEL_ZOOM = [0.75, 2, null, null];
+const UNALLIED_KEY = '1';
+const UNALLIED_COLOR = 'rgb(158, 158, 158)';
+const LEGEND_PALETTE = [
+  '#ff5252',
+  '#448aff',
+  '#ffd740',
+  '#69f0ae',
+  '#e040fb',
+  '#ff9100',
+  '#18ffff',
+  '#f5f5f5',
+  '#f48fb1',
+  '#b388ff',
+  '#00bfa5',
+  '#ff8a80',
+  '#8c9eff',
+  '#c6a700',
+  '#a1887f',
+  '#d50000',
+];
+const DENSITY_STOPS: [number, number, number][] = [
+  [59, 15, 112],
+  [140, 41, 129],
+  [222, 73, 104],
+  [254, 159, 109],
+  [252, 253, 191],
+];
 
 @Component({
   selector: 'app-server-cartography',
@@ -45,7 +107,6 @@ interface ILegend {
     NgTemplateOutlet,
     FormsModule,
     TranslateModule,
-    SearchFormComponent,
     ModalTableComponent,
     ModalFormGroupComponent,
   ],
@@ -54,17 +115,20 @@ interface ILegend {
   templateUrl: './server-cartography.component.html',
   styleUrl: './server-cartography.component.css',
 })
-export class ServerCartographyComponent extends GenericComponent implements AfterViewInit {
+export class ServerCartographyComponent extends GenericComponent implements AfterViewInit, OnDestroy {
   @ViewChild('heatmapCanvas', { static: true })
   public canvasRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('mapStage', { static: true })
+  public mapStageRef!: ElementRef<HTMLDivElement>;
   public map!: L.Map;
-  public heatmapLayer: L.LayerGroup | null = null;
   public showUnallied = false;
+  public isFullscreen = false;
+  public cursorCoords: string | null = null;
   public maxIntensity = 0;
   public cellSize = 10;
   public resolution = 20;
   public downloadLoading = false;
-  public heatmap: { pp: number; players: string[] }[][] = [];
+  public heatmap: HeatmapCell[][] = [];
   public tooltipVisible = false;
   public tooltipX = 0;
   public tooltipY = 0;
@@ -80,7 +144,6 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
   public legends: ILegend[] = [];
   public castles: Castle[] = [];
   public nbPlayers = 0;
-  public searchedAlliance = '';
   public monumentsList: Monument[] = [];
   public selectedWorld: number | undefined = undefined;
   public formFilters: Record<string, boolean> = {
@@ -94,12 +157,16 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
   };
   public search = '';
   public worlds = [
-    { name: 'Le Grand Empire', id: 0, icon: 'assets/dungeon0.png' },
-    { name: 'Le Glacier éternel', id: 2, icon: 'assets/dungeon2.png' },
-    { name: 'Les Sables brûlants', id: 1, icon: 'assets/dungeon1.png' },
-    { name: 'Les Pics du feu', id: 3, icon: 'assets/dungeon3.png' },
-    { name: 'Les Îles orageuses', id: 4, icon: 'assets/dungeon4.png' },
+    { name: 'Le Grand Empire', id: 0, icon: 'assets/dungeon0.png', ground: '#4c5c3a', field: '#6aa84f' },
+    { name: 'Le Glacier éternel', id: 2, icon: 'assets/dungeon2.png', ground: '#4f6470', field: '#cfe4ec' },
+    { name: 'Les Sables brûlants', id: 1, icon: 'assets/dungeon1.png', ground: '#6b5b3c', field: '#e3cd8a' },
+    { name: 'Les Pics du feu', id: 3, icon: 'assets/dungeon3.png', ground: '#55392c', field: '#b0603a' },
+    { name: 'Les Îles orageuses', id: 4, icon: 'assets/dungeon4.png', ground: '#2c4f5f', field: '#2fa3c4' },
   ];
+  public playersByWorld: Record<number, number> = {};
+  public powerTiers: PowerTier[] = [];
+  public hiddenTiers = new Set<number>();
+  public allianceSearch = '';
   public quantity: CastleQuantity = {
     castle: 0,
     outpost: 0,
@@ -118,10 +185,13 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     { label: 'Propriétaire', sortKey: 'owner' },
   ];
 
-  private readonly MIN_RADIUS = 2;
-  private readonly MAX_RADIUS = 30;
+  public readonly densityGradient = `linear-gradient(90deg, ${DENSITY_STOPS.map((c) => `rgb(${c.join(',')})`).join(', ')})`;
+
   private alliances: ApiCartoMap[] = [];
-  private toggledAllianceCastles: string[] = [];
+  private hiddenLegendKeys = new Set<string>();
+  private castleMarkers: CastleMarker[] = [];
+  private buildingMarkers: BuildingMarker[] = [];
+  private fitZoom = 0;
   private L!: typeof Leaflet;
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly windowService = inject(WindowService);
@@ -132,12 +202,19 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
   private selectedPolylines: L.Polyline[] = [];
   private readonly containerSize: number = WorldSizeDimensions.X.MAX;
   private selectedPlayer: string | null = null;
+  private colorByKey = new Map<string, string>();
+  private resizeObserver: ResizeObserver | null = null;
+  private readonly documentListeners = new AbortController();
 
   public async ngAfterViewInit(): Promise<void> {
     if (this.isBrowser) {
       const leafletModule = await import('leaflet');
       this.L = leafletModule.default ?? leafletModule;
       this.initMap();
+      this.observeStageSize();
+      document.addEventListener('fullscreenchange', () => this.syncFullscreenState(), {
+        signal: this.documentListeners.signal,
+      });
     }
     setTimeout(() => {
       this.map.invalidateSize();
@@ -164,6 +241,10 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
         this.serverService.changeServer(server);
       }
       this.selectedWorld = world;
+      this.colorByKey.clear();
+      this.hiddenLegendKeys.clear();
+      this.hiddenTiers.clear();
+      this.alliances = [];
       this.initMap();
       if (size !== null && !Number.isNaN(size)) {
         void this.initWithAlliances(size);
@@ -181,18 +262,74 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
           }
         } else {
           this.allianceName = alliance;
+          this.allianceSearch = alliance;
           void this.initWithSpecificAlliance(alliance);
         }
       }
     });
   }
 
+  public ngOnDestroy(): void {
+    this.resizeObserver?.disconnect();
+    this.documentListeners.abort();
+    this.map?.remove();
+  }
+
+  public toggleFullscreen(): void {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen();
+    } else {
+      void this.mapStageRef.nativeElement.requestFullscreen?.();
+    }
+  }
+
+  public fitWorld(): void {
+    if (!this.map) return;
+    const size = this.map.getSize();
+    if (size.x === 0 || size.y === 0) return;
+    this.map.fitBounds(this.worldBounds(), { paddingTopLeft: [0, MAP_TOP_PADDING], paddingBottomRight: [0, 8] });
+  }
+
+  public get activeWorld(): (typeof this.worlds)[number] {
+    return this.worlds.find((world) => world.id === this.selectedWorld) ?? this.worlds[0];
+  }
+
+  public get disabledFilterCount(): number {
+    return Object.values(this.formFilters).filter((enabled) => !enabled).length;
+  }
+
+  public isTypeVisible(group: 'castle' | 'outpost' | 'building'): boolean {
+    if (group !== 'building') return this.formFilters[group];
+    return this.buildingFilterKeys().some((key) => this.formFilters[key]);
+  }
+
+  public toggleType(group: 'castle' | 'outpost' | 'building'): void {
+    const visible = !this.isTypeVisible(group);
+    const keys = group === 'building' ? this.buildingFilterKeys() : [group];
+    keys.forEach((key) => (this.formFilters[key] = visible));
+    this.applyFilters();
+  }
+
+  public toggleTier(index: number): void {
+    if (this.hiddenTiers.has(index)) {
+      this.hiddenTiers.delete(index);
+    } else {
+      this.hiddenTiers.add(index);
+    }
+    this.applyFilters();
+  }
+
+  public submitAllianceSearch(): void {
+    const alliance = this.allianceSearch.trim();
+    if (alliance) this.searchAlliance(alliance);
+  }
+
   public onMouseMove(event: MouseEvent): void {
     const rect = this.canvasRef.nativeElement.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
-    const canvasWidth = this.canvasRef.nativeElement.width;
-    const canvasHeight = this.canvasRef.nativeElement.height;
+    const canvasWidth = rect.width;
+    const canvasHeight = rect.height;
     const rows = this.heatmap.length;
     const cols = this.heatmap[0]?.length || 0;
     if (rows === 0 || cols === 0) return;
@@ -230,32 +367,29 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
    * @param cell The cell data { pp: number; players: string[] }
    * @param event The mouse event or focus event
    */
-  public showCellDetails(
-    row: number,
-    col: number,
-    cell: { pp: number; players: string[] },
-    event: MouseEvent | FocusEvent,
-  ): void {
+  public showCellDetails(row: number, col: number, cell: HeatmapCell, event: MouseEvent | FocusEvent): void {
     const win = this.windowService.getWindow();
     if (!win) return;
     const mouseEvent = event as MouseEvent;
     const x = col * this.resolution;
     const y = row * this.resolution;
+    const last = this.resolution - 1;
     this.tooltipData = {
-      coords: `${x}; ${y}`,
+      coords: `X ${x}–${x + last} · Y ${y}–${y + last}`,
       pp: cell.pp,
       players: cell.players,
     };
-    if (mouseEvent.pageX + 10 + 200 > win.innerWidth - 200) {
-      this.tooltipX = mouseEvent.pageX - 200;
-    } else {
-      this.tooltipX = mouseEvent.pageX + 10;
-    }
-    if (mouseEvent.pageY + 10 + 100 > win.innerHeight - 200) {
-      this.tooltipY = mouseEvent.pageY - 100;
-    } else {
-      this.tooltipY = mouseEvent.pageY + 10;
-    }
+    const tooltipWidth = 280;
+    const tooltipHeight = 200;
+    const offset = 14;
+    this.tooltipX =
+      mouseEvent.clientX + offset + tooltipWidth > win.innerWidth
+        ? Math.max(8, mouseEvent.clientX - offset - tooltipWidth)
+        : mouseEvent.clientX + offset;
+    this.tooltipY =
+      mouseEvent.clientY + offset + tooltipHeight > win.innerHeight
+        ? Math.max(8, mouseEvent.clientY - offset - tooltipHeight)
+        : mouseEvent.clientY + offset;
     this.tooltipVisible = true;
   }
 
@@ -284,8 +418,6 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
       this.initMap();
       this.castles = castles.filter((entry: Castle) => entry.castles && entry.castles.length > 0);
       this.filteredCastles = this.getFilteredCastles(this.castles);
-      this.addHeatmapLayer(this.filteredCastles);
-      this.setMonuments();
       this.generateHeatmap();
       setTimeout(() => {
         this.genericInit();
@@ -338,12 +470,8 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     }
   }
 
-  public isPlayerHidden(player: string): boolean {
-    if (this.watchModeAlliance === WatchModeStats.SPECIFIC_ALLIANCE) {
-      return !this.filteredCastles.some((entry) => entry.name === player);
-    } else {
-      return !this.filteredCastles.some((entry) => entry.alliance_name === player);
-    }
+  public isPlayerHidden(key: string): boolean {
+    return this.hiddenLegendKeys.has(key);
   }
 
   public generateHeatmap(): void {
@@ -351,11 +479,12 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     if (this.resolution > 50) this.resolution = 50;
     const numberCells: number = Math.ceil(this.containerSize / this.resolution);
     this.heatmap = Array.from({ length: numberCells }, () =>
-      Array.from({ length: numberCells }, () => ({ pp: 0, players: [] })),
+      Array.from({ length: numberCells }, () => ({ pp: 0, players: [], playerCount: 0 })),
     );
     const players = this.filteredCastles;
     const t = this.translateService;
     players.forEach((player) => {
+      const countedCells = new Set<HeatmapCell>();
       player.castles.forEach(([x, y, _]) => {
         if (_ === CastleType.LABORATORY || _ === CastleType.MONUMENT || _ === CastleType.ROYAL_TOWER) return;
         const row = Math.floor(y / this.resolution);
@@ -368,19 +497,23 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
               castle[2] !== CastleType.ROYAL_TOWER,
           ).length;
           const pp = player.pp / nbCastles;
-          this.heatmap[row][col].pp += pp;
-          this.heatmap[row][col].players.push(player.name + ' (' + t.instant(this.getCastleType(_)) + ')');
+          const cell = this.heatmap[row][col];
+          cell.pp += pp;
+          cell.players.push(player.name + ' (' + t.instant(this.getCastleType(_)) + ')');
+          if (!countedCells.has(cell)) {
+            countedCells.add(cell);
+            cell.playerCount++;
+          }
         }
       });
     });
-    this.maxIntensity = Math.max(...this.heatmap.flat().map((cell) => cell.players.length));
-    this.clearHeatMap();
+    this.maxIntensity = Math.max(0, ...this.heatmap.flat().map((cell) => cell.playerCount));
     this.drawHeatmap();
   }
 
   public searchAlliance(alliance: string): void {
     if (!this.isBrowser) return;
-    globalThis.location.href = '/map/' + alliance;
+    globalThis.location.href = '/map/' + encodeURIComponent(alliance);
   }
 
   public async removeItem(allianceOrPlayerName: string): Promise<void> {
@@ -392,13 +525,11 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     this.alliances = this.alliances.filter(
       (entry) => entry.name !== allianceOrPlayerName && entry.alliance_name !== allianceOrPlayerName,
     );
-    this.toggledAllianceCastles = this.toggledAllianceCastles.filter((name) => name !== allianceOrPlayerName);
+    this.hiddenLegendKeys.delete(allianceOrPlayerName);
     const deepCopyCastles = structuredClone(castles);
     this.initMap();
     this.castles = deepCopyCastles;
     this.filteredCastles = this.getFilteredCastles(this.castles);
-    this.addHeatmapLayer(this.filteredCastles);
-    this.setMonuments();
     this.generateHeatmap();
     setTimeout(() => {
       this.genericInit();
@@ -482,8 +613,8 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     const inParameter = JSON.stringify(uniqueCastleIds);
     const colors = JSON.stringify(this.legends.map((legend) => this.rgbToHex(legend.color)));
     const world = this.selectedWorld || 0;
-    const srv = this.serverService.currentServer;
-    const link = `https://gge-tracker.com/map/custom?s=${srv}&world=${world}&in=${encodeURIComponent(inParameter)}&c=${encodeURIComponent(colors)}`;
+    const srv = encodeURIComponent(this.serverService.currentServer?.name ?? '');
+    const link = `${globalThis.location.origin}/map/custom?srv=${srv}&world=${world}&in=${encodeURIComponent(inParameter)}&c=${encodeURIComponent(colors)}`;
     if (link.length > 2000) {
       // If the link is too long, we show an error message (this is a limitation of the URL length)
       this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
@@ -544,8 +675,6 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     this.initMap();
     this.castles = deepCopyCastles;
     this.filteredCastles = this.getFilteredCastles(this.castles);
-    this.addHeatmapLayer(this.filteredCastles);
-    this.setMonuments();
     this.generateHeatmap();
     setTimeout(() => {
       this.genericInit();
@@ -566,104 +695,35 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     });
   }
 
-  public toggleAllianceCastles(allianceName: string): void {
-    if (this.watchModeAlliance === WatchModeStats.SPECIFIC_ALLIANCE) return;
-    const playerLayer = this.playerLayers[allianceName];
-    if (!playerLayer) return;
-    if (this.map.hasLayer(playerLayer)) {
-      this.map.removeLayer(playerLayer);
-      this.filteredCastles = this.filteredCastles.filter((entry) => entry.alliance_name !== allianceName);
-      this.toggledAllianceCastles.push(allianceName);
-    } else {
-      playerLayer.addTo(this.map);
-      const originalAlliance = this.getFilteredCastles(
-        this.castles.filter((entry) => entry.alliance_name === allianceName),
+  public toggleLegendItem(name: string): void {
+    const layer = this.playerLayers[name];
+    if (this.hiddenLegendKeys.has(name)) {
+      this.hiddenLegendKeys.delete(name);
+      if (!layer) {
+        this.applyFilters();
+        return;
+      }
+      layer.addTo(this.map);
+      this.filteredCastles.push(
+        ...this.getFilteredCastles(this.castles.filter((entry) => this.colorKeyOf(entry) === name)),
       );
-      this.toggledAllianceCastles = this.toggledAllianceCastles.filter((name) => name !== allianceName);
-
-      this.filteredCastles.push(...originalAlliance);
-    }
-    this.addHeatmapLayer(this.filteredCastles);
-    const activeAlliances = Object.keys(this.playerLayers).filter((name) =>
-      this.filteredCastles.some((player) => player.alliance_name === name),
-    );
-    activeAlliances.forEach((name) => {
-      const layer = this.playerLayers[name];
-      this.map.removeLayer(layer);
-      layer.addTo(this.map);
-    });
-    this.clearHeatMap();
-    this.generateHeatmap();
-    this.cdr.detectChanges();
-  }
-
-  public togglePlayerCastle(playerName: string): void {
-    const playerLayer = this.playerLayers[playerName];
-    if (!playerLayer) return;
-    if (this.map.hasLayer(playerLayer)) {
-      this.map.removeLayer(playerLayer);
-      this.filteredCastles = this.filteredCastles.filter((entry) => entry.name !== playerName);
     } else {
-      playerLayer.addTo(this.map);
-      const originalPlayer = this.castles.find((entry) => entry.name === playerName);
-      if (originalPlayer) this.filteredCastles.push(originalPlayer);
+      this.hiddenLegendKeys.add(name);
+      if (layer) this.map.removeLayer(layer);
+      this.filteredCastles = this.filteredCastles.filter((entry) => this.colorKeyOf(entry) !== name);
     }
-    this.addHeatmapLayer(this.filteredCastles);
-    const activeLayers = Object.keys(this.playerLayers).filter((name) =>
-      this.filteredCastles.some((player) => player.name === name),
-    );
-    activeLayers.forEach((name) => {
-      const layer = this.playerLayers[name];
-      this.map.removeLayer(layer);
-      layer.addTo(this.map);
-    });
-  }
-
-  public getDensityColor(intensity: number): string {
-    if (intensity === 0) return 'rgba(50, 255, 50,.1)';
-    const normalized = intensity / (this.maxIntensity || 1);
-    const r = 255;
-    const g = Math.min(255, Math.floor(255 - normalized * 255));
-    const b = Math.min(255, Math.floor(255 - normalized * 255));
-    const a = Math.min(1, normalized + 0.2);
-    return `rgba(${r}, ${g}, ${b}, ${a})`;
-  }
-
-  public getHeatmapColor(value: number): string {
-    const r = 0;
-    const g = Math.min(255, Math.floor(255 - value * 255));
-    const b = Math.min(255, Math.floor(255 - value * 128));
-    return `rgba(${r},${g},${b},.1)`;
+    this.refreshVisibleTotals();
   }
 
   public changeItemColor(allianceOrPlayerName: string, eventTarget: EventTarget | null | string): void {
-    const color = typeof eventTarget === 'string' ? eventTarget : (eventTarget as HTMLInputElement).value;
-    this.legends = this.legends.map((legend) => {
-      if (legend.name === allianceOrPlayerName) {
-        return { ...legend, color: this.hexToRgb(color) };
-      }
-      return legend;
-    });
-    if (this.playerLayers[allianceOrPlayerName]) {
-      this.playerLayers[allianceOrPlayerName].eachLayer((layer: L.Layer | L.LayerGroup) => {
-        if (layer instanceof this.L.LayerGroup) {
-          layer.eachLayer((subLayer: L.Layer) => {
-            if (subLayer instanceof this.L.Circle || subLayer instanceof this.L.Rectangle) {
-              subLayer.setStyle({
-                color: '#000',
-                fillColor: this.hexToRgb(color),
-              });
-            } else if (subLayer instanceof this.L.Polygon || subLayer instanceof this.L.Polyline) {
-              subLayer.setStyle({ color: this.hexToRgb(color) });
-            }
-          });
-        } else if (layer instanceof this.L.Circle || layer instanceof this.L.Rectangle) {
-          layer.setStyle({ color: '#000', fillColor: this.hexToRgb(color) });
-        } else if (layer instanceof this.L.Polygon || layer instanceof this.L.Polyline) {
-          layer.setStyle({ color: this.hexToRgb(color) });
-        }
-      });
-    }
+    const color = this.hexToRgb(
+      typeof eventTarget === 'string' ? eventTarget : (eventTarget as HTMLInputElement).value,
+    );
+    this.colorByKey.set(allianceOrPlayerName, color);
+    this.legends = this.legends.map((legend) => (legend.name === allianceOrPlayerName ? { ...legend, color } : legend));
+    this.playerLayers[allianceOrPlayerName]?.eachLayer((layer: L.Layer) => this.recolorLayer(layer, color));
+    this.setMonuments();
+    this.cdr.detectChanges();
   }
 
   public addTransparentToRgb(rgb: string): string {
@@ -703,17 +763,40 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     this.initMap();
     this.castles = castles;
     this.filteredCastles = this.getFilteredCastles(this.castles);
-    this.setMonuments();
     setTimeout(() => {
       this.genericInit();
       this.generateHeatmap();
       this.cdr.detectChanges();
     }, 100);
-    this.addHeatmapLayer(this.filteredCastles);
+  }
+
+  private recolorLayer(layer: L.Layer, color: string): void {
+    if (layer instanceof this.L.LayerGroup) {
+      layer.eachLayer((subLayer: L.Layer) => this.recolorLayer(subLayer, color));
+    } else if (layer instanceof this.L.Path) {
+      const isRing = layer.options.color === layer.options.fillColor;
+      layer.setStyle(isRing ? { color, fillColor: color } : { fillColor: color });
+    }
+  }
+
+  private refreshVisibleTotals(): void {
+    this.fillQuantity();
+    this.setMonuments();
+    this.generateHeatmap();
+    this.cdr.detectChanges();
+  }
+
+  private buildingFilterKeys(): string[] {
+    return ['monument', 'laboratory', 'capital', 'royalTower', 'city'];
   }
 
   private getFilteredCastles(castle: Castle[]): Castle[] {
-    return castle.map((castle: Castle) => {
+    const visible = castle.filter(
+      (player) =>
+        !this.hiddenLegendKeys.has(this.colorKeyOf(player)) &&
+        !this.hiddenTiers.has(this.tierIndexOf(Number(player.pp))),
+    );
+    return visible.map((castle: Castle) => {
       return {
         ...castle,
         castles: castle.castles.filter((c) => {
@@ -734,7 +817,10 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
   }
 
   private genericInit(): void {
+    this.computePowerTiers();
+    this.countPlayersByWorld();
     this.plotCastles();
+    this.setMonuments();
     this.nbPlayers = this.castles.length;
     this.isInLoading = false;
   }
@@ -756,14 +842,12 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     });
     this.castles = castles.filter((entry) => entry.castles && entry.castles.length > 0);
     this.filteredCastles = this.castles;
-    this.setMonuments();
     this.generateHeatmap();
     setTimeout(() => {
       this.genericInit();
       this.applyLegendColors(parsedColors);
       this.cdr.detectChanges();
     }, 100);
-    this.addHeatmapLayer(this.castles);
   }
 
   /**
@@ -776,7 +860,8 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
   private clearAllProperties(): void {
     this.filteredCastles = [];
     this.playerLayers = {};
-    this.heatmapLayer = null;
+    this.castleMarkers = [];
+    this.buildingMarkers = [];
     this.selectedPolylines = [];
     this.selectedPlayer = null;
     this.maxIntensity = 0;
@@ -820,8 +905,6 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     this.castles = this.mapCastleFromData(data);
     this.castles = this.castles.filter((entry) => entry.castles && entry.castles.length > 0);
     this.filteredCastles = this.castles;
-    this.addHeatmapLayer(this.castles);
-    this.setMonuments();
     this.generateHeatmap();
     this.genericInit();
     this.cdr.detectChanges();
@@ -866,28 +949,41 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     return result;
   }
 
-  /**
-   * This function is used to set the background of the map.
-   * It is used to set the background of the map to a rectangle with a specific color and weight.
-   * We also bind a click event to the rectangle to highlight the castles of the player.
-   * @returns {void}
-   */
   private initRectangle(): void {
-    const fillColor = this.getBackgroundColor();
-    this.L.rectangle(
-      [
-        [WorldSizeDimensions.X.MIN, WorldSizeDimensions.Y.MIN],
-        [WorldSizeDimensions.X.MAX, WorldSizeDimensions.Y.MAX],
-      ],
-      { color: '#000000', weight: 2, fillColor: fillColor, fillOpacity: 0.3 },
-    )
+    this.L.rectangle(this.worldBounds(), {
+      color: 'rgba(0, 0, 0, 0.55)',
+      weight: 1.5,
+      fillColor: this.activeWorld.field,
+      fillOpacity: 0.4,
+    })
       .on('click', () => this.highlightPlayerCastles(null))
       .addTo(this.map);
+    this.drawGrid();
   }
 
-  private getBackgroundColor(): string {
-    const colors = ['green', '#E3D191', '#F3F2F2', '#46362A', '#0E98B9'];
-    return colors[(this.selectedWorld ?? 0) % colors.length];
+  private drawGrid(): void {
+    const max = WorldSizeDimensions.X.MAX;
+    const lines: L.LatLngExpression[][] = [];
+    for (let step = MAP_GRID_STEP; step < max; step += MAP_GRID_STEP) {
+      lines.push(
+        [
+          [step, 0],
+          [step, max],
+        ],
+        [
+          [0, step],
+          [max, step],
+        ],
+      );
+    }
+    this.L.polyline(lines, { color: '#ffffff', opacity: 0.06, weight: 1, interactive: false }).addTo(this.map);
+  }
+
+  private worldBounds(): L.LatLngBoundsExpression {
+    return [
+      [WorldSizeDimensions.Y.MIN, WorldSizeDimensions.X.MIN],
+      [WorldSizeDimensions.Y.MAX, WorldSizeDimensions.X.MAX],
+    ];
   }
 
   /**
@@ -898,25 +994,88 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
    * @returns {void}
    */
   private initMap(): void {
-    const boundSize = 100;
     if (this.map) {
       this.clearAllProperties();
       this.clearLayers();
     } else {
-      this.map = this.L.map('map', {
-        center: [WorldSizeDimensions.X.MAX / 2, WorldSizeDimensions.Y.MAX / 2],
-        zoom: -1,
-        minZoom: -1,
-        maxZoom: 3,
-        attributionControl: false,
-        maxBounds: [
-          [WorldSizeDimensions.X.MIN - boundSize, WorldSizeDimensions.Y.MIN - boundSize],
-          [WorldSizeDimensions.X.MAX + boundSize, WorldSizeDimensions.X.MAX + boundSize],
-        ],
-        crs: this.L.CRS.Simple,
-      });
+      this.createMap();
     }
     this.initRectangle();
+  }
+
+  private createMap(): void {
+    const margin = 100;
+    this.map = this.L.map('map', {
+      attributionControl: false,
+      crs: this.L.CRS.Simple,
+      preferCanvas: true,
+      zoomSnap: 0.1,
+      zoomDelta: 0.5,
+      wheelPxPerZoomLevel: 120,
+      minZoom: -4,
+      maxZoom: 4,
+      maxBounds: [
+        [WorldSizeDimensions.Y.MIN - margin, WorldSizeDimensions.X.MIN - margin],
+        [WorldSizeDimensions.Y.MAX + margin, WorldSizeDimensions.X.MAX + margin],
+      ],
+    });
+    const center = WorldSizeDimensions.X.MAX / 2;
+    this.map.setView([center, center], -1);
+    this.fitWorld();
+    this.fitZoom = this.map.getZoom();
+    this.map.on('mousemove', (event: L.LeafletMouseEvent) => this.updateCursorCoords(event.latlng));
+    this.map.on('mouseout', () => this.updateCursorCoords(null));
+    this.map.on('zoomend', () => this.applyZoomScale());
+  }
+
+  private applyZoomScale(): void {
+    const zoomGain = this.map.getZoom() - this.fitZoom;
+    const stageFactor = Math.min(1.2, Math.max(0.6, this.map.getSize().x / 700));
+    const scale = stageFactor * Math.min(4, Math.max(0.8, Math.SQRT2 ** zoomGain));
+    this.castleMarkers.forEach(({ marker, baseRadius }) => marker.setRadius(baseRadius * scale));
+    const pixelsPerUnit = 2 ** this.map.getZoom();
+    this.buildingMarkers.forEach(({ polygon, x, y, basePx }) =>
+      polygon.setLatLngs(this.hexagon(x, y, (basePx * scale) / pixelsPerUnit)),
+    );
+    const container = this.map.getContainer();
+    POWER_TIER_LABEL_ZOOM.forEach((offset, index) => {
+      container.classList.toggle(`show-tier-${index}`, offset !== null && zoomGain >= offset);
+    });
+  }
+
+  private syncFullscreenState(): void {
+    this.isFullscreen = document.fullscreenElement === this.mapStageRef.nativeElement;
+    this.cdr.detectChanges();
+  }
+
+  private updateCursorCoords(latlng: L.LatLng | null): void {
+    const x = latlng ? Math.round(latlng.lng) : -1;
+    const y = latlng ? Math.round(WorldSizeDimensions.Y.MAX - latlng.lat) : -1;
+    const inside = x >= 0 && y >= 0 && x <= WorldSizeDimensions.X.MAX && y <= WorldSizeDimensions.Y.MAX;
+    const coords = inside ? `${x} : ${y}` : null;
+    if (coords === this.cursorCoords) return;
+    this.cursorCoords = coords;
+    this.cdr.detectChanges();
+  }
+
+  private observeStageSize(): void {
+    this.resizeObserver = new ResizeObserver(() => {
+      this.drawHeatmap();
+      if (!this.map) return;
+      const container = this.map.getContainer();
+      if (container.clientWidth === 0 || container.clientHeight === 0) return;
+      const wasShowingWorld = this.map.getZoom() <= this.fitZoom + 0.25;
+      this.map.invalidateSize();
+      const fitZoom = this.map.getBoundsZoom(this.worldBounds(), false, this.L.point(0, MAP_TOP_PADDING + 8));
+      if (!Number.isFinite(fitZoom)) return;
+      this.fitZoom = fitZoom;
+      this.map.setMinZoom(fitZoom - 0.5);
+      if (wasShowingWorld) this.fitWorld();
+      this.applyZoomScale();
+    });
+    this.resizeObserver.observe(this.mapStageRef.nativeElement);
+    const heatmapFrame = this.canvasRef.nativeElement.parentElement;
+    if (heatmapFrame) this.resizeObserver.observe(heatmapFrame);
   }
 
   private formatXCord(x: number): number {
@@ -924,58 +1083,25 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
   }
 
   private addLegend(): void {
-    this.legends = [];
     if (this.watchModeAlliance === WatchModeStats.SPECIFIC_ALLIANCE) {
-      this.castles.forEach((player) => {
-        this.legends.push({
-          name: player.name,
-          color: this.getPlayerColor(player.name),
-        });
-      });
-      this.legends.sort((a, b) => {
-        const bPlayer = this.castles.find((player) => player.name === b.name);
-        const aPlayer = this.castles.find((player) => player.name === a.name);
-        const bPp = bPlayer?.pp ?? 0;
-        const aPp = aPlayer?.pp ?? 0;
-        return bPp - aPp;
-      });
-    } else {
-      const uniqueAlliances = this.castles
-        .reduce(
-          (
-            unique: {
-              key: string;
-              alliance_id: number;
-              alliance_name: string;
-            }[],
-            castle,
-          ) => {
-            if (castle.alliance_name) {
-              const id = castle.alliance_id || 1;
-              const key = `${id}-${castle.alliance_name}`;
-
-              if (!unique.some((alliance) => alliance.key === key)) {
-                unique.push({
-                  key,
-                  alliance_id: id,
-                  alliance_name: castle.alliance_name,
-                });
-              }
-            }
-            return unique;
-          },
-          [],
-        )
-        .map((alliance) => ({
-          alliance_id: alliance.alliance_id,
-          alliance_name: alliance.alliance_name,
-        }));
-      this.legends = uniqueAlliances.map((alliance) => ({
-        name: alliance.alliance_name,
-        color: this.getPlayerColor(alliance.alliance_name),
+      const players = [...this.castles].sort((a, b) => Number(b.pp) - Number(a.pp));
+      this.legends = players.map((player) => ({
+        name: player.name,
+        color: this.assignColor(player.name),
+        detail: this.formatPp(Number(player.pp)),
       }));
-
-      this.loadedAlliancesQuantity = uniqueAlliances.length;
+    } else {
+      const membersByAlliance = new Map<string, number>();
+      this.castles.forEach((castle) => {
+        if (!castle.alliance_name) return;
+        membersByAlliance.set(castle.alliance_name, (membersByAlliance.get(castle.alliance_name) ?? 0) + 1);
+      });
+      this.legends = [...membersByAlliance].map(([name, members]) => ({
+        name,
+        color: this.assignColor(name),
+        detail: String(members),
+      }));
+      this.loadedAlliancesQuantity = this.legends.length;
     }
   }
 
@@ -1043,64 +1169,54 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     castleType: CastleType,
     x: number,
     y: number,
-    radius: number,
-    compactRadius: number,
+    tierRadius: number,
     color: string,
-  ): L.Polygon | L.Circle | L.Rectangle {
-    let shape: L.Polygon | L.Circle | L.Rectangle;
+  ): L.Polygon | L.CircleMarker {
     if (castleType === CastleType.OUTPOST) {
-      shape = this.L.rectangle(
-        [
-          [y - compactRadius, x - compactRadius],
-          [y + compactRadius, x + compactRadius],
-        ],
-        {
-          color: '#3b3b3b',
-          fillColor: color,
-          weight: 1,
-          fillOpacity: 0.5,
-        },
-      );
-    } else if (castleType === CastleType.CASTLE || castleType === CastleType.REALM_CASTLE) {
-      // fillOpacity is calculated based on the radius
-      const fillOpacity = 0.9 - ((radius - this.MIN_RADIUS) / (this.MAX_RADIUS - this.MIN_RADIUS)) * 0.5;
-      shape = this.L.circle([y, x], {
-        color: 'black',
-        fillColor: color,
-        fillOpacity: fillOpacity,
-        weight: 1,
-        radius,
-      });
-    } else {
-      if (castleType === CastleType.MONUMENT || castleType === CastleType.LABORATORY) {
-        compactRadius = 2;
-      } else if (castleType === CastleType.ROYAL_TOWER) {
-        compactRadius = 6;
-      } else {
-        compactRadius *= 1.5;
-        if ((castleType === CastleType.CAPITAL || castleType === CastleType.CITY) && compactRadius < 6) {
-          compactRadius = 6;
-        }
-        if (compactRadius < 2) compactRadius = 2;
-      }
-      shape = this.L.polygon(
-        [
-          [y - compactRadius, x],
-          [y - compactRadius / 2, x + (compactRadius * Math.sqrt(3)) / 2],
-          [y + compactRadius / 2, x + (compactRadius * Math.sqrt(3)) / 2],
-          [y + compactRadius, x],
-          [y + compactRadius / 2, x - (compactRadius * Math.sqrt(3)) / 2],
-          [y - compactRadius / 2, x - (compactRadius * Math.sqrt(3)) / 2],
-        ],
-        {
-          color: color,
-          fillColor: 'white',
-          fillOpacity: 0.8,
-          weight: 1,
-        },
+      return this.trackMarker(
+        this.L.circleMarker([y, x], { color, fillColor: color, fillOpacity: 0.25, weight: 1.25, opacity: 0.9 }),
+        OUTPOST_RADIUS,
       );
     }
-    return shape;
+    if (castleType === CastleType.CASTLE || castleType === CastleType.REALM_CASTLE) {
+      return this.trackMarker(
+        this.L.circleMarker([y, x], { color: '#14180f', fillColor: color, fillOpacity: 0.95, weight: 1 }),
+        tierRadius,
+      );
+    }
+    const basePx = this.getBuildingSize(castleType);
+    const polygon = this.L.polygon(this.hexagon(x, y, basePx), {
+      color: '#ffffff',
+      fillColor: color,
+      fillOpacity: 1,
+      weight: 1,
+    });
+    this.buildingMarkers.push({ polygon, x, y, basePx });
+    return polygon;
+  }
+
+  private hexagon(x: number, y: number, size: number): L.LatLngExpression[] {
+    const halfWidth = (size * Math.sqrt(3)) / 2;
+    return [
+      [y - size, x],
+      [y - size / 2, x + halfWidth],
+      [y + size / 2, x + halfWidth],
+      [y + size, x],
+      [y + size / 2, x - halfWidth],
+      [y - size / 2, x - halfWidth],
+    ];
+  }
+
+  private trackMarker(marker: L.CircleMarker, baseRadius: number): L.CircleMarker {
+    marker.setRadius(baseRadius);
+    this.castleMarkers.push({ marker, baseRadius });
+    return marker;
+  }
+
+  private getBuildingSize(castleType: CastleType): number {
+    if (castleType === CastleType.MONUMENT || castleType === CastleType.LABORATORY) return 4;
+    if (castleType === CastleType.ROYAL_TOWER) return 5;
+    return 6;
   }
 
   /**
@@ -1116,9 +1232,9 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     const type = this.translateService.instant('Type');
     const alliance = this.translateService.instant('Alliance');
     const position = this.translateService.instant('Position');
-    let tooltip = `<b>${player.name}</b><br>${mp}: ${this.formatPp(player.pp)}<br>${type}: ${this.translateService.instant(castleType)}`;
+    let tooltip = `<b>${this.escapeHtml(player.name)}</b><br>${mp}: ${this.formatPp(Number(player.pp))}<br>${type}: ${this.translateService.instant(castleType)}`;
     if (this.watchModeAlliance === WatchModeStats.ALL_ALLIANCES) {
-      tooltip += `<br>${alliance}: ${player.alliance_name}`;
+      tooltip += `<br>${alliance}: ${this.escapeHtml(player.alliance_name ?? '')}`;
     }
     tooltip += `<br><br>${position}: ${x}, ${inversedPositionY}`;
     return tooltip;
@@ -1132,33 +1248,27 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
    * @returns {void}
    */
   private plotCastles(): void {
-    const players = this.filteredCastles;
-    const watchModeAlliance = this.watchModeAlliance;
-    const one = watchModeAlliance === WatchModeStats.SPECIFIC_ALLIANCE;
+    const one = this.watchModeAlliance === WatchModeStats.SPECIFIC_ALLIANCE;
     this.addLegend();
-    const colors: Record<string, string> = {};
-    const minPp = Math.min(...players.map((player) => player.pp));
-    const maxPp = Math.max(...players.map((player) => player.pp));
-    const list = players.length > 3000 ? [...players].reverse() : players;
-    list.forEach((player: Castle) => {
-      let color: string;
-      if (one) {
-        color = this.getPlayerColor(player.name);
-      } else if (player.alliance_name !== undefined) {
-        if (!colors[player.alliance_name]) colors[player.alliance_name] = this.getPlayerColor(player.alliance_name);
-        color = colors[player.alliance_name];
-      }
+    // Weakest first, so the strongest castles are drawn on top and never buried.
+    const players = [...this.filteredCastles].sort((a, b) => Number(a.pp) - Number(b.pp));
+    players.forEach((player: Castle) => {
+      const color = this.colorFor(this.colorKeyOf(player));
+      const tierIndex = this.tierIndexOf(Number(player.pp));
       const playerLayer = this.L.layerGroup();
       player.castles.forEach((castle: number[]) => {
         const [x, y] = [castle[0], this.formatXCord(castle[1])];
-        const radius = this.getCircleRadius(player.pp, minPp, maxPp);
         const castleType = this.getCastleType(castle[2]);
-        const shape = this.generateShape(castle[2], x, y, radius, 0.5 * radius, color);
-        const tooltip = this.generateTooltip(player, x, 1286 - y, castleType);
+        const shape = this.generateShape(castle[2], x, y, POWER_TIER_RADII[tierIndex], color);
+        const tooltip = this.generateTooltip(player, x, WorldSizeDimensions.Y.MAX - y, castleType);
         shape.bindTooltip(tooltip, { permanent: false }).on('click', () => this.highlightPlayerCastles(player));
         playerLayer.addLayer(shape);
+        if (castle[2] === CastleType.CASTLE || castle[2] === CastleType.REALM_CASTLE) {
+          const label = this.createNameLabel(player.name, x, y, tierIndex);
+          if (label) playerLayer.addLayer(label);
+        }
       });
-      if (watchModeAlliance === WatchModeStats.SPECIFIC_ALLIANCE) {
+      if (one) {
         playerLayer.addTo(this.map);
         this.playerLayers[player.name] = playerLayer;
       } else if (player.alliance_name) {
@@ -1172,7 +1282,58 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
         }
       }
     });
+    this.applyZoomScale();
     this.fillQuantity();
+  }
+
+  private createNameLabel(name: string, x: number, y: number, tierIndex: number): L.Tooltip | null {
+    if (POWER_TIER_LABEL_ZOOM[tierIndex] === null) return null;
+    return this.L.tooltip([y, x], {
+      content: this.escapeHtml(name),
+      permanent: true,
+      direction: 'top',
+      offset: [0, -POWER_TIER_RADII[tierIndex]],
+      // eslint-disable-next-line unicorn/no-keyword-prefix -- Leaflet option name
+      className: `castle-label tier-${tierIndex}`,
+      interactive: false,
+    });
+  }
+
+  private computePowerTiers(): void {
+    const might = this.alliances.map((player) => Number(player.might_current)).sort((a, b) => b - a);
+    let rank = 0;
+    this.powerTiers = POWER_TIER_RADII.map((radius, index) => {
+      const share = POWER_TIER_SHARES[index];
+      const end =
+        share === undefined
+          ? might.length
+          : Math.min(might.length, rank + Math.max(1, Math.round(might.length * share)));
+      const tier: PowerTier = {
+        minMight: end > rank ? might[end - 1] : Number.POSITIVE_INFINITY,
+        radius,
+        players: end - rank,
+        labelZoomOffset: POWER_TIER_LABEL_ZOOM[index],
+      };
+      rank = end;
+      return tier;
+    });
+  }
+
+  private tierIndexOf(might: number): number {
+    const index = this.powerTiers.findIndex((tier) => tier.players > 0 && might >= tier.minMight);
+    return index === -1 ? POWER_TIER_RADII.length - 1 : index;
+  }
+
+  private countPlayersByWorld(): void {
+    const counts: Record<number, number> = {};
+    this.worlds.forEach((world) => {
+      counts[world.id] = this.alliances.filter((player) =>
+        world.id === 0
+          ? (player.castles ?? []).length > 0
+          : (player.castles_realm ?? []).some((castle) => castle[0] === world.id),
+      ).length;
+    });
+    this.playersByWorld = counts;
   }
 
   /**
@@ -1199,7 +1360,7 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
       this.selectedPolylines.forEach((polyline) => this.map.removeLayer(polyline));
     }
     if (this.selectedPlayer === player.name) {
-      this.map.setView([643, 643], 0);
+      this.fitWorld();
       this.selectedPlayer = null;
       return;
     }
@@ -1220,8 +1381,9 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
       if (coord !== selectedCastle) {
         // However, we don't draw a line between the castle and itself
         const polyline = this.L.polyline([selectedCastle as L.LatLngExpression, coord as L.LatLngExpression], {
-          color: this.getPlayerColor(player.name),
+          color: this.colorFor(this.colorKeyOf(player)),
           weight: 2,
+          dashArray: '6 4',
         }).addTo(this.map);
         this.selectedPolylines.push(polyline);
       }
@@ -1232,46 +1394,6 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     } else {
       this.map.setView([selectedCastle[0], selectedCastle[1]], 6);
     }
-  }
-
-  private addHeatmapLayer(players: Castle[]): void {
-    if (this.heatmapLayer) {
-      this.map.removeLayer(this.heatmapLayer);
-    }
-    const heatmapPoints: { x: number; y: number; intensity: number }[] = [];
-    players.forEach((player) => {
-      player.castles.forEach((castle: number[]) => {
-        if (
-          castle[2] === CastleType.CASTLE ||
-          castle[2] === CastleType.REALM_CASTLE ||
-          castle[2] === CastleType.OUTPOST ||
-          castle[2] === CastleType.CAPITAL ||
-          castle[2] === CastleType.CITY
-        ) {
-          heatmapPoints.push({
-            x: castle[0],
-            y: WorldSizeDimensions.Y.MAX - castle[1],
-            intensity: player.pp,
-          });
-        }
-      });
-    });
-    this.heatmapLayer = this.L.layerGroup();
-    const heatmap = this.heatmapLayer;
-    if (!heatmap) return;
-    const maxPp = Math.max(...this.filteredCastles.map((player) => player.pp));
-    heatmapPoints.forEach((point) => {
-      const intensityNormalized = point.intensity / maxPp;
-      const color = this.getHeatmapColor(intensityNormalized);
-      const radius = Math.sqrt(intensityNormalized) * 50;
-      this.L.circle([point.y, point.x], {
-        radius,
-        color,
-        fillOpacity: 0.6,
-        opacity: 0,
-      }).addTo(heatmap);
-    });
-    heatmap.addTo(this.map);
   }
 
   /**
@@ -1300,7 +1422,7 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
             type: this.translateService.instant(this.getCastleType(castle[2])),
             position: `${castle[0]}, ${castle[1]}`,
             owner: entry.name,
-            color: this.getPlayerColor(entry.name),
+            color: this.colorFor(this.colorKeyOf(entry)),
           });
         }
       });
@@ -1323,61 +1445,102 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
     return (pp / 1_000_000_000).toFixed(2) + 'B';
   }
 
-  /**
-   * This function is used to get the player color.
-   * It is used to generate a color based on the player name.
-   * This is useful to avoid having the same color for different players.
-   * @param name The name of the player
-   * @returns {string} The color of the player
-   */
-  private getPlayerColor(name: string): string {
-    if (name === '1') return '#000000';
-    let hash = 0;
-    for (let index = 0; index < name.length; index++) {
-      const code = name.codePointAt(index) ?? 0;
-      hash = code + ((hash << 5) - hash);
-    }
-    // We use bitwise operations to generate a color based on the hash
-    const r = (hash >> 16) & 255;
-    const g = (hash >> 8) & 255;
-    const b = hash & 255;
-    return `rgb(${r}, ${g}, ${b})`;
+  private escapeHtml(text: string): string {
+    const entities: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+    return String(text).replaceAll(/["&'<>]/g, (char) => entities[char]);
   }
 
-  /**
-   * This function is used to get the circle radius of a castle.
-   * It is used to generate a circle with a specific radius based on the Might Points (PP) of the player.
-   * @param pp The Might Points of the castle
-   * @param minPp The minimum Might Points of all players (used to normalize the radius)
-   * @param maxPp The maximum Might Points of all players (used to normalize the radius)
-   * @returns {number} The radius of the circle
-   */
-  private getCircleRadius(pp: number, minPp: number, maxPp: number): number {
-    return this.MIN_RADIUS + ((pp - minPp) / (maxPp - minPp)) * (this.MAX_RADIUS - this.MIN_RADIUS);
+  private colorKeyOf(player: Castle): string {
+    return this.watchModeAlliance === WatchModeStats.SPECIFIC_ALLIANCE ? player.name : (player.alliance_name ?? '');
   }
 
-  private clearHeatMap(): void {
-    const context = this.canvasRef.nativeElement.getContext('2d');
-    if (!context) return;
-    context.clearRect(0, 0, this.canvasRef.nativeElement.width, this.canvasRef.nativeElement.height);
+  private colorFor(key: string): string {
+    return this.colorByKey.get(key) ?? this.assignColor(key);
+  }
+
+  private assignColor(key: string): string {
+    const known = this.colorByKey.get(key);
+    if (known) return known;
+    const used = new Set(this.colorByKey.values());
+    const color =
+      key === UNALLIED_KEY
+        ? UNALLIED_COLOR
+        : (LEGEND_PALETTE.map((hex) => this.hexToRgb(hex)).find((rgb) => !used.has(rgb)) ??
+          this.goldenAngleColor(this.colorByKey.size));
+    this.colorByKey.set(key, color);
+    return color;
+  }
+
+  private goldenAngleColor(index: number): string {
+    const hue = (index * 137.508) % 360;
+    const lightness = index % 2 === 0 ? 0.62 : 0.72;
+    const chroma = (1 - Math.abs(2 * lightness - 1)) * 0.8;
+    const x = chroma * (1 - Math.abs(((hue / 60) % 2) - 1));
+    const sector = Math.floor(hue / 60);
+    const [r, g, b] = [
+      [chroma, x, 0],
+      [x, chroma, 0],
+      [0, chroma, x],
+      [0, x, chroma],
+      [x, 0, chroma],
+      [chroma, 0, x],
+    ][sector];
+    const m = lightness - chroma / 2;
+    const channel = (value: number): number => Math.round((value + m) * 255);
+    return `rgb(${channel(r)}, ${channel(g)}, ${channel(b)})`;
   }
 
   private drawHeatmap(): void {
-    const context = this.canvasRef.nativeElement.getContext('2d');
-    if (!context) return;
-    const canvasWidth = this.canvasRef.nativeElement.width;
-    const canvasHeight = this.canvasRef.nativeElement.height;
+    const canvas = this.canvasRef.nativeElement;
+    const frame = canvas.parentElement;
+    const context = canvas.getContext('2d');
+    if (!context || !frame || frame.clientWidth === 0) return;
+    const size = Math.floor(Math.min(frame.clientWidth, frame.clientHeight || frame.clientWidth));
+    const ratio = globalThis.devicePixelRatio || 1;
+    canvas.style.width = `${size}px`;
+    canvas.style.height = `${size}px`;
+    canvas.width = Math.round(size * ratio);
+    canvas.height = Math.round(size * ratio);
+    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    context.clearRect(0, 0, size, size);
     const rows = this.heatmap.length;
     const cols = this.heatmap[0]?.length || 0;
     if (rows === 0 || cols === 0) return;
-    const cellWidth = canvasWidth / cols;
-    const cellHeight = canvasHeight / rows;
+    const cellSize = size / cols;
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
-        context.fillStyle = this.getDensityColor(this.heatmap[row][col].players.length);
-        context.fillRect(col * cellWidth, row * cellHeight, cellWidth, cellHeight);
+        const count = this.heatmap[row][col].playerCount;
+        if (count === 0) continue;
+        context.fillStyle = this.getDensityColor(count);
+        context.fillRect(col * cellSize, row * cellSize, Math.ceil(cellSize), Math.ceil(cellSize));
       }
     }
+    this.drawHeatmapGrid(context, size);
+  }
+
+  private drawHeatmapGrid(context: CanvasRenderingContext2D, size: number): void {
+    const scale = size / WorldSizeDimensions.X.MAX;
+    context.strokeStyle = 'rgba(255, 255, 255, 0.07)';
+    context.lineWidth = 1;
+    context.beginPath();
+    for (let step = MAP_GRID_STEP; step < WorldSizeDimensions.X.MAX; step += MAP_GRID_STEP) {
+      const position = Math.round(step * scale) + 0.5;
+      context.moveTo(position, 0);
+      context.lineTo(position, size);
+      context.moveTo(0, position);
+      context.lineTo(size, position);
+    }
+    context.stroke();
+  }
+
+  // Square root so a single crowded cell does not wash every other cell out.
+  private getDensityColor(count: number): string {
+    const level = Math.sqrt(count / (this.maxIntensity || 1)) * (DENSITY_STOPS.length - 1);
+    const index = Math.min(DENSITY_STOPS.length - 2, Math.floor(level));
+    const t = level - index;
+    const [from, to] = [DENSITY_STOPS[index], DENSITY_STOPS[index + 1]];
+    const channel = (c: number): number => Math.round(from[c] + (to[c] - from[c]) * t);
+    return `rgb(${channel(0)}, ${channel(1)}, ${channel(2)})`;
   }
 
   private async loadAlliances(alliance: string | string[]): Promise<ApiCartoAlliance[][] | null> {
