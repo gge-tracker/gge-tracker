@@ -6,6 +6,7 @@ import zlib from 'node:zlib';
 import { RateLimiterRedis, RateLimiterRes } from 'rate-limiter-flexible';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
+import { ClientIp } from '../helper/client-ip';
 import { ApiGgeTrackerManager } from '../managers/api.manager';
 import { RoutesManager, sortBySpecificity } from '../managers/routes.manager';
 import { ApiKey, ApiKeyRegistry } from '../services/api-key-registry';
@@ -134,16 +135,7 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
     next: express.NextFunction,
     bypassRules: RoutesManager[],
   ): Promise<void> {
-    const xff = request.headers['x-forwarded-for'];
-    let ip: string;
-    if (typeof xff === 'string') {
-      ip = xff.split(',')[0].trim();
-    } else if (Array.isArray(xff)) {
-      ip = xff[0];
-    } else {
-      ip = request.ip || 'unknown';
-    }
-    const normalizedIp = ip.replace(/^::ffff:/, '');
+    const normalizedIp = ClientIp.resolve(request);
 
     const apiKey = await this.identifyPartner(request, response);
     if (apiKey === 'refused') return;
@@ -199,7 +191,7 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
     try {
       const now = Date.now();
       const server = (request.headers['gge-server'] as string) || 'none';
-      const ip = (request.headers['x-forwarded-for'] as string) || request.ip;
+      const ip = ClientIp.resolve(request);
       const route = this.normalizeRouteSafe(request);
 
       const labels = {

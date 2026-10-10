@@ -3,6 +3,7 @@ import * as crypto from 'node:crypto';
 import { RateLimiterRedis, RateLimiterRes } from 'rate-limiter-flexible';
 import { commandOptions } from 'redis';
 import { ApiHelper } from '../helper/api-helper';
+import { ClientIp } from '../helper/client-ip';
 import { HttpCache } from '../helper/http-cache';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiProfiles, ProfileContext } from './api-profiles';
@@ -160,7 +161,7 @@ export abstract class ApiSeo implements ApiHelper {
       duration: 60,
     });
     try {
-      await this.renderLimiter.consume(request.ip || 'unknown');
+      await this.renderLimiter.consume(ClientIp.resolve(request));
       return true;
     } catch (error) {
       if (error instanceof RateLimiterRes) return false;
