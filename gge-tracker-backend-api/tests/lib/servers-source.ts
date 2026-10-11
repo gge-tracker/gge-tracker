@@ -4,13 +4,16 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { XMLParser } from 'fast-xml-parser';
+import { LootReset, parseLootReset } from '../../src/api/helper/loot-reset';
 
 export interface ServerEntry {
   key: string;
   outerName: string;
   code: string;
   olapDatabase: string;
-  resetOffset?: number;
+  resetTimezone: string;
+  resetTime: string;
+  lootReset: LootReset | null;
   special: boolean;
   disabled: boolean;
   line: number;
@@ -27,11 +30,6 @@ export function serversSourcePath(): string {
 
 function text(value: unknown): string {
   return value === undefined || value === null ? '' : String(value).trim();
-}
-
-function optionalNumber(value: unknown): number | undefined {
-  const raw = text(value);
-  return raw === '' || !Number.isFinite(Number(raw)) ? undefined : Number(raw);
 }
 
 function lineOf(source: string, name: string): number {
@@ -56,7 +54,9 @@ export function discoverServers(): ServerEntry[] {
         outerName: text(row['outer-name']),
         code: text(row.code),
         olapDatabase: text(databases.olap),
-        resetOffset: optionalNumber(row['reset-offset']),
+        resetTimezone: text(row['reset-timezone']),
+        resetTime: text(row['reset-time']),
+        lootReset: parseLootReset(text(row['reset-timezone']), text(row['reset-time'])),
         special: KINGDOM_FEATURES.every((feature) => text(section[feature]) === 'true'),
         disabled: text(section.enabled) !== 'true',
         line: lineOf(source, key),

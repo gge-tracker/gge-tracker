@@ -2,6 +2,7 @@ import * as express from 'express';
 import * as pg from 'pg';
 import { ApiHelper } from '../helper/api-helper';
 import { HttpCache } from '../helper/http-cache';
+import { formatLootResetTime, lootResetOffsetHours, lootWeekEnd, lootWeekStart } from '../helper/loot-reset';
 
 interface ParameterRow {
   identifier: string;
@@ -77,8 +78,6 @@ export abstract class ApiStatus implements ApiHelper {
   private static readonly STALE_FILL_MULTIPLIER = 2;
   private static readonly RECOMMENDED_POLL_INTERVAL_SECONDS = 300;
   private static readonly POLL_FLOOR_SECONDS = 30;
-  private static readonly MS_PER_HOUR = 3_600_000;
-  private static readonly HOURS_PER_WEEK = 168;
 
   private static readonly POLLING_INSTRUCTIONS =
     'Send the ETag response header back as If-None-Match. A 304 means data.version has not moved and nothing was ' +
@@ -403,7 +402,7 @@ export abstract class ApiStatus implements ApiHelper {
         steps: collection.steps,
       },
       dataset: dataset.dataset,
-      weekly_loot_reset: this.buildWeeklyReset(core.weekly_reset_offset_hours, now),
+      weekly_loot_reset: this.buildWeeklyReset(core.server_code, now),
       polling: {
         recommended_interval_seconds: this.RECOMMENDED_POLL_INTERVAL_SECONDS,
         poll_after: schedule.next_data_estimated_at,
@@ -447,25 +446,19 @@ export abstract class ApiStatus implements ApiHelper {
     };
   }
 
-  private static buildWeeklyReset(offsetHours: number | null, now: Date): object | null {
-    if (offsetHours === null) return null;
-    const last = this.weekResetInstant(now, offsetHours);
-    const next = new Date(last.getTime() + this.HOURS_PER_WEEK * this.MS_PER_HOUR);
+  private static buildWeeklyReset(code: string, now: Date): object | null {
+    const reset = ApiHelper.ggeTrackerManager.getServerLootResetByCode(code);
+    if (!reset) return null;
+    const last = lootWeekStart(now.getTime(), reset);
+    const next = lootWeekEnd(last, reset);
     return {
-      offset_hours: offsetHours,
-      last_reset_at: last.toISOString(),
-      next_reset_at: next.toISOString(),
-      seconds_until_next_reset: Math.round((next.getTime() - now.getTime()) / 1000),
+      offset_hours: lootResetOffsetHours(now.getTime(), reset),
+      timezone: reset.timezone,
+      local_time: formatLootResetTime(reset),
+      last_reset_at: new Date(last).toISOString(),
+      next_reset_at: new Date(next).toISOString(),
+      seconds_until_next_reset: Math.round((next - now.getTime()) / 1000),
     };
-  }
-
-  private static weekResetInstant(date: Date, offsetHours: number): Date {
-    const monday = new Date(date);
-    monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
-    monday.setUTCHours(0, 0, 0, 0);
-    const candidate = monday.getTime() + (offsetHours - 1) * this.MS_PER_HOUR;
-    const week = this.HOURS_PER_WEEK * this.MS_PER_HOUR;
-    return new Date(candidate + Math.floor((date.getTime() - candidate) / week) * week);
   }
 
   private static buildEtag(core: StatusCore): string {

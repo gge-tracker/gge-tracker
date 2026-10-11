@@ -51,6 +51,13 @@ import { formatThousands } from '@ggetracker-services/text-format.utilities';
 import { LevelPipe } from '@ggetracker-pipes/level.pipe';
 import { LanguageService } from '@ggetracker-services/language.service';
 import { FollowService } from '@ggetracker-services/follow.service';
+import {
+  DEFAULT_LOOT_RESET,
+  LootReset,
+  lootResetOf,
+  lootWeekEnd,
+  lootWeekStart,
+} from '@ggetracker-services/loot-reset.utilities';
 import { TranslateModule } from '@ngx-translate/core';
 import Gradient from 'javascript-color-gradient';
 import { ApexAxisChartSeries } from 'ng-apexcharts';
@@ -64,7 +71,6 @@ import { ShareLinkComponent } from '@ggetracker-components/share-link/share-link
 
 const MS_PER_HOUR = 3_600_000;
 const HOURS_PER_WEEK = 168;
-const DEFAULT_RESET_OFFSET = -1;
 // Below three recorded runs the card list already says everything a summary could
 const WOA_SUMMARY_MIN_EVENTS = 3;
 const WOA_TREND_MIN_EVENTS = 4;
@@ -153,7 +159,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   public nextFameTitle: RankingFameTitle | null = null;
   public fameProgressStrokeOffset: number = 0;
   public playerName?: string;
-  public timezoneOffset: number | null = null;
+  public lootReset: LootReset = DEFAULT_LOOT_RESET;
   public allianceName?: string;
   public allianceId?: number;
   public fillDataState: FillDataState = 'idle';
@@ -494,7 +500,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
           const data = response.data;
           this.mightPeriod = 'week';
           this.playerName = data.player_name;
-          this.timezoneOffset = data.timezone_offset;
+          this.lootReset = lootResetOf(data.loot_reset, data.timezone_offset);
           this.addStructuredPlayerData({
             name: this.playerName,
             url: `gge-tracker.com/player/${playerId}`,
@@ -1648,16 +1654,6 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     this.initChartOption('aquamarine', series, colors);
   }
 
-  private weekResetInstant(date: Date, resetOffset: number): Date {
-    const monday = new Date(date);
-    const dow = monday.getUTCDay();
-    monday.setUTCDate(monday.getUTCDate() - (dow === 0 ? 6 : dow - 1));
-    monday.setUTCHours(0, 0, 0, 0);
-    const candidate = monday.getTime() + (resetOffset - 1) * MS_PER_HOUR;
-    const week = HOURS_PER_WEEK * MS_PER_HOUR;
-    return new Date(candidate + Math.floor((date.getTime() - candidate) / week) * week);
-  }
-
   private localHourOfSlot(startInstant: Date, index: number): number {
     return new Date(startInstant.getTime() + index * MS_PER_HOUR).getHours();
   }
@@ -1738,17 +1734,17 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     lootPoints.sort((a, b) => {
       return new Date(a.date).getTime() - new Date(b.date).getTime();
     });
-    const RESET_OFFSET = this.timezoneOffset ?? DEFAULT_RESET_OFFSET;
-    const firstPointDate = new Date(lootPoints[0].date);
-    const firstMonday = this.weekResetInstant(firstPointDate, RESET_OFFSET);
-    const currentMonday = new Date(firstMonday);
-    const currentDate = new Date();
+    const reset = this.lootReset;
+    const weekStarts: number[] = [];
     const allWeeksHours: string[][] = [];
-
-    while (currentMonday.getTime() <= currentDate.getTime()) {
-      const weekEnd = new Date(currentMonday.getTime() + (HOURS_PER_WEEK - 1) * MS_PER_HOUR);
-      allWeeksHours.push(this.generateWeekHours(currentMonday, weekEnd));
-      currentMonday.setTime(currentMonday.getTime() + HOURS_PER_WEEK * MS_PER_HOUR);
+    const now = Date.now();
+    for (
+      let start = lootWeekStart(Date.parse(lootPoints[0].date), reset);
+      start <= now;
+      start = lootWeekEnd(start, reset)
+    ) {
+      weekStarts.push(start);
+      allWeeksHours.push(this.generateWeekHours(new Date(start), new Date(lootWeekEnd(start, reset) - MS_PER_HOUR)));
     }
 
     const dates = lootPoints.map((p) => {
@@ -1759,19 +1755,18 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     const points = lootPoints.map((p) => Number(p.point));
     const allWeeksData = allWeeksHours.map((weekHours) => this.fillLootData(weekHours, dates, points));
     const colors = ['#bfb58f', '#cc9a12'];
-    const series = allWeeksData.map((weekData, index) => {
-      const weekStartDate = new Date(firstMonday.getTime() + index * HOURS_PER_WEEK * MS_PER_HOUR);
-      if (weekData.length > allWeeksData[0].length) {
-        weekData = weekData.slice(0, allWeeksData[0].length);
-      }
-      const maxPoint = Math.max(...weekData.filter((p): p is number => p !== null));
+    const series = allWeeksData.map((fullWeek, index) => {
+      const weekStartDate = new Date(weekStarts[index]);
+      const maxPoint = Math.max(...fullWeek.filter((p): p is number => p !== null));
+      // A week holding a clock change lasts 167 or 169 hours; the overlay chart shows 168
+      const weekData = fullWeek.slice(0, HOURS_PER_WEEK);
       maxPoints.push({
         week: weekStartDate.toISOString().slice(0, 10),
         points: maxPoint,
       });
       weeklyTotals.push({
         started_at: weekStartDate.toISOString(),
-        ended_at: new Date(weekStartDate.getTime() + HOURS_PER_WEEK * MS_PER_HOUR - 1).toISOString(),
+        ended_at: new Date(lootWeekEnd(weekStarts[index], reset) - 1).toISOString(),
         point: maxPoint,
       });
       if (index === allWeeksData.length - 1) {
@@ -1820,7 +1815,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     // Initialize the chart 'loot-heatmap' (heatmap loot history)
     const seriesHeatmap: ApexAxisChartSeries = [];
     const allValues: number[] = [];
-    const lastWeekStart = firstMonday.getTime() + Math.max(0, allWeeksData.length - 1) * HOURS_PER_WEEK * MS_PER_HOUR;
+    const lastWeekStart = weekStarts.at(-1)!;
     const dayLabels = Array.from(
       { length: 7 },
       (_, dayIndex) => days[new Date(lastWeekStart + (dayIndex * 24 + 12) * MS_PER_HOUR).getDay()],
@@ -1860,9 +1855,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     this.charts['loot-heatmap'].plotOptions.heatmap!.colorScale!.ranges = this.buildHeatmapRanges(maxValue);
     // Initialize the hourly activity rate chart 'loot-activity' (hourly activity rate loot history)
     const lastWeeksData = allWeeksData.slice(-2);
-    const lastWeeksStart = new Date(
-      firstMonday.getTime() + Math.max(0, allWeeksData.length - 2) * HOURS_PER_WEEK * MS_PER_HOUR,
-    );
+    const lastWeeksStart = new Date(weekStarts.at(-2) ?? weekStarts[0]);
     const hourlyActivity = this.computeHourlyActivityRate(lastWeeksData.flat(), lastWeeksStart);
     const seriesHourlyActivity: ApexAxisChartSeries = [
       {
@@ -1890,8 +1883,11 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     this.initFinalScoresChartOption('loot-scores', weeklyScores, weeklyLabels, colors[1]);
     this.buildEventCharts('loot', weeklyScores.length);
     this.charts['loot'].xaxis.type = 'datetime';
-    const weekHoursReference = allWeeksHours[0];
-    for (let index = 1; index < allWeeksHours.length; index++) {
+    const weekHoursReference = this.generateWeekHours(
+      new Date(weekStarts[0]),
+      new Date(weekStarts[0] + (HOURS_PER_WEEK - 1) * MS_PER_HOUR),
+    );
+    for (let index = 0; index < allWeeksHours.length; index++) {
       allWeeksHours[index] = weekHoursReference;
     }
     this.charts['loot'].xaxis.categories = allWeeksHours.flat();

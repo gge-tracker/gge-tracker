@@ -640,6 +640,13 @@ publicRoutes.get('/languages/:lang', routingInstance.getLanguage.bind(routingIns
  *                   properties:
  *                     offset_hours:
  *                       type: integer
+ *                       description: Hours after Monday 00:00 UTC, plus one, for the current week; moves with daylight saving
+ *                     timezone:
+ *                       type: string
+ *                       example: Europe/Paris
+ *                     local_time:
+ *                       type: string
+ *                       example: MON 00:00
  *                     last_reset_at:
  *                       type: string
  *                       format: date-time
@@ -3118,8 +3125,21 @@ publicRoutes.get('/cartography/id/:allianceId', routingInstance.getCartographyBy
  *                   type: string
  *                   description: Internal server identifier
  *                 ggetracker_timezone_offset:
- *                   type: string
- *                   description: Internal server timezone offset
+ *                   type: integer
+ *                   nullable: true
+ *                   description: Weekly loot reset of the current week, in hours after Monday 00:00 UTC plus one; moves with daylight saving
+ *                 ggetracker_loot_reset:
+ *                   type: object
+ *                   nullable: true
+ *                   description: When the weekly loot ranking resets, in the server's own timezone
+ *                   properties:
+ *                     timezone:
+ *                       type: string
+ *                       example: Europe/Paris
+ *                     local_time:
+ *                       type: string
+ *                       description: Weekday and local time of the reset in that timezone
+ *                       example: MON 00:00
  *                 ggetracker_zone:
  *                   type: string
  *                   description: Internal server zone identifier
@@ -4747,6 +4767,18 @@ publicRoutes.get('/statistics/player/:playerId', routingInstance.getStatisticsBy
  *                   type: integer
  *                   nullable: true
  *                   example: 2
+ *                 loot_reset:
+ *                   type: object
+ *                   nullable: true
+ *                   description: When the weekly loot ranking resets, in the server's own timezone
+ *                   properties:
+ *                     timezone:
+ *                       type: string
+ *                       example: Europe/Paris
+ *                     local_time:
+ *                       type: string
+ *                       description: Weekday and local time of the reset in that timezone
+ *                       example: MON 00:00
  *                 glory_points_100:
  *                   type: array
  *                   description: Fame value at ranks 1, 10, 50 and 100 of the player's server
@@ -6443,7 +6475,19 @@ protectedRoutes.get('/changes', routingInstance.getChanges.bind(routingInstance)
  *                 weekly_reset_offset_hours:
  *                   type: integer
  *                   nullable: true
- *                   description: Hours after Monday 00:00 UTC at which this server's weekly loot ranking empties
+ *                   description: Hours after Monday 00:00 UTC, plus one, at which this week's loot ranking empties; moves with daylight saving
+ *                 loot_reset:
+ *                   type: object
+ *                   nullable: true
+ *                   description: When the weekly loot ranking resets, in the server's own timezone
+ *                   properties:
+ *                     timezone:
+ *                       type: string
+ *                       example: Europe/Paris
+ *                     local_time:
+ *                       type: string
+ *                       description: Weekday and local time of the reset in that timezone
+ *                       example: MON 00:00
  *                 player:
  *                   type: object
  *                   additionalProperties: true

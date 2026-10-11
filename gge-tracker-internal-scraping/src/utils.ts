@@ -103,6 +103,10 @@ class Utils {
     logger.error({ server, identifier, detail: detail || undefined }, msg);
   }
 
+  public static logRecord(level: 'info' | 'warn', record: object, msg: string): void {
+    logger[level](record, msg);
+  }
+
   public static describeError(error: unknown): string {
     if (error === undefined || error === null) return '';
     if (error instanceof Error) return error.message;

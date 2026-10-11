@@ -42,6 +42,13 @@ import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { formatThousands } from '@ggetracker-services/text-format.utilities';
 import { LanguageService } from '@ggetracker-services/language.service';
 import { FollowService } from '@ggetracker-services/follow.service';
+import {
+  DEFAULT_LOOT_RESET,
+  LootReset,
+  lootResetOf,
+  lootWeekEnd,
+  lootWeekStart,
+} from '@ggetracker-services/loot-reset.utilities';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
 import { WindowService } from '@ggetracker-services/window.service';
 import { RouterLink } from '@angular/router';
@@ -130,8 +137,6 @@ interface CardConfig {
   eventTitleKey: keyof typeof ApiPlayerStatsType;
 }
 const MS_PER_HOUR = 3_600_000;
-const HOURS_PER_WEEK = 168;
-const DEFAULT_RESET_OFFSET = -1;
 const FIRST_LOOT_EVENT_TIMESTAMP = 1_737_349_200_000;
 
 interface LootPlayerSeries {
@@ -501,7 +506,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   private statsInProgress = false;
   private data: ApiPlayerStatsForAlliance | null = null;
   private readonly titleService = inject(Title);
-  private timezoneOffset: number | null = null;
+  private lootReset: LootReset = DEFAULT_LOOT_RESET;
   private isDestroyed = false;
 
   public ngOnInit(): void {
@@ -1480,14 +1485,16 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
 
   private initLootHistoryData(data: ApiPlayerStatsForAlliance): void {
     const serieChoosen = this.graphPages.player_loot_history;
-    const currentMonday = this.weekResetInstant(new Date(), this.timezoneOffset ?? DEFAULT_RESET_OFFSET);
-    const startOfWeek = new Date(currentMonday.getTime() - serieChoosen * HOURS_PER_WEEK * MS_PER_HOUR);
+    let weekStart = lootWeekStart(Date.now(), this.lootReset);
+    for (let page = 0; page < serieChoosen; page++) weekStart = lootWeekStart(weekStart - 1, this.lootReset);
+    const startOfWeek = new Date(weekStart);
     if (startOfWeek.getTime() < FIRST_LOOT_EVENT_TIMESTAMP) {
       this.graphPages[ApiPlayerStatsType.loot] = serieChoosen - 1;
       return;
     }
 
-    const endOfWeek = new Date(startOfWeek.getTime() + (HOURS_PER_WEEK - 1) * MS_PER_HOUR);
+    const weekHours = (lootWeekEnd(weekStart, this.lootReset) - weekStart) / MS_PER_HOUR;
+    const endOfWeek = new Date(startOfWeek.getTime() + (weekHours - 1) * MS_PER_HOUR);
     const showedEndOfWeek = new Date(endOfWeek.getTime() - 24 * MS_PER_HOUR);
     this.eventTitles['loot'] = this.translateService.instant('Événement du 0 au 0', {
       start: startOfWeek.toLocaleDateString().slice(0, -5),
@@ -1495,7 +1502,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     });
 
     const timestampsByHour = Array.from(
-      { length: HOURS_PER_WEEK },
+      { length: weekHours },
       (_, index) => startOfWeek.getTime() + index * MS_PER_HOUR,
     );
     const playerMap = this.groupLootRecordsByPlayer(data);
@@ -1889,15 +1896,6 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     if (distanceIndex !== -1) {
       this.membersTableHeader.splice(distanceIndex, 1);
     }
-  }
-
-  private weekResetInstant(date: Date, resetOffset: number): Date {
-    const monday = new Date(date);
-    monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
-    monday.setUTCHours(0, 0, 0, 0);
-    const candidate = monday.getTime() + (resetOffset - 1) * MS_PER_HOUR;
-    const week = HOURS_PER_WEEK * MS_PER_HOUR;
-    return new Date(candidate + Math.floor((date.getTime() - candidate) / week) * week);
   }
 
   private initChartOption(name: keyof typeof ApiPlayerStatsType, data: ApexAxisChartSeries, color: string[]): void {
@@ -2477,7 +2475,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         return;
       }
       playersData = response.data.points;
-      this.timezoneOffset = response.data.timezoneOffset ?? DEFAULT_RESET_OFFSET;
+      this.lootReset = lootResetOf(response.data.lootReset, response.data.timezoneOffset);
     } catch {
       this.toastService.add(ErrorType.ERROR_OCCURRED, 20_000);
       return;

@@ -1,3 +1,4 @@
+import { LootReset } from '../helper/loot-reset';
 /**
  * Represents an API token with associated database connection strings and metadata.
  *
@@ -17,7 +18,7 @@ export interface IApiToken {
   zoneId?: number;
   code: string;
   zone: string;
-  serverResetOffset?: number;
+  lootReset?: LootReset;
 }
 
 export interface ILimitedApiToken {
@@ -50,7 +51,7 @@ export interface IServerDefinition {
   code: string;
   zone: string;
   zoneId?: number;
-  resetOffset?: number;
+  lootReset?: LootReset;
   globalName: string;
   trackedSince: string;
   databases: {

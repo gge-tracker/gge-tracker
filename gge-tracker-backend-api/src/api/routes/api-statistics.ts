@@ -2,6 +2,7 @@ import * as express from 'express';
 import * as pg from 'pg';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
+import { DEFAULT_LOOT_RESET, lootWeekEnd } from '../helper/loot-reset';
 import { NodeClickHouseClient } from '@clickhouse/client/dist/client';
 
 interface PlayerStatisticsOptions {
@@ -35,10 +36,6 @@ export abstract class ApiStatistics implements ApiHelper {
   private static readonly CONTINUOUS_TABLES = new Set(['player_might_history', 'player_loot_history']);
 
   private static readonly WEEKLY_RESET_TABLES = new Set(['player_loot_history']);
-
-  private static readonly SECONDS_PER_WEEK = 604_800;
-
-  private static readonly WEEK_ANCHOR_SECONDS = 345_600;
 
   /**
    * Handles the HTTP request to retrieve statistics for a specific alliance by its ID
@@ -105,6 +102,9 @@ export abstract class ApiStatistics implements ApiHelper {
           diffs,
           points,
           timezoneOffset: ApiHelper.ggeTrackerManager.getServerResetOffsetByCode(
+            ApiHelper.getCountryCode(String(allianceId)) || '',
+          ),
+          lootReset: ApiHelper.ggeTrackerManager.getServerLootResetInfoByCode(
             ApiHelper.getCountryCode(String(allianceId)) || '',
           ),
         };
@@ -239,6 +239,9 @@ export abstract class ApiStatistics implements ApiHelper {
           points,
           glory_points_100: code100GloryPoints,
           timezone_offset: serverResetOffset,
+          loot_reset: ApiHelper.ggeTrackerManager.getServerLootResetInfoByCode(
+            ApiHelper.getCountryCode(String(playerId)) || '',
+          ),
         };
         void ApiHelper.updateCache(cacheKey, data);
         response.status(ApiHelper.HTTP_OK).send(this.trimPlayerStatistics(data, options));
@@ -334,6 +337,7 @@ export abstract class ApiStatistics implements ApiHelper {
         events,
         glory_points_100: code100GloryPoints,
         timezone_offset: ApiHelper.ggeTrackerManager.getServerResetOffsetByCode(code),
+        loot_reset: ApiHelper.ggeTrackerManager.getServerLootResetInfoByCode(code),
       };
       void ApiHelper.updateCache(cacheKey, data);
       response.status(ApiHelper.HTTP_OK).send(data);
@@ -1109,20 +1113,18 @@ export abstract class ApiStatistics implements ApiHelper {
     olapDatabase: string,
     eventTable: string,
   ): Promise<Array<{ started_at: string; ended_at: string; point: number }>> {
-    const resetOffset =
-      ApiHelper.ggeTrackerManager.getServerResetOffsetByCode(ApiHelper.getCountryCode(String(playerId)) || '') ?? -1;
-    const anchor = this.WEEK_ANCHOR_SECONDS + (resetOffset - 1) * 3600;
+    const reset =
+      ApiHelper.ggeTrackerManager.getServerLootResetByCode(ApiHelper.getCountryCode(String(playerId)) || '') ??
+      DEFAULT_LOOT_RESET;
     const clickhouseClient: NodeClickHouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
     const query = `
       SELECT
-        week_start AS started_at,
-        week_start + {week:UInt32} - 1 AS ended_at,
+        toUnixTimestamp(week_start) AS started_at,
         toUInt64(max(point)) AS point
       FROM (
         SELECT
-          toDateTime(
-            intDiv(toUnixTimestamp(created_at) - {anchor:Int64}, {week:UInt32}) * {week:UInt32} + {anchor:Int64}
-          ) AS week_start,
+          toDateTime(toStartOfWeek(created_at - INTERVAL {shift:Int32} MINUTE, 1, {timezone:String}), {timezone:String})
+            + INTERVAL {shift:Int32} MINUTE AS week_start,
           point
         FROM ${olapDatabase}.${eventTable}
         WHERE player_id = {playerId:UInt32}
@@ -1134,16 +1136,19 @@ export abstract class ApiStatistics implements ApiHelper {
       query,
       query_params: {
         playerId: ApiHelper.removeCountryCode(playerId),
-        anchor,
-        week: this.SECONDS_PER_WEEK,
+        shift: reset.minutesFromMonday,
+        timezone: reset.timezone,
       },
     });
     const result = await clickhouseQuery.json();
-    return result.data.map((row: any) => ({
-      started_at: new Date(row.started_at).toISOString(),
-      ended_at: new Date(row.ended_at).toISOString(),
-      point: Number(row.point),
-    }));
+    return result.data.map((row: any) => {
+      const startedAt = Number(row.started_at) * 1000;
+      return {
+        started_at: new Date(startedAt).toISOString(),
+        ended_at: new Date(lootWeekEnd(startedAt, reset) - 1000).toISOString(),
+        point: Number(row.point),
+      };
+    });
   }
 
   /**

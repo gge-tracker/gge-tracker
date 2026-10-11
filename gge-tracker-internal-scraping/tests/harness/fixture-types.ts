@@ -42,3 +42,15 @@ export interface PlayerEventFixture {
   meta: FixtureMeta;
   events: Record<string, any>[];
 }
+
+export interface LootStream {
+  server: string;
+  resetTimezone: string;
+  resetTime: string;
+  readings: [string, number][];
+}
+
+export interface LootStreamFixture {
+  meta: FixtureMeta;
+  streams: Record<string, LootStream>;
+}

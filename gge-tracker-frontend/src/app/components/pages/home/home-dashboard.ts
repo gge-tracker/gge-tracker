@@ -5,7 +5,8 @@ import {
   ApiPlayerStatsType,
 } from '@ggetracker-interfaces/empire-ranking';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
-import { HOURS_PER_WEEK, MS_PER_HOUR, weekStartOf } from '../compare/compare-loot/compare-loot-weeks';
+import { LootReset, lootWeekEnd, lootWeekStart } from '@ggetracker-services/loot-reset.utilities';
+import { HOURS_PER_WEEK, MS_PER_HOUR } from '../compare/compare-loot/compare-loot-weeks';
 
 export type Trend = 'up' | 'down' | 'flat';
 
@@ -90,9 +91,9 @@ export function valueAt(readings: Reading[], instant: number): number | null {
   return readingUpTo(readings, instant + COLLECTION_JITTER_MS)?.value ?? null;
 }
 
-export function lootAt(readings: Reading[], instant: number, resetOffset: number | null): number | null {
-  const weekStart = weekStartOf(instant, resetOffset);
-  const last = readingUpTo(readings, Math.min(instant + COLLECTION_JITTER_MS, weekStart + MS_PER_WEEK - 1));
+export function lootAt(readings: Reading[], instant: number, reset: LootReset): number | null {
+  const weekStart = lootWeekStart(instant, reset);
+  const last = readingUpTo(readings, Math.min(instant + COLLECTION_JITTER_MS, lootWeekEnd(weekStart, reset) - 1));
   if (!last) return null;
   return last.at >= weekStart ? last.value : 0;
 }
@@ -134,9 +135,10 @@ export function sparklineOf(
 }
 
 // Both sides are read at the same collection hour, so the comparison never depends on the clock
-export function lootWeekOf(readings: Reading[], resetOffset: number | null, now: number): LootWeek {
-  const weekStart = weekStartOf(now, resetOffset);
-  const previousStart = weekStart - MS_PER_WEEK;
+export function lootWeekOf(readings: Reading[], reset: LootReset, now: number): LootWeek {
+  const weekStart = lootWeekStart(now, reset);
+  const previousStart = lootWeekStart(weekStart - 1, reset);
+  const shift = weekStart - previousStart;
   const thisWeek = readings.filter((reading) => reading.at >= weekStart);
   const lastWeek = readings.filter((reading) => reading.at >= previousStart && reading.at < weekStart);
   const latest = thisWeek.at(-1) ?? null;
@@ -145,13 +147,13 @@ export function lootWeekOf(readings: Reading[], resetOffset: number | null, now:
   const current = [{ at: weekStart, value: 0 }, ...thisWeek];
   const previous = [
     { at: weekStart, value: 0 },
-    ...lastWeek.map((reading) => ({ ...reading, at: reading.at + MS_PER_WEEK })),
+    ...lastWeek.map((reading) => ({ ...reading, at: reading.at + shift })),
   ];
   const scale = { low: 0, high: Math.max(...current.map((r) => r.value), ...previous.map((r) => r.value)) };
-  const weekEnd = weekStart + MS_PER_WEEK;
+  const weekEnd = lootWeekEnd(weekStart, reset);
   return {
     value: latest?.value ?? 0,
-    sameTimeLastWeek: hasLastWeek ? (lootAt(readings, at - MS_PER_WEEK, resetOffset) ?? 0) : null,
+    sameTimeLastWeek: hasLastWeek ? (lootAt(readings, at - shift, reset) ?? 0) : null,
     lastWeekTotal: hasLastWeek ? (lastWeek.at(-1)?.value ?? 0) : null,
     current: sparklineOf(current, weekStart, weekEnd, scale),
     previous: hasLastWeek ? sparklineOf(previous, weekStart, weekEnd, scale) : null,
@@ -199,8 +201,8 @@ export function membershipMovesSince(changes: ApiAllianceMemberChange[], since: 
   return moves;
 }
 
-export function nextWeeklyReset(now: number, resetOffsetHours: number | null): number {
-  return weekStartOf(now, resetOffsetHours) + MS_PER_WEEK;
+export function nextWeeklyReset(now: number, reset: LootReset): number {
+  return lootWeekEnd(lootWeekStart(now, reset), reset);
 }
 
 export function formatCountdown(milliseconds: number, language: string): string {

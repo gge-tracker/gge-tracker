@@ -9,6 +9,7 @@
 //
 import { readFileSync } from 'node:fs';
 import { XMLParser } from 'fast-xml-parser';
+import { LootReset, parseLootReset } from './loot-reset';
 
 export const SERVERS_FILE = process.env.SERVERS_FILE || '/app/config/servers.xml';
 
@@ -23,6 +24,7 @@ export interface ScrapingServer {
   storm: boolean;
   alertAfterFailures: number | null;
   kind: string;
+  lootReset: LootReset | null;
   enabledBeta: boolean;
   enabledPublic: boolean;
 }
@@ -57,6 +59,7 @@ function toServer(row: Record<string, unknown>): ScrapingServer | null {
     storm: flag(scraping.storm),
     alertAfterFailures: Number(text(scraping['alert-after-failures'])) || null,
     kind: text(row.kind),
+    lootReset: parseLootReset(text(row['reset-timezone']), text(row['reset-time'])),
     enabledBeta: apiEnabled(row, 'beta'),
     enabledPublic: apiEnabled(row, 'public'),
   };

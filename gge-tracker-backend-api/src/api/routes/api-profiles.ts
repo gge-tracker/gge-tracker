@@ -320,6 +320,7 @@ export abstract class ApiProfiles implements ApiHelper {
       server_name: server?.outer_name ?? null,
       zone: server?.zone ?? null,
       weekly_reset_offset_hours: ApiHelper.ggeTrackerManager.getServerResetOffsetByCode(context.code),
+      loot_reset: ApiHelper.ggeTrackerManager.getServerLootResetInfoByCode(context.code),
       generated_at: new Date().toISOString(),
     };
   }

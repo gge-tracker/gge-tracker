@@ -9,13 +9,6 @@ function envInt(name: string, fallback: number): number {
   return Number.isNaN(parsed) ? fallback : parsed;
 }
 
-function envFloat(name: string, fallback: number): number {
-  const raw = process.env[name];
-  if (raw === undefined || raw.trim() === '') return fallback;
-  const parsed = Number.parseFloat(raw);
-  return Number.isNaN(parsed) ? fallback : parsed;
-}
-
 function envStr(name: string, fallback: string): string {
   const raw = process.env[name];
   return raw === undefined || raw.trim() === '' ? fallback : raw;
@@ -41,9 +34,8 @@ export const config = {
     rounds: envInt('TEST_LOAD_ROUNDS', 6),
   },
   resetOffset: {
-    windowDays: envInt('TEST_RESET_OFFSET_DAYS', 60),
-    minGaps: envInt('TEST_RESET_OFFSET_MIN_GAPS', 20),
-    agreement: envFloat('TEST_RESET_OFFSET_AGREEMENT', 0.8),
+    windowDays: envInt('TEST_RESET_OFFSET_DAYS', 400),
+    minWeeks: envInt('TEST_RESET_OFFSET_MIN_WEEKS', 2),
     probeTimeoutMs: envInt('TEST_CLICKHOUSE_PROBE_MS', 3000),
     servers: envStr('TEST_RESET_OFFSET_SERVERS', ''),
   },

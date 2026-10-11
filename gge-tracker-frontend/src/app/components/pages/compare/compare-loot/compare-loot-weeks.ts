@@ -1,10 +1,9 @@
 import { ApiGenericData, ApiPlayerEventOccurrence } from '@ggetracker-interfaces/empire-ranking';
+import { LootReset, lootWeekStart } from '@ggetracker-services/loot-reset.utilities';
 
 export const MS_PER_HOUR = 3_600_000;
 export const HOURS_PER_WEEK = 168;
 
-const MS_PER_WEEK = HOURS_PER_WEEK * MS_PER_HOUR;
-const DEFAULT_RESET_OFFSET = -1;
 const RESET_DRIFT_HOURS = 3;
 
 export interface WeeklyScoreRow {
@@ -12,9 +11,8 @@ export interface WeeklyScoreRow {
   scores: [number | null, number | null];
 }
 
-export function weekStartOf(instant: number, resetOffset: number | null): number {
-  const anchor = utcMondayOf(instant) + ((resetOffset ?? DEFAULT_RESET_OFFSET) - 1) * MS_PER_HOUR;
-  return anchor + Math.floor((instant - anchor) / MS_PER_WEEK) * MS_PER_WEEK;
+export function weekStartOf(instant: number, reset: LootReset): number {
+  return lootWeekStart(instant, reset);
 }
 
 export function buildWeekRace(points: ApiGenericData[], weekStart: number, cutoff: number): (number | null)[] {

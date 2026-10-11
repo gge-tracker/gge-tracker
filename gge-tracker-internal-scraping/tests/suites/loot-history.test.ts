@@ -12,7 +12,9 @@ import { describe, it } from 'node:test';
 
 import { fixtures, ranking } from '../harness/fixtures';
 import { rankingResponse } from '../harness/fake-api';
+import { withLogSpy } from '../harness/log-spy';
 import { withSandbox } from '../harness/sandbox';
+import { parseLootReset } from '../../src/loot-reset';
 
 const LOOT_LT = 2;
 const TABLE = 'player_loot_history';
@@ -168,6 +170,147 @@ describe('fillLootHistory', () => {
       sandbox.api.serveRanking(fixtures.lootHead());
       await sandbox.call('fillLootHistory');
       assert.deepEqual(sandbox.api.requests, []);
+      assert.equal(sandbox.state('DB_UPDATES').criticalErrors, 1);
+    });
+  });
+});
+
+describe('fillLootHistory past 2^32', () => {
+  const RECENT_LOOT = /FROM player_loot_history/;
+  const WEEK_START = Date.parse('2026-08-23T22:00:00Z') / 1000;
+  const PARIS = parseLootReset('Europe/Paris', 'MON 00:00');
+  const AN_HOUR_AGO = Date.parse('2026-08-29T11:00:00Z') / 1000;
+
+  function storedPoints(sandbox: any): Map<number, number> {
+    return new Map(sandbox.clickhouse.rows(TABLE).map((row: any) => [Number(row.player_id), Number(row.point)]));
+  }
+
+  it('reads the current week of stored loot before inserting, and only that week', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.setState('lootReset', PARIS);
+      sandbox.api.serveRanking(fixtures.lootHead());
+      await sandbox.call('fillLootHistory');
+      const [select] = sandbox.clickhouse.selects(RECENT_LOOT);
+      assert.ok(select, 'one read of the stored loot');
+      assert.ok(select.query.includes(`created_at >= toDateTime(${WEEK_START})`), select.query);
+      assert.equal(sandbox.clickhouse.rows(TABLE).length, fixtures.lootHead().totalRanked);
+    });
+  });
+
+  it('adds 2^32 to a player whose counter went back down since the last hour', async () => {
+    await withSandbox({}, async (sandbox) => {
+      const [, point, player] = fixtures.lootHead().rows[0];
+      sandbox.setState('lootReset', PARIS);
+      sandbox.clickhouse.when(RECENT_LOOT, [
+        { player_id: Number(player.OID), recent: [[AN_HOUR_AGO, String(OVERFLOW_OFFSET - 1000)]] },
+      ]);
+      sandbox.api.serveRanking(fixtures.lootHead());
+      await sandbox.call('fillLootHistory');
+      assert.equal(storedPoints(sandbox).get(Number(player.OID)), OVERFLOW_OFFSET + point);
+      const state = sandbox.state<Record<string, any[]>>('playerLootAndMightPointHistoryList');
+      assert.equal(state[String(player.OID)][0], OVERFLOW_OFFSET + point, 'loot_current gets the same value');
+    });
+  });
+
+  it('keeps the wraps a negative score already carried this week', async () => {
+    await withSandbox({}, async (sandbox) => {
+      const tail = fixtures.lootTail();
+      const [, point, player] = tail.rows.find(([, score]) => score < 0)!;
+      const counter = point + OVERFLOW_OFFSET;
+      sandbox.setState('lootReset', PARIS);
+      sandbox.clickhouse.when(RECENT_LOOT, [
+        { player_id: Number(player.OID), recent: [[AN_HOUR_AGO, String(OVERFLOW_OFFSET + counter - 1000)]] },
+      ]);
+      sandbox.api.serveRanking(tail);
+      await sandbox.call('fillLootHistory');
+      assert.equal(storedPoints(sandbox).get(Number(player.OID)), OVERFLOW_OFFSET + counter);
+    });
+  });
+
+  it('stores the counter and reads nothing back when the server declares no reset', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.setState('lootReset', null);
+      sandbox.api.serveRanking(fixtures.lootHead());
+      await sandbox.call('fillLootHistory');
+      assert.deepEqual(sandbox.clickhouse.selects(RECENT_LOOT), []);
+      assert.equal(sandbox.clickhouse.rows(TABLE).length, fixtures.lootHead().totalRanked);
+    });
+  });
+
+  function lastHourJustBelowTheTop(rows: ReturnType<typeof fixtures.lootHead>['rows']): Record<string, unknown>[] {
+    return rows.map(([, , player]) => ({
+      player_id: Number(player.OID),
+      recent: [[AN_HOUR_AGO, String(OVERFLOW_OFFSET - 1)]],
+    }));
+  }
+
+  it('reports what each run did with the counters', async () => {
+    await withLogSpy(async (spy) => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.setState('lootReset', PARIS);
+        sandbox.clickhouse.when(RECENT_LOOT, lastHourJustBelowTheTop(fixtures.lootHead().rows.slice(0, 2)));
+        sandbox.api.serveRanking(fixtures.lootHead());
+        await sandbox.call('fillLootHistory');
+      });
+      const [[level, record]] = spy.calls.logRecord;
+      const [first, second] = fixtures.lootHead().rows;
+      assert.equal(level, 'info');
+      assert.deepEqual(record, {
+        event: 'loot_counters',
+        fresh: fixtures.lootHead().totalRanked - 2,
+        counted: 0,
+        wrapped: 2,
+        decreased: 0,
+        refused: 0,
+        earlyReset: 0,
+        moves: [
+          {
+            player: Number(first[2].OID),
+            kind: 'wrapped',
+            before: OVERFLOW_OFFSET - 1,
+            after: OVERFLOW_OFFSET + first[1],
+          },
+          {
+            player: Number(second[2].OID),
+            kind: 'wrapped',
+            before: OVERFLOW_OFFSET - 1,
+            after: OVERFLOW_OFFSET + second[1],
+          },
+        ],
+      });
+    });
+  });
+
+  it('stores the counters as they are and warns when more than 50 players would gain 2^32 at once', async () => {
+    await withLogSpy(async (spy) => {
+      await withSandbox({}, async (sandbox) => {
+        const rows = fixtures.lootHead().rows.slice(0, 51);
+        sandbox.setState('lootReset', PARIS);
+        sandbox.clickhouse.when(RECENT_LOOT, lastHourJustBelowTheTop(rows));
+        sandbox.api.serveRanking(fixtures.lootHead());
+        await sandbox.call('fillLootHistory');
+        const stored = storedPoints(sandbox);
+        for (const [, point, player] of rows) assert.equal(stored.get(Number(player.OID)), point);
+      });
+      const [[level, record, message]] = spy.calls.logRecord;
+      assert.equal(level, 'warn');
+      assert.equal((record as Record<string, number>).refused, 51);
+      assert.equal(
+        (record as { moves: unknown[] }).moves.length,
+        20,
+        'a capped sample of the players, not all of them',
+      );
+      assert.match(String(message), /51 players would have gained 2\^32 at once/);
+    });
+  });
+
+  it('inserts nothing when the stored loot cannot be read, rather than a wrong week', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.setState('lootReset', PARIS);
+      sandbox.clickhouse.failWith(new Error('connect ECONNREFUSED'));
+      sandbox.api.serveRanking(fixtures.lootHead());
+      await sandbox.call('fillLootHistory');
+      assert.deepEqual(sandbox.clickhouse.rows(TABLE), []);
       assert.equal(sandbox.state('DB_UPDATES').criticalErrors, 1);
     });
   });

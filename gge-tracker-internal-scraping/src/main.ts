@@ -35,7 +35,16 @@ import {
 } from './interfaces';
 import Utils from './utils';
 import { isSocketDown, readBridgeStatus, zoneOf } from './bridge-status';
-import { readPublicPlayerIdCodes } from './servers-file';
+import { LootReading, LootReadingKind, lootCounterValue, unwrapLootRun } from './loot-counter';
+import { LootReset, lootWeekStart } from './loot-reset';
+import { findScrapingServer, readPublicPlayerIdCodes } from './servers-file';
+
+interface LootMove {
+  player: number;
+  kind: LootReadingKind;
+  before: number | undefined;
+  after: number;
+}
 
 export interface PlayerUpsertInput {
   playerId: number;
@@ -236,6 +245,7 @@ export class GenericFetchAndSaveBackend {
 
   private static readonly SCAN_DELAY_MIN_MS = 100;
   private static readonly SCAN_DELAY_MAX_MS = 1100;
+  private static readonly LOOT_MOVES_REPORTED = 20;
   private static readonly CLICKHOUSE_INSERT_CHUNK_SIZE = 50000;
   private static readonly CLICKHOUSE_MAX_ATTEMPTS = 6;
   private static readonly CLICKHOUSE_BASE_BACKOFF_MS = 2000;
@@ -316,6 +326,7 @@ export class GenericFetchAndSaveBackend {
   private readonly PGSQL_CONFIG: pg.PoolConfig | undefined;
   private readonly server: string;
   private playerLootAndMightPointHistoryList: { [key: string]: any[] } = {};
+  private lootReset: LootReset | null | undefined;
   private playerEventPointHistoryList: { [key: string]: { [key: string]: number | null } } = {};
   private customPlayersAttributesList: { [key: string]: any } = {};
   private currentPlayers: PlayerDatabase[] = [];
@@ -3627,12 +3638,13 @@ export class GenericFetchAndSaveBackend {
 
       Utils.logMessage(' Beginning insertion of loot for players into the database');
       const rows: Array<Record<string, unknown>> = [];
-      for (const player of Object.values(playerList)) {
-        if (player?.uid && player.name) {
-          rows.push({ player_id: player.uid, point: player.points, created_at: currentDateFormatted });
-        }
-      }
       try {
+        await this.unwrapLootCounters(playerList, currentDate);
+        for (const player of Object.values(playerList)) {
+          if (player?.uid && player.name) {
+            rows.push({ player_id: player.uid, point: player.points, created_at: currentDateFormatted });
+          }
+        }
         await this.insertRowsClickHouse('player_loot_history', rows);
       } catch (error) {
         Utils.logCritical('726', error, ' [KO] Error while adding loot to ClickHouse');
@@ -3642,6 +3654,87 @@ export class GenericFetchAndSaveBackend {
       Utils.logCritical('018', error, ' [KO] Final error while processing statistics');
       this.DB_UPDATES.criticalErrors++;
     }
+  }
+
+  private resolveLootReset(): LootReset | null {
+    if (this.lootReset === undefined) {
+      try {
+        this.lootReset = findScrapingServer(this.server)?.lootReset ?? null;
+      } catch (error) {
+        Utils.logMessage(' [warn] Cannot read the servers file:', (error as Error).message);
+        this.lootReset = null;
+      }
+    }
+    return this.lootReset;
+  }
+
+  private async readRecentLoot(since: number): Promise<Map<number, LootReading[]>> {
+    const rows = await this.selectRowsClickHouse<{ player_id: number; recent: [number, string][] }>(`
+      SELECT player_id, arraySlice(arrayReverseSort(groupArray((toUnixTimestamp(created_at), point))), 1, 2) AS recent
+      FROM player_loot_history
+      WHERE created_at >= toDateTime(${Math.floor(since / 1000)})
+      GROUP BY player_id
+    `);
+    return new Map(
+      rows.map((row) => [
+        Number(row.player_id),
+        row.recent.map(([at, point]) => ({ at: Number(at) * 1000, point: Number(point) })),
+      ]),
+    );
+  }
+
+  private async unwrapLootCounters(playerList: { [key: string]: LootRankingPlayer }, now: Date): Promise<void> {
+    const reset = this.resolveLootReset();
+    if (reset === null) {
+      Utils.logMessage(' [warn] No loot reset declared for', this.server, '- loot past 2^32 is stored modulo 2^32');
+      return;
+    }
+    const recent = await this.readRecentLoot(lootWeekStart(now.getTime(), reset));
+    const players = Object.values(playerList);
+    const run = { at: now.getTime(), finishedAt: Date.now(), reset };
+    const results = unwrapLootRun(
+      players.map((player) => ({ raw: player.points, recent: recent.get(player.uid) ?? [] })),
+      run,
+    );
+    const counts: Record<LootReadingKind, number> = {
+      fresh: 0,
+      counted: 0,
+      wrapped: 0,
+      'early-reset': 0,
+      decreased: 0,
+      refused: 0,
+    };
+    const moves: LootMove[] = [];
+    for (const [index, player] of players.entries()) {
+      const unwrapped = results[index];
+      counts[unwrapped.kind]++;
+      if (unwrapped.kind !== 'fresh' && unwrapped.kind !== 'counted') {
+        const before = recent.get(player.uid)?.[0]?.point;
+        moves.push({ player: player.uid, kind: unwrapped.kind, before, after: unwrapped.point });
+      }
+      player.points = unwrapped.point;
+      this.playerLootAndMightPointHistoryList[player.uid.toString()][0] = unwrapped.point;
+    }
+    this.reportLootCounters(counts, moves);
+  }
+
+  private reportLootCounters(counts: Record<LootReadingKind, number>, moves: LootMove[]): void {
+    const { 'early-reset': earlyReset, ...others } = counts;
+    const record = {
+      event: 'loot_counters',
+      ...others,
+      earlyReset,
+      ...(moves.length > 0 ? { moves: moves.slice(0, GenericFetchAndSaveBackend.LOOT_MOVES_REPORTED) } : {}),
+    };
+    if (counts.refused === 0) {
+      Utils.logRecord('info', record, 'Loot counters unwrapped');
+      return;
+    }
+    Utils.logRecord(
+      'warn',
+      record,
+      `${counts.refused} players would have gained 2^32 at once: wraps refused, check the declared loot reset`,
+    );
   }
 
   private async collectLootForCategory(
@@ -3826,9 +3919,7 @@ export class GenericFetchAndSaveBackend {
   }
 
   private storeLootPlayer(player: any[], rank: number, playerList: { [key: string]: LootRankingPlayer }): void {
-    const OVERFLOW_OFFSET = 2 ** 32;
-    const rawPoints = Number(player[1]);
-    const points: number = rawPoints >= 0 ? rawPoints : rawPoints + OVERFLOW_OFFSET;
+    const points: number = lootCounterValue(Number(player[1]));
     const infos: any = player[2];
     const uid: number = infos['OID'];
     const mightPoints: number = infos['MP'];

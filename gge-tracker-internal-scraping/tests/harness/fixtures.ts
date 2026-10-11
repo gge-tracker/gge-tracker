@@ -10,7 +10,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-import { AllianceFixture, PlayerEventFixture, RankingFixture, RankingRow } from './fixture-types';
+import { AllianceFixture, LootStreamFixture, PlayerEventFixture, RankingFixture, RankingRow } from './fixture-types';
 
 const DIR = path.join(__dirname, '..', 'fixtures');
 
@@ -38,6 +38,7 @@ export const fixtures = {
   socketTimeout: (): RankingFixture => ranking('hgh-bloodcrow-lt58-lid1'),
   alliances: (): AllianceFixture => read<AllianceFixture>('ain-alliances'),
   aquamarine: (): PlayerEventFixture => read<PlayerEventFixture>('gpe-aquamarine'),
+  lootStreams: (): LootStreamFixture => read<LootStreamFixture>('loot-streams'),
 };
 
 export function alliancesById(): Map<number, Record<string, any>> {

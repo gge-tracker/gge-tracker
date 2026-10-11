@@ -2,6 +2,7 @@ import { NodeClickHouseClient } from '@clickhouse/client/dist/client';
 import * as pg from 'pg';
 import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
 import { ApiHelper } from '../helper/api-helper';
+import { LootReset, formatLootResetTime, lootResetOffsetHours } from '../helper/loot-reset';
 import { IApiToken, ILimitedApiToken, IServerDefinition, ServerFeature } from '../interfaces/interfaces';
 import { DatabaseManager } from './database.manager';
 import { ServersCatalog } from './servers-catalog';
@@ -136,12 +137,19 @@ export class ApiGgeTrackerManager extends DatabaseManager {
     return this.getActivatedServerValues().find((server) => server.outer_name === serverName) || null;
   }
 
-  public getServerResetOffsetByCode(code: string): number | null {
+  public getServerLootResetByCode(code: string): LootReset | null {
     const server = this.getServerByCode(code);
-    if (server && 'serverResetOffset' in server && typeof server.serverResetOffset === 'number') {
-      return server.serverResetOffset;
-    }
-    return null;
+    return server && 'lootReset' in server && server.lootReset ? server.lootReset : null;
+  }
+
+  public getServerResetOffsetByCode(code: string, at: number = Date.now()): number | null {
+    const reset = this.getServerLootResetByCode(code);
+    return reset ? lootResetOffsetHours(at, reset) : null;
+  }
+
+  public getServerLootResetInfoByCode(code: string): { timezone: string; local_time: string } | null {
+    const reset = this.getServerLootResetByCode(code);
+    return reset ? { timezone: reset.timezone, local_time: formatLootResetTime(reset) } : null;
   }
 
   /**
@@ -482,7 +490,7 @@ export class ApiGgeTrackerManager extends DatabaseManager {
             zoneId: definition.zoneId,
             code: definition.code,
             zone: definition.zone,
-            serverResetOffset: definition.resetOffset,
+            lootReset: definition.lootReset,
           }
         : {
             outer_name: definition.outerName,

@@ -1,3 +1,4 @@
+import { ApiLootReset } from '@ggetracker-services/loot-reset.utilities';
 import {
   ApexAxisChartSeries,
   ApexChart,
@@ -508,6 +509,7 @@ export interface ApiProfileServer {
   server_code: string;
   server_name: string | null;
   weekly_reset_offset_hours?: number | null;
+  loot_reset?: ApiLootReset | null;
 }
 
 export interface ApiAllianceMemberChange {
@@ -840,6 +842,8 @@ export interface ApiLastUpdates {
   dataset: { players: number | null; alliances: number | null; snapshot_at: string } | null;
   weekly_loot_reset: {
     offset_hours: number;
+    timezone?: string;
+    local_time?: string;
     last_reset_at: string;
     next_reset_at: string;
     seconds_until_next_reset: number;
@@ -889,6 +893,7 @@ export interface ApiPlayerStatsByPlayerId {
   points: ApiPlayerStats;
   glory_points_100: { top: number; point: number }[];
   timezone_offset: number | null;
+  loot_reset?: ApiLootReset | null;
 }
 
 export interface ApiPlayerStatsSummaryEvent {
@@ -921,12 +926,14 @@ export interface ApiPlayerStatsSummary {
   events: Record<ApiPlayerStatsType, ApiPlayerStatsSummaryEvent>;
   glory_points_100: { top: number; point: number }[];
   timezone_offset: number | null;
+  loot_reset?: ApiLootReset | null;
 }
 
 export interface ApiPlayerStatsByAllianceId {
   diffs: Record<ApiPlayerStatsType, number>;
   points: ApiPlayerStatsForAlliance;
   timezoneOffset: number | null;
+  lootReset?: ApiLootReset | null;
 }
 
 export interface ApiAllianceHealthResponse {

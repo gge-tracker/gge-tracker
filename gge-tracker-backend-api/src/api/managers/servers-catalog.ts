@@ -2,6 +2,7 @@ import { XMLParser, XMLValidator } from 'fast-xml-parser';
 import * as fs from 'node:fs';
 import path from 'node:path';
 import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
+import { LootReset, parseLootReset } from '../helper/loot-reset';
 import { ApiChannel, IServerApiSection, IServerDefinition, ServerKind } from '../interfaces/interfaces';
 
 /**
@@ -186,7 +187,7 @@ export class ServersCatalog {
       code: this.text(row.code),
       zone: this.text(row.zone),
       zoneId: this.number(row['zone-id']),
-      resetOffset: this.number(row['reset-offset']),
+      lootReset: this.toLootReset(row, problems),
       globalName: this.text(row['global-name']),
       trackedSince: this.text(row['tracked-since']),
       databases: { sql: this.text(databases.sql), olap: this.text(databases.olap) },
@@ -199,6 +200,17 @@ export class ServersCatalog {
           }
         : undefined,
     };
+  }
+
+  private toLootReset(row: Record<string, unknown>, problems: string[]): LootReset | undefined {
+    const timezone = this.text(row['reset-timezone']);
+    const time = this.text(row['reset-time']);
+    if (!timezone && !time) return undefined;
+    const reset = parseLootReset(timezone, time);
+    if (!reset) {
+      problems.push(`${this.text(row.name) || 'a server'} has an invalid reset: "${timezone}" "${time}"`);
+    }
+    return reset ?? undefined;
   }
 
   private toApiSection(section: unknown): IServerApiSection {

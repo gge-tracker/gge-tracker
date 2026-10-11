@@ -25,6 +25,7 @@ import {
   ApiPlayerSuggestion,
 } from '@ggetracker-interfaces/empire-ranking';
 import { FollowService, SubjectSnapshot, VisitSnapshot } from '@ggetracker-services/follow.service';
+import { lootResetOf } from '@ggetracker-services/loot-reset.utilities';
 import { ServerService } from '@ggetracker-services/server.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { Subject, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
@@ -302,7 +303,9 @@ export class HomeComponent extends GenericComponent implements OnInit, OnDestroy
         .map((entry) => this.toFollowedAlliance(entry, previous))
         .sort((a, b) => b.alliance.might_current - a.alliance.might_current),
     );
-    this.resetAt = profile ? nextWeeklyReset(now, profile.weekly_reset_offset_hours ?? null) : null;
+    this.resetAt = profile
+      ? nextWeeklyReset(now, lootResetOf(profile.loot_reset, profile.weekly_reset_offset_hours))
+      : null;
     this.refreshCountdown();
     this.loading.set(false);
     this.cdr.markForCheck();
@@ -368,14 +371,14 @@ export class HomeComponent extends GenericComponent implements OnInit, OnDestroy
     previous: VisitSnapshot | null,
     now: number,
   ): MeView {
-    const resetOffset = profile.weekly_reset_offset_hours ?? null;
+    const reset = lootResetOf(profile.loot_reset, profile.weekly_reset_offset_hours);
     const mightReadings = readingsOf(series?.points[ApiPlayerStatsType.might]);
     const lootReadings = readingsOf(series?.points[ApiPlayerStatsType.loot]);
     const might = profile.player.might_current;
     const latestMight = mightReadings.at(-1) ?? null;
     const mightWeekAgo = latestMight ? valueAt(mightReadings, latestMight.at - MS_PER_WEEK) : null;
     const mightDayAgo = latestMight ? valueAt(mightReadings, latestMight.at - MS_PER_DAY) : null;
-    const lootWeek = lootWeekOf(lootReadings, resetOffset, now);
+    const lootWeek = lootWeekOf(lootReadings, reset, now);
     const lastWeek = lootWeek.sameTimeLastWeek;
     const paceHasBase = lastWeek !== null && lastWeek > (lootWeek.lastWeekTotal ?? 0) * MIN_PACE_BASE_SHARE;
     const rank = profile.rank?.might_current ?? null;

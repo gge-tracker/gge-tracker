@@ -15,7 +15,8 @@ type UtilsLogger =
   | 'logWarning'
   | 'logPersistentFailure'
   | 'flushRunSummary'
-  | 'logMessage';
+  | 'logMessage'
+  | 'logRecord';
 
 export interface LogSpy {
   calls: Record<UtilsLogger, unknown[][]>;
@@ -30,6 +31,7 @@ export function spyOnLogs(): LogSpy {
     'logPersistentFailure',
     'flushRunSummary',
     'logMessage',
+    'logRecord',
   ];
   const calls = Object.fromEntries(names.map((name) => [name, []])) as unknown as Record<UtilsLogger, unknown[][]>;
   const originals = names.map((name) => [name, (Utils as any)[name]] as const);

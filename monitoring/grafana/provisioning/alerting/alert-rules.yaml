@@ -122,3 +122,183 @@ groups:
           runs: '{{ $values.A }}'
           servers: '{{ $values.B }}'
           errors: '{{ $values.C }}'
+      - uid: loot-wraps-refused
+        title: Loot wraps refused
+        condition: B
+        for: 0m
+        noDataState: OK
+        execErrState: OK
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: loki
+            model:
+              refId: A
+              editorMode: code
+              queryType: instant
+              expr: 'sum by (server) (count_over_time({service="internal-scraping", event="loot_counters", level="warn"}[5m]))'
+          - refId: B
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+                  operator: { type: and }
+                  query: { params: [B] }
+                  reducer: { type: last, params: [] }
+                  type: threshold
+        labels:
+          severity: critical
+          notify: discord
+        annotations:
+          summary: '{{ $labels.server }}: more than 50 players would have gained 2^32 in one run, nothing was added. Check its declared loot reset.'
+      - uid: loot-decrease
+        title: Loot decreased mid-week
+        condition: B
+        for: 0m
+        noDataState: OK
+        execErrState: OK
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: loki
+            model:
+              refId: A
+              editorMode: code
+              queryType: instant
+              expr: 'sum by (server) (sum_over_time({service="internal-scraping", event="loot_counters"} | json decreased="decreased" | unwrap decreased [5m]))'
+          - refId: B
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+                  operator: { type: and }
+                  query: { params: [B] }
+                  reducer: { type: last, params: [] }
+                  type: threshold
+        labels:
+          severity: warning
+          notify: discord
+        annotations:
+          summary: '{{ $labels.server }}: {{ $values.A }} player(s) lost loot points mid-week. See the Loot counters dashboard.'
+      - uid: loot-reset-mismatch
+        title: Loot reset not where declared
+        condition: B
+        for: 0m
+        noDataState: OK
+        execErrState: OK
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: loki
+            model:
+              refId: A
+              editorMode: code
+              queryType: instant
+              expr: 'sum by (server, msg) (count_over_time({service="internal-scraping", event="loot_reset_check", level="warn"} | json msg="msg" [5m]))'
+          - refId: B
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+                  operator: { type: and }
+                  query: { params: [B] }
+                  reducer: { type: last, params: [] }
+                  type: threshold
+        labels:
+          severity: critical
+          notify: discord
+        annotations:
+          summary: '{{ $labels.msg }}'
+      - uid: loot-reset-check-missing
+        title: Loot reset check not running
+        condition: B
+        for: 10m
+        noDataState: OK
+        execErrState: OK
+        data:
+          - refId: A
+            relativeTimeRange: { from: 93600, to: 0 }
+            datasourceUid: loki
+            model:
+              refId: A
+              editorMode: code
+              queryType: instant
+              expr: 'sum(count_over_time({service="internal-scraping", event="loot_reset_check_summary", level="info"}[26h])) or vector(0)'
+          - refId: B
+            relativeTimeRange: { from: 93600, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: lt, params: [1] }
+                  operator: { type: and }
+                  query: { params: [B] }
+                  reducer: { type: last, params: [] }
+                  type: threshold
+        labels:
+          severity: critical
+          notify: discord
+        annotations:
+          summary: 'The daily loot reset check has not completed in 26 hours: is its cron installed?'
+      - uid: loot-hourly-jump
+        title: Loot jump over 3.5 billion
+        condition: C
+        for: 0m
+        noDataState: OK
+        execErrState: OK
+        data:
+          - refId: A
+            relativeTimeRange: { from: 10800, to: 0 }
+            datasourceUid: clickhouse
+            model:
+              refId: A
+              editorType: sql
+              format: 1
+              queryType: table
+              rawSql: |-
+                SELECT replaceRegexpOne(_db, '^(empire_ranking_|ggetracker_)', '') AS server, toFloat64(count()) AS jumps
+                FROM (
+                  SELECT _database AS _db, point - lagInFrame(point) OVER w AS gain, dateDiff('minute', lagInFrame(created_at) OVER w, created_at) AS minutes
+                  FROM merge(REGEXP('^(empire_ranking|ggetracker_)'), '^player_loot_history$')
+                  WHERE created_at >= now() - INTERVAL 3 HOUR
+                  WINDOW w AS (PARTITION BY _database, player_id ORDER BY created_at ROWS BETWEEN 1 PRECEDING AND CURRENT ROW))
+                WHERE minutes BETWEEN 1 AND 70 AND gain > 3500000000
+                GROUP BY server
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last, params: [] }
+                  type: threshold
+        labels:
+          severity: critical
+          notify: discord
+        annotations:
+          summary: '{{ $labels.server }}: a stored loot score rose by more than 3.5 billion in one hour (the real record is 2.62 billion). The tracker probably added 2^32 by mistake.'

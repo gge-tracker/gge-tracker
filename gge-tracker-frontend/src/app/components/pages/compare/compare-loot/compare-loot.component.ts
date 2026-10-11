@@ -7,6 +7,7 @@ import {
   ChartOptions,
 } from '@ggetracker-interfaces/empire-ranking';
 import { ApiRestService } from '@ggetracker-services/api-rest.service';
+import { LootReset, lootResetOf } from '@ggetracker-services/loot-reset.utilities';
 import { LanguageService } from '@ggetracker-services/language.service';
 import { RankingService } from '@ggetracker-services/ranking.service';
 import { TranslateService } from '@ngx-translate/core';
@@ -31,7 +32,7 @@ type LootView = 'current' | 'previous' | 'scores';
 
 interface PlayerLoot {
   points: ApiGenericData[];
-  resetOffset: number | null;
+  reset: LootReset;
   occurrences: ApiPlayerEventOccurrence[];
 }
 
@@ -108,7 +109,7 @@ export class CompareLootComponent {
     if (!occurrences.success) throw new Error(occurrences.error);
     return {
       points: series.data.points[ApiPlayerStatsType.loot] ?? [],
-      resetOffset: series.data.timezone_offset,
+      reset: lootResetOf(series.data.loot_reset, series.data.timezone_offset),
       occurrences: occurrences.data.occurrences,
     };
   }
@@ -116,10 +117,10 @@ export class CompareLootComponent {
   private buildRaceOptions(loot: [PlayerLoot, PlayerLoot], view: LootView): ChartOptions | null {
     const now = Date.now();
     const races = loot.map((player) => {
-      const currentWeekStart = weekStartOf(now, player.resetOffset);
+      const currentWeekStart = weekStartOf(now, player.reset);
       return view === 'current'
         ? buildWeekRace(player.points, currentWeekStart, now)
-        : buildWeekRace(player.points, currentWeekStart - HOURS_PER_WEEK * MS_PER_HOUR, currentWeekStart - 1);
+        : buildWeekRace(player.points, weekStartOf(currentWeekStart - 1, player.reset), currentWeekStart - 1);
     });
     if (races.every((race) => race.every((value) => !value))) return null;
 
@@ -172,7 +173,7 @@ export class CompareLootComponent {
       [0, 1].map((side) => ({ name: names[side], data: rows.map((row) => row.scores[side]) })),
       this.chartLocale(),
     );
-    const currentMonday = mondayKeyOf(weekStartOf(Date.now(), loot[0].resetOffset));
+    const currentMonday = mondayKeyOf(weekStartOf(Date.now(), loot[0].reset));
     const isCurrentWeek = (row: WeeklyScoreRow): boolean => row.mondayKey === currentMonday;
     options.chart.type = 'bar';
     options.plotOptions = { bar: { columnWidth: '72%', borderRadius: 3 } };

@@ -138,7 +138,8 @@ export abstract class ApiAlliances implements ApiHelper {
           const result = {
             ggetracker_server_name: ggeTrackerData.outer_name,
             ggetracker_server_id: ggeTrackerData.code,
-            ggetracker_timezone_offset: ggeTrackerData.serverResetOffset,
+            ggetracker_timezone_offset: ApiHelper.ggeTrackerManager.getServerResetOffsetByCode(code),
+            ggetracker_loot_reset: ApiHelper.ggeTrackerManager.getServerLootResetInfoByCode(code),
             ggetracker_zone: ggeTrackerData.zone,
             alliance_name: results.rows[0].alliance_name,
             is_island_king: results.rows[0].is_island_king,
