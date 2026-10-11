@@ -38,30 +38,30 @@
               </td>
               <!-- Old player name -->
               <td class="col-name old-value">
-                <span class="mobile-only">{{ 'Ancien nom' | translate }}:&nbsp;</span>
+                <span class="cell-label">{{ 'Ancien nom' | translate }}</span>
                 <span class="name">{{ movement.oldPlayerName }}</span>
               </td>
               <!-- New player name -->
               <td class="col-name new-value">
-                <span class="mobile-only">{{ 'Nouveau nom' | translate }}:&nbsp;</span>
+                <span class="cell-label">{{ 'Nouveau nom' | translate }}</span>
                 <span class="name">{{ movement.updatedPlayerName }}</span>
               </td>
               <!-- Might -->
               @if (currentViewType === 'players') {
                 <td>
-                  <span class="mobile-only">{{ 'Puissance' | translate }}:&nbsp;</span>
+                  <span class="cell-label">{{ 'Puissance' | translate }}</span>
                   {{ (movement.might ? movement.might : 0) | formatNumber }}
                 </td>
               }
               <!-- Alliance -->
               @if (currentViewType === 'players') {
                 <td>
-                  <span class="mobile-only">{{ 'Alliance' | translate }}:&nbsp;</span>
+                  <span class="cell-label">{{ 'Alliance' | translate }}</span>
                   {{ movement.alliance ?? '-' }}
                 </td>
               }
               <!-- Movement date-->
-              <td class="timeline-date">
+              <td class="timeline-date col-footer">
                 {{ movement.date | date: ('Date_1' | translate)}}
               </td>
             </tr>

@@ -64,7 +64,7 @@
           <td class="col-metric px-2" [title]="player.might_all_time | formatNumber:'visual'">
             <div class="metric">
               <div class="metric-header">
-                <span class="metric-current"><span class="mobile-only">{{ 'Puissance' | translate }}:&nbsp;</span>{{ player.might_current | formatNumber }}</span>
+                <span class="metric-current"><span class="cell-label">{{ 'Puissance' | translate }}</span>{{ player.might_current | formatNumber }}</span>
                 <span class="metric-max">{{ player.might_all_time | formatNumber }}</span>
               </div>
               <div class="metric-bar-bg">
@@ -75,7 +75,7 @@
           <td class="col-metric px-2" [title]="player.loot_all_time | formatNumber:'visual'">
             <div class="metric">
               <div class="metric-header">
-                <span class="metric-current"><span class="mobile-only">{{ 'Pillage hebdomadaire' | translate }}:&nbsp;</span>{{ player.loot_current | formatNumber }}</span>
+                <span class="metric-current"><span class="cell-label">{{ 'Pillage hebdomadaire' | translate }}</span>{{ player.loot_current | formatNumber }}</span>
                 <span class="metric-max">{{ player.loot_all_time | formatNumber }}</span>
               </div>
               <div class="metric-bar-bg">
@@ -86,7 +86,7 @@
           <td class="col-metric px-2" [title]="player.highest_fame | formatNumber:'visual'">
             <div class="metric">
               <div class="metric-header">
-                <span class="metric-current"><span class="mobile-only">{{ 'Points de gloire' | translate }}:&nbsp;</span>{{ player.current_fame | formatNumber }}</span>
+                <span class="metric-current"><span class="cell-label">{{ 'Points de gloire' | translate }}</span>{{ player.current_fame | formatNumber }}</span>
                 <span class="metric-max">{{ player.highest_fame | formatNumber }}</span>
               </div>
               <div class="metric-bar-bg">

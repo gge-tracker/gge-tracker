@@ -67,7 +67,6 @@
                         {{ player.server }}
                       </td>
                       <td class="col-level">
-                        <span class="mobile-only">{{ 'Niveau' | translate }}:&nbsp;</span>
                         <div class="level-box" [ngClass]="{ 'level-legendary': player.legendary_level }">
                           <span class="level-main">{{player.level}}</span>
                           @if (player.legendary_level) {

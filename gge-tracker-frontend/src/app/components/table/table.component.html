@@ -1,4 +1,20 @@
 <div class="row" id="table-component">
+  @if (mobileSortHeaders().length > 0) {
+    <div class="col-12 mobile-sort pb-2" role="toolbar" [attr.aria-label]="'Trier' | translate">
+      @for (header of mobileSortHeaders(); track header[0]) {
+        <button type="button" class="sort-chip" [class.sort-chip--on]="sort() === header[0]"
+          [attr.aria-pressed]="sort() === header[0]" (click)="sortAlliances(header[0])">
+          @if (header[2]) {
+            <img [src]="header[2]" alt="" height="18" />
+          }
+          <span>{{ header[1] | translate }}</span>
+          @if (sort() === header[0]) {
+            <lucide-icon class="lucide-icon" [img]="reverse() ? ChevronsDown : ChevronsUp" [size]="14"></lucide-icon>
+          }
+        </button>
+      }
+    </div>
+  }
   <div class="col-12 overflow-auto">
     <table class="table-custom position-relative">
       <ng-template #sortTemplate let-currentSort="sort" let-currentReverse="reverse">

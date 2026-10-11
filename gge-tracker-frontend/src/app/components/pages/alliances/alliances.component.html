@@ -59,7 +59,7 @@
               <td class="col-metric px-2" [title]="alliance.playerCount | formatNumber:'visual'">
                 <div class="metric">
                   <div class="metric-header">
-                    <span class="metric-current"><span class="mobile-only">{{ 'Nombre de joueurs' | translate }}:&nbsp;</span>{{ alliance.playerCount | formatNumber }}</span>
+                    <span class="metric-current"><span class="cell-label">{{ 'Nombre de joueurs' | translate }}</span>{{ alliance.playerCount | formatNumber }}</span>
                     <span class="metric-max">65</span>
                   </div>
                   <div class="metric-bar-bg">
@@ -71,7 +71,7 @@
               <td class="col-metric px-2" [title]="alliance.mightAllTime | formatNumber:'visual'">
                 <div class="metric">
                   <div class="metric-header">
-                    <span class="metric-current"><span class="mobile-only">{{ 'Puissance' | translate }}:&nbsp;</span>{{ alliance.mightCurrent | formatNumber }}</span>
+                    <span class="metric-current"><span class="cell-label">{{ 'Puissance' | translate }}</span>{{ alliance.mightCurrent | formatNumber }}</span>
                     <span class="metric-max">{{ alliance.mightAllTime | formatNumber }}</span>
                   </div>
                   <div class="metric-bar-bg">
@@ -84,7 +84,7 @@
               <td class="col-metric px-2" [title]="alliance.lootAllTime | formatNumber:'visual'">
                 <div class="metric">
                   <div class="metric-header">
-                    <span class="metric-current"><span class="mobile-only">{{ 'Pillage hebdomadaire' | translate }}:&nbsp;</span>{{ alliance.lootCurrent | formatNumber }}</span>
+                    <span class="metric-current"><span class="cell-label">{{ 'Pillage hebdomadaire' | translate }}</span>{{ alliance.lootCurrent | formatNumber }}</span>
                     <span class="metric-max">{{ alliance.lootAllTime | formatNumber }}</span>
                   </div>
                   <div class="metric-bar-bg">
@@ -97,7 +97,7 @@
               <td class="col-metric px-2" [title]="alliance.highestFame | formatNumber:'visual'">
                 <div class="metric">
                   <div class="metric-header">
-                    <span class="metric-current"><span class="mobile-only">{{ 'Points de gloire' | translate }}:&nbsp;</span>{{ alliance.currentFame | formatNumber }}</span>
+                    <span class="metric-current"><span class="cell-label">{{ 'Points de gloire' | translate }}</span>{{ alliance.currentFame | formatNumber }}</span>
                     <span class="metric-max">{{ alliance.highestFame | formatNumber }}</span>
                   </div>
                   <div class="metric-bar-bg">
@@ -110,7 +110,7 @@
               <td class="col-metric px-2" [title]="alliance.activePlayerCount + ' / ' + alliance.playerCount + ' (' + ((alliance.activePlayerCount / alliance.playerCount) * 100 | number:'1.0-2') + '%)'">
                 <div class="metric">
                   <div class="metric-header">
-                    <span class="metric-current"><span class="mobile-only">{{ 'Nombre de joueurs actifs' | translate }}:&nbsp;</span>{{ alliance.activePlayerCount }} / {{ alliance.playerCount }}</span>
+                    <span class="metric-current"><span class="cell-label">{{ 'Nombre de joueurs actifs' | translate }}</span>{{ alliance.activePlayerCount }} / {{ alliance.playerCount }}</span>
                     <span class="metric-max">
                       {{ (alliance.activePlayerCount / alliance.playerCount) * 100 | number:'1.0-2' }}%
                     </span>
@@ -121,7 +121,7 @@
                 </div>
               </td>
               <!-- Actions -->
-              <td class="text-end">
+              <td class="col-actions">
                 <div class="d-flex justify-content-center">
                   <a [routerLink]="['/', 'map', alliance.id]">
                     <img src="/assets/icon_world.png" [alt]="'Carte d\'alliance' | translate"

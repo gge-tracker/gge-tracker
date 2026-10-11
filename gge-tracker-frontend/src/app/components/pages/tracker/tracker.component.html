@@ -100,7 +100,7 @@
                 <span class="mobile-only">#</span>
                 {{ dungeon.rank }}
               </td>
-              <td>
+              <td class="col-name">
                 <div class="d-flex justify-content-center">
                   <div>
                     <img [src]="dungeon.image" alt="{{ dungeon.kid }}" class="img-fluid" width="30">
@@ -109,7 +109,7 @@
                 </div>
               </td>
               <td>
-                <span class="mobile-only">{{ 'Position' | translate }}:&nbsp;</span> {{ dungeon.position }}
+                <span class="cell-label">{{ 'Position' | translate }}</span>{{ dungeon.position }}
               </td>
               @if (headers.length === 6) {
               <td>

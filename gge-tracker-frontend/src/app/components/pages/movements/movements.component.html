@@ -35,9 +35,9 @@
                 <span class="mobile-only">#</span>
                 {{ movement.rank }}
               </td>
-              <td>{{ movement.player }}</td>
+              <td class="col-name"><span class="name">{{ movement.player }}</span></td>
               <td class="text-center">
-                <span class="mobile-only">{{ 'Alliance' | translate }}:&nbsp;</span>
+                <span class="cell-label">{{ 'Alliance' | translate }}</span>
                 {{ movement.alliance ?? '-' }}
               </td>
               <td class="col-level text-center">
@@ -52,18 +52,18 @@
                 </div>
               </td>
               <td>
-                <span class="mobile-only text-center">{{ 'Puissance' | translate }}:&nbsp;</span>
+                <span class="cell-label">{{ 'Puissance' | translate }}</span>
                 {{ (movement.might ? movement.might : 0) | formatNumber }}
               </td>
-              <td><img [src]="'/assets/castle' + movement.type + '.png'"
+              <td class="col-icon"><img [src]="'/assets/castle' + movement.type + '.png'"
               [title]="getCastleType(movement.type) | translate" [alt]="getCastleType(movement.type)"></td>
               <td class="mobile-only-reverse text-center"
               [innerHTML]="getDescription(movement.type, movement.positionOld, movement.positionNew).image"></td>
-              <td>{{ ((getDescription(movement.type, movement.positionOld, movement.positionNew).keyword) | translate) + '
+              <td class="col-grow">{{ ((getDescription(movement.type, movement.positionOld, movement.positionNew).keyword) | translate) + '
                 '
               + getDescription(movement.type, movement.positionOld, movement.positionNew).description }}</td>
-              <td class="text-center" [title]="movement.date | date">{{ movement.date | date: ('Date_1' | translate)}}</td>
-              <td class="text-end">
+              <td class="col-footer text-center" [title]="movement.date | date">{{ movement.date | date: ('Date_1' | translate)}}</td>
+              <td class="col-actions">
                 <div class="d-flex justify-content-center">
                   <a [routerLink]="['/', 'players']" [queryParams]="{ player: movement.player}">
                     <img src="/assets/icon_search.png" [alt]="'Voir le joueur' | translate"

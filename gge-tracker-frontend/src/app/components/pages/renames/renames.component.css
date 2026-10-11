@@ -24,9 +24,18 @@
   padding-left: 10px;
 }
 
-@media (max-width: 900px) {
-  :host ::ng-deep .col-name {
-    width: 100% !important;
-    padding: 2px 0 !important;
+@container tracker-table (max-width: 899.98px) {
+  ::ng-deep .renames #table-component .table-custom td.col-name {
+    border-radius: 8px;
+    display: block;
+    flex: 1 1 calc(50% - 30px);
+    padding: 5px 8px !important;
+  }
+
+  ::ng-deep .renames #table-component .table-custom td.col-name .name {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }

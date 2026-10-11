@@ -108,7 +108,7 @@
                   <span class="mobile-only">#</span>
                   {{ fort.rank }}
                 </td>
-                <td>
+                <td class="col-name">
                   <div class="d-flex align-items-center justify-content-center gap-2">
                     <img [src]="fort.image" [alt]="'Forteresses des tempêtes' | translate" class="storm-thumb" />
                     <div class="text-start">
@@ -131,7 +131,7 @@
                   </div>
                 </td>
                 <td>
-                  <span class="mobile-only">{{ 'Position' | translate }}:&nbsp;</span> {{ fort.position }}
+                  <span class="cell-label">{{ 'Position' | translate }}</span>{{ fort.position }}
                 </td>
                 @if (isDistanceShown && headers.length > 5) {
                 <td>{{ fort.distance !== null && fort.distance !== undefined ? fort.distance + 'm' : '?' }}</td>
@@ -209,7 +209,7 @@
                   <span class="mobile-only">#</span>
                   {{ isle.rank }}
                 </td>
-                <td>
+                <td class="col-name">
                   <div class="d-flex align-items-center justify-content-center gap-2">
                     <img [src]="isle.image" [alt]="'Îles de ressources' | translate" class="storm-thumb" />
                     <div class="text-start">
@@ -224,7 +224,7 @@
                   </div>
                 </td>
                 <td>
-                  <span class="mobile-only">{{ 'Position' | translate }}:&nbsp;</span> {{ isle.position }}
+                  <span class="cell-label">{{ 'Position' | translate }}</span>{{ isle.position }}
                 </td>
                 @if (isDistanceShown) {
                 <td>{{ isle.distance !== null && isle.distance !== undefined ? isle.distance + 'm' : '?' }}</td>

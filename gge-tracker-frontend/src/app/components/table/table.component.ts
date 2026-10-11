@@ -27,6 +27,12 @@ export class TableComponent {
   public readonly ChevronsUp = ChevronsUp;
   public readonly ChevronsDown = ChevronsDown;
 
+  public mobileSortHeaders(): [string, string, string?, boolean?][] {
+    if (!this.sort()) return [];
+    const sortable = this.headers().filter((header) => header[0] && header[1] && !header[3]);
+    return sortable.length > 1 ? sortable : [];
+  }
+
   public sortAlliances(sort: string): void {
     this.sortOutput.emit(sort);
   }

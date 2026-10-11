@@ -67,7 +67,7 @@
                   @if (hasAllianceColumn) {
                     <td>{{ player.alliance_name || '-' }}</td>
                   }
-                  <td class="text-end">
+                  <td class="col-actions">
                     @if (player.player_id) {
                       <div class="d-flex justify-content-end">
                         <a [routerLink]="['/', 'player', player.player_id]" class="gge-btn search py-1">
