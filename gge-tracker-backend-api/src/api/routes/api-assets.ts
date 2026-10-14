@@ -105,7 +105,7 @@ export abstract class ApiAssets implements ApiHelper {
        * Check Redis cache for items data
        * --------------------------------- */
       const languageCacheBuildVersion = await ApiHelper.getGgeBuildVersion();
-      const cachedKey = `assets_items_${languageCacheBuildVersion}`;
+      const cachedKey = `assets_items_v2_${languageCacheBuildVersion}`;
       if (ApiAssets.applyAssetCaching(request, response, cachedKey)) return;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
@@ -121,6 +121,7 @@ export abstract class ApiAssets implements ApiHelper {
         'versionInfo',
         'effects',
         'effecttypes',
+        'effectCaps',
         'buildings',
         'constructionItems',
         'worldmapskins',

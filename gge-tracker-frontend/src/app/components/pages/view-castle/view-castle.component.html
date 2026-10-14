@@ -4,7 +4,7 @@
   </div>
 }
 <div class="container-fluid">
-  <div class="container mt-4">
+  <div class="mt-4" [class.container]="!(canvasReady && cid)" [class.castle-workspace]="canvasReady && cid">
     @if (!isInLoading && !canvasReady && !cid) {
       <div class="mt-1 castle-selection">
         <app-search-form #searchForm [formFilters]="null" [isInLoading]="isInLoading"
@@ -90,107 +90,53 @@
           @if (!isInLoading) {
             @if (canvasReady && cid) {
               <div class="castle-panel">
-
-                <div class="castle-panel-header">
-                  <button class="btn-ghost btn-back panel-back" (click)="onBackButtonClick()"
-                    [attr.aria-label]="'Retour' | translate">
-                    <i class="fa-solid fa-arrow-left"></i>
-                    <span class="d-none d-sm-inline ms-1">{{ 'Retour' | translate }}</span>
+                <header class="castle-head">
+                  <button type="button" class="castle-back" (click)="onBackButtonClick()" [attr.aria-label]="'Retour' | translate">
+                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                    <span class="castle-back-label">{{ 'Retour' | translate }}</span>
                   </button>
 
-                  <div class="castle-identity">
-                    <i class="fa-solid fa-user-helmet-safety me-1 identity-icon" aria-hidden="true"></i>
-                    <span class="identity-player">{{ calculatedCastleProperties.playerName }}</span>
-                    <span class="identity-sep">·</span>
-                    <lucide-angular [img]="Castle" [size]="13" class="text-light me-1 flex-shrink-0"></lucide-angular>
-                    <span class="identity-castle">{{ calculatedCastleProperties.castleName }}</span>
-                    <span class="castle-type-pill ms-2 d-none d-md-inline">{{ calculatedCastleProperties.castleType | translate }}</span>
-                    <span class="castle-level-pill ms-1 d-none d-lg-inline">{{ 'Niveau' | translate }} {{ calculatedCastleProperties.level }}</span>
+                  <div class="castle-title">
+                    <h1 class="castle-title-name">
+                      <lucide-angular [img]="Castle" [size]="18" class="castle-title-icon" aria-hidden="true"></lucide-angular>
+                      <span>{{ calculatedCastleProperties.castleName }}</span>
+                    </h1>
+                    <div class="castle-title-meta">
+                      <span class="meta-player"><i class="fa-solid fa-user-helmet-safety" aria-hidden="true"></i>{{ calculatedCastleProperties.playerName }}</span>
+                      <span class="castle-type-pill">{{ calculatedCastleProperties.castleType | translate }}</span>
+                      <span class="castle-level-pill">{{ 'Niveau' | translate }} {{ calculatedCastleProperties.level }}</span>
+                      <span class="castle-level-pill" [title]="'Coordonnées' | translate">
+                        <i class="fa-solid fa-location-dot me-1" aria-hidden="true"></i>{{ calculatedCastleProperties.positionX }}&thinsp;;&thinsp;{{ calculatedCastleProperties.positionY }}
+                      </span>
+                    </div>
                   </div>
 
-                  <div class="view-switcher" role="tablist">
-                    <button class="vsw-btn" role="tab"
-                      [class.active]="activeView === 'canvas'"
-                      (click)="activeView = 'canvas'"
-                      [attr.aria-selected]="activeView === 'canvas'"
-                      [title]="'Carte' | translate">
-                      <i class="fa-solid fa-map"></i>
-                      <span class="d-none d-sm-inline ms-1">{{ 'Carte' | translate }}</span>
-                    </button>
-                    <button class="vsw-btn" role="tab"
-                      [class.active]="activeView === 'grid'"
-                      (click)="activeView = 'grid'"
-                      [attr.aria-selected]="activeView === 'grid'"
-                      [title]="'Liste des bâtiments' | translate">
-                      <i class="fa-solid fa-border-all"></i>
-                      <span class="d-none d-sm-inline ms-1">{{ 'Liste des bâtiments' | translate }}</span>
-                    </button>
-                  </div>
-                </div>
+                  <nav class="view-switcher" role="tablist" [attr.aria-label]="'Vue d\'ensemble' | translate">
+                    @for (view of castleViews; track view.key) {
+                      <button type="button" class="vsw-btn" role="tab"
+                        [class.active]="activeView === view.key"
+                        [attr.aria-selected]="activeView === view.key"
+                        (click)="setActiveView(view.key)">
+                        <i class="fa-solid {{ view.icon }}" aria-hidden="true"></i>
+                        <span>{{ view.label | translate }}</span>
+                      </button>
+                    }
+                  </nav>
+                </header>
 
-                <div class="stats-strip">
-                  <div class="stat-chip" [title]="'Coordonnées' | translate">
-                    <img src="/assets/compass.png" class="stat-chip-img" alt="Coordinates icon">
-                    <div class="stat-chip-body">
-                      <span class="stat-chip-label">{{ 'Coordonnées' | translate }}</span>
-                      <span class="stat-chip-val">{{ calculatedCastleProperties.positionX }}&thinsp;;&thinsp;{{ calculatedCastleProperties.positionY }}</span>
-                    </div>
-                  </div>
-                  <div class="stat-chip" [title]="'Puissance' | translate">
-                    <img src="/assets/might.png" class="stat-chip-img" alt="Might icon">
-                    <div class="stat-chip-body">
-                      <span class="stat-chip-label">{{ 'Puissance' | translate }}</span>
-                      <span class="stat-chip-val">{{ formatValue(calculatedCastleProperties.sumMight) }}</span>
-                    </div>
-                  </div>
-                  <div class="stat-chip" [title]="'Ordre public' | translate">
-                    <img src="/assets/publicOrder.png" class="stat-chip-img" alt="Public order icon">
-                    <div class="stat-chip-body">
-                      <span class="stat-chip-label">{{ 'Ordre public' | translate }}</span>
-                      <span class="stat-chip-val">{{ formatValue(calculatedCastleProperties.publicOrder.base + calculatedCastleProperties.publicOrder.effects) }}</span>
-                    </div>
-                  </div>
-                  <div class="stat-chip" [class.stat-chip-danger]="calculatedCastleProperties.nbFire > 0"
-                    [title]="'Bâtiments en feu' | translate">
-                    <img src="/assets/fire2.png" class="stat-chip-img" alt="Fire icon">
-                    <div class="stat-chip-body">
-                      <span class="stat-chip-label">{{ 'Bâtiments en feu' | translate }}</span>
-                      <span class="stat-chip-val">{{ calculatedCastleProperties.nbFire }}</span>
-                    </div>
-                  </div>
-                  <div class="stat-chip" [title]="'Zones occupées' | translate">
-                    <img src="/assets/construction.webp" class="stat-chip-img" alt="Occupied tiles icon">
-                    <div class="stat-chip-body">
-                      <span class="stat-chip-label">{{ 'Zones occupées' | translate }}</span>
-                      <span class="stat-chip-val">{{ formatValue(calculatedCastleProperties.placeOccupied) }}</span>
-                    </div>
-                  </div>
-                  <div class="stat-chip" [title]="'Extensions du château' | translate">
-                    <img src="/assets/expansion.webp" class="stat-chip-img" alt="Castle extensions icon">
-                    <div class="stat-chip-body">
-                      <span class="stat-chip-label">{{ 'Extensions du château' | translate }}</span>
-                      <span class="stat-chip-val">{{ calculatedCastleProperties.nbFloors }}/{{ calculatedCastleProperties.maxFloors }}</span>
-                    </div>
-                  </div>
-                  <div class="stat-chip" [title]="'Soldats sur les murs' | translate">
-                    <img src="/assets/unit_walls.webp" class="stat-chip-img" alt="Soldiers on walls icon">
-                    <div class="stat-chip-body">
-                      <span class="stat-chip-label">{{ 'Soldats sur les murs' | translate }}</span>
-                      <span class="stat-chip-val">{{ formatValue(calculatedCastleProperties.wall.base + (calculatedCastleProperties.wall.base * calculatedCastleProperties.wall.effects / 100)) }}</span>
-                    </div>
-                  </div>
-                  <div class="stat-chip" [title]="'Détection' | translate">
-                    <img src="/assets/detection.webp" class="stat-chip-img" alt="Sight radius icon">
-                    <div class="stat-chip-body">
-                      <span class="stat-chip-label">{{ 'Détection' | translate }}</span>
-                      <span class="stat-chip-val">+{{ formatValue(calculatedCastleProperties.sightRadius) }}%</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="castle-split-body" [class.gallery-mode]="activeView === 'grid'">
-
-                  <div class="castle-split-map">
+                <div class="castle-body" [class.view-gallery]="activeView === 'grid'">
+                  <section class="castle-stage" [attr.aria-label]="'Carte' | translate">
+                    @if ((activeView === 'iso' || activeView === 'plan') && isoScene) {
+                      <app-castle-iso-view
+                        [scene]="isoScene"
+                        [mode]="activeView === 'plan' ? 'plan' : 'render'"
+                        [highlighted]="isoHighlight"
+                        [describe]="describeIsoBuilding"
+                        [categoryLabel]="isoCategoryLabel"
+                        [fileName]="isoFileName"
+                        (selectBuilding)="onIsoBuildingSelected($event)">
+                      </app-castle-iso-view>
+                    }
                     <div class="canvas-zone" [hidden]="activeView !== 'canvas'">
                       <div class="canvas-wrapper">
                         <canvas #mapCanvas [width]="canvasWidth" [height]="canvasHeight"
@@ -289,18 +235,63 @@
                         }
                       </div>
                     </div>
-                  </div>
+                  </section>
 
-                  <div class="castle-split-table table-wrapper dense" [hidden]="activeView === 'grid'">
-                    <div class="panel-title-row px-3 pt-3 pb-2 d-flex align-items-center gap-2">
-                      <i class="fa-solid fa-table-list" aria-hidden="true"></i>
-                      <span class="panel-title-text">{{ 'Tous les bâtiments' | translate }}</span>
-                      <span class="bsh-count ms-1">{{ visibleBuildings.length }}<span class="bsh-total">/{{ allVisibleBuildings.length }}</span></span>
-                      <span class="ms-auto panel-hint d-none d-lg-flex align-items-center gap-1">
-                        <i class="fa-solid fa-hand-pointer me-1"></i>{{ 'Cliquer pour afficher les détails' | translate }}
-                      </span>
+                  <aside class="castle-side">
+                    <div class="side-tabs" role="tablist">
+                      <button type="button" class="side-tab" role="tab"
+                        [class.active]="sideTab === 'overview'" [attr.aria-selected]="sideTab === 'overview'"
+                        (click)="sideTab = 'overview'">
+                        <i class="fa-solid fa-chart-simple" aria-hidden="true"></i>
+                        <span>{{ 'Vue d\'ensemble' | translate }}</span>
+                      </button>
+                      <button type="button" class="side-tab" role="tab"
+                        [class.active]="sideTab === 'buildings'" [attr.aria-selected]="sideTab === 'buildings'"
+                        (click)="sideTab = 'buildings'">
+                        <i class="fa-solid fa-table-list" aria-hidden="true"></i>
+                        <span>{{ 'Bâtiments' | translate }}</span>
+                        <span class="bsh-count">{{ visibleBuildings.length }}@if (visibleBuildings.length !== allVisibleBuildings.length) {<span class="bsh-total">/{{ allVisibleBuildings.length }}</span>}</span>
+                      </button>
                     </div>
-                    <div class="table-toolbar d-flex align-items-center gap-2 flex-wrap px-3 pt-2">
+
+                    <div class="side-pane side-overview" [hidden]="sideTab !== 'overview'">
+                      <h2 class="kpi-heading">{{ 'Château' | translate }}</h2>
+                      <div class="kpi-grid">
+                        @for (tile of castleTiles; track tile.label) {
+                          <div class="kpi-tile" [class.kpi-danger]="tile.danger" [title]="tile.label | translate">
+                            <img [src]="tile.icon" class="kpi-icon" alt="">
+                            <div class="kpi-body">
+                              <span class="kpi-label">{{ tile.label | translate }}</span>
+                              <span class="kpi-value">{{ tile.value }}</span>
+                            </div>
+                          </div>
+                        }
+                      </div>
+                      @if (productionChips.length > 0) {
+                        <h2 class="kpi-heading">{{ 'Production estimée par heure' | translate }}</h2>
+                        <p class="kpi-note">{{ 'castle-production-disclaimer' | translate }}</p>
+                        <div class="kpi-grid">
+                          @for (chip of productionChips; track chip.key) {
+                            <button type="button" class="kpi-tile kpi-tile-button"
+                              [class.is-expanded]="expandedChip === chip.key"
+                              [attr.aria-expanded]="expandedChip === chip.key"
+                              (click)="expandedChip = expandedChip === chip.key ? null : chip.key">
+                              <img [src]="chip.icon" class="kpi-icon" alt="">
+                              <span class="kpi-body">
+                                <span class="kpi-label">{{ chip.label | translate }}</span>
+                                <span class="kpi-value">{{ formatValue(chip.perHour) }}</span>
+                                @if (expandedChip === chip.key && chip.detail) {
+                                  <span class="kpi-detail">{{ chip.detail }}</span>
+                                }
+                              </span>
+                            </button>
+                          }
+                        </div>
+                      }
+                    </div>
+
+                    <div class="side-pane castle-split-table table-wrapper dense" [hidden]="sideTab !== 'buildings'">
+                    <div class="table-toolbar d-flex align-items-center gap-2 px-3 pt-2">
                       <app-search-bar [attrListInput]="[]" [searchInput]="searchTerm" [placeholderInput]="('Rechercher' | translate)+ '...'"
                       [name]="'castle-search'" (searchEmitter)="searchTerm = $event; onSearchChange()"></app-search-bar>
                       <app-filter [countFilterActivated]="countFilterActivated"></app-filter>
@@ -431,7 +422,8 @@
                         <i class="fa-solid fa-chevron-right"></i>
                       </button>
                     </div>
-                  </div>
+                    </div>
+                  </aside>
                 </div>
               </div>
             }
@@ -468,6 +460,11 @@
                   <p class="text-white small">
                     {{ 'Niveau' | translate }} <strong>{{ selectedItem.data['level'] }}</strong>
                   </p>
+                  @if (selectedItem.building.positionX >= 0 && isoScene) {
+                    <button type="button" class="btn-ghost btn-locate" data-bs-dismiss="modal" (click)="locateInCastle(selectedItem)">
+                      <i class="fa-solid fa-location-crosshairs me-1" aria-hidden="true"></i>{{ 'Voir dans le château' | translate }}
+                    </button>
+                  }
                 </div>
                 <div class="row g-3 mb-4">
                   @for (i of [1, 0, 2]; track i) {

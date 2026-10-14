@@ -35,7 +35,22 @@ import { ServerService } from '@ggetracker-services/server.service';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Castle, LucideAngularModule } from 'lucide-angular';
 import { BuildingImgComponent } from './app-building-img/building-img.component';
+import { CastleGround } from './castle-iso/castle-defence-layout';
+import {
+  buildingAssetFile,
+  CastleIsoScene,
+  CastleIsoSceneBuilder,
+  IsoBuildingInput,
+  IsoDefenceOwner,
+} from './castle-iso/castle-iso-scene';
+import { CastleIsoTooltip, CastleIsoViewComponent } from './castle-iso/castle-iso-view.component';
 import { ViewCastleUtilities } from './view-castle-utilities';
+import {
+  CastleProductionEstimate,
+  CastleProductionEstimator,
+  ProducedResource,
+  ResourceEstimate,
+} from './castle-production-estimator';
 import { formatThousands } from '@ggetracker-services/text-format.utilities';
 
 type CastleFilterValue = number | string | null;
@@ -46,6 +61,23 @@ type RawBuildingValue = number | string | boolean | null;
 interface EffectLabel {
   text: string;
   template: string;
+}
+
+interface ProductionChip {
+  key: string;
+  label: string;
+  icon: string;
+  perHour: number;
+  detail: string;
+}
+
+type CastleView = 'iso' | 'plan' | 'canvas' | 'grid';
+
+interface CastleTile {
+  label: string;
+  icon: string;
+  value: string;
+  danger: boolean;
 }
 
 interface ConstructionEffect {
@@ -72,7 +104,7 @@ interface ConstructionEffect {
     SelectComponent,
     FilterComponent,
     SearchbarComponent,
-    SearchbarComponent,
+    CastleIsoViewComponent,
   ],
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -120,6 +152,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   public previousSelectedItem: IMappedBuildingWithGround | null = null;
   @ViewChild('mapCanvas', { static: false }) public canvasRef!: ElementRef<HTMLCanvasElement>;
   @ViewChildren('miniMap') public miniMaps!: QueryList<ElementRef<HTMLCanvasElement>>;
+  @ViewChild(CastleIsoViewComponent) public isoView?: CastleIsoViewComponent<IMappedBuildingWithGround>;
   public buildingStyles: Record<string, Record<string, string>> = {};
   public allVisibleBuildings: IMappedBuildingWithGround[] = [];
   public visibleBuildings: IMappedBuildingWithGround[] = [];
@@ -131,6 +164,30 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   public loadItemPlaceholder = false;
   public countFilterActivated = 0;
   public apiPath = ApiRestService.apiUrl;
+  public calculatedCastleProperties = {
+    playerName: '',
+    castleName: '',
+    castleType: '',
+    positionX: 0,
+    positionY: 0,
+    level: '',
+    sightRadius: 0,
+    guardSize: 0,
+    publicOrder: {
+      base: 0,
+      effects: 0,
+    },
+    wall: {
+      base: 0,
+      effects: 0,
+    },
+    sumMight: 0,
+    placeOccupied: 0,
+    placeNotOccupied: 0,
+    nbFloors: 0,
+    maxFloors: 20,
+    nbFire: 0,
+  };
   public filters: {
     isInDistrict: boolean;
     hasMaxLevel: boolean;
@@ -190,37 +247,27 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   public search = '';
   public searchedPlayerId: number | null = null;
   public canvasReady = false;
-  public activeView: 'canvas' | 'grid' = 'canvas';
-  public calculatedCastleProperties = {
-    playerName: '',
-    castleName: '',
-    castleType: '',
-    positionX: 0,
-    positionY: 0,
-    level: '',
-    sightRadius: 0,
-    guardSize: 0,
-    publicOrder: {
-      base: 0,
-      effects: 0,
-    },
-    wall: {
-      base: 0,
-      effects: 0,
-    },
-    sumMight: 0,
-    placeOccupied: 0,
-    placeNotOccupied: 0,
-    nbFloors: 0,
-    maxFloors: 20,
-    nbFire: 0,
-  };
+  public productionChips: ProductionChip[] = [];
+  public activeView: CastleView = 'iso';
+  public sideTab: 'overview' | 'buildings' = 'overview';
+  public castleTiles: CastleTile[] = [];
+  public expandedChip: string | null = null;
+  public readonly castleViews: { key: CastleView; icon: string; label: string }[] = [
+    { key: 'iso', icon: 'fa-chess-rook', label: 'Vue en jeu' },
+    { key: 'plan', icon: 'fa-layer-group', label: 'Plan' },
+    { key: 'canvas', icon: 'fa-map', label: 'Carte' },
+    { key: 'grid', icon: 'fa-border-all', label: 'Galerie' },
+  ];
+  public isoScene: CastleIsoScene<IMappedBuildingWithGround> | null = null;
+  public isoFileName = 'castle';
   private readonly mapSize = 1286;
   private readonly miniSize = 50;
   private readonly itemsJsonUrl = 'assets/items';
   private languageJsonData?: { [key: string]: string | string[] };
   private effects: Record<string, any>[] = [];
   private effectTypes: Record<string, any>[] = [];
+  private effectCaps: Record<string, any>[] = [];
+  private kingdomId = 0;
   private minX = 0;
   private minY = 0;
   private maxX = 0;
@@ -254,6 +301,14 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     super();
     this.isInLoading = true;
   }
+
+  public readonly describeIsoBuilding = (building: IMappedBuildingWithGround): CastleIsoTooltip => ({
+    title: this.capitalizeFirstLetter(this.getBuildingName(building)),
+    subtitle: `${this.translations['Niveau']} ${building.data['level']}`,
+  });
+
+  public readonly isoCategoryLabel = (category: string): string =>
+    String(this.languageJsonData?.[category.toUpperCase()] ?? category);
 
   public async ngOnInit(): Promise<void> {
     const cid = this.route.snapshot.queryParamMap.get('analysis');
@@ -507,6 +562,31 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     return `/assets/ci/${this.getBaseNameTextId(String(index))}_${type}.png`;
   }
 
+  public get isoHighlight(): IMappedBuildingWithGround[] | null {
+    return this.searchTerm.trim() || this.countFilterActivated > 0 ? this._filteredBuildings : null;
+  }
+
+  public onIsoBuildingSelected(building: IMappedBuildingWithGround): void {
+    this.updateSelectedItem(building);
+    const modal = document.querySelector('#viewItemModal');
+    const bootstrap = (
+      globalThis as { bootstrap?: { Modal: { getOrCreateInstance(element: Element): { show(): void } } } }
+    ).bootstrap;
+    if (modal && bootstrap) bootstrap.Modal.getOrCreateInstance(modal).show();
+  }
+
+  public setActiveView(view: CastleView): void {
+    this.activeView = view;
+    this.cdr.detectChanges();
+  }
+
+  public locateInCastle(building: IMappedBuildingWithGround): void {
+    if (this.activeView !== 'iso' && this.activeView !== 'plan') this.activeView = 'iso';
+    this.cdr.detectChanges();
+    document.querySelector('.castle-stage')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => this.isoView?.focusOn(building), 350);
+  }
+
   /**
    * Adds an image to the canvas, at the center of the specified area.
    * @param ctx The canvas rendering context.
@@ -664,6 +744,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   }
 
   private async fetchCastleData(cid: number, kid: number): Promise<void> {
+    this.kingdomId = kid;
     const castleResponse = await this.apiRestService.getCastlePlayerDataByCastleID(cid, kid);
     if (!castleResponse.success) {
       console.error('Failed to fetch castle data:', castleResponse);
@@ -744,6 +825,9 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     this.canvasReady = false;
     this.cid = null;
     this.castleObject = null;
+    this.isoScene = null;
+    this.productionChips = [];
+    this.castleTiles = [];
     this.calculatedCastleProperties = {
       playerName: '',
       castleName: '',
@@ -1143,6 +1227,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     const castleJsonData = await this.fetchCastleJsonItems();
     this.effects = castleJsonData['effects'];
     this.effectTypes = castleJsonData['effecttypes'];
+    this.effectCaps = castleJsonData['effectCaps'] ?? [];
     this.languageJsonData = ViewCastleUtilities.upperAllKeys(await this.fetchGgeLanguage());
     const buildingItems = castleJsonData['buildings'];
     const constructionItems = castleJsonData['constructionItems'];
@@ -1178,6 +1263,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     ];
     this.applyFilterAndSort();
     this.computeCastleProperties();
+    this.productionChips = this.buildProductionChips(this.estimateProduction(result));
+    this.castleTiles = this.buildCastleTiles();
     this.isInLoading = false;
     this.cdr.detectChanges();
     this.computeMapBoundsFromFloor();
@@ -1194,6 +1281,184 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       .sort((a, b) => a.label.localeCompare(b.label));
     this.constructionTypes.unshift({ label: this.translations['Tous'], value: null });
     this.drawBuildings();
+    this.isoScene = this.buildIsoScene(result);
+    this.isoFileName = String(result.castleName || 'castle').replaceAll(/[^\w-]+/g, '_');
+    this.cdr.detectChanges();
+  }
+
+  private buildCastleTiles(): CastleTile[] {
+    const properties = this.calculatedCastleProperties;
+    const wallSoldiers = properties.wall.base + (properties.wall.base * properties.wall.effects) / 100;
+    return [
+      { label: 'Puissance', icon: '/assets/might.png', value: this.formatValue(properties.sumMight), danger: false },
+      {
+        label: 'Ordre public',
+        icon: '/assets/publicOrder.png',
+        value: this.formatValue(properties.publicOrder.base + properties.publicOrder.effects),
+        danger: false,
+      },
+      {
+        label: 'Bâtiments en feu',
+        icon: '/assets/fire2.png',
+        value: String(properties.nbFire),
+        danger: properties.nbFire > 0,
+      },
+      {
+        label: 'Soldats sur les murs',
+        icon: '/assets/unit_walls.webp',
+        value: this.formatValue(wallSoldiers),
+        danger: false,
+      },
+      {
+        label: 'Zones occupées',
+        icon: '/assets/construction.webp',
+        value: this.formatValue(properties.placeOccupied),
+        danger: false,
+      },
+      {
+        label: 'Extensions du château',
+        icon: '/assets/expansion.webp',
+        value: `${properties.nbFloors}/${properties.maxFloors}`,
+        danger: false,
+      },
+      {
+        label: 'Détection',
+        icon: '/assets/detection.webp',
+        value: `+${this.formatValue(properties.sightRadius)}%`,
+        danger: false,
+      },
+    ];
+  }
+
+  private buildIsoScene(castle: ApiPlayerCastleDataMapped): CastleIsoScene<IMappedBuildingWithGround> {
+    const grounds: CastleGround[] = castle.data.grounds
+      .filter(Boolean)
+      .map((ground) => ({ x: ground.building.positionX, y: ground.building.positionY, ...this.footprintOf(ground) }));
+    const buildings: IsoBuildingInput<IMappedBuildingWithGround>[] = this.buildings
+      .filter((entry) => entry && !entry.isGround && entry.building.positionX >= 0 && entry.building.positionY >= 0)
+      .map((entry) => ({
+        id: entry.building.objectID,
+        x: entry.building.positionX,
+        y: entry.building.positionY,
+        ...this.footprintOf(entry),
+        rotation: entry.building.rotation,
+        rotateType: entry.data['rotateType'] === undefined ? null : String(entry.data['rotateType']),
+        file: buildingAssetFile(entry.data, this.appearanceName(entry)),
+        category: String(entry.data['originalBuildingGroundType'] ?? ''),
+        damage: Math.max(0, entry.building.damageFactor || 0),
+        ref: entry,
+      }));
+    const wall = castle.data.defenses.find((entry) => entry && String(entry.data['name']) === 'Castlewall');
+    const moat = castle.data.defenses.find((entry) => entry && String(entry.data['group']) === 'Moat');
+    const gate = castle.data.gates.find(Boolean);
+    const towers = castle.data.towers.filter(Boolean).sort((a, b) => a.building.objectID - b.building.objectID);
+    const areaId = Number(String(this.cid ?? '').slice(0, -3)) || 0;
+    return new CastleIsoSceneBuilder<IMappedBuildingWithGround>().build(this.kingdomId, areaId, grounds, buildings, {
+      wallLevel: Number(wall?.data['level']) || 0,
+      gateType: gate?.data['type']?.toString() ?? null,
+      towerType: towers[0]?.data['type']?.toString() ?? null,
+      ownedTowers: towers.length,
+      moat: moat ? { name: String(moat.data['name']), type: String(moat.data['type']) } : null,
+      wall: this.defenceOwner(wall),
+      gate: this.defenceOwner(gate),
+      moatOwner: this.defenceOwner(moat),
+      towers: towers
+        .map((tower) => this.defenceOwner(tower))
+        .filter((owner): owner is IsoDefenceOwner<IMappedBuildingWithGround> => owner !== null),
+    });
+  }
+
+  private defenceOwner(entry: IMappedBuildingElement | undefined): IsoDefenceOwner<IMappedBuildingWithGround> | null {
+    // The table lists defences as their own mapped entries, so the iso view must hand back those same objects
+    if (!entry) return null;
+    const mapped = this.allVisibleBuildings.find((candidate) => candidate.building === entry.building);
+    return mapped ? { ref: mapped, damage: Math.max(0, entry.building.damageFactor || 0) } : null;
+  }
+
+  private footprintOf(entry: IMappedBuildingElement): { width: number; height: number } {
+    const width = Number(entry.data['width']) || 1;
+    const height = Number(entry.data['height']) || 1;
+    return entry.building.rotation === 1 ? { width: height, height: width } : { width, height };
+  }
+
+  private appearanceName(entry: IMappedBuildingWithGround): string | null {
+    const appearance = entry.constructionItems['0'];
+    return appearance?.['name'] ? String(appearance['name']) : null;
+  }
+
+  private estimateProduction(castle: ApiPlayerCastleDataMapped): CastleProductionEstimate {
+    const { publicOrder } = this.calculatedCastleProperties;
+    const { buildings, defenses, gates, towers } = castle.data;
+    const estimator = new CastleProductionEstimator({
+      publicOrder: publicOrder.base + publicOrder.effects,
+      kingdomId: this.kingdomId,
+      castleType: castle.castleType,
+      effects: this.effects,
+      effectCaps: this.effectCaps,
+    });
+    return estimator.estimate([...buildings, ...defenses, ...gates, ...towers].filter(Boolean));
+  }
+
+  private buildProductionChips(estimate: CastleProductionEstimate): ProductionChip[] {
+    const labels: Record<ProducedResource, string> = {
+      wood: 'Bois',
+      stone: 'Pierre',
+      food: 'Nourriture',
+      honey: 'Miel',
+      beef: 'Bœuf',
+    };
+    const alwaysShown = new Set<ProducedResource>(['wood', 'stone', 'food']);
+    const chips: ProductionChip[] = [];
+    for (const [resource, value] of Object.entries(estimate.resources) as [ProducedResource, ResourceEstimate][]) {
+      if (!alwaysShown.has(resource) && value.perHour <= 0) continue;
+      chips.push({
+        key: resource,
+        label: labels[resource],
+        icon: this.productionIconUrl(resource === 'beef' ? 'beefproductionincrease' : `${resource}production`),
+        perHour: value.perHour,
+        detail: this.translateService.instant('castle-production-detail', {
+          base: this.formatRounded(value.base),
+          factor: estimate.publicOrderFactor.toFixed(2),
+          boost: Math.round(value.boostPercent),
+          flat: this.formatRounded(value.flatBonus),
+        }),
+      });
+    }
+    const meadChip = this.buildMeadChip(estimate);
+    if (meadChip) chips.push(meadChip);
+    return chips;
+  }
+
+  private buildMeadChip(estimate: CastleProductionEstimate): ProductionChip | null {
+    const icon = this.productionIconUrl('meadproduction');
+    const mead = estimate.mead;
+    if (!mead) {
+      if (estimate.meadWithoutBrewery <= 0) return null;
+      return { key: 'mead', label: 'Hydromel', icon, perHour: estimate.meadWithoutBrewery, detail: '' };
+    }
+    const limit = mead.limitedBy ? this.translateService.instant(`castle-mead-limited-${mead.limitedBy}`) : '';
+    return {
+      key: 'mead',
+      label: 'Hydromel (max)',
+      icon,
+      perHour: mead.perHourAtMax,
+      detail: this.translateService.instant('castle-mead-detail', {
+        level: mead.breweryLevel,
+        workload: mead.maxWorkloadPercent,
+        limit,
+        honey: this.formatRounded(mead.honeyUsedAtMax),
+        food: this.formatRounded(mead.foodUsedAtMax),
+        full: this.formatRounded(mead.perHourAtFull),
+      }),
+    };
+  }
+
+  private formatRounded(value: number): string {
+    return formatThousands(Math.round(value).toString());
+  }
+
+  private productionIconUrl(asset: string): string {
+    return `${ApiRestService.apiUrl}assets/common/constructionitem${asset}.png`;
   }
 
   private async translateKeys(): Promise<void> {
@@ -1249,9 +1514,10 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   private selectBuilding(building: IMappedBuildingWithGround): void {
     this.searchTerm = '#' + building.building.objectID;
     this.applyFilterAndSort();
-    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    this.sideTab = 'buildings';
     this.currentPage = 1;
     this.cdr.detectChanges();
+    document.querySelector('.castle-side')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
   private showTooltipFor(hoveredBuilding: IMappedBuildingWithGround, pageX: number, pageY: number): void {
