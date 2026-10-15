@@ -38,12 +38,14 @@ export interface UnwrappedLoot {
 export interface LootRunPlayer {
   raw: number;
   recent: LootReading[];
+  nextPace?: number;
 }
 
 export interface LootRun {
   at: number;
   finishedAt: number;
   reset: LootReset;
+  replay?: boolean;
 }
 
 export function lootCounterValue(raw: number): number {
@@ -60,10 +62,11 @@ function lastHourlyGain(recent: LootReading[]): number {
   return (last.point - beforeLast.point) / elapsedHours(beforeLast.at, last.at);
 }
 
-function isWrap(gain: number, hours: number, recent: LootReading[], nearReset: boolean): boolean {
-  if (gain > MAX_GAIN_PER_HOUR * hours) return false;
-  if (!nearReset) return true;
-  const reference = Math.max(lastHourlyGain(recent), EARLY_RESET_GAIN_FLOOR);
+function isWrap(gain: number, hours: number, recent: LootReading[], nearReset: boolean, nextPace?: number): boolean {
+  const replay = nextPace !== undefined;
+  if (gain > MAX_GAIN_PER_HOUR * (replay ? 1 : hours)) return false;
+  if (!nearReset && !replay) return true;
+  const reference = Math.max(lastHourlyGain(recent), nextPace ?? 0, EARLY_RESET_GAIN_FLOOR);
   return gain <= EARLY_RESET_GAIN_FACTOR * reference * hours;
 }
 
@@ -93,6 +96,7 @@ export function unwrapLoot(
   recent: LootReading[],
   reset: LootReset,
   resetUnderway = false,
+  nextPace?: number,
 ): UnwrappedLoot {
   const counter = lootCounterValue(raw);
   const weekStart = lootWeekStart(at, reset);
@@ -107,7 +111,7 @@ export function unwrapLoot(
 
   const gain = counter + LOOT_COUNTER_RANGE - lastCounter;
   const nearReset = isNearReset(at, reset);
-  if (isWrap(gain, elapsedHours(last.at, at), sameWeek, nearReset)) {
+  if (isWrap(gain, elapsedHours(last.at, at), sameWeek, nearReset, nextPace)) {
     return { point: base + LOOT_COUNTER_RANGE + counter, kind: 'wrapped' };
   }
   if (nearReset) return { point: counter, kind: 'early-reset' };
@@ -116,7 +120,16 @@ export function unwrapLoot(
 
 export function unwrapLootRun(players: LootRunPlayer[], run: LootRun): UnwrappedLoot[] {
   const resetUnderway = isResetUnderway(players, run);
-  const results = players.map((player) => unwrapLoot(player.raw, run.at, player.recent, run.reset, resetUnderway));
+  const results = players.map((player) =>
+    unwrapLoot(
+      player.raw,
+      run.at,
+      player.recent,
+      run.reset,
+      resetUnderway,
+      run.replay ? (player.nextPace ?? 0) : undefined,
+    ),
+  );
   if (results.filter((result) => result.kind === 'wrapped').length <= MAX_WRAPS_PER_RUN) return results;
   return results.map((result) =>
     result.kind === 'wrapped' ? { point: result.point - LOOT_COUNTER_RANGE, kind: 'refused' } : result,
