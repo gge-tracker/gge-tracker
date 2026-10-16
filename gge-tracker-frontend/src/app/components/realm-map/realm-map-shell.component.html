@@ -1,0 +1,166 @@
+<div class="rmap-layout">
+  <form class="rmap-locate" role="search" (ngSubmit)="submitLocate()">
+    <label class="rmap-locate-field">
+      <i class="fa-solid fa-chess-rook" aria-hidden="true"></i>
+      <input type="search" name="locate" autocomplete="off" [(ngModel)]="query" (ngModelChange)="onQueryChange($event)"
+        [attr.list]="suggestionListId" [placeholder]="'Pseudonyme ou X:Y' | translate"
+        [attr.aria-label]="'Pseudonyme ou X:Y' | translate">
+    </label>
+    <datalist [id]="suggestionListId">
+      @for (suggestion of suggestions(); track suggestion) {
+      <option [value]="suggestion"></option>
+      }
+    </datalist>
+    <button type="submit" class="rmap-btn rmap-btn-accent" [title]="'Rechercher' | translate"
+      [attr.aria-label]="'Rechercher' | translate">
+      <i class="fa-solid fa-magnifying-glass"></i>
+    </button>
+    <button type="button" class="rmap-btn" [class.is-on]="picking()" [attr.aria-pressed]="picking()"
+      [title]="'Choisir sur la carte' | translate" [attr.aria-label]="'Choisir sur la carte' | translate"
+      (click)="togglePick()">
+      <i class="fa-solid fa-crosshairs"></i>
+    </button>
+  </form>
+
+  <div class="rmap-stage" #stage [style.--ground]="ground()">
+    <app-realm-map [points]="points()" [extent]="extent()" [gridStep]="gridStep()" [field]="field()"
+      [origin]="origin()" [rings]="rings()" [selectedId]="selectedId()" [picking]="picking()"
+      (pointSelected)="pointSelected.emit($event)" (picked)="onPicked($event)" />
+    <div class="rmap-stage-top">
+      <ng-content select="[stage-top]" />
+    </div>
+    <div class="rmap-stage-actions">
+      <button type="button" class="rmap-stage-btn" [title]="'Réinitialiser' | translate"
+        [attr.aria-label]="'Réinitialiser' | translate" (click)="fit()">
+        <i class="fa-solid fa-house"></i>
+      </button>
+      <button type="button" class="rmap-stage-btn"
+        [title]="(isFullscreen() ? 'Fermer le plein écran' : 'Ouvrir en plein écran') | translate"
+        [attr.aria-label]="(isFullscreen() ? 'Fermer le plein écran' : 'Ouvrir en plein écran') | translate"
+        (click)="toggleFullscreen()">
+        <i class="fa-solid" [class.fa-maximize]="!isFullscreen()" [class.fa-minimize]="isFullscreen()"></i>
+      </button>
+      <button type="button" class="rmap-stage-btn" [title]="'Actualiser' | translate"
+        [attr.aria-label]="'Actualiser' | translate" (click)="refresh.emit()">
+        <i class="fa-solid fa-arrows-rotate" [class.fa-spin]="loading()"></i>
+      </button>
+    </div>
+    @if (picking()) {
+    <div class="rmap-pick-hint" role="status">
+      <i class="fa-solid fa-crosshairs"></i>
+      <span>{{ 'Choisir sur la carte' | translate }}</span>
+      <button type="button" class="rmap-pick-cancel" [attr.aria-label]="'Fermer' | translate" (click)="togglePick()">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    }
+    @if (loading()) {
+    <div class="rmap-loading" role="status">
+      <span class="rmap-spinner" aria-hidden="true"></span>
+      <span>{{ 'Chargement' | translate }}</span>
+    </div>
+    }
+  </div>
+
+  <aside class="rmap-side">
+    @if (origin(); as origin) {
+    <section class="rmap-panel rmap-origin-card">
+      <span class="rmap-origin-badge" aria-hidden="true"><i class="fa-solid fa-chess-rook"></i></span>
+      <div class="rmap-origin-text">
+        <strong>{{ origin.label }}</strong>
+        <span>{{ origin.x }} : {{ origin.y }}</span>
+      </div>
+      <button type="button" class="rmap-icon-btn" [title]="'Voir sur la carte' | translate"
+        [attr.aria-label]="'Voir sur la carte' | translate" (click)="focus(origin.x, origin.y)">
+        <i class="fa-solid fa-location-dot"></i>
+      </button>
+      <button type="button" class="rmap-icon-btn" [title]="'Réinitialiser' | translate"
+        [attr.aria-label]="'Réinitialiser' | translate" (click)="clearOrigin.emit()">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </section>
+    }
+
+    @if (hasSelection()) {
+    <section class="rmap-panel rmap-detail" aria-live="polite">
+      <button type="button" class="rmap-icon-btn rmap-detail-close" [attr.aria-label]="'Fermer' | translate"
+        (click)="pointSelected.emit(null)">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <ng-content select="[map-detail]" />
+    </section>
+    }
+
+    @if (origin()) {
+    <section class="rmap-panel">
+      <h2 class="rmap-panel-title">{{ 'Cibles les plus proches' | translate }}</h2>
+      @if (nearest().length === 0) {
+      <p class="rmap-empty">{{ 'Aucune cible à attaquer n\'a été trouvée' | translate }}</p>
+      } @else {
+      <ol class="rmap-nearest">
+        @for (target of nearest(); track target.id) {
+        <li>
+          <button type="button" class="rmap-nearest-row" [class.is-selected]="target.id === selectedId()"
+            (click)="selectNearest(target)">
+            <span class="rmap-glyph" [class.rmap-glyph-diamond]="target.shape === 'diamond'"
+              [style.--glyph]="target.color"></span>
+            <img [src]="target.icon" alt="" width="26" height="26">
+            <span class="rmap-nearest-label">{{ target.label }}</span>
+            <span class="rmap-nearest-distance">{{ target.distance | number: '1.0-1' }}</span>
+          </button>
+        </li>
+        }
+      </ol>
+      }
+    </section>
+    }
+
+    <section class="rmap-panel rmap-legend">
+      <header class="rmap-legend-head">
+        <h2 class="rmap-panel-title">{{ 'Légende' | translate }}</h2>
+        @if (colorModes().length > 1) {
+        <div class="rmap-modes" role="group" [attr.aria-label]="'Colorer par' | translate">
+          @for (mode of colorModes(); track mode.value) {
+          <button type="button" class="rmap-mode" [class.is-on]="mode.value === colorMode()"
+            [attr.aria-pressed]="mode.value === colorMode()" (click)="colorModeChange.emit(mode.value)">
+            {{ mode.label }}
+          </button>
+          }
+        </div>
+        }
+      </header>
+      @for (group of legend(); track group.key) {
+      <div class="rmap-legend-group" [class.is-hidden]="group.hidden">
+        <button type="button" class="rmap-group-row" [attr.aria-pressed]="!group.hidden"
+          (click)="toggleGroup.emit(group.key)">
+          <img [src]="group.icon" alt="" width="28" height="28">
+          <span class="rmap-group-label">{{ group.label }}</span>
+          <span class="rmap-count">{{ group.count | number }}</span>
+          <i class="fa-solid rmap-eye" [class.fa-eye]="!group.hidden" [class.fa-eye-slash]="group.hidden"></i>
+        </button>
+        <ul class="rmap-legend-items">
+          @for (item of group.items; track item.key) {
+          <li>
+            <button type="button" class="rmap-item-row" [class.is-hidden]="item.hidden" [disabled]="group.hidden"
+              [attr.aria-pressed]="!item.hidden" (click)="toggleItem.emit(item.key)">
+              <span class="rmap-glyph" [class.rmap-glyph-diamond]="item.shape === 'diamond'"
+                [class.is-faded]="item.emphasis === 'faded'" [style.--glyph]="item.color"></span>
+              <span class="rmap-item-label">{{ item.label }}</span>
+              <span class="rmap-count">{{ item.count | number }}</span>
+            </button>
+          </li>
+          }
+        </ul>
+      </div>
+      }
+      <footer class="rmap-legend-foot">
+        @if (lastScanAt()) {
+        <span><i class="fa-solid fa-satellite-dish"></i> {{ 'Dernier scan' | translate }} : {{ lastScanAt() | date: 'short' }}</span>
+        }
+        @if (!hasSelection()) {
+        <span><i class="fa-solid fa-hand-pointer"></i> {{ 'Cliquer pour afficher les détails' | translate }}</span>
+        }
+      </footer>
+    </section>
+  </aside>
+</div>

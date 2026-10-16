@@ -1,0 +1,147 @@
+<app-realm-map-shell [points]="points()" [extent]="extent()" [gridStep]="50" field="#2fa3c4" ground="#2c4f5f"
+  [origin]="origin()" [originQuery]="originQuery()" [rings]="rings" [selectedId]="selectedId()" [legend]="legend()"
+  [colorModes]="colorModes()" [colorMode]="colorMode()" [nearest]="nearest()" [loading]="loading()"
+  [lastScanAt]="lastScanAt()" (pointSelected)="selectedId.set($event)" (locate)="onLocate($event)"
+  (clearOrigin)="onClearOrigin()" (toggleGroup)="toggleKey($event)" (toggleItem)="toggleKey($event)"
+  (colorModeChange)="setColorMode($event)" (refresh)="reload()">
+  <ng-container ngProjectAs="[map-detail]">
+    @if (selectedFort(); as fort) {
+    <div class="rmd">
+      <header class="rmd-head">
+        <img class="rmd-thumb" [src]="fortImage" alt="">
+        <div class="rmd-title">
+          @if (fort.definition) {
+          <strong class="rmd-level-{{ fort.definition.level }}">
+            {{ 'Niveau' | translate }} {{ fort.definition.level }}
+            @if (fort.definition.isLowGarrison) {
+            <i class="fa-solid fa-star rmd-star" [title]="'storm-low-garrison-hint' | translate"></i>
+            }
+          </strong>
+          <span>{{ 'Forteresses des tempêtes' | translate }} · {{ fort.definition.guards }} {{ 'gardes' | translate }}</span>
+          } @else {
+          <strong>{{ 'Inconnu' | translate }}</strong>
+          }
+        </div>
+      </header>
+      <dl class="rmd-facts">
+        <dt>{{ 'Position' | translate }}</dt>
+        <dd>
+          <span class="rmd-mono">{{ fort.x }} : {{ fort.y }}</span>
+          <button type="button" class="rmd-copy" [title]="'Coordonnées' | translate"
+            [attr.aria-label]="'Coordonnées' | translate" (click)="copyCoordinates(fort.x, fort.y)">
+            <i class="fa-regular fa-copy"></i>
+          </button>
+        </dd>
+        @if (distanceTo(fort); as distance) {
+        <dt>{{ 'Distance' | translate }}</dt>
+        <dd class="rmd-mono">{{ distance | number: '1.0-1' }}</dd>
+        }
+        <dt>{{ 'Etat' | translate }}</dt>
+        <dd>
+          @switch (fortCategoryOf(fort)) {
+          @case ('ready') {
+          <span class="rmd-state rmd-state-ready">{{ 'Attaquable' | translate }}</span>
+          }
+          @case ('spent') {
+          <span class="rmd-state rmd-state-spent">{{ 'Coulée' | translate }}</span>
+          }
+          @default {
+          <span class="rmd-state" [class.rmd-state-soon]="fortCategoryOf(fort) === 'soon'"
+            [class.rmd-state-cooldown]="fortCategoryOf(fort) === 'cooldown'">{{ 'En réapparition' | translate }}</span>
+          <span class="rmd-countdown">{{ fort | cooldown }}</span>
+          }
+          }
+        </dd>
+        <dt>{{ 'Attaques restantes' | translate }}</dt>
+        <dd>
+          <span class="rmd-mono">{{ fortCategoryOf(fort) === 'ready' ? fort.attacksLeft : 0 }} / {{ maxVictories }}</span>
+          <span class="rmd-bar">
+            <span class="rmd-bar-fill" [class.is-low]="fort.attacksLeft <= 2"
+              [style.width.%]="fortCategoryOf(fort) === 'ready' ? (fort.attacksLeft / maxVictories) * 100 : 0"></span>
+          </span>
+        </dd>
+        @if (fort.definition?.units; as units) {
+        <dt>{{ 'Défenseurs' | translate }}</dt>
+        <dd>
+          @if (units.min === units.max) {
+          {{ units.min | number }}
+          } @else {
+          {{ units.min | number }}&nbsp;-&nbsp;{{ units.max | number }}
+          }
+          {{ 'unités' | translate }}
+        </dd>
+        }
+      </dl>
+    </div>
+    }
+    @if (selectedIsle(); as isle) {
+    <div class="rmd">
+      <header class="rmd-head">
+        <img class="rmd-thumb" [src]="getStormIsleImage(isle.isleId)" alt="">
+        <div class="rmd-title">
+          @if (isle.definition) {
+          <strong class="rmd-resource-{{ isle.definition.resource }}">
+            {{ getStormResourceLabel(isle.definition.resource) | translate }}
+          </strong>
+          <span>{{ 'Îles de ressources' | translate }} · {{ isle.definition.guards }} {{ 'gardes' | translate }}</span>
+          } @else {
+          <strong>{{ 'Inconnu' | translate }}</strong>
+          }
+        </div>
+      </header>
+      <dl class="rmd-facts">
+        <dt>{{ 'Position' | translate }}</dt>
+        <dd>
+          <span class="rmd-mono">{{ isle.x }} : {{ isle.y }}</span>
+          <button type="button" class="rmd-copy" [title]="'Coordonnées' | translate"
+            [attr.aria-label]="'Coordonnées' | translate" (click)="copyCoordinates(isle.x, isle.y)">
+            <i class="fa-regular fa-copy"></i>
+          </button>
+        </dd>
+        @if (distanceTo(isle); as distance) {
+        <dt>{{ 'Distance' | translate }}</dt>
+        <dd class="rmd-mono">{{ distance | number: '1.0-1' }}</dd>
+        }
+        <dt>{{ 'Etat' | translate }}</dt>
+        <dd>
+          @switch (isleCategoryOf(isle)) {
+          @case ('ready') {
+          <span class="rmd-state rmd-state-ready">{{ 'Libre' | translate }}</span>
+          }
+          @case ('held') {
+          <span class="rmd-state rmd-state-held">{{ 'Occupée' | translate }}</span>
+          <span class="rmd-countdown">{{ isle | cooldown }}</span>
+          }
+          @default {
+          <span class="rmd-state rmd-state-cooldown">{{ 'En réapparition' | translate }}</span>
+          <span class="rmd-countdown">{{ isle | cooldown }}</span>
+          }
+          }
+        </dd>
+        @if (isle.occupierName) {
+        <dt>{{ 'Occupant' | translate }}</dt>
+        <dd>
+          <span>{{ isle.occupierName }}</span>
+          @if (isle.occupierAllianceName) {
+          <span class="rmd-sub">{{ isle.occupierAllianceName }}</span>
+          }
+        </dd>
+        }
+        @if (isle.definition) {
+        <dt>{{ 'Butin' | translate }}</dt>
+        <dd>
+          <span class="rmd-resource-{{ isle.definition.resource }}">{{ isle.definition.fixedLoot | number }}</span>
+          <img src="/assets/storm-tracker/aquamarine.webp" width="18" height="18" alt="">
+          @if (isle.definition.cargoPoints) {
+          <span class="rmd-sub">
+            {{ isle.definition.cargoPoints | number }}
+            <img src="/assets/aquamarine_100.webp" width="14" height="14" alt="">
+          </span>
+          }
+        </dd>
+        }
+      </dl>
+    </div>
+    }
+  </ng-container>
+</app-realm-map-shell>

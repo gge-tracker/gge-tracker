@@ -1,0 +1,6 @@
+<div class="rmap-canvas" #mapHost></div>
+@if (cursor()) {
+<div class="rmap-hud" aria-hidden="true">
+  <i class="fa-solid fa-location-crosshairs"></i> {{ cursor() }}
+</div>
+}

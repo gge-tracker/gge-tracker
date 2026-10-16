@@ -4,25 +4,43 @@
       <div class="search container-fluid mb-2">
         <header class="storm-header">
 
-          <nav class="storm-segmented w-100" role="tablist">
-            <button class="storm-segment" role="tab" [attr.aria-selected]="activeTab === 'forts'"
-              [class.storm-segment--on]="activeTab === 'forts'" (click)="switchTab('forts')">
-              <img src="/assets/storm-tracker/fort.png" class="storm-menu-icon" alt="">
-              <span class="storm-segment__label">{{ 'Forteresses des tempêtes' | translate }}</span>
-              @if (stormMeta) {
-              <span class="storm-count">{{ stormMeta.forts_count }}</span>
-              }
-            </button>
-            <button class="storm-segment" role="tab" [attr.aria-selected]="activeTab === 'isles'"
-              [class.storm-segment--on]="activeTab === 'isles'" (click)="switchTab('isles')">
-              <img src="/assets/storm-tracker/village/6.png" class="storm-menu-icon" alt="">
-              <span class="storm-segment__label">{{ 'Îles de ressources' | translate }}</span>
-              @if (stormMeta) {
-              <span class="storm-count">{{ stormMeta.isles_count }}</span>
-              }
-            </button>
-          </nav>
+          <div class="storm-header-row">
+            <nav class="storm-segmented" [attr.role]="view === 'list' ? 'tablist' : 'group'">
+              <button class="storm-segment" [attr.role]="view === 'list' ? 'tab' : null"
+                [attr.aria-selected]="view === 'list' ? activeTab === 'forts' : null"
+                [attr.aria-pressed]="view === 'map' ? isLayerShown('fort') : null"
+                [class.storm-segment--on]="view === 'list' ? activeTab === 'forts' : isLayerShown('fort')"
+                (click)="onSegmentClick('forts')">
+                <img src="/assets/storm-tracker/fort.png" class="storm-menu-icon" alt="">
+                <span class="storm-segment__label">{{ 'Forteresses des tempêtes' | translate }}</span>
+                @if (stormMeta) {
+                <span class="storm-count">{{ stormMeta.forts_count }}</span>
+                }
+                @if (view === 'map') {
+                <i class="fa-solid storm-segment__eye" [class.fa-eye]="isLayerShown('fort')"
+                  [class.fa-eye-slash]="!isLayerShown('fort')"></i>
+                }
+              </button>
+              <button class="storm-segment" [attr.role]="view === 'list' ? 'tab' : null"
+                [attr.aria-selected]="view === 'list' ? activeTab === 'isles' : null"
+                [attr.aria-pressed]="view === 'map' ? isLayerShown('isle') : null"
+                [class.storm-segment--on]="view === 'list' ? activeTab === 'isles' : isLayerShown('isle')"
+                (click)="onSegmentClick('isles')">
+                <img src="/assets/storm-tracker/village/6.png" class="storm-menu-icon" alt="">
+                <span class="storm-segment__label">{{ 'Îles de ressources' | translate }}</span>
+                @if (stormMeta) {
+                <span class="storm-count">{{ stormMeta.isles_count }}</span>
+                }
+                @if (view === 'map') {
+                <i class="fa-solid storm-segment__eye" [class.fa-eye]="isLayerShown('isle')"
+                  [class.fa-eye-slash]="!isLayerShown('isle')"></i>
+                }
+              </button>
+            </nav>
+            <app-view-switch [view]="view" (viewChange)="setView($event)" />
+          </div>
 
+          @if (view === 'list') {
           <div class="storm-toolbar">
             @if (activeTab === 'isles') {
             <div class="storm-toolbar__search">
@@ -75,6 +93,7 @@
               </button>
             </div>
           </div>
+          }
 
           @if (serverService.currentServer && !allowedServers.includes(serverService.currentServer.name)) {
           <div class="storm-notice">
@@ -83,7 +102,7 @@
           </div>
           }
 
-          @if (stormMeta && stormMeta.last_scan_at) {
+          @if (view === 'list' && stormMeta && stormMeta.last_scan_at) {
           <div class="storm-status">
             <i class="fa-solid fa-satellite-dish"></i>
             <span>{{ 'Dernier scan' | translate }} : {{ stormMeta.last_scan_at | date:'short' }}</span>
@@ -91,6 +110,13 @@
           }
         </header>
 
+        @if (view === 'map') {
+          @if (isServerAllowed) {
+          <app-storm-map class="d-block mt-2" [originPlayerName]="nearPlayerName" [originX]="positionX"
+            [originY]="positionY" [focusTarget]="mapFocus" [lastScanAt]="stormMeta?.last_scan_at ?? null"
+            (originChange)="onMapOriginChange($event)" />
+          }
+        } @else {
         <div class="flex flex-col justify-between gap-6 mt-2">
           <app-table [sort]="''" [reverse]="false" [isInLoading]="isInLoading" [maxPage]="maxPage!" [page]="page"
             [search]="''" [headers]="headers" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()"
@@ -131,7 +157,13 @@
                   </div>
                 </td>
                 <td>
-                  <span class="cell-label">{{ 'Position' | translate }}</span>{{ fort.position }}
+                  <span class="cell-label">{{ 'Position' | translate }}</span><span class="text-nowrap">{{ fort.position }}
+                    <button type="button" class="storm-map-link" [title]="'Voir sur la carte' | translate"
+                      [attr.aria-label]="'Voir sur la carte' | translate"
+                      (click)="showOnMap('fort', fort.positionX, fort.positionY)">
+                      <i class="fa-solid fa-map-location-dot"></i>
+                    </button>
+                  </span>
                 </td>
                 @if (isDistanceShown && headers.length > 5) {
                 <td>{{ fort.distance !== null && fort.distance !== undefined ? fort.distance + 'm' : '?' }}</td>
@@ -224,7 +256,13 @@
                   </div>
                 </td>
                 <td>
-                  <span class="cell-label">{{ 'Position' | translate }}</span>{{ isle.position }}
+                  <span class="cell-label">{{ 'Position' | translate }}</span><span class="text-nowrap">{{ isle.position }}
+                    <button type="button" class="storm-map-link" [title]="'Voir sur la carte' | translate"
+                      [attr.aria-label]="'Voir sur la carte' | translate"
+                      (click)="showOnMap('isle', isle.positionX, isle.positionY)">
+                      <i class="fa-solid fa-map-location-dot"></i>
+                    </button>
+                  </span>
                 </td>
                 @if (isDistanceShown) {
                 <td>{{ isle.distance !== null && isle.distance !== undefined ? isle.distance + 'm' : '?' }}</td>
@@ -270,6 +308,7 @@
             }
           </app-table>
         </div>
+        }
       </div>
     </div>
   </div>

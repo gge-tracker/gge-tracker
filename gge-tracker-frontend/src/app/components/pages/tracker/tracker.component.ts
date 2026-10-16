@@ -5,6 +5,8 @@ import { GenericComponent } from '@ggetracker-components/generic/generic.compone
 import { SearchbarComponent } from '@ggetracker-components/searchbar/searchbar.component';
 import { SelectComponent } from '@ggetracker-components/select/select.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
+import { RealmMapLocateRequest } from '@ggetracker-components/realm-map/realm-map.models';
+import { TrackerView, ViewSwitchComponent } from '@ggetracker-components/view-switch/view-switch.component';
 import { ModalFormGroupComponent } from '@ggetracker-components/modal-form-group/modal-form-group.component';
 import { ModalTableColumn, ModalTableComponent } from '@ggetracker-components/modal-table/modal-table.component';
 import { ChartsWrapperComponent } from '@ggetracker-modules/charts-client/charts-wrapper.component';
@@ -24,6 +26,7 @@ import { ServerService } from '@ggetracker-services/server.service';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { TranslateModule } from '@ngx-translate/core';
 import { LucideAngularModule, MessageCircleQuestion, Search, X } from 'lucide-angular';
+import { DUNGEON_REALMS, DungeonMapComponent, DungeonMapFocus } from './dungeon-map/dungeon-map.component';
 
 interface DungeonAttackHistory extends ApiDungeonsAttackHistory {
   image: string;
@@ -47,6 +50,8 @@ interface DungeonAttackHistory extends ApiDungeonsAttackHistory {
     ModalTableComponent,
     ModalFormGroupComponent,
     ChartsWrapperComponent,
+    DungeonMapComponent,
+    ViewSwitchComponent,
   ],
   standalone: true,
   templateUrl: './tracker.component.html',
@@ -59,6 +64,10 @@ export class TrackerComponent extends GenericComponent {
     { key: '3', label: 'Les Pics du feu', translated: '' },
   ];
   public serverService = inject(ServerService);
+  public readonly dungeonRealms = DUNGEON_REALMS;
+  public view: TrackerView = 'list';
+  public mapRealmId = DUNGEON_REALMS[0].id;
+  public mapFocus: DungeonMapFocus | null = null;
   public playerDungeonAttackHistory: DungeonAttackHistory[] = [];
   public selectedPlayerName: string | null = null;
   public activeTab: 'list' | 'graph' = 'list';
@@ -102,6 +111,7 @@ export class TrackerComponent extends GenericComponent {
   public selectedRealm: string[] = ['2'];
   public filterByKid: string[] = ['2'];
   private readonly localStorage = inject(LocalStorageService);
+  private isListStale = false;
 
   constructor() {
     super();
@@ -110,12 +120,61 @@ export class TrackerComponent extends GenericComponent {
     this.init();
   }
 
+  public get isServerAllowed(): boolean {
+    return !this.serverService.currentServer || this.allowedServers.includes(this.serverService.currentServer.name);
+  }
+
+  public setView(view: TrackerView): void {
+    this.view = view;
+    this.localStorage.setItem('dungeonView', view);
+    void this.updateGenericParamsInUrl({ view }, { view: 'list' });
+    if (view === 'list' && this.isListStale) void this.getData();
+  }
+
+  public selectMapRealm(realmId: number): void {
+    this.mapRealmId = realmId;
+    this.localStorage.setItem('dungeonMapRealm', String(realmId));
+  }
+
+  public showOnMap(dungeon: Dungeon): void {
+    this.mapRealmId = dungeon.kid;
+    this.mapFocus = {
+      id: `${dungeon.kid}:${dungeon.positionX}:${dungeon.positionY}`,
+      kingdomId: dungeon.kid,
+      x: dungeon.positionX,
+      y: dungeon.positionY,
+    };
+    this.setView('map');
+  }
+
+  public onMapOriginChange(request: RealmMapLocateRequest | null): void {
+    if (request === null) {
+      this.clearOrigin();
+    } else if (request.kind === 'player') {
+      this.onPositionChangePlayerName(request.name);
+    } else {
+      this.onPositionChange(request.x, request.y);
+    }
+  }
+
+  public openAttackHistory(attacker: { playerId: string; playerName: string }): void {
+    void this.loadAttackHistory(Number(attacker.playerId), attacker.playerName);
+    const modal = document.querySelector('#dungeonHistoryModal');
+    const bootstrap = (
+      globalThis as { bootstrap?: { Modal: { getOrCreateInstance(element: Element): { show(): void } } } }
+    ).bootstrap;
+    if (modal && bootstrap) bootstrap.Modal.getOrCreateInstance(modal).show();
+  }
+
   public async getDungeonsByPlayerId(dungeon: Dungeon): Promise<void> {
-    const playerId = dungeon.playerId;
-    if (playerId === undefined) return;
+    if (dungeon.playerId === undefined) return;
+    await this.loadAttackHistory(dungeon.playerId, dungeon.playerName ?? '?');
+  }
+
+  public async loadAttackHistory(playerId: number, playerName: string): Promise<void> {
     this.isInLoading = true;
     this.activeTab = 'list';
-    this.selectedPlayerName = dungeon.playerName ?? '?';
+    this.selectedPlayerName = playerName;
     await this.apiRestService.getDungeonsByPlayerId(playerId).then((response) => {
       if (!response.success) {
         this.isInLoading = false;
@@ -317,6 +376,19 @@ export class TrackerComponent extends GenericComponent {
     void this.getData();
   }
 
+  private clearOrigin(): void {
+    this.positionX = null;
+    this.positionY = null;
+    this.nearPlayerName = null;
+    this.localStorage.removeItem('positionX');
+    this.localStorage.removeItem('positionY');
+    this.localStorage.removeItem('nearPlayerName');
+    this.activeSortCount = 0;
+    this.resetHeaders();
+    this.page = 1;
+    void this.getData();
+  }
+
   private async getMeta(): Promise<void> {
     const response = await this.apiRestService.getDungeonsMeta();
     this.dungeonsMeta = response.success ? response.data : null;
@@ -326,7 +398,14 @@ export class TrackerComponent extends GenericComponent {
     if (this.serverService.currentServer && !this.allowedServers.includes(this.serverService.currentServer.name)) {
       this.isInLoading = false;
       return;
-    } else if (this.filterByKid.length === 0) {
+    }
+    if (this.view === 'map') {
+      this.isListStale = true;
+      void this.getMeta().finally(() => (this.isInLoading = false));
+      return;
+    }
+    this.isListStale = false;
+    if (this.filterByKid.length === 0) {
       this.responseTime = 0;
       this.resultsCount = 0;
       this.maxPage = 0;
@@ -361,6 +440,10 @@ export class TrackerComponent extends GenericComponent {
       this.realms.forEach((realm) => {
         realm.translated = this.translateService.instant(realm.label);
       });
+      const requestedView = this.route.snapshot.queryParamMap.get('view') ?? this.localStorage.getItem('dungeonView');
+      if (requestedView === 'map') this.view = 'map';
+      const storedMapRealm = Number(this.localStorage.getItem('dungeonMapRealm'));
+      if (DUNGEON_REALMS.some((realm) => realm.id === storedMapRealm)) this.mapRealmId = storedMapRealm;
       this.displayedStates = Object.entries(this.states).map(this.mapStateEntry);
       this.displayedStates.forEach((state) => {
         state.label = this.translateService.instant(state.label);
@@ -470,6 +553,8 @@ export class TrackerComponent extends GenericComponent {
         lastAttackDate: dungeon.last_attack,
         kid: dungeon.kid,
         position: `[${dungeon.position_x}, ${dungeon.position_y}]`,
+        positionX: dungeon.position_x,
+        positionY: dungeon.position_y,
         globalAvailableAt: dungeon.global_available_at,
         effectiveCooldownUntil,
         availableDurationSeconds,

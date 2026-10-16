@@ -7,6 +7,7 @@ import { RateLimiterRedis, RateLimiterRes } from 'rate-limiter-flexible';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { ClientIp } from '../helper/client-ip';
+import { RequestContextReader } from '../helper/request-context';
 import { ApiGgeTrackerManager } from '../managers/api.manager';
 import { RoutesManager, sortBySpecificity } from '../managers/routes.manager';
 import { ApiKey, ApiKeyRegistry } from '../services/api-key-registry';
@@ -30,6 +31,10 @@ interface LogEntryRow {
   user_agent: any;
   ip: any;
   partner: string;
+  country: string;
+  origin: string;
+  referer: string;
+  page: string;
 }
 
 interface RateLimit {
@@ -209,6 +214,7 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
         response_time: tokens['response-time'](request, response),
         user_agent: tokens['user-agent'](request, response),
         ip,
+        ...RequestContextReader.read(request),
       };
       this.pushToBuffer({ labels, line, timestamp: now });
     } catch (error) {
@@ -276,6 +282,10 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
       user_agent: logEntry.line.user_agent ?? null,
       ip: logEntry.line.ip ?? null,
       partner: logEntry.labels.partner === 'none' ? '' : (logEntry.labels.partner ?? ''),
+      country: logEntry.line.country ?? '',
+      origin: logEntry.line.origin ?? '',
+      referer: logEntry.line.referer ?? '',
+      page: logEntry.line.page ?? '',
     };
   }
 
@@ -335,7 +345,9 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
    */
   private buildClickhouseUrl(): string {
     const sql = `INSERT INTO logs.logs FORMAT JSONEachRow`;
-    return this.managerInstance.getClickHouseUrl() + `/?query=${encodeURIComponent(sql)}`;
+    return (
+      this.managerInstance.getClickHouseUrl() + `/?query=${encodeURIComponent(sql)}&input_format_skip_unknown_fields=1`
+    );
   }
 
   /**

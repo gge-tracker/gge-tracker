@@ -1,5 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 
+import { PageTemplateService } from './page-template.service';
 import { ServerService } from './server.service';
 import { ToastService } from './toast.service';
 import { environment } from '../../environments/environment';
@@ -119,6 +120,7 @@ export class ApiRestService {
   public responseMs = 0;
   public serverService = inject(ServerService);
   public toastService = inject(ToastService);
+  private readonly pageTemplateService = inject(PageTemplateService);
 
   /**
    * Fetch data from the API
@@ -128,10 +130,9 @@ export class ApiRestService {
   public async apiFetch<T>(url: string, doNotUpdateLocation = true, options?: RequestInit): Promise<ApiResponse<T>> {
     try {
       const now = Date.now();
-      const response = await fetch(url, {
-        headers: { 'gge-server': this.serverService.currentServer!.name },
-        ...options,
-      });
+      const headers = new Headers(options?.headers ?? { 'gge-server': this.serverService.currentServer!.name });
+      headers.set('X-GGE-Page', this.pageTemplateService.current());
+      const response = await fetch(url, { ...options, headers });
       if (!response.ok) {
         if (response.status === 429) {
           this.toastService.add(ErrorType.RATE_LIMIT_EXCEEDED, 5000);

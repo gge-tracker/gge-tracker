@@ -1,0 +1,64 @@
+:host {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.view-switch {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+}
+
+.view-option {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 11px;
+  color: rgba(255, 255, 255, 0.62);
+  display: inline-flex;
+  font-size: 0.92rem;
+  font-weight: 500;
+  gap: 0.5rem;
+  height: 100%;
+  min-height: 40px;
+  padding: 0 0.9rem;
+  transition:
+    background 0.25s ease,
+    color 0.25s ease;
+  white-space: nowrap;
+}
+
+.view-option:hover:not(.is-on) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e7e7e7;
+}
+
+.view-option.is-on {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-weight: 600;
+}
+
+.view-option:focus-visible {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
+  outline: none;
+}
+
+@media (max-width: 480px) {
+  .view-option span {
+    display: none;
+  }
+
+  .view-option {
+    padding: 0 0.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-option {
+    transition: none;
+  }
+}

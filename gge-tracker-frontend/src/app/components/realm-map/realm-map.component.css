@@ -1,0 +1,201 @@
+:host {
+  display: block;
+  height: 100%;
+  position: relative;
+  width: 100%;
+}
+
+.rmap-canvas {
+  background: transparent;
+  height: 100%;
+  width: 100%;
+}
+
+.rmap-canvas.is-picking,
+.rmap-canvas.is-picking ::ng-deep .leaflet-interactive {
+  cursor: crosshair !important;
+}
+
+.rmap-hud {
+  background: rgba(16, 20, 26, 0.85);
+  border: 1px solid #2c323d;
+  border-radius: 6px;
+  bottom: 0.6rem;
+  color: #e3e6ea;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  left: 0.6rem;
+  padding: 0.2rem 0.5rem;
+  pointer-events: none;
+  position: absolute;
+  z-index: 500;
+}
+
+:host ::ng-deep .leaflet-container {
+  background: transparent;
+  font-family: inherit;
+}
+
+:host ::ng-deep .leaflet-bar {
+  border: 1px solid #2c323d;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+:host ::ng-deep .leaflet-bar a {
+  background: #1f242d;
+  border-bottom-color: #2c323d;
+  color: #e3e6ea;
+}
+
+:host ::ng-deep .leaflet-bar a:hover {
+  background: #2a313c;
+}
+
+:host ::ng-deep .leaflet-bar a.leaflet-disabled {
+  background: #161a20;
+  color: #555d68;
+}
+
+:host ::ng-deep .rmap-tooltip {
+  background: rgba(16, 20, 26, 0.95);
+  border: 1px solid #2c323d;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  color: #e3e6ea;
+  display: flex;
+  flex-direction: column;
+  font-size: 0.78rem;
+  gap: 1px;
+  line-height: 1.35;
+  padding: 0.35rem 0.55rem;
+}
+
+:host ::ng-deep .rmap-tooltip::before {
+  border-top-color: rgba(16, 20, 26, 0.95);
+}
+
+:host ::ng-deep .rmap-tooltip strong {
+  font-weight: 600;
+}
+
+:host ::ng-deep .rmap-tooltip span {
+  color: #b8c0c9;
+}
+
+:host ::ng-deep .rmap-tooltip .rmap-tooltip-pos {
+  color: #8a939d;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+}
+
+:host ::ng-deep .rmap-tick span {
+  color: rgba(255, 255, 255, 0.55);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.65rem;
+  pointer-events: none;
+  position: absolute;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
+}
+
+:host ::ng-deep .rmap-tick-x span {
+  top: 3px;
+  transform: translateX(-50%);
+}
+
+:host ::ng-deep .rmap-tick-y span {
+  left: 4px;
+  transform: translateY(-50%);
+}
+
+:host ::ng-deep .rmap-tick {
+  display: none;
+}
+
+:host ::ng-deep .show-ticks .rmap-tick {
+  display: block;
+}
+
+:host ::ng-deep .rmap-ring-label span {
+  background: rgba(16, 20, 26, 0.8);
+  border-radius: 4px;
+  color: #fff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.65rem;
+  padding: 0 0.3rem;
+  position: absolute;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+}
+
+:host ::ng-deep .rmap-origin {
+  pointer-events: none;
+}
+
+:host ::ng-deep .rmap-origin-pin {
+  align-items: center;
+  background: #fff;
+  border: 2px solid #0b0d10;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 4px rgba(255, 255, 255, 0.25),
+    0 4px 10px rgba(0, 0, 0, 0.5);
+  color: #0b0d10;
+  display: flex;
+  font-size: 0.75rem;
+  height: 24px;
+  justify-content: center;
+  left: 0;
+  position: absolute;
+  top: 0;
+  transform: translate(-50%, -50%);
+  width: 24px;
+}
+
+:host ::ng-deep .rmap-origin-label {
+  background: rgba(16, 20, 26, 0.9);
+  border-radius: 4px;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  left: 0;
+  max-width: 160px;
+  overflow: hidden;
+  padding: 0.05rem 0.4rem;
+  position: absolute;
+  text-overflow: ellipsis;
+  top: 16px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+:host ::ng-deep .rmap-selection span {
+  animation: rmap-pulse 1.6s ease-out infinite;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.45);
+  height: 26px;
+  left: 0;
+  position: absolute;
+  top: 0;
+  transform: translate(-50%, -50%);
+  width: 26px;
+}
+
+@keyframes rmap-pulse {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.75);
+  }
+
+  100% {
+    opacity: 0.15;
+    transform: translate(-50%, -50%) scale(1.35);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :host ::ng-deep .rmap-selection span {
+    animation: none;
+  }
+}

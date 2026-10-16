@@ -2,9 +2,9 @@
   <div class="row">
     <div class="col-12" [ngClass]="{'loading': isInLoading}">
       <div class="search container-fluid mb-2">
-        <div class="row mb-2">
-          <div class="col">
-            <div class="input-group">
+        <div class="dungeon-header-row mb-2">
+          @if (view === 'list') {
+            <div class="input-group dungeon-realm-select">
               <span class="input-group-text">
                 <img src="/assets/map.png" width="20" alt="Map Icon" />
                 &nbsp;
@@ -20,8 +20,20 @@
                 </ng-template>
               </ng-select>
             </div>
-          </div>
+          } @else {
+            <div class="dungeon-realm-chips" role="radiogroup" [attr.aria-label]="'Royaume' | translate">
+              @for (realm of dungeonRealms; track realm.id) {
+              <button type="button" class="dungeon-realm-chip" role="radio" [attr.aria-checked]="realm.id === mapRealmId"
+                [class.is-on]="realm.id === mapRealmId" (click)="selectMapRealm(realm.id)">
+                <img [src]="realm.icon" alt="" width="30" height="30">
+                <span>{{ realm.name | translate }}</span>
+              </button>
+              }
+            </div>
+          }
+          <app-view-switch [view]="view" (viewChange)="setView($event)" />
         </div>
+        @if (view === 'list') {
         <div class="row actions">
           <div class="col">
             <div class="input-group flex-nowrap search-bar-container">
@@ -69,6 +81,7 @@
             </button>
           </div>
         </div>
+        }
         @if (serverService.currentServer && !allowedServers.includes(serverService.currentServer.name)) {
         <div class="row my-2 special-bg">
           <div class="col-12">
@@ -79,12 +92,20 @@
           </div>
         </div>
         }
-        @if (dungeonsMeta && dungeonsMeta.last_scan_at) {
+        @if (view === 'list' && dungeonsMeta && dungeonsMeta.last_scan_at) {
         <div class="dungeons-status">
           <i class="fa-solid fa-satellite-dish"></i>
           <span>{{ 'Dernier scan' | translate }} : {{ dungeonsMeta.last_scan_at | date:'short' }}</span>
         </div>
         }
+        @if (view === 'map') {
+          @if (isServerAllowed) {
+          <app-dungeon-map class="d-block mt-2" [kingdomId]="mapRealmId" [originPlayerName]="nearPlayerName"
+            [originX]="positionX" [originY]="positionY" [focusTarget]="mapFocus"
+            [lastScanAt]="dungeonsMeta?.last_scan_at ?? null" (originChange)="onMapOriginChange($event)"
+            (attackHistoryRequested)="openAttackHistory($event)" />
+          }
+        } @else {
         <div class="flex flex-col justify-between gap-6 mt-2">
           <app-table [sort]="''" [reverse]="false" [isInLoading]="isInLoading" [maxPage]="maxPage!" [page]="page"
             [search]="''" [headers]="headers" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()"
@@ -109,7 +130,12 @@
                 </div>
               </td>
               <td>
-                <span class="cell-label">{{ 'Position' | translate }}</span>{{ dungeon.position }}
+                <span class="cell-label">{{ 'Position' | translate }}</span><span class="text-nowrap">{{ dungeon.position }}
+                  <button type="button" class="dungeon-map-link" [title]="'Voir sur la carte' | translate"
+                    [attr.aria-label]="'Voir sur la carte' | translate" (click)="showOnMap(dungeon)">
+                    <i class="fa-solid fa-map-location-dot"></i>
+                  </button>
+                </span>
               </td>
               @if (headers.length === 6) {
               <td>
@@ -158,6 +184,7 @@
             }
           </app-table>
         </div>
+        }
       </div>
     </div>
 

@@ -1,11 +1,13 @@
 import { DatePipe, DecimalPipe, NgClass } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, OnInit, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { ModalFormGroupComponent } from '@ggetracker-components/modal-form-group/modal-form-group.component';
 import { SearchbarComponent } from '@ggetracker-components/searchbar/searchbar.component';
 import { SelectComponent } from '@ggetracker-components/select/select.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
+import { RealmMapLocateRequest } from '@ggetracker-components/realm-map/realm-map.models';
+import { TrackerView, ViewSwitchComponent } from '@ggetracker-components/view-switch/view-switch.component';
 import {
   ApiStormFortsResponse,
   ApiStormIslesResponse,
@@ -34,6 +36,7 @@ import { LocalStorageService } from '@ggetracker-services/local-storage.service'
 import { ServerService } from '@ggetracker-services/server.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { LucideAngularModule, MessageCircleQuestion, Search, X } from 'lucide-angular';
+import { StormMapComponent, StormMapFocus } from './storm-map/storm-map.component';
 
 /** A fort row joined with its in-game configuration */
 interface StormFortRow extends StormFort {
@@ -61,6 +64,8 @@ interface StormIsleRow extends StormIsle {
     DatePipe,
     DecimalPipe,
     ModalFormGroupComponent,
+    StormMapComponent,
+    ViewSwitchComponent,
   ],
   standalone: true,
   templateUrl: './storm-tracker.component.html',
@@ -79,6 +84,8 @@ export class StormTrackerComponent extends GenericComponent implements OnInit {
   public readonly maxVictories = 10;
 
   public activeTab: 'forts' | 'isles' = 'forts';
+  public view: TrackerView = 'list';
+  public mapFocus: StormMapFocus | null = null;
   public forts: StormFortRow[] = [];
   public isles: StormIsleRow[] = [];
   public stormMeta: ApiStormMetaResponse | null = null;
@@ -138,6 +145,8 @@ export class StormTrackerComponent extends GenericComponent implements OnInit {
 
   private readonly localStorage = inject(LocalStorageService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly stormMap = viewChild(StormMapComponent);
+  private isListStale = false;
 
   constructor() {
     super();
@@ -160,6 +169,44 @@ export class StormTrackerComponent extends GenericComponent implements OnInit {
 
   public isSunk(fort: StormFortRow): boolean {
     return fort.attacksLeft <= 0;
+  }
+
+  public get isServerAllowed(): boolean {
+    return !this.serverService.currentServer || this.allowedServers.includes(this.serverService.currentServer.name);
+  }
+
+  public isLayerShown(layer: 'fort' | 'isle'): boolean {
+    return !this.stormMap()?.hidden().has(layer);
+  }
+
+  public onSegmentClick(tab: 'forts' | 'isles'): void {
+    if (this.view === 'map') {
+      this.stormMap()?.toggleKey(tab === 'forts' ? 'fort' : 'isle');
+      return;
+    }
+    this.switchTab(tab);
+  }
+
+  public setView(view: TrackerView): void {
+    this.view = view;
+    this.localStorage.setItem('stormView', view);
+    void this.updateGenericParamsInUrl({ view }, { view: 'list' });
+    if (view === 'list' && this.isListStale) void this.getData();
+  }
+
+  public showOnMap(kind: 'fort' | 'isle', x: number, y: number): void {
+    this.mapFocus = { id: `${kind}:${x}:${y}`, x, y };
+    this.setView('map');
+  }
+
+  public onMapOriginChange(request: RealmMapLocateRequest | null): void {
+    if (request === null) {
+      this.resetPosition();
+    } else if (request.kind === 'player') {
+      this.onPositionChangePlayerName(request.name);
+    } else {
+      this.onPositionChange(request.x, request.y);
+    }
   }
 
   public switchTab(tab: 'forts' | 'isles'): void {
@@ -421,6 +468,9 @@ export class StormTrackerComponent extends GenericComponent implements OnInit {
 
   private init(): void {
     try {
+      const requestedView = this.route.snapshot.queryParamMap.get('view') ?? this.localStorage.getItem('stormView');
+      if (requestedView === 'map') this.view = 'map';
+
       const storedTab = this.localStorage.getItem('stormActiveTab');
       if (storedTab === 'forts' || storedTab === 'isles') this.activeTab = storedTab;
 
@@ -472,6 +522,7 @@ export class StormTrackerComponent extends GenericComponent implements OnInit {
   private async loadInitialData(): Promise<void> {
     try {
       await Promise.all([this.getMeta(), this.getData()]);
+      if (this.view === 'map') this.isInLoading = false;
     } catch {
       this.isInLoading = false;
       this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
@@ -489,6 +540,11 @@ export class StormTrackerComponent extends GenericComponent implements OnInit {
       this.isInLoading = false;
       return;
     }
+    if (this.view === 'map') {
+      this.isListStale = true;
+      return;
+    }
+    this.isListStale = false;
     this.isInLoading = true;
     try {
       await (this.activeTab === 'forts' ? this.loadForts() : this.loadIsles());

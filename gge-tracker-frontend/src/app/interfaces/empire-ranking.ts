@@ -96,6 +96,8 @@ export interface Dungeon {
   kid: number;
   image: string;
   position: string;
+  positionX: number;
+  positionY: number;
   playerId?: number;
   playerName?: string;
   playerMight?: number | null;
@@ -569,7 +571,7 @@ export interface ApiPlayerProfileIdentity {
 
 export interface ApiPlayerProfile extends ApiProfileServer {
   player: ApiPlayerProfileIdentity;
-  castles?: { kingdom_id: number; castle_type: number }[];
+  castles?: { kingdom_id: number; castle_type: number; position_x: number; position_y: number }[];
   rank?: { might_current: number; loot_current: number; honor: number; current_fame: number; ranked_players: number };
 }
 

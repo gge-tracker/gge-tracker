@@ -24,8 +24,16 @@
 }
 
 
+.storm-header-row {
+  align-items: stretch;
+  display: flex;
+  gap: var(--storm-gap);
+}
+
 .storm-segmented {
-  align-self: flex-start;
+  align-self: stretch;
+  flex: 1;
+  min-width: 0;
   background: rgba(255, 255, 255, 0.07);
   border-radius: var(--storm-radius);
   border: 1px solid var(--storm-border);
@@ -36,6 +44,7 @@
 }
 
 .storm-segment {
+  min-width: 0;
   width: 100%;
   align-items: center;
   justify-content: center;
@@ -74,6 +83,31 @@
   outline: none;
 }
 
+
+.storm-segment__eye {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.storm-map-link {
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--storm-text-dim);
+  margin-left: 0.35rem;
+  padding: 0.1rem 0.3rem;
+  transition: color var(--storm-transition), background var(--storm-transition);
+}
+
+.storm-map-link:hover {
+  background: var(--storm-surface);
+  color: var(--storm-accent);
+}
+
+.storm-map-link:focus-visible {
+  box-shadow: 0 0 0 3px var(--storm-ring);
+  outline: none;
+}
 
 .storm-count {
   background: rgba(255, 255, 255, 0.16);
@@ -349,6 +383,20 @@
   }
 }
 
+@media (max-width: 768px) {
+  .storm-header-row {
+    flex-wrap: wrap;
+  }
+
+  .storm-segmented {
+    flex-basis: 100%;
+  }
+
+  .storm-header-row app-view-switch {
+    margin-left: auto;
+  }
+}
+
 @media (max-width: 480px) {
   .storm-segmented {
     width: 100%;
@@ -363,6 +411,14 @@
   .storm-segment__label {
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .storm-segment__eye {
+    display: none;
+  }
+
+  .storm-menu-icon {
+    width: 32px;
   }
 
   .storm-btn span:not(.storm-count) {

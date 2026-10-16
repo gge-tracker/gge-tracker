@@ -1,0 +1,65 @@
+<app-realm-map-shell [points]="points()" [extent]="extent" [gridStep]="100" [field]="realm().field"
+  [ground]="realm().ground" [origin]="origin()" [originQuery]="originQuery()" [rings]="rings"
+  [selectedId]="selectedId()" [legend]="legend()" [nearest]="nearest()" [loading]="loading()"
+  [lastScanAt]="lastScanAt()" (pointSelected)="selectedId.set($event)" (locate)="onLocate($event)"
+  (clearOrigin)="onClearOrigin()" (toggleGroup)="toggleKey($event)" (toggleItem)="toggleKey($event)"
+  (refresh)="reload()">
+  <ng-container ngProjectAs="[map-detail]">
+    @if (selected(); as dungeon) {
+    <div class="rmd">
+      <header class="rmd-head">
+        <img class="rmd-thumb" [src]="realm().icon" alt="">
+        <div class="rmd-title">
+          <strong>{{ 'Forteresse' | translate }}</strong>
+          <span>{{ realm().name | translate }}</span>
+        </div>
+      </header>
+      <dl class="rmd-facts">
+        <dt>{{ 'Position' | translate }}</dt>
+        <dd>
+          <span class="rmd-mono">{{ dungeon.x }} : {{ dungeon.y }}</span>
+          <button type="button" class="rmd-copy" [title]="'Coordonnées' | translate"
+            [attr.aria-label]="'Coordonnées' | translate" (click)="copyCoordinates(dungeon.x, dungeon.y)">
+            <i class="fa-regular fa-copy"></i>
+          </button>
+        </dd>
+        @if (distanceTo(dungeon); as distance) {
+        <dt>{{ 'Distance' | translate }}</dt>
+        <dd class="rmd-mono">{{ distance | number: '1.0-1' }}</dd>
+        }
+        <dt>{{ 'Etat' | translate }}</dt>
+        <dd>
+          @switch (stateOf(dungeon)) {
+          @case ('ready') {
+          <span class="rmd-state rmd-state-ready">{{ 'Attaquable' | translate }}</span>
+          }
+          @case ('soon') {
+          <span class="rmd-state rmd-state-soon">{{ 'Bientôt attaquable (< 1h)' | translate }}</span>
+          }
+          @default {
+          <span class="rmd-state rmd-state-cooldown">{{ 'En recharge' | translate }}</span>
+          }
+          }
+          <span class="rmd-countdown">{{ dungeon | cooldown }}</span>
+        </dd>
+        @if (stateOf(dungeon) !== 'ready' && dungeon.attackerName) {
+        <dt>{{ 'Attaqué par' | translate }}</dt>
+        <dd>
+          <button type="button" class="rmd-link" [title]="'Historique des attaques' | translate"
+            (click)="openAttackHistory(dungeon)">
+            {{ dungeon.attackerName }}
+          </button>
+          @if (dungeon.lastAttack) {
+          <span class="rmd-sub">{{ dungeon.lastAttack | date: 'short' }}</span>
+          }
+        </dd>
+        }
+        @if (dungeon.availableDurationSeconds) {
+        <dt>{{ 'Durée de disponibilité' | translate }}</dt>
+        <dd class="rmd-mono">{{ dungeon.availableDurationSeconds | duration }}</dd>
+        }
+      </dl>
+    </div>
+    }
+  </ng-container>
+</app-realm-map-shell>
