@@ -368,68 +368,6 @@
 }
 
 
-@media (max-width: 768px) {
-  .storm-toolbar__actions {
-    margin-left: 0;
-  }
-
-  .storm-toolbar__group,
-  .storm-toolbar__search {
-    flex: 1 1 100%;
-  }
-
-  .storm-toolbar__select {
-    flex: 1 1 auto;
-  }
-}
-
-@media (max-width: 768px) {
-  .storm-header-row {
-    flex-wrap: wrap;
-  }
-
-  .storm-segmented {
-    flex-basis: 100%;
-  }
-
-  .storm-header-row app-view-switch {
-    margin-left: auto;
-  }
-}
-
-@media (max-width: 480px) {
-  .storm-segmented {
-    width: 100%;
-  }
-
-  .storm-segment {
-    flex: 1 1 0;
-    justify-content: center;
-    padding: 0.5rem 0.6rem;
-  }
-
-  .storm-segment__label {
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .storm-segment__eye {
-    display: none;
-  }
-
-  .storm-menu-icon {
-    width: 32px;
-  }
-
-  .storm-btn span:not(.storm-count) {
-    display: none;
-  }
-
-  .storm-btn {
-    padding: 0 0.8rem;
-  }
-}
-
 td,
 th {
   text-align: center;
@@ -640,4 +578,115 @@ th {
 
 .storm-menu-icon {
   width: 45px;
+}
+
+@media (pointer: coarse) {
+  :host {
+    --storm-control-h: 44px;
+  }
+
+  .storm-map-link {
+    min-height: 40px;
+    min-width: 40px;
+  }
+}
+
+@media (max-width: 768px) {
+  .storm-toolbar__search {
+    flex: 1 1 100%;
+  }
+
+  .storm-toolbar__group {
+    flex: 1 1 0;
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+
+  .storm-toolbar__select {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .storm-toolbar__actions {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 576px) {
+  .storm-segment {
+    flex: 1 1 0;
+    gap: 0.4rem;
+    justify-content: flex-start;
+    padding: 0.4rem 0.5rem;
+  }
+
+  .storm-segment__label {
+    font-size: 0.8rem;
+    line-height: 1.15;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .storm-segment .storm-count,
+  .storm-segment__eye {
+    display: none;
+  }
+
+  .storm-menu-icon {
+    flex-shrink: 0;
+    width: 30px;
+  }
+
+  .storm-btn span:not(.storm-count) {
+    display: none;
+  }
+
+  .storm-btn {
+    flex-shrink: 0;
+    padding: 0;
+    width: var(--storm-control-h);
+  }
+}
+
+@container tracker-table (max-width: 899.98px) {
+  :host ::ng-deep #table-component .table-custom td.col-state {
+    flex: 0 0 auto;
+    margin-left: auto;
+    order: -1;
+    text-align: right !important;
+  }
+
+  :host ::ng-deep #table-component .table-custom td.col-state .mono {
+    font-size: 0.72rem;
+    opacity: 0.8;
+  }
+
+  :host ::ng-deep #table-component .table-custom td.col-stat {
+    flex: 1 1 22%;
+    align-self: flex-start;
+    min-width: 72px;
+  }
+
+  :host ::ng-deep #table-component .table-custom td.col-position {
+    flex-basis: 30%;
+    min-width: 108px;
+  }
+
+  .storm-map-link {
+    margin-left: 0.1rem;
+    min-height: 32px;
+    min-width: 32px;
+  }
+
+  :host ::ng-deep #table-component .table-custom td.col-name > div {
+    justify-content: flex-start !important;
+  }
+
+  .attacks-left {
+    margin: 0;
+  }
+
+  .storm-thumb {
+    width: 40px;
+  }
 }

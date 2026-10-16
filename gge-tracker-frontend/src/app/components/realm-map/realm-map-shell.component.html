@@ -1,4 +1,4 @@
-<div class="rmap-layout">
+<div class="rmap-layout" #layout [class.is-expanded]="isFullscreen()">
   <form class="rmap-locate" role="search" (ngSubmit)="submitLocate()">
     <label class="rmap-locate-field">
       <i class="fa-solid fa-chess-rook" aria-hidden="true"></i>
@@ -22,7 +22,7 @@
     </button>
   </form>
 
-  <div class="rmap-stage" #stage [style.--ground]="ground()">
+  <div class="rmap-stage" [style.--ground]="ground()">
     <app-realm-map [points]="points()" [extent]="extent()" [gridStep]="gridStep()" [field]="field()"
       [origin]="origin()" [rings]="rings()" [selectedId]="selectedId()" [picking]="picking()"
       (pointSelected)="pointSelected.emit($event)" (picked)="onPicked($event)" />
@@ -62,6 +62,16 @@
     }
   </div>
 
+  @if (hasSelection()) {
+  <section class="rmap-panel rmap-detail" aria-live="polite">
+    <button type="button" class="rmap-icon-btn rmap-detail-close" [attr.aria-label]="'Fermer' | translate"
+      (click)="pointSelected.emit(null)">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+    <ng-content select="[map-detail]" />
+  </section>
+  }
+
   <aside class="rmap-side">
     @if (origin(); as origin) {
     <section class="rmap-panel rmap-origin-card">
@@ -78,16 +88,6 @@
         [attr.aria-label]="'Réinitialiser' | translate" (click)="clearOrigin.emit()">
         <i class="fa-solid fa-xmark"></i>
       </button>
-    </section>
-    }
-
-    @if (hasSelection()) {
-    <section class="rmap-panel rmap-detail" aria-live="polite">
-      <button type="button" class="rmap-icon-btn rmap-detail-close" [attr.aria-label]="'Fermer' | translate"
-        (click)="pointSelected.emit(null)">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
-      <ng-content select="[map-detail]" />
     </section>
     }
 

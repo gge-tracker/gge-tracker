@@ -3,80 +3,71 @@
     <div class="col-12" [ngClass]="{'loading': isInLoading}">
       <div class="search container-fluid mb-2">
         <div class="dungeon-header-row mb-2">
-          @if (view === 'list') {
-            <div class="input-group dungeon-realm-select">
-              <span class="input-group-text">
-                <img src="/assets/map.png" width="20" alt="Map Icon" />
-                &nbsp;
-                <span>{{ 'Royaume' | translate }}</span>
-              </span>
-              <ng-select [items]="realms" bindLabel="label" bindValue="key" [(ngModel)]="selectedRealm"
-                [multiple]="true" [closeOnSelect]="false" (change)="onRealmChange($event)" class="form-control">
-                <ng-template ng-option-tmp let-item="item">
-                  {{ item.label | translate }}
-                </ng-template>
-                <ng-template ng-label-tmp let-item="item">
-                  {{ item.label | translate }}
-                </ng-template>
-              </ng-select>
-            </div>
-          } @else {
-            <div class="dungeon-realm-chips" role="radiogroup" [attr.aria-label]="'Royaume' | translate">
-              @for (realm of dungeonRealms; track realm.id) {
-              <button type="button" class="dungeon-realm-chip" role="radio" [attr.aria-checked]="realm.id === mapRealmId"
-                [class.is-on]="realm.id === mapRealmId" (click)="selectMapRealm(realm.id)">
-                <img [src]="realm.icon" alt="" width="30" height="30">
-                <span>{{ realm.name | translate }}</span>
-              </button>
-              }
-            </div>
-          }
+          <div class="dungeon-realm-chips" [attr.role]="view === 'map' ? 'radiogroup' : 'group'"
+            [attr.aria-label]="'Royaume' | translate">
+            @for (realm of dungeonRealms; track realm.id) {
+            @if (view === 'map') {
+            <button type="button" class="dungeon-realm-chip" role="radio" [attr.aria-checked]="realm.id === mapRealmId"
+              [class.is-on]="realm.id === mapRealmId" [title]="realm.name | translate" (click)="selectMapRealm(realm.id)">
+              <img [src]="realm.icon" alt="" width="30" height="30">
+              <span>{{ realm.name | translate }}</span>
+            </button>
+            } @else {
+            <button type="button" class="dungeon-realm-chip" [attr.aria-pressed]="isListRealmSelected(realm.id)"
+              [class.is-on]="isListRealmSelected(realm.id)" [title]="realm.name | translate"
+              (click)="toggleListRealm(realm.id)">
+              <img [src]="realm.icon" alt="" width="30" height="30">
+              <span>{{ realm.name | translate }}</span>
+            </button>
+            }
+            }
+          </div>
           <app-view-switch [view]="view" (viewChange)="setView($event)" />
         </div>
         @if (view === 'list') {
-        <div class="row actions">
-          <div class="col">
-            <div class="input-group flex-nowrap search-bar-container">
-              <app-search-bar [attrListInput]="[]" [searchInput]="filterByPlayerName"
-                (searchEmitter)="filterByPlayerName = $event" [inputType]="'string'" [name]="'player-name'"
-                [placeholderInput]="'Nom du joueur' | translate" [hasContent]="true">
-                {{ 'Pseudonyme' | translate }}
-              </app-search-bar>
-              <div class="col-auto buttons">
-                <div class="d-flex gap-1 ms-2">
-                  <button class="btn-modern btn-search" (click)="onPlayerNameChange(filterByPlayerName!)">
-                    <lucide-icon class="lucide" [img]="Search"></lucide-icon>
-                  </button>
-                  <button class="btn-modern btn-x" (click)="resetPlayerName()">
-                    <lucide-icon class="lucide " [img]="X"></lucide-icon>
-                  </button>
-                  <button class="btn-modern btn-help" data-bs-toggle="modal" data-bs-target="#questionModal">
-                    <lucide-icon class="lucide " [img]="MessageCircleQuestionMark"></lucide-icon>
-                  </button>
-                </div>
-              </div>
-            </div>
+        <div class="dungeon-toolbar">
+          <div class="dungeon-toolbar__search">
+            <app-search-bar [attrListInput]="[]" [searchInput]="filterByPlayerName"
+              (searchEmitter)="filterByPlayerName = $event" [inputType]="'string'" [name]="'player-name'"
+              [placeholderInput]="'Nom du joueur' | translate" [hasContent]="true">
+              {{ 'Pseudonyme' | translate }}
+            </app-search-bar>
+            <button class="dungeon-icon-btn dungeon-icon-btn--accent" [title]="'Rechercher' | translate"
+              [attr.aria-label]="'Rechercher' | translate" (click)="onPlayerNameChange(filterByPlayerName!)">
+              <lucide-icon class="lucide" [img]="Search"></lucide-icon>
+            </button>
+            <button class="dungeon-icon-btn" [title]="'Réinitialiser' | translate"
+              [attr.aria-label]="'Réinitialiser' | translate" (click)="resetPlayerName()">
+              <lucide-icon class="lucide" [img]="X"></lucide-icon>
+            </button>
+            <button class="dungeon-icon-btn" data-bs-toggle="modal" data-bs-target="#questionModal"
+              [attr.aria-label]="'Aide' | translate">
+              <lucide-icon class="lucide" [img]="MessageCircleQuestionMark"></lucide-icon>
+            </button>
           </div>
-          <div class="col-auto">
+          <div class="dungeon-toolbar__group">
             @if (displayedStates && displayedStates.length > 0) {
-            <app-select [items]="displayedStates" [name]="'dungeon-state'" [selectedItem]="filterByAttackCooldown ? filterByAttackCooldown.toString() : '0'"
-              (selectEmitter)="changeState($event)"></app-select>
-            }
-          </div>
-          <div class="col-auto">
-            <div class="btn-group">
-              <button class="btn btn-modern" data-bs-toggle="modal" data-bs-target="#sortModal">
-                <i class="fa-solid fa-arrow-down-short-wide"></i>
-                &nbsp;{{ 'Trier' | translate }}<small>({{ activeSortCount }})</small>
-              </button>
-              <button class="btn btn-modern" data-bs-toggle="modal" data-bs-target="#pagingModal">
-                <i class="fa-solid fa-list-ol"></i>
-                &nbsp;{{ 'Pagination' | translate }}
-              </button>
+            <div class="dungeon-toolbar__select">
+              <app-select [items]="displayedStates" [name]="'dungeon-state'"
+                [selectedItem]="filterByAttackCooldown ? filterByAttackCooldown.toString() : '0'"
+                (selectEmitter)="changeState($event)"></app-select>
             </div>
-          </div>
-          <div class="col-auto">
-            <button class="btn btn-modern" (click)="refresh()">
+            }
+            <button class="dungeon-btn" data-bs-toggle="modal" data-bs-target="#sortModal"
+              [attr.aria-label]="'Trier' | translate">
+              <i class="fa-solid fa-arrow-down-short-wide"></i>
+              <span>{{ 'Trier' | translate }}</span>
+              @if (activeSortCount > 0) {
+              <span class="dungeon-count">{{ activeSortCount }}</span>
+              }
+            </button>
+            <button class="dungeon-btn" data-bs-toggle="modal" data-bs-target="#pagingModal"
+              [attr.aria-label]="'Pagination' | translate">
+              <i class="fa-solid fa-list-ol"></i>
+              <span>{{ 'Pagination' | translate }}</span>
+            </button>
+            <button class="dungeon-icon-btn" [title]="'Actualiser' | translate" [attr.aria-label]="'Actualiser' | translate"
+              (click)="refresh()">
               <i class="fa-solid fa-arrows-rotate" [ngClass]="{'fa-spin': refreshDataAnimationSpinner}"></i>
             </button>
           </div>
@@ -122,14 +113,14 @@
                 {{ dungeon.rank }}
               </td>
               <td class="col-name">
-                <div class="d-flex justify-content-center">
+                <div class="d-flex align-items-center justify-content-center">
                   <div>
                     <img [src]="dungeon.image" alt="{{ dungeon.kid }}" class="img-fluid" width="30">
                   </div>
                   <span class="ms-2 dungeon-{{ dungeon.kid }}">{{ getRealmName(dungeon.kid) | translate }}</span>
                 </div>
               </td>
-              <td>
+              <td class="col-stat col-position">
                 <span class="cell-label">{{ 'Position' | translate }}</span><span class="text-nowrap">{{ dungeon.position }}
                   <button type="button" class="dungeon-map-link" [title]="'Voir sur la carte' | translate"
                     [attr.aria-label]="'Voir sur la carte' | translate" (click)="showOnMap(dungeon)">
@@ -138,11 +129,12 @@
                 </span>
               </td>
               @if (headers.length === 6) {
-              <td>
+              <td class="col-stat">
+                <span class="cell-label">{{ 'Distance' | translate }}</span>
                 {{ dungeon.distance ? dungeon.distance + 'm' : '?' }}
               </td>
               }
-              <td>
+              <td class="col-state-wide">
                 @if (!isInCooldown(dungeon)) {
                 <i class="fa-solid fa-dungeon special-fa"></i>
                 }
@@ -157,7 +149,8 @@
                 </div>
                 }
               </td>
-              <td>
+              <td class="col-stat">
+                <span class="cell-label">{{ 'Attaqué par' | translate }}</span>
                 @if (isInCooldown(dungeon)) {
                 <span>
                   {{ dungeon.playerName }}
@@ -173,7 +166,8 @@
                 -
                 }
               </td>
-              <td>
+              <td class="col-stat">
+                <span class="cell-label">{{ 'Durée de disponibilité' | translate }}</span>
                 @if (dungeon.availableDurationSeconds !== undefined) {
                 <span>{{ dungeon.availableDurationSeconds | duration }}</span>
                 } @else {

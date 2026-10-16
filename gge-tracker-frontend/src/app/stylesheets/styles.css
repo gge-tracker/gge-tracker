@@ -569,7 +569,8 @@ select.form-select, .modal-content input[type="text"], .modal-content input[type
   background: transparent;
 }
 
-.no-scroll {
+.no-scroll,
+.rmap-expanded {
   overflow: hidden;
 }
 

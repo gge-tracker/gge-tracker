@@ -23,7 +23,6 @@ import { CooldownPipe } from '@ggetracker-pipes/cooldown.pipe';
 import { DurationPipe } from '@ggetracker-pipes/duration.pipe';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
 import { ServerService } from '@ggetracker-services/server.service';
-import { NgSelectModule } from '@ng-select/ng-select';
 import { TranslateModule } from '@ngx-translate/core';
 import { LucideAngularModule, MessageCircleQuestion, Search, X } from 'lucide-angular';
 import { DUNGEON_REALMS, DungeonMapComponent, DungeonMapFocus } from './dungeon-map/dungeon-map.component';
@@ -45,7 +44,6 @@ interface DungeonAttackHistory extends ApiDungeonsAttackHistory {
     CooldownPipe,
     DurationPipe,
     FormsModule,
-    NgSelectModule,
     DatePipe,
     ModalTableComponent,
     ModalFormGroupComponent,
@@ -320,12 +318,19 @@ export class TrackerComponent extends GenericComponent {
     void this.getData();
   }
 
-  public onRealmChange(realmId: { key: string; label: string }[]): void {
-    this.selectedRealm = realmId.map((r) => r.key);
-    this.filterByKid = this.selectedRealm;
-    this.localStorage.setItem('selectedRealm', JSON.stringify(this.selectedRealm));
-    this.page = 1;
-    void this.getData();
+  public isListRealmSelected(realmId: number): boolean {
+    return this.selectedRealm.includes(realmId.toString());
+  }
+
+  public toggleListRealm(realmId: number): void {
+    const key = realmId.toString();
+    if (this.isListRealmSelected(realmId)) {
+      if (this.selectedRealm.length === 1) return;
+      this.selectedRealm = this.selectedRealm.filter((selected) => selected !== key);
+    } else {
+      this.selectedRealm = [...this.selectedRealm, key];
+    }
+    this.onRealmChange();
   }
 
   public onPageSizeChange(pageSize: number): void {
@@ -647,6 +652,13 @@ export class TrackerComponent extends GenericComponent {
         return 'assets/dungeon_default.png';
       }
     }
+  }
+
+  private onRealmChange(): void {
+    this.filterByKid = this.selectedRealm;
+    this.localStorage.setItem('selectedRealm', JSON.stringify(this.selectedRealm));
+    this.page = 1;
+    void this.getData();
   }
 
   private resetHeaders(): void {

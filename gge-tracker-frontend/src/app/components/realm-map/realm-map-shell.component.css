@@ -133,12 +133,27 @@
   width: 100%;
 }
 
-.rmap-stage:fullscreen {
+.rmap-layout.is-expanded {
+  background: url(/assets/textures/45-degree-fabric-dark.png), #10141a;
+  grid-template-areas:
+    "locate"
+    "stage";
+  grid-template-rows: auto minmax(0, 1fr);
+  inset: 0;
+  overflow: hidden;
+  padding: 0.75rem 0.75rem calc(0.75rem + env(safe-area-inset-bottom));
+  position: fixed;
+  z-index: 1040;
+}
+
+.rmap-layout.is-expanded .rmap-stage {
   aspect-ratio: auto;
-  background: url(/assets/textures/45-degree-fabric-dark.png), var(--ground, #2c4f5f);
-  border-radius: 0;
   height: 100%;
   max-height: none;
+}
+
+.rmap-layout.is-expanded .rmap-side {
+  display: none;
 }
 
 .rmap-stage-top {
@@ -326,6 +341,33 @@
 .rmap-detail {
   border-color: rgba(56, 189, 248, 0.35);
   box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.12);
+  grid-area: detail;
+}
+
+@media (max-width: 991.98px) {
+  .rmap-detail {
+    animation: rmap-sheet-in 0.2s ease-out;
+    bottom: calc(0.5rem + env(safe-area-inset-bottom));
+    box-shadow:
+      0 0 0 1px rgba(56, 189, 248, 0.12),
+      0 -12px 32px rgba(0, 0, 0, 0.55);
+    left: 0.5rem;
+    max-height: 55dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    margin-inline: auto;
+    max-width: 560px;
+    position: fixed;
+    right: 0.5rem;
+    z-index: 1045;
+  }
+}
+
+@keyframes rmap-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
 }
 
 .rmap-detail-close {
@@ -564,12 +606,22 @@
     --rmap-stage-height: max(560px, calc(100dvh - 15rem));
   }
 
-  .rmap-layout {
+  .rmap-layout,
+  .rmap-layout.is-expanded {
     grid-template-areas:
       "locate stage"
+      "detail stage"
       "side stage";
     grid-template-columns: 320px minmax(0, 1fr);
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+
+  .rmap-layout.is-expanded {
+    --rmap-stage-height: calc(100dvh - 1.5rem - env(safe-area-inset-bottom));
+  }
+
+  .rmap-layout.is-expanded .rmap-side {
+    display: flex;
   }
 
   .rmap-stage {
@@ -579,7 +631,6 @@
   }
 
   .rmap-side {
-    max-height: calc(var(--rmap-stage-height) - var(--rmap-control-h) - 0.75rem);
     overflow-y: auto;
     scrollbar-color: #3b4350 transparent;
     scrollbar-width: thin;
@@ -598,6 +649,10 @@
   .rmap-stage-btn,
   .rmap-icon-btn {
     transition: none;
+  }
+
+  .rmap-detail {
+    animation: none;
   }
 
   .rmap-spinner {

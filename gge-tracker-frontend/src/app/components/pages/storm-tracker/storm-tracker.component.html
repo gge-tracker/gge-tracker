@@ -6,13 +6,13 @@
 
           <div class="storm-header-row">
             <nav class="storm-segmented" [attr.role]="view === 'list' ? 'tablist' : 'group'">
-              <button class="storm-segment" [attr.role]="view === 'list' ? 'tab' : null"
+              <button class="storm-segment justify-content-center" [attr.role]="view === 'list' ? 'tab' : null"
                 [attr.aria-selected]="view === 'list' ? activeTab === 'forts' : null"
                 [attr.aria-pressed]="view === 'map' ? isLayerShown('fort') : null"
                 [class.storm-segment--on]="view === 'list' ? activeTab === 'forts' : isLayerShown('fort')"
                 (click)="onSegmentClick('forts')">
                 <img src="/assets/storm-tracker/fort.png" class="storm-menu-icon" alt="">
-                <span class="storm-segment__label">{{ 'Forteresses des tempêtes' | translate }}</span>
+                <span class="storm-segment__label d-none d-lg-inline-block">{{ 'Forteresses des tempêtes' | translate }}</span>
                 @if (stormMeta) {
                 <span class="storm-count">{{ stormMeta.forts_count }}</span>
                 }
@@ -21,13 +21,13 @@
                   [class.fa-eye-slash]="!isLayerShown('fort')"></i>
                 }
               </button>
-              <button class="storm-segment" [attr.role]="view === 'list' ? 'tab' : null"
+              <button class="storm-segment justify-content-center" [attr.role]="view === 'list' ? 'tab' : null"
                 [attr.aria-selected]="view === 'list' ? activeTab === 'isles' : null"
                 [attr.aria-pressed]="view === 'map' ? isLayerShown('isle') : null"
                 [class.storm-segment--on]="view === 'list' ? activeTab === 'isles' : isLayerShown('isle')"
                 (click)="onSegmentClick('isles')">
                 <img src="/assets/storm-tracker/village/6.png" class="storm-menu-icon" alt="">
-                <span class="storm-segment__label">{{ 'Îles de ressources' | translate }}</span>
+                <span class="storm-segment__label d-none d-lg-inline-block">{{ 'Îles de ressources' | translate }}</span>
                 @if (stormMeta) {
                 <span class="storm-count">{{ stormMeta.isles_count }}</span>
                 }
@@ -71,14 +71,14 @@
                 <i class="fa-solid fa-filter"></i>
                 <span>{{ 'Filtrer' | translate }}</span>
                 @if (activeFilterCount > 0) {
-                <span class="storm-count storm-count--accent">{{ activeFilterCount }}</span>
+                <span class="storm-count storm-count--accent d-none d-lg-inline-block">{{ activeFilterCount }}</span>
                 }
               </button>
               <button class="storm-btn" data-bs-toggle="modal" data-bs-target="#stormSortModal">
                 <i class="fa-solid fa-arrow-down-short-wide"></i>
                 <span>{{ 'Trier' | translate }}</span>
                 @if (activeSortCount > 0) {
-                <span class="storm-count storm-count--accent">{{ activeSortCount }}</span>
+                <span class="storm-count storm-count--accent d-none d-lg-inline-block">{{ activeSortCount }}</span>
                 }
               </button>
               <button class="storm-btn" data-bs-toggle="modal" data-bs-target="#stormPagingModal">
@@ -156,7 +156,7 @@
                     </div>
                   </div>
                 </td>
-                <td>
+                <td class="col-stat col-position">
                   <span class="cell-label">{{ 'Position' | translate }}</span><span class="text-nowrap">{{ fort.position }}
                     <button type="button" class="storm-map-link" [title]="'Voir sur la carte' | translate"
                       [attr.aria-label]="'Voir sur la carte' | translate"
@@ -166,9 +166,9 @@
                   </span>
                 </td>
                 @if (isDistanceShown && headers.length > 5) {
-                <td>{{ fort.distance !== null && fort.distance !== undefined ? fort.distance + 'm' : '?' }}</td>
+                <td class="col-stat"><span class="cell-label">{{ 'Distance' | translate }}</span>{{ fort.distance !== null && fort.distance !== undefined ? fort.distance + 'm' : '?' }}</td>
                 }
-                <td>
+                <td class="col-state">
                   @if (isSunk(fort)) {
                   <span class="storm-sunk">
                     <i class="fa-solid fa-skull-crossbones me-1"></i>{{ 'Coulée' | translate }}
@@ -183,7 +183,8 @@
                     <span class="storm-available">{{ 'Attaquable' | translate }}</span>
                   }
                 </td>
-                <td>
+                <td class="col-stat">
+                  <span class="cell-label">{{ 'Attaques restantes' | translate }}</span>
                   @if (!isInCooldown(fort)) {
                     <div class="attacks-left" [title]="fort.victoryCount + ' / ' + maxVictories">
                       <span class="attacks-left-value" [ngClass]="{'attacks-left-value--low': fort.attacksLeft <= 2}">
@@ -211,7 +212,8 @@
                     </div>
                   }
                 </td>
-                <td>
+                <td class="col-stat">
+                  <span class="cell-label">{{ 'Défenseurs' | translate }}</span>
                   @if (fort.definition && fort.definition.units) {
                   <span class="storm-units" [class.storm-units--low]="fort.definition.isLowGarrison">
                     @if (fort.definition.units.min === fort.definition.units.max) {
@@ -255,7 +257,7 @@
                     </div>
                   </div>
                 </td>
-                <td>
+                <td class="col-stat col-position">
                   <span class="cell-label">{{ 'Position' | translate }}</span><span class="text-nowrap">{{ isle.position }}
                     <button type="button" class="storm-map-link" [title]="'Voir sur la carte' | translate"
                       [attr.aria-label]="'Voir sur la carte' | translate"
@@ -265,9 +267,9 @@
                   </span>
                 </td>
                 @if (isDistanceShown) {
-                <td>{{ isle.distance !== null && isle.distance !== undefined ? isle.distance + 'm' : '?' }}</td>
+                <td class="col-stat"><span class="cell-label">{{ 'Distance' | translate }}</span>{{ isle.distance !== null && isle.distance !== undefined ? isle.distance + 'm' : '?' }}</td>
                 }
-                <td>
+                <td class="col-state">
                   <span class="isle-state isle-state-{{ isle.state }}">
                     {{ getIsleStateLabel(isle.state) | translate }}
                   </span>
@@ -275,7 +277,8 @@
                   <div class="mono small">{{ isle | cooldown }}</div>
                   }
                 </td>
-                <td>
+                <td class="col-stat">
+                  <span class="cell-label">{{ 'Occupant' | translate }}</span>
                   @if (isle.occupierName) {
                   <div>
                     <span>{{ isle.occupierName }}</span>
@@ -287,7 +290,8 @@
                   -
                   }
                 </td>
-                <td>
+                <td class="col-stat">
+                  <span class="cell-label">{{ 'Butin' | translate }}</span>
                   @if (isle.definition) {
                   <span class="storm-loot storm-resource-{{ isle.definition.resource }} storm-id-{{ isle.isleId }}">
                     {{ isle.definition.fixedLoot | number }}

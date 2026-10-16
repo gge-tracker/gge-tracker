@@ -5,6 +5,7 @@ import { BehaviorSubject } from 'rxjs';
   providedIn: 'root',
 })
 export class SidebarService {
+  private static readonly OVERLAY_MAX_WIDTH = 1200;
   public _isSidebarOpen = new BehaviorSubject<boolean>(true);
   public isSidebarOpen$ = this._isSidebarOpen.asObservable();
   public _isServerMenuOpen = new BehaviorSubject<boolean>(false);
@@ -13,7 +14,7 @@ export class SidebarService {
   public isLanguageMenuOpen$ = this._isLanguageMenuOpen.asObservable();
   public _searchQuery = new BehaviorSubject<string>('');
   public searchQuery$ = this._searchQuery.asObservable();
-  public isMobileView: boolean = window.innerWidth < 768;
+  public isMobileView: boolean = window.innerWidth < SidebarService.OVERLAY_MAX_WIDTH;
 
   constructor() {
     if (this.isMobileView) {
@@ -84,7 +85,7 @@ export class SidebarService {
 
   private handleResize(): void {
     const wasMobileView = this.isMobileView;
-    this.isMobileView = window.innerWidth < 768;
+    this.isMobileView = window.innerWidth < SidebarService.OVERLAY_MAX_WIDTH;
     if (this.isMobileView && !wasMobileView) {
       this.closeSidebar();
       globalThis.removeEventListener('click', this.onGlobalClick);

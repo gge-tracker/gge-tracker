@@ -75,7 +75,7 @@ export class RealmMapShellComponent implements OnDestroy {
   public query = '';
 
   private readonly map = viewChild.required(RealmMapComponent);
-  private readonly stage = viewChild.required<ElementRef<HTMLDivElement>>('stage');
+  private readonly layout = viewChild.required<ElementRef<HTMLDivElement>>('layout');
   private readonly apiRestService = inject(ApiRestService);
   private readonly documentListeners = new AbortController();
   private suggestionTimer: ReturnType<typeof setTimeout> | null = null;
@@ -84,10 +84,15 @@ export class RealmMapShellComponent implements OnDestroy {
     effect(() => {
       this.query = this.originQuery();
     });
+    effect(() => {
+      document.body.classList.toggle('rmap-expanded', this.isFullscreen());
+    });
     if (typeof document !== 'undefined') {
       document.addEventListener(
         'fullscreenchange',
-        () => this.isFullscreen.set(document.fullscreenElement === this.stage().nativeElement),
+        () => {
+          if (!document.fullscreenElement) this.isFullscreen.set(false);
+        },
         { signal: this.documentListeners.signal },
       );
     }
@@ -95,6 +100,7 @@ export class RealmMapShellComponent implements OnDestroy {
 
   public ngOnDestroy(): void {
     this.documentListeners.abort();
+    document.body.classList.remove('rmap-expanded');
     if (this.suggestionTimer) clearTimeout(this.suggestionTimer);
   }
 
@@ -144,11 +150,15 @@ export class RealmMapShellComponent implements OnDestroy {
   }
 
   public toggleFullscreen(): void {
-    if (document.fullscreenElement) {
-      void document.exitFullscreen();
-    } else {
-      void this.stage().nativeElement.requestFullscreen?.();
+    if (this.isFullscreen()) {
+      this.isFullscreen.set(false);
+      if (document.fullscreenElement) void document.exitFullscreen();
+      return;
     }
+    this.isFullscreen.set(true);
+    void this.layout()
+      .nativeElement.requestFullscreen?.()
+      .catch(() => this.isFullscreen.set(true));
   }
 
   private async loadSuggestions(query: string): Promise<void> {
