@@ -146,6 +146,7 @@ services:
       - STORE_EGRESS_PORT=${STORE_EGRESS_PORT}
       - STORE_EGRESS_USER=${STORE_EGRESS_USER}
       - STORE_EGRESS_PASSWORD=${STORE_EGRESS_PASSWORD}
+      - OFFERS_SNAPSHOT:${OFFERS_SNAPSHOT}
     depends_on:
       redis-server:
         condition: service_healthy

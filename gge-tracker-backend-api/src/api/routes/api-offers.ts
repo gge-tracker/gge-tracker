@@ -11,27 +11,12 @@ import { ApiHelper } from '../helper/api-helper';
  * @implements {ApiHelper}
  */
 export abstract class ApiOffers implements ApiHelper {
-  /** Official GGS endpoint serving the cash offers catalogs */
-  private static readonly CASH_OFFERS_URL = 'https://api-ggs-canvas.public.ggs-ep.com/cashoffers/catalogs';
-  private static readonly TOKEN_CACHE_KEY = 'offers:token';
-  private static readonly TOKEN_EXPIRATION_MARGIN = 60;
-  private static readonly OFFERS_CACHE_TTL = 1800;
-  private static readonly CATALOG_TIMEOUT = 15_000;
-  private static readonly REGION_SYNC_ATTEMPTS = 6;
-  private static readonly REGION_SYNC_DELAY = 3000;
-  private static readonly REGION_SYNC_BUDGET = 30_000;
-  private static readonly MAX_LEVEL = 70;
-  private static readonly MAX_LEGEND_LEVEL = 950;
+  public static readonly MAX_LEVEL = 70;
+  public static readonly MAX_LEGEND_LEVEL = 950;
+  public static readonly LEVEL_RANGE_BOUNDS = [6, 9, 10, 13, 17, 19, 29, 49, 55, 69, 70];
+  public static readonly LEGENDARY_RANGE_BOUNDS = [0, 9, 29, 149, 199, 349, 399, 549, 659, 949, 950];
 
-  private static readonly CATALOG_SERVERS: GgeTrackerServersEnum[] = [
-    GgeTrackerServersEnum.ASIA,
-    GgeTrackerServersEnum.NL1,
-  ];
-
-  private static readonly LEVEL_RANGE_BOUNDS = [6, 9, 10, 13, 17, 19, 29, 49, 55, 69, 70];
-  private static readonly LEGENDARY_RANGE_BOUNDS = [0, 9, 29, 149, 199, 349, 399, 549, 659, 949, 950];
-
-  private static readonly CURRENCY_REGIONS: Record<string, string> = {
+  public static readonly CURRENCY_REGIONS: Readonly<Record<string, string>> = {
     EUR: 'de',
     USD: 'us',
     GBP: 'gb',
@@ -50,6 +35,21 @@ export abstract class ApiOffers implements ApiHelper {
     AED: 'ae',
     TWD: 'tw',
   };
+
+  /** Official GGS endpoint serving the cash offers catalogs */
+  private static readonly CASH_OFFERS_URL = 'https://api-ggs-canvas.public.ggs-ep.com/cashoffers/catalogs';
+  private static readonly TOKEN_CACHE_KEY = 'offers:token';
+  private static readonly TOKEN_EXPIRATION_MARGIN = 60;
+  private static readonly OFFERS_CACHE_TTL = 1800;
+  private static readonly CATALOG_TIMEOUT = 15_000;
+  private static readonly REGION_SYNC_ATTEMPTS = 6;
+  private static readonly REGION_SYNC_DELAY = 3000;
+  private static readonly REGION_SYNC_BUDGET = 30_000;
+
+  private static readonly CATALOG_SERVERS: GgeTrackerServersEnum[] = [
+    GgeTrackerServersEnum.ASIA,
+    GgeTrackerServersEnum.NL1,
+  ];
 
   private static readonly DEFAULT_CURRENCY = 'EUR';
 
@@ -93,28 +93,9 @@ export abstract class ApiOffers implements ApiHelper {
       }
 
       /* ---------------------------------
-       * Cache check
+       * Fetch from cache or GGS API
        * --------------------------------- */
-      const region = this.CURRENCY_REGIONS[currency];
-      const rangeLevel = this.roundUpToRange(level, this.LEVEL_RANGE_BOUNDS);
-      const rangeLegendaryLevel = this.roundUpToRange(legendaryLevel, this.LEGENDARY_RANGE_BOUNDS);
-      const cachedKey = `offers:catalog:v2:${currency}:${locale}:${rangeLevel}:${rangeLegendaryLevel}`;
-      const cachedData = await ApiHelper.redisClient.get(cachedKey);
-      if (cachedData) {
-        response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
-        return;
-      }
-
-      /* ---------------------------------
-       * Fetch from GGS API
-       * --------------------------------- */
-      const data = await this.readExclusively(async () => {
-        const filled = await ApiHelper.redisClient.get(cachedKey);
-        if (filled) return JSON.parse(filled);
-        const catalog = await this.readCatalog(locale, region, rangeLevel, rangeLegendaryLevel);
-        if (catalog) void ApiHelper.updateCache(cachedKey, catalog, this.OFFERS_CACHE_TTL);
-        return catalog;
-      });
+      const data = await this.readCatalogFor(currency, locale, level, legendaryLevel);
       if (!data) {
         response
           .status(ApiHelper.HTTP_SERVICE_UNAVAILABLE)
@@ -131,6 +112,37 @@ export abstract class ApiOffers implements ApiHelper {
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getOffers', request);
     }
+  }
+
+  /**
+   * Reads one catalog, from the cache when another caller already paid for it
+   *
+   * @param currency A key of `CURRENCY_REGIONS`
+   * @param locale The locale the offers are translated in
+   * @param level The keep level
+   * @param legendaryLevel The legendary level
+   * @returns The catalog without its private fields, or null when the store could not be read
+   */
+  public static async readCatalogFor(
+    currency: string,
+    locale: string,
+    level: number,
+    legendaryLevel: number,
+  ): Promise<unknown> {
+    const region = Object.hasOwn(this.CURRENCY_REGIONS, currency) ? this.CURRENCY_REGIONS[currency] : null;
+    if (!region) return null;
+    const rangeLevel = this.roundUpToRange(level, this.LEVEL_RANGE_BOUNDS);
+    const rangeLegendaryLevel = this.roundUpToRange(legendaryLevel, this.LEGENDARY_RANGE_BOUNDS);
+    const cachedKey = `offers:catalog:v2:${currency}:${locale}:${rangeLevel}:${rangeLegendaryLevel}`;
+    const cachedData = await ApiHelper.redisClient.get(cachedKey);
+    if (cachedData) return JSON.parse(cachedData);
+    return this.readExclusively(async () => {
+      const filled = await ApiHelper.redisClient.get(cachedKey);
+      if (filled) return JSON.parse(filled);
+      const catalog = await this.readCatalog(locale, region, rangeLevel, rangeLegendaryLevel);
+      if (catalog) void ApiHelper.updateCache(cachedKey, catalog, this.OFFERS_CACHE_TTL);
+      return catalog;
+    });
   }
 
   /**

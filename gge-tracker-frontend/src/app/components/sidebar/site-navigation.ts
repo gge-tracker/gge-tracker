@@ -54,6 +54,12 @@ export const SITE_NAVIGATION: readonly SiteNavigationSection[] = [
       { label: 'Tournoi de la Faille', id: 'rift-raid', iconUrl: '/assets/tools/rift.webp', frequency: 'Par heure' },
       { label: 'Scores finaux', id: 'events', iconUrl: '/assets/tools/events.webp' },
       {
+        label: 'Seuils des événements',
+        id: 'event-thresholds',
+        iconUrl: '/assets/event-logo-id-46.png',
+        frequency: 'Par heure',
+      },
+      {
         label: 'Roue des richesses inimaginables',
         id: 'woa',
         iconUrl: '/assets/tools/woa.webp',

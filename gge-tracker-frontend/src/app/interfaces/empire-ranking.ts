@@ -1529,3 +1529,31 @@ export interface RankingFameTitle {
   titleID: string;
   type: string;
 }
+
+export type ApiEventThresholdSlug =
+  'nomad' | 'samurai' | 'bloodcrow' | 'war-realms' | 'berimond-kingdom' | 'berimond-invasion';
+
+export interface ApiEventThresholdOccurrence {
+  started_at: string;
+  ended_at: string;
+  participants: number;
+  thresholds: number[];
+}
+
+export interface ApiEventThresholdRange {
+  median: (number | null)[];
+  low: (number | null)[];
+  high: (number | null)[];
+}
+
+export interface ApiEventThresholdsResponse {
+  event: ApiEventThresholdSlug;
+  server: string;
+  ranks: number[];
+  running: boolean;
+  current: (ApiEventThresholdOccurrence & { hour: number; projected: ApiEventThresholdRange }) | null;
+  typical: ApiEventThresholdRange | null;
+  next_expected_start: string | null;
+  occurrences: ApiEventThresholdOccurrence[];
+  pace: { started_at: string; running: boolean; points: { hour: number; thresholds: number[] }[] }[];
+}

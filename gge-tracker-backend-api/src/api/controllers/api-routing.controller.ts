@@ -20,6 +20,7 @@ import { ApiPlayers } from '../routes/api-players';
 import { ApiProfiles } from '../routes/api-profiles';
 import { ApiSeo } from '../routes/api-seo';
 import { ApiEventPodium } from '../routes/api-event-podium';
+import { ApiEventThresholds } from '../routes/api-event-thresholds';
 import { ApiGlobalRanking } from '../routes/api-global-ranking';
 import { ApiGrandTournament } from '../routes/api-grand-tournament';
 import { ApiRiftRaid } from '../routes/api-rift-raid';
@@ -442,6 +443,10 @@ export class ApiRoutingController {
 
   public getAllianceShareCard(request: express.Request, response: express.Response): void {
     void ApiSeo.getAllianceCard(request, response);
+  }
+
+  public getEventThresholds(request: express.Request, response: express.Response): void {
+    void ApiEventThresholds.getThresholds(request, response);
   }
 
   public getEventPodiumCard(request: express.Request, response: express.Response): void {

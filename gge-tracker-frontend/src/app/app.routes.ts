@@ -21,6 +21,7 @@ import { titleResolver } from '@ggetracker-resolvers/title.resolver';
 import { ViewCastleComponent } from '@ggetracker-pages/view-castle/view-castle.component';
 import { GrandTournamentComponent } from '@ggetracker-pages/grand-tournament/grand-tournament.component';
 import { RiftRaidComponent } from '@ggetracker-pages/rift-raid/rift-raid.component';
+import { EventThresholdsComponent } from '@ggetracker-pages/event-thresholds/event-thresholds.component';
 import { LiveOuterRealmsComponent } from '@ggetracker-pages/live-outer-realms/live-outer-realms.component';
 import { GuessDailyPlayerComponent } from '@ggetracker-pages/guess-daily-player/guess-daily-player.component';
 import { WoaComponent } from '@ggetracker-pages/events/woa/woa.component';
@@ -221,6 +222,16 @@ export const routes: Routes = [
         data: {
           description: 'Analyze the events of Goodgame Empire: Grand Tournament',
           titleKey: 'Le Grand Tournoi',
+        },
+      },
+      {
+        path: 'event-thresholds',
+        component: EventThresholdsComponent,
+        resolve: { titleResolver },
+        data: {
+          description:
+            'Points needed for each rank of the Goodgame Empire kingdom events on your server, edition after edition',
+          titleKey: 'Seuils des événements',
         },
       },
       {

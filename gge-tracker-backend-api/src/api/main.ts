@@ -39,6 +39,7 @@ import { ApiGgeTrackerManager } from './managers/api.manager';
 import { RoutesManager } from './managers/routes.manager';
 import { errorCodeMiddleware } from './helper/error-codes';
 import { ApiHelper } from './helper/api-helper';
+import { OfferSnapshot } from './services/offer-snapshot';
 
 /* ------------------------------------------------
  *           Redis Client Configuration
@@ -2672,6 +2673,160 @@ protectedRoutes.get('/server/renames', routingInstance.getServerRenames.bind(rou
  *                     description: Timestamp when the statistics were created
  */
 protectedRoutes.get('/server/statistics', routingInstance.getServerStatistics.bind(routingInstance));
+
+/**
+ * @swagger
+ * /event-thresholds/{eventName}:
+ *   get:
+ *     summary: Points needed for each rank of a kingdom event
+ *     description: |
+ *       Reads the hourly rankings of one kingdom event on the server named by the `gge-server` header and
+ *       returns the points of ranks 1, 3, 10, 25, 50, 100, 250, 500 and 1000 at the end of each past occurrence,
+ *       the median and range of the last five, the hourly pace of the last six, and, while the event runs,
+ *       the current thresholds with a projection of where they will end.
+ *       Occurrences are split on a gap of more than 24 hours between two readings.
+ *     tags:
+ *       - Events
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - in: path
+ *         name: eventName
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [nomad, samurai, bloodcrow, war-realms, berimond-kingdom, berimond-invasion]
+ *         description: The kingdom event
+ *     responses:
+ *       '200':
+ *         description: Thresholds of the event on this server
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [event, server, ranks, running, current, typical, next_expected_start, occurrences, pace]
+ *               properties:
+ *                 event:
+ *                   type: string
+ *                 server:
+ *                   type: string
+ *                 ranks:
+ *                   type: array
+ *                   description: The ranks every `thresholds` array is indexed by
+ *                   items:
+ *                     type: integer
+ *                 running:
+ *                   type: boolean
+ *                   description: Whether the event was read during the last three hours
+ *                 current:
+ *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     started_at:
+ *                       type: string
+ *                       format: date-time
+ *                     ended_at:
+ *                       type: string
+ *                       format: date-time
+ *                       description: The last reading
+ *                     hour:
+ *                       type: integer
+ *                       description: Hours since the first reading of the occurrence
+ *                     participants:
+ *                       type: integer
+ *                     thresholds:
+ *                       type: array
+ *                       items:
+ *                         type: number
+ *                     projected:
+ *                       type: object
+ *                       description: |
+ *                         Expected final points per rank: the current points times the growth past occurrences showed after
+ *                         the same hour (median, slowest and fastest). Backtested on DE1 and FR1, the median is off by 5 to 15%
+ *                         after twelve hours, by up to 25% for Berimond.
+ *                       properties:
+ *                         median:
+ *                           type: array
+ *                           items:
+ *                             type: number
+ *                             nullable: true
+ *                         low:
+ *                           type: array
+ *                           items:
+ *                             type: number
+ *                             nullable: true
+ *                         high:
+ *                           type: array
+ *                           items:
+ *                             type: number
+ *                             nullable: true
+ *                 typical:
+ *                   type: object
+ *                   nullable: true
+ *                   description: Median, lowest and highest final points of the last five completed occurrences
+ *                   properties:
+ *                     median:
+ *                       type: array
+ *                       items:
+ *                         type: number
+ *                     low:
+ *                       type: array
+ *                       items:
+ *                         type: number
+ *                     high:
+ *                       type: array
+ *                       items:
+ *                         type: number
+ *                 next_expected_start:
+ *                   type: string
+ *                   format: date-time
+ *                   nullable: true
+ *                   description: Last start plus the median gap between starts, when that is still ahead
+ *                 occurrences:
+ *                   type: array
+ *                   description: The last twelve completed occurrences, newest first
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       started_at:
+ *                         type: string
+ *                         format: date-time
+ *                       ended_at:
+ *                         type: string
+ *                         format: date-time
+ *                       participants:
+ *                         type: integer
+ *                       thresholds:
+ *                         type: array
+ *                         items:
+ *                           type: number
+ *                 pace:
+ *                   type: array
+ *                   description: Hourly thresholds of the recent occurrences, oldest first
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       started_at:
+ *                         type: string
+ *                         format: date-time
+ *                       running:
+ *                         type: boolean
+ *                       points:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             hour:
+ *                               type: integer
+ *                             thresholds:
+ *                               type: array
+ *                               items:
+ *                                 type: number
+ *       '400':
+ *         $ref: '#/components/responses/BadRequest'
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+protectedRoutes.get('/event-thresholds/:eventName', routingInstance.getEventThresholds.bind(routingInstance));
 
 /**
  * @swagger
@@ -7003,6 +7158,7 @@ async function main(): Promise<void> {
   app
     .listen(APPLICATION_PORT, () => {
       void printHeader();
+      OfferSnapshot.start();
     })
     .on('error', (error) => {
       throw new Error(error.message);

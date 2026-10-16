@@ -6,6 +6,8 @@ import { ToastService } from './toast.service';
 import { environment } from '../../environments/environment';
 import {
   ApiResponse,
+  ApiEventThresholdSlug,
+  ApiEventThresholdsResponse,
   ApiTop3EventsById,
   ApiPlayersResponse,
   ApiGlobalPlayersResponse,
@@ -884,6 +886,10 @@ export class ApiRestService {
     );
     if (!response.success) return response;
     return { success: true, data: response.data };
+  }
+
+  public async getEventThresholds(event: ApiEventThresholdSlug): Promise<ApiResponse<ApiEventThresholdsResponse>> {
+    return this.apiFetch<ApiEventThresholdsResponse>(`${ApiRestService.apiUrl}event-thresholds/${event}`);
   }
 
   public async getRiftRaidDates(): Promise<ApiResponse<ApiRiftRaidDatesResponse>> {
