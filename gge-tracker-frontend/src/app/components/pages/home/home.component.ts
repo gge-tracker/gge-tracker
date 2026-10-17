@@ -24,20 +24,23 @@ import {
   ApiPlayerStatsType,
   ApiPlayerSuggestion,
 } from '@ggetracker-interfaces/empire-ranking';
-import { FollowService, SubjectSnapshot, VisitSnapshot } from '@ggetracker-services/follow.service';
+import { FollowService, MePlayer, SubjectSnapshot, VisitSnapshot } from '@ggetracker-services/follow.service';
 import { lootResetOf } from '@ggetracker-services/loot-reset.utilities';
 import { ServerService } from '@ggetracker-services/server.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { Subject, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
 import { KINGDOM_EVENTS } from '../compare/compare-events/compare-events.component';
+import { THRESHOLD_SLUG_BY_TABLE } from '../event-thresholds/event-thresholds.component';
 import {
   Delta,
+  EventStanding,
   MS_PER_DAY,
   MS_PER_WEEK,
   MembershipMoves,
   Sparkline,
   WeekEvent,
   deltaOf,
+  eventStandingOf,
   eventsOfTheWeek,
   formatCompact,
   formatCountdown,
@@ -154,6 +157,7 @@ export class HomeComponent extends GenericComponent implements OnInit, OnDestroy
   public readonly loading = signal(true);
   public readonly meView = signal<MeView | null>(null);
   public readonly weekEvents = signal<WeekEvent[] | null>(null);
+  public readonly eventStandings = signal(new Map<ApiPlayerStatsType, EventStanding>());
   public readonly allianceView = signal<AllianceView | null>(null);
   public readonly followedPlayers = signal<FollowedPlayerView[]>([]);
   public readonly followedAlliances = signal<FollowedAllianceView[]>([]);
@@ -230,6 +234,7 @@ export class HomeComponent extends GenericComponent implements OnInit, OnDestroy
     this.follow.clearMe();
     this.meView.set(null);
     this.weekEvents.set(null);
+    this.eventStandings.set(new Map());
     this.allianceView.set(null);
     void this.load();
   }
@@ -290,6 +295,7 @@ export class HomeComponent extends GenericComponent implements OnInit, OnDestroy
     this.previousVisitAt.set(previous?.at ?? null);
     this.meView.set(profile ? this.toMeView(profile, series?.success ? series.data : null, previous, now) : null);
     this.weekEvents.set(profile && summary?.success ? this.toWeekEvents(summary.data, now) : null);
+    void this.readEventStandings(this.weekEvents() ?? [], me);
     this.allianceView.set(
       profile && allianceProfile ? this.toAllianceView(allianceProfile, pulse, profile.player.player_id, now) : null,
     );
@@ -408,6 +414,22 @@ export class HomeComponent extends GenericComponent implements OnInit, OnDestroy
         previous: lootWeek.previous,
       },
     };
+  }
+
+  private async readEventStandings(events: WeekEvent[], me: MePlayer | null): Promise<void> {
+    if (!me) return;
+    const live = events.filter((event) => event.isLive && THRESHOLD_SLUG_BY_TABLE[event.table]);
+    const standings = await Promise.all(
+      live.map(async (event) => {
+        const slug = THRESHOLD_SLUG_BY_TABLE[event.table]!;
+        const response = await this.apiRestService.getEventThresholds(slug, me.server);
+        return [event.table, response.success ? eventStandingOf(event.score, response.data) : null] as const;
+      }),
+    );
+    this.eventStandings.set(
+      new Map(standings.filter((entry): entry is [ApiPlayerStatsType, EventStanding] => entry[1] !== null)),
+    );
+    this.cdr.markForCheck();
   }
 
   private toWeekEvents(summary: ApiPlayerStatsSummary, now: number): WeekEvent[] {

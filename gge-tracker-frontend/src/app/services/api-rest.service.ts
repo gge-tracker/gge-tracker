@@ -888,8 +888,16 @@ export class ApiRestService {
     return { success: true, data: response.data };
   }
 
-  public async getEventThresholds(event: ApiEventThresholdSlug): Promise<ApiResponse<ApiEventThresholdsResponse>> {
-    return this.apiFetch<ApiEventThresholdsResponse>(`${ApiRestService.apiUrl}event-thresholds/${event}`);
+  public async getEventThresholds(
+    event: ApiEventThresholdSlug,
+    server?: string,
+  ): Promise<ApiResponse<ApiEventThresholdsResponse>> {
+    const options = server ? { headers: { 'gge-server': server } } : undefined;
+    return this.apiFetch<ApiEventThresholdsResponse>(
+      `${ApiRestService.apiUrl}event-thresholds/${event}`,
+      true,
+      options,
+    );
   }
 
   public async getRiftRaidDates(): Promise<ApiResponse<ApiRiftRaidDatesResponse>> {

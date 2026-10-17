@@ -50,7 +50,6 @@ export interface EventThresholds {
   live_events: string[];
   current: (OccurrenceSummary & { hour: number; projected: ProjectedRange }) | null;
   typical: ThresholdRange | null;
-  next_expected_start: string | null;
   occurrences: OccurrenceSummary[];
   pace: OccurrencePace[];
 }
@@ -139,7 +138,6 @@ export abstract class ApiEventThresholds implements ApiHelper {
         ? { ...this.summarise(last), hour: last.hour, projected: this.project(last, completedPace) }
         : null,
       typical: this.typicalRange(completed.slice(-this.TYPICAL_OCCURRENCES)),
-      next_expected_start: running ? null : this.nextExpectedStart(finals, now),
       occurrences: completed
         .slice(-this.HISTORY_SIZE)
         .reverse()
@@ -210,15 +208,6 @@ export abstract class ApiEventThresholds implements ApiHelper {
       low: this.RANKS.map((_, index) => Math.min(...column(index))),
       high: this.RANKS.map((_, index) => Math.max(...column(index))),
     };
-  }
-
-  private static nextExpectedStart(finals: RankingSnapshot[], now: number): string | null {
-    const starts = finals.slice(-this.HISTORY_SIZE).map((snapshot) => Date.parse(snapshot.startedAt));
-    const gaps = starts.slice(1).map((start, index) => start - starts[index]);
-    const gap = this.median(gaps);
-    if (gap === null || starts.length < 3) return null;
-    const next = starts.at(-1)! + gap;
-    return next > now ? new Date(next).toISOString() : null;
   }
 
   private static median(values: number[]): number | null {

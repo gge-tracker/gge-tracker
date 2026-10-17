@@ -1,5 +1,7 @@
 import {
   ApiAllianceMemberChange,
+  ApiEventThresholdSlug,
+  ApiEventThresholdsResponse,
   ApiGenericData,
   ApiPlayerStatsSummaryEvent,
   ApiPlayerStatsType,
@@ -38,6 +40,15 @@ export interface WeekEvent extends EventDefinition {
   isRecord: boolean;
   isLive: boolean;
   lastAt: number;
+}
+
+export interface EventStanding {
+  slug: ApiEventThresholdSlug;
+  withinRank: number | null;
+  outsideRank: number | null;
+  nextRank: number | null;
+  gap: number | null;
+  endTarget: number | null;
 }
 
 export interface LootWeek {
@@ -181,6 +192,25 @@ export function eventsOfTheWeek(
     });
   }
   return events.sort((a, b) => Number(b.isLive) - Number(a.isLive) || b.lastAt - a.lastAt);
+}
+
+export function eventStandingOf(score: number, thresholds: ApiEventThresholdsResponse): EventStanding | null {
+  const current = thresholds.current;
+  if (!current) return null;
+  const tiers = thresholds.ranks
+    .map((rank, index) => ({ rank, index, points: current.thresholds[index] ?? 0 }))
+    .filter((tier) => tier.points > 0);
+  if (tiers.length === 0) return null;
+  const reachedIndex = tiers.findIndex((tier) => score >= tier.points);
+  const next = reachedIndex === -1 ? tiers.at(-1)! : (tiers[reachedIndex - 1] ?? null);
+  return {
+    slug: thresholds.event,
+    withinRank: reachedIndex === -1 ? null : tiers[reachedIndex].rank,
+    outsideRank: reachedIndex === -1 ? tiers.at(-1)!.rank : null,
+    nextRank: next?.rank ?? null,
+    gap: next ? next.points - score : null,
+    endTarget: next ? (current.projected.median[next.index] ?? null) : null,
+  };
 }
 
 export function membershipMovesSince(changes: ApiAllianceMemberChange[], since: number): MembershipMoves {

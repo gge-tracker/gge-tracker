@@ -549,6 +549,53 @@
   white-space: nowrap;
 }
 
+.home-event-standing {
+  align-items: center;
+  background: var(--home-raised);
+  border: 1px solid var(--home-line);
+  border-radius: 8px;
+  color: var(--home-text-soft);
+  column-gap: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  grid-column: 2 / -1;
+  min-height: 44px;
+  padding: 0.35rem 0.7rem;
+  row-gap: 0.15rem;
+  text-decoration: none;
+  transition: border-color 0.2s ease;
+}
+
+.home-event-standing:hover,
+.home-event-standing:focus-visible {
+  border-color: var(--home-amber);
+  color: var(--home-text);
+  outline: none;
+}
+
+.home-event-standing-rank {
+  color: var(--home-amber);
+  font-weight: 700;
+}
+
+.home-event-standing-target {
+  color: var(--home-label);
+}
+
+.home-event-standing .fa-chevron-right {
+  color: var(--home-label);
+  font-size: 0.7rem;
+  margin-left: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-event-standing {
+    transition: none;
+  }
+}
+
 .home-event-record--best {
   color: var(--home-amber);
   font-weight: 700;

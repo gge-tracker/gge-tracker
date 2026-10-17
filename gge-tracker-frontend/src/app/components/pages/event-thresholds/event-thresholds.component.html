@@ -47,13 +47,11 @@
       {{ current.ended_at | date: 'EEE HH:mm' }}</span>
     } @else {
     <span class="thresholds-status-badge"><i class="fa-regular fa-calendar" aria-hidden="true"></i>
-      {{ (data.next_expected_start ? 'Prochaine édition attendue' : 'Aucune édition en cours') | translate }}</span>
-    @if (data.next_expected_start) {
-    <strong class="thresholds-status-date">{{ data.next_expected_start | date: 'EEEE d MMMM, HH:mm' }}</strong>
-    @if (daysUntilNext !== null) {
-    <span class="thresholds-muted">{{ 'event-thresholds-in-days' | translate: { days: daysUntilNext } }}</span>
-    }
-    }
+      {{ 'Aucune édition en cours' | translate }}</span>
+    <a class="thresholds-link" [href]="officialCalendarUrl" target="_blank" rel="noopener">
+      {{ 'Calendrier officiel des événements' | translate }}
+      <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+    </a>
     @if (lastEdition) {
     <span class="thresholds-status-fact thresholds-muted">{{ 'Dernière édition' | translate }} :
       {{ lastEdition.startedAt | date: 'd MMM' }} · {{ lastEdition.participants | number }}

@@ -52,7 +52,7 @@ interface ChartLine {
 
 type HourlyCurve = (number | null)[];
 
-const SLUG_BY_TABLE: Partial<Record<ApiPlayerStatsType, ApiEventThresholdSlug>> = {
+export const THRESHOLD_SLUG_BY_TABLE: Partial<Record<ApiPlayerStatsType, ApiEventThresholdSlug>> = {
   [ApiPlayerStatsType.nomad]: 'nomad',
   [ApiPlayerStatsType.samurai]: 'samurai',
   [ApiPlayerStatsType.bloodcrow]: 'bloodcrow',
@@ -62,7 +62,7 @@ const SLUG_BY_TABLE: Partial<Record<ApiPlayerStatsType, ApiEventThresholdSlug>> 
 };
 
 const THRESHOLD_EVENTS: ThresholdEvent[] = KINGDOM_EVENTS.flatMap((event) => {
-  const slug = SLUG_BY_TABLE[event.table];
+  const slug = THRESHOLD_SLUG_BY_TABLE[event.table];
   return slug ? [{ slug, label: event.label, icon: event.icon }] : [];
 });
 
@@ -79,6 +79,7 @@ const COLORS = { band: '#5b7186', median: '#a9b7c4', last: '#e2b45a', current: '
 })
 export class EventThresholdsComponent extends GenericComponent implements OnInit {
   public readonly events = THRESHOLD_EVENTS;
+  public readonly officialCalendarUrl = 'https://communityhub.goodgamestudios.com/newshubempire?utm_source=ggetracker';
   public selectedEvent: ApiEventThresholdSlug = THRESHOLD_EVENTS[0].slug;
   public data: ApiEventThresholdsResponse | null = null;
   public liveEvents = new Set<ApiEventThresholdSlug>();
@@ -113,11 +114,6 @@ export class EventThresholdsComponent extends GenericComponent implements OnInit
     const duration = this.typicalDurationHours;
     if (!this.data?.current || !duration) return null;
     return Math.min(100, Math.round((this.data.current.hour / duration) * 100));
-  }
-
-  public get daysUntilNext(): number | null {
-    if (!this.data?.next_expected_start) return null;
-    return Math.max(0, Math.ceil((Date.parse(this.data.next_expected_start) - Date.now()) / 86_400_000));
   }
 
   public ngOnInit(): void {

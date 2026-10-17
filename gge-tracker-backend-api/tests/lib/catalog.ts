@@ -336,7 +336,7 @@ export const CATALOG: Endpoint[] = [
   { id: 'server-renames-filtered', snapshot: 'fields', method: 'GET', scope: 'protected', path: (s) => '/server/renames' + q({ page: 1, search: s.renamePlayerName ?? 'a', searchType: 'player', showType: 'players', allianceId: s.allianceId }), okStatuses: [200, 400], needs: ['server', 'alliance'] },
   { id: 'server-statistics', snapshot: 'fields', method: 'GET', scope: 'protected', path: () => '/server/statistics', okStatuses: [200], needs: ['server'] },
 
-  // Event thresholds (protected): running and next_expected_start move with the clock
+  // Event thresholds (protected): running and the live readings move with the clock
   { id: 'event-thresholds', snapshot: 'shape', method: 'GET', scope: 'protected', path: () => '/event-thresholds/nomad', okStatuses: [200], needs: ['server'], fuzzPathParamIndex: 2 },
   { id: 'event-thresholds-unknown', method: 'GET', scope: 'protected', path: () => '/event-thresholds/unknown-event', okStatuses: [400], needs: ['server'] },
 

@@ -2703,7 +2703,7 @@ protectedRoutes.get('/server/statistics', routingInstance.getServerStatistics.bi
  *           application/json:
  *             schema:
  *               type: object
- *               required: [event, server, ranks, running, live_events, current, typical, next_expected_start, occurrences, pace]
+ *               required: [event, server, ranks, running, live_events, current, typical, occurrences, pace]
  *               properties:
  *                 event:
  *                   type: string
@@ -2781,11 +2781,6 @@ protectedRoutes.get('/server/statistics', routingInstance.getServerStatistics.bi
  *                       type: array
  *                       items:
  *                         type: number
- *                 next_expected_start:
- *                   type: string
- *                   format: date-time
- *                   nullable: true
- *                   description: Last start plus the median gap between starts, when that is still ahead
  *                 occurrences:
  *                   type: array
  *                   description: The last twelve completed occurrences, newest first

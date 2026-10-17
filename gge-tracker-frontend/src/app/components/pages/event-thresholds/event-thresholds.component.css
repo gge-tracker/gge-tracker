@@ -199,11 +199,6 @@
   gap: 0.35rem;
 }
 
-.thresholds-status-date {
-  color: #fff;
-  text-transform: capitalize;
-}
-
 .thresholds-meter,
 .thresholds-rung-meter,
 .thresholds-edition-bar {
@@ -441,6 +436,7 @@
   align-items: center;
   min-height: 36px;
   padding: 0 0.4rem;
+  text-decoration: none;
 }
 
 .thresholds-link:hover {

@@ -252,6 +252,25 @@
                       <span class="home-event-record">{{ 'home.event-record' | translate: { value: compact(event.record) } }}</span>
                     }
                   </div>
+                  @if (eventStandings().get(event.table); as standing) {
+                    <a class="home-event-standing" routerLink="/event-thresholds"
+                      [queryParams]="{ event: standing.slug, rank: standing.nextRank ?? standing.withinRank }">
+                      <span class="home-event-standing-rank">
+                        @if (standing.withinRank) {
+                          {{ 'home.event-within' | translate: { rank: standing.withinRank } }}
+                        } @else {
+                          {{ 'home.event-outside' | translate: { rank: standing.outsideRank } }}
+                        }
+                      </span>
+                      @if (standing.gap !== null && standing.nextRank) {
+                        <span>{{ 'home.event-gap' | translate: { points: compact(standing.gap), rank: standing.nextRank } }}</span>
+                      }
+                      @if (standing.endTarget) {
+                        <span class="home-event-standing-target">{{ 'home.event-end-target' | translate: { points: compact(standing.endTarget) } }}</span>
+                      }
+                      <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+                    </a>
+                  }
                 </li>
               }
             </ul>
