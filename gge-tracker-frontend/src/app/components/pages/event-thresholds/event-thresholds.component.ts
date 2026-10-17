@@ -1,5 +1,5 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, inject, OnInit, ViewChild } from '@angular/core';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { LayeredSceneComponent } from '@ggetracker-components/layered-scene/layered-scene.component';
 import {
@@ -10,6 +10,7 @@ import {
 } from '@ggetracker-interfaces/empire-ranking';
 import { ChartsWrapperComponent } from '@ggetracker-modules/charts-client/charts-wrapper.component';
 import { KINGDOM_EVENTS } from '@ggetracker-pages/compare/compare-events/compare-events.component';
+import { ServerService } from '@ggetracker-services/server.service';
 import { formatThousands } from '@ggetracker-services/text-format.utilities';
 import { TranslateModule } from '@ngx-translate/core';
 import { ApexAxisChartSeries, ApexOptions } from 'ng-apexcharts';
@@ -66,6 +67,11 @@ const THRESHOLD_EVENTS: ThresholdEvent[] = KINGDOM_EVENTS.flatMap((event) => {
   return slug ? [{ slug, label: event.label, icon: event.icon }] : [];
 });
 
+const OFFICIAL_CALENDAR_URLS = {
+  ep: 'https://communityhub.goodgamestudios.com/newshubempire?utm_source=ggetracker',
+  e4k: 'https://communityhub.goodgamestudios.com/newshube4k/?utm_source=ggetracker',
+};
+
 const DEFAULT_RANK = 100;
 const ON_PACE_TOLERANCE = 0.03;
 const COLORS = { band: '#5b7186', median: '#a9b7c4', last: '#e2b45a', current: '#26c6da' };
@@ -79,7 +85,6 @@ const COLORS = { band: '#5b7186', median: '#a9b7c4', last: '#e2b45a', current: '
 })
 export class EventThresholdsComponent extends GenericComponent implements OnInit {
   public readonly events = THRESHOLD_EVENTS;
-  public readonly officialCalendarUrl = 'https://communityhub.goodgamestudios.com/newshubempire?utm_source=ggetracker';
   public selectedEvent: ApiEventThresholdSlug = THRESHOLD_EVENTS[0].slug;
   public data: ApiEventThresholdsResponse | null = null;
   public liveEvents = new Set<ApiEventThresholdSlug>();
@@ -92,6 +97,11 @@ export class EventThresholdsComponent extends GenericComponent implements OnInit
 
   @ViewChild('detail') private readonly detail?: ElementRef<HTMLElement>;
   private compactFormatter = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
+  private readonly serverService = inject(ServerService);
+
+  public get officialCalendarUrl(): string {
+    return this.serverService.isE4kServer() ? OFFICIAL_CALENDAR_URLS.e4k : OFFICIAL_CALENDAR_URLS.ep;
+  }
 
   public get selectedRank(): number {
     return this.data?.ranks[this.rankIndex] ?? DEFAULT_RANK;

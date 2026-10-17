@@ -88,15 +88,25 @@ export const SITE_NAVIGATION: readonly SiteNavigationSection[] = [
     items: [
       {
         label: 'empire-rankings.io',
-        url: 'https://danadum.github.io/empire-rankings/',
+        url: 'https://danadum.github.io/empire-rankings/?utm_source=ggetracker',
         iconUrl: '/assets/tools/empire-rankings.webp',
       },
       {
         label: 'GGE Assistant',
-        url: 'https://top.gg/bot/1472309793065533493',
+        url: 'https://top.gg/bot/1472309793065533493?utm_source=ggetracker',
         iconClass: 'fa-brands fa-discord',
         tag: 'bot',
-      }
+      },
+      {
+        label: 'Community Hub',
+        url: 'https://communityhub.goodgamestudios.com/?utm_source=ggetracker',
+        iconClass: 'fa-solid fa-newspaper',
+      },
+      {
+        label: 'Generals Forum',
+        url: 'https://generalsforum.com/?utm_source=ggetracker',
+        iconClass: 'fa-solid fa-comments',
+      },
     ],
   },
 ];
