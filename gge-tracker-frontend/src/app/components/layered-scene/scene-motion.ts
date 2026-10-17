@@ -64,9 +64,12 @@ const OBJECT_MOTIONS: Record<string, (node: DisplayObject, seconds: number) => v
   scribe: breathe(0.006, 4.4),
   'scout-figure': breathe(0.008, 3.4, 0.25, 6.5),
   'cartographer-figure': breathe(0.007, 4.1, 0.3, 6.9),
+  wanderer: breathe(0.008, 3.6, 0.3, 6.1),
   'cloud-1': drift(60, 71),
   'cloud-2': drift(-45, 59),
   'cloud-3': drift(35, 83),
+  'fog-1': drift(70, 67),
+  'fog-2': drift(-55, 79),
 };
 
 export function pivotOf(id: string, width: number, height: number): { x: number; y: number } {

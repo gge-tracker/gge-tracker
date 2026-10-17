@@ -18,7 +18,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --ignore-scripts
 
-COPY generate-sitemaps.js servers.yaml ./
+COPY generate-sitemaps.js ./
 
 USER node
 

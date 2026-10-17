@@ -1,0 +1,80 @@
+{
+  "width": 1920,
+  "height": 1088,
+  "layers": [
+    {
+      "kind": "image",
+      "id": "crossroads",
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1088,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "moonglow",
+      "x": 1202,
+      "y": -147,
+      "width": 520,
+      "height": 520,
+      "scale": 4,
+      "depth": 0.45
+    },
+    {
+      "kind": "prop",
+      "id": "fog-2",
+      "x": 488,
+      "y": 715,
+      "width": 464,
+      "height": 64,
+      "depth": 0.5
+    },
+    {
+      "kind": "prop",
+      "id": "wanderer",
+      "x": 933,
+      "y": 505,
+      "width": 214,
+      "height": 400,
+      "depth": 0.85
+    },
+    {
+      "kind": "light",
+      "id": "candleglow-lantern",
+      "x": 910,
+      "y": 375,
+      "width": 380,
+      "height": 380,
+      "scale": 4,
+      "depth": 0.85
+    },
+    {
+      "kind": "flame",
+      "x": 1100,
+      "y": 572,
+      "scale": 0.08,
+      "alpha": 0.5,
+      "depth": 0.85
+    },
+    {
+      "kind": "prop",
+      "id": "fog-1",
+      "x": 38,
+      "y": 665,
+      "width": 584,
+      "height": 80,
+      "depth": 0.45
+    },
+    {
+      "kind": "light",
+      "id": "motes-crossroads",
+      "x": 260,
+      "y": 140,
+      "width": 1280,
+      "height": 1280,
+      "scale": 4,
+      "depth": 0.9
+    }
+  ]
+}

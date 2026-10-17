@@ -19,6 +19,7 @@ import { ApiOffers } from '../routes/api-offers';
 import { ApiPlayers } from '../routes/api-players';
 import { ApiProfiles } from '../routes/api-profiles';
 import { ApiSeo } from '../routes/api-seo';
+import { ApiSeoPages } from '../routes/api-seo-pages';
 import { ApiEventPodium } from '../routes/api-event-podium';
 import { ApiEventThresholds } from '../routes/api-event-thresholds';
 import { ApiGlobalRanking } from '../routes/api-global-ranking';
@@ -435,6 +436,10 @@ export class ApiRoutingController {
 
   public getAllianceSeoHead(request: express.Request, response: express.Response): void {
     void ApiSeo.getAllianceHead(request, response);
+  }
+
+  public getPageSeoHead(request: express.Request, response: express.Response): void {
+    ApiSeoPages.getPageHead(request, response);
   }
 
   public getPlayerShareCard(request: express.Request, response: express.Response): void {

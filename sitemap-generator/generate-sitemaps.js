@@ -9,177 +9,187 @@
 //
 import { Client } from "pg";
 import path from "node:path";
-import fs from "node:fs";
-import fsprom from "node:fs/promises";
-import yaml from "js-yaml";
+import fs from "node:fs/promises";
+import { XMLParser } from "fast-xml-parser";
 
-const config = yaml.load(fs.readFileSync("servers.yaml", "utf8"));
+const SERVERS_FILE = process.env.SERVERS_FILE || "/app/config/servers.xml";
+const SITE_URL = (process.env.SITE_URL || "https://gge-tracker.com").replace(/\/+$/, "");
+const SITEMAP_DIR = "/usr/share/nginx/html/gge-tracker-frontend/browser/sitemaps";
+const SITEMAP_URL = `${SITE_URL}/sitemaps`;
+const SERVED_KINDS = new Set(["ep", "e4k", "partner"]);
 
-const pgConfigBase = {
+const STATIC_PAGES = [
+  ["/", "daily", "1.0"],
+  ["/players", "hourly", "0.9"],
+  ["/alliances", "hourly", "0.9"],
+  ["/event-thresholds", "daily", "0.9"],
+  ["/statistics", "daily", "0.8"],
+  ["/map", "daily", "0.7"],
+  ["/castles", "daily", "0.6"],
+  ["/movements", "hourly", "0.7"],
+  ["/renames/players", "daily", "0.6"],
+  ["/renames/alliances", "daily", "0.6"],
+  ["/compare/players", "weekly", "0.6"],
+  ["/compare/alliances", "weekly", "0.6"],
+  ["/dungeons", "hourly", "0.7"],
+  ["/storm-tracker", "hourly", "0.7"],
+  ["/stormy-isles", "daily", "0.6"],
+  ["/rift-raid", "daily", "0.7"],
+  ["/grand-tournament", "daily", "0.7"],
+  ["/events", "weekly", "0.6"],
+  ["/live/outer-realms", "hourly", "0.6"],
+  ["/woa", "weekly", "0.5"],
+  ["/offers", "daily", "0.5"],
+  ["/guess", "daily", "0.4"],
+  ["/about", "monthly", "0.5"],
+  ["/release-notes", "monthly", "0.5"],
+  ["/legal", "yearly", "0.2"],
+  ["/privacy", "yearly", "0.2"],
+];
+
+const EVENT_THRESHOLDS = ["nomad", "samurai", "bloodcrow", "war-realms", "berimond-kingdom", "berimond-invasion"];
+
+const PAST_EVENTS = [
+  { table: "beyond_the_horizon_event", path: "/events/beyond-the-horizon" },
+  { table: "outer_realms_event", path: "/events/outer-realms" },
+];
+
+const pgConfig = {
   user: process.env.MYSQL_USER,
   password: process.env.MYSQL_PASSWORD,
-  host: "postgres-container",
+  host: process.env.PG_HOST || "postgres-container",
   port: 5432,
 };
 
-const sitemapBaseDir = "/usr/share/nginx/html/gge-tracker-frontend/browser/sitemaps";
-
-function buildUrlXml(loc, changefreq = "daily", priority = "0.7") {
-  return `
-  <url>
+function urlEntry(loc, changefreq = "daily", priority = "0.7") {
+  return `  <url>
     <loc>${loc}</loc>
     <changefreq>${changefreq}</changefreq>
     <priority>${priority}</priority>
   </url>`;
 }
 
-function buildSitemapXml(urls) {
+function urlSet(entries) {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.join("\n")}
-</urlset>`;
+${entries.join("\n")}
+</urlset>
+`;
 }
 
-function buildSitemapIndexXml(entries) {
-  const dateNow = new Date().toISOString().slice(0, 10);
+function sitemapIndex(locations) {
+  const today = new Date().toISOString().slice(0, 10);
+  const entries = locations.map((loc) => `  <sitemap>\n    <loc>${loc}</loc>\n    <lastmod>${today}</lastmod>\n  </sitemap>`);
   return `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${entries
-  .map(
-    ({ loc }) => `  <sitemap>
-    <loc>${loc}</loc>
-    <lastmod>${dateNow}</lastmod>
-  </sitemap>`
-  )
-  .join("\n")}
-</sitemapindex>`;
+${entries.join("\n")}
+</sitemapindex>
+`;
 }
 
-async function queryPlayerIds(client) {
-  const res = await client.query(`SELECT id FROM players WHERE might_all_time > 5000000 AND castles IS NOT NULL AND castles != '[]' ORDER BY might_all_time DESC`);
-  return res.rows.map((row) => row.id.toString());
+async function writeSitemap(relativePath, content) {
+  const target = path.join(SITEMAP_DIR, relativePath);
+  await fs.mkdir(path.dirname(target), { recursive: true });
+  await fs.writeFile(`${target}.tmp`, content, "utf-8");
+  await fs.rename(`${target}.tmp`, target);
+  return `${SITEMAP_URL}/${relativePath}`;
 }
 
-async function queryAllianceIds(client) {
-  const res = await client.query(`SELECT id FROM alliances`);
-  return res.rows.map((row) => row.id.toString());
+async function exists(relativePath) {
+  return fs.access(path.join(SITEMAP_DIR, relativePath)).then(() => true, () => false);
 }
 
-async function queryEventIds(client, eventType) {
-  const res = await client.query(`SELECT event_num as id FROM ${eventType}`);
-  return res.rows.map((row) => row.id.toString());
+async function readServedServers() {
+  const parser = new XMLParser({ ignoreAttributes: true, parseTagValue: false, trimValues: true });
+  const document = parser.parse(await fs.readFile(SERVERS_FILE, "utf-8"));
+  const servers = [document.root.servers.server].flat();
+  return servers
+    .filter((server) => SERVED_KINDS.has(server.kind) && server.api?.public?.enabled === "true" && server.databases?.sql)
+    .map((server) => ({ name: server.name, code: server.code, database: server.databases.sql }));
+}
+
+async function withDatabase(database, work) {
+  const client = new Client({ ...pgConfig, database });
+  await client.connect();
+  try {
+    return await work(client);
+  } finally {
+    await client.end();
+  }
+}
+
+async function readServerUrls(client, code) {
+  const players = await client.query(
+    `SELECT id FROM players WHERE might_all_time > 5000000 AND castles IS NOT NULL AND castles != '[]' ORDER BY might_all_time DESC`,
+  );
+  const alliances = await client.query(
+    `SELECT a.id FROM alliances a WHERE EXISTS (SELECT 1 FROM players p WHERE p.alliance_id = a.id) ORDER BY a.id`,
+  );
+  return {
+    players: players.rows.map(({ id }) => urlEntry(`${SITE_URL}/player/${id}${code}`)),
+    alliances: alliances.rows.map(({ id }) => urlEntry(`${SITE_URL}/alliance/${id}${code}`)),
+  };
+}
+
+async function writeServerSitemaps(servers) {
+  const locations = [];
+  let failures = 0;
+  for (const server of servers) {
+    const file = `${server.name.toLowerCase()}.xml`;
+    try {
+      const urls = await withDatabase(server.database, (client) => readServerUrls(client, server.code));
+      await writeSitemap(`players/${file}`, urlSet(urls.players));
+      await writeSitemap(`alliances/${file}`, urlSet(urls.alliances));
+      console.log(`${server.name}: ${urls.players.length} players, ${urls.alliances.length} alliances`);
+    } catch (error) {
+      failures++;
+      console.error(`${server.name}: kept the previous sitemaps, ${error.message}`);
+    }
+    for (const kind of ["players", "alliances"]) {
+      if (await exists(`${kind}/${file}`)) locations.push(`${SITEMAP_URL}/${kind}/${file}`);
+    }
+  }
+  return { locations, failures };
+}
+
+async function writeEventSitemaps(servers) {
+  const fr1 = servers.find((server) => server.name === "FR1");
+  const locations = await withDatabase(fr1.database, async (client) => {
+    const written = [];
+    for (const event of PAST_EVENTS) {
+      const { rows } = await client.query(`SELECT event_num AS id FROM ${event.table} ORDER BY event_num`);
+      const urls = rows.map(({ id }) => urlEntry(`${SITE_URL}${event.path}/${id}`, "monthly", "0.5"));
+      written.push(await writeSitemap(`events/${event.table}.xml`, urlSet(urls)));
+    }
+    return written;
+  });
+  return writeSitemap("events.xml", sitemapIndex(locations));
+}
+
+function writeGenericSitemap() {
+  const pages = STATIC_PAGES.map(([page, changefreq, priority]) =>
+    urlEntry(SITE_URL + page, changefreq, priority),
+  );
+  const thresholds = EVENT_THRESHOLDS.map((event) =>
+    urlEntry(`${SITE_URL}/event-thresholds?event=${event}`, "daily", "0.8"),
+  );
+  return writeSitemap("sitemap_generic.xml", urlSet([...pages, ...thresholds]));
 }
 
 async function generateSitemaps() {
-  const sitemapEntries = [
-    { loc: "https://gge-tracker.com/sitemaps/sitemap_generic.xml" },
-    { loc: "https://gge-tracker.com/sitemaps/events.xml" },
-  ];
-
-  for (const [server, { dbName, code }] of Object.entries(config.servers)) {
-    console.log(`Processing ${server} (${dbName})...`);
-    const client = new Client({ ...pgConfigBase, database: dbName });
-    await client.connect();
-
-    // 1) Players
-    const playerIds = await queryPlayerIds(client);
-    const playerUrls = playerIds.map(
-      (id) =>
-        buildUrlXml(
-          `https://gge-tracker.com/player/${id}${code}`
-        )
-    );
-    const playersSitemap = buildSitemapXml(playerUrls);
-    const playersDir = path.join(sitemapBaseDir, "players");
-    await fsprom.mkdir(playersDir, { recursive: true });
-    const playerFile = path.join(playersDir, `${server.toLowerCase()}.xml`);
-    await fsprom.writeFile(playerFile, playersSitemap, "utf-8");
-    sitemapEntries.push({
-      loc: `https://gge-tracker.com/sitemaps/players/${server.toLowerCase()}.xml`,
-    });
-
-    // 2) Alliances
-    const allianceIds = await queryAllianceIds(client);
-    const allianceUrls = allianceIds.map(
-      (id) =>
-        buildUrlXml(
-          `https://gge-tracker.com/alliance/${id}${code}`
-        )
-    );
-    const alliancesSitemap = buildSitemapXml(allianceUrls);
-    const alliancesDir = path.join(sitemapBaseDir, "alliances");
-    await fsprom.mkdir(alliancesDir, { recursive: true });
-    const allianceFile = path.join(alliancesDir, `${server.toLowerCase()}.xml`);
-    await fsprom.writeFile(allianceFile, alliancesSitemap, "utf-8");
-    sitemapEntries.push({
-      loc: `https://gge-tracker.com/sitemaps/alliances/${server.toLowerCase()}.xml`,
-    });
-
-    await client.end();
-  }
-
-  const sitemapIndexPath = path.join(sitemapBaseDir, "sitemap_index.xml");
-  await fsprom.writeFile(sitemapIndexPath, buildSitemapIndexXml(sitemapEntries), "utf-8");
-
-  console.log("The sitemap index has been generated.");
-
-  const eventSitemapEntries = [];
-
-  console.log("Generating events...");
-  const client = new Client({ ...pgConfigBase, database: 'empire-ranking' });
-  await client.connect();
-  const eventTypes = [{
-    sqlTable: "beyond_the_horizon_event",
-    url: 'https://gge-tracker.com/events/beyond-the-horizon/'
-  },
-  {
-    sqlTable: "outer_realms_event",
-    url: 'https://gge-tracker.com/events/outer-realms/'
-  }];
-  for (const eventType of eventTypes) {
-    const eventIds = await queryEventIds(client, eventType.sqlTable);
-    const eventUrls = eventIds.map(
-      (id) => buildUrlXml(`${eventType.url}${id}`)
-    );
-    const eventsSitemap = buildSitemapXml(eventUrls);
-    const eventsDir = path.join(sitemapBaseDir, "events");
-    await fsprom.mkdir(eventsDir, { recursive: true });
-    const eventFile = path.join(eventsDir, `${eventType.sqlTable}.xml`);
-    await fsprom.writeFile(eventFile, eventsSitemap, "utf-8");
-    eventSitemapEntries.push({
-      loc: `https://gge-tracker.com/sitemaps/events/${eventType.sqlTable}.xml`,
-    });
-  }
-  await client.end();
-  const eventsSitemapIndex = buildSitemapIndexXml(eventSitemapEntries);
-  const eventsSitemapIndexPath = path.join(sitemapBaseDir, "events.xml");
-  await fsprom.writeFile(eventsSitemapIndexPath, eventsSitemapIndex, "utf-8");
-  console.log("Events sitemap generated.");
-
-  // Static URLs
-  console.log("Generating static sitemap...");
-  const staticUrls = [
-    buildUrlXml("https://gge-tracker.com/players"),
-    buildUrlXml("https://gge-tracker.com/alliances"),
-    buildUrlXml("https://gge-tracker.com/movements"),
-    buildUrlXml("https://gge-tracker.com/map"),
-    buildUrlXml("https://gge-tracker.com/statistics"),
-    buildUrlXml("https://gge-tracker.com/renames/players"),
-    buildUrlXml("https://gge-tracker.com/renames/alliances"),
-    buildUrlXml("https://gge-tracker.com/dungeons"),
-    buildUrlXml("https://gge-tracker.com/about"),
-    buildUrlXml("https://gge-tracker.com/legal", "yearly", "0.3"),
-    buildUrlXml("https://gge-tracker.com/privacy", "yearly", "0.3"),
-    buildUrlXml("https://gge-tracker.com/release-notes", "monthly", "0.8"),
-  ];
-  const staticSitemap = buildSitemapXml(staticUrls);
-  await fsprom.writeFile(path.join(sitemapBaseDir, "sitemap_generic.xml"), staticSitemap, "utf-8");
-  console.log("Static sitemap generated.");
+  const servers = await readServedServers();
+  const generic = await writeGenericSitemap();
+  const events = await writeEventSitemaps(servers);
+  const { locations, failures } = await writeServerSitemaps(servers);
+  await writeSitemap("sitemap_index.xml", sitemapIndex([generic, events, ...locations]));
+  console.log(`Sitemaps written for ${servers.length - failures} of ${servers.length} servers.`);
+  return failures;
 }
 
 try {
-  await generateSitemaps();
-} catch (e) {
-  console.error("Error generating sitemaps:", e);
+  const failures = await generateSitemaps();
+  process.exit(failures > 0 ? 1 : 0);
+} catch (error) {
+  console.error("Error generating sitemaps:", error);
   process.exit(1);
 }

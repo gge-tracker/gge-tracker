@@ -7,13 +7,8 @@ import { ClientIp } from '../helper/client-ip';
 import { HttpCache } from '../helper/http-cache';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiProfiles, ProfileContext } from './api-profiles';
-import {
-  SHARE_CARD_HEIGHT,
-  SHARE_CARD_WIDTH,
-  ShareCard,
-  ShareCardRenderer,
-  ShareCardStat,
-} from '../services/share-card-renderer';
+import { SeoHead } from '../helper/seo-head';
+import { ShareCard, ShareCardRenderer, ShareCardStat } from '../services/share-card-renderer';
 
 type ShareSubject = 'player' | 'alliance';
 
@@ -40,7 +35,6 @@ export abstract class ApiSeo implements ApiHelper {
   private static readonly PREVIEW_TTL_SECONDS = 3600;
   private static readonly CARD_TTL_SECONDS = 24 * 3600;
   private static readonly RENDERS_PER_MINUTE = Number(process.env.SEO_RENDERS_PER_MINUTE) || 60;
-  private static readonly SITE_NAME = 'GGE Tracker';
   private static readonly GENERIC_TITLE = 'GGE Tracker - Advanced Stats for Goodgame Empire';
   private static readonly GENERIC_DESCRIPTION =
     'Community analytics tool for Goodgame Empire. Visualize your castles, explore interactive maps, track alliances, dungeons, and analyze event statistics.';
@@ -81,7 +75,7 @@ export abstract class ApiSeo implements ApiHelper {
   }
 
   public static displayUrl(path: string): string {
-    return `${this.siteUrl().replace(/^https?:\/\//, '')}${path === '/' ? '' : path}`;
+    return `${SeoHead.siteUrl().replace(/^https?:\/\//, '')}${path === '/' ? '' : path}`;
   }
 
   private static async sendHead(
@@ -92,7 +86,7 @@ export abstract class ApiSeo implements ApiHelper {
   ): Promise<void> {
     try {
       const preview = await this.preview(subject, rawId);
-      const etag = HttpCache.etagFromCacheKey(`seo-head:${preview.cacheKey}:${this.siteUrl()}:${this.apiUrl()}`);
+      const etag = HttpCache.etagFromCacheKey(`seo-head:${preview.cacheKey}:${SeoHead.siteUrl()}:${SeoHead.apiUrl()}`);
       if (
         HttpCache.handleConditional(request, response, {
           etag,
@@ -244,7 +238,7 @@ export abstract class ApiSeo implements ApiHelper {
     return {
       found: true,
       path,
-      title: `${name}${allianceName ? ` (${allianceName})` : ''} · ${server} · ${this.SITE_NAME}`,
+      title: `${name}${allianceName ? ` (${allianceName})` : ''} · ${server} · ${SeoHead.SITE_NAME}`,
       description,
       imageAlt: `${name}, ${ShareCardRenderer.compact(might)} might, rank #${ShareCardRenderer.grouped(mightRank)} on ${server}`,
       card: {
@@ -288,7 +282,7 @@ export abstract class ApiSeo implements ApiHelper {
     return {
       found: true,
       path,
-      title: `${name} · ${server} alliance · ${this.SITE_NAME}`,
+      title: `${name} · ${server} alliance · ${SeoHead.SITE_NAME}`,
       description,
       imageAlt: `${name}, ${ShareCardRenderer.grouped(members)} members, ${ShareCardRenderer.compact(might)} might on ${server}`,
       card: {
@@ -377,63 +371,21 @@ export abstract class ApiSeo implements ApiHelper {
   }
 
   private static toHeadDocument(preview: SharePreview): string {
-    const escape = ShareCardRenderer.escape.bind(ShareCardRenderer);
-    const canonical = `${this.siteUrl()}${preview.path}`;
-    const image = preview.found
-      ? `${this.apiUrl()}/assets/og${preview.path}.jpg?v=${this.cardDigest(preview.card)}`
-      : `${this.apiUrl()}/assets/og/player/0.jpg`;
-    const meta: [string, string, string][] = [
-      ['name', 'description', preview.description],
-      ['name', 'robots', preview.found ? 'index, follow' : 'noindex, follow'],
-      ['name', 'theme-color', '#060d1f'],
-      ['property', 'og:site_name', this.SITE_NAME],
-      ['property', 'og:type', preview.found ? 'profile' : 'website'],
-      ['property', 'og:locale', 'en_US'],
-      ['property', 'og:title', preview.title],
-      ['property', 'og:description', preview.description],
-      ['property', 'og:url', canonical],
-      ['property', 'og:image', image],
-      ['property', 'og:image:type', 'image/jpeg'],
-      ['property', 'og:image:width', String(SHARE_CARD_WIDTH)],
-      ['property', 'og:image:height', String(SHARE_CARD_HEIGHT)],
-      ['property', 'og:image:alt', preview.imageAlt],
-      ['name', 'twitter:card', 'summary_large_image'],
-      ['name', 'twitter:title', preview.title],
-      ['name', 'twitter:description', preview.description],
-      ['name', 'twitter:image', image],
-      ['name', 'twitter:image:alt', preview.imageAlt],
-    ];
-    const tags = meta
-      .map(([attribute, key, content]) => `<meta ${attribute}="${key}" content="${escape(content)}">`)
-      .join('\n');
-    return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>${escape(preview.title)}</title>
-<link rel="canonical" href="${escape(canonical)}">
-${tags}
-</head>
-<body>
-<main>
-<h1>${escape(preview.card.title)}</h1>
-<p>${escape(preview.description)}</p>
-<p><a href="${escape(canonical)}">Open on ${this.SITE_NAME}</a></p>
-</main>
-</body>
-</html>
-`;
+    return SeoHead.render({
+      path: preview.path,
+      title: preview.title,
+      description: preview.description,
+      heading: preview.card.title,
+      image: preview.found
+        ? `${SeoHead.apiUrl()}/assets/og${preview.path}.jpg?v=${this.cardDigest(preview.card)}`
+        : SeoHead.genericImage(),
+      imageAlt: preview.imageAlt,
+      indexable: preview.found,
+      type: preview.found ? 'profile' : 'website',
+    });
   }
 
   private static serverLabel(context: ProfileContext): string {
     return ApiHelper.ggeTrackerManager.getServerByCode(context.code)?.outer_name ?? context.server;
-  }
-
-  private static siteUrl(): string {
-    return (process.env.SITE_URL || 'https://gge-tracker.com').replace(/\/+$/, '');
-  }
-
-  private static apiUrl(): string {
-    return `${(process.env.BACKEND_API_URI || 'https://api.gge-tracker.com').replace(/\/+$/, '')}/api/v1`;
   }
 }

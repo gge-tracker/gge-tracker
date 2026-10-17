@@ -11,7 +11,7 @@
     "build:dev": "ng build --configuration development",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "lint": "ng lint",
+    "lint": "ng lint && node scripts/check-spa-routes.mjs",
     "build:server": "ng run gge-tracker:server:production"
   },
   "private": true,

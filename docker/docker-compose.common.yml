@@ -273,6 +273,7 @@ services:
       MYSQL_PASSWORD: "${SQL_PASSWORD}"
     volumes:
       - ./../gge-tracker-frontend/dist/gge-tracker-frontend/browser/sitemaps:/usr/share/nginx/html/gge-tracker-frontend/browser/sitemaps
+      - ./../gge-tracker-backend-api/config:/app/config:ro
     networks:
       - backend
     restart: "no"

@@ -6836,6 +6836,46 @@ publicRoutes.get('/seo/alliance/:allianceId', routingInstance.getAllianceSeoHead
 
 /**
  * @openapi
+ * /seo/page:
+ *   get:
+ *     summary: Link preview document of a website page
+ *     description: >
+ *       The counterpart of /seo/player/{playerId} for the pages that show no single player or alliance:
+ *       the rankings, the event thresholds, the maps and the other tools. A path the website does not
+ *       serve answers the generic site preview with noindex, never an error
+ *     tags:
+ *       - Previews
+ *     parameters:
+ *       - name: path
+ *         in: query
+ *         required: true
+ *         description: The website path, such as /players or /event-thresholds
+ *         schema:
+ *           type: string
+ *       - name: event
+ *         in: query
+ *         required: false
+ *         description: For /event-thresholds, the event the page shows, as the page's own event query parameter names it
+ *         schema:
+ *           type: string
+ *           enum: [nomad, samurai, bloodcrow, war-realms, berimond-kingdom, berimond-invasion]
+ *       - $ref: '#/components/parameters/IfNoneMatch'
+ *     responses:
+ *       '200':
+ *         description: The preview document
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
+ *       '304':
+ *         description: The If-None-Match ETag still matches, so this preview has not changed
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+publicRoutes.get('/seo/page', routingInstance.getPageSeoHead.bind(routingInstance));
+
+/**
+ * @openapi
  * /assets/og/player/{playerId}.jpg:
  *   get:
  *     summary: Share card image of a player

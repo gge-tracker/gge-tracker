@@ -29,6 +29,7 @@ import { StormTrackerComponent } from '@ggetracker-pages/storm-tracker/storm-tra
 import { StormyIslesComponent } from '@ggetracker-pages/stormy-isles/stormy-isles.component';
 import { CompareComponent } from '@ggetracker-pages/compare/compare.component';
 import { HomeComponent } from '@ggetracker-pages/home/home.component';
+import { NotFoundComponent } from '@ggetracker-pages/not-found/not-found.component';
 
 export const routes: Routes = [
   {
@@ -335,14 +336,13 @@ export const routes: Routes = [
       },
       {
         path: '**',
-        pathMatch: 'full',
-        redirectTo: 'players',
+        component: NotFoundComponent,
+        resolve: { titleResolver },
+        data: {
+          description: '',
+          titleKey: 'Page introuvable',
+        },
       },
     ],
-  },
-  {
-    path: '**',
-    pathMatch: 'full',
-    redirectTo: 'players',
   },
 ];

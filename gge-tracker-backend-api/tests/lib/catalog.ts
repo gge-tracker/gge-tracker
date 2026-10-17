@@ -1030,6 +1030,21 @@ export const CATALOG: Endpoint[] = [
     ],
   },
   {
+    id: 'seo-page-head',
+    method: 'GET',
+    scope: 'public',
+    path: () => '/seo/page' + q({ path: '/event-thresholds', event: 'nomad' }),
+    okStatuses: [200],
+    kind: 'any',
+    cases: [
+      { label: 'a ranking page answers its own preview', path: () => '/seo/page' + q({ path: '/players' }), expect: [200] },
+      { label: 'an unknown path answers the generic preview', path: () => '/seo/page' + q({ path: '/not-a-page' }), expect: [200] },
+      { label: 'a missing path answers the generic preview', path: () => '/seo/page', expect: [200] },
+      { label: 'an unknown event answers the page preview', path: () => '/seo/page' + q({ path: '/event-thresholds', event: 'unknown' }), expect: [200] },
+      { label: 'If-None-Match * is answered 304', path: () => '/seo/page' + q({ path: '/players' }), expect: [304], headers: () => ({ 'If-None-Match': '*' }) },
+    ],
+  },
+  {
     id: 'og-player-card',
     snapshot: 'shape',
     method: 'GET',
