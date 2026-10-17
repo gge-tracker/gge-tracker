@@ -7423,6 +7423,938 @@
         "x": 0,
         "y": 60
       },
+      "id": 200,
+      "panels": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "description": "A human visitor is a browser client IP that booted the site (loaded servers/catalog), with partner keys, integrations, bots and internal calls removed. Ignores every dashboard filter. Average over the days of the window of the distinct visitors seen that day",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 0,
+            "y": 61
+          },
+          "id": 201,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "4.12.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-clickhouse-datasource",
+                "uid": "clickhouse"
+              },
+              "editorType": "sql",
+              "format": 1,
+              "meta": {
+                "builderOptions": {
+                  "columns": [],
+                  "database": "logs",
+                  "limit": 1000,
+                  "mode": "list",
+                  "queryType": "table",
+                  "table": "logs"
+                }
+              },
+              "pluginVersion": "4.12.0",
+              "queryType": "table",
+              "rawSql": "WITH\n  trim(splitByChar(',', ip)[1]) AS client_ip,\n  lower(user_agent) AS ua,\n  multiIf(\n    client_ip IN ('127.0.0.1', '::1', '::ffff:127.0.0.1'), 'internal',\n    ua IN ('-', '') OR match(ua, '^mozilla/[0-9.]+( \\(compatible\\))?$'), 'unknown',\n    match(ua, '\\+https?://|crawler|spider|slurp'), 'bot',\n    match(ua, '^mozilla/[45]\\.0 \\((windows|macintosh|x11|linux|iphone|ipad|android|cros)')\n      AND match(ua, 'applewebkit|gecko/|trident|presto|chrome/|crios/|firefox/|fxios/|safari/|edg/|opr/')\n      AND NOT match(ua, 'headless'), 'browser',\n    match(ua, 'python|aiohttp|urllib|curl/|wget|node|go-http|okhttp|java/|libwww|lwp::|ruby|perl|php|http_request|fasthttp|axios|scrapy|postman|insomnia|powershell|winhttp|dart|dotnet|restsharp|guzzle|httpx|reqwest|hyper/|apache-http|jakarta|symfony|undici'), 'library',\n    'application'\n  ) AS client_kind,\n  match(ua, 'iphone|ipad|android') AS is_mobile,\n  client_kind = 'browser' AND partner = '' AND route = '/api/v1/servers/catalog' AS is_app_boot\nSELECT round(uniqExact(client_ip, toDate(timestamp)) / greatest(uniqExact(toDate(timestamp)), 1), 0) AS value\nFROM logs.logs\nWHERE $__timeFilter(timestamp) AND job = 'ggetracker-api' AND is_app_boot",
+              "refId": "A"
+            }
+          ],
+          "title": "Human visitors per day",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "description": "A human visitor is a browser client IP that booted the site (loaded servers/catalog), with partner keys, integrations, bots and internal calls removed. Ignores every dashboard filter. Distinct visitors over the whole window. A visitor on a mobile network changes address often, so this over-counts phones",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 6,
+            "y": 61
+          },
+          "id": 202,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "4.12.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-clickhouse-datasource",
+                "uid": "clickhouse"
+              },
+              "editorType": "sql",
+              "format": 1,
+              "meta": {
+                "builderOptions": {
+                  "columns": [],
+                  "database": "logs",
+                  "limit": 1000,
+                  "mode": "list",
+                  "queryType": "table",
+                  "table": "logs"
+                }
+              },
+              "pluginVersion": "4.12.0",
+              "queryType": "table",
+              "rawSql": "WITH\n  trim(splitByChar(',', ip)[1]) AS client_ip,\n  lower(user_agent) AS ua,\n  multiIf(\n    client_ip IN ('127.0.0.1', '::1', '::ffff:127.0.0.1'), 'internal',\n    ua IN ('-', '') OR match(ua, '^mozilla/[0-9.]+( \\(compatible\\))?$'), 'unknown',\n    match(ua, '\\+https?://|crawler|spider|slurp'), 'bot',\n    match(ua, '^mozilla/[45]\\.0 \\((windows|macintosh|x11|linux|iphone|ipad|android|cros)')\n      AND match(ua, 'applewebkit|gecko/|trident|presto|chrome/|crios/|firefox/|fxios/|safari/|edg/|opr/')\n      AND NOT match(ua, 'headless'), 'browser',\n    match(ua, 'python|aiohttp|urllib|curl/|wget|node|go-http|okhttp|java/|libwww|lwp::|ruby|perl|php|http_request|fasthttp|axios|scrapy|postman|insomnia|powershell|winhttp|dart|dotnet|restsharp|guzzle|httpx|reqwest|hyper/|apache-http|jakarta|symfony|undici'), 'library',\n    'application'\n  ) AS client_kind,\n  match(ua, 'iphone|ipad|android') AS is_mobile,\n  client_kind = 'browser' AND partner = '' AND route = '/api/v1/servers/catalog' AS is_app_boot\nSELECT uniqExact(client_ip) AS value\nFROM logs.logs\nWHERE $__timeFilter(timestamp) AND job = 'ggetracker-api' AND is_app_boot",
+              "refId": "A"
+            }
+          ],
+          "title": "Human visitors",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "description": "A human visitor is a browser client IP that booted the site (loaded servers/catalog), with partner keys, integrations, bots and internal calls removed. Ignores every dashboard filter. Share of visitors whose user agent names an iPhone, iPad or Android device. iPads that report as a Mac count as desktop",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "percent",
+              "decimals": 1
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 12,
+            "y": 61
+          },
+          "id": 203,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "4.12.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-clickhouse-datasource",
+                "uid": "clickhouse"
+              },
+              "editorType": "sql",
+              "format": 1,
+              "meta": {
+                "builderOptions": {
+                  "columns": [],
+                  "database": "logs",
+                  "limit": 1000,
+                  "mode": "list",
+                  "queryType": "table",
+                  "table": "logs"
+                }
+              },
+              "pluginVersion": "4.12.0",
+              "queryType": "table",
+              "rawSql": "WITH\n  trim(splitByChar(',', ip)[1]) AS client_ip,\n  lower(user_agent) AS ua,\n  multiIf(\n    client_ip IN ('127.0.0.1', '::1', '::ffff:127.0.0.1'), 'internal',\n    ua IN ('-', '') OR match(ua, '^mozilla/[0-9.]+( \\(compatible\\))?$'), 'unknown',\n    match(ua, '\\+https?://|crawler|spider|slurp'), 'bot',\n    match(ua, '^mozilla/[45]\\.0 \\((windows|macintosh|x11|linux|iphone|ipad|android|cros)')\n      AND match(ua, 'applewebkit|gecko/|trident|presto|chrome/|crios/|firefox/|fxios/|safari/|edg/|opr/')\n      AND NOT match(ua, 'headless'), 'browser',\n    match(ua, 'python|aiohttp|urllib|curl/|wget|node|go-http|okhttp|java/|libwww|lwp::|ruby|perl|php|http_request|fasthttp|axios|scrapy|postman|insomnia|powershell|winhttp|dart|dotnet|restsharp|guzzle|httpx|reqwest|hyper/|apache-http|jakarta|symfony|undici'), 'library',\n    'application'\n  ) AS client_kind,\n  match(ua, 'iphone|ipad|android') AS is_mobile,\n  client_kind = 'browser' AND partner = '' AND route = '/api/v1/servers/catalog' AS is_app_boot\nSELECT 100.0 * uniqExactIf(client_ip, is_mobile) / uniqExact(client_ip) AS value\nFROM logs.logs\nWHERE $__timeFilter(timestamp) AND job = 'ggetracker-api' AND is_app_boot",
+              "refId": "A"
+            }
+          ],
+          "title": "Mobile share",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "description": "A human visitor is a browser client IP that booted the site (loaded servers/catalog), with partner keys, integrations, bots and internal calls removed. Ignores every dashboard filter. Share of visitors seen on two days or more of the window. The rest came once: this is the number the growth roadmap tries to move. It depends on the window, so compare equal windows",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "percent",
+              "decimals": 1
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 18,
+            "y": 61
+          },
+          "id": 204,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "4.12.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-clickhouse-datasource",
+                "uid": "clickhouse"
+              },
+              "editorType": "sql",
+              "format": 1,
+              "meta": {
+                "builderOptions": {
+                  "columns": [],
+                  "database": "logs",
+                  "limit": 1000,
+                  "mode": "list",
+                  "queryType": "table",
+                  "table": "logs"
+                }
+              },
+              "pluginVersion": "4.12.0",
+              "queryType": "table",
+              "rawSql": "WITH\n  trim(splitByChar(',', ip)[1]) AS client_ip,\n  lower(user_agent) AS ua,\n  multiIf(\n    client_ip IN ('127.0.0.1', '::1', '::ffff:127.0.0.1'), 'internal',\n    ua IN ('-', '') OR match(ua, '^mozilla/[0-9.]+( \\(compatible\\))?$'), 'unknown',\n    match(ua, '\\+https?://|crawler|spider|slurp'), 'bot',\n    match(ua, '^mozilla/[45]\\.0 \\((windows|macintosh|x11|linux|iphone|ipad|android|cros)')\n      AND match(ua, 'applewebkit|gecko/|trident|presto|chrome/|crios/|firefox/|fxios/|safari/|edg/|opr/')\n      AND NOT match(ua, 'headless'), 'browser',\n    match(ua, 'python|aiohttp|urllib|curl/|wget|node|go-http|okhttp|java/|libwww|lwp::|ruby|perl|php|http_request|fasthttp|axios|scrapy|postman|insomnia|powershell|winhttp|dart|dotnet|restsharp|guzzle|httpx|reqwest|hyper/|apache-http|jakarta|symfony|undici'), 'library',\n    'application'\n  ) AS client_kind,\n  match(ua, 'iphone|ipad|android') AS is_mobile,\n  client_kind = 'browser' AND partner = '' AND route = '/api/v1/servers/catalog' AS is_app_boot\nSELECT 100.0 * countIf(days > 1) / count() AS value\nFROM\n(\n  SELECT client_ip, uniqExact(toDate(timestamp)) AS days\n  FROM logs.logs\n  WHERE $__timeFilter(timestamp) AND job = 'ggetracker-api' AND is_app_boot\n  GROUP BY client_ip\n)",
+              "refId": "A"
+            }
+          ],
+          "title": "Returning share",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "description": "A human visitor is a browser client IP that booted the site (loaded servers/catalog), with partner keys, integrations, bots and internal calls removed. Ignores every dashboard filter. Stacked, so the top of the band is the daily total",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "always",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "normal"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 65
+          },
+          "id": 205,
+          "options": {
+            "legend": {
+              "calcs": [
+                "mean",
+                "max"
+              ],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "4.12.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-clickhouse-datasource",
+                "uid": "clickhouse"
+              },
+              "editorType": "sql",
+              "format": 1,
+              "meta": {
+                "builderOptions": {
+                  "columns": [],
+                  "database": "logs",
+                  "limit": 1000,
+                  "mode": "list",
+                  "queryType": "table",
+                  "table": "logs"
+                }
+              },
+              "pluginVersion": "4.12.0",
+              "queryType": "table",
+              "rawSql": "WITH\n  trim(splitByChar(',', ip)[1]) AS client_ip,\n  lower(user_agent) AS ua,\n  multiIf(\n    client_ip IN ('127.0.0.1', '::1', '::ffff:127.0.0.1'), 'internal',\n    ua IN ('-', '') OR match(ua, '^mozilla/[0-9.]+( \\(compatible\\))?$'), 'unknown',\n    match(ua, '\\+https?://|crawler|spider|slurp'), 'bot',\n    match(ua, '^mozilla/[45]\\.0 \\((windows|macintosh|x11|linux|iphone|ipad|android|cros)')\n      AND match(ua, 'applewebkit|gecko/|trident|presto|chrome/|crios/|firefox/|fxios/|safari/|edg/|opr/')\n      AND NOT match(ua, 'headless'), 'browser',\n    match(ua, 'python|aiohttp|urllib|curl/|wget|node|go-http|okhttp|java/|libwww|lwp::|ruby|perl|php|http_request|fasthttp|axios|scrapy|postman|insomnia|powershell|winhttp|dart|dotnet|restsharp|guzzle|httpx|reqwest|hyper/|apache-http|jakarta|symfony|undici'), 'library',\n    'application'\n  ) AS client_kind,\n  match(ua, 'iphone|ipad|android') AS is_mobile,\n  client_kind = 'browser' AND partner = '' AND route = '/api/v1/servers/catalog' AS is_app_boot\nSELECT\n  toStartOfDay(timestamp) AS t,\n  uniqExactIf(client_ip, NOT is_mobile) AS `desktop`,\n  uniqExactIf(client_ip, is_mobile) AS `phone and tablet`\nFROM logs.logs\nWHERE $__timeFilter(timestamp) AND job = 'ggetracker-api' AND is_app_boot\nGROUP BY t\nORDER BY t",
+              "refId": "A"
+            }
+          ],
+          "title": "Human visitors per day by device",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "description": "A human visitor is a browser client IP that booted the site (loaded servers/catalog), with partner keys, integrations, bots and internal calls removed. Ignores every dashboard filter. Returning: also seen in the 7 days before that day. Reads 7 days before the window start so the first day is not counted as all new",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "always",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "normal"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 65
+          },
+          "id": 206,
+          "options": {
+            "legend": {
+              "calcs": [
+                "mean",
+                "max"
+              ],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "4.12.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-clickhouse-datasource",
+                "uid": "clickhouse"
+              },
+              "editorType": "sql",
+              "format": 1,
+              "meta": {
+                "builderOptions": {
+                  "columns": [],
+                  "database": "logs",
+                  "limit": 1000,
+                  "mode": "list",
+                  "queryType": "table",
+                  "table": "logs"
+                }
+              },
+              "pluginVersion": "4.12.0",
+              "queryType": "table",
+              "rawSql": "WITH\n  trim(splitByChar(',', ip)[1]) AS client_ip,\n  lower(user_agent) AS ua,\n  multiIf(\n    client_ip IN ('127.0.0.1', '::1', '::ffff:127.0.0.1'), 'internal',\n    ua IN ('-', '') OR match(ua, '^mozilla/[0-9.]+( \\(compatible\\))?$'), 'unknown',\n    match(ua, '\\+https?://|crawler|spider|slurp'), 'bot',\n    match(ua, '^mozilla/[45]\\.0 \\((windows|macintosh|x11|linux|iphone|ipad|android|cros)')\n      AND match(ua, 'applewebkit|gecko/|trident|presto|chrome/|crios/|firefox/|fxios/|safari/|edg/|opr/')\n      AND NOT match(ua, 'headless'), 'browser',\n    match(ua, 'python|aiohttp|urllib|curl/|wget|node|go-http|okhttp|java/|libwww|lwp::|ruby|perl|php|http_request|fasthttp|axios|scrapy|postman|insomnia|powershell|winhttp|dart|dotnet|restsharp|guzzle|httpx|reqwest|hyper/|apache-http|jakarta|symfony|undici'), 'library',\n    'application'\n  ) AS client_kind,\n  match(ua, 'iphone|ipad|android') AS is_mobile,\n  client_kind = 'browser' AND partner = '' AND route = '/api/v1/servers/catalog' AS is_app_boot\nSELECT\n  toDateTime(day) AS t,\n  countIf(dateDiff('day', previous_day, day) <= 7) AS `returning within 7 days`,\n  countIf(dateDiff('day', previous_day, day) > 7) AS `new or back after a week`\nFROM\n(\n  SELECT\n    client_ip AS visitor,\n    day,\n    lagInFrame(day, 1, toDate('1970-01-01')) OVER (PARTITION BY visitor ORDER BY day ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) AS previous_day\n  FROM\n  (\n    SELECT client_ip, toDate(timestamp) AS day\n    FROM logs.logs\n    WHERE timestamp >= $__fromTime - INTERVAL 7 DAY AND timestamp <= $__toTime\n      AND job = 'ggetracker-api' AND is_app_boot\n    GROUP BY client_ip, day\n  )\n)\nWHERE day >= toDate($__fromTime)\nGROUP BY day\nORDER BY day",
+              "refId": "A"
+            }
+          ],
+          "title": "New and returning visitors per day",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "description": "A human visitor is a browser client IP that booted the site (loaded servers/catalog), with partner keys, integrations, bots and internal calls removed. Ignores every dashboard filter. Share of visitors who opened each page, from the route template the frontend sends as X-GGE-Page, overall and per device. A page far weaker on mobile than on desktop is a layout problem, not a demand problem. Empty until a frontend sending the header is deployed",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": true,
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "page"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 200
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "visitors"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "mode": "gradient",
+                      "type": "gauge"
+                    }
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "continuous-GrYlRd"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": ".*_pct"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 12,
+            "w": 12,
+            "x": 0,
+            "y": 73
+          },
+          "id": 207,
+          "options": {
+            "cellHeight": "sm",
+            "enablePagination": true,
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true
+          },
+          "pluginVersion": "4.12.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-clickhouse-datasource",
+                "uid": "clickhouse"
+              },
+              "editorType": "sql",
+              "format": 1,
+              "meta": {
+                "builderOptions": {
+                  "columns": [],
+                  "database": "logs",
+                  "limit": 1000,
+                  "mode": "list",
+                  "queryType": "table",
+                  "table": "logs"
+                }
+              },
+              "pluginVersion": "4.12.0",
+              "queryType": "table",
+              "rawSql": "WITH\n  trim(splitByChar(',', ip)[1]) AS client_ip,\n  lower(user_agent) AS ua,\n  multiIf(\n    client_ip IN ('127.0.0.1', '::1', '::ffff:127.0.0.1'), 'internal',\n    ua IN ('-', '') OR match(ua, '^mozilla/[0-9.]+( \\(compatible\\))?$'), 'unknown',\n    match(ua, '\\+https?://|crawler|spider|slurp'), 'bot',\n    match(ua, '^mozilla/[45]\\.0 \\((windows|macintosh|x11|linux|iphone|ipad|android|cros)')\n      AND match(ua, 'applewebkit|gecko/|trident|presto|chrome/|crios/|firefox/|fxios/|safari/|edg/|opr/')\n      AND NOT match(ua, 'headless'), 'browser',\n    match(ua, 'python|aiohttp|urllib|curl/|wget|node|go-http|okhttp|java/|libwww|lwp::|ruby|perl|php|http_request|fasthttp|axios|scrapy|postman|insomnia|powershell|winhttp|dart|dotnet|restsharp|guzzle|httpx|reqwest|hyper/|apache-http|jakarta|symfony|undici'), 'library',\n    'application'\n  ) AS client_kind,\n  match(ua, 'iphone|ipad|android') AS is_mobile,\n  client_kind = 'browser' AND partner = '' AND route = '/api/v1/servers/catalog' AS is_app_boot\nSELECT\n  page,\n  visitors,\n  round(100.0 * visitors / total, 1) AS reach_pct,\n  round(100.0 * mobile_visitors / greatest(mobile_total, 1), 1) AS mobile_reach_pct,\n  round(100.0 * desktop_visitors / greatest(desktop_total, 1), 1) AS desktop_reach_pct\nFROM\n(\n  SELECT\n    page,\n    uniqExact(client_ip) AS visitors,\n    uniqExactIf(client_ip, is_mobile) AS mobile_visitors,\n    uniqExactIf(client_ip, NOT is_mobile) AS desktop_visitors\n  FROM logs.logs\n  WHERE $__timeFilter(timestamp) AND job = 'ggetracker-api'\n    AND client_kind = 'browser' AND partner = '' AND page != ''\n  GROUP BY page\n) AS pages\nCROSS JOIN\n(\n  SELECT\n    uniqExact(client_ip) AS total,\n    uniqExactIf(client_ip, is_mobile) AS mobile_total,\n    uniqExactIf(client_ip, NOT is_mobile) AS desktop_total\n  FROM logs.logs\n  WHERE $__timeFilter(timestamp) AND job = 'ggetracker-api' AND is_app_boot\n) AS totals\nORDER BY visitors DESC\nLIMIT 50",
+              "refId": "A"
+            }
+          ],
+          "title": "Page reach",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "description": "A human visitor is a browser client IP that booted the site (loaded servers/catalog), with partner keys, integrations, bots and internal calls removed. Ignores every dashboard filter. From CF-IPCountry. unknown means the request reached the API without Cloudflare, or before the backend logged the field",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": true,
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "visitor_country"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 200
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "visitors"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "mode": "gradient",
+                      "type": "gauge"
+                    }
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "continuous-GrYlRd"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": ".*_pct"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 12,
+            "w": 6,
+            "x": 12,
+            "y": 73
+          },
+          "id": 208,
+          "options": {
+            "cellHeight": "sm",
+            "enablePagination": true,
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true
+          },
+          "pluginVersion": "4.12.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-clickhouse-datasource",
+                "uid": "clickhouse"
+              },
+              "editorType": "sql",
+              "format": 1,
+              "meta": {
+                "builderOptions": {
+                  "columns": [],
+                  "database": "logs",
+                  "limit": 1000,
+                  "mode": "list",
+                  "queryType": "table",
+                  "table": "logs"
+                }
+              },
+              "pluginVersion": "4.12.0",
+              "queryType": "table",
+              "rawSql": "WITH\n  trim(splitByChar(',', ip)[1]) AS client_ip,\n  lower(user_agent) AS ua,\n  multiIf(\n    client_ip IN ('127.0.0.1', '::1', '::ffff:127.0.0.1'), 'internal',\n    ua IN ('-', '') OR match(ua, '^mozilla/[0-9.]+( \\(compatible\\))?$'), 'unknown',\n    match(ua, '\\+https?://|crawler|spider|slurp'), 'bot',\n    match(ua, '^mozilla/[45]\\.0 \\((windows|macintosh|x11|linux|iphone|ipad|android|cros)')\n      AND match(ua, 'applewebkit|gecko/|trident|presto|chrome/|crios/|firefox/|fxios/|safari/|edg/|opr/')\n      AND NOT match(ua, 'headless'), 'browser',\n    match(ua, 'python|aiohttp|urllib|curl/|wget|node|go-http|okhttp|java/|libwww|lwp::|ruby|perl|php|http_request|fasthttp|axios|scrapy|postman|insomnia|powershell|winhttp|dart|dotnet|restsharp|guzzle|httpx|reqwest|hyper/|apache-http|jakarta|symfony|undici'), 'library',\n    'application'\n  ) AS client_kind,\n  match(ua, 'iphone|ipad|android') AS is_mobile,\n  client_kind = 'browser' AND partner = '' AND route = '/api/v1/servers/catalog' AS is_app_boot\nSELECT\n  if(country = '', 'unknown', country) AS visitor_country,\n  uniqExact(client_ip) AS visitors,\n  round(100.0 * visitors / (SELECT uniqExact(client_ip) FROM logs.logs WHERE $__timeFilter(timestamp) AND job = 'ggetracker-api' AND is_app_boot), 1) AS share_pct,\n  round(100.0 * uniqExactIf(client_ip, is_mobile) / visitors, 1) AS mobile_pct\nFROM logs.logs\nWHERE $__timeFilter(timestamp) AND job = 'ggetracker-api' AND is_app_boot\nGROUP BY visitor_country\nORDER BY visitors DESC\nLIMIT 40",
+              "refId": "A"
+            }
+          ],
+          "title": "Visitors by country",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "description": "A human visitor is a browser client IP that booted the site (loaded servers/catalog), with partner keys, integrations, bots and internal calls removed. Ignores every dashboard filter. The gge-server header the visitors sent. One visitor who looks at two servers counts on both",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": true,
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "server"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 200
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "visitors"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "mode": "gradient",
+                      "type": "gauge"
+                    }
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "continuous-GrYlRd"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": ".*_pct"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 12,
+            "w": 6,
+            "x": 18,
+            "y": 73
+          },
+          "id": 209,
+          "options": {
+            "cellHeight": "sm",
+            "enablePagination": true,
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true
+          },
+          "pluginVersion": "4.12.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-clickhouse-datasource",
+                "uid": "clickhouse"
+              },
+              "editorType": "sql",
+              "format": 1,
+              "meta": {
+                "builderOptions": {
+                  "columns": [],
+                  "database": "logs",
+                  "limit": 1000,
+                  "mode": "list",
+                  "queryType": "table",
+                  "table": "logs"
+                }
+              },
+              "pluginVersion": "4.12.0",
+              "queryType": "table",
+              "rawSql": "WITH\n  trim(splitByChar(',', ip)[1]) AS client_ip,\n  lower(user_agent) AS ua,\n  multiIf(\n    client_ip IN ('127.0.0.1', '::1', '::ffff:127.0.0.1'), 'internal',\n    ua IN ('-', '') OR match(ua, '^mozilla/[0-9.]+( \\(compatible\\))?$'), 'unknown',\n    match(ua, '\\+https?://|crawler|spider|slurp'), 'bot',\n    match(ua, '^mozilla/[45]\\.0 \\((windows|macintosh|x11|linux|iphone|ipad|android|cros)')\n      AND match(ua, 'applewebkit|gecko/|trident|presto|chrome/|crios/|firefox/|fxios/|safari/|edg/|opr/')\n      AND NOT match(ua, 'headless'), 'browser',\n    match(ua, 'python|aiohttp|urllib|curl/|wget|node|go-http|okhttp|java/|libwww|lwp::|ruby|perl|php|http_request|fasthttp|axios|scrapy|postman|insomnia|powershell|winhttp|dart|dotnet|restsharp|guzzle|httpx|reqwest|hyper/|apache-http|jakarta|symfony|undici'), 'library',\n    'application'\n  ) AS client_kind,\n  match(ua, 'iphone|ipad|android') AS is_mobile,\n  client_kind = 'browser' AND partner = '' AND route = '/api/v1/servers/catalog' AS is_app_boot\nSELECT\n  server,\n  uniqExact(client_ip) AS visitors,\n  round(100.0 * uniqExactIf(client_ip, is_mobile) / visitors, 1) AS mobile_pct\nFROM logs.logs\nWHERE $__timeFilter(timestamp) AND job = 'ggetracker-api'\n  AND client_kind = 'browser' AND partner = '' AND server != 'none'\n  AND client_ip IN (SELECT client_ip FROM logs.logs WHERE $__timeFilter(timestamp) AND job = 'ggetracker-api' AND is_app_boot)\nGROUP BY server\nORDER BY visitors DESC\nLIMIT 60",
+              "refId": "A"
+            }
+          ],
+          "title": "Visitors by game server",
+          "type": "table"
+        }
+      ],
+      "title": "Human audience",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 61
+      },
       "id": 180,
       "panels": [
         {
@@ -7466,7 +8398,7 @@
             "h": 4,
             "w": 6,
             "x": 0,
-            "y": 61
+            "y": 62
           },
           "id": 181,
           "options": {
@@ -7551,7 +8483,7 @@
             "h": 4,
             "w": 6,
             "x": 6,
-            "y": 61
+            "y": 62
           },
           "id": 182,
           "options": {
@@ -7636,7 +8568,7 @@
             "h": 4,
             "w": 6,
             "x": 12,
-            "y": 61
+            "y": 62
           },
           "id": 183,
           "options": {
@@ -7721,7 +8653,7 @@
             "h": 4,
             "w": 6,
             "x": 18,
-            "y": 61
+            "y": 62
           },
           "id": 184,
           "options": {
@@ -7877,7 +8809,7 @@
             "h": 7,
             "w": 24,
             "x": 0,
-            "y": 65
+            "y": 66
           },
           "id": 185,
           "options": {
@@ -8056,7 +8988,7 @@
             "h": 10,
             "w": 12,
             "x": 0,
-            "y": 72
+            "y": 73
           },
           "id": 186,
           "options": {
@@ -8234,7 +9166,7 @@
             "h": 10,
             "w": 12,
             "x": 12,
-            "y": 72
+            "y": 73
           },
           "id": 187,
           "options": {
@@ -8387,7 +9319,7 @@
             "h": 9,
             "w": 12,
             "x": 0,
-            "y": 82
+            "y": 83
           },
           "id": 188,
           "options": {
@@ -8544,7 +9476,7 @@
             "h": 9,
             "w": 12,
             "x": 12,
-            "y": 82
+            "y": 83
           },
           "id": 189,
           "options": {
@@ -8598,7 +9530,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 61
+        "y": 62
       },
       "id": 190,
       "panels": [
@@ -8613,7 +9545,7 @@
             "h": 12,
             "w": 12,
             "x": 0,
-            "y": 62
+            "y": 63
           },
           "id": 191,
           "options": {
@@ -8693,7 +9625,7 @@
             "h": 6,
             "w": 12,
             "x": 12,
-            "y": 62
+            "y": 63
           },
           "id": 192,
           "options": {
@@ -8777,7 +9709,7 @@
             "h": 6,
             "w": 4,
             "x": 0,
-            "y": 74
+            "y": 75
           },
           "id": 193,
           "options": {
@@ -8854,7 +9786,7 @@
             "h": 6,
             "w": 4,
             "x": 4,
-            "y": 74
+            "y": 75
           },
           "id": 194,
           "options": {
@@ -8931,7 +9863,7 @@
             "h": 6,
             "w": 4,
             "x": 8,
-            "y": 74
+            "y": 75
           },
           "id": 195,
           "options": {
@@ -8989,7 +9921,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 62
+        "y": 63
       },
       "id": 20,
       "panels": [
@@ -9192,7 +10124,7 @@
             "h": 18,
             "w": 24,
             "x": 0,
-            "y": 63
+            "y": 64
           },
           "id": 2,
           "options": {
@@ -9246,7 +10178,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 63
+        "y": 64
       },
       "id": 196,
       "panels": [
@@ -9281,7 +10213,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 64
+            "y": 65
           },
           "id": 197,
           "options": {
@@ -9438,7 +10370,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 72
+            "y": 73
           },
           "id": 198,
           "options": {
