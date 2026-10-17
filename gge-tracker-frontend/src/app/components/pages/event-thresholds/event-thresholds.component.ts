@@ -1,6 +1,7 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { LayeredSceneComponent } from '@ggetracker-components/layered-scene/layered-scene.component';
 import {
   ApiEventThresholdSlug,
   ApiEventThresholdsResponse,
@@ -19,13 +20,37 @@ interface ThresholdEvent {
   icon: string;
 }
 
-interface SummaryRow {
+interface LadderRow {
+  index: number;
   rank: number;
-  value: number | null;
-  median: number | null;
+  current: number | null;
+  target: number | null;
   low: number | null;
   high: number | null;
+  progress: number | null;
 }
+
+interface EditionRow {
+  startedAt: string;
+  participants: number;
+  value: number;
+  share: number;
+}
+
+interface PaceTrend {
+  key: 'event-thresholds-ahead' | 'event-thresholds-behind' | 'event-thresholds-on-pace';
+  percent: number;
+}
+
+interface ChartLine {
+  series: ApexAxisChartSeries[number];
+  color: string;
+  width: number;
+  dash: number;
+  opacity: number;
+}
+
+type HourlyCurve = (number | null)[];
 
 const SLUG_BY_TABLE: Partial<Record<ApiPlayerStatsType, ApiEventThresholdSlug>> = {
   [ApiPlayerStatsType.nomad]: 'nomad',
@@ -42,13 +67,13 @@ const THRESHOLD_EVENTS: ThresholdEvent[] = KINGDOM_EVENTS.flatMap((event) => {
 });
 
 const DEFAULT_RANK = 100;
-const PAST_RUN_COLOR = '#6b7f8f';
-const CURRENT_RUN_COLOR = '#26c6da';
+const ON_PACE_TOLERANCE = 0.03;
+const COLORS = { band: '#5b7186', median: '#a9b7c4', last: '#e2b45a', current: '#26c6da' };
 
 @Component({
   selector: 'app-event-thresholds',
   standalone: true,
-  imports: [DatePipe, DecimalPipe, TranslateModule, ChartsWrapperComponent],
+  imports: [DatePipe, DecimalPipe, TranslateModule, ChartsWrapperComponent, LayeredSceneComponent],
   templateUrl: './event-thresholds.component.html',
   styleUrl: './event-thresholds.component.css',
 })
@@ -56,26 +81,38 @@ export class EventThresholdsComponent extends GenericComponent implements OnInit
   public readonly events = THRESHOLD_EVENTS;
   public selectedEvent: ApiEventThresholdSlug = THRESHOLD_EVENTS[0].slug;
   public data: ApiEventThresholdsResponse | null = null;
+  public liveEvents = new Set<ApiEventThresholdSlug>();
   public rankIndex = 0;
-  public summary: SummaryRow[] = [];
+  public ladder: LadderRow[] = [];
+  public editions: EditionRow[] = [];
+  public trend: PaceTrend | null = null;
   public chart: ApexOptions | null = null;
+  public showAllRanks = false;
 
+  @ViewChild('detail') private readonly detail?: ElementRef<HTMLElement>;
   private compactFormatter = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
-
-  public get selectedEventLabel(): string {
-    return this.events.find((event) => event.slug === this.selectedEvent)?.label ?? '';
-  }
 
   public get selectedRank(): number {
     return this.data?.ranks[this.rankIndex] ?? DEFAULT_RANK;
   }
 
+  public get selectedRow(): LadderRow | undefined {
+    return this.ladder.find((row) => row.index === this.rankIndex);
+  }
+
+  public get lastEdition(): EditionRow | undefined {
+    return this.editions[0];
+  }
+
   public get typicalDurationHours(): number | null {
-    const durations = (this.data?.pace ?? [])
-      .filter((occurrence) => !occurrence.running && occurrence.points.length > 0)
-      .map((occurrence) => occurrence.points.at(-1)!.hour);
-    if (durations.length === 0) return null;
-    return [...durations].sort((a, b) => a - b)[Math.floor(durations.length / 2)];
+    const durations = this.completedPace().map((occurrence) => occurrence.points.at(-1)!.hour);
+    return durations.length > 0 ? this.median(durations) : null;
+  }
+
+  public get liveProgress(): number | null {
+    const duration = this.typicalDurationHours;
+    if (!this.data?.current || !duration) return null;
+    return Math.min(100, Math.round((this.data.current.hour / duration) * 100));
   }
 
   public get daysUntilNext(): number | null {
@@ -97,13 +134,15 @@ export class EventThresholdsComponent extends GenericComponent implements OnInit
   public selectEvent(slug: ApiEventThresholdSlug): void {
     if (slug === this.selectedEvent) return;
     this.selectedEvent = slug;
+    this.showAllRanks = false;
     void this.load(this.selectedRank);
   }
 
   public selectRank(index: number): void {
     this.rankIndex = index;
-    this.chart = this.buildChart();
+    this.refreshRankViews();
     this.syncUrl();
+    this.revealDetail();
   }
 
   public compact(value: number | null | undefined): string {
@@ -114,6 +153,14 @@ export class EventThresholdsComponent extends GenericComponent implements OnInit
     return value ? formatThousands(value) : '';
   }
 
+  public deltaToMedian(value: number): string {
+    const median = this.data?.typical?.median[this.rankIndex];
+    if (!median) return '';
+    const delta = Math.round((value / median - 1) * 100);
+    if (delta === 0) return '';
+    return `${delta > 0 ? '+' : ''}${delta}%`;
+  }
+
   private async load(preferredRank: number): Promise<void> {
     this.isInLoading = true;
     this.syncUrl(preferredRank);
@@ -121,17 +168,32 @@ export class EventThresholdsComponent extends GenericComponent implements OnInit
     this.isInLoading = false;
     if (!response.success) {
       this.data = null;
-      this.summary = [];
+      this.ladder = [];
+      this.editions = [];
       this.chart = null;
       this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
       return;
     }
     this.data = response.data;
-    const rankIndex = this.data.ranks.indexOf(preferredRank);
-    this.rankIndex = rankIndex === -1 ? this.data.ranks.indexOf(DEFAULT_RANK) : rankIndex;
-    this.summary = this.buildSummary(this.data);
-    this.chart = this.buildChart();
+    this.liveEvents = new Set(this.data.live_events ?? (this.data.running ? [this.data.event] : []));
+    this.ladder = this.buildLadder(this.data);
+    const preferred =
+      this.ladder.find((row) => row.rank === preferredRank) ?? this.ladder.find((row) => row.rank === DEFAULT_RANK);
+    this.rankIndex = (preferred ?? this.ladder.at(-1))?.index ?? 0;
+    this.refreshRankViews();
     this.syncUrl();
+  }
+
+  private refreshRankViews(): void {
+    this.editions = this.buildEditions();
+    this.trend = this.buildTrend();
+    this.chart = this.buildChart();
+  }
+
+  private revealDetail(): void {
+    const element = this.detail?.nativeElement;
+    if (!element || element.getBoundingClientRect().top < window.innerHeight * 0.6) return;
+    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   private syncUrl(rank = this.selectedRank): void {
@@ -143,65 +205,165 @@ export class EventThresholdsComponent extends GenericComponent implements OnInit
     });
   }
 
-  private buildSummary(data: ApiEventThresholdsResponse): SummaryRow[] {
+  private buildLadder(data: ApiEventThresholdsResponse): LadderRow[] {
     const range = data.current ? data.current.projected : data.typical;
-    return data.ranks.map((rank, index) => ({
-      rank,
-      value: data.current ? data.current.thresholds[index] : null,
-      median: range?.median[index] ?? null,
-      low: range?.low[index] ?? null,
-      high: range?.high[index] ?? null,
+    return data.ranks
+      .map((rank, index) => {
+        const current = data.current ? data.current.thresholds[index] || null : null;
+        const target = range?.median[index] || null;
+        return {
+          index,
+          rank,
+          current,
+          target,
+          low: range?.low[index] || null,
+          high: range?.high[index] || null,
+          progress: current && target ? Math.min(100, Math.round((current / target) * 100)) : null,
+        };
+      })
+      .filter((row) => row.current || row.target);
+  }
+
+  private buildEditions(): EditionRow[] {
+    const occurrences = this.data?.occurrences ?? [];
+    const values = occurrences.map((occurrence) => occurrence.thresholds[this.rankIndex] ?? 0);
+    const max = Math.max(1, ...values);
+    return occurrences.map((occurrence, index) => ({
+      startedAt: occurrence.started_at,
+      participants: occurrence.participants,
+      value: values[index],
+      share: Math.round((values[index] / max) * 100),
     }));
+  }
+
+  private buildTrend(): PaceTrend | null {
+    const current = this.data?.current;
+    const value = current?.thresholds[this.rankIndex];
+    if (!current || !value) return null;
+    const usual = this.median(this.pastCurves().flatMap((curve) => curve[current.hour] ?? []));
+    if (!usual) return null;
+    const ratio = value / usual - 1;
+    const percent = Math.round(Math.abs(ratio) * 100);
+    if (Math.abs(ratio) < ON_PACE_TOLERANCE) return { key: 'event-thresholds-on-pace', percent };
+    return { key: ratio > 0 ? 'event-thresholds-ahead' : 'event-thresholds-behind', percent };
+  }
+
+  private completedPace(): ApiEventThresholdsResponse['pace'] {
+    return (this.data?.pace ?? []).filter((occurrence) => !occurrence.running && occurrence.points.length > 0);
+  }
+
+  private pastCurves(): HourlyCurve[] {
+    const completed = this.completedPace();
+    const lastHour = Math.max(0, ...completed.map((occurrence) => occurrence.points.at(-1)!.hour));
+    return completed.map(({ points }) => {
+      const curve: HourlyCurve = [];
+      let next = 0;
+      let value: number | null = null;
+      for (let hour = 0; hour <= lastHour; hour++) {
+        while (next < points.length && points[next].hour <= hour) value = points[next++].thresholds[this.rankIndex];
+        curve.push(value);
+      }
+      return curve;
+    });
   }
 
   private buildChart(): ApexOptions | null {
     if (!this.data || this.data.pace.length === 0) return null;
-    const rankIndex = this.rankIndex;
-    const series: ApexAxisChartSeries = this.data.pace.map((occurrence) => ({
-      name: occurrence.running
-        ? this.translateService.instant('En cours')
-        : new Date(occurrence.started_at).toLocaleDateString(this.langageService.getCurrentLang() || 'en', {
-            day: 'numeric',
-            month: 'short',
-          }),
-      data: occurrence.points.map((point) => ({ x: point.hour, y: point.thresholds[rankIndex] })),
-    }));
-    const colors = this.data.pace.map((occurrence) => (occurrence.running ? CURRENT_RUN_COLOR : PAST_RUN_COLOR));
-    const widths = this.data.pace.map((occurrence) => (occurrence.running ? 3.5 : 1.5));
+    const curves = this.pastCurves();
+    const hours = curves[0]?.map((_, hour) => hour) ?? [];
+    const valuesAt = (hour: number): number[] => curves.flatMap((curve) => curve[hour] ?? []);
+    const lastCompleted = this.completedPace().at(-1);
+    const running = this.data.pace.find((occurrence) => occurrence.running);
+    const lines: ChartLine[] = [];
+    if (curves.length > 1) {
+      lines.push(
+        {
+          series: {
+            type: 'rangeArea',
+            name: this.translateService.instant('Écart des éditions passées'),
+            data: hours.map((hour) => {
+              const values = valuesAt(hour);
+              return { x: hour, y: values.length > 0 ? [Math.min(...values), Math.max(...values)] : null };
+            }),
+          },
+          color: COLORS.band,
+          width: 0,
+          dash: 0,
+          opacity: 0.28,
+        },
+        {
+          series: {
+            type: 'line',
+            name: this.translateService.instant('Médiane'),
+            data: hours.map((hour) => ({ x: hour, y: this.median(valuesAt(hour)) })),
+          },
+          color: COLORS.median,
+          width: 2,
+          dash: 5,
+          opacity: 1,
+        },
+      );
+    }
+    if (lastCompleted) lines.push(this.paceLine('Dernière édition', lastCompleted.points, COLORS.last, 2));
+    if (running) lines.push(this.paceLine('En cours', running.points, COLORS.current, 3.5));
+
     const hourLabel = this.translateService.instant('Heure');
     return {
-      series,
-      colors,
+      series: lines.map((line) => line.series),
+      colors: lines.map((line) => line.color),
       chart: {
-        type: 'line',
-        height: 340,
+        type: 'rangeArea',
+        height: 320,
         background: 'transparent',
         foreColor: '#c8d0c8',
         animations: { enabled: false },
         toolbar: { show: false },
         zoom: { enabled: false },
       },
-      stroke: { width: widths, curve: 'smooth' },
+      stroke: { width: lines.map((line) => line.width), dashArray: lines.map((line) => line.dash), curve: 'smooth' },
       markers: { size: 0, hover: { size: 4 } },
       dataLabels: { enabled: false },
-      grid: { borderColor: 'rgba(255,255,255,0.08)', strokeDashArray: 3 },
-      legend: { show: true, labels: { colors: '#dfe6df' } },
+      grid: { borderColor: 'rgba(255,255,255,0.07)', strokeDashArray: 3 },
+      legend: { show: true, position: 'top', horizontalAlign: 'left', labels: { colors: '#dfe6df' } },
       xaxis: {
         type: 'numeric',
         tickAmount: 8,
-        title: { text: hourLabel },
         labels: { formatter: (value: string) => `${Math.round(Number(value))}h` },
+        tooltip: { enabled: false },
       },
       yaxis: { labels: { formatter: (value: number) => this.compact(value) } },
       tooltip: {
         theme: 'dark',
-        shared: false,
+        shared: true,
+        intersect: false,
         x: { formatter: (value: number) => `${hourLabel} ${value}` },
         y: { formatter: (value: number) => this.full(value) },
       },
-      fill: { type: 'solid' },
+      fill: { type: 'solid', opacity: lines.map((line) => line.opacity) },
       title: { text: '' },
       plotOptions: {},
     };
+  }
+
+  private paceLine(
+    label: string,
+    points: ApiEventThresholdsResponse['pace'][number]['points'],
+    color: string,
+    width: number,
+  ): ChartLine {
+    const data = points.map((point) => ({ x: point.hour, y: point.thresholds[this.rankIndex] }));
+    return {
+      series: { type: 'line', name: this.translateService.instant(label), data },
+      color,
+      width,
+      dash: 0,
+      opacity: 1,
+    };
+  }
+
+  private median(values: number[]): number | null {
+    if (values.length === 0) return null;
+    const sorted = [...values].sort((a, b) => a - b);
+    return sorted[Math.floor(sorted.length / 2)];
   }
 }

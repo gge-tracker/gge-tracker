@@ -79,7 +79,11 @@
     </div>
   </section>
 </ng-template>
+<app-layered-scene scene="cartography" class="cartography-scene" />
 <div class="container-fluid mt-3 cartography">
+  <header class="carto-hero">
+    <h1>{{ 'Cartographie' | translate }}</h1>
+  </header>
   <ul class="nav nav-tabs pt-3 ps-3 border-0 no-wrap">
     <li class="nav-item">
       <button class="nav-link" (click)="selectedTab = 'strategic'"

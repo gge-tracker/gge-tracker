@@ -1,0 +1,171 @@
+{
+  "width": 1920,
+  "height": 1088,
+  "layers": [
+    {
+      "kind": "image",
+      "id": "council",
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1088,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "motes-window-a",
+      "x": 220,
+      "y": 30,
+      "width": 460,
+      "height": 460,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "motes-window-b",
+      "x": 1220,
+      "y": 20,
+      "width": 460,
+      "height": 460,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "fireglow-brazier-a",
+      "x": 2,
+      "y": 460,
+      "width": 520,
+      "height": 520,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "fireglow-brazier-b",
+      "x": 1390,
+      "y": 460,
+      "width": 520,
+      "height": 520,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 262,
+      "y": 748,
+      "scale": 0.34,
+      "alpha": 0.45,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1650,
+      "y": 748,
+      "scale": 0.34,
+      "alpha": 0.45,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "candleglow-council-a",
+      "x": 250,
+      "y": 700,
+      "width": 300,
+      "height": 300,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "candleglow-council-b",
+      "x": 1320,
+      "y": 710,
+      "width": 280,
+      "height": 280,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 315,
+      "y": 814,
+      "scale": 0.09,
+      "alpha": 0.75,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 333,
+      "y": 813,
+      "scale": 0.09,
+      "alpha": 0.75,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 388,
+      "y": 877,
+      "scale": 0.09,
+      "alpha": 0.75,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 413,
+      "y": 838,
+      "scale": 0.09,
+      "alpha": 0.75,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 431,
+      "y": 869,
+      "scale": 0.09,
+      "alpha": 0.75,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 455,
+      "y": 864,
+      "scale": 0.09,
+      "alpha": 0.75,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1426,
+      "y": 862,
+      "scale": 0.09,
+      "alpha": 0.75,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1446,
+      "y": 878,
+      "scale": 0.09,
+      "alpha": 0.75,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1465,
+      "y": 838,
+      "scale": 0.09,
+      "alpha": 0.75,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1495,
+      "y": 874,
+      "scale": 0.09,
+      "alpha": 0.75,
+      "depth": 0.5
+    }
+  ]
+}

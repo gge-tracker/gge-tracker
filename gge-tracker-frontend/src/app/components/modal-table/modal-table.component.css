@@ -2,7 +2,7 @@
   --accent: #0891b2;
   --accent-2: #059669;
   --accent-subtle: rgba(8, 145, 178, 0.08);
-  --border: #e2e8f0;
+  --border: var(--gge-parchment-line);
   --muted: #64748b;
   --radius: 10px;
   --shadow: 0 1px 4px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.05);
@@ -13,7 +13,7 @@
 }
 
 .table-wrapper {
-  background: #ffffff;
+  background: var(--gge-parchment);
   border-radius: var(--radius);
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
@@ -49,7 +49,7 @@
 }
 
 .search-input {
-  background: #f8fafc !important;
+  background: var(--gge-parchment-light) !important;
   border-radius: 7px !important;
   border: 1px solid var(--border) !important;
   box-shadow: none !important;
@@ -66,7 +66,7 @@
 }
 
 .search-input:focus {
-  background: #ffffff !important;
+  background: var(--gge-parchment-light) !important;
   border-color: rgba(8, 145, 178, 0.45) !important;
   box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1) !important;
   color: var(--text) !important;
@@ -81,7 +81,7 @@
 }
 
 :host ::ng-deep .modern-table thead {
-  background: #f8fafc;
+  background: var(--gge-parchment-deep);
   position: sticky;
   top: 0;
   z-index: 1;
@@ -105,13 +105,13 @@
 }
 
 :host ::ng-deep .modern-table thead th:hover {
-  background: #f1f5f9;
+  background: #dcc89f;
   color: var(--accent);
 }
 
 :host ::ng-deep .modern-table tbody tr {
   animation: mtSlideIn 0.15s ease forwards;
-  background: #ffffff;
+  background: var(--gge-parchment-light);
   border-bottom: 1px solid var(--border);
   transition:
     background var(--transition),
@@ -119,7 +119,7 @@
 }
 
 :host ::ng-deep .modern-table tbody tr:nth-child(even) {
-  background: #fafafa;
+  background: var(--gge-parchment);
 }
 
 :host ::ng-deep .modern-table tbody tr:last-child {

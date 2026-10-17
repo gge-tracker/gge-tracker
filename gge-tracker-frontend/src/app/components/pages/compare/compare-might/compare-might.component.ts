@@ -1,6 +1,5 @@
 import { Component, effect, inject, input, signal, untracked } from '@angular/core';
 import { ApiGenericData, ApiPlayerStatsType, ChartOptions } from '@ggetracker-interfaces/empire-ranking';
-import { ApiRestService } from '@ggetracker-services/api-rest.service';
 import { LanguageService } from '@ggetracker-services/language.service';
 import { RankingService } from '@ggetracker-services/ranking.service';
 import { TranslateService } from '@ngx-translate/core';
@@ -12,6 +11,7 @@ import {
 } from '../compare-chart-card/compare-chart-card.component';
 import { baseChartOptions } from '../compare-chart-card/compare-chart-options';
 import { CompareSubject } from '../compare-contender/compare-contender.component';
+import { CompareRequests } from '../compare-requests';
 
 @Component({
   selector: 'app-compare-might',
@@ -43,7 +43,7 @@ export class CompareMightComponent {
   public readonly state = signal<ChartCardState>('loading');
   public readonly options = signal<ChartOptions | null>(null);
 
-  private readonly apiRestService = inject(ApiRestService);
+  private readonly requests = inject(CompareRequests);
   private readonly translateService = inject(TranslateService);
   private readonly rankingService = inject(RankingService);
   private readonly languageService = inject(LanguageService);
@@ -73,9 +73,7 @@ export class CompareMightComponent {
 
   private async readPlayers(ids: [string, string], period: number): Promise<ApiGenericData[][]> {
     const responses = await Promise.all(
-      ids.map((id) =>
-        this.apiRestService.getPlayerStatsSeriesByPlayerId(Number(id), [ApiPlayerStatsType.might], period),
-      ),
+      ids.map((id) => this.requests.statsSeries(Number(id), ApiPlayerStatsType.might, period)),
     );
     return responses.map((response) => {
       if (!response.success) throw new Error(response.error);
@@ -84,9 +82,7 @@ export class CompareMightComponent {
   }
 
   private async readAlliances(ids: [string, string]): Promise<ApiGenericData[][]> {
-    const responses = await Promise.all(
-      ids.map((id) => this.apiRestService.getPlayerStatsPulsedForAlliance(Number(id))),
-    );
+    const responses = await Promise.all(ids.map((id) => this.requests.alliancePulse(Number(id))));
     return responses.map((response) => {
       if (!response.success) throw new Error(response.error);
       return response.data.might_per_hour;

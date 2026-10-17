@@ -10,7 +10,7 @@ i.fas.fa-spinner.fa-spin {
 .cadre-table-scroll {
   display: inline-block;
   height: 365px;
-  overflow-y: scroll;
+  overflow-y: auto;
 }
 .bar {
   max-height: 450px;
@@ -31,7 +31,7 @@ i.fas.fa-spinner.fa-spin {
   top: 0;
 }
 .btn-group {
-  box-shadow: 0px 0px 2px 1px #eddd32;
+  box-shadow: none;
   max-width: 100%;
   overflow-y: auto;
   padding: 2px;
@@ -60,8 +60,8 @@ i.fas.fa-spinner.fa-spin {
 @supports (color: color-mix(in srgb, red 50%, white)) {
   .event-scope {
     border-color: color-mix(in srgb, var(--event-scope-accent, #495057) 35%, transparent);
-    background: color-mix(in srgb, var(--event-scope-accent, #495057) 12%, white);
-    color: color-mix(in srgb, var(--event-scope-accent, #495057) 70%, black);
+    background: color-mix(in srgb, var(--event-scope-accent, #495057) 14%, var(--gge-parchment-light));
+    color: color-mix(in srgb, var(--event-scope-accent, #495057) 55%, var(--gge-parchment-ink));
   }
 }
 button.event-scope {
@@ -75,7 +75,7 @@ button.event-scope:focus-visible:not(:disabled) {
 @supports (color: color-mix(in srgb, red 50%, white)) {
   button.event-scope:hover:not(:disabled),
   button.event-scope:focus-visible:not(:disabled) {
-    background: color-mix(in srgb, var(--event-scope-accent, #495057) 26%, white);
+    background: color-mix(in srgb, var(--event-scope-accent, #495057) 28%, var(--gge-parchment-light));
     border-color: color-mix(in srgb, var(--event-scope-accent, #495057) 60%, transparent);
   }
 }

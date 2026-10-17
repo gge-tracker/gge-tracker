@@ -1,5 +1,6 @@
-<div class="container my-3 thresholds">
-  <header class="thresholds-head">
+<app-layered-scene scene="climb" class="thresholds-scene" />
+<div class="thresholds">
+  <header class="thresholds-hero">
     <h1>{{ 'Seuils des événements' | translate }}</h1>
     <p>{{ 'event-thresholds-intro' | translate }}</p>
   </header>
@@ -8,7 +9,12 @@
     @for (event of events; track event.slug) {
     <button type="button" class="thresholds-event" [class.is-on]="event.slug === selectedEvent"
       [attr.aria-pressed]="event.slug === selectedEvent" (click)="selectEvent(event.slug)">
-      <img [src]="event.icon" alt="" width="34" height="34">
+      <span class="thresholds-event-icon">
+        <img [src]="event.icon" alt="" width="34" height="34">
+        @if (liveEvents.has(event.slug)) {
+        <span class="thresholds-event-live" [attr.title]="'En cours' | translate"></span>
+        }
+      </span>
       <span>{{ event.label | translate }}</span>
     </button>
     }
@@ -19,119 +25,145 @@
   } @else if (data && data.occurrences.length === 0 && !data.current) {
   <div class="thresholds-card thresholds-empty">{{ 'event-thresholds-empty' | translate }}</div>
   } @else if (data) {
-  <section class="thresholds-status" [class.is-live]="data.running" [class.is-loading]="isInLoading">
+  <section class="thresholds-status" [class.is-live]="data.current" [class.is-loading]="isInLoading">
     @if (data.current; as current) {
-    <span class="thresholds-live-dot" aria-hidden="true"></span>
-    <strong>{{ 'En cours' | translate }}</strong>
-    <span>{{ 'Heure' | translate }} {{ current.hour }}@if (typicalDurationHours) { / ~{{ typicalDurationHours }}}</span>
-    <span>{{ current.participants | number }} {{ 'participants' | translate }}</span>
-    <span class="thresholds-muted">{{ 'Dernière lecture' | translate }} : {{ current.ended_at | date: 'short' }}</span>
+    <span class="thresholds-status-badge is-live">
+      <span class="thresholds-live-dot" aria-hidden="true"></span>{{ 'En cours' | translate }}
+    </span>
+    <div class="thresholds-status-progress">
+      <div class="thresholds-status-line">
+        <strong>{{ 'Heure' | translate }} {{ current.hour }}</strong>
+        @if (typicalDurationHours) {
+        <span class="thresholds-muted">/ ~{{ typicalDurationHours }}</span>
+        }
+      </div>
+      @if (liveProgress !== null) {
+      <span class="thresholds-meter" role="presentation"><span [style.width.%]="liveProgress"></span></span>
+      }
+    </div>
+    <span class="thresholds-status-fact"><strong>{{ current.participants | number }}</strong>
+      {{ 'participants' | translate }}</span>
+    <span class="thresholds-status-fact thresholds-muted">{{ 'Dernière lecture' | translate }} :
+      {{ current.ended_at | date: 'EEE HH:mm' }}</span>
     } @else {
-    <i class="fa-regular fa-calendar" aria-hidden="true"></i>
+    <span class="thresholds-status-badge"><i class="fa-regular fa-calendar" aria-hidden="true"></i>
+      {{ (data.next_expected_start ? 'Prochaine édition attendue' : 'Aucune édition en cours') | translate }}</span>
     @if (data.next_expected_start) {
-    <strong>{{ 'Prochaine édition attendue' | translate }}</strong>
-    <span>{{ data.next_expected_start | date: 'EEE d MMM, HH:mm' }}</span>
+    <strong class="thresholds-status-date">{{ data.next_expected_start | date: 'EEEE d MMMM, HH:mm' }}</strong>
     @if (daysUntilNext !== null) {
     <span class="thresholds-muted">{{ 'event-thresholds-in-days' | translate: { days: daysUntilNext } }}</span>
     }
-    } @else {
-    <strong>{{ 'Aucune édition en cours' | translate }}</strong>
+    }
+    @if (lastEdition) {
+    <span class="thresholds-status-fact thresholds-muted">{{ 'Dernière édition' | translate }} :
+      {{ lastEdition.startedAt | date: 'd MMM' }} · {{ lastEdition.participants | number }}
+      {{ 'participants' | translate }}</span>
     }
     }
   </section>
 
-  <div class="thresholds-grid">
-    <section class="thresholds-card">
-      <h2>{{ (data.current ? 'Points nécessaires maintenant' : 'Points en fin d\'édition') | translate }}</h2>
-      <table class="thresholds-summary">
-        <thead>
-          <tr>
-            <th scope="col">{{ 'Rang' | translate }}</th>
-            @if (data.current) {
-            <th scope="col">{{ 'Actuel' | translate }}</th>
-            <th scope="col">{{ 'Fin estimée' | translate }}</th>
-            } @else {
-            <th scope="col">{{ 'Médiane' | translate }}</th>
-            }
-          </tr>
-        </thead>
-        <tbody>
-          @for (row of summary; track row.rank; let index = $index) {
-          <tr [class.is-selected]="index === rankIndex" (click)="selectRank(index)">
-            <th scope="row">{{ 'top' | translate }} {{ row.rank }}</th>
-            @if (data.current) {
-            <td [title]="full(row.value)">{{ compact(row.value) }}</td>
-            }
-            <td [title]="full(row.median)">
-              <strong>{{ data.current && row.median ? '≈ ' : '' }}{{ compact(row.median) }}</strong>
-              @if (row.low && row.high) {
-              <span class="thresholds-range" [title]="full(row.low) + ' - ' + full(row.high)">
-                {{ compact(row.low) }} - {{ compact(row.high) }}
-              </span>
-              }
-            </td>
-          </tr>
+  <div class="thresholds-layout" [class.is-loading]="isInLoading">
+    <section class="thresholds-card thresholds-ladder">
+      <h2>{{ (data.current ? 'event-thresholds-ladder-live' : 'Points en fin d\'édition') | translate }}</h2>
+      <div class="thresholds-ladder-rows" role="group" [attr.aria-label]="'Rang' | translate">
+        @for (row of ladder; track row.rank) {
+        <button type="button" class="thresholds-rung" [class.is-on]="row.index === rankIndex"
+          [attr.aria-pressed]="row.index === rankIndex" (click)="selectRank(row.index)">
+          <span class="thresholds-rung-rank">{{ 'top' | translate }} <strong>{{ row.rank }}</strong></span>
+          <span class="thresholds-rung-value" [title]="full(row.target)">
+            {{ data.current && row.target ? '≈ ' : '' }}{{ compact(row.target) }}
+          </span>
+          @if (row.progress !== null) {
+          <span class="thresholds-rung-meter"><span [style.width.%]="row.progress"></span></span>
+          <span class="thresholds-rung-sub" [title]="full(row.current)">
+            {{ 'event-thresholds-now' | translate: { value: compact(row.current) } }}
+          </span>
+          } @else if (row.low && row.high) {
+          <span class="thresholds-rung-sub" [title]="full(row.low) + ' - ' + full(row.high)">
+            {{ compact(row.low) }} – {{ compact(row.high) }}
+          </span>
           }
-        </tbody>
-      </table>
+        </button>
+        }
+      </div>
       <p class="thresholds-note">
         {{ (data.current ? 'event-thresholds-projection-note' : 'event-thresholds-typical-note') | translate }}
       </p>
     </section>
 
-    <section class="thresholds-card">
-      <div class="thresholds-chart-head">
-        <h2>{{ 'Progression heure par heure' | translate }}</h2>
-        <div class="thresholds-ranks" role="group" [attr.aria-label]="'Rang' | translate">
-          @for (rank of data.ranks; track rank; let index = $index) {
-          <button type="button" class="thresholds-rank" [class.is-on]="index === rankIndex"
-            [attr.aria-pressed]="index === rankIndex" (click)="selectRank(index)">{{ rank }}</button>
-          }
-        </div>
-      </div>
+    <section class="thresholds-card thresholds-detail" #detail>
+      <header class="thresholds-detail-head">
+        <h2>{{ 'event-thresholds-detail-title' | translate: { rank: selectedRank } }}</h2>
+        @if (trend; as trend) {
+        <span class="thresholds-chip" [class.is-ahead]="trend.key === 'event-thresholds-ahead'"
+          [class.is-behind]="trend.key === 'event-thresholds-behind'">
+          {{ trend.key | translate: { percent: trend.percent } }}
+        </span>
+        } @else if (lastEdition && lastEdition.value) {
+        <span class="thresholds-chip">
+          {{ 'Dernière édition' | translate }} : <strong>{{ compact(lastEdition.value) }}</strong>
+          <span class="thresholds-muted">{{ deltaToMedian(lastEdition.value) }}</span>
+        </span>
+        }
+      </header>
       @if (chart) {
       <app-charts-wrapper [series]="chart.series!" [chart]="chart.chart!" [xaxis]="chart.xaxis!" [yaxis]="chart.yaxis!"
         [colors]="chart.colors!" [stroke]="chart.stroke!" [markers]="chart.markers!" [dataLabels]="chart.dataLabels!"
         [grid]="chart.grid!" [legend]="chart.legend!" [tooltip]="chart.tooltip!" [fill]="chart.fill!"
         [title]="chart.title!" [plotOptions]="chart.plotOptions!" />
+      <p class="thresholds-note">{{ 'event-thresholds-band-note' | translate }}</p>
       }
-      <p class="thresholds-note">
-        {{ 'event-thresholds-pace-note' | translate: { rank: selectedRank } }}
-        @if (data.running) {
-        {{ 'event-thresholds-pace-live' | translate }}
+
+      @if (editions.length > 0) {
+      <div class="thresholds-editions-head">
+        <h3>{{ 'Éditions précédentes' | translate }}</h3>
+        <button type="button" class="thresholds-link" [attr.aria-expanded]="showAllRanks"
+          (click)="showAllRanks = !showAllRanks">
+          {{ (showAllRanks ? 'Masquer les autres rangs' : 'Voir tous les rangs') | translate }}
+          <i class="fa-solid" [class.fa-chevron-down]="!showAllRanks" [class.fa-chevron-up]="showAllRanks"
+            aria-hidden="true"></i>
+        </button>
+      </div>
+      @if (!showAllRanks) {
+      <ol class="thresholds-editions">
+        @for (edition of editions; track edition.startedAt; let first = $first) {
+        <li [class.is-latest]="first">
+          <span class="thresholds-edition-date">{{ edition.startedAt | date: 'd MMM yy' }}</span>
+          <span class="thresholds-edition-bar"><span [style.width.%]="edition.share"></span></span>
+          <strong class="thresholds-edition-value" [title]="full(edition.value)">{{ compact(edition.value) }}</strong>
+          <span class="thresholds-edition-players">{{ edition.participants | number }}
+            <i class="fa-solid fa-user" aria-hidden="true"></i></span>
+        </li>
         }
-      </p>
+      </ol>
+      } @else {
+      <div class="thresholds-history-scroll">
+        <table class="thresholds-history">
+          <thead>
+            <tr>
+              <th scope="col">{{ 'Date' | translate }}</th>
+              <th scope="col">{{ 'participants' | translate }}</th>
+              @for (rank of data.ranks; track rank; let index = $index) {
+              <th scope="col" [class.is-selected]="index === rankIndex">{{ 'top' | translate }} {{ rank }}</th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (occurrence of data.occurrences; track occurrence.started_at) {
+            <tr>
+              <th scope="row">{{ occurrence.started_at | date: 'd MMM yy' }}</th>
+              <td>{{ occurrence.participants | number }}</td>
+              @for (value of occurrence.thresholds; track $index; let index = $index) {
+              <td [class.is-selected]="index === rankIndex" [title]="full(value)">{{ compact(value) }}</td>
+              }
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      }
+      }
     </section>
   </div>
-
-  @if (data.occurrences.length > 0) {
-  <section class="thresholds-card">
-    <h2>{{ 'Éditions précédentes' | translate }}</h2>
-    <div class="thresholds-history-scroll">
-      <table class="thresholds-history">
-        <thead>
-          <tr>
-            <th scope="col">{{ 'Date' | translate }}</th>
-            <th scope="col">{{ 'participants' | translate }}</th>
-            @for (rank of data.ranks; track rank; let index = $index) {
-            <th scope="col" [class.is-selected]="index === rankIndex">{{ 'top' | translate }} {{ rank }}</th>
-            }
-          </tr>
-        </thead>
-        <tbody>
-          @for (occurrence of data.occurrences; track occurrence.started_at) {
-          <tr>
-            <th scope="row">{{ occurrence.started_at | date: 'd MMM yy' }}</th>
-            <td>{{ occurrence.participants | number }}</td>
-            @for (value of occurrence.thresholds; track $index; let index = $index) {
-            <td [class.is-selected]="index === rankIndex" [title]="full(value)">{{ compact(value) }}</td>
-            }
-          </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-  </section>
-  }
   }
 </div>

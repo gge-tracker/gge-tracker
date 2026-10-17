@@ -13,7 +13,7 @@
 .tape {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  background: rgba(9, 14, 11, 0.82);
+  background: rgba(8, 16, 28, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
@@ -31,9 +31,19 @@
   padding: 1rem 1.25rem;
 }
 
+.tape-seal {
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.5));
+  flex-shrink: 0;
+  height: 40px;
+  margin-right: -0.75rem;
+  object-fit: contain;
+  width: 34px;
+}
+
 .tape-verdict-text {
   align-items: baseline;
   display: flex;
+  flex: 1 1 auto;
   flex-wrap: wrap;
   font-size: 1.05rem;
   gap: 0.5rem;
@@ -204,6 +214,25 @@
   width: 100%;
 }
 
+.tape-mark {
+  align-items: center;
+  border-top: 1px solid rgba(242, 193, 78, 0.14);
+  color: #8a96a8;
+  display: flex;
+  font-size: 0.72rem;
+  font-weight: 700;
+  gap: 0.6rem;
+  justify-content: flex-end;
+  letter-spacing: 0.08em;
+  padding: 0.55rem 1.25rem;
+}
+
+.tape-mark img {
+  height: auto;
+  opacity: 0.85;
+  width: 84px;
+}
+
 .tape-share-a {
   background: var(--compare-side-a);
   border-right: 2px solid #0a0e0b;
@@ -211,7 +240,26 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tape-share-a {
+  .tape-mark {
+  align-items: center;
+  border-top: 1px solid rgba(242, 193, 78, 0.14);
+  color: #8a96a8;
+  display: flex;
+  font-size: 0.72rem;
+  font-weight: 700;
+  gap: 0.6rem;
+  justify-content: flex-end;
+  letter-spacing: 0.08em;
+  padding: 0.55rem 1.25rem;
+}
+
+.tape-mark img {
+  height: auto;
+  opacity: 0.85;
+  width: 84px;
+}
+
+.tape-share-a {
     transition: none;
   }
 }
@@ -240,5 +288,10 @@
     flex-direction: column;
     font-size: 0.72rem;
     gap: 2px;
+  }
+
+  .tape-mark {
+    justify-content: center;
+    padding: 0.5rem 1rem;
   }
 }

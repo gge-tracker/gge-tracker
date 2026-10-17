@@ -11,7 +11,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
-import { TavernSceneComponent } from '@ggetracker-components/tavern-scene/tavern-scene.component';
+import { LayeredSceneComponent } from '@ggetracker-components/layered-scene/layered-scene.component';
 import { HOME_ROUTE, SITE_NAVIGATION, SiteNavigationSection } from '@ggetracker-components/sidebar/site-navigation';
 import {
   ApiAllianceHealthResponse,
@@ -139,7 +139,7 @@ const EXPLORE_SECTIONS: SiteNavigationSection[] = [
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [FormsModule, RouterLink, TranslateModule, DecimalPipe, TavernSceneComponent],
+  imports: [FormsModule, RouterLink, TranslateModule, DecimalPipe, LayeredSceneComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

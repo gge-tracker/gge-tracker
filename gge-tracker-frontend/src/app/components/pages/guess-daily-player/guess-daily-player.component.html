@@ -5,7 +5,7 @@
       <header class="game-header text-center mb-4">
         <div class="badge-server mb-2">{{ dailyTarget.server }}</div>
         <h1 class="game-title">{{ 'Qui est-ce ?' | translate }}</h1>
-        <em>{{ 'game_description' | translate }}</em>
+        <em class="text-light">{{ 'game_description' | translate }}</em>
         @if (!isWin && !isLose) {
           <div class="progress-container mt-3">
             <div class="d-flex justify-content-between text-white small mb-1">

@@ -1,4 +1,4 @@
-import { DatePipe, LowerCasePipe, NgClass, TitleCasePipe } from '@angular/common';
+import { DatePipe, LowerCasePipe, NgClass, NgTemplateOutlet, TitleCasePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Title } from '@angular/platform-browser';
+import { LayeredSceneComponent } from '@ggetracker-components/layered-scene/layered-scene.component';
 import { DivisionBadgeComponent } from '@ggetracker-components/division-badge/division-badge.component';
 import { ShareLinkComponent } from '@ggetracker-components/share-link/share-link.component';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
@@ -71,6 +72,7 @@ import {
 } from 'lucide-angular';
 import { ApexAxisChartSeries, XAxisAnnotations } from 'ng-apexcharts';
 import { PlayerStatsCardComponent } from '../player-stats/player-stats-card/player-stats-card.component';
+import { StatsPanelComponent } from '../player-stats/stats-panel/stats-panel.component';
 import { StatsCardContentComponent } from './stats-card-content/stats-card-content.component';
 import { PlayerTableContentComponent } from '@ggetracker-pages/players/player-table-content/player-table-content.component';
 import { DecodeHtmlPipe } from '../../../pipes/decode-html.pipe';
@@ -122,7 +124,7 @@ interface DescriptionChange {
 }
 
 const DESCRIPTION_DIFF_MAX_TOKENS = 600;
-const HERO_BACKDROP_URL = '/assets/8wwypaix4da0lxjeozb0dkzr135u5zy4khoqm2lmhh25grfe96mzr07jatchq7gpicb7.png';
+const HERO_BACKDROP_URL = '/assets/scenes/council/poster.webp';
 const HERO_BACKDROP_GRACE_MS = 1200;
 const SKELETON_LEDGERS = [3, 3, 2, 2, 3].map((rows) => Array.from({ length: rows }));
 
@@ -177,10 +179,12 @@ const WHITESPACE = /\s/;
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     NgClass,
+    NgTemplateOutlet,
     DatePipe,
     TitleCasePipe,
     TranslateModule,
     PlayerStatsCardComponent,
+    StatsPanelComponent,
     LowerCasePipe,
     FormsModule,
     LucideAngularModule,
@@ -193,6 +197,7 @@ const WHITESPACE = /\s/;
     RouterLink,
     DivisionBadgeComponent,
     ShareLinkComponent,
+    LayeredSceneComponent,
   ],
   standalone: true,
   templateUrl: './alliance-stats.component.html',
@@ -341,7 +346,6 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   public countQueryFinished = 0;
   public totalQuery = 0;
   public ledgers: StatLedger[] = [];
-  public isHeroBackdropReady = false;
   public isInMovementLoading = false;
   public readonly skeletonLedgers = SKELETON_LEDGERS;
   public readonly skeletonRows = Array.from({ length: 8 });
@@ -1003,14 +1007,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     }
     const image = new Image();
     image.src = HERO_BACKDROP_URL;
-    return image
-      .decode()
-      .catch(() => {})
-      .then(() => {
-        if (this.isDestroyed) return;
-        this.isHeroBackdropReady = true;
-        this.cdr.detectChanges();
-      });
+    return image.decode().catch(() => {});
   }
 
   private async processAllianceInit(allianceId: number): Promise<void> {
@@ -2391,18 +2388,43 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
         locales: this.rankingService.CHART_LOCALES,
         defaultLocale: this.languageService.getCurrentLang(),
       },
-      colors: ['#09753e', '#333333'],
+      colors: ['#4d7a35', '#cdb98f'],
       fill: {
-        type: 'gradient',
+        type: 'solid',
       },
       labels: [this.translateService.instant('Participation'), this.translateService.instant('Non-participation')],
       dataLabels: {
-        enabled: true,
+        enabled: false,
       },
       stroke: {
-        width: 2,
+        width: 3,
+        colors: ['#f2e8d0'],
+      },
+      plotOptions: {
+        pie: {
+          donut: {
+            size: '68%',
+            labels: {
+              show: true,
+              value: {
+                color: '#3b2a14',
+                fontSize: '28px',
+                fontWeight: 700,
+                formatter: (value): string => `${Math.round(Number(value))}%`,
+              },
+              total: {
+                show: true,
+                showAlways: true,
+                label: this.translateService.instant('Participation'),
+                color: '#6b5533',
+                formatter: (context): string => `${Math.round(context.globals.series[0])}%`,
+              },
+            },
+          },
+        },
       },
       legend: {
+        position: 'bottom',
         formatter: (value, options): string => {
           return (
             value +
@@ -2429,7 +2451,6 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       annotations: {},
       forecastDataPoints: {},
       markers: {},
-      plotOptions: {},
     };
   }
 

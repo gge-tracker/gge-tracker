@@ -7,12 +7,12 @@ import {
   ApiWoaEventPlayerData,
   EventType,
 } from '@ggetracker-interfaces/empire-ranking';
-import { ApiRestService } from '@ggetracker-services/api-rest.service';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { formatThousands } from '@ggetracker-services/text-format.utilities';
 import { TranslateModule } from '@ngx-translate/core';
 
 import { CompareSide } from '../compare-metrics';
+import { CompareRequests } from '../compare-requests';
 
 type EventsState = 'loading' | 'loaded' | 'error';
 
@@ -68,7 +68,7 @@ export class CompareEventsComponent {
   });
 
   private readonly events = signal<[PlayerEvents, PlayerEvents] | null>(null);
-  private readonly apiRestService = inject(ApiRestService);
+  private readonly requests = inject(CompareRequests);
   private readonly compactNumber = new FormatNumberPipe();
   private requestToken = 0;
 
@@ -112,9 +112,9 @@ export class CompareEventsComponent {
 
   private async readPlayerEvents(playerId: number): Promise<PlayerEvents> {
     const [summary, outer, woa] = await Promise.all([
-      this.apiRestService.getPlayerStatsSummaryByPlayerId(playerId),
-      this.apiRestService.getEventsByPlayerId(playerId, 'all'),
-      this.apiRestService.getWoaEventDataByPlayerId(playerId),
+      this.requests.statsSummary(playerId),
+      this.requests.outerEvents(playerId),
+      this.requests.woaEvents(playerId),
     ]);
     return {
       summary: summary.success ? summary.data.events : {},
@@ -128,9 +128,7 @@ export class CompareEventsComponent {
     playerId: number,
     tables: ApiPlayerStatsType[],
   ): Promise<Partial<Record<ApiPlayerStatsType, ApiPlayerEventOccurrence[]>>> {
-    const responses = await Promise.all(
-      tables.map((table) => this.apiRestService.getPlayerEventOccurrencesByPlayerId(playerId, table)),
-    );
+    const responses = await Promise.all(tables.map((table) => this.requests.occurrences(playerId, table)));
     const byTable: Partial<Record<ApiPlayerStatsType, ApiPlayerEventOccurrence[]>> = {};
     tables.forEach((table, index) => {
       const response = responses[index];

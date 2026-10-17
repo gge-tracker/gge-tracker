@@ -6,7 +6,7 @@
 .chart-card {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  background: rgba(9, 14, 11, 0.82);
+  background: rgba(8, 16, 28, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);

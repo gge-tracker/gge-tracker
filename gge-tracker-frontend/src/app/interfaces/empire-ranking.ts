@@ -1551,6 +1551,7 @@ export interface ApiEventThresholdsResponse {
   server: string;
   ranks: number[];
   running: boolean;
+  live_events?: ApiEventThresholdSlug[];
   current: (ApiEventThresholdOccurrence & { hour: number; projected: ApiEventThresholdRange }) | null;
   typical: ApiEventThresholdRange | null;
   next_expected_start: string | null;

@@ -12,6 +12,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { LayeredSceneComponent } from '@ggetracker-components/layered-scene/layered-scene.component';
 import { ApiAllianceProfile, ApiPlayerProfile } from '@ggetracker-interfaces/empire-ranking';
 import { TranslateModule } from '@ngx-translate/core';
 import { ArrowLeftRight, LucideAngularModule } from 'lucide-angular';
@@ -25,7 +26,15 @@ import {
 import { CompareEventsComponent } from './compare-events/compare-events.component';
 import { CompareLootComponent } from './compare-loot/compare-loot.component';
 import { CompareMightComponent } from './compare-might/compare-might.component';
-import { ALLIANCE_METRICS, buildMetricRows, CompareMetricRow, CompareSide, PLAYER_METRICS } from './compare-metrics';
+import {
+  ALLIANCE_METRICS,
+  buildMetricRows,
+  CompareMetricRow,
+  CompareSide,
+  PLAYER_METRICS,
+  scoreRows,
+} from './compare-metrics';
+import { CompareRequests } from './compare-requests';
 import { CompareTapeComponent } from './compare-tape/compare-tape.component';
 
 type LoadedProfile =
@@ -34,6 +43,8 @@ type Pair<T> = [T, T];
 
 const SUBJECTS = new Set<string>(['players', 'alliances']);
 const SIDE_PARAMS: Pair<string> = ['a', 'b'];
+const SCALE_MIN_TILT = 5;
+const SCALE_MAX_TILT = 14;
 
 @Component({
   selector: 'app-compare',
@@ -48,7 +59,9 @@ const SIDE_PARAMS: Pair<string> = ['a', 'b'];
     CompareMightComponent,
     CompareLootComponent,
     CompareEventsComponent,
+    LayeredSceneComponent,
   ],
+  providers: [CompareRequests],
   templateUrl: './compare.component.html',
   styleUrl: './compare.component.css',
 })
@@ -80,6 +93,17 @@ export class CompareComponent extends GenericComponent implements OnInit {
       ? buildMetricRows(PLAYER_METRICS, a.profile, b.profile as ApiPlayerProfile)
       : buildMetricRows(ALLIANCE_METRICS, a.profile, b.profile as ApiAllianceProfile);
   });
+
+  public readonly tilt = computed<number | null>(() => {
+    const rows = this.rows();
+    if (!rows) return null;
+    // a positive angle lowers side B, on the right
+    const { wins, total } = scoreRows(rows);
+    const lead = wins[1] - wins[0];
+    if (lead === 0) return 0;
+    return Math.sign(lead) * (SCALE_MIN_TILT + (Math.abs(lead) / total) * (SCALE_MAX_TILT - SCALE_MIN_TILT));
+  });
+
   public readonly hint = computed(() =>
     this.subject() === 'players'
       ? 'Choisissez deux joueurs pour les comparer'

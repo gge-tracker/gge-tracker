@@ -1,6 +1,7 @@
 <section class="tape">
   @if (score().total > 0) {
     <header class="tape-verdict">
+      <img class="tape-seal" src="/assets/compare/seal.webp" alt="" width="34" height="40">
       <p class="tape-verdict-text">
         @if (leader() === null) {
           <strong>{{ 'Égalité' | translate }}</strong>
@@ -64,4 +65,9 @@
       </li>
     }
   </ol>
+
+  <footer class="tape-mark">
+    <img src="/assets/brand/wordmark.webp" alt="GGE Tracker" width="525" height="89">
+    <span>gge-tracker.com</span>
+  </footer>
 </section>

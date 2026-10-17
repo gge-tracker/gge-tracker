@@ -1,0 +1,151 @@
+{
+  "width": 1920,
+  "height": 720,
+  "layers": [
+    {
+      "kind": "image",
+      "id": "climb",
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 720,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "fireglow-beacon",
+      "x": 1190,
+      "y": -240,
+      "width": 600,
+      "height": 600,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1490,
+      "y": 82,
+      "scale": 0.42,
+      "alpha": 0.5,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "fireglow-post-1",
+      "x": 1052,
+      "y": 477,
+      "width": 140,
+      "height": 140,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "fireglow-post-2",
+      "x": 1222,
+      "y": 390,
+      "width": 140,
+      "height": 140,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "fireglow-post-3",
+      "x": 1405,
+      "y": 297,
+      "width": 140,
+      "height": 140,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "fireglow-post-4",
+      "x": 1316,
+      "y": 219,
+      "width": 140,
+      "height": 140,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "fireglow-post-5",
+      "x": 1420,
+      "y": 122,
+      "width": 140,
+      "height": 140,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "fireglow-post-6",
+      "x": 1331,
+      "y": 70,
+      "width": 140,
+      "height": 140,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1122,
+      "y": 555,
+      "scale": 0.13,
+      "alpha": 0.85,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1292,
+      "y": 468,
+      "scale": 0.13,
+      "alpha": 0.85,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1475,
+      "y": 375,
+      "scale": 0.13,
+      "alpha": 0.85,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1386,
+      "y": 297,
+      "scale": 0.13,
+      "alpha": 0.85,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1490,
+      "y": 200,
+      "scale": 0.13,
+      "alpha": 0.85,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1401,
+      "y": 148,
+      "scale": 0.13,
+      "alpha": 0.85,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "motes-climb",
+      "x": 930,
+      "y": -40,
+      "width": 840,
+      "height": 840,
+      "scale": 4,
+      "depth": 0.9
+    }
+  ]
+}

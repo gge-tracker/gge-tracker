@@ -6,7 +6,6 @@ import {
   ApiPlayerStatsType,
   ChartOptions,
 } from '@ggetracker-interfaces/empire-ranking';
-import { ApiRestService } from '@ggetracker-services/api-rest.service';
 import { LootReset, lootResetOf } from '@ggetracker-services/loot-reset.utilities';
 import { LanguageService } from '@ggetracker-services/language.service';
 import { RankingService } from '@ggetracker-services/ranking.service';
@@ -18,6 +17,7 @@ import {
   CompareChartCardComponent,
 } from '../compare-chart-card/compare-chart-card.component';
 import { baseChartOptions, ChartLocale } from '../compare-chart-card/compare-chart-options';
+import { CompareRequests } from '../compare-requests';
 import {
   alignWeeklyScores,
   buildWeekRace,
@@ -74,7 +74,7 @@ export class CompareLootComponent {
   });
 
   private readonly loot = signal<[PlayerLoot, PlayerLoot] | null>(null);
-  private readonly apiRestService = inject(ApiRestService);
+  private readonly requests = inject(CompareRequests);
   private readonly translateService = inject(TranslateService);
   private readonly rankingService = inject(RankingService);
   private readonly languageService = inject(LanguageService);
@@ -102,8 +102,8 @@ export class CompareLootComponent {
 
   private async readPlayerLoot(playerId: number): Promise<PlayerLoot> {
     const [series, occurrences] = await Promise.all([
-      this.apiRestService.getPlayerStatsSeriesByPlayerId(playerId, [ApiPlayerStatsType.loot], SERIES_DAYS),
-      this.apiRestService.getPlayerEventOccurrencesByPlayerId(playerId, ApiPlayerStatsType.loot),
+      this.requests.statsSeries(playerId, ApiPlayerStatsType.loot, SERIES_DAYS),
+      this.requests.occurrences(playerId, ApiPlayerStatsType.loot),
     ]);
     if (!series.success) throw new Error(series.error);
     if (!occurrences.success) throw new Error(occurrences.error);

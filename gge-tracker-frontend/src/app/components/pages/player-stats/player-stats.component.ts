@@ -68,6 +68,7 @@ import { combineLatest, firstValueFrom } from 'rxjs';
 import { CalendarCheck, LucideAngularModule, SquareUser } from 'lucide-angular';
 import { EventCardComponent } from '@ggetracker-pages/events/event-card/event-card.component';
 import { ShareLinkComponent } from '@ggetracker-components/share-link/share-link.component';
+import { LayeredSceneComponent } from '@ggetracker-components/layered-scene/layered-scene.component';
 
 const MS_PER_HOUR = 3_600_000;
 const HOURS_PER_WEEK = 168;
@@ -85,6 +86,7 @@ type FillDataState = 'idle' | 'loading' | 'loaded' | 'error';
     NgClass,
     RouterLink,
     ShareLinkComponent,
+    LayeredSceneComponent,
     PlayerStatsCardComponent,
     DatePipe,
     TranslateModule,
@@ -138,13 +140,13 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     100: 'fas fa-trophy',
   };
   public readonly AQUAMARINE_METRIC_COLORS: Record<number, string> = {
-    15: '#00e5ff',
-    16: '#4caf50',
-    17: '#ff9800',
-    18: '#42a5f5',
-    19: '#ce93d8',
-    20: '#ef5350',
-    100: '#ffd700',
+    15: '#1f6f68',
+    16: '#3f9a8a',
+    17: '#2f7397',
+    18: '#5b8f6f',
+    19: '#a8742a',
+    20: '#a8433a',
+    100: '#c19a2c',
   };
   public aquamarineSnapshotsLastUpdated?: Date;
   public charts: Record<string, ChartOptions> = {};
@@ -229,6 +231,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   public maxLootPointsByWeek: { week: string; points: number }[] = [];
   public fameTitles: RankingFameTitle[] = [];
   public fameTitlesTopX: RankingFameTitle[] = [];
+  public showAllFameTitles = false;
   public top100Glory: { top: number; point: number }[] = [];
   public fameProgressPercentage: number = 0;
   public mightPeriod: 'day' | 'week' | 'month' | 'year' = 'week';
@@ -258,6 +261,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   };
   private readonly LOOT_TAB_DAYS = 182;
   private readonly LOOT_OVERVIEW_WEEKS = 5;
+  private readonly AQUAMARINE_HIDDEN_BY_DEFAULT = new Set([19, 20, 100]);
   private readonly CONTINUOUS_CHARTS = new Set(['might', 'loot']);
   private readonly WEEKLY_RESET_CHARTS = new Set(['loot']);
   private readonly FULL_HISTORY_DAYS = 1825;
@@ -532,6 +536,29 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       return fragment as PlayerStatsTabs;
     }
     return 'overview';
+  }
+
+  public get projectedFame(): number {
+    return ((this.stats?.currentFame ?? 0) * (100 - (this.currentPlayerTitle?.decay ?? 0))) / 100;
+  }
+
+  public get isTitleSecured(): boolean {
+    return this.projectedFame >= (this.currentPlayerTitle?.threshold ?? 0);
+  }
+
+  public get visibleFameTitles(): RankingFameTitle[] {
+    if (this.showAllFameTitles) return this.fameTitles;
+    const fame = this.stats?.currentFame ?? 0;
+    const reached = this.fameTitles.findIndex((title) => (title.threshold ?? 0) <= fame);
+    const current = reached === -1 ? this.fameTitles.length - 1 : reached;
+    const start = Math.max(0, current - 2);
+    return this.fameTitles.slice(start, start + 5);
+  }
+
+  public fameTitleState(title: RankingFameTitle): 'ok' | 'warn' | 'locked' {
+    const threshold = title.threshold ?? 0;
+    if ((this.stats?.currentFame ?? 0) < threshold) return 'locked';
+    return this.projectedFame >= threshold ? 'ok' : 'warn';
   }
 
   public getCurrentFameTitle(): RankingFameTitle {
@@ -1543,7 +1570,12 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     // this.setGenericVariations(mightPoints);
     const { dates, points } = this.getPointsAndDates(mightPoints);
     this.translateService.get('Points de puissance').subscribe((translated) => {
-      this.initChartOption('might', [{ name: translated, data: points }], ['#eae077']);
+      this.initChartOption('might', [{ name: translated, data: points }], ['#b08417']);
+      this.charts['might'].fill = {
+        type: 'gradient',
+        gradient: { type: 'vertical', opacityFrom: 0.5, opacityTo: 0.06 },
+      };
+      this.charts['might'].stroke = { width: 2.5 };
       this.charts['might'].xaxis.categories = dates;
       this.charts['might'].yaxis.min = undefined;
       this.charts['might'].chart.height = 420;
@@ -1551,6 +1583,15 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
         enabled: false,
       };
     });
+  }
+
+  private styleLootWeeks(chart: ChartOptions, weekCount: number): void {
+    const weeks = Array.from({ length: weekCount }, (_, index) => index);
+    chart.fill = { type: 'solid', opacity: weeks.map((index) => (index === 0 ? 0.42 : 0)) };
+    chart.stroke = {
+      width: weeks.map((index) => (index === 0 ? 2.5 : index === 1 ? 2 : 1.5)),
+      dashArray: weeks.map((index) => (index === 0 ? 0 : index === 1 ? 6 : 2)),
+    };
   }
 
   private filterMightDataByPeriod(data: EventGenericVariation[]): EventGenericVariation[] {
@@ -1645,13 +1686,20 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
 
     const metricSeries = this.groupAquamarineMetrics(snapshots);
 
-    const series: ApexAxisChartSeries = [...metricSeries.entries()].map(([metricId, points]) => ({
+    const metricIds = [...metricSeries.keys()].sort((a, b) => a - b);
+    const series: ApexAxisChartSeries = metricIds.map((metricId) => ({
       name: this.translateService.instant(this.AQUAMARINE_METRIC_LABELS[metricId]) ?? `${metricId}`,
-      data: points,
+      data: metricSeries.get(metricId) ?? [],
+      hidden: this.AQUAMARINE_HIDDEN_BY_DEFAULT.has(metricId),
     }));
 
-    const colors = [...metricSeries.keys()].map((id) => this.AQUAMARINE_METRIC_COLORS[id] ?? '#00bcd4');
+    const colors = metricIds.map((id) => this.AQUAMARINE_METRIC_COLORS[id] ?? '#1f6f68');
     this.initChartOption('aquamarine', series, colors);
+    this.charts['aquamarine'].fill = { type: 'solid', opacity: metricIds.map((id) => (id === 15 ? 0.28 : 0)) };
+    this.charts['aquamarine'].stroke = {
+      width: metricIds.map((id) => (id === 15 ? 3 : 2)),
+      dashArray: metricIds.map((id) => ({ 16: 0, 17: 6, 18: 2 })[id as 16 | 17 | 18] ?? 0),
+    };
   }
 
   private localHourOfSlot(startInstant: Date, index: number): number {
@@ -1781,14 +1829,14 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
         return {
           name: this.translateService.instant('Semaine précédente') + ' (' + this.getUnitByValue(maxPoint) + ')',
           data: weekData,
-          color: '#b8b29e',
+          color: '#5c4527',
         };
       }
 
       return {
         name: this.formatLootWeekRange(weekStartDate) + ' (' + this.getUnitByValue(maxPoint) + ')',
         data: weekData,
-        color: colors[0],
+        color: '#9c8660',
         hidden: true,
       };
     });
@@ -1875,7 +1923,9 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     this.initAverageGainChart('avg-gain-hour', seriesAvgGain);
     // Initialize the chart 'loot' (area loot history)
     this.initChartOption('loot', seriesNewestFirst.slice(0, this.LOOT_OVERVIEW_WEEKS), colors);
+    this.styleLootWeeks(this.charts['loot'], this.LOOT_OVERVIEW_WEEKS);
     this.charts['loot-weeks'] = { ...this.charts['loot'], series: seriesNewestFirst };
+    this.styleLootWeeks(this.charts['loot-weeks'], seriesNewestFirst.length);
     this.spinnerLoadingByChart['loot-weeks'] = false;
     const { data: weeklyScores, categories: weeklyLabels } = this.buildLootWeeklyScoresSeries(
       this.eventOccurrences['loot'] ?? weeklyTotals,

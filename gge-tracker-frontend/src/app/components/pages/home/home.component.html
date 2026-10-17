@@ -1,5 +1,5 @@
 <div class="home-hero" [class.home-hero--identity]="meView() || (loading() && follow.me())">
-  <app-tavern-scene class="home-hero-scene" />
+  <app-layered-scene scene="tavern" class="home-hero-scene" />
   <div class="home-hero-body">
     @if (meView(); as me) {
       <section class="home-banner" aria-labelledby="home-me-name">
@@ -72,7 +72,7 @@
       </section>
     }
     <p class="home-hero-credit">
-      {{ 'legal.ip-2' | translate }} {{ 'home.art-credit' | translate }}
+      {{ 'legal.ip-2' | translate }}
       <a routerLink="/legal">{{ 'legal.ip-title' | translate }}</a>
     </p>
   </div>

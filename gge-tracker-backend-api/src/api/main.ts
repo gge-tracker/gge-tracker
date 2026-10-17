@@ -2703,7 +2703,7 @@ protectedRoutes.get('/server/statistics', routingInstance.getServerStatistics.bi
  *           application/json:
  *             schema:
  *               type: object
- *               required: [event, server, ranks, running, current, typical, next_expected_start, occurrences, pace]
+ *               required: [event, server, ranks, running, live_events, current, typical, next_expected_start, occurrences, pace]
  *               properties:
  *                 event:
  *                   type: string
@@ -2717,6 +2717,11 @@ protectedRoutes.get('/server/statistics', routingInstance.getServerStatistics.bi
  *                 running:
  *                   type: boolean
  *                   description: Whether the event was read during the last three hours
+ *                 live_events:
+ *                   type: array
+ *                   description: Every event slug running on this server, by the same rule as `running`
+ *                   items:
+ *                     type: string
  *                 current:
  *                   type: object
  *                   nullable: true

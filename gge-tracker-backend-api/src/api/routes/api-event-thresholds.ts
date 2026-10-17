@@ -47,6 +47,7 @@ export interface EventThresholds {
   server: string;
   ranks: number[];
   running: boolean;
+  live_events: string[];
   current: (OccurrenceSummary & { hour: number; projected: ProjectedRange }) | null;
   typical: ThresholdRange | null;
   next_expected_start: string | null;
@@ -100,11 +101,12 @@ export abstract class ApiEventThresholds implements ApiHelper {
       }
 
       const clickhouse = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
-      const [finals, readings] = await Promise.all([
+      const [finals, readings, lastReadings] = await Promise.all([
         this.readFinalSnapshots(clickhouse, olapDatabase, table),
         this.readRecentSnapshots(clickhouse, olapDatabase, table),
+        this.readLastReadings(clickhouse, olapDatabase),
       ]);
-      const data = this.build(slug, server, finals, readings, Date.now());
+      const data = this.build(slug, server, finals, readings, lastReadings, Date.now());
       void ApiHelper.updateCache(cacheKey, data);
       response.status(ApiHelper.HTTP_OK).send(data);
     } catch (error) {
@@ -119,6 +121,7 @@ export abstract class ApiEventThresholds implements ApiHelper {
     server: string,
     finals: RankingSnapshot[],
     readings: RankingSnapshot[],
+    lastReadings: Record<string, string>,
     now: number,
   ): EventThresholds {
     const last = finals.at(-1);
@@ -131,6 +134,7 @@ export abstract class ApiEventThresholds implements ApiHelper {
       server,
       ranks: this.RANKS,
       running,
+      live_events: this.liveEvents(lastReadings, now),
       current: running
         ? { ...this.summarise(last), hour: last.hour, projected: this.project(last, completedPace) }
         : null,
@@ -142,6 +146,13 @@ export abstract class ApiEventThresholds implements ApiHelper {
         .map((snapshot) => this.summarise(snapshot)),
       pace,
     };
+  }
+
+  private static liveEvents(lastReadings: Record<string, string>, now: number): string[] {
+    return Object.keys(this.EVENT_TABLES).filter((slug) => {
+      const readAt = lastReadings[this.EVENT_TABLES[slug]];
+      return readAt !== undefined && now - Date.parse(readAt) < this.RUNNING_WINDOW_MS;
+    });
   }
 
   private static summarise(snapshot: RankingSnapshot): OccurrenceSummary {
@@ -215,6 +226,23 @@ export abstract class ApiEventThresholds implements ApiHelper {
     const sorted = [...values].sort((a, b) => a - b);
     const middle = Math.floor(sorted.length / 2);
     return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
+  }
+
+  private static async readLastReadings(
+    clickhouse: NodeClickHouseClient,
+    olapDatabase: string,
+  ): Promise<Record<string, string>> {
+    const result = await clickhouse.query({
+      query: `
+        SELECT table_name, max(created_at) AS read_at
+        FROM ${olapDatabase}.event_dates
+        WHERE table_name IN {tables:Array(String)}
+        GROUP BY table_name
+      `,
+      query_params: { tables: Object.values(this.EVENT_TABLES) },
+    });
+    const json = await result.json();
+    return Object.fromEntries(json.data.map((row: any) => [row.table_name, this.toIso(row.read_at)]));
   }
 
   private static async readFinalSnapshots(
@@ -309,6 +337,8 @@ export abstract class ApiEventThresholds implements ApiHelper {
   }
 
   private static toIso(clickhouseDate: string): string {
-    return new Date(clickhouseDate.replace(' ', 'T') + 'Z').toISOString();
+    const date = new Date(clickhouseDate.replace(' ', 'T') + 'Z');
+    date.setUTCMinutes(0, 0, 0);
+    return date.toISOString();
   }
 }

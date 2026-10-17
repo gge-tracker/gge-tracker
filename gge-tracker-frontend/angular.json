@@ -79,7 +79,19 @@
             "development": {
               "optimization": false,
               "extractLicenses": false,
-              "sourceMap": true
+              "sourceMap": true,
+              "assets": [
+                "src/favicon.ico",
+                "src/assets",
+                "src/robots.txt",
+                "src/sitemaps",
+                "src/manifest.webmanifest",
+                {
+                  "glob": "{*.json,contributors.xml}",
+                  "input": "i18n-local",
+                  "output": "i18n-local"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"

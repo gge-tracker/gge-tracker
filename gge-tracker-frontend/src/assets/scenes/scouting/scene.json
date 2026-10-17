@@ -1,0 +1,186 @@
+{
+  "width": 1920,
+  "height": 720,
+  "layers": [
+    {
+      "kind": "image",
+      "id": "valley",
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 720,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "moonglow",
+      "x": -64,
+      "y": -82,
+      "width": 460,
+      "height": 460,
+      "scale": 4,
+      "depth": 0.45
+    },
+    {
+      "kind": "prop",
+      "id": "cloud-3",
+      "x": 901,
+      "y": 40,
+      "width": 319,
+      "height": 46,
+      "depth": 0.28
+    },
+    {
+      "kind": "prop",
+      "id": "cloud-1",
+      "x": 1319,
+      "y": 70,
+      "width": 482,
+      "height": 66,
+      "depth": 0.3
+    },
+    {
+      "kind": "prop",
+      "id": "cloud-2",
+      "x": 365,
+      "y": 205,
+      "width": 391,
+      "height": 54,
+      "depth": 0.32
+    },
+    {
+      "kind": "light",
+      "id": "windowglow-keep",
+      "x": 1290,
+      "y": 202,
+      "width": 120,
+      "height": 120,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "windowglow-hall",
+      "x": 1227,
+      "y": 295,
+      "width": 140,
+      "height": 140,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "windowglow-east",
+      "x": 1348,
+      "y": 310,
+      "width": 120,
+      "height": 120,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "windowglow-tower",
+      "x": 1435,
+      "y": 360,
+      "width": 110,
+      "height": 110,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "windowglow-gate",
+      "x": 1216,
+      "y": 420,
+      "width": 100,
+      "height": 100,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1167,
+      "y": 562,
+      "scale": 0.12,
+      "alpha": 0.9,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1189,
+      "y": 609,
+      "scale": 0.12,
+      "alpha": 0.9,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1127,
+      "y": 611,
+      "scale": 0.12,
+      "alpha": 0.9,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1255,
+      "y": 629,
+      "scale": 0.12,
+      "alpha": 0.9,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1265,
+      "y": 540,
+      "scale": 0.12,
+      "alpha": 0.9,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1288,
+      "y": 529,
+      "scale": 0.12,
+      "alpha": 0.9,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1210,
+      "y": 510,
+      "scale": 0.12,
+      "alpha": 0.9,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "motes-forest",
+      "x": 240,
+      "y": 90,
+      "width": 1040,
+      "height": 1040,
+      "scale": 4,
+      "depth": 0.9
+    },
+    {
+      "kind": "prop",
+      "id": "ledge",
+      "x": -43,
+      "y": 300,
+      "width": 746,
+      "height": 440,
+      "depth": 1.4
+    },
+    {
+      "kind": "prop",
+      "id": "scout-figure",
+      "x": 297,
+      "y": 300,
+      "width": 390,
+      "height": 282,
+      "depth": 1.4
+    }
+  ]
+}

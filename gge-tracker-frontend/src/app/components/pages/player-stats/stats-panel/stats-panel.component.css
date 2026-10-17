@@ -1,11 +1,13 @@
 .stats-panel {
+  background: linear-gradient(180deg, var(--gge-parchment-light), var(--gge-parchment) 40%, var(--gge-parchment-deep));
+  color: var(--gge-parchment-ink);
   min-height: 40vh;
 }
 .stats-panel-head {
   background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.8)),
     var(--ps-head-layer, #495057);
   background-position-y: center !important;
-  border: 1px white solid;
+  border: 1px solid rgb(255 226 160 / 28%);
   color: white;
 }
 @supports (color: color-mix(in srgb, red 50%, white)) {
@@ -17,4 +19,16 @@
       ),
       var(--ps-head-layer, #495057);
   }
+}
+:host(.ps-painted) .stats-panel-head {
+  background:
+    linear-gradient(90deg, rgba(6, 10, 18, 0.55), rgba(6, 10, 18, 0.25) 70%, rgba(6, 10, 18, 0.1)),
+    var(--ps-head-layer) var(--ps-head-position, center 45%) / cover no-repeat !important;
+  min-height: 116px;
+}
+:host(.panel-night) .stats-panel {
+  background: linear-gradient(180deg, rgb(20 28 40 / 94%), rgb(12 18 28 / 96%));
+  border: 1px solid rgb(242 193 78 / 22%);
+  color: #e8e0cc;
+  min-height: 0;
 }

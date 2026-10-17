@@ -43,7 +43,7 @@
 
 @if (!isInLoading) {
   <section class="alliance-hero">
-    <div class="alliance-hero-backdrop" [class.is-ready]="isHeroBackdropReady" aria-hidden="true"></div>
+    <app-layered-scene scene="council" class="alliance-hero-backdrop" aria-hidden="true" />
     <div class="container-fluid container-xxl alliance-stats-container mb-5 mb-lg-3">
     <h2 class="title">{{ allianceName }}</h2>
     <span class="badge bg-custom-font mt-3" [ngClass]="{ 'd-none': !lastUpdate }">
@@ -133,7 +133,7 @@
 
 @if (!isInLoading) {
   <nav class="alliance-tabs mt-5" role="tablist" [attr.aria-label]="'Alliance' | translate">
-    <div class="alliance-tabs-scroller">
+    <div class="alliance-tabs-scroller pt-1">
       @for (tab of tabs; track tab.key) {
         <button type="button" class="alliance-tab" role="tab" [class.active]="selectedTab === tab.key"
           [attr.aria-selected]="selectedTab === tab.key" (click)="changeTab(tab.key)" title="{{ tab.label | translate }}">
@@ -155,47 +155,52 @@
   <div [ngClass]="selectedTab === 'movements' ? 'd-block' : 'd-none'" class="alliances-stats-content pb-3 pt-3"
     >
     <div class="container movements">
-      <app-table [sort]="''" [reverse]="false" [isInLoading]="isInMovementLoading" [maxPage]="maxPage!" [page]="page"
-      [search]="search" [headers]="[
-      ['playerName', 'Pseudonyme' | translate, '', true],
-      ['allianceName', 'Alliance' | translate, '/assets/min-alliance.png', true],
-      ['pp', 'Points de puissance' | translate, '/assets/pp1.png', true],
-      ['castleType', 'Type' | translate, '', true],
-      ['castleType', 'Action' | translate, '', true],
-      ['positionOld', 'Description' | translate, '', true],
-      ['date', 'Date' | translate, '', true],
-    ]" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
-        @if (isInMovementLoading) {
-          @for (row of skeletonRows; track $index) {
-            <tr class="table-skeleton-row">
-              @for (cell of skeletonCells; track $index) {
-                <td><span class="gge-skeleton gge-skeleton--parchment table-skeleton-cell" aria-hidden="true"></span></td>
+      <app-stats-panel class="ps-painted panel-night" [title]="'Mouvements' | translate"
+        [bannerImage]="'/assets/site/header-movements.webp'" [style.--ps-head-position]="'center 62%'">
+        <div class="alliance-panel-body">
+          <app-table [sort]="''" [reverse]="false" [isInLoading]="isInMovementLoading" [maxPage]="maxPage!" [page]="page"
+          [search]="search" [headers]="[
+          ['playerName', 'Pseudonyme' | translate, '', true],
+          ['allianceName', 'Alliance' | translate, '/assets/min-alliance.png', true],
+          ['pp', 'Points de puissance' | translate, '/assets/pp1.png', true],
+          ['castleType', 'Type' | translate, '', true],
+          ['castleType', 'Action' | translate, '', true],
+          ['positionOld', 'Description' | translate, '', true],
+          ['date', 'Date' | translate, '', true],
+        ]" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
+            @if (isInMovementLoading) {
+              @for (row of skeletonRows; track $index) {
+                <tr class="table-skeleton-row">
+                  @for (cell of skeletonCells; track $index) {
+                    <td><span class="gge-skeleton gge-skeleton--parchment table-skeleton-cell" aria-hidden="true"></span></td>
+                  }
+                </tr>
               }
-            </tr>
-          }
-        }
-        @if (movements.length === 0 && !isInMovementLoading) {
-          <tr>
-            <td colspan="10">
-              <span class="text-muted">{{ 'Aucun mouvement trouvé' | translate }}</span>
-            </td>
-          </tr>
-        }
-        @for (movement of movements; track movement) {
-          <tr>
-            <td>{{ movement.rank }}</td>
-            <td>{{ movement.player }}</td>
-            <td>{{ movement.alliance ?? '-' }}</td>
-            <td>{{ (movement.might ? movement.might : 0) | formatNumber }}</td>
-            <td><img [src]="'/assets/castle' + movement.type + '.png'" [title]="getCastleType(movement.type) | translate"
-            [alt]="getCastleType(movement.type) | translate"></td>
-            <td [innerHTML]="getDescription(movement.type, movement.positionOld, movement.positionNew).image"></td>
-            <td>{{ getDescription(movement.type, movement.positionOld, movement.positionNew).keyword | translate }} {{
-            getDescription(movement.type, movement.positionOld, movement.positionNew).description }}</td>
-            <td>{{ movement.date | date: ('Date_1' | translate) }}</td>
-          </tr>
-        }
-      </app-table>
+            }
+            @if (movements.length === 0 && !isInMovementLoading) {
+              <tr>
+                <td colspan="10">
+                  <span class="text-muted">{{ 'Aucun mouvement trouvé' | translate }}</span>
+                </td>
+              </tr>
+            }
+            @for (movement of movements; track movement) {
+              <tr>
+                <td>{{ movement.rank }}</td>
+                <td>{{ movement.player }}</td>
+                <td>{{ movement.alliance ?? '-' }}</td>
+                <td>{{ (movement.might ? movement.might : 0) | formatNumber }}</td>
+                <td><img [src]="'/assets/castle' + movement.type + '.png'" [title]="getCastleType(movement.type) | translate"
+                [alt]="getCastleType(movement.type) | translate"></td>
+                <td [innerHTML]="getDescription(movement.type, movement.positionOld, movement.positionNew).image"></td>
+                <td>{{ getDescription(movement.type, movement.positionOld, movement.positionNew).keyword | translate }} {{
+                getDescription(movement.type, movement.positionOld, movement.positionNew).description }}</td>
+                <td>{{ movement.date | date: ('Date_1' | translate) }}</td>
+              </tr>
+            }
+          </app-table>
+        </div>
+      </app-stats-panel>
     </div>
   </div>
 }
@@ -204,68 +209,73 @@
   <div [ngClass]="selectedTab === 'members' ? 'd-block' : 'd-none'" class="alliances-stats-content pb-3 pt-3"
     >
     <div class="container">
-      <div class="distance-panel">
-        <div class="distance-panel-header">
-          <img src="/assets/players.png" height="14" alt="">
-          <span>{{ 'Distance' | translate }}</span>
-        </div>
-        <div class="distance-panel-body">
-          <input
-            type="text"
-            class="distance-input"
-            [placeholder]="'Pseudonyme' | translate"
-            [(ngModel)]="playerNameForDistance" [attr.aria-label]="'Pseudonyme' | translate">
-          <div class="world-selector-group">
-            @for (world of availableWorlds; track world.id) {
-              <button
-                class="world-btn"
-                [class.active]="selectedKingdomId === world.id"
-                (click)="selectKingdom(world.id)"
-                [title]="world.name | translate">
-                <img width="24" height="24" class="me-2" [alt]="world.name | translate" [src]="'assets/dungeon' + world.id + '.png'">
-                {{ world.name | translate }}
-              </button>
-            }
+      <app-stats-panel class="ps-painted panel-night" [title]="'Membres' | translate" [subtitle]="allianceName"
+        [bannerImage]="'/assets/site/header-members.webp'" [style.--ps-head-position]="'center 60%'">
+        <div class="alliance-panel-body">
+          <div class="distance-panel">
+            <div class="distance-panel-header">
+              <img src="/assets/players.png" height="14" alt="">
+              <span>{{ 'Distance' | translate }}</span>
+            </div>
+            <div class="distance-panel-body">
+              <input
+                type="text"
+                class="distance-input"
+                [placeholder]="'Pseudonyme' | translate"
+                [(ngModel)]="playerNameForDistance" [attr.aria-label]="'Pseudonyme' | translate">
+              <div class="world-selector-group">
+                @for (world of availableWorlds; track world.id) {
+                  <button
+                    class="world-btn"
+                    [class.active]="selectedKingdomId === world.id"
+                    (click)="selectKingdom(world.id)"
+                    [title]="world.name | translate">
+                    <img width="24" height="24" class="me-2" [alt]="world.name | translate" [src]="'assets/dungeon' + world.id + '.png'">
+                    {{ world.name | translate }}
+                  </button>
+                }
+              </div>
+              <div class="distance-actions">
+                <button class="distance-action-btn primary"
+                  (click)="onAddDistanceColumn()"
+                  [disabled]="!playerNameForDistance.trim()"
+                  [title]="'Filtrer par distance depuis le château principal d\'un joueur' | translate">
+                  @if (!isDistanceIsInLoading) {
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>{{ 'Afficher la distance' | translate }}</span>
+                  } @else {
+                    <i class="fas fa-spinner fa-spin"></i>
+                  }
+                </button>
+                @if (playerNameForDistance.trim()) {
+                  <button class="distance-action-btn secondary"
+                    (click)="resetDistanceColumn()"
+                    [title]="'Réinitialiser' | translate">
+                    <i class="fas fa-times"></i>
+                  </button>
+                }
+                <button class="distance-action-btn export"
+                  (click)="exportData()"
+                  [title]="'Exporter les données' | translate">
+                  <lucide-icon [img]="Download"></lucide-icon>
+                </button>
+              </div>
+            </div>
+            <div class="distance-help-text" [innerHTML]="'Distance-text' | translate"></div>
           </div>
-          <div class="distance-actions">
-            <button class="distance-action-btn primary"
-              (click)="onAddDistanceColumn()"
-              [disabled]="!playerNameForDistance.trim()"
-              [title]="'Filtrer par distance depuis le château principal d\'un joueur' | translate">
-              @if (!isDistanceIsInLoading) {
-                <i class="fas fa-map-marker-alt"></i>
-                <span>{{ 'Afficher la distance' | translate }}</span>
-              } @else {
-                <i class="fas fa-spinner fa-spin"></i>
-              }
-            </button>
-            @if (playerNameForDistance.trim()) {
-              <button class="distance-action-btn secondary"
-                (click)="resetDistanceColumn()"
-                [title]="'Réinitialiser' | translate">
-                <i class="fas fa-times"></i>
-              </button>
-            }
-            <button class="distance-action-btn export"
-              (click)="exportData()"
-              [title]="'Exporter les données' | translate">
-              <lucide-icon [img]="Download"></lucide-icon>
-            </button>
+          <div class="players-container">
+            <app-table [sort]="sort" [reverse]="reverse" [isInLoading]="isInLoading" [maxPage]="maxPage!" [page]="page"
+              [search]="search" (sortOutput)="sortPlayers($event)" [headers]="membersTableHeader">
+              <app-player-table-content
+                [players]="players"
+                [distanceEnabled]="membersTableHeader.length > defaultMembersTableHeaderSize"
+                [playersTableHeader]="membersTableHeader"
+                (toggleFavorite)="toggleFavorite($event)"
+              ></app-player-table-content>
+            </app-table>
           </div>
         </div>
-        <div class="distance-help-text" [innerHTML]="'Distance-text' | translate"></div>
-      </div>
-      <div class="players-container">
-        <app-table [sort]="sort" [reverse]="reverse" [isInLoading]="isInLoading" [maxPage]="maxPage!" [page]="page"
-          [search]="search" (sortOutput)="sortPlayers($event)" [headers]="membersTableHeader">
-          <app-player-table-content
-            [players]="players"
-            [distanceEnabled]="membersTableHeader.length > defaultMembersTableHeaderSize"
-            [playersTableHeader]="membersTableHeader"
-            (toggleFavorite)="toggleFavorite($event)"
-          ></app-player-table-content>
-        </app-table>
-      </div>
+      </app-stats-panel>
     </div>
   </div>
   <div [ngClass]="selectedTab === 'description' ? 'd-block' : 'd-none'" class="alliances-stats-content pb-3 pt-3">
@@ -412,7 +422,7 @@
                 [backgroundIconImage]="config.backgroundIconImage" [backgroundColour]="config.backgroundColour"
                 (changeTabOutput)="changeTabGraph(config.chartKey, $event)">
                 @if (!config.singleChart) {
-                  <div before class="previous-graph">
+                  <div before class="alliance-stats-graph previous-graph">
                     <span (click)="previousGraph(ApiPlayerStatsType[config.chartKey])"
                       (keyup.enter)="previousGraph(ApiPlayerStatsType[config.chartKey])"
                       (keypress)="$event.key === 'Enter' ? previousGraph(ApiPlayerStatsType[config.chartKey]) : null"
@@ -422,7 +432,7 @@
                   </div>
                 }
                 @if (!config.singleChart) {
-                  <div after class="next-graph">
+                  <div after class="alliance-stats-graph next-graph">
                     <span (click)="nextGraph(ApiPlayerStatsType[config.chartKey])"
                       (keyup.enter)="nextGraph(ApiPlayerStatsType[config.chartKey])"
                       (keypress)="$event.key === 'Enter' ? nextGraph(ApiPlayerStatsType[config.chartKey]) : null"
@@ -475,96 +485,38 @@
   <div [ngClass]="selectedTab === 'health' ? 'd-block' : 'd-none'" class="alliances-stats-content">
     @if (isPulseChartReady) {
       <div class="container-fluid pt-3 pb-3" style="margin-bottom: 70px;">
-        <div class="row">
-          @if (topMightGain24h && topMightGain24h.length > 0) {
-            <div class="col-6 mt-4">
-              <h2 class="text-center subtitle">{{ 'Progressions de puissance depuis 24 heures' | translate }}</h2>
-        <app-table [sort]="''" [headers]="[
-            ['playerName', 'Nom du joueur' | translate, '', true],
-            ['current', 'Puissance' | translate, '/assets/pp1.png', true],
-            ['diff', 'Variations' | translate, '', true],
-          ]" [isInLoading]="false" [reverse]="false" [search]="''" [maxPage]="1" [page]="1">
-                @for (player of topMightGain24h; track player; let i = $index) {
-                  <tr>
-                    <td>{{ i + 1 }}</td>
-                    <td>{{ player.playerName }}</td>
-                    <td [title]="player.current">{{ player.current | formatNumber }}</td>
-            <td [ngClass]="{
-                'text-success': player.diff > 0,
-                'text-danger': player.diff < 0
-              }">{{ player.diff > 0 ? '+' : '' }}{{ player.diff | formatNumber }}</td>
-                  </tr>
-                }
-              </app-table>
+        <app-stats-panel class="ps-painted panel-night" [title]="'Rythme de l\'alliance' | translate"
+          [subtitle]="allianceName" [bannerImage]="'/assets/site/header-pulse.webp'"
+          [style.--ps-head-position]="'center 55%'">
+          <div class="alliance-panel-body">
+            <div class="row">
+              @if (topMightGain24h && topMightGain24h.length > 0) {
+                <div class="col-6 mt-4">
+                  <h2 class="text-center subtitle">{{ 'Progressions de puissance depuis 24 heures' | translate }}</h2>
+            <ng-container *ngTemplateOutlet="pulseList; context: { $implicit: topMightGain24h }"></ng-container>
+                </div>
+              }
+              @if (topMightGain7d && topMightGain7d.length > 0) {
+                <div class="col-6 mt-4">
+                  <h2 class="text-center subtitle">{{ 'Progressions de puissance depuis 7 jours' | translate }}</h2>
+            <ng-container *ngTemplateOutlet="pulseList; context: { $implicit: topMightGain7d }"></ng-container>
+                </div>
+              }
+              @if (topMightLoss24h && topMightLoss24h.length > 0) {
+                <div class="col-6 mt-4">
+                  <h2 class="text-center subtitle">{{ 'Baisses de puissance depuis 24 heures' | translate }}</h2>
+            <ng-container *ngTemplateOutlet="pulseList; context: { $implicit: topMightLoss24h }"></ng-container>
+                </div>
+              }
+              @if (topMightLoss7d && topMightLoss7d.length > 0) {
+                <div class="col-6 mt-4">
+                  <h2 class="text-center subtitle">{{ 'Baisses de puissance depuis 7 jours' | translate }}</h2>
+            <ng-container *ngTemplateOutlet="pulseList; context: { $implicit: topMightLoss7d }"></ng-container>
+                </div>
+              }
             </div>
-          }
-          @if (topMightGain7d && topMightGain7d.length > 0) {
-            <div class="col-6 mt-4">
-              <h2 class="text-center subtitle">{{ 'Progressions de puissance depuis 7 jours' | translate }}</h2>
-        <app-table [sort]="''" [headers]="[
-            ['playerName', 'Nom du joueur' | translate, '', true],
-            ['current', 'Puissance' | translate, '/assets/pp1.png', true],
-            ['diff', 'Variations' | translate, '', true],
-          ]" [isInLoading]="false" [reverse]="false" [search]="''" [maxPage]="1" [page]="1">
-                @for (player of topMightGain7d; track player; let i = $index) {
-                  <tr>
-                    <td>{{ i + 1 }}</td>
-                    <td>{{ player.playerName }}</td>
-                    <td>{{ player.current | formatNumber }}</td>
-            <td [ngClass]="{
-                'text-success': player.diff > 0,
-                'text-danger': player.diff < 0
-              }">{{ player.diff > 0 ? '+' : '' }}{{ player.diff | formatNumber }}</td>
-                  </tr>
-                }
-              </app-table>
-            </div>
-          }
-          @if (topMightLoss24h && topMightLoss24h.length > 0) {
-            <div class="col-6 mt-4">
-              <h2 class="text-center subtitle">{{ 'Baisses de puissance depuis 24 heures' | translate }}</h2>
-        <app-table [sort]="''" [headers]="[
-            ['playerName', 'Nom du joueur' | translate, '', true],
-            ['current', 'Puissance' | translate, '/assets/pp1.png', true],
-            ['diff', 'Variations' | translate, '', true],
-          ]" [isInLoading]="false" [reverse]="false" [search]="''" [maxPage]="1" [page]="1">
-                @for (player of topMightLoss24h; track player; let i = $index) {
-                  <tr>
-                    <td>{{ i + 1 }}</td>
-                    <td>{{ player.playerName }}</td>
-                    <td>{{ player.current | formatNumber }}</td>
-            <td [ngClass]="{
-                'text-success': player.diff > 0,
-                'text-danger': player.diff < 0
-              }">{{ player.diff > 0 ? '+' : '' }}{{ player.diff | formatNumber }}</td>
-                  </tr>
-                }
-              </app-table>
-            </div>
-          }
-          @if (topMightLoss7d && topMightLoss7d.length > 0) {
-            <div class="col-6 mt-4">
-              <h2 class="text-center subtitle">{{ 'Baisses de puissance depuis 7 jours' | translate }}</h2>
-        <app-table [sort]="''" [headers]="[
-            ['playerName', 'Nom du joueur' | translate, '', true],
-            ['current', 'Puissance' | translate, '/assets/pp1.png', true],
-            ['diff', 'Variations' | translate, '', true],
-          ]" [isInLoading]="false" [reverse]="false" [search]="''" [maxPage]="1" [page]="1">
-                @for (player of topMightLoss7d; track player; let i = $index) {
-                  <tr>
-                    <td>{{ i + 1 }}</td>
-                    <td>{{ player.playerName }}</td>
-                    <td>{{ player.current | formatNumber }}</td>
-            <td [ngClass]="{
-                'text-success': player.diff > 0,
-                'text-danger': player.diff < 0
-              }">{{ player.diff > 0 ? '+' : '' }}{{ player.diff | formatNumber }}</td>
-                  </tr>
-                }
-              </app-table>
-            </div>
-          }
-        </div>
+          </div>
+        </app-stats-panel>
         <div class="row mt-3">
           <div class="col-12">
             @if (mightPerHourChart) {
@@ -711,3 +663,20 @@
         </div>
       </div>
     </div>
+
+<ng-template #pulseList let-players>
+  <ol class="pulse-list">
+    @for (player of players; track player.playerName; let i = $index) {
+      <li class="pulse-row">
+        <span class="pulse-rank">{{ i + 1 }}</span>
+        <span class="pulse-name">{{ player.playerName }}</span>
+        <span class="pulse-might" [title]="player.current">
+          <img src="/assets/pp1.png" alt="" width="16" height="16">{{ player.current | formatNumber }}
+        </span>
+        <span class="pulse-diff" [class.is-up]="player.diff > 0" [class.is-down]="player.diff < 0">
+          {{ player.diff > 0 ? '+' : '' }}{{ player.diff | formatNumber }}
+        </span>
+      </li>
+    }
+  </ol>
+</ng-template>

@@ -2,7 +2,7 @@
   max-width: 1100px;
   margin: auto;
   padding: 3rem 3.2rem;
-  background: url(/assets/textures/batthern.png), rgb(255 255 255 / 71%);
+  background: url(/assets/textures/batthern.png), rgb(239 228 203 / 94%);
   background-size: 70px;
   backdrop-filter: blur(10px);
   border-radius: 18px;
@@ -31,11 +31,7 @@
   margin-top: 2rem;
   padding: 1.7rem 1.9rem;
   border-radius: 14px;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.85),
-    rgba(245, 250, 247, 0.85)
-  );
+  background: linear-gradient(135deg, var(--gge-parchment-light), var(--gge-parchment));
   border: 1px solid rgba(0, 0, 0, 0.05);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
 }
@@ -165,7 +161,7 @@
 
 .seal {
   align-items: center;
-  background: rgba(255, 255, 255, 0.6);
+  background: rgb(246 238 219 / 70%);
   border-radius: 999px;
   border: 1px solid rgba(204, 163, 0, 0.28);
   display: flex;
@@ -179,7 +175,7 @@
 }
 
 .seal:hover {
-  background: #ffffff;
+  background: var(--gge-parchment-light);
   border-color: rgba(204, 163, 0, 0.6);
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.1);
   transform: translateY(-2px);
@@ -265,7 +261,7 @@
   flex-direction: column;
   padding: 1.2rem 1.3rem;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--gge-parchment-light);
   border: 1px solid rgba(25, 52, 44, 0.12);
 }
 

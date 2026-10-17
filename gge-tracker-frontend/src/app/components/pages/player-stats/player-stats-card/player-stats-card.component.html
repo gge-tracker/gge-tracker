@@ -127,7 +127,7 @@
             @for (entry of data(); track $index; let i = $index) {
               <tr>
                 <td>{{ i + 1 }}</td>
-                <td [ngStyle]="{'color': getPlayerColor(entry) }">{{ entry.playerName }}</td>
+                <td><span class="data-player-dot" [style.background]="getPlayerColor(entry)"></span>{{ entry.playerName }}</td>
                 <td>
                   {{ entry.point | formatNumber }}
                   <i class="fas fa-info-circle" [title]="entry.point + ' ' + ('points' | translate)"></i>

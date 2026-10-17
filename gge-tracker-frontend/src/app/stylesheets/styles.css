@@ -1,5 +1,10 @@
 :root {
   --topbar-h: 72px;
+  --gge-parchment: #efe4cb;
+  --gge-parchment-light: #f6eedb;
+  --gge-parchment-deep: #e4d4b2;
+  --gge-parchment-line: rgba(110, 78, 36, 0.22);
+  --gge-parchment-ink: #3b2a14;
 }
 
 a.link-to-alliance {
@@ -32,10 +37,17 @@ img.alliance-rank-icon {
 }
 
 body, html {
-  background: url('/assets/bg.png'), #819a41;
   font-family: 'Inter', sans-serif;
   margin: 0;
   padding: 0;
+}
+
+html {
+  background: #08111b url('/assets/site/backdrop.webp') center bottom / cover no-repeat fixed;
+}
+
+body {
+  background: transparent;
 }
 
 html:has(app-home),
@@ -744,4 +756,207 @@ output {
   line-height: inherit;
   padding: 0;
   text-align: inherit;
+}
+
+.stats-panel {
+  --gge-parchment-ink-soft: #6b5533;
+  --gge-parchment-accent: #a0702a;
+}
+
+.stats-panel .nav-tabs {
+  border-bottom: 1px solid var(--gge-parchment-line);
+  gap: 2px;
+}
+
+.stats-panel .nav-tabs .nav-link {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px 8px 0 0;
+  color: var(--gge-parchment-ink-soft);
+  font-weight: 600;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.stats-panel .nav-tabs .nav-link:hover:not(.active) {
+  background: rgb(110 78 36 / 8%);
+  color: var(--gge-parchment-ink);
+}
+
+.stats-panel .nav-tabs .nav-link.active {
+  background: var(--gge-parchment-light);
+  border-color: var(--gge-parchment-line) var(--gge-parchment-line) var(--gge-parchment-light);
+  color: var(--gge-parchment-ink);
+}
+
+.stats-panel a:not(.btn):not(.gge-btn) {
+  color: var(--gge-parchment-accent);
+}
+
+.stats-panel .apexcharts-toolbar {
+  background: rgb(207 197 170 / 42%);
+  border: 1px #d1c4ab solid;
+}
+
+.stats-panel .apexcharts-toolbar button {
+  color: var(--gge-parchment-ink-soft) !important;
+}
+
+.stats-panel .apexcharts-toolbar button:hover {
+  background: rgb(110 78 36 / 10%) !important;
+  color: var(--gge-parchment-ink) !important;
+}
+
+.stats-panel .apexcharts-toolbar button.apexcharts-selected {
+  background: rgb(160 112 42 / 16%) !important;
+  color: var(--gge-parchment-accent) !important;
+}
+
+.stats-panel .apexcharts-menu {
+  background: var(--gge-parchment-light);
+  border-color: var(--gge-parchment-line);
+  color: var(--gge-parchment-ink);
+}
+
+.stats-panel .apexcharts-menu-item:hover {
+  background: rgb(110 78 36 / 12%);
+}
+
+.stats-panel .apexcharts-legend-text {
+  color: var(--gge-parchment-ink) !important;
+}
+
+.stats-panel .apexcharts-xaxis-label,
+.stats-panel .apexcharts-yaxis-label,
+.stats-panel .apexcharts-xaxis text,
+.stats-panel .apexcharts-yaxis text {
+  fill: var(--gge-parchment-ink-soft);
+}
+
+.stats-panel .apexcharts-gridline {
+  stroke: rgb(110 78 36 / 16%);
+}
+
+.stats-panel .apexcharts-grid-row {
+  fill: transparent;
+}
+
+.stats-panel .apexcharts-grid-row:nth-of-type(odd) {
+  fill: rgb(110 78 36 / 6%);
+}
+
+.stats-panel .apexcharts-tooltip.apexcharts-theme-light,
+.stats-panel .apexcharts-xaxistooltip,
+.stats-panel .apexcharts-yaxistooltip {
+  background: rgb(250 244 230 / 97%);
+  border-color: var(--gge-parchment-line);
+  color: var(--gge-parchment-ink);
+}
+
+.stats-panel .apexcharts-tooltip.apexcharts-theme-light .apexcharts-tooltip-title {
+  background: var(--gge-parchment-deep);
+  border-bottom-color: var(--gge-parchment-line);
+}
+
+.stats-panel .btn-group {
+  background: rgb(110 78 36 / 7%);
+  border: 1px solid var(--gge-parchment-line);
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.stats-panel .gge-btn.light-yellow {
+  --btn-base: #f4ead3;
+  --btn-base-dark: #e8d9b6;
+  --btn-hover: #f8f0dd;
+  --btn-hover-dark: #ecdfc0;
+  --btn-shadow: rgb(110 78 36 / 18%);
+  --btn-shadow-hover: rgb(110 78 36 / 26%);
+  --btn-focus: rgb(160 112 42 / 40%);
+  --btn-active-overlay-light: rgb(110 78 36 / 0%);
+  --btn-active-overlay-dark: rgb(110 78 36 / 0%);
+  --btn-active-border: #7d561c;
+  color: var(--gge-parchment-ink) !important;
+}
+
+.stats-panel .btn-group .gge-btn.light-yellow.active {
+  background: linear-gradient(145deg, #c08a3a, #9a6a24);
+  color: #fffaf0 !important;
+}
+
+* {
+  scrollbar-color: rgb(255 255 255 / 22%) transparent;
+  scrollbar-width: thin;
+}
+
+.stats-panel,
+.stats-panel * {
+  scrollbar-color: rgb(110 78 36 / 45%) rgb(110 78 36 / 8%);
+}
+
+.stats-panel .apexcharts-legend {
+  padding-right: 4px;
+}
+
+.stats-panel .form-switch .form-check-input {
+  background-color: var(--gge-parchment-deep);
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%238a6a3f'/%3e%3c/svg%3e");
+  border-color: rgb(110 78 36 / 40%);
+  cursor: pointer;
+}
+
+.stats-panel .form-switch .form-check-input:focus {
+  border-color: rgb(110 78 36 / 60%);
+  box-shadow: 0 0 0 3px rgb(160 112 42 / 22%);
+}
+
+.stats-panel .form-switch .form-check-input:checked {
+  background-color: #3f6fd6;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e");
+  border-color: #3f6fd6;
+}
+
+.stats-panel .form-check-label,
+.stats-panel .open-fullscreen,
+.stats-panel .close-fullscreen,
+.stats-panel .open-fullscreen .btn,
+.stats-panel .close-fullscreen .btn {
+  color: var(--gge-parchment-ink);
+}
+
+.stats-panel .cadre-table-scroll {
+  border: 1px solid var(--gge-parchment-line);
+  border-radius: 10px;
+  overflow-x: hidden;
+}
+
+.stats-panel .cadre-table-scroll .table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--gge-parchment-ink);
+  --bs-table-border-color: var(--gge-parchment-line);
+  margin: 0;
+}
+
+.stats-panel .cadre-table-scroll .table tbody tr:nth-child(even) {
+  background: rgb(110 78 36 / 6%);
+}
+
+.stats-panel .cadre-table-scroll .table thead th {
+  background: var(--gge-parchment-deep);
+  color: var(--gge-parchment-ink);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.stats-panel .cadre-table-scroll .fa-info-circle {
+  color: rgb(110 78 36 / 55%);
+}
+
+.stats-panel .data-player-dot {
+  border-radius: 50%;
+  display: inline-block;
+  height: 9px;
+  margin-right: 8px;
+  vertical-align: middle;
+  width: 9px;
 }

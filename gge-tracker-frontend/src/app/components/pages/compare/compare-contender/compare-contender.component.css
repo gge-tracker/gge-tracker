@@ -18,7 +18,7 @@
   -webkit-backdrop-filter: blur(10px);
   background:
     linear-gradient(180deg, var(--side-soft), transparent 70%),
-    rgba(9, 14, 11, 0.82);
+    rgba(8, 16, 28, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
   border-top: 3px solid var(--side);
@@ -105,7 +105,7 @@
 
 .contender-chip {
   align-items: center;
-  background: #0b0f0c;
+  background: #08111d;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 6px;
   display: inline-flex;
@@ -162,7 +162,7 @@
 }
 
 .contender--empty {
-  background: rgba(9, 14, 11, 0.62);
+  background: rgba(8, 16, 28, 0.62);
   border: 1px dashed var(--side);
   border-top-width: 3px;
   border-top-style: solid;
@@ -178,7 +178,7 @@
 .contender-suggestions {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  background: rgba(9, 14, 11, 0.94);
+  background: rgba(8, 16, 28, 0.94);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
   box-shadow: 0 16px 34px rgba(0, 0, 0, 0.45);

@@ -6,6 +6,45 @@
   --carto-muted: #9aa3ad;
   --carto-accent: #38bdf8;
   --carto-stage-height: auto;
+  --carto-scene-height: max(320px, 32cqw);
+  container-type: inline-size;
+  display: block;
+  position: relative;
+}
+
+.cartography-scene {
+  --scene-focus-x: 0.68;
+  --scene-focus-y: 0.5;
+  background: #0a111c;
+  height: var(--carto-scene-height);
+  left: 0;
+  -webkit-mask-image: linear-gradient(to bottom, #000 78%, transparent);
+  mask-image: linear-gradient(to bottom, #000 78%, transparent);
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 0;
+}
+
+.cartography {
+  position: relative;
+  z-index: 1;
+}
+
+.carto-hero {
+  align-items: flex-end;
+  display: flex;
+  min-height: calc(var(--carto-scene-height) * 0.74 - 4rem);
+  padding: 1.5rem 1rem 0;
+}
+
+.carto-hero h1 {
+  color: #fff;
+  font-size: clamp(2rem, 4cqw, 3.1rem);
+  font-weight: 800;
+  line-height: 1.05;
+  margin: 0;
+  text-shadow: 0 3px 18px rgba(0, 0, 0, 0.75);
 }
 
 ::ng-deep .cartography .leaflet-container {
@@ -815,6 +854,16 @@ h5 {
 
   to {
     background-position: 100px;
+  }
+}
+
+@media (max-width: 767.98px) {
+  :host {
+    --carto-scene-height: 260px;
+  }
+
+  .cartography-scene {
+    --scene-focus-x: 0.74;
   }
 }
 

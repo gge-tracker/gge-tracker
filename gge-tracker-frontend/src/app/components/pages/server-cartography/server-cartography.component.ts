@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { LayeredSceneComponent } from '@ggetracker-components/layered-scene/layered-scene.component';
 import { ModalFormGroupComponent } from '@ggetracker-components/modal-form-group/modal-form-group.component';
 import { ModalTableColumn, ModalTableComponent } from '@ggetracker-components/modal-table/modal-table.component';
 import {
@@ -109,6 +110,7 @@ const DENSITY_STOPS: [number, number, number][] = [
     TranslateModule,
     ModalTableComponent,
     ModalFormGroupComponent,
+    LayeredSceneComponent,
   ],
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,

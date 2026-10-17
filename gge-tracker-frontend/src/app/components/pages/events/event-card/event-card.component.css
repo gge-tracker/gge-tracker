@@ -1,8 +1,6 @@
 .event-overlay {
-  -webkit-backdrop-filter: blur(4px);
   align-items: flex-start;
-  backdrop-filter: blur(4px);
-  background: rgba(0, 0, 0, 0.45);
+  background: linear-gradient(90deg, rgba(6, 10, 18, 0.82) 0%, rgba(6, 10, 18, 0.55) 45%, rgba(6, 10, 18, 0.05) 80%);
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -45,7 +43,8 @@
 
 .event-card {
   align-items: flex-end;
-  background-position: center;
+  background-color: #0b1622;
+  background-position: right center;
   background-size: cover;
   border-radius: 1.5rem;
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);

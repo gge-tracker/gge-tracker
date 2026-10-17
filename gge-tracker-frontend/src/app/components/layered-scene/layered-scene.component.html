@@ -1,0 +1,5 @@
+<div class="scene-frame">
+  <img class="scene-poster" [src]="assetRoot() + 'poster.webp'" alt="" fetchpriority="high"
+    decoding="async" />
+  <canvas #canvas class="scene-canvas" [class.is-live]="live()" aria-hidden="true"></canvas>
+</div>

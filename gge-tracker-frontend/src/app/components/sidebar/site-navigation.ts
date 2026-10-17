@@ -96,13 +96,7 @@ export const SITE_NAVIGATION: readonly SiteNavigationSection[] = [
         url: 'https://top.gg/bot/1472309793065533493',
         iconClass: 'fa-brands fa-discord',
         tag: 'bot',
-      },
-      {
-        label: 'GGE WebSocket Studio',
-        url: 'https://chromewebstore.google.com/detail/gge-websocket-studio/deaaangkjfdcpegbebpdhkiknaniomeg',
-        iconClass: 'fa-brands fa-chrome',
-        tag: 'extension',
-      },
+      }
     ],
   },
 ];

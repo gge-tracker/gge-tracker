@@ -6,13 +6,13 @@
 .players-container {
   border-bottom: 2px #000000d4 solid;
 }
-
 .alliance-description {
   font-family: _Bodyfont, sans-serif;
   font-size: 18px;
   margin: auto;
   width: 576px;
   background: #ead0b2;
+  color: var(--gge-parchment-ink);
   white-space: pre-wrap;
   padding: 10px;
   border: 10px #c1a584 solid;
@@ -339,8 +339,6 @@ td {
   max-height: 80vh;
   overflow-x: hidden;
   overflow-y: auto;
-  scrollbar-color: #1b1b1b6c transparent;
-  scrollbar-width: thin;
 }
 
 ::ng-deep .table-custom tr:last-child td {
@@ -348,7 +346,7 @@ td {
 }
 
 ::ng-deep app-player-stats-card.fullscreen {
-  background: white;
+  background: #0b1622;
   bottom: 0;
   left: 0;
   position: fixed;
@@ -362,8 +360,10 @@ td {
   text-align: center;
 }
 
-div[after] {
-  font-size: 1.5rem;
+div[after].info-icon {
+  color: rgb(255 240 210 / 85%);
+  font-size: 1.2rem;
+  z-index: 2;
   position: absolute;
   right: 5px;
   top: 5px;
@@ -412,36 +412,33 @@ div[after] {
   z-index: 0;
 }
 
-.alliance-hero-backdrop::after {
-  background-image:
-    linear-gradient(rgb(255 137 43 / 0%), rgb(0 0 0)),
-    url(/assets/8wwypaix4da0lxjeozb0dkzr135u5zy4khoqm2lmhh25grfe96mzr07jatchq7gpicb7.png);
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: 100% 100%;
-  content: "";
-  inset: 0;
-  opacity: 0;
-  position: absolute;
-  transition: opacity 700ms ease;
+app-layered-scene.alliance-hero-backdrop {
+  --scene-focus-y: 0.35;
+  background: #0b0f17;
+  display: block;
 }
 
-.alliance-hero-backdrop.is-ready::after {
-  opacity: 1;
+app-layered-scene.alliance-hero-backdrop::after {
+  background: linear-gradient(rgb(0 0 0 / 30%), rgb(0 0 0 / 45%) 45%, rgb(0 0 0 / 80%) 85%, #000);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
 }
 
 .alliances-stats-content {
-  background-size: 75px;
-  background-image: url(/assets/textures/45-degree-fabric-dark.png);
-  background-color: #fffbe65e;
+  background:
+    linear-gradient(180deg, rgb(10 14 22 / 86%), rgb(10 14 22 / 93%) 40%, rgb(10 14 22 / 97%)),
+    url(/assets/scenes/council/poster.webp) center top / cover no-repeat;
+  border-bottom: 1px solid rgb(255 255 255 / 8%);
+  border-right: 1px solid rgb(255 255 255 / 8%);
+  color: #e6e2d8;
   min-height: 100px;
-  border-bottom: 1px white solid;
-  border-right: 1px #ffffff solid;
   margin-bottom: 50px;
 }
 
 .alliances-stats-content .subtitle {
-  color: white;
+  color: #f2e6c8;
   font-size: 1.5rem;
   font-weight: bold;
   margin-bottom: 0.5rem;
@@ -452,8 +449,7 @@ div[after] {
 
 .bg-custom {
   background:
-    linear-gradient(rgb(0 0 0 / 68%), rgb(0 0 0 / 68%)),
-    url(/assets/sand-banner.png), #ebd1b9;
+    linear-gradient(90deg, rgb(91 75 27 / 70%), rgb(12 16 24 / 85%));
 }
 
 .bg-custom-font {
@@ -495,7 +491,7 @@ div[after] {
 .stat-ledger {
   animation: fadeInUp 380ms cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 60ms) backwards;
   border: 22px solid transparent;
-  border-image: url(/assets/bg-default.png) 34 fill / 22px / 4px stretch;
+  border-image: url(/assets/site/parchment.webp) 40 fill / 22px / 4px stretch;
   color: #3b2a14;
   container-type: inline-size;
   filter: drop-shadow(0 8px 14px rgb(0 0 0 / 45%));
@@ -834,30 +830,38 @@ div[after] {
 }
 
 .next-graph {
-  right: 0;
-}
-
-.next-graph span,
-.previous-graph span {
-  cursor: pointer;
-  display: block;
-}
-
-.next-graph span:hover,
-.previous-graph span:hover {
-  transform: scale(1.2);
+  right: -11px;
 }
 
 .next-graph,
 .previous-graph {
-  align-content: center;
-  bottom: 0;
-  color: #ffffff;
-  font-size: 2rem;
-  margin: 0 10px;
   position: absolute;
-  top: 0;
-  transition: all 0.1s;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+}
+
+.next-graph span,
+.previous-graph span {
+  align-items: center;
+  background: var(--gge-parchment-light);
+  border: 1px solid rgb(110 78 36 / 35%);
+  border-radius: 50%;
+  box-shadow: 0 3px 10px rgb(40 25 5 / 30%);
+  color: #7d561c;
+  cursor: pointer;
+  display: flex;
+  font-size: 0.95rem;
+  height: 34px;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+  width: 34px;
+}
+
+.next-graph span:hover,
+.previous-graph span:hover {
+  background: #c08a3a;
+  color: #fffaf0;
 }
 
 .night {
@@ -874,7 +878,7 @@ div[after] {
 }
 
 .previous-graph {
-  left: 0;
+  left: -11px;
 }
 
 .stats-title {
@@ -929,9 +933,10 @@ div[after] {
 }
 
 .timeline-section {
-  background: #ffffff82;
+  background: linear-gradient(180deg, var(--gge-parchment-light), var(--gge-parchment) 40%, var(--gge-parchment-deep));
   border-radius: 10px;
-  border: 2px solid #838383;
+  border: 2px solid var(--gge-parchment-line);
+  color: var(--gge-parchment-ink);
   padding: 1.5rem;
 }
 
@@ -1175,4 +1180,80 @@ div[after] {
   .stat-ledger-division {
     min-height: 44px;
   }
+}
+
+.alliance-panel-body {
+  padding: 16px 18px 20px;
+}
+
+.alliance-panel-body .distance-panel {
+  margin-top: 0;
+}
+
+.alliance-panel-body .subtitle {
+  color: #f2e6c8;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+}
+
+.pulse-list {
+  background: rgb(255 255 255 / 3%);
+  border: 1px solid rgb(242 193 78 / 14%);
+  border-radius: 10px;
+  list-style: none;
+  margin: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.pulse-row {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 26px minmax(0, 1fr) auto 88px;
+  padding: 9px 14px;
+}
+
+.pulse-row + .pulse-row {
+  border-top: 1px solid rgb(255 255 255 / 6%);
+}
+
+.pulse-row:nth-child(even) {
+  background: rgb(255 255 255 / 2.5%);
+}
+
+.pulse-rank {
+  color: #c8a75e;
+  font-weight: 800;
+  text-align: center;
+}
+
+.pulse-name {
+  color: #f2e6c8;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pulse-might {
+  align-items: center;
+  color: #b9b2a2;
+  display: inline-flex;
+  font-variant-numeric: tabular-nums;
+  gap: 6px;
+}
+
+.pulse-diff {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: right;
+}
+
+.pulse-diff.is-up {
+  color: #8fcf6b;
+}
+
+.pulse-diff.is-down {
+  color: #f08a7a;
 }

@@ -1,0 +1,218 @@
+{
+  "width": 1920,
+  "height": 1080,
+  "layers": [
+    {
+      "kind": "image",
+      "id": "room",
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1080,
+      "depth": 0.55
+    },
+    {
+      "kind": "light",
+      "id": "moonbeam",
+      "x": 0,
+      "y": 0,
+      "width": 700,
+      "height": 1080,
+      "scale": 4,
+      "depth": 0.6
+    },
+    {
+      "kind": "light",
+      "id": "fireglow",
+      "x": 1210,
+      "y": 160,
+      "width": 1120,
+      "height": 1120,
+      "scale": 4
+    },
+    {
+      "kind": "flame",
+      "x": 1738,
+      "y": 772,
+      "scale": 0.75,
+      "alpha": 0.45,
+      "depth": 0.55
+    },
+    {
+      "kind": "flame",
+      "x": 1762,
+      "y": 778,
+      "scale": 1.05,
+      "alpha": 0.45,
+      "depth": 0.55
+    },
+    {
+      "kind": "flame",
+      "x": 1788,
+      "y": 770,
+      "scale": 0.85,
+      "alpha": 0.45,
+      "depth": 0.55
+    },
+    {
+      "kind": "flame",
+      "x": 1810,
+      "y": 776,
+      "scale": 0.6,
+      "alpha": 0.4,
+      "depth": 0.55
+    },
+    {
+      "kind": "flame",
+      "x": 808,
+      "y": 664,
+      "scale": 0.36,
+      "alpha": 0.8,
+      "depth": 0.55
+    },
+    {
+      "kind": "flame",
+      "x": 1840,
+      "y": 394,
+      "scale": 0.34,
+      "alpha": 0.8,
+      "depth": 0.55
+    },
+    {
+      "kind": "flame",
+      "x": 1880,
+      "y": 409,
+      "scale": 0.3,
+      "alpha": 0.8,
+      "depth": 0.55
+    },
+    {
+      "kind": "flame",
+      "x": 1657,
+      "y": 432,
+      "scale": 0.22,
+      "alpha": 0.8,
+      "depth": 0.55
+    },
+    {
+      "kind": "prop",
+      "id": "scout",
+      "x": 940,
+      "y": 510,
+      "width": 180,
+      "height": 350,
+      "depth": 0.6
+    },
+    {
+      "kind": "image",
+      "id": "table",
+      "x": 604,
+      "y": 630,
+      "width": 871,
+      "height": 382,
+      "depth": 0.55
+    },
+    {
+      "kind": "prop",
+      "id": "scribe",
+      "x": 354,
+      "y": 595,
+      "width": 372,
+      "height": 470,
+      "depth": 1.15
+    },
+    {
+      "kind": "prop",
+      "id": "king",
+      "x": 1210,
+      "y": 495,
+      "width": 371,
+      "height": 560,
+      "depth": 1.2
+    },
+    {
+      "kind": "prop",
+      "id": "chandelier",
+      "x": 139,
+      "y": -150,
+      "width": 383,
+      "height": 470,
+      "depth": 1.4
+    },
+    {
+      "kind": "flame",
+      "x": 160,
+      "y": 177,
+      "scale": 0.3,
+      "alpha": 0.85,
+      "depth": 1.4
+    },
+    {
+      "kind": "flame",
+      "x": 222,
+      "y": 205,
+      "scale": 0.24,
+      "alpha": 0.85,
+      "depth": 1.4
+    },
+    {
+      "kind": "flame",
+      "x": 271,
+      "y": 170,
+      "scale": 0.3,
+      "alpha": 0.85,
+      "depth": 1.4
+    },
+    {
+      "kind": "flame",
+      "x": 387,
+      "y": 189,
+      "scale": 0.26,
+      "alpha": 0.85,
+      "depth": 1.4
+    },
+    {
+      "kind": "flame",
+      "x": 471,
+      "y": 170,
+      "scale": 0.32,
+      "alpha": 0.85,
+      "depth": 1.4
+    },
+    {
+      "kind": "flame",
+      "x": 500,
+      "y": 200,
+      "scale": 0.28,
+      "alpha": 0.85,
+      "depth": 1.4
+    },
+    {
+      "kind": "light",
+      "id": "candleglow-chandelier",
+      "x": 30,
+      "y": -70,
+      "width": 600,
+      "height": 600,
+      "scale": 4
+    },
+    {
+      "kind": "light",
+      "id": "candleglow-table",
+      "x": 658,
+      "y": 505,
+      "width": 300,
+      "height": 300,
+      "scale": 4
+    },
+    {
+      "kind": "light",
+      "id": "candleglow-mantel",
+      "x": 1690,
+      "y": 225,
+      "width": 340,
+      "height": 340,
+      "scale": 4
+    }
+  ]
+}

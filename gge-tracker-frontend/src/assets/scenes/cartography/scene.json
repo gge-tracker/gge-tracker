@@ -1,0 +1,70 @@
+{
+  "width": 1920,
+  "height": 720,
+  "layers": [
+    {
+      "kind": "image",
+      "id": "atelier",
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 720,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "moonglow",
+      "x": 1325,
+      "y": -120,
+      "width": 400,
+      "height": 400,
+      "scale": 4,
+      "depth": 0.45
+    },
+    {
+      "kind": "light",
+      "id": "moonbeam",
+      "x": 0,
+      "y": 0,
+      "width": 1780,
+      "height": 680,
+      "scale": 4,
+      "depth": 0.55
+    },
+    {
+      "kind": "prop",
+      "id": "cartographer-figure",
+      "x": 1305,
+      "y": 158,
+      "width": 274,
+      "height": 375,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1798,
+      "y": 320,
+      "scale": 0.3,
+      "alpha": 0.45,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1865,
+      "y": 390,
+      "scale": 0.3,
+      "alpha": 0.45,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "candleglow-desk",
+      "x": 1590,
+      "y": 100,
+      "width": 480,
+      "height": 480,
+      "scale": 4,
+      "depth": 0.5
+    }
+  ]
+}

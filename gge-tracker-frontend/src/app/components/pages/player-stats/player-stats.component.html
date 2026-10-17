@@ -33,14 +33,12 @@
   </div>
   }
   @if (!isInLoading) {
-  <div class="player-stats-overlay"></div>
+  <app-layered-scene scene="scouting" class="player-stats-scene" />
   <div class="position-relative player-stats-container">
-    <div class="position-relative bg-castle d-flex flex-column justify-content-center"
+    <div class="position-relative player-hero d-flex flex-column justify-content-center"
       [ngClass]="{'d-none': !playerName}">
-      <div class="mt-3 mx-auto position-relative" style="width: fit-content;">
-        <img src="/assets/banner.png" class="img-fluid" [alt]="'Bannière' | translate">
-        <span class="position-absolute top-50 start-50 translate-middle text-white fs-1" style="width: max-content">
-          {{ playerName }}</span>
+      <div class="player-nameplate mx-auto">
+        <span class="player-nameplate-name">{{ playerName }}</span>
         <div id="allianceList">
           <a [routerLink]="['/', 'castles']" [queryParams]="{ player: playerId, search: playerName }" [title]="'Voir les châteaux' | translate">
             <img src="/assets/icon_castles.png" width="50" [alt]="'Paramètres' | translate" class="img-fluid mt-3">
@@ -203,7 +201,7 @@
           </div>
         </div>
         <div class="col-6 col-md-4 col-xl">
-          <div class="stat-card text-center" data-bs-toggle="modal" data-bs-target="#patriarchModal">
+          <div class="stat-card text-center">
             <div class="stat-icon">
               <img src="/assets/list-item.png" [alt]="'Nombre de chateaux' | translate">
             </div>
@@ -421,8 +419,9 @@
       }
       @if (currentTab === 'alliances') {
       <div class="tab-content">
-        <app-stats-panel [title]="'Alliances' | translate"
-          [subtitle]="'Historique des changements d\'alliances' | translate" [accent]="'#eaff96'">
+        <app-stats-panel class="ps-painted" [title]="'Alliances' | translate"
+          [subtitle]="'Historique des changements d\'alliances' | translate" [accent]="'#4d7a35'"
+          [bannerImage]="'/assets/scenes/council/council.webp'" [style.--ps-head-position]="'center 72%'">
           <div class="ps-body">
             <ng-container *ngTemplateOutlet="allianceHistoryContentTimeline"></ng-container>
           </div>
@@ -431,7 +430,8 @@
       }
       @if (currentTab === 'castles') {
       <div class="tab-content">
-        <app-stats-panel [title]="'Châteaux' | translate" [accent]="'#d57026'">
+        <app-stats-panel class="ps-painted" [title]="'Châteaux' | translate" [accent]="'#c0762a'"
+          [bannerImage]="'/assets/site/header-castles.webp'" [style.--ps-head-position]="'center 50%'">
           <div class="ps-body ps-castles">
             @if (quantity.patriarch === 0) {
               <div class="ps-empty">
@@ -447,7 +447,7 @@
                     @for (realm of castlesByRealm; track realm.kingdom) {
                       <div class="ps-realm kid-{{ realm.kingdom }}">
                         <div class="ps-row">
-                          <span class="ps-realm-name">{{ realm.name | translate }}</span>
+                          <span class="ps-realm-name"><span class="ps-kingdom-dot"></span>{{ realm.name | translate }}</span>
                           <span class="ps-realm-count">{{ realm.count }}</span>
                         </div>
                         <div class="ps-meter ps-meter--thin">
@@ -484,105 +484,78 @@
           </div>
         }
         @if (gloryLoadState === 'loaded' && currentPlayerTitle) {
-        <app-stats-panel [title]="'Points de gloire' | translate"
+        <app-stats-panel class="ps-painted" [title]="'Points de gloire' | translate"
           [subtitle]="(currentTopXFameTitle ? (currentI18nTitleKey + currentTopXFameTitle.titleID) : (currentI18nTitleKey + currentPlayerTitle.titleID)) | translate"
-          [accent]="'#59b3e9'">
-          <div class="ps-body">
-            <div class="row g-3">
-              <div class="col-12 col-lg-7">
-                <div class="ps-box ps-glory-hero h-100">
-                  <div class="ps-glory-emblem">
-                    <svg class="ps-glory-ring" width="80" height="80">
-                      <circle class="ps-glory-ring-track" stroke-width="4" fill="transparent" r="36" cx="40" cy="40" />
-                      <circle class="ps-glory-ring-circle" stroke-width="4" fill="transparent"
-                        [ngStyle]="{ 'stroke-dashoffset': fameProgressStrokeOffset + 'px' }" r="36" cx="40" cy="40" />
-                    </svg>
-                    <img src="/assets/glory.png" alt="Glory" class="ps-glory-icon">
-                  </div>
-                  <div class="ps-glory-main">
-                    <div class="ps-row">
-                      <span class="ps-label">{{ 'Classement' | translate }}</span>
-                      <span class="ps-meta">
-                        <i class="fas fa-clock"></i>
-                        {{ stats?.updatedAt | date:'shortTime' }}
-                      </span>
-                    </div>
-                    <div class="ps-row ps-glory-titleline">
-                      <h2 class="ps-title">
-                        {{ (currentTopXFameTitle ? (currentI18nTitleKey + currentTopXFameTitle.titleID) :
-                        (currentI18nTitleKey + currentPlayerTitle.titleID)) | translate }}
-                      </h2>
-                      <span class="ps-badge">#{{ stats?.playerCurrentFameRank ?? 0 | formatNumber }}</span>
-                    </div>
-                    <div class="ps-row ps-meter-head">
-                      <span>
-                        <strong>{{ stats?.currentFame ?? 0 | formatNumber }}</strong>
-                        {{ 'Points de gloire' | translate }}
-                      </span>
-                      <span [title]="nextFameTitle?.threshold">
-                        {{ (nextFameTitle?.threshold ?? 0) | formatNumber }}
-                        @if (nextFameTitle) {
-                        <span class="ps-meta">
-                          ({{ (nextFameTitle ? (currentI18nTitleKey + nextFameTitle.titleID) : '-') | translate }})
-                        </span>
-                        }
-                      </span>
-                    </div>
-                    <div class="ps-meter">
-                      <div class="ps-meter-fill" [style.width.%]="fameProgressPercentage"></div>
-                      <div class="ps-meter-loss"
-                        [style.left.%]="((((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) / (nextFameTitle?.threshold ?? 1)) * 100"
-                        [style.width.%]="fameProgressPercentage-(((((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) / (nextFameTitle?.threshold ?? 1)) * 100)">
-                      </div>
-                    </div>
+          [accent]="'#b08417'" [bannerImage]="'/assets/site/header-glory.webp'" [style.--ps-head-position]="'center 58%'">
+          <div class="ps-body ps-glory">
+            <div class="ps-box ps-glory-hero">
+              <div class="ps-glory-emblem">
+                <svg class="ps-glory-ring" width="80" height="80">
+                  <circle class="ps-glory-ring-track" stroke-width="4" fill="transparent" r="36" cx="40" cy="40" />
+                  <circle class="ps-glory-ring-circle" stroke-width="4" fill="transparent"
+                    [ngStyle]="{ 'stroke-dashoffset': fameProgressStrokeOffset + 'px' }" r="36" cx="40" cy="40" />
+                </svg>
+                <img src="/assets/glory.png" alt="Glory" class="ps-glory-icon">
+              </div>
+              <div class="ps-glory-main">
+                <div class="ps-row">
+                  <span class="ps-label">{{ 'Classement' | translate }}</span>
+                  <span class="ps-meta">
+                    <i class="fas fa-clock"></i>
+                    {{ stats?.updatedAt | date:'shortTime' }}
+                  </span>
+                </div>
+                <div class="ps-row ps-glory-titleline">
+                  <h2 class="ps-title">
+                    {{ (currentTopXFameTitle ? (currentI18nTitleKey + currentTopXFameTitle.titleID) :
+                    (currentI18nTitleKey + currentPlayerTitle.titleID)) | translate }}
+                  </h2>
+                  <span class="ps-badge">#{{ stats?.playerCurrentFameRank ?? 0 | formatNumber }}</span>
+                </div>
+                <div class="ps-row ps-meter-head">
+                  <span>
+                    <strong>{{ stats?.currentFame ?? 0 | formatNumber }}</strong>
+                    {{ 'Points de gloire' | translate }}
+                  </span>
+                  <span [title]="nextFameTitle?.threshold">
+                    {{ (nextFameTitle?.threshold ?? 0) | formatNumber }}
+                    @if (nextFameTitle) {
+                    <span class="ps-meta">({{ currentI18nTitleKey + nextFameTitle.titleID | translate }})</span>
+                    }
+                  </span>
+                </div>
+                <div class="ps-meter">
+                  <div class="ps-meter-fill" [style.width.%]="fameProgressPercentage"></div>
+                  <div class="ps-meter-loss"
+                    [style.left.%]="(projectedFame / (nextFameTitle?.threshold ?? 1)) * 100"
+                    [style.width.%]="fameProgressPercentage - (projectedFame / (nextFameTitle?.threshold ?? 1)) * 100">
                   </div>
                 </div>
-              </div>
-              <div class="col-12 col-lg-5">
-                <div class="ps-box h-100">
-                  <div class="ps-row mb-2">
-                    <span class="ps-label">{{ 'Prévision journalière' | translate }}</span>
-                    <span class="ps-badge is-danger">{{ 'Perte de gloire' | translate: {'0':
-                      currentPlayerTitle.decay} }}</span>
-                  </div>
-                  <div class="ps-kv">
-                    <span class="ps-kv-label">{{ 'Perte estimée' | translate }}</span>
-                    <span class="ps-kv-value is-danger"
-                      [title]="-((stats?.currentFame ?? 0) * (currentPlayerTitle.decay ?? 0)) / 100">-{{
-                      ((stats?.currentFame ?? 0) *
-                      (currentPlayerTitle.decay ?? 0)) / 100 | formatNumber }}</span>
-                  </div>
-                  <div class="ps-kv ps-kv--strong">
-                    <span class="ps-kv-label">{{ 'Points de gloire' | translate }}</span>
-                    <span class="ps-kv-value"
-                      [title]="(stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0)) / 100">
-                      {{ ((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100 | formatNumber }}
+                <div class="ps-glory-forecast" [class.is-ok]="isTitleSecured" [class.is-danger]="!isTitleSecured">
+                  <span class="ps-label">{{ 'Prévision journalière' | translate }}</span>
+                  <span class="ps-glory-forecast-figures">
+                    <span class="ps-glory-forecast-loss" [title]="'Perte estimée' | translate">
+                      -{{ (stats?.currentFame ?? 0) - projectedFame | formatNumber }}
                     </span>
-                  </div>
-                  <div class="ps-note mt-3" [ngClass]="{
-                        'is-ok': (((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) >= (currentPlayerTitle.threshold ?? 0),
-                        'is-danger': (((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) < (currentPlayerTitle.threshold ?? 0)
-                      }">
-                    @if ((((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) >=
-                    (currentPlayerTitle.threshold ?? 0)) {
-                    <span>
-                      <i class="fas fa-check-circle me-2"></i>
+                    <i class="fas fa-arrow-right"></i>
+                    <strong [title]="projectedFame">{{ projectedFame | formatNumber }}</strong>
+                    <span class="ps-meta">({{ 'Perte de gloire' | translate: {'0': currentPlayerTitle.decay} }})</span>
+                  </span>
+                  <span class="ps-glory-forecast-status">
+                    @if (isTitleSecured) {
+                      <i class="fas fa-check-circle"></i>
                       {{ 'Titre sécurisé' | translate }}
-                    </span>
-                    }
-                    @if ((((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) <
-                      (currentPlayerTitle.threshold ?? 0)) { <span>
-                      <i class="fas fa-exclamation-triangle me-2"></i>
+                    } @else {
+                      <i class="fas fa-exclamation-triangle"></i>
                       {{ 'Attention : Risque de rétrogradation' | translate }}
-                      </span>
-                      }
-                  </div>
+                    }
+                  </span>
                 </div>
               </div>
             </div>
             <div class="ps-section">
               <h3 class="ps-section-title">{{ 'Titres de gloire' | translate }}</h3>
-              <div class="ps-tile-grid">
+              <div class="ps-tile-grid ps-glory-top">
                 @for (fameTitle of fameTitlesTopX; track fameTitle) {
                 <div class="ps-tile" [class.is-active]="(stats?.playerCurrentFameRank ?? 0) <= (fameTitle.topX ?? -1)">
                   <span class="ps-tile-label">#{{ fameTitle.topX }}</span>
@@ -594,32 +567,27 @@
             </div>
             <div class="ps-section">
               <div class="ps-ladder">
-                @for (fameTitle of fameTitles; track fameTitle) {
-                <div class="ps-item-body ps-row" [ngClass]="{
-                    'is-ok': (((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) >= (fameTitle.threshold ?? 0),
-                    'is-warn': (stats?.currentFame ?? 0) >= (fameTitle.threshold ?? 0) && (((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) < (fameTitle.threshold ?? 0),
-                    'is-muted': (stats?.currentFame ?? 0) < (fameTitle.threshold ?? -1)
-                  }">
-                  <span class="ps-ladder-info">
-                    <span class="ps-meta">{{ (fameTitle?.threshold ?? -1) | formatNumber }}</span>
-                    <span class="ps-ladder-name">{{ currentI18nTitleKey + fameTitle.titleID | translate }}</span>
-                  </span>
+                @for (fameTitle of visibleFameTitles; track fameTitle.titleID) {
+                <div class="ps-ladder-step is-{{ fameTitleState(fameTitle) }}"
+                  [class.is-current]="fameTitle.titleID === currentPlayerTitle.titleID">
                   <span class="ps-ladder-icon">
-                    @if ((stats?.currentFame ?? 0) < (fameTitle.threshold ?? -1)) { <i class="fas fa-lock"></i>
-                      }
-                      @if ((stats?.currentFame ?? 0) >= (fameTitle.threshold ?? 0)) {
-                      @if ((((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) >=
-                      (fameTitle.threshold ?? 0)) {
-                      <i class="fas fa-check-circle"></i>
-                      }
-                      @if ((((stats?.currentFame ?? 0) * (100 - (currentPlayerTitle.decay ?? 0))) / 100) <
-                        (fameTitle.threshold ?? 0)) { <i class="fas fa-exclamation-triangle"></i>
-                        }
-                        }
+                    @switch (fameTitleState(fameTitle)) {
+                      @case ('ok') { <i class="fas fa-check"></i> }
+                      @case ('warn') { <i class="fas fa-exclamation"></i> }
+                      @default { <i class="fas fa-lock"></i> }
+                    }
                   </span>
+                  <span class="ps-ladder-name">{{ currentI18nTitleKey + fameTitle.titleID | translate }}</span>
+                  <span class="ps-ladder-threshold">{{ (fameTitle.threshold ?? 0) | formatNumber }}</span>
                 </div>
                 }
               </div>
+              @if (fameTitles.length > 5) {
+                <button type="button" class="ps-ladder-toggle" (click)="showAllFameTitles = !showAllFameTitles">
+                  <i class="fas" [class.fa-chevron-down]="!showAllFameTitles" [class.fa-chevron-up]="showAllFameTitles"></i>
+                  {{ (showAllFameTitles ? 'Voir moins' : 'Voir plus') | translate }}
+                </button>
+              }
             </div>
           </div>
         </app-stats-panel>
@@ -628,124 +596,134 @@
       }
       @if (currentTab === 'events') {
       <div class="tab-content">
-        <div class="container-fluid row mt-3 row-gap-3">
-          @if (eventsLoadState === 'loading' || eventsLoadState === 'idle') {
-            <div class="col-12 text-center spinner-container mt-2">
-              <i class="fas fa-spinner fa-spin"></i>
-            </div>
-          }
-          @if (eventsLoadState === 'loaded' || eventsLoadState === 'error') {
-            @for (event of outerEvents; track event) {
-            <div class="col-12 col-lg-6">
-              <app-event-card [event]="event" [options]="{ displayMode: 'ranking' }"
-                (keydown.enter)="navigateToEvent(event)" (click)="navigateToEvent(event)"></app-event-card>
-            </div>
-            }
-            @if (outerEvents.length === 0) {
-              <div class="col-12">
-                <div class="no-result">
-                  <i class="fas fa-search"></i>
-                  {{ 'Aucun résultat' | translate }}
+        <app-stats-panel class="ps-painted" [title]="'Événements' | translate" [accent]="'#b4532a'"
+          [bannerImage]="'/assets/scenes/lists/lists.webp'" [style.--ps-head-position]="'center 62%'">
+          <div class="ps-body">
+            <div class="row row-gap-3">
+              @if (eventsLoadState === 'loading' || eventsLoadState === 'idle') {
+                <div class="col-12 text-center spinner-container mt-2">
+                  <i class="fas fa-spinner fa-spin"></i>
                 </div>
-              </div>
-            }
-          }
-        </div>
+              }
+              @if (eventsLoadState === 'loaded' || eventsLoadState === 'error') {
+                @for (event of outerEvents; track event) {
+                <div class="col-12 col-lg-6">
+                  <app-event-card [event]="event" [options]="{ displayMode: 'ranking' }"
+                    (keydown.enter)="navigateToEvent(event)" (click)="navigateToEvent(event)"></app-event-card>
+                </div>
+                }
+                @if (outerEvents.length === 0) {
+                  <div class="col-12">
+                    <div class="no-result">
+                      <i class="fas fa-search"></i>
+                      {{ 'Aucun résultat' | translate }}
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+          </div>
+        </app-stats-panel>
       </div>
       }
       @if (currentTab === 'woa') {
       <div class="tab-content">
-        <div class="container-fluid row mt-3 row-gap-3">
-          @if (woaLoadState === 'loading' || woaLoadState === 'idle') {
-            <div class="col-12 text-center spinner-container mt-2">
-              <i class="fas fa-spinner fa-spin"></i>
-            </div>
-          }
-          @if (woaLoadState === 'loaded' && woaSummary) {
-            <div class="col-12">
-              <div class="woa-summary">
-                <div class="woa-summary-overlay">
-                  <img src="/assets/woa-icon.png" alt="" aria-hidden="true" class="woa-summary-emblem">
-                  <div class="woa-summary-head">
-                    <span class="woa-summary-count">
-                      <i class="fas fa-calendar-check"></i>
-                      {{ woaSummary.eventCount }} {{ 'Événements' | translate }}
-                    </span>
-                  </div>
-                  <div class="woa-summary-headline">
-                    <img src="/assets/woa_points.png" alt="" aria-hidden="true" class="woa-summary-icon">
-                    <div class="woa-summary-total">
-                      <span class="woa-summary-total-value">{{ woaSummary.totalTickets | formatNumber }}</span>
-                      <span class="woa-summary-total-label">{{ 'Tickets de richesse' | translate }}</span>
-                      @if (woaSummary.coverageStart && woaSummary.trackedEvents > 0) {
-                        <span class="woa-summary-coverage">
-                          <span class="woa-summary-coverage-since">
-                            {{ 'Suivi depuis' | translate: { date: (woaSummary.coverageStart | date: ('Date_7' | translate)) } }}
-                          </span>
-                          <span class="woa-summary-coverage-ratio">
-                            {{ woaSummary.eventCount }} / {{ woaSummary.trackedEvents }} {{ 'Événements' | translate }}
-                          </span>
+        <app-stats-panel class="ps-painted" [title]="'Roue des richesses inimaginables' | translate" [accent]="'#c9971c'"
+          [bannerImage]="'/assets/site/event-woa.webp'" [style.--ps-head-position]="'right 40%'">
+          <div class="ps-body">
+            <div class="row row-gap-3">
+              @if (woaLoadState === 'loading' || woaLoadState === 'idle') {
+                <div class="col-12 text-center spinner-container mt-2">
+                  <i class="fas fa-spinner fa-spin"></i>
+                </div>
+              }
+              @if (woaLoadState === 'loaded' && woaSummary) {
+                <div class="col-12">
+                  <div class="woa-summary">
+                    <div class="woa-summary-overlay">
+                      <img src="/assets/woa-icon.png" alt="" aria-hidden="true" class="woa-summary-emblem">
+                      <div class="woa-summary-head">
+                        <span class="woa-summary-count">
+                          <i class="fas fa-calendar-check"></i>
+                          {{ woaSummary.eventCount }} {{ 'Événements' | translate }}
                         </span>
-                      }
-                    </div>
-                    <div class="woa-summary-average">
-                      <span class="woa-summary-average-value">{{ woaSummary.averageTickets | formatNumber }}</span>
-                      <span class="woa-summary-average-label">{{ 'Moyenne' | translate }}</span>
-                    </div>
-                  </div>
-                  <div class="woa-summary-facts">
-                    <div class="woa-fact">
-                      <span class="woa-fact-value">{{ woaSummary.bestEvent.value }}</span>
-                      <span class="woa-fact-label">{{ 'Record' | translate }}</span>
-                      <span class="woa-fact-sub">{{ woaSummary.bestEvent.date | date: ('Date_7' | translate) }}</span>
-                    </div>
-                    <div class="woa-fact">
-                      <span class="woa-fact-value">#{{ woaSummary.bestRankEvent.value | formatNumber }}</span>
-                      <span class="woa-fact-label">{{ 'Meilleur classement' | translate }}</span>
-                      <span class="woa-fact-sub">{{ woaSummary.bestRankEvent.date | date: ('Date_7' | translate) }}</span>
-                    </div>
-                    @if (woaSummary.trendPercent !== null) {
-                      <div class="woa-fact woa-fact-trend" [ngClass]="{
-                          'is-ok': woaSummary.trendPercent > 5,
-                          'is-danger': woaSummary.trendPercent < -5
-                        }">
-                        <span class="woa-fact-value">
-                          @if (woaSummary.trendPercent > 5) {
-                            <i class="fas fa-arrow-up"></i>
-                          } @else if (woaSummary.trendPercent < -5) {
-                            <i class="fas fa-arrow-down"></i>
-                          } @else {
-                            <i class="fas fa-minus"></i>
-                          }
-                          {{ woaSummary.trendPercent > 0 ? '+' : '' }}{{ woaSummary.trendPercent }}%
-                        </span>
-                        <span class="woa-fact-label">{{ 'Tendance récente' | translate }}</span>
-                        <span class="woa-fact-sub">{{ '3 derniers vs. moyenne' | translate }}</span>
                       </div>
-                    }
+                      <div class="woa-summary-headline">
+                        <img src="/assets/woa_points.png" alt="" aria-hidden="true" class="woa-summary-icon">
+                        <div class="woa-summary-total">
+                          <span class="woa-summary-total-value">{{ woaSummary.totalTickets | formatNumber }}</span>
+                          <span class="woa-summary-total-label">{{ 'Tickets de richesse' | translate }}</span>
+                          @if (woaSummary.coverageStart && woaSummary.trackedEvents > 0) {
+                            <span class="woa-summary-coverage">
+                              <span class="woa-summary-coverage-since">
+                                {{ 'Suivi depuis' | translate: { date: (woaSummary.coverageStart | date: ('Date_7' | translate)) } }}
+                              </span>
+                              <span class="woa-summary-coverage-ratio">
+                                {{ woaSummary.eventCount }} / {{ woaSummary.trackedEvents }} {{ 'Événements' | translate }}
+                              </span>
+                            </span>
+                          }
+                        </div>
+                        <div class="woa-summary-average">
+                          <span class="woa-summary-average-value">{{ woaSummary.averageTickets | formatNumber }}</span>
+                          <span class="woa-summary-average-label">{{ 'Moyenne' | translate }}</span>
+                        </div>
+                      </div>
+                      <div class="woa-summary-facts">
+                        <div class="woa-fact">
+                          <span class="woa-fact-value">{{ woaSummary.bestEvent.value }}</span>
+                          <span class="woa-fact-label">{{ 'Record' | translate }}</span>
+                          <span class="woa-fact-sub">{{ woaSummary.bestEvent.date | date: ('Date_7' | translate) }}</span>
+                        </div>
+                        <div class="woa-fact">
+                          <span class="woa-fact-value">#{{ woaSummary.bestRankEvent.value | formatNumber }}</span>
+                          <span class="woa-fact-label">{{ 'Meilleur classement' | translate }}</span>
+                          <span class="woa-fact-sub">{{ woaSummary.bestRankEvent.date | date: ('Date_7' | translate) }}</span>
+                        </div>
+                        @if (woaSummary.trendPercent !== null) {
+                          <div class="woa-fact woa-fact-trend" [ngClass]="{
+                              'is-ok': woaSummary.trendPercent > 5,
+                              'is-danger': woaSummary.trendPercent < -5
+                            }">
+                            <span class="woa-fact-value">
+                              @if (woaSummary.trendPercent > 5) {
+                                <i class="fas fa-arrow-up"></i>
+                              } @else if (woaSummary.trendPercent < -5) {
+                                <i class="fas fa-arrow-down"></i>
+                              } @else {
+                                <i class="fas fa-minus"></i>
+                              }
+                              {{ woaSummary.trendPercent > 0 ? '+' : '' }}{{ woaSummary.trendPercent }}%
+                            </span>
+                            <span class="woa-fact-label">{{ 'Tendance récente' | translate }}</span>
+                            <span class="woa-fact-sub">{{ '3 derniers vs. moyenne' | translate }}</span>
+                          </div>
+                        }
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              }
+              @if (woaLoadState === 'loaded' || woaLoadState === 'error') {
+                @for (woaEvent of woaHistory; track woaEvent) {
+                  <div class="col-12 col-lg-6">
+                    <app-event-card [event]="woaEvent" [options]="{ displayMode: 'points', dateFormat: 'Date_1' }"
+                      (click)="navigateToEvent(woaEvent)" (keydown.enter)="navigateToEvent(woaEvent)"
+                      (keydown.space)="navigateToEvent(woaEvent)" tabindex="0" role="button"></app-event-card>
+                  </div>
+                }
+                @if (woaHistory.length === 0) {
+                  <div class="col-12">
+                    <div class="no-result">
+                      <i class="fas fa-search"></i>
+                      {{ 'Aucun résultat' | translate }}
+                    </div>
+                  </div>
+                }
+              }
             </div>
-          }
-          @if (woaLoadState === 'loaded' || woaLoadState === 'error') {
-            @for (woaEvent of woaHistory; track woaEvent) {
-              <div class="col-12 col-lg-6">
-                <app-event-card [event]="woaEvent" [options]="{ displayMode: 'points', dateFormat: 'Date_1' }"
-                  (click)="navigateToEvent(woaEvent)" (keydown.enter)="navigateToEvent(woaEvent)"
-                  (keydown.space)="navigateToEvent(woaEvent)" tabindex="0" role="button"></app-event-card>
-              </div>
-            }
-            @if (woaHistory.length === 0) {
-              <div class="col-12">
-                <div class="no-result">
-                  <i class="fas fa-search"></i>
-                  {{ 'Aucun résultat' | translate }}
-                </div>
-              </div>
-            }
-          }
-        </div>
+          </div>
+        </app-stats-panel>
       </div>
       }
       @if (currentTab === 'aquamarine') {
@@ -762,8 +740,9 @@
           </div>
         }
         @if (aquamarineLoadState === 'loaded' && aquamarineSnapshots.length > 0) {
-          <app-stats-panel [title]="'Îles orageuses' | translate" [subtitle]="getMonthNameByDate(aquamarineMonth)"
-            [accent]="'#00bcd4'">
+          <app-stats-panel class="ps-painted" [title]="'Îles orageuses' | translate"
+            [subtitle]="getMonthNameByDate(aquamarineMonth)" [accent]="'#1f6f68'"
+            [bannerImage]="'/assets/site/header-storm.webp'" [style.--ps-head-position]="'center 48%'">
             <div class="ps-body">
               <div class="ps-nav">
                 <button class="ps-nav-btn" (click)="previousAquamarineMonth()"
@@ -814,9 +793,9 @@
                     [data]="[]"
                     [title]="'Îles orageuses' | translate"
                     [dataName]="'Points' | translate"
-                    [backgroundIconImage]="'/assets/banner-aquamarine.png'"
+                    [backgroundIconImage]="'/assets/site/header-storm.webp'"
                     [eventName]="'aquamarine'"
-                    [backgroundColour]="'rgb(0 188 212)'">
+                    [backgroundColour]="'#1f6f68'">
                   </app-player-stats-card>
                 }
               </div>
@@ -892,7 +871,7 @@
       <span>{{ 'Aucun résultat' | translate }}</span>
     </div>
   } @else {
-    <div class="ps-list">
+    <div class="ps-list ps-list--capped">
       @for (alliance of allianceUpdates; track alliance) {
         <div class="ps-item" [ngClass]="{
           'is-danger': !alliance.alliance,
@@ -1000,25 +979,6 @@
   </div>
 </ng-template>
 
-<div class="modal fade" id="patriarchModal" tabindex="-1" aria-labelledby="patriarchModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="patriarchModalLabel">{{ 'Vue d\'ensemble' | translate }} ({{
-          quantity.patriarch }})
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"
-          [attr.aria-label]="'Fermer' | translate"></button>
-      </div>
-      <div class="modal-body">
-        <ng-container *ngTemplateOutlet="patriarchOverviewContent"></ng-container>
-        <app-modal-table [items]="monumentsList" [columns]="monumentsColumns"
-          [rowTemplate]="patriarchMonumentsRow" [searchFilter]="monumentsSearchFilter" defaultSortColumn="type" />
-      </div>
-    </div>
-  </div>
-</div>
-
 <ng-template #patriarchOverviewContent>
   <div class="ps-holdings">
     <div class="ps-holdings-total">
@@ -1040,7 +1000,8 @@
 <ng-template #patriarchMonumentsRow let-monument>
   <tr>
     <td>{{ monument.type }}</td>
-    <td class="kid-{{ monument.kingdom }}">{{ getRealmName(monument.kingdom) | translate }}</td>
+    <td><span class="ps-kingdom-pill kid-{{ monument.kingdom }}"><span class="ps-kingdom-dot"></span>{{
+      getRealmName(monument.kingdom) | translate }}</span></td>
     <td>{{ monument.position }}</td>
   </tr>
 </ng-template>
