@@ -72,6 +72,12 @@ interface OuterRealmsEntry {
   castlePositionY: number;
 }
 
+interface OuterRealmsSweep {
+  entries: Map<number, OuterRealmsEntry>;
+  announced: number;
+  rankingShifts: number;
+}
+
 type GameUniverse = 'ep' | 'e4k';
 
 interface GrandTournamentSnapshot {
@@ -250,6 +256,7 @@ export class GenericFetchAndSaveBackend {
   private static readonly CLICKHOUSE_MAX_ATTEMPTS = 6;
   private static readonly CLICKHOUSE_BASE_BACKOFF_MS = 2000;
   private static readonly CLICKHOUSE_MAX_BACKOFF_MS = 60000;
+  private static readonly OUTER_REALMS_MIN_COVERAGE = 0.95;
 
   public playerRenamedList: { [key: string]: any } = {};
   public allianceRenamedList: { [key: string]: any } = {};
@@ -447,6 +454,10 @@ export class GenericFetchAndSaveBackend {
   private static async abortOuterRealmsFetch(redisClient: ReturnType<typeof createClient>): Promise<void> {
     await redisClient.set(`outerRealmsDataFetchError`, 'No active event found with known LT codes');
     await redisClient.quit();
+  }
+
+  private static isOuterRealmsSweepComplete(sweep: OuterRealmsSweep): boolean {
+    return sweep.entries.size >= sweep.announced * GenericFetchAndSaveBackend.OUTER_REALMS_MIN_COVERAGE;
   }
 
   private static collectOuterRealmsBatch(
@@ -1251,6 +1262,8 @@ export class GenericFetchAndSaveBackend {
     const start = new Date();
     let LT: number | null = null;
     let scoringSystemType: 'collector' | 'might' | 'rankSwap' | null = null;
+    let sweep: OuterRealmsSweep | null = null;
+    let stored = false;
     try {
       Utils.logMessage('=====================================');
       Utils.logMessage(' Starting Outer Realms data fetch');
@@ -1289,9 +1302,16 @@ export class GenericFetchAndSaveBackend {
       await redisClient.del(`outerRealmsDataFetchError`);
       await redisClient.quit();
 
-      const playerEntries = await this.collectOuterRealmsEntries(LT, initialResponse);
-      Utils.logMessage(' Total unique player entries fetched:', playerEntries.size);
-      await this.storeOuterRealmsEntries(playerEntries);
+      sweep = await this.collectOuterRealmsEntries(LT, initialResponse);
+      Utils.logMessage(' Total unique player entries fetched:', sweep.entries.size);
+      if (GenericFetchAndSaveBackend.isOuterRealmsSweepComplete(sweep)) {
+        await this.storeOuterRealmsEntries(sweep.entries);
+        stored = true;
+      } else {
+        Utils.logWarning(
+          ` Outer Realms sweep read ${sweep.entries.size} of ${sweep.announced} announced entries. Nothing stored, the previous reading stays current.`,
+        );
+      }
     } catch (error) {
       this.recordJobFailure('outer realms data fetch', error, '450');
     } finally {
@@ -1310,6 +1330,10 @@ export class GenericFetchAndSaveBackend {
           server: this.server,
           criticalErrors: this.DB_UPDATES.criticalErrors,
           playersCreated: this.DB_UPDATES.playersCreated,
+          playersCollected: sweep?.entries.size ?? 0,
+          playersAnnounced: sweep?.announced ?? 0,
+          rankingShifts: sweep?.rankingShifts ?? 0,
+          stored,
           LT,
           durationMs: duration,
           ...this.jobFailure,
@@ -2285,14 +2309,12 @@ export class GenericFetchAndSaveBackend {
     return { scoringSystemType, LT };
   }
 
-  private async collectOuterRealmsEntries(
-    LT: number,
-    initialResponse: AxiosResponse<any>,
-  ): Promise<Map<number, OuterRealmsEntry>> {
+  private async collectOuterRealmsEntries(LT: number, initialResponse: AxiosResponse<any>): Promise<OuterRealmsSweep> {
     const entriesByPage = initialResponse.data.content?.L?.length || 0;
     const increment = Math.ceil(Number(entriesByPage) / 2);
-    const maxItemLimit = initialResponse.data.content?.LR || 0;
+    const maxItemLimit = Number(initialResponse.data.content?.LR) || 0;
     const playerEntries = new Map<number, OuterRealmsEntry>();
+    let rankingShifts = 0;
     let hasMore = true;
     let item = increment;
 
@@ -2306,15 +2328,20 @@ export class GenericFetchAndSaveBackend {
           break;
         }
         const duplicatesInThisBatch = GenericFetchAndSaveBackend.collectOuterRealmsBatch(content, LT, playerEntries);
-        // If we have a full batch with all duplicates, we can stop fetching more data
         if (duplicatesInThisBatch === content.length) {
-          Utils.logMessage(` All entries in this batch are duplicates (SV=${item}). Ending Outer Realms data fetch.`);
-          break;
+          // The game clamps the last window, so a repeated page only means the end once SV reaches LR
+          if (item + entriesByPage >= maxItemLimit) {
+            Utils.logMessage(` Last page reached (SV=${item}). Ending Outer Realms data fetch.`);
+            break;
+          }
+          // The game re-ranks every 15s: overtaken players slide into the next window, already read
+          rankingShifts++;
+          Utils.logMessage(` Page SV=${item} only repeats read entries: the ranking moved during the sweep.`);
         }
       }
       item += increment;
     }
-    return playerEntries;
+    return { entries: playerEntries, announced: maxItemLimit, rankingShifts };
   }
 
   private async fetchOuterRealmsPage(

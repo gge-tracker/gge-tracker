@@ -215,24 +215,58 @@ describe('startOuterRealmsDataFetch', () => {
     });
   });
 
-  it('stops paging as soon as a page repeats what it already holds', async () => {
+  it('stops paging on the clamped last page', async () => {
     await withSandbox({}, async (sandbox) => {
       startEvent(sandbox, COLLECTOR_SETTING);
       const entrants = Array.from({ length: 40 }, (_, index) => entrant(index + 1));
+      serveOuterRealms(sandbox, entrants);
+      await sandbox.call('startOuterRealmsDataFetch');
+      assert.equal(sandbox.clickhouse.rows(TABLE).length, entrants.length);
+      const pages = sandbox.api.callsFor('hgh').map((c) => Number(c.parameters.SV));
+      assert.ok(Math.max(...pages) < entrants.length + PAGE_SIZE / 2, 'no page asked past the end');
+    });
+  });
+
+  it('keeps paging past a page the ranking shifted under, and stores the whole ranking', async () => {
+    await withSandbox({}, async (sandbox) => {
+      startEvent(sandbox, COLLECTOR_SETTING);
+      const entrants = Array.from({ length: 40 }, (_, index) => entrant(index + 1));
+      const shiftedSv = 15;
       sandbox.api.on('hgh', (request: ApiRequest) => {
         const sv = Number(request.parameters.SV);
-        const window = sv === 1 ? entrants.slice(0, PAGE_SIZE) : entrants.slice(0, PAGE_SIZE);
+        const centre = sv === shiftedSv ? sv - PAGE_SIZE : sv;
+        const lastStart = entrants.length - PAGE_SIZE + 1;
+        const start = Math.min(Math.max(centre - Math.floor((PAGE_SIZE - 1) / 2), 1), lastStart);
         return {
           return_code: '0',
           content: {
             LR: entrants.length,
-            L: window.map((e, index) => row(e, index + 1)),
+            L: entrants.slice(start - 1, start - 1 + PAGE_SIZE).map((e, index) => row(e, start + index)),
           },
         };
       });
       await sandbox.call('startOuterRealmsDataFetch');
-      assert.equal(sandbox.clickhouse.rows(TABLE).length, PAGE_SIZE);
-      assert.equal(sandbox.api.callsFor('hgh').length, 3, 'the probe, the first page, then the all-duplicate page');
+      assert.equal(sandbox.clickhouse.rows(TABLE).length, entrants.length);
+      assert.equal(sandbox.clickhouse.rows('latest_fetch_date').length, 1);
+    });
+  });
+
+  it('stores nothing when the sweep read far fewer entries than announced', async () => {
+    await withSandbox({}, async (sandbox) => {
+      startEvent(sandbox, COLLECTOR_SETTING);
+      const entrants = Array.from({ length: 40 }, (_, index) => entrant(index + 1));
+      sandbox.api.on('hgh', () => ({
+        return_code: '0',
+        content: {
+          LR: entrants.length,
+          L: entrants.slice(0, PAGE_SIZE).map((e, index) => row(e, index + 1)),
+        },
+      }));
+      const result = await sandbox.call('startOuterRealmsDataFetch');
+      assert.equal(result, 'collector');
+      assert.equal(sandbox.clickhouse.rows(TABLE).length, 0, 'a partial ranking must not become the latest reading');
+      assert.equal(sandbox.clickhouse.rows('latest_fetch_date').length, 0);
+      assert.equal(sandbox.state('DB_UPDATES').criticalErrors, 0, 'a moving ranking is not a failure');
     });
   });
 
