@@ -6,86 +6,10 @@
 <div class="container-fluid">
   <div class="mt-4" [class.container]="!(canvasReady && cid)" [class.castle-workspace]="canvasReady && cid">
     @if (!isInLoading && !canvasReady && !cid) {
-      <div class="mt-1 castle-selection">
-        <app-search-form #searchForm [formFilters]="null" [isInLoading]="isInLoading"
-          [inputTip]="'Rechercher un joueur' | translate" [defaultSearch]="search"
-          [searchTypes]="{ player: true, alliance: false }" (searchPlayer)="searchPlayer($event)">
-        </app-search-form>
-        <div class="castle-grid mt-4">
-          @if (loadItemPlaceholder) {
-            <div class="castle-card-placeholder">
-              <div class="placeholder-shimmer"></div>
-            </div>
-          }
-          @for (castle of castles; track castle) {
-            <button type="button"
-              class="castle-card position-relative button-reset kid-{{ castle.kingdomId }}"
-              [ngClass]="{ unavailable: !castle.isAvailable, dummy: castle.dummy }"
-              (click)="castle.dummy ? false : castle.isAvailable ? onCastleClick(castle) : displayUnavailableCastleMessage()"
-              [title]="castle.isAvailable ? ('Voir plus' | translate) : ''">
-              <div class="position-absolute top-0 end-0 pe-2 ext-indicator"><i class="fa-solid fa-square-up-right"></i></div>
-              <div class="castle-header text-center">
-                <div class="castle-image">
-                  <img [src]="getSearchCastleImg(castle, true)" alt="{{ castle.name }}" class="castle-img-{{castle.type}}">
-                </div>
-                <div class="castle-info row justify-content-center">
-                  <div class="col-12">
-                    <h5 class="castle-name">{{ castle.name }}</h5>
-                    <p class="castle-type">{{ getCastleType(castle.type) | translate }}</p>
-                  </div>
-                  <div class="col-auto">
-                    <canvas #miniMap width="50" height="50" class="castle-minimap"></canvas>
-                    <p class="castle-coords">
-                      <i class="fa-solid fa-map-marker-alt"></i> {{ castle.positionX }} ; {{ castle.positionY }}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div class="castle-data">
-                <div class="data-item">
-                  @if (castle.wallLevel && castle.wallLevel > 0) {
-                    <img
-                      [src]="'/assets/object/wall_level_' + castle.wallLevel + '.png'" alt="Wall">
-                    } @else {
-                      <div class="level-tag-0 wall"></div>
-                    }
-                    <span class="level-tag">{{ castle.wallLevel }}</span>
-                  </div>
-                  <div class="data-item">
-                    @if (castle.gateLevel && castle.gateLevel > 0) {
-                      <img
-                        [src]="'/assets/object/gate_level_' + castle.gateLevel + '.png'" alt="Gate">
-                      } @else {
-                        <div class="level-tag-0 gate"></div>
-                      }
-                      <span class="level-tag">{{ castle.gateLevel }}</span>
-                    </div>
-                    <div class="data-item">
-                      @if (castle.towerLevel && castle.towerLevel > 0) {
-                        <img
-                          [src]="'/assets/object/tower_level_' + castle.towerLevel + '.png'" alt="Tower">
-                        } @else {
-                          <div class="level-tag-0 tower"></div>
-                        }
-                        <span class="level-tag">{{ castle.towerLevel }}</span>
-                      </div>
-                      <div class="data-item">
-                        @if (castle.moatLevel && castle.moatLevel > 0) {
-                          <img
-                            [src]="'/assets/object/moat_classic_level_' + (castle.moatLevel > 4 ? castle.moatLevel - 4 : castle.moatLevel) + '.png'" alt="Moat">
-                          } @else {
-                            <div class="level-tag-0 moat"></div>
-                          }
-                          <span class="level-tag">
-                            {{ castle.moatLevel > 4 ? (castle.moatLevel - 4) + "★" : castle.moatLevel }}
-                          </span>
-                        </div>
-                      </div>
-                    </button>
-                  }
-                </div>
-              </div>
-            }
+      <app-castle-roster [castles]="rosterCastles" [loading]="loadItemPlaceholder" [owner]="castleOwner"
+        [initialQuery]="search" (searchName)="searchPlayer($event)" (pickPlayer)="onRosterPlayerPick($event)"
+        (openCastle)="onRosterCastle($event)" (shuffle)="onRosterShuffle()" />
+    }
           </div>
           @if (!isInLoading) {
             @if (canvasReady && cid) {

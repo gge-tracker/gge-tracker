@@ -1,0 +1,141 @@
+{
+  "width": 1920,
+  "height": 720,
+  "layers": [
+    {
+      "kind": "image",
+      "id": "keeps",
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 720,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "windowglow-horizon",
+      "x": -120,
+      "y": 160,
+      "width": 640,
+      "height": 640,
+      "scale": 4,
+      "depth": 0.4
+    },
+    {
+      "kind": "light",
+      "id": "fireglow-volcano",
+      "x": 1642,
+      "y": 80,
+      "width": 300,
+      "height": 300,
+      "scale": 4,
+      "depth": 0.45
+    },
+    {
+      "kind": "light",
+      "id": "windowglow-keep-green",
+      "x": 900,
+      "y": 305,
+      "width": 180,
+      "height": 180,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "windowglow-keep-sand",
+      "x": 1130,
+      "y": 280,
+      "width": 220,
+      "height": 220,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "windowglow-keep-ice",
+      "x": 1360,
+      "y": 270,
+      "width": 220,
+      "height": 220,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "windowglow-keep-fire",
+      "x": 1595,
+      "y": 290,
+      "width": 240,
+      "height": 240,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 938,
+      "y": 492,
+      "scale": 0.05,
+      "alpha": 0.7,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1035,
+      "y": 543,
+      "scale": 0.05,
+      "alpha": 0.7,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1228,
+      "y": 543,
+      "scale": 0.05,
+      "alpha": 0.7,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1283,
+      "y": 500,
+      "scale": 0.05,
+      "alpha": 0.7,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1575,
+      "y": 557,
+      "scale": 0.05,
+      "alpha": 0.7,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1683,
+      "y": 562,
+      "scale": 0.05,
+      "alpha": 0.7,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1640,
+      "y": 580,
+      "scale": 0.05,
+      "alpha": 0.7,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "motes-keeps",
+      "x": 730,
+      "y": 0,
+      "width": 1040,
+      "height": 1040,
+      "scale": 4,
+      "depth": 0.9
+    }
+  ]
+}

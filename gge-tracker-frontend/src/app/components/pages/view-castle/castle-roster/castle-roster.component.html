@@ -1,0 +1,142 @@
+<section class="roster-hero">
+  <app-layered-scene scene="keeps" class="roster-scene" />
+  <div class="roster-hero-content">
+    <h1>{{ 'Châteaux' | translate }}</h1>
+    <p>{{ 'castle-roster-intro' | translate }}</p>
+    <form class="roster-search" role="search" (ngSubmit)="submit()">
+      <label class="visually-hidden" for="castle-roster-search">{{ 'Rechercher un joueur' | translate }}</label>
+      <div class="roster-field">
+        <lucide-icon class="roster-field-icon" [img]="Search" [size]="18" aria-hidden="true"></lucide-icon>
+        <input id="castle-roster-search" name="query" type="search" autocomplete="off" enterkeyhint="search"
+          role="combobox" aria-autocomplete="list" aria-controls="castle-roster-suggestions"
+          [attr.aria-expanded]="suggestions().length > 0"
+          [attr.aria-activedescendant]="activeIndex() >= 0 ? 'castle-roster-suggestion-' + activeIndex() : null"
+          [(ngModel)]="query" (ngModelChange)="onQueryChange($event)" (keydown)="navigate($event)"
+          (blur)="closeSuggestions()" [placeholder]="'Rechercher un joueur' | translate">
+        @if (query) {
+          <button type="button" class="roster-clear" (click)="reset()"
+            [title]="'Réinitialiser' | translate" [attr.aria-label]="'Réinitialiser' | translate">
+            <lucide-icon [img]="Clear" [size]="16"></lucide-icon>
+          </button>
+        }
+        @if (suggestions().length > 0) {
+          <ul id="castle-roster-suggestions" class="roster-suggestions" role="listbox">
+            @for (suggestion of suggestions(); track suggestion.id; let index = $index) {
+              <li role="option" [id]="'castle-roster-suggestion-' + index" [attr.aria-selected]="index === activeIndex()">
+                <button type="button" class="roster-suggestion" [class.active]="index === activeIndex()"
+                  (mousedown)="pick(suggestion)" (mouseenter)="activeIndex.set(index)">
+                  <span class="roster-suggestion-level">{{ suggestion.level }}@if (suggestion.legendary_level) {<small>/{{ suggestion.legendary_level }}</small>}</span>
+                  <span class="roster-suggestion-name">{{ suggestion.name }}</span>
+                  <span class="roster-suggestion-meta">
+                    @if (suggestion.alliance_name) {
+                      <span class="roster-suggestion-alliance">{{ suggestion.alliance_name }}</span>
+                    }
+                    <span>{{ suggestion.might_current | formatNumber }}</span>
+                  </span>
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+      <button type="submit" class="roster-submit" [disabled]="loading()">
+        {{ 'Rechercher' | translate }}
+      </button>
+    </form>
+  </div>
+</section>
+
+<div class="roster-toolbar">
+  <div class="roster-heading">
+    @if (owner()) {
+      <h2>{{ 'castle-roster-of' | translate: { name: owner() } }}</h2>
+    } @else {
+      <h2>{{ 'castle-roster-random' | translate }}</h2>
+    }
+    @if (!loading()) {
+      <span class="roster-count">{{ visibleCastles().length }}</span>
+    }
+    @if (!owner()) {
+      <button type="button" class="roster-shuffle" (click)="shuffle.emit()" [disabled]="loading()">
+        <lucide-icon [img]="Shuffle" [size]="16"></lucide-icon>
+        <span>{{ 'castle-roster-shuffle' | translate }}</span>
+      </button>
+    }
+  </div>
+  @if (realms().length > 1) {
+    <div class="roster-realms" role="group" [attr.aria-label]="'Royaume' | translate">
+      <button type="button" class="roster-realm" [class.active]="realmFilter() === null"
+        [attr.aria-pressed]="realmFilter() === null" (click)="toggleRealm(null)">
+        {{ 'Tous' | translate }}<span>{{ castles().length }}</span>
+      </button>
+      @for (realm of realms(); track realm.id) {
+        <button type="button" class="roster-realm realm-{{ realm.id }}" [class.active]="realmFilter() === realm.id"
+          [attr.aria-pressed]="realmFilter() === realm.id" (click)="toggleRealm(realm.id)" [title]="realm.name | translate">
+          <img [src]="realm.icon" alt="" width="20" height="20">
+          <span class="roster-realm-name">{{ realm.name | translate }}</span><span>{{ realm.count }}</span>
+        </button>
+      }
+    </div>
+  }
+</div>
+
+<div class="roster-grid">
+  @if (loading()) {
+    @for (placeholder of placeholders; track placeholder) {
+      <div class="keep-card keep-card--placeholder" aria-hidden="true">
+        <div class="keep-stage"></div>
+        <div class="keep-body">
+          <span class="keep-skeleton keep-skeleton-name"></span>
+          <span class="keep-skeleton keep-skeleton-meta"></span>
+          <span class="keep-skeleton keep-skeleton-row"></span>
+        </div>
+      </div>
+    }
+  } @else {
+    @for (entry of visibleCastles(); track entry.castle.id; let index = $index) {
+      <button type="button" class="keep-card realm-{{ entry.castle.kingdomId }}"
+        [class.unavailable]="!entry.castle.isAvailable" [class.dummy]="entry.castle.dummy"
+        [style.--keep-index]="index" (click)="openCastle.emit(entry.castle)"
+        [title]="entry.castle.isAvailable ? ('Voir plus' | translate) : ('castle-roster-unavailable' | translate)">
+        <div class="keep-stage">
+          @if (realmOf(entry.castle); as realm) {
+            <span class="keep-realm"><img [src]="realm.icon" alt="" width="16" height="16">{{ realm.name | translate }}</span>
+          }
+          <span class="keep-map" aria-hidden="true">
+            <span class="keep-map-dot" [style.left]="mapPosition(entry.castle.positionX)"
+              [style.top]="mapPosition(entry.castle.positionY)"></span>
+          </span>
+          <img class="keep-image keep-image-{{ entry.castle.type }}" [src]="entry.image" [alt]="entry.castle.name" loading="lazy">
+          @if (!entry.castle.isAvailable) {
+            <span class="keep-lock"><lucide-icon [img]="Locked" [size]="14"></lucide-icon></span>
+          }
+        </div>
+        <div class="keep-body">
+          <div class="keep-title">
+            <h3>{{ entry.castle.name }}</h3>
+            <span class="keep-type">{{ entry.typeLabel | translate }}</span>
+          </div>
+          <span class="keep-coords">
+            <lucide-icon [img]="Pin" [size]="13"></lucide-icon>{{ entry.castle.positionX }} : {{ entry.castle.positionY }}
+          </span>
+          <ul class="keep-defences">
+            @for (defence of defencesOf(entry.castle); track defence.key) {
+              <li [title]="defence.label | translate" [class.empty]="!defence.image">
+                <img [src]="defence.image ?? defence.fallback" [alt]="defence.label | translate" width="30" height="30" loading="lazy">
+                <span>{{ defence.level }}</span>
+              </li>
+            }
+          </ul>
+        </div>
+        @if (entry.castle.isAvailable && !entry.castle.dummy) {
+          <span class="keep-cta">{{ 'castle-roster-open' | translate }}<lucide-icon [img]="Open" [size]="15"></lucide-icon></span>
+        }
+      </button>
+    } @empty {
+      <div class="roster-empty">
+        <img src="/assets/castle1.png" alt="" width="48" height="48">
+        <p>{{ (owner() ? 'castle-roster-empty' : 'Aucun résultat') | translate }}</p>
+      </div>
+    }
+  }
+</div>

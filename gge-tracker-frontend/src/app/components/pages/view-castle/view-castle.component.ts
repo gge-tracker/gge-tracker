@@ -6,15 +6,12 @@ import {
   ElementRef,
   inject,
   OnInit,
-  QueryList,
   ViewChild,
-  ViewChildren,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { FilterComponent } from '@ggetracker-components/filter/filter.component';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { LoadingComponent } from '@ggetracker-components/loading/loading.component';
-import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { SearchbarComponent } from '@ggetracker-components/searchbar/searchbar.component';
 import { ISelectItem, SelectComponent } from '@ggetracker-components/select/select.component';
 import { SwitchComponent } from '@ggetracker-components/switch/switch.component';
@@ -35,6 +32,7 @@ import { ServerService } from '@ggetracker-services/server.service';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Castle, LucideAngularModule } from 'lucide-angular';
 import { BuildingImgComponent } from './app-building-img/building-img.component';
+import { CastleRosterComponent, RosterCastle, RosterPlayerPick } from './castle-roster/castle-roster.component';
 import { CastleGround } from './castle-iso/castle-defence-layout';
 import {
   buildingAssetFile,
@@ -91,7 +89,7 @@ interface ConstructionEffect {
 @Component({
   selector: 'app-view-castle',
   imports: [
-    SearchFormComponent,
+    CastleRosterComponent,
     TranslatePipe,
     NgClass,
     DecimalPipe,
@@ -151,7 +149,6 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
    */
   public previousSelectedItem: IMappedBuildingWithGround | null = null;
   @ViewChild('mapCanvas', { static: false }) public canvasRef!: ElementRef<HTMLCanvasElement>;
-  @ViewChildren('miniMap') public miniMaps!: QueryList<ElementRef<HTMLCanvasElement>>;
   @ViewChild(CastleIsoViewComponent) public isoView?: CastleIsoViewComponent<IMappedBuildingWithGround>;
   public buildingStyles: Record<string, Record<string, string>> = {};
   public allVisibleBuildings: IMappedBuildingWithGround[] = [];
@@ -242,6 +239,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   public currentPage = 1;
   public totalPages = 1;
   public castles: ApiPlayerCastleNameResponse[] = [];
+  public rosterCastles: RosterCastle[] = [];
+  public castleOwner = '';
   public constructionItems: { [key: string]: ConstructionItem[] } = {};
   public castleObject: ApiPlayerCastleDataMapped | null = null;
   public search = '';
@@ -260,8 +259,6 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   ];
   public isoScene: CastleIsoScene<IMappedBuildingWithGround> | null = null;
   public isoFileName = 'castle';
-  private readonly mapSize = 1286;
-  private readonly miniSize = 50;
   private readonly itemsJsonUrl = 'assets/items';
   private languageJsonData?: { [key: string]: string | string[] };
   private effects: Record<string, any>[] = [];
@@ -353,11 +350,12 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     this.clearAllParameters();
     this.searchedPlayerId = null;
     if (!playerName) {
-      // Reset state if search is empty
+      this.search = '';
       await this.router.navigate([], { queryParams: { search: null } });
-      this.cdr.detectChanges();
+      await this.fetchRandomCastles();
       return;
     }
+    this.castleOwner = playerName;
     this.loadItemPlaceholder = true;
     await this.router.navigate([], { queryParams: { search: playerName } });
     this.search = playerName;
@@ -367,6 +365,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   public async searchPlayerById(playerId: number): Promise<void> {
     this.clearAllParameters();
     this.searchedPlayerId = playerId;
+    this.castleOwner = this.search;
     this.loadItemPlaceholder = true;
     await this.router.navigate([], { queryParams: { player: playerId, search: this.search || null } });
     await this.displayPlayerCastles(this.apiRestService.getCastlePlayerDataByPlayerId(playerId));
@@ -613,6 +612,25 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
     }
   }
 
+  public async onRosterPlayerPick(player: RosterPlayerPick): Promise<void> {
+    this.search = player.name;
+    await this.searchPlayerById(player.id);
+  }
+
+  public onRosterCastle(castle: ApiPlayerCastleNameResponse): void {
+    if (castle.dummy) return;
+    if (castle.isAvailable) {
+      void this.onCastleClick(castle);
+      return;
+    }
+    this.displayUnavailableCastleMessage();
+  }
+
+  public async onRosterShuffle(): Promise<void> {
+    this.clearAllParameters();
+    await this.fetchRandomCastles();
+  }
+
   public async onCastleClick(castleData: ApiPlayerCastleNameResponse): Promise<void> {
     this.isInLoading = true;
     const cid = castleData.id;
@@ -730,15 +748,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       this.cdr.detectChanges();
       return;
     }
-    this.castles = castleResponse.data.map((castle) => ({
-      ...castle,
-      equipment: castle.equipmentUniqueIdSkin
-        ? this.getSkinFromUniqueId(castleJsonData, String(castle.equipmentUniqueIdSkin))
-        : null,
-    }));
+    this.setCastles(castleResponse.data, castleJsonData);
     this.isInLoading = false;
-    this.cdr.detectChanges();
-    this.drawMiniMaps();
     this.loadItemPlaceholder = false;
     this.cdr.detectChanges();
   }
@@ -819,6 +830,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   private clearAllParameters(): void {
     this.itemsInDistricts = {};
     this.castles = [];
+    this.rosterCastles = [];
     this.buildings = [];
     this.visibleBuildings = [];
     this.tooltip = null;
@@ -1470,21 +1482,33 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   }
 
   private async fetchRandomCastles(): Promise<void> {
-    const castleJsonData = await this.fetchCastleJsonItems();
-    const castleResponse = await this.apiRestService.getRandomCastles();
-    if (!castleResponse.success) {
-      this.cdr.detectChanges();
-      return;
-    }
-    this.castles = castleResponse.data.map((castle) => ({
+    this.castleOwner = '';
+    this.loadItemPlaceholder = true;
+    this.cdr.detectChanges();
+    const [castleJsonData, castleResponse] = await Promise.all([
+      this.fetchCastleJsonItems(),
+      this.apiRestService.getRandomCastles(),
+    ]);
+    this.loadItemPlaceholder = false;
+    if (castleResponse.success) this.setCastles(castleResponse.data, castleJsonData);
+    this.cdr.detectChanges();
+  }
+
+  private setCastles(
+    castles: ApiPlayerCastleNameResponse[],
+    castleJsonData: { [key: string]: { [key: string]: string | number }[] },
+  ): void {
+    this.castles = castles.map((castle) => ({
       ...castle,
       equipment: castle.equipmentUniqueIdSkin
         ? this.getSkinFromUniqueId(castleJsonData, String(castle.equipmentUniqueIdSkin))
         : null,
     }));
-    this.cdr.detectChanges();
-    this.drawMiniMaps();
-    this.cdr.detectChanges();
+    this.rosterCastles = this.castles.map((castle) => ({
+      castle,
+      image: this.getSearchCastleImg(castle, true),
+      typeLabel: this.getCastleType(castle.type),
+    }));
   }
 
   private get navigableBuildings(): IMappedBuildingWithGround[] {
@@ -1838,47 +1862,6 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
       ['offensiveToolsSpeedBoost', true],
       ['espionageTravelBoost', true],
     ];
-  }
-
-  private getColorMap(castle: ApiPlayerCastleNameResponse): [string, string] {
-    switch (castle.kingdomId) {
-      case 0: {
-        return ['#929E3F', '#0e0e0e56'];
-      }
-      case 1: {
-        return ['#e3d191', '#0e0e0e56'];
-      }
-      case 2: {
-        return ['#f3f2f2', '#0e0e0e56'];
-      }
-      case 3: {
-        return ['#46362a', '#ffffff56'];
-      }
-      default: {
-        return ['#888888', '#0e0e0e56'];
-      }
-    }
-  }
-
-  private drawMiniMaps(): void {
-    this.miniMaps.forEach((canvasReference, index) => {
-      const castle = this.castles[index];
-      const context = canvasReference.nativeElement.getContext('2d');
-      if (!context) return;
-      const [bgColor, dotColor] = this.getColorMap(castle);
-      context.clearRect(0, 0, this.miniSize, this.miniSize);
-      context.fillStyle = bgColor;
-      context.fillRect(0, 0, this.miniSize, this.miniSize);
-      const x = (castle.positionX / this.mapSize) * this.miniSize;
-      const y = (castle.positionY / this.mapSize) * this.miniSize;
-      context.fillStyle = dotColor;
-      context.beginPath();
-      context.arc(x, y, 3, 0, 2 * Math.PI);
-      context.fill();
-      context.strokeStyle = dotColor;
-      context.lineWidth = 1;
-      context.stroke();
-    });
   }
 
   private getFireCount(): number {
