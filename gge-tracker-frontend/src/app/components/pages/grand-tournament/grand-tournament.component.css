@@ -1,3 +1,56 @@
+:host {
+  --tournament-scene-height: max(360px, 37.5cqw);
+  container-type: inline-size;
+  display: block;
+  position: relative;
+}
+
+.tournament-scene {
+  --scene-focus-x: 0.6;
+  --scene-focus-y: 0.3;
+  background: #0b1018;
+  height: var(--tournament-scene-height);
+  left: 0;
+  -webkit-mask-image: linear-gradient(to bottom, #000 var(--scene-mask-from, 60%), transparent);
+  mask-image: linear-gradient(to bottom, #000 var(--scene-mask-from, 60%), transparent);
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 0;
+}
+
+.tournament-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  min-height: calc(var(--tournament-scene-height) * 0.76);
+  padding-top: 1.5rem;
+  position: relative;
+}
+
+.tournament-hero h1 {
+  color: #fff;
+  font-size: clamp(2rem, 4cqw, 3.1rem);
+  font-weight: 800;
+  line-height: 1.05;
+  margin: 0;
+  text-shadow: 0 3px 18px rgba(0, 0, 0, 0.75);
+}
+
+.tournament-hero p {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.98rem;
+  margin: 0;
+  max-width: 52ch;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+}
+
+.tournaments-panel {
+  background: rgba(14, 19, 26, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+}
+
 ::ng-deep .alliances th, td {
   text-align: center;
   vertical-align: middle;
@@ -31,19 +84,6 @@
 .btn-icon {
   height: auto;
   width: 37px;
-}
-
-.date-pill {
-  background: rgba(255,255,255,0.03);
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.04);
-  color: var(--tracker-text);
-  padding: 6px 10px;
-}
-
-.date-pill .date-text {
-  color: var(--tracker-muted);
-  font-size: 0.95rem;
 }
 
 .division-button:focus {
@@ -100,57 +140,13 @@
   color: #e55252;
 }
 
-.list-group {
-  max-height: 50vh;
-  overflow-y: auto;
-  scrollbar-color: #38b2ac transparent;
-  scrollbar-width: thin;
-}
-
-.list-group::-webkit-scrollbar-thumb {
-  background-clip: content-box;
-  background-color: #38b2ac;
-  border-radius: 4px;
-  border: 2px solid transparent;
-}
-
-.modal-content.modern-modal {
-  background: linear-gradient( 180deg, rgba(22,24,28,0.95), rgba(16,18,22,0.95) );
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.03);
-  color: var(--tracker-text);
-}
-
-.modal-content select {
-  font-size: .9rem;
-  text-align: center;
-}
-
-.modal-content select option {
-  background: rgb(37 39 43);
-  color: #a6a6a6;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
-}
-
-.modal-content.modern-modal .list-group-item {
-  background: transparent;
-  border: none;
-  color: var(--tracker-text);
-  padding: 0.6rem 0.75rem;
-}
-
-.modal-content.modern-modal .list-group-item.active {
-  background: linear-gradient( 90deg, rgba(38,198,218,0.12), rgba(52,211,153,0.06) );
-  border-radius: 8px;
-}
-
-.modal-content.modern-modal .list-group-item:hover {
-  background: rgba(255,255,255,0.04);
-  border-radius: 8px;
-  padding-left: 0.85rem;
-}
-
 .tournaments {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding-bottom: 3rem;
+  position: relative;
+  z-index: 1;
   --glass-border: rgba(255,255,255,0.04);
   --panel-bg: linear-gradient( 180deg, rgba(20,23,27,0.55), rgba(14,16,20,0.72) );
   --t-bg: rgba(14,18,22,0.6);
@@ -165,12 +161,6 @@
 }
 
 @media (max-width: 768px) {
-  .date-pill {
-    display: flex;
-    gap: 0.5rem;
-    padding: 6px;
-  }
-
   .division-row .division-button {
     height: 48px;
     width: 48px;
@@ -178,5 +168,24 @@
 
   .tournaments-panel {
     padding: 12px;
+  }
+
+  .tournament-scene {
+    --scene-focus-x: 0.42;
+  }
+
+  .tournament-hero {
+    min-height: 210px;
+  }
+
+  .tournament-hero::before {
+    background: linear-gradient(to top, rgba(8, 12, 18, 0.85), rgba(8, 12, 18, 0));
+    bottom: -0.5rem;
+    content: '';
+    left: -1rem;
+    position: absolute;
+    right: -1rem;
+    top: 35%;
+    z-index: -1;
   }
 }

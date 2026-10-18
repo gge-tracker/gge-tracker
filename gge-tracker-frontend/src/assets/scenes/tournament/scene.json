@@ -1,0 +1,81 @@
+{
+  "width": 1920,
+  "height": 720,
+  "layers": [
+    {
+      "kind": "image",
+      "id": "tournament",
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 720,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "windowglow-quests",
+      "x": 1002,
+      "y": 70,
+      "width": 520,
+      "height": 520,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "candleglow-hourglass",
+      "x": 810,
+      "y": 350,
+      "width": 240,
+      "height": 240,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "fireglow-torch-west",
+      "x": 608,
+      "y": -5,
+      "width": 440,
+      "height": 440,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "fireglow-torch-east",
+      "x": 1610,
+      "y": -5,
+      "width": 440,
+      "height": 440,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 828,
+      "y": 245,
+      "scale": 0.3,
+      "alpha": 0.45,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1830,
+      "y": 245,
+      "scale": 0.3,
+      "alpha": 0.45,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "motes-hall",
+      "x": 690,
+      "y": -260,
+      "width": 1120,
+      "height": 1120,
+      "scale": 4,
+      "depth": 0.9
+    }
+  ]
+}

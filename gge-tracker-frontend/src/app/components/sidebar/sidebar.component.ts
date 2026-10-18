@@ -5,7 +5,12 @@ import package_ from '../../../../package.json';
 import { SidebarService } from '@ggetracker-services/sidebar.service';
 import { ApiRestService } from '@ggetracker-services/api-rest.service';
 import { TranslateModule } from '@ngx-translate/core';
-import { SITE_NAVIGATION, SiteNavigationItem, SiteNavigationSection } from './site-navigation';
+import {
+  SITE_NAVIGATION,
+  SITE_NAVIGATION_TAG_LABELS,
+  SiteNavigationItem,
+  SiteNavigationSection,
+} from './site-navigation';
 
 type OrderedSection = SiteNavigationSection & {
   order?: number;
@@ -29,6 +34,7 @@ export class SidebarComponent implements AfterViewInit, OnDestroy {
   public sidebarService = inject(SidebarService);
   public apiRestService = inject(ApiRestService);
   public version = package_.version.split('-')[0].replaceAll('.', '-');
+  public readonly tagLabels = SITE_NAVIGATION_TAG_LABELS;
   public readonly menuStructure: OrderedSection[] = structuredClone(SITE_NAVIGATION) as OrderedSection[];
 
   private readonly router = inject(Router);

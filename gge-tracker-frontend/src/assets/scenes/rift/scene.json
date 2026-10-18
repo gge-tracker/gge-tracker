@@ -1,0 +1,129 @@
+{
+  "width": 1920,
+  "height": 720,
+  "layers": [
+    {
+      "kind": "image",
+      "id": "rift",
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 720,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "riftglow",
+      "x": 1120,
+      "y": -100,
+      "width": 760,
+      "height": 760,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "fireglow-maw",
+      "x": 1170,
+      "y": 310,
+      "width": 240,
+      "height": 240,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "fireglow-brazier-west",
+      "x": -25,
+      "y": 375,
+      "width": 300,
+      "height": 300,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "fireglow-brazier-east",
+      "x": 1753,
+      "y": 445,
+      "width": 240,
+      "height": 240,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 38,
+      "y": 552,
+      "scale": 0.22,
+      "alpha": 0.45,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 212,
+      "y": 538,
+      "scale": 0.22,
+      "alpha": 0.45,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1873,
+      "y": 582,
+      "scale": 0.22,
+      "alpha": 0.45,
+      "depth": 0.5
+    },
+    {
+      "kind": "volley",
+      "x": 470,
+      "y": 505,
+      "toX": 1420,
+      "toY": 250,
+      "arc": 210,
+      "spread": 260,
+      "depth": 0.5
+    },
+    {
+      "kind": "volley",
+      "x": 960,
+      "y": 505,
+      "toX": 1540,
+      "toY": 300,
+      "arc": 150,
+      "spread": 280,
+      "depth": 0.5
+    },
+    {
+      "kind": "volley",
+      "x": 520,
+      "y": 515,
+      "toX": 1460,
+      "toY": 340,
+      "arc": 120,
+      "spread": 30,
+      "depth": 0.5
+    },
+    {
+      "kind": "volley",
+      "x": 1470,
+      "y": 520,
+      "toX": 1600,
+      "toY": 230,
+      "arc": 70,
+      "spread": 30,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "motes-rift",
+      "x": 730,
+      "y": -190,
+      "width": 1040,
+      "height": 1040,
+      "scale": 4,
+      "depth": 0.9
+    }
+  ]
+}

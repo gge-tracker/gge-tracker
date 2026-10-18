@@ -20,3 +20,28 @@
 .empty-state {
   color: var(--tracker-muted);
 }
+
+.rift-scene {
+  --scene-focus-x: 0.62;
+  --scene-mask-from: 90%;
+  background: #0b1220;
+}
+
+.tournament-hero {
+  justify-content: flex-start;
+  min-height: calc(var(--tournament-scene-height) * 0.97);
+  padding-top: calc(var(--tournament-scene-height) * 0.18);
+}
+
+@media (max-width: 768px) {
+  .rift-scene {
+    --scene-focus-x: 0.78;
+    --scene-mask-from: 60%;
+  }
+
+  .tournament-hero {
+    justify-content: flex-end;
+    min-height: 210px;
+    padding-top: 1.5rem;
+  }
+}

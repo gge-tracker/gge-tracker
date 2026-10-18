@@ -36,7 +36,7 @@
               }
               <span>{{ item.label }}</span>
               @if (item.tag) {
-                <span class="badge-tag" [ngClass]="'badge-' + item.tag">{{ item.tag | translate }}</span>
+                <span class="badge-tag" [ngClass]="'badge-' + item.tag">{{ tagLabels[item.tag] | translate }}</span>
               }
               <span class="badge-frequency">
                 <i class="fa-solid fa-arrow-up-right-from-square"></i>

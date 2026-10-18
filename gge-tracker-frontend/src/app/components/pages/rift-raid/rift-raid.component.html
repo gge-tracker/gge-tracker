@@ -1,24 +1,22 @@
-<div class="container my-3 tournaments">
+@if (!selectedAllianceInAnalyzer) {
+  <app-layered-scene scene="rift" class="tournament-scene rift-scene" />
+}
+<div class="container tournaments">
   @if (!selectedAllianceInAnalyzer) {
+    <header class="tournament-hero">
+      <h1>{{ 'Tournoi de la Faille' | translate }}</h1>
+      <p>{{ 'rift-raid-intro' | translate }}</p>
+    </header>
+    @if (!isEventMissing) {
+      <app-event-timeline [events]="events" [currentDate]="currentDate" [isLoading]="isDataLoading"
+        (dateChange)="loadDate($event)" />
+    }
     <div class="tournaments-panel p-3 rounded-4">
-      <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-3 mb-3">
-        <div class="flex-grow-1 w-100">
-          <app-search-form [formFilters]="null" [isInLoading]="isInLoading"
-            [inputTip]="'Rechercher une alliance' | translate" [defaultSearch]="search"
-            [searchTypes]="{ player: false, alliance: true }" (searchAlliance)="searchAlliance($event)">
-          </app-search-form>
-        </div>
-        <div class="d-flex align-items-center gap-2 ms-auto">
-          @if (currentDate) {
-            <div class="date-pill d-flex align-items-center">
-              <span class="date-text fw-light fst-italic font-monospace me-2">{{ currentDate | date: ('Date_5' | translate) }}</span>
-              <button class="btn btn-sm btn-ghost" data-bs-toggle="modal" data-bs-target="#riftRaidDateModal"
-                [attr.aria-label]="'Sélectionner une date' | translate">
-                <lucide-angular class="lucide lucide-calendar" [img]="Calendar"></lucide-angular>
-              </button>
-            </div>
-          }
-        </div>
+      <div class="mb-3">
+        <app-search-form [formFilters]="null" [isInLoading]="isInLoading"
+          [inputTip]="'Rechercher une alliance' | translate" [defaultSearch]="search"
+          [searchTypes]="{ player: false, alliance: true }" (searchAlliance)="searchAlliance($event)">
+        </app-search-form>
       </div>
 
       @if (isEventMissing && !isInLoading) {
@@ -103,45 +101,6 @@
       }
     </div>
   }
-
-  <div class="modal fade" id="riftRaidDateModal" tabindex="-1" aria-labelledby="riftRaidDateModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-md">
-      <div class="modal-content modern-modal p-2">
-        <div class="modal-header border-0 pb-0">
-          <h5 class="modal-title" id="riftRaidDateModalLabel">{{ 'Sélectionner une date' | translate }}</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body pt-1 pb-2">
-          <select #eventSelect class="form-select mb-3 text-white" aria-labelledby="riftRaidDateModalLabel"
-            (change)="selectEvent(eventSelect.value)">
-            @for (event of events; track event.event_id) {
-              <option [value]="event.event_id" [selected]="event.event_id === selectedEventId">
-                {{ 'Événement du 0 au 0' | translate: {
-                  start: (event.dates[0] | date: ('Date_5' | translate)),
-                  end: (event.dates[event.dates.length - 1] | date: ('Date_5' | translate))
-                } }}
-              </option>
-            }
-          </select>
-          @if (events.length > 0) {
-            <hr />
-          }
-          <div class="list-group date-list">
-            @for (date of eventDates; track date) {
-              <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                (click)="loadDate(date)" data-bs-dismiss="modal" [class.active]="date === currentDate">
-                <span [class.fw-bold]="date === currentDate">{{ date | date: ('Date_5' | translate) }}</span>
-                <i class="fa-solid fa-chevron-right"></i>
-              </button>
-            }
-          </div>
-        </div>
-        <div class="modal-footer border-0 pt-2">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ 'Fermer' | translate }}</button>
-        </div>
-      </div>
-    </div>
-  </div>
 
   @if (selectedAllianceInAnalyzer; as analysis) {
     <app-grand-tournament-analyze [entries]="analysis.analysis" [tournamentAllianceData]="analyzerMeta(analysis)"

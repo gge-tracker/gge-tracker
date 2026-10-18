@@ -1,10 +1,18 @@
+export type SiteNavigationTag = 'tools' | 'discord' | 'official';
+
+export const SITE_NAVIGATION_TAG_LABELS: Record<SiteNavigationTag, string> = {
+  tools: 'Outils',
+  discord: 'Discord',
+  official: 'Officiel',
+};
+
 export interface SiteNavigationItem {
   label: string;
   id?: string;
   url?: string;
   iconUrl?: string;
   iconClass?: string;
-  tag?: 'bot' | 'extension';
+  tag?: SiteNavigationTag;
   frequency?: 'Temps réel' | 'Par heure';
 }
 
@@ -90,22 +98,25 @@ export const SITE_NAVIGATION: readonly SiteNavigationSection[] = [
         label: 'empire-rankings.io',
         url: 'https://danadum.github.io/empire-rankings/?utm_source=ggetracker',
         iconUrl: '/assets/tools/empire-rankings.webp',
+        tag: 'tools',
       },
       {
         label: 'GGE Assistant',
         url: 'https://top.gg/bot/1472309793065533493?utm_source=ggetracker',
         iconClass: 'fa-brands fa-discord',
-        tag: 'bot',
+        tag: 'discord',
       },
       {
         label: 'Community Hub',
         url: 'https://communityhub.goodgamestudios.com/?utm_source=ggetracker',
         iconClass: 'fa-solid fa-newspaper',
+        tag: 'official',
       },
       {
         label: 'Generals Forum',
         url: 'https://generalsforum.com/?utm_source=ggetracker',
         iconClass: 'fa-solid fa-comments',
+        tag: 'tools',
       },
     ],
   },

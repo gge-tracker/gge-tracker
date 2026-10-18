@@ -3,7 +3,9 @@ import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { DivisionBadgeComponent } from '@ggetracker-components/division-badge/division-badge.component';
+import { EventTimelineComponent } from '@ggetracker-components/event-timeline/event-timeline.component';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { LayeredSceneComponent } from '@ggetracker-components/layered-scene/layered-scene.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
 import {
@@ -14,7 +16,6 @@ import {
 } from '@ggetracker-interfaces/empire-ranking';
 import { ServerService } from '@ggetracker-services/server.service';
 import { TranslateModule } from '@ngx-translate/core';
-import { Calendar, LucideAngularModule } from 'lucide-angular';
 import { GrandTournamentAnalyzeComponent } from '@ggetracker-pages/grand-tournament/grand-tournament-analyze/grand-tournament-analyze.component';
 
 const RIFT_RAID_DIVISIONS = [1, 2, 3, 4, 5, 6];
@@ -36,13 +37,14 @@ interface RiftRaidRow extends ApiRiftRaidAlliance {
   imports: [
     CommonModule,
     FormsModule,
-    LucideAngularModule,
     RouterModule,
     SearchFormComponent,
     TranslateModule,
     TableComponent,
     DivisionBadgeComponent,
     GrandTournamentAnalyzeComponent,
+    EventTimelineComponent,
+    LayeredSceneComponent,
   ],
   templateUrl: './rift-raid.component.html',
   styleUrls: ['../grand-tournament/grand-tournament.component.css', './rift-raid.component.css'],
@@ -51,14 +53,11 @@ export class RiftRaidComponent extends GenericComponent implements OnInit {
   public static readonly TOP_DIVISION = 6;
   public static readonly UNKNOWN_SERVER_SUFFIX = '999';
 
-  public readonly Calendar = Calendar;
   public readonly divisions = RIFT_RAID_DIVISIONS;
   public readonly divisionNames = RIFT_RAID_DIVISION_NAMES;
   public readonly serverService = inject(ServerService);
 
   public events: RiftRaidEvent[] = [];
-  public eventDates: string[] = [];
-  public selectedEventId = 0;
   public currentDate = '';
   public latestDate = '';
   public division = RiftRaidComponent.TOP_DIVISION;
@@ -114,11 +113,6 @@ export class RiftRaidComponent extends GenericComponent implements OnInit {
     await this.refresh(1);
   }
 
-  public selectEvent(eventId: string): void {
-    this.selectedEventId = Number(eventId);
-    this.eventDates = this.datesOf(this.selectedEventId);
-  }
-
   public async loadDate(date: string): Promise<void> {
     this.currentDate = date;
     await this.refresh(1);
@@ -172,17 +166,11 @@ export class RiftRaidComponent extends GenericComponent implements OnInit {
     this.isEventMissing = !latestEvent;
     const requestedEvent = requestedDate ? this.eventOfDate(requestedDate) : undefined;
     this.currentDate = requestedEvent ? (requestedDate ?? '') : this.latestDate;
-    this.selectedEventId = (requestedEvent ?? latestEvent)?.event_id ?? 0;
-    this.eventDates = this.datesOf(this.selectedEventId);
     if (!response.success) this.toastService.add(ErrorType.ERROR_OCCURRED, 5000, 'error');
   }
 
   private eventOfDate(date: string): RiftRaidEvent | undefined {
     return this.events.find((event) => event.dates.includes(date));
-  }
-
-  private datesOf(eventId: number): string[] {
-    return [...(this.events.find((event) => event.event_id === eventId)?.dates ?? [])].reverse();
   }
 
   private async refresh(page: number): Promise<void> {

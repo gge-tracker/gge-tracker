@@ -1,9 +1,9 @@
 import { Container, DisplayObject, Stage, loadImage } from './scene-libraries';
 import { cameraDrift, flicker, hostsMotes, lightAlpha, animateObject as moveProperty, pivotOf } from './scene-motion';
-import { Beam, SceneParticles } from './scene-particles';
+import { Beam, SceneParticles, Volley } from './scene-particles';
 
 export interface SceneLayer {
-  kind: 'image' | 'light' | 'prop' | 'flame';
+  kind: 'image' | 'light' | 'prop' | 'flame' | 'volley';
   id?: string;
   x: number;
   y: number;
@@ -12,6 +12,10 @@ export interface SceneLayer {
   depth?: number;
   scale?: number;
   alpha?: number;
+  toX?: number;
+  toY?: number;
+  arc?: number;
+  spread?: number;
 }
 
 export interface SceneDescription {
@@ -82,6 +86,7 @@ export class SceneStage {
     stage.addChild(root);
     const stageView = new SceneStage(canvas, stage, root, scene);
     scene.layers.forEach((layer, index) => {
+      if (layer.kind === 'volley') return;
       const image = layer.kind === 'flame' ? flame : images[index]!;
       const node = new createjs.Bitmap(image);
       const pivot =
@@ -159,7 +164,17 @@ export class SceneStage {
       return [{ image, x: layer.x, y: layer.y, width: layer.width!, height: layer.height! }];
     });
     const flames = this.scene.layers.filter((layer) => layer.kind === 'flame' && (layer.scale ?? 1) >= EMBER_MIN_SCALE);
-    this.particles = new SceneParticles(globalThis.createjs!, this.scene, beams, flames);
+    const volleys: Volley[] = this.scene.layers
+      .filter((layer) => layer.kind === 'volley')
+      .map((layer) => ({
+        x: layer.x,
+        y: layer.y,
+        toX: layer.toX!,
+        toY: layer.toY!,
+        arc: layer.arc ?? 120,
+        spread: layer.spread ?? 60,
+      }));
+    this.particles = new SceneParticles(globalThis.createjs!, this.scene, beams, flames, volleys);
     this.root.addChild(this.particles.layer);
   }
 

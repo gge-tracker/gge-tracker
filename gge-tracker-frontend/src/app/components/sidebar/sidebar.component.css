@@ -55,12 +55,16 @@ img,
   white-space: nowrap;
 }
 
-.badge-bot {
+.badge-tools {
+  background: #64748b;
+}
+
+.badge-discord {
   background: #5865f2;
 }
 
-.badge-extension {
-  background: #4285f4;
+.badge-official {
+  background: #b45309;
 }
 
 .badge-tag + .badge-frequency {

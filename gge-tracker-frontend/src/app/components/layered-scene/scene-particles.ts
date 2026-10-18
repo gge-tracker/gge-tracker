@@ -30,7 +30,32 @@ interface Ember {
   life: number;
 }
 
+export interface Volley {
+  x: number;
+  y: number;
+  toX: number;
+  toY: number;
+  arc: number;
+  spread: number;
+}
+
+interface Bolt {
+  head: DisplayObject;
+  trail: DisplayObject[];
+  flash: DisplayObject;
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+  arc: number;
+  born: number;
+  flight: number;
+}
+
 const MOTE_COUNT = 70;
+const BOLTS_PER_SALVO = 5;
+const TRAIL_LENGTH = 5;
+const FLASH_SECONDS = 0.4;
 const EMBERS_PER_FLAME = 2;
 const MASK_SCALE = 1 / 8;
 
@@ -88,12 +113,14 @@ export class SceneParticles {
   private readonly mask: BeamMask;
   private readonly motes: Mote[] = [];
   private readonly embers: Ember[] = [];
+  private readonly salvos: { volley: Volley; bolts: Bolt[]; nextAt: number }[] = [];
 
   constructor(
     createjs: CreateJs,
     private readonly scene: { width: number; height: number },
     beams: Beam[],
     flames: { x: number; y: number }[],
+    volleys: Volley[] = [],
   ) {
     this.layer = new createjs.Container();
     this.layer.compositeOperation = 'lighter';
@@ -112,12 +139,93 @@ export class SceneParticles {
         this.layer.addChild(ember.node);
       }
     }
+    const bolt = glowDot('rgba(255, 240, 200, 1)');
+    const impact = glowDot('rgba(255, 190, 120, 1)');
+    volleys.forEach((volley, index) => {
+      const bolts = Array.from({ length: BOLTS_PER_SALVO }, () => {
+        const nodes = [bolt, ...Array.from({ length: TRAIL_LENGTH }, () => bolt), impact].map((image) => {
+          const node = new createjs.Bitmap(image);
+          node.regX = node.regY = 12;
+          node.alpha = 0;
+          this.layer.addChild(node);
+          return node;
+        });
+        return {
+          head: nodes[0],
+          trail: nodes.slice(1, -1),
+          flash: nodes.at(-1)!,
+          fromX: 0,
+          fromY: 0,
+          toX: 0,
+          toY: 0,
+          arc: 0,
+          born: -10,
+          flight: 1,
+        };
+      });
+      this.salvos.push({ volley, bolts, nextAt: 1.2 + index * 1.4 });
+    });
   }
 
   public update(seconds: number): void {
     const sun = moonlight(seconds);
     for (const mote of this.motes) this.moveMote(mote, seconds, sun);
     for (const ember of this.embers) this.moveEmber(ember, seconds);
+    for (const salvo of this.salvos) {
+      if (seconds >= salvo.nextAt) this.fire(salvo, seconds);
+      for (const bolt of salvo.bolts) this.moveBolt(bolt, seconds);
+    }
+  }
+
+  private fire(salvo: { volley: Volley; bolts: Bolt[]; nextAt: number }, seconds: number): void {
+    const { volley, bolts } = salvo;
+    bolts.forEach((bolt, index) => {
+      Object.assign(bolt, {
+        fromX: volley.x + (Math.random() - 0.5) * volley.spread,
+        fromY: volley.y + (Math.random() - 0.5) * 10,
+        toX: volley.toX + (Math.random() - 0.5) * 120,
+        toY: volley.toY + (Math.random() - 0.5) * 110,
+        arc: volley.arc * (0.8 + Math.random() * 0.4),
+        born: seconds + index * 0.09 + Math.random() * 0.12,
+        flight: 1.05 + Math.random() * 0.3,
+      });
+    });
+    salvo.nextAt = seconds + 2.6 + Math.random() * 1.8;
+  }
+
+  private boltAt(bolt: Bolt, progress: number): { x: number; y: number } {
+    const inverse = 1 - progress;
+    const controlX = (bolt.fromX + bolt.toX) / 2;
+    const controlY = Math.min(bolt.fromY, bolt.toY) - bolt.arc;
+    return {
+      x: inverse * inverse * bolt.fromX + 2 * inverse * progress * controlX + progress * progress * bolt.toX,
+      y: inverse * inverse * bolt.fromY + 2 * inverse * progress * controlY + progress * progress * bolt.toY,
+    };
+  }
+
+  private moveBolt(bolt: Bolt, seconds: number): void {
+    const progress = (seconds - bolt.born) / bolt.flight;
+    const flying = progress >= 0 && progress <= 1;
+    [bolt.head, ...bolt.trail].forEach((node, index) => {
+      const at = progress - index * 0.04;
+      if (!flying || at < 0) {
+        node.alpha = 0;
+        return;
+      }
+      Object.assign(node, this.boltAt(bolt, at));
+      node.scaleX = node.scaleY = 0.95 - index * 0.14;
+      node.alpha = (1 - index / (TRAIL_LENGTH + 1)) * 0.95;
+    });
+    const sinceImpact = seconds - bolt.born - bolt.flight;
+    if (sinceImpact < 0 || sinceImpact > FLASH_SECONDS) {
+      bolt.flash.alpha = 0;
+      return;
+    }
+    const fade = sinceImpact / FLASH_SECONDS;
+    bolt.flash.x = bolt.toX;
+    bolt.flash.y = bolt.toY;
+    bolt.flash.scaleX = bolt.flash.scaleY = 2 + 4 * fade;
+    bolt.flash.alpha = 0.9 * (1 - fade);
   }
 
   private spawnMote(node: DisplayObject, born: number): Mote {

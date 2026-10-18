@@ -59,7 +59,6 @@ export const THRESHOLD_SLUG_BY_TABLE: Partial<Record<ApiPlayerStatsType, ApiEven
   [ApiPlayerStatsType.bloodcrow]: 'bloodcrow',
   [ApiPlayerStatsType.war_realms]: 'war-realms',
   [ApiPlayerStatsType.berimond_kingdom]: 'berimond-kingdom',
-  [ApiPlayerStatsType.berimond_invasion]: 'berimond-invasion',
 };
 
 const THRESHOLD_EVENTS: ThresholdEvent[] = KINGDOM_EVENTS.flatMap((event) => {

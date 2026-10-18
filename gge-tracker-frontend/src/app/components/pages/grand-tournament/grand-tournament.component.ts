@@ -2,7 +2,9 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { EventTimelineComponent } from '@ggetracker-components/event-timeline/event-timeline.component';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { LayeredSceneComponent } from '@ggetracker-components/layered-scene/layered-scene.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
 import {
@@ -12,7 +14,6 @@ import {
   ErrorType,
 } from '@ggetracker-interfaces/empire-ranking';
 import { TranslateModule } from '@ngx-translate/core';
-import { Calendar, LucideAngularModule } from 'lucide-angular';
 import { GrandTournamentAnalyzeComponent } from './grand-tournament-analyze/grand-tournament-analyze.component';
 import { ServerService } from '@ggetracker-services/server.service';
 
@@ -30,12 +31,13 @@ interface IGrandTournamentSearchAlliances extends ApiGrandTournamentSearchAllian
   imports: [
     CommonModule,
     FormsModule,
-    LucideAngularModule,
     RouterModule,
     SearchFormComponent,
     TranslateModule,
     TableComponent,
     GrandTournamentAnalyzeComponent,
+    EventTimelineComponent,
+    LayeredSceneComponent,
   ],
   templateUrl: './grand-tournament.component.html',
   styleUrl: './grand-tournament.component.css',
@@ -48,11 +50,8 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
   public alliances: (IGrandTournamentAlliances | IGrandTournamentSearchAlliances)[] = [];
   public selectedAllianceInAnalyzer: ApiGrandTournamenAllianceAnalysisResponse | null = null;
   public events: { dates: string[]; event_id: number }[] = [];
-  public currentDates: string[] = [];
-  public currentEventId = 0;
   public currentDate = '';
   public defaultDate = '';
-  public readonly Calendar = Calendar;
   public division = {
     current_division: 0,
     max_division: 0,
@@ -161,11 +160,6 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
     void this.loadAlliances(this.division.current_division, page);
   }
 
-  public updateDates(eventId: string): void {
-    this.currentEventId = Number(eventId);
-    this.currentDates = this.datesOf(this.currentEventId);
-  }
-
   public loadDate(date: string): void {
     this.currentDate = date;
     if (this.search.trim() !== '') {
@@ -221,15 +215,13 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
       this.isInLoading = false;
       return;
     }
-    this.defaultDate = latestEvent?.dates.at(0) ?? '';
+    this.defaultDate = latestEvent?.dates.at(-1) ?? '';
     const urlParameters = this.route.snapshot.queryParams;
     const page = urlParameters['page'] ? Number(urlParameters['page']) : 1;
     const subdivision = urlParameters['subdivision'] ? Number(urlParameters['subdivision']) : 0;
     const division = this.parseDivision(urlParameters['division']);
     const requestedEvent = this.eventOfDate(urlParameters['date']);
     this.currentDate = requestedEvent ? urlParameters['date'] : this.defaultDate;
-    this.currentEventId = (requestedEvent ?? latestEvent)?.event_id ?? 0;
-    this.currentDates = this.datesOf(this.currentEventId);
     this.division.current_division = division;
     this.subdivision.current_subdivision = subdivision;
     if (subdivision > 0) {
@@ -282,9 +274,5 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
 
   private eventOfDate(date: string | undefined): { dates: string[]; event_id: number } | undefined {
     return date ? this.events.find((event) => event.dates.includes(date)) : undefined;
-  }
-
-  private datesOf(eventId: number): string[] {
-    return [...(this.events.find((event) => event.event_id === eventId)?.dates ?? [])].reverse();
   }
 }

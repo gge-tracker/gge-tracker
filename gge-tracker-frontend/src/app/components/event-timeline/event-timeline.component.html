@@ -1,0 +1,72 @@
+<section class="timeline" [class.is-live]="liveEdition()" [class.is-loading]="isLoading()">
+  <div class="timeline-status">
+    @if (liveEdition(); as live) {
+      <span class="timeline-badge is-live">
+        <span class="timeline-live-dot" aria-hidden="true"></span>{{ 'En cours' | translate }}
+      </span>
+      <div class="timeline-progress">
+        <div class="timeline-progress-line">
+          <strong>{{ 'Heure' | translate }} {{ liveHour() }}</strong>
+          @if (typicalDurationHours(); as typical) {
+            <span class="timeline-muted">/ ~{{ typical }}</span>
+          }
+        </div>
+        @if (liveProgress() !== null) {
+          <span class="timeline-meter" role="presentation"><span [style.width.%]="liveProgress()"></span></span>
+        }
+      </div>
+      @if (estimatedEnd(); as end) {
+        <span class="timeline-fact">{{ 'Fin estimée' | translate }} : <strong>{{ end | date: 'EEE d MMM, HH:mm' }}</strong></span>
+      }
+      <span class="timeline-fact timeline-muted">{{ 'Dernière lecture' | translate }} : {{ live.end | date: 'EEE HH:mm' }}</span>
+    } @else {
+      <span class="timeline-badge"><i class="fa-regular fa-calendar" aria-hidden="true"></i>
+        {{ 'Aucune édition en cours' | translate }}</span>
+      @if (lastEdition(); as last) {
+        <span class="timeline-fact timeline-muted">{{ 'Dernière édition' | translate }} :
+          {{ last.start | date: 'd MMM' }} – {{ last.end | date: 'd MMM' }}</span>
+      }
+    }
+  </div>
+
+  @if (editions().length > 0) {
+    <div class="timeline-controls">
+      <label class="timeline-edition">
+        <span class="timeline-label">{{ 'Événement' | translate }}</span>
+        <select class="timeline-select" #editionSelect (change)="selectEdition(editionSelect.value)">
+          @for (edition of editions(); track edition.id) {
+            <option [value]="edition.id" [selected]="edition === selectedEdition()">
+              {{ edition.start | date: 'd MMM' }} – {{ edition.end | date: 'd MMM y' }}{{ isLive(edition) ? ' · ' + ('En cours' | translate) : '' }}
+            </option>
+          }
+        </select>
+      </label>
+
+      <div class="timeline-scrubber">
+        <div class="timeline-scrubber-head">
+          <span class="timeline-label">{{ 'Heure' | translate }} {{ previewHour() }}</span>
+          <strong class="timeline-date">{{ previewDate() | date: 'EEE d MMM, HH:mm' }}</strong>
+        </div>
+        <div class="timeline-scrubber-row">
+          <button type="button" class="timeline-step" (click)="step(-1)" [disabled]="previewIndex() === 0"
+            [title]="'Heure précédente' | translate" [attr.aria-label]="'Heure précédente' | translate">
+            <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+          </button>
+          <input type="range" class="timeline-range" min="0" [max]="lastIndex()" step="1" #range
+            [value]="previewIndex()" [disabled]="lastIndex() === 0" [style.--fill]="(lastIndex() ? (previewIndex() / lastIndex()) * 100 : 100) + '%'"
+            [attr.aria-label]="'Heure' | translate" [attr.aria-valuetext]="previewDate() | date: 'EEE d MMM, HH:mm'"
+            (input)="preview(range.value)" (change)="commit()">
+          <button type="button" class="timeline-step" (click)="step(1)" [disabled]="previewIndex() === lastIndex()"
+            [title]="'Heure suivante' | translate" [attr.aria-label]="'Heure suivante' | translate">
+            <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+          </button>
+          <button type="button" class="timeline-latest" (click)="jumpToLatest()" [disabled]="previewIndex() === lastIndex()"
+            [title]="'Dernière heure' | translate">
+            <i class="fa-solid fa-forward-step" aria-hidden="true"></i>
+            <span>{{ 'Dernière heure' | translate }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</section>
