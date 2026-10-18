@@ -11,12 +11,13 @@ import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
 import { SWAP_RANK_POINTS_TABLE } from '../../src/definitions/swap-rank-points.config';
-import { TEMP_SERVER_SETTINGS } from '../../src/definitions/temp-server-events.config';
+import { TEMP_SERVER_SETTINGS_KEY } from '../../src/temp-server-settings';
 import { ApiRequest } from '../harness/fake-api';
 import { Sandbox, withSandbox } from '../harness/sandbox';
 
 const COLLECTOR_SETTING = '10';
 const MIGHT_SETTING = '8';
+const RANK_SWAP_SETTING = '13';
 const RANK_SWAP_LT = 66;
 const MIGHT_LT = 61;
 const COLLECTOR_LT = 65;
@@ -62,6 +63,21 @@ function row(e: Entrant, rank: number): unknown[] {
   ];
 }
 
+function startEvent(sandbox: Sandbox, settingId: string): void {
+  sandbox.redis.store.set('temporaryServerData', settingId);
+  sandbox.redis.store.set(
+    TEMP_SERVER_SETTINGS_KEY,
+    JSON.stringify({
+      itemsVersion: '787.03',
+      settings: [
+        { settingID: MIGHT_SETTING, scoringSystem: 'might' },
+        { settingID: COLLECTOR_SETTING, scoringSystem: 'collector' },
+        { settingID: RANK_SWAP_SETTING, scoringSystem: 'rankSwap' },
+      ],
+    }),
+  );
+}
+
 function serveOuterRealms(sandbox: Sandbox, entrants: Entrant[]): void {
   sandbox.api.on('hgh', (request: ApiRequest) => {
     const sv = Number(request.parameters.SV);
@@ -70,7 +86,10 @@ function serveOuterRealms(sandbox: Sandbox, entrants: Entrant[]): void {
     const window = entrants.slice(start - 1, start - 1 + PAGE_SIZE);
     return {
       return_code: '0',
-      content: { LR: entrants.length, L: window.map((e, index) => row(e, start + index)) },
+      content: {
+        LR: entrants.length,
+        L: window.map((e, index) => row(e, start + index)),
+      },
     };
   });
 }
@@ -88,7 +107,7 @@ describe('startOuterRealmsDataFetch', () => {
 
   it('maps the temporary server setting to its highscore list and clears the stale error', async () => {
     await withSandbox({}, async (sandbox) => {
-      sandbox.redis.store.set('temporaryServerData', COLLECTOR_SETTING);
+      startEvent(sandbox, COLLECTOR_SETTING);
       sandbox.redis.store.set('outerRealmsDataFetchError', 'stale');
       serveOuterRealms(sandbox, [entrant(1)]);
       const result = await sandbox.call('startOuterRealmsDataFetch');
@@ -100,7 +119,7 @@ describe('startOuterRealmsDataFetch', () => {
 
   it('still reports the scoring system when the event turns out to be over', async () => {
     await withSandbox({}, async (sandbox) => {
-      sandbox.redis.store.set('temporaryServerData', MIGHT_SETTING);
+      startEvent(sandbox, MIGHT_SETTING);
       sandbox.api.on('hgh', () => ({ return_code: '1', content: {} }));
       const result = await sandbox.call('startOuterRealmsDataFetch');
       assert.equal(result, 'might', 'the caller still needs to know which event it was');
@@ -111,7 +130,7 @@ describe('startOuterRealmsDataFetch', () => {
 
   it('fails when Redis points at a setting that does not exist', async () => {
     await withSandbox({}, async (sandbox) => {
-      sandbox.redis.store.set('temporaryServerData', '999999');
+      startEvent(sandbox, '999999');
       const result = await sandbox.call('startOuterRealmsDataFetch');
       assert.equal(result, null);
       assert.equal(sandbox.state('DB_UPDATES').criticalErrors, 1);
@@ -119,10 +138,48 @@ describe('startOuterRealmsDataFetch', () => {
     });
   });
 
+  it('falls back to the embedded settings while the API has published none', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.redis.store.set('temporaryServerData', COLLECTOR_SETTING);
+      serveOuterRealms(sandbox, [entrant(1)]);
+      assert.equal(await sandbox.call('startOuterRealmsDataFetch'), 'collector');
+
+      sandbox.redis.store.set(TEMP_SERVER_SETTINGS_KEY, '{not json');
+      assert.equal(await sandbox.call('startOuterRealmsDataFetch'), 'collector', 'an unreadable key is no key');
+    });
+  });
+
+  it('prefers the published row over the embedded one', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.redis.store.set('temporaryServerData', COLLECTOR_SETTING);
+      sandbox.redis.store.set(
+        TEMP_SERVER_SETTINGS_KEY,
+        JSON.stringify({
+          itemsVersion: '999.01',
+          settings: [{ settingID: COLLECTOR_SETTING, scoringSystem: 'might' }],
+        }),
+      );
+      serveOuterRealms(sandbox, [entrant(1)]);
+      assert.equal(await sandbox.call('startOuterRealmsDataFetch'), 'might');
+    });
+  });
+
+  it('reads a setting only the API knows', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.redis.store.set('temporaryServerData', '99');
+      sandbox.redis.store.set(
+        TEMP_SERVER_SETTINGS_KEY,
+        JSON.stringify({ itemsVersion: '999.01', settings: [{ settingID: '99', scoringSystem: 'rankSwap' }] }),
+      );
+      serveOuterRealms(sandbox, [entrant(1)]);
+      assert.equal(await sandbox.call('startOuterRealmsDataFetch'), 'rankSwap');
+    });
+  });
+
   it('collects every entrant once and writes it with its castle and fetch date', async () => {
     await withSandbox({}, async (sandbox) => {
       const entrants = Array.from({ length: 34 }, (_, index) => entrant(index + 1));
-      sandbox.redis.store.set('temporaryServerData', COLLECTOR_SETTING);
+      startEvent(sandbox, COLLECTOR_SETTING);
       serveOuterRealms(sandbox, entrants);
       await sandbox.call('startOuterRealmsDataFetch');
 
@@ -149,7 +206,7 @@ describe('startOuterRealmsDataFetch', () => {
 
   it('stamps the same fetch date on the ranking and on latest_fetch_date', async () => {
     await withSandbox({}, async (sandbox) => {
-      sandbox.redis.store.set('temporaryServerData', COLLECTOR_SETTING);
+      startEvent(sandbox, COLLECTOR_SETTING);
       serveOuterRealms(sandbox, [entrant(1), entrant(2)]);
       await sandbox.call('startOuterRealmsDataFetch');
       const [marker] = sandbox.clickhouse.rows('latest_fetch_date');
@@ -160,14 +217,17 @@ describe('startOuterRealmsDataFetch', () => {
 
   it('stops paging as soon as a page repeats what it already holds', async () => {
     await withSandbox({}, async (sandbox) => {
-      sandbox.redis.store.set('temporaryServerData', COLLECTOR_SETTING);
+      startEvent(sandbox, COLLECTOR_SETTING);
       const entrants = Array.from({ length: 40 }, (_, index) => entrant(index + 1));
       sandbox.api.on('hgh', (request: ApiRequest) => {
         const sv = Number(request.parameters.SV);
         const window = sv === 1 ? entrants.slice(0, PAGE_SIZE) : entrants.slice(0, PAGE_SIZE);
         return {
           return_code: '0',
-          content: { LR: entrants.length, L: window.map((e, index) => row(e, index + 1)) },
+          content: {
+            LR: entrants.length,
+            L: window.map((e, index) => row(e, index + 1)),
+          },
         };
       });
       await sandbox.call('startOuterRealmsDataFetch');
@@ -178,7 +238,7 @@ describe('startOuterRealmsDataFetch', () => {
 
   it('scores a rank-swap event off the rank table rather than the reported points', async () => {
     await withSandbox({}, async (sandbox) => {
-      sandbox.redis.store.set('temporaryServerData', rankSwapSetting());
+      startEvent(sandbox, RANK_SWAP_SETTING);
       const entrants = [entrant(1), entrant(2)];
       serveOuterRealms(sandbox, entrants);
       await sandbox.call('startOuterRealmsDataFetch');
@@ -195,12 +255,27 @@ describe('startOuterRealmsDataFetch', () => {
 
   it('reads the rank of a might event out of the fifth column', async () => {
     await withSandbox({}, async (sandbox) => {
-      sandbox.redis.store.set('temporaryServerData', MIGHT_SETTING);
+      startEvent(sandbox, MIGHT_SETTING);
       sandbox.api.on('hgh', () => ({
         return_code: '0',
         content: {
           LR: 1,
-          L: [[1, 5000, { OID: 9, N: 'Nine_FR1', L: 70, LL: 0, MP: 1, AP: [[0, 0, 5, 6, 1]] }, null, 77]],
+          L: [
+            [
+              1,
+              5000,
+              {
+                OID: 9,
+                N: 'Nine_FR1',
+                L: 70,
+                LL: 0,
+                MP: 1,
+                AP: [[0, 0, 5, 6, 1]],
+              },
+              null,
+              77,
+            ],
+          ],
         },
       }));
       await sandbox.call('startOuterRealmsDataFetch');
@@ -213,7 +288,7 @@ describe('startOuterRealmsDataFetch', () => {
 
   it('counts a critical error when ClickHouse refuses the rows', async () => {
     await withSandbox({}, async (sandbox) => {
-      sandbox.redis.store.set('temporaryServerData', COLLECTOR_SETTING);
+      startEvent(sandbox, COLLECTOR_SETTING);
       serveOuterRealms(sandbox, [entrant(1)]);
       sandbox.clickhouse.failWith(...Array.from({ length: 6 }, () => new Error('clickhouse is gone')));
       const result = await sandbox.call('startOuterRealmsDataFetch');
@@ -222,9 +297,3 @@ describe('startOuterRealmsDataFetch', () => {
     });
   });
 });
-
-function rankSwapSetting(): string {
-  const setting = TEMP_SERVER_SETTINGS.find((s) => s.scoringSystem === 'rankSwap');
-  if (!setting) throw new Error('no rankSwap setting in TEMP_SERVER_SETTINGS');
-  return String(setting.settingID);
-}

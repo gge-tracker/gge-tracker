@@ -11,9 +11,11 @@ import { EventsCatalogCache } from '../helper/cache/events-catalog';
 import { OuterRealmsBoard, OuterRealmsBoardCache } from '../helper/cache/outer-realms-board';
 import { WoaEventsCatalogCache } from '../helper/cache/woa-events-catalog';
 import { HttpCache } from '../helper/http-cache';
+import { OuterRealmsExport, OuterRealmsExportFormat } from '../helper/outer-realms-export';
+import { OuterRealmsQuery, OuterRealmsQueryParser } from '../helper/outer-realms-query';
 import { qFlag, qNumber } from '../helper/parse-query';
+import { TemporaryServerSetting, TemporaryServerSettings } from '../helper/temporary-server-settings';
 import { ApiInputErrorType, ApiInvalidInputType } from '../types/parameter.types';
-import { TEMP_SERVER_SETTINGS } from '../interfaces/temporary-server-events.config';
 
 interface StormyIslesPgRow {
   id: number;
@@ -98,6 +100,7 @@ export abstract class ApiEvents implements ApiHelper {
   private static readonly OUTER_REALMS_ITEMS_PER_PAGE = 10;
   private static readonly OUTER_REALMS_CACHE_TTL_PLAYER = 2 * 60;
   private static readonly OUTER_REALMS_LIVE_WINDOW_MINUTES = 10;
+  private static readonly OUTER_REALMS_MAX_ITEMS_PER_PAGE = 100;
 
   private static readonly SMALLINT_MAX = 32_767;
   private static readonly STORMY_ISLES_ITEMS_PER_PAGE = 15;
@@ -766,29 +769,32 @@ export abstract class ApiEvents implements ApiHelper {
        * Validate and parse parameters
        * --------------------------------- */
       const page = ApiHelper.validatePageNumber(request.query.page) || 1;
-      const searchPlayerName = ApiHelper.validateSearchAndSanitize(request.query.player_name, {
-        maxLength: 50,
-        toLowerCase: false,
-      });
-      const nameFilter = ApiHelper.isValidInput(searchPlayerName) ? searchPlayerName.toLowerCase() : null;
-      const sizePerPage = ApiEvents.OUTER_REALMS_ITEMS_PER_PAGE;
+      const sizePerPage = ApiEvents.parseOuterRealmsPageSize(request.query.size);
+      if (sizePerPage === null) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPageSize });
+        return;
+      }
+      const query = ApiEvents.parseOuterRealmsQuery(request);
+      if (typeof query === 'string') {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: query });
+        return;
+      }
       const offset = (page - 1) * sizePerPage;
-      const clickhouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
 
       /* ---------------------------------
        * Whole ranking of the current collection instant
        * --------------------------------- */
-      const board = await OuterRealmsBoardCache.current(clickhouseClient);
+      const board = await OuterRealmsBoardCache.current(await ApiHelper.ggeTrackerManager.getClickHouseInstance());
       if (!board) {
         response.status(ApiHelper.HTTP_FORBIDDEN).send({ error: RouteErrorMessagesEnum.EventNotActive });
         return;
       }
-      const { players, totalItems } = board.slice(nameFilter, offset, sizePerPage);
+      const { players, totalItems } = board.slice(query.filter, query.sort, offset, sizePerPage);
 
       /* ---------------------------------
        * Event active verification
        * --------------------------------- */
-      if (ApiEvents.isOuterRealmsRankingStale(board, players.length, nameFilter)) {
+      if (ApiEvents.isOuterRealmsRankingStale(board, players.length, !OuterRealmsQueryParser.isDefault(query))) {
         response.status(ApiHelper.HTTP_FORBIDDEN).send({ error: RouteErrorMessagesEnum.EventNotActive });
         return;
       }
@@ -797,17 +803,17 @@ export abstract class ApiEvents implements ApiHelper {
         new CacheKeyBuilder('outer-realms:live-ranking')
           .with(board.snapshot)
           .with(page)
-          .with(nameFilter ?? 'all')
+          .with(sizePerPage)
+          .with(OuterRealmsQueryParser.describe(query))
           .build(),
       );
       if (HttpCache.handleConditional(request, response, { etag, maxAgeSeconds: 0, lastModified: board.collectedAt })) {
         return;
       }
 
-      const currentOuterRealmsEvent = await this.getCurrentOuterRealmsEvent();
       response.status(ApiHelper.HTTP_OK).send({
         players,
-        current_event: currentOuterRealmsEvent,
+        ...(await ApiEvents.describeOuterRealmsBoard(board)),
         pagination: {
           current_page: page,
           total_pages: Math.ceil(totalItems / sizePerPage),
@@ -819,6 +825,78 @@ export abstract class ApiEvents implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getLiveOuterRealmsRanking', request);
+    }
+  }
+
+  public static async getLiveOuterRealmsExport(request: express.Request, response: express.Response): Promise<void> {
+    try {
+      /* ---------------------------------
+       * Validate and parse parameters
+       * --------------------------------- */
+      const format = ApiEvents.parseOuterRealmsExportFormat(request);
+      if (format === null) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidLiveExportFormat });
+        return;
+      }
+      const query = ApiEvents.parseOuterRealmsQuery(request);
+      if (typeof query === 'string') {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: query });
+        return;
+      }
+      // The body depends on Accept when format is absent, so a shared cache must not mix them
+      response.vary('Accept');
+
+      /* ---------------------------------
+       * Whole ranking of the current collection instant
+       * --------------------------------- */
+      const board = await OuterRealmsBoardCache.current(await ApiHelper.ggeTrackerManager.getClickHouseInstance());
+      if (!board) {
+        response.status(ApiHelper.HTTP_FORBIDDEN).send({ error: RouteErrorMessagesEnum.EventNotActive });
+        return;
+      }
+      const players = board.list(query.filter, query.sort);
+      if (ApiEvents.isOuterRealmsRankingStale(board, players.length, !OuterRealmsQueryParser.isDefault(query))) {
+        response.status(ApiHelper.HTTP_FORBIDDEN).send({ error: RouteErrorMessagesEnum.EventNotActive });
+        return;
+      }
+
+      const etag = HttpCache.etagFromCacheKey(
+        new CacheKeyBuilder('outer-realms:live-export')
+          .with(board.snapshot)
+          .with(format)
+          .with(OuterRealmsQueryParser.describe(query))
+          .build(),
+      );
+      if (HttpCache.handleConditional(request, response, { etag, maxAgeSeconds: 0, lastModified: board.collectedAt })) {
+        return;
+      }
+
+      /* ---------------------------------
+       * Serialize in the requested format
+       * --------------------------------- */
+      response.setHeader('Content-Type', OuterRealmsExport.CONTENT_TYPES[format]);
+      response.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${OuterRealmsExport.fileName(board.collectedAt, format)}"`,
+      );
+      response.setHeader('X-Item-Count', String(players.length));
+      if (format === 'ndjson') {
+        response.status(ApiHelper.HTTP_OK).send(OuterRealmsExport.toNdjson(players));
+        return;
+      }
+      if (format === 'csv') {
+        response.status(ApiHelper.HTTP_OK).send(OuterRealmsExport.toCsv(players, query.filter.near !== null));
+        return;
+      }
+      response.status(ApiHelper.HTTP_OK).send({
+        ...(await ApiEvents.describeOuterRealmsBoard(board)),
+        count: players.length,
+        players,
+      });
+    } catch (error) {
+      const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
+      response.status(code).send({ error: message });
+      ApiHelper.logError(error, 'getLiveOuterRealmsExport', request);
     }
   }
 
@@ -1969,14 +2047,10 @@ export abstract class ApiEvents implements ApiHelper {
   /**
    * The event is over once the newest instant stops being refreshed
    */
-  private static isOuterRealmsRankingStale(
-    board: OuterRealmsBoard,
-    pageSize: number,
-    nameFilter: string | null,
-  ): boolean {
+  private static isOuterRealmsRankingStale(board: OuterRealmsBoard, pageSize: number, isFiltered: boolean): boolean {
     const collectedRecently =
       board.collectedAt.getTime() >= Date.now() - ApiEvents.OUTER_REALMS_LIVE_WINDOW_MINUTES * 60 * 1000;
-    if (nameFilter !== null) return pageSize > 0 && !collectedRecently;
+    if (isFiltered) return pageSize > 0 && !collectedRecently;
     return pageSize === 0 || !collectedRecently;
   }
 
@@ -1986,19 +2060,62 @@ export abstract class ApiEvents implements ApiHelper {
    * @returns The scoring system of the current active Outer Realms event, or null if not found or in case of an error
    */
   private static async getCurrentOuterRealmsEvent(): Promise<string | null> {
+    const setting = await ApiEvents.getCurrentOuterRealmsSetting();
+    return setting?.scoringSystem ?? null;
+  }
+
+  private static async getCurrentOuterRealmsSetting(): Promise<TemporaryServerSetting | null> {
     try {
       const temporaryServerData = await ApiHelper.redisClient.get('temporaryServerData');
-      const temporaryServerSetting = TEMP_SERVER_SETTINGS.find(
-        (element) => element.settingID && Number(element.settingID) === Number(temporaryServerData),
-      );
-      if (temporaryServerSetting) {
-        return temporaryServerSetting?.scoringSystem;
-      }
+      const temporaryServerSetting = await TemporaryServerSettings.find(temporaryServerData);
+      if (temporaryServerSetting) return temporaryServerSetting;
       throw new Error('No temporary server data found in Redis');
     } catch (error) {
       ApiHelper.logError(error, 'getCurrentOuterRealmsEvent', null);
       return null;
     }
+  }
+
+  private static parseOuterRealmsQuery(request: express.Request): OuterRealmsQuery | RouteErrorMessagesEnum {
+    const searchPlayerName = ApiHelper.validateSearchAndSanitize(request.query.player_name, {
+      maxLength: 50,
+      toLowerCase: false,
+    });
+    const nameFilter = ApiHelper.isValidInput(searchPlayerName) ? searchPlayerName.toLowerCase() : null;
+    return OuterRealmsQueryParser.parse(request, nameFilter);
+  }
+
+  private static parseOuterRealmsPageSize(raw: unknown): number | null {
+    if (raw === undefined || raw === '') return ApiEvents.OUTER_REALMS_ITEMS_PER_PAGE;
+    if (typeof raw !== 'string' || !/^\d{1,3}$/.test(raw)) return null;
+    const size = Number(raw);
+    return size >= 1 && size <= ApiEvents.OUTER_REALMS_MAX_ITEMS_PER_PAGE ? size : null;
+  }
+
+  private static parseOuterRealmsExportFormat(request: express.Request): OuterRealmsExportFormat | null {
+    const format = request.query.format;
+    if (format === undefined || format === '') {
+      const accept = String(request.headers.accept || '');
+      if (accept.includes('application/x-ndjson')) return 'ndjson';
+      return accept.includes('text/csv') ? 'csv' : 'json';
+    }
+    return OuterRealmsExport.FORMATS.find((candidate) => candidate === format) ?? null;
+  }
+
+  private static async describeOuterRealmsBoard(board: OuterRealmsBoard): Promise<Record<string, unknown>> {
+    const currentSetting = await ApiEvents.getCurrentOuterRealmsSetting();
+    return {
+      current_event: currentSetting?.scoringSystem ?? null,
+      event_rules: currentSetting
+        ? {
+            peace_duration_minutes: Math.round(Number(currentSetting.peaceDuration) / 60),
+            daily_ranking: currentSetting.hasDailyRanking === '1',
+          }
+        : null,
+      collected_at: board.collectedAt.toISOString(),
+      previous_collected_at: board.previousCollectedAt.toISOString(),
+      servers: board.servers,
+    };
   }
 
   private static parseStormyIslesQuery(request: express.Request): {

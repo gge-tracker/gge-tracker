@@ -1,48 +1,94 @@
-<div class="container my-3 live-outer-realms">
+@if (!eventNotActive && viewType === 'all') {
+  <app-layered-scene scene="realms" class="realms-scene" />
+}
+<div class="container live-outer-realms">
   @if (!eventNotActive) {
     <div class="row">
       @if (viewType === 'all') {
         <div>
-          <div class="event-header-container">
+          <header class="realms-hero">
+            <span class="realms-live"><span class="realms-live-dot" aria-hidden="true"></span>{{ 'En cours' | translate }}</span>
+            <h1>{{ 'Royaume extérieur' | translate }}</h1>
+            <p>{{ 'outer-realms-intro' | translate }}</p>
+          </header>
+
+          <section class="realms-facts">
             @if (currentEvent) {
-              <div class="col-12 my-4 d-flex align-items-center event-header">
-                <div class="p-3 event-image">
-                  <img src="/assets/live/{{currentEvent}}.png" alt="{{currentEvent}}">
+              <details class="realms-fact realms-scoring">
+                <summary>
+                  <img [src]="'/assets/live/' + currentEvent + '.png'" alt="" width="36" height="36">
+                  <span class="realms-fact-text">
+                    <small>{{ 'Mode de score' | translate }}</small>
+                    <strong>{{ ('outer.dialog_tempServer_scoring_header_' + currentEvent) | translate }}</strong>
+                  </span>
+                  <i class="fa-solid fa-chevron-down realms-scoring-chevron" aria-hidden="true"></i>
+                </summary>
+                <p>{{ ('outer.dialog_tempServer_scoring_desc_' + currentEvent) | translate }}</p>
+                <a href="https://goodgameempire.fandom.com/wiki/The_Outer_Realms" target="_blank" rel="noopener noreferrer">
+                  {{ 'En savoir plus sur l\'événement' | translate }}
+                  <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+                </a>
+              </details>
+            }
+            @if (eventRules; as rules) {
+              <div class="realms-fact">
+                <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+                <span class="realms-fact-text">
+                  <small>{{ 'Protection' | translate }}</small>
+                  <strong>{{ rules.peace_duration_minutes ? peaceLabel(rules.peace_duration_minutes) : ('Aucun' | translate) }}</strong>
+                </span>
+              </div>
+              @if (rules.daily_ranking) {
+                <div class="realms-fact">
+                  <i class="fa-solid fa-calendar-day" aria-hidden="true"></i>
+                  <span class="realms-fact-text"><strong>{{ 'Classement quotidien' | translate }}</strong></span>
                 </div>
-                <div>
-                  <h2 class="event-name">
-                    <div class="event-status-container">
-                      <div class="event-status-dot"></div>
-                    </div>
-                  {{ ('outer.dialog_tempServer_scoring_header_' + currentEvent) | translate }}</h2>
-                  <h5 class="event-desc">{{ ('outer.dialog_tempServer_scoring_desc_' + currentEvent) | translate }}</h5>
-                  <p>
-                    <a href="https://goodgameempire.fandom.com/wiki/The_Outer_Realms" target="_blank" rel="noopener noreferrer">
-                      {{ 'En savoir plus sur l\'événement' | translate }}
-                    </a>
-                  </p>
-                </div>
+              }
+            }
+            @if (participants) {
+              <div class="realms-fact">
+                <i class="fa-solid fa-users" aria-hidden="true"></i>
+                <span class="realms-fact-text">
+                  <small>{{ 'participants' | translate }}</small>
+                  <strong>{{ participants | number }}</strong>
+                </span>
               </div>
             }
-          </div>
+            @if (collectedAt) {
+              <div class="realms-fact">
+                <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+                <span class="realms-fact-text">
+                  <small>{{ 'Dernière lecture' | translate }}</small>
+                  <strong>{{ collectedAt | date: 'HH:mm' }}</strong>
+                </span>
+              </div>
+            }
+            <a class="realms-fact realms-archive" routerLink="/events/outer-realms">
+              <i class="fa-solid fa-trophy" aria-hidden="true"></i>
+              <span class="realms-fact-text">
+                <small>{{ 'Éditions précédentes' | translate }}</small>
+                <strong>{{ 'Scores finaux' | translate }}</strong>
+              </span>
+              <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+            </a>
+          </section>
           @if (!isInLoading) {
-            <div class="col-12">
-              <app-search-form #searchForm [formFilters]="null" [isInLoading]="isInLoading"
-          [inputTip]="'Rechercher un joueur' | translate" [defaultSearch]="search" [searchTypes]="{
-          player: true,
-          alliance: false
-        }" (searchPlayer)="searchPlayer($event)">
+            <div class="col-12 realms-panel">
+              <app-search-form #searchForm [formFilters]="formFilters" [isInLoading]="isInLoading"
+                [inputTip]="'Rechercher un joueur' | translate" [defaultSearch]="search"
+                [searchTypes]="{ player: true, alliance: false }" (searchPlayer)="searchPlayer($event)"
+                [exportDataEnabled]="true" (exportData)="openExportModal()">
               </app-search-form>
+              @if (collectedAt && previousCollectedAt) {
+                <p class="realms-legend">
+                  <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+                  {{ 'outer-realms-diff-legend' | translate: { time: (previousCollectedAt | date: 'HH:mm'), minutes: readingGapMinutes } }}
+                </p>
+              }
               <div class="mt-2">
-                <app-table [sort]="''" [reverse]="false" [isInLoading]="isDataLoading" [maxPage]="pagination.total_pages"
-            [page]="pagination.current_page" [search]="search" [headers]="[
-          ['playerName', 'Pseudonyme', '', true],
-          ['server', 'Serveur', '', true],
-          ['level', 'Niveau', '/assets/lvl.png', true],
-          ['might_current', 'Puissance', '/assets/pp1.png', true],
-          ['score', 'Score', '', true],
-          ['actions', 'Actions', '', true]
-        ]" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
+                <app-table [sort]="sort" [reverse]="reverse" [isInLoading]="isDataLoading" [maxPage]="pagination.total_pages"
+                  [page]="pagination.current_page" [search]="search" [headers]="tableHeaders" (sortOutput)="sortTable($event)"
+                  (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
                   @if (players.length === 0 && !isDataLoading) {
                     <tr>
                       <td colspan="10">{{ 'Aucun joueur trouvé' | translate }}</td>
@@ -86,11 +132,20 @@
                           formatNumber:'visual' }})
                         </span>
                       </td>
+                      @if (tableHeaders.length > 6) {
+                        <td class="col-distance">{{ player.distance | number: '1.0-1' }}</td>
+                      }
                       <td class="col-actions">
                         <a class="action-icon" [routerLink]="['/live/outer-realms', player.player_id]"
                           title="{{ 'Score' | translate }}">
                           <img src="/assets/icon_points.png" alt="points" height="24" class="ms-1 btn-icon">
                         </a>
+                        @if (player.castle_position[0] !== null) {
+                          <button type="button" class="action-icon action-nearby" (click)="showNearby(player)"
+                            [title]="'outer-realms-nearby' | translate" [attr.aria-label]="'outer-realms-nearby' | translate">
+                            <i class="fa-solid fa-crosshairs" aria-hidden="true"></i>
+                          </button>
+                        }
                       </td>
                     </tr>
                   }
@@ -136,8 +191,167 @@
   }
 </div>
 
+<div class="modal fade" id="filtersModal" tabindex="-1" aria-labelledby="filtersModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="filtersModalLabel">
+          <i class="fa-solid fa-filter"></i>&nbsp;{{ 'Filtrer les résultats' | translate }}
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" [attr.aria-label]="'Fermer' | translate"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-12">
+            <app-modal-form-group [label]="'Serveur' | translate">
+              <ng-select field [items]="servers" [(ngModel)]="selectedServers" [placeholder]="'Tous' | translate"
+                [multiple]="true" [closeOnSelect]="false" [clearable]="true" [searchable]="true">
+                <ng-template ng-label-tmp let-item="item" let-clear="clear">
+                  <span class="ng-value-icon left" (click)="clear(item)" aria-hidden="true">×</span>
+                  <img [src]="serverService.getFlagUrl(item)" [alt]="item" height="14" class="ms-1 me-1">
+                  {{ item }}
+                </ng-template>
+                <ng-template ng-option-tmp let-item="item">
+                  <img [src]="serverService.getFlagUrl(item)" [alt]="item" height="14" class="me-1">
+                  {{ item }}
+                </ng-template>
+              </ng-select>
+            </app-modal-form-group>
+          </div>
+          <div class="col-12 col-sm-6">
+            <app-modal-form-group [label]="'Niveau' | translate">
+              <span field prefix>
+                <img src="/assets/lvl.png" [attr.alt]="'Niveau' | translate" [title]="'Filtrer par niveau' | translate">
+              </span>
+              <input field type="text" inputmode="numeric" name="levelMin" [(ngModel)]="formFilters.minLevel"
+                placeholder="min (70/10)" [attr.aria-label]="'Niveau min' | translate">
+              <input field type="text" inputmode="numeric" name="levelMax" [(ngModel)]="formFilters.maxLevel"
+                placeholder="max (70/50)" [attr.aria-label]="'Niveau max' | translate">
+            </app-modal-form-group>
+          </div>
+          <div class="col-12 col-sm-6">
+            <app-modal-form-group [label]="'Puissance' | translate">
+              <span field prefix>
+                <img src="/assets/pp1.png" [attr.alt]="'Puissance' | translate">
+              </span>
+              <input field type="text" name="mightMin" [(ngModel)]="formFilters.minMight" placeholder="min (50k)"
+                [attr.aria-label]="'Puissance' | translate">
+              <input field type="text" name="mightMax" [(ngModel)]="formFilters.maxMight" placeholder="max (2M)"
+                [attr.aria-label]="'Puissance' | translate">
+            </app-modal-form-group>
+          </div>
+          <div class="col-12 col-sm-6">
+            <app-modal-form-group [label]="'Score' | translate">
+              <span field prefix><i class="fa-solid fa-trophy" aria-hidden="true"></i></span>
+              <input field type="text" name="scoreMin" [(ngModel)]="formFilters.minScore" placeholder="min (10k)"
+                [attr.aria-label]="'Score' | translate">
+              <input field type="text" name="scoreMax" [(ngModel)]="formFilters.maxScore" placeholder="max (1M)"
+                [attr.aria-label]="'Score' | translate">
+            </app-modal-form-group>
+          </div>
+          <div class="col-12 col-sm-6">
+            <app-modal-form-group [label]="'Rang' | translate">
+              <span field prefix><i class="fa-solid fa-ranking-star" aria-hidden="true"></i></span>
+              <input field type="text" inputmode="numeric" name="rankMin" [(ngModel)]="formFilters.minRank"
+                placeholder="min (1)" [attr.aria-label]="'Rang' | translate">
+              <input field type="text" inputmode="numeric" name="rankMax" [(ngModel)]="formFilters.maxRank"
+                placeholder="max (100)" [attr.aria-label]="'Rang' | translate">
+            </app-modal-form-group>
+          </div>
+          <div class="col-12 col-sm-6">
+            <app-modal-form-group [label]="'outer-realms-near' | translate">
+              <span field prefix><i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i></span>
+              <input field type="text" name="near" [(ngModel)]="formFilters.near" placeholder="x,y (555,678)"
+                [attr.aria-label]="'outer-realms-near' | translate">
+              <input field type="text" inputmode="numeric" name="radius" [(ngModel)]="formFilters.radius"
+                [placeholder]="('outer-realms-radius' | translate) + ' (50)'" [attr.aria-label]="'outer-realms-radius' | translate">
+            </app-modal-form-group>
+          </div>
+          <div class="col-12 col-sm-6">
+            <app-modal-form-group [label]="'outer-realms-movement' | translate">
+              <span field prefix><i class="fa-solid fa-arrow-trend-up" aria-hidden="true"></i></span>
+              <select field name="movement" [(ngModel)]="formFilters.movement" [attr.aria-label]="'outer-realms-movement' | translate">
+                @for (option of movementOptions; track option.value) {
+                  <option [value]="option.value">{{ option.label | translate }}</option>
+                }
+              </select>
+            </app-modal-form-group>
+          </div>
+          <div class="col-12 col-sm-6">
+            <app-modal-form-group [label]="'outer-realms-active-only' | translate">
+              <span field prefix><i class="fa-solid fa-bolt" aria-hidden="true"></i></span>
+              <label field toggle for="activityActive" [attr.aria-label]="'outer-realms-active-only' | translate">
+                <input type="checkbox" id="activityActive" name="activity" [ngModel]="formFilters.activity === '1'"
+                  (ngModelChange)="formFilters.activity = $event ? '1' : '-1'">
+                <span class="slider"></span>
+              </label>
+            </app-modal-form-group>
+          </div>
+          <div class="col-12">
+            <app-modal-form-group [label]="'Trier les résultats' | translate">
+              <select field name="sort" [(ngModel)]="sort" (ngModelChange)="reverse = false"
+                [attr.aria-label]="'Trier les résultats' | translate">
+                @for (option of availableSortOptions; track option.value) {
+                  <option [value]="option.value">{{ option.label | translate }}</option>
+                }
+              </select>
+              <button action reset type="button" (click)="reverse = !reverse">
+                <i class="fa-solid" [ngClass]="isAscending ? 'fa-arrow-up-long' : 'fa-arrow-down-long'"></i>
+                <span>{{ (isAscending ? 'Ascendant' : 'Descendant') | translate }}</span>
+              </button>
+            </app-modal-form-group>
+          </div>
+          <div class="col-12 mt-4 d-flex flex-wrap justify-content-center gap-2">
+            <button class="gge-btn" type="button" (click)="resetFilters()" data-bs-dismiss="modal">
+              <i class="fa-solid fa-rotate-left"></i>
+              &nbsp;
+              <span>{{ 'Réinitialiser les filtres' | translate }}</span>
+            </button>
+            <button class="gge-btn search" (click)="applyFilters()" data-bs-dismiss="modal">
+              <i class="fa-solid fa-check"></i>
+              &nbsp;
+              <span>{{ 'Appliquer les filtres' | translate }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-
-
-
-
+<div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exportModalLabel">
+          <i class="fa-solid fa-download"></i>&nbsp;{{ 'outer-realms-export-title' | translate }}
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" [attr.aria-label]="'Fermer' | translate"></button>
+      </div>
+      <div class="modal-body realms-export">
+        <p>{{ 'outer-realms-export-desc' | translate: { count: (pagination.total_items_count | number) } }}</p>
+        <div class="realms-export-formats">
+          @for (format of exportFormats; track format) {
+            <a class="gge-btn search" [href]="exportUrl(format)" download rel="noopener">
+              <i class="fa-solid fa-file-arrow-down" aria-hidden="true"></i>
+              <span>{{ format.toUpperCase() }}</span>
+            </a>
+          }
+        </div>
+        <h6>{{ 'outer-realms-export-api' | translate }}</h6>
+        <p class="realms-export-hint">{{ 'outer-realms-export-api-desc' | translate }}</p>
+        <div class="realms-export-url">
+          <input type="text" readonly [value]="exportUrl('json')" [attr.aria-label]="'outer-realms-export-api' | translate">
+          <button type="button" class="gge-btn search" (click)="copyExportUrl()" [title]="'Copier le lien' | translate"
+            [attr.aria-label]="'Copier le lien' | translate">
+            <i class="fa-solid fa-copy" aria-hidden="true"></i>
+          </button>
+        </div>
+        <a class="realms-export-docs" href="https://docs.gge-tracker.com" target="_blank" rel="noopener noreferrer">
+          {{ 'outer-realms-export-docs' | translate }}
+          <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>

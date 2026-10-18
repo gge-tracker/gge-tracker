@@ -57,6 +57,8 @@ import {
   ApiRiftRaidDatesResponse,
   ApiRiftRaidSearchResponse,
   ApiLiveRankingResponse,
+  LiveRankingExportFormat,
+  LiveRankingFilters,
   ApiLiveRankingSpecificPlayerResponse,
   ApiEventsByPlayerIdResponse,
   ApiWoaEventListResponse,
@@ -993,14 +995,17 @@ export class ApiRestService {
 
   public async getLiveRankingOuterRealms(
     page: number,
-    playerName?: string | undefined,
+    filters: LiveRankingFilters = {},
   ): Promise<ApiResponse<ApiLiveRankingResponse>> {
-    const constructUrl = playerName
-      ? `${ApiRestService.apiUrl}live-ranking/outer-realms?page=${page}&player_name=${playerName}`
-      : `${ApiRestService.apiUrl}live-ranking/outer-realms?page=${page}`;
-    const response = await this.apiFetch<ApiLiveRankingResponse>(constructUrl);
-    if (!response.success) return response;
-    return { success: true, data: response.data };
+    const parameters = this.liveRankingParameters(filters);
+    parameters.set('page', String(page));
+    return this.apiFetch<ApiLiveRankingResponse>(`${ApiRestService.apiUrl}live-ranking/outer-realms?${parameters}`);
+  }
+
+  public getLiveRankingOuterRealmsExportUrl(format: LiveRankingExportFormat, filters: LiveRankingFilters = {}): string {
+    const parameters = this.liveRankingParameters(filters);
+    parameters.set('format', format);
+    return `${ApiRestService.apiUrl}live-ranking/outer-realms/export?${parameters}`;
   }
 
   public async getWoaEventList(page: number): Promise<ApiResponse<ApiWoaEventListResponse>> {
@@ -1135,5 +1140,29 @@ export class ApiRestService {
 
   private updateResponseMs(requestStartMs: number, requestEndMs: number): void {
     this.responseMs = requestEndMs - requestStartMs;
+  }
+
+  private liveRankingParameters(filters: LiveRankingFilters): URLSearchParams {
+    const parameters = new URLSearchParams();
+    const set = (name: string, value: string | number | undefined): void => {
+      if (value !== undefined && value !== '') parameters.set(name, String(value));
+    };
+    set('player_name', filters.playerName);
+    set('server', filters.servers?.join(','));
+    set('min_level', filters.minLevel);
+    set('max_level', filters.maxLevel);
+    set('min_might', filters.minMight);
+    set('max_might', filters.maxMight);
+    set('min_score', filters.minScore);
+    set('max_score', filters.maxScore);
+    set('min_rank', filters.minRank);
+    set('max_rank', filters.maxRank);
+    set('active', filters.activeOnly ? 1 : undefined);
+    set('movement', filters.movement);
+    set('near', filters.near ? `${filters.near.x},${filters.near.y}` : undefined);
+    set('radius', filters.near?.radius);
+    set('order_by', filters.orderBy);
+    set('order_dir', filters.orderDir);
+    return parameters;
   }
 }

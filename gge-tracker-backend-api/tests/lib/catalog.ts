@@ -81,6 +81,11 @@ const q = (params: Record<string, string | number | undefined>): string => {
 /** Aquamarine metrics the stormy isles leaderboard can be sorted and filtered on */
 const STORMY_ISLES_METRIC_IDS = [15, 16, 17, 18, 19, 20, 100];
 
+const OUTER_REALMS_FILTER_PARAMS = [
+  'player_name', 'server', 'min_level', 'max_level', 'min_might', 'max_might', 'min_score', 'max_score',
+  'min_rank', 'max_rank', 'active', 'movement', 'near', 'radius', 'order_by', 'order_dir',
+];
+
 /** Rejected by the storms routes: bad coordinates, out-of-range filters and malformed isle lists */
 const stormRejectedCases = (base: '/storms/forts' | '/storms/isles'): EndpointCase[] => [
   { label: 'positionX out of map', path: () => base + q({ page: 1, positionX: 99_999, positionY: 640 }), expect: [400] },
@@ -569,7 +574,49 @@ export const CATALOG: Endpoint[] = [
   ] },
 
   // Live ranking (public)
-  { id: 'live-outer-realms', method: 'GET', scope: 'public', path: () => '/live-ranking/outer-realms' + q({ page: 1 }), okStatuses: [200, 400, 403], fuzzQuery: ['player_name'] },
+  {
+    id: 'live-outer-realms',
+    method: 'GET',
+    scope: 'public',
+    path: () => '/live-ranking/outer-realms' + q({ page: 1 }),
+    okStatuses: [200, 400, 403],
+    fuzzQuery: OUTER_REALMS_FILTER_PARAMS.concat('size'),
+    cases: [
+      { label: 'filtered by server', path: () => '/live-ranking/outer-realms' + q({ page: 1, server: 'FR1' }), expect: [200, 403] },
+      { label: 'filtered by several servers', path: () => '/live-ranking/outer-realms' + q({ page: 1, server: 'FR1,DE1' }), expect: [200, 403] },
+      { label: 'filtered by level range', path: () => '/live-ranking/outer-realms' + q({ page: 1, min_level: 70, max_level: 120 }), expect: [200, 403] },
+      { label: 'filtered by might, score and rank', path: () => '/live-ranking/outer-realms' + q({ page: 1, min_might: 1000, max_might: 5000000, min_score: 1, max_score: 9000000, min_rank: 1, max_rank: 500 }), expect: [200, 403] },
+      { label: 'only active players', path: () => '/live-ranking/outer-realms' + q({ page: 1, active: 1 }), expect: [200, 403] },
+      { label: 'only climbing players', path: () => '/live-ranking/outer-realms' + q({ page: 1, movement: 'up' }), expect: [200, 403] },
+      { label: 'castles near a point, closest first', path: () => '/live-ranking/outer-realms' + q({ page: 1, near: '500,500', radius: 100, order_by: 'distance' }), expect: [200, 403] },
+      { label: 'sorted by might ascending, 50 a page', path: () => '/live-ranking/outer-realms' + q({ page: 1, order_by: 'might', order_dir: 'asc', size: 50 }), expect: [200, 403] },
+      { label: 'malformed server refused', path: () => '/live-ranking/outer-realms' + q({ page: 1, server: 'FR-1;' }), expect: [400] },
+      { label: 'negative level refused', path: () => '/live-ranking/outer-realms' + q({ page: 1, min_level: -5 }), expect: [400] },
+      { label: 'fractional might refused', path: () => '/live-ranking/outer-realms' + q({ page: 1, min_might: 1.5 }), expect: [400] },
+      { label: 'unknown movement refused', path: () => '/live-ranking/outer-realms' + q({ page: 1, movement: 'sideways' }), expect: [400] },
+      { label: 'malformed near refused', path: () => '/live-ranking/outer-realms' + q({ page: 1, near: '12' }), expect: [400] },
+      { label: 'radius above the cap refused', path: () => '/live-ranking/outer-realms' + q({ page: 1, near: '1,1', radius: 5000 }), expect: [400] },
+      { label: 'distance sort without near refused', path: () => '/live-ranking/outer-realms' + q({ page: 1, order_by: 'distance' }), expect: [400] },
+      { label: 'unknown sort field refused', path: () => '/live-ranking/outer-realms' + q({ page: 1, order_by: 'castle_position' }), expect: [400] },
+      { label: 'unknown sort direction refused', path: () => '/live-ranking/outer-realms' + q({ page: 1, order_dir: 'up' }), expect: [400] },
+      { label: 'page size above the cap refused', path: () => '/live-ranking/outer-realms' + q({ page: 1, size: 101 }), expect: [400] },
+    ],
+  },
+  {
+    id: 'live-outer-realms-export',
+    method: 'GET',
+    scope: 'public',
+    path: () => '/live-ranking/outer-realms/export',
+    okStatuses: [200, 400, 403],
+    fuzzQuery: OUTER_REALMS_FILTER_PARAMS.concat('format'),
+    cases: [
+      { label: 'ndjson is served', path: () => '/live-ranking/outer-realms/export' + q({ format: 'ndjson' }), expect: [200, 403] },
+      { label: 'csv is served', path: () => '/live-ranking/outer-realms/export' + q({ format: 'csv' }), expect: [200, 403] },
+      { label: 'filters and sort apply', path: () => '/live-ranking/outer-realms/export' + q({ server: 'FR1', min_level: 70, order_by: 'score' }), expect: [200, 403] },
+      { label: 'an unknown format is refused', path: () => '/live-ranking/outer-realms/export' + q({ format: 'xml' }), expect: [400] },
+      { label: 'an invalid filter is refused', path: () => '/live-ranking/outer-realms/export' + q({ movement: 'sideways' }), expect: [400] },
+    ],
+  },
   { id: 'live-outer-realms-search', method: 'GET', scope: 'public', path: (s) => '/live-ranking/outer-realms' + q({ page: 1, player_name: s.playerName ?? 'a' }), okStatuses: [200, 400, 403], needs: ['player'] },
   { id: 'live-outer-realms-player', method: 'GET', scope: 'public', path: (s) => `/live-ranking/outer-realms/player/${s.playerId ?? '1'}`, okStatuses: [200, 400, 404], needs: ['player'] },
 

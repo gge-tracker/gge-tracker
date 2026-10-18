@@ -1,16 +1,31 @@
-import { NgClass } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { DatePipe, DecimalPipe, NgClass } from '@angular/common';
+import { Component, inject, ViewChild } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { LayeredSceneComponent } from '@ggetracker-components/layered-scene/layered-scene.component';
+import { ModalFormGroupComponent } from '@ggetracker-components/modal-form-group/modal-form-group.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
-import { ApiLiveRanking, IOuterRealmEvent, PlayerLiveRankingExtended } from '@ggetracker-interfaces/empire-ranking';
+import {
+  ApiLiveRanking,
+  ApiLiveRankingResponse,
+  IOuterRealmEvent,
+  LiveRankingExportFormat,
+  LiveRankingFilters,
+  LiveRankingMovement,
+  LiveRankingSortField,
+  PlayerLiveRankingExtended,
+} from '@ggetracker-interfaces/empire-ranking';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { formatThousands } from '@ggetracker-services/text-format.utilities';
 import { ServerService } from '@ggetracker-services/server.service';
+import { NgLabelTemplateDirective, NgOptionTemplateDirective, NgSelectComponent } from '@ng-select/ng-select';
 import { TranslateModule } from '@ngx-translate/core';
 import { ApexAxisChartSeries, ApexChart, ApexNonAxisChartSeries, ApexOptions, ApexPlotOptions } from 'ng-apexcharts';
 import { LiveOuterRealmsStatisticsModalComponent } from './live-outer-realms-statistics-modal/live-outer-realms-statistics-modal.component';
+
+type TableHeader = [string, string, string?, boolean?];
 
 interface GenericChartConfig {
   type: ApexChart['type'];
@@ -35,11 +50,20 @@ interface GenericChartConfig {
     FormatNumberPipe,
     RouterModule,
     LiveOuterRealmsStatisticsModalComponent,
+    LayeredSceneComponent,
+    DatePipe,
+    DecimalPipe,
+    FormsModule,
+    ModalFormGroupComponent,
+    NgSelectComponent,
+    NgLabelTemplateDirective,
+    NgOptionTemplateDirective,
   ],
   templateUrl: './live-outer-realms.component.html',
   styleUrls: ['./live-outer-realms.component.css'],
 })
 export class LiveOuterRealmsComponent extends GenericComponent {
+  private static readonly ASCENDING_BY_DEFAULT = new Set<LiveRankingSortField>(['rank', 'player_name', 'distance']);
   public players: ApiLiveRanking[] = [];
   public eventNotActive = false;
   public charts: Record<string, any> = {};
@@ -55,7 +79,51 @@ export class LiveOuterRealmsComponent extends GenericComponent {
     total_items_count: 0,
   };
   public search: string = '';
+  @ViewChild('searchForm') public searchForm?: SearchFormComponent;
+  public formFilters = {
+    server: '',
+    minLevel: '',
+    maxLevel: '',
+    minMight: '',
+    maxMight: '',
+    minScore: '',
+    maxScore: '',
+    minRank: '',
+    maxRank: '',
+    movement: '-1',
+    activity: '-1',
+    near: '',
+    radius: '',
+    isFiltered: false,
+  };
+  public selectedServers: string[] = [];
+  public tableHeaders: TableHeader[] = LiveOuterRealmsComponent.headersFor(false);
+  public sort: LiveRankingSortField = 'rank';
+  public reverse = false;
+  public readonly exportFormats: LiveRankingExportFormat[] = ['csv', 'json', 'ndjson'];
+  public readonly sortOptions: { value: LiveRankingSortField; label: string }[] = [
+    { value: 'rank', label: 'Classement' },
+    { value: 'score', label: 'Score' },
+    { value: 'score_diff', label: 'outer-realms-sort-score-gain' },
+    { value: 'rank_diff', label: 'outer-realms-sort-rank-gain' },
+    { value: 'might', label: 'Puissance' },
+    { value: 'level', label: 'Niveau' },
+    { value: 'player_name', label: 'Pseudonyme' },
+    { value: 'distance', label: 'Distance' },
+  ];
+  public readonly movementOptions: { value: LiveRankingMovement | '-1'; label: string }[] = [
+    { value: '-1', label: 'Tous' },
+    { value: 'up', label: 'outer-realms-movement-up' },
+    { value: 'down', label: 'outer-realms-movement-down' },
+    { value: 'steady', label: 'outer-realms-movement-steady' },
+  ];
+  public servers: string[] = [];
+  public eventRules: ApiLiveRankingResponse['event_rules'] = null;
+  public collectedAt: string | null = null;
+  public previousCollectedAt: string | null = null;
+  public participants = 0;
   public serverService = inject(ServerService);
+  private filters: LiveRankingFilters = {};
   private refreshTimer: any = null;
 
   constructor() {
@@ -71,8 +139,127 @@ export class LiveOuterRealmsComponent extends GenericComponent {
     });
   }
 
+  private static headersFor(withDistance: boolean): TableHeader[] {
+    const headers: TableHeader[] = [
+      ['player_name', 'Pseudonyme', ''],
+      ['server', 'Serveur', '', true],
+      ['level', 'Niveau', '/assets/lvl.png'],
+      ['might', 'Puissance', '/assets/pp1.png'],
+      ['score', 'Score', ''],
+    ];
+    if (withDistance) headers.push(['distance', 'Distance', '']);
+    headers.push(['actions', 'Actions', '', true]);
+    return headers;
+  }
+
   public get chartsArray(): string[] {
     return Object.keys(this.charts);
+  }
+
+  public get readingGapMinutes(): number {
+    if (!this.collectedAt || !this.previousCollectedAt) return 0;
+    return Math.max(1, Math.round((Date.parse(this.collectedAt) - Date.parse(this.previousCollectedAt)) / 60_000));
+  }
+
+  public get isAscending(): boolean {
+    return LiveOuterRealmsComponent.ASCENDING_BY_DEFAULT.has(this.sort) !== this.reverse;
+  }
+
+  public get availableSortOptions(): { value: LiveRankingSortField; label: string }[] {
+    return this.sortOptions.filter((option) => option.value !== 'distance' || this.parseNear(this.formFilters.near));
+  }
+
+  public exportUrl(format: LiveRankingExportFormat): string {
+    return this.apiRestService.getLiveRankingOuterRealmsExportUrl(format, this.requestFilters());
+  }
+
+  public openExportModal(): void {
+    const modal = document.querySelector('#exportModal');
+    const bootstrap = (
+      globalThis as { bootstrap?: { Modal: { getOrCreateInstance(element: Element): { show(): void } } } }
+    ).bootstrap;
+    if (modal && bootstrap) bootstrap.Modal.getOrCreateInstance(modal).show();
+  }
+
+  public async copyExportUrl(): Promise<void> {
+    await globalThis.navigator.clipboard.writeText(this.exportUrl('json'));
+    this.toastService.add(this.translateService.instant('Lien copié'), 3000);
+  }
+
+  public applyFilters(): void {
+    const { minLevel, maxLevel, minMight, maxMight, minScore, maxScore, minRank, maxRank, movement, activity, radius } =
+      this.formFilters;
+    const near = this.parseNear(this.formFilters.near);
+    if (!near) this.formFilters.radius = '';
+    if (!near && this.sort === 'distance') this.sort = 'rank';
+    this.formFilters.server = this.selectedServers.join(',');
+    this.filters = {
+      servers: this.selectedServers.length > 0 ? [...this.selectedServers] : undefined,
+      minLevel: this.parseLevel(minLevel),
+      maxLevel: this.parseLevel(maxLevel),
+      minMight: this.parseAmount(minMight),
+      maxMight: this.parseAmount(maxMight),
+      minScore: this.parseAmount(minScore),
+      maxScore: this.parseAmount(maxScore),
+      minRank: this.parseAmount(minRank),
+      maxRank: this.parseAmount(maxRank),
+      movement: movement === '-1' ? undefined : (movement as LiveRankingMovement),
+      activeOnly: activity === '1' || undefined,
+      near: near ? { ...near, radius: this.parseAmount(radius) } : undefined,
+    };
+    this.formFilters.isFiltered = Object.values(this.filters).some((value) => value !== undefined);
+    this.tableHeaders = LiveOuterRealmsComponent.headersFor(near !== null);
+    void this.loadData(1).then(() => this.searchForm?.updateNbFilterActivated());
+  }
+
+  public resetFilters(): void {
+    this.selectedServers = [];
+    this.formFilters = {
+      server: '',
+      minLevel: '',
+      maxLevel: '',
+      minMight: '',
+      maxMight: '',
+      minScore: '',
+      maxScore: '',
+      minRank: '',
+      maxRank: '',
+      movement: '-1',
+      activity: '-1',
+      near: '',
+      radius: '',
+      isFiltered: false,
+    };
+    this.sort = 'rank';
+    this.reverse = false;
+    this.applyFilters();
+  }
+
+  public showNearby(player: ApiLiveRanking): void {
+    const [x, y] = player.castle_position;
+    if (x === null || y === null) return;
+    this.formFilters.near = `${x},${y}`;
+    this.sort = 'distance';
+    this.reverse = false;
+    this.applyFilters();
+  }
+
+  public sortTable(field: string): void {
+    const sortField = this.sortOptions.find((option) => option.value === field)?.value;
+    if (!sortField || this.isDataLoading) return;
+    if (this.sort === sortField) {
+      this.reverse = !this.reverse;
+    } else {
+      this.sort = sortField;
+      this.reverse = false;
+    }
+    void this.loadData(1);
+  }
+
+  public peaceLabel(minutes: number): string {
+    return minutes >= 60
+      ? `${Math.round(minutes / 60)} ${this.translateService.instant('heures_h')}`
+      : `${minutes} min`;
   }
 
   public async initSpecificView(playerId: string): Promise<void> {
@@ -158,16 +345,18 @@ export class LiveOuterRealmsComponent extends GenericComponent {
     this.isInLoading = false;
   }
 
-  public async loadData(page: number, playerName?: string): Promise<void> {
+  public async loadData(page: number): Promise<void> {
     if (this.refreshTimer) {
       clearTimeout(this.refreshTimer);
       this.refreshTimer = null;
     }
     this.requestCounter++;
     this.isDataLoading = true;
-    const response = await this.apiRestService.getLiveRankingOuterRealms(page, playerName);
+    const filters = this.requestFilters();
+    const response = await this.apiRestService.getLiveRankingOuterRealms(page, filters);
     if (!response.success) {
       this.isInLoading = false;
+      this.isDataLoading = false;
       if (this.requestCounter === 1) {
         this.eventNotActive = true;
       } else {
@@ -178,43 +367,66 @@ export class LiveOuterRealmsComponent extends GenericComponent {
     this.players = response.data.players;
     this.pagination = response.data.pagination;
     this.currentEvent = response.data.current_event;
+    this.eventRules = response.data.event_rules;
+    this.collectedAt = response.data.collected_at;
+    this.previousCollectedAt = response.data.previous_collected_at;
+    this.servers = response.data.servers;
+    if (!filters.playerName && !this.formFilters.isFiltered) {
+      this.participants = response.data.pagination.total_items_count;
+    }
     this.isDataLoading = false;
     this.refreshTimer = setTimeout(() => {
-      void this.loadData(page, playerName);
+      void this.loadData(page);
     }, 60_000);
   }
 
-  public searchPlayer(playerName: string, page: number = 1): Promise<void> {
+  public searchPlayer(playerName: string): Promise<void> {
     this.search = playerName;
-    return this.loadData(page, playerName);
+    return this.loadData(1);
   }
 
   public navigateTo(page: number): void {
-    if (this.search.trim() !== '') {
-      void this.searchPlayer(this.search, page);
-      return;
-    }
-    void this.loadData(page, this.search.trim() === '' ? undefined : this.search);
+    void this.loadData(page);
   }
 
   public previousPage(): void {
-    if (this.pagination.current_page > 1) {
-      if (this.search.trim() !== '') {
-        void this.searchPlayer(this.search, this.pagination.current_page - 1);
-        return;
-      }
-      void this.loadData(this.pagination.current_page - 1, this.search.trim() === '' ? undefined : this.search);
-    }
+    if (this.pagination.current_page > 1) void this.loadData(this.pagination.current_page - 1);
   }
 
   public nextPage(): void {
     if (this.pagination.current_page < this.pagination.total_pages) {
-      if (this.search.trim() !== '') {
-        void this.searchPlayer(this.search, this.pagination.current_page + 1);
-        return;
-      }
-      void this.loadData(this.pagination.current_page + 1, this.search.trim() === '' ? undefined : this.search);
+      void this.loadData(this.pagination.current_page + 1);
     }
+  }
+
+  private requestFilters(): LiveRankingFilters {
+    const playerName = this.search.trim();
+    const isDefaultSort = this.sort === 'rank' && !this.reverse;
+    return {
+      ...this.filters,
+      playerName: playerName === '' ? undefined : playerName,
+      orderBy: isDefaultSort ? undefined : this.sort,
+      orderDir: isDefaultSort ? undefined : this.isAscending ? 'asc' : 'desc',
+    };
+  }
+
+  private parseAmount(text: string): number | undefined {
+    const match = /^\s*(\d+(?:[,.]\d+)?)\s*([bkm])?\s*$/i.exec(text);
+    if (!match) return undefined;
+    const multipliers: Record<string, number> = { k: 1e3, m: 1e6, b: 1e9 };
+    const value = Number(match[1].replace(',', '.')) * (match[2] ? multipliers[match[2].toLowerCase()] : 1);
+    return Math.round(value);
+  }
+
+  private parseNear(text: string): { x: number; y: number } | null {
+    const match = /^\s*(\d{1,4})\s*[\s,/:;]\s*(\d{1,4})\s*$/.exec(text);
+    return match ? { x: Number(match[1]), y: Number(match[2]) } : null;
+  }
+
+  private parseLevel(text: string): number | undefined {
+    const match = /^\s*(\d{1,3})\s*(?:\/\s*(\d{1,4}))?\s*$/.exec(text);
+    if (!match) return undefined;
+    return Number(match[1]) + Number(match[2] ?? 0);
   }
 
   private formatLegendaryLevel(level: number): string {

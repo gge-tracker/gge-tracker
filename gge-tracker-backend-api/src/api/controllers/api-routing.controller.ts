@@ -206,6 +206,10 @@ export class ApiRoutingController {
     void ApiEvents.getLiveOuterRealmsRanking(request, response);
   }
 
+  public getLiveOuterRealmsExport(request: express.Request, response: express.Response): void {
+    void ApiEvents.getLiveOuterRealmsExport(request, response);
+  }
+
   public getLiveOuterRealmsRankingSpecificPlayer(request: express.Request, response: express.Response): void {
     void ApiEvents.getLiveOuterRealmsRankingSpecificPlayer(request, response);
   }

@@ -17,7 +17,6 @@ import * as readline from 'node:readline';
 import { createClient } from 'redis';
 import { HIGHSCORES_CONFIG } from './definitions/highest_scores.config';
 import { SWAP_RANK_POINTS_TABLE } from './definitions/swap-rank-points.config';
-import { TEMP_SERVER_SETTINGS } from './definitions/temp-server-events.config';
 import {
   AllianceDatabase,
   Castle,
@@ -38,6 +37,7 @@ import { isSocketDown, readBridgeStatus, zoneOf } from './bridge-status';
 import { LootReading, LootReadingKind, lootCounterValue, unwrapLootRun } from './loot-counter';
 import { LootReset, lootWeekStart } from './loot-reset';
 import { findScrapingServer, readPublicPlayerIdCodes } from './servers-file';
+import { findTempServerSetting } from './temp-server-settings';
 
 interface LootMove {
   player: number;
@@ -1267,7 +1267,7 @@ export class GenericFetchAndSaveBackend {
         throw new Error('No temporary server setting found in Redis');
       }
 
-      const scoring = this.resolveOuterRealmsScoring(temporaryServerData);
+      const scoring = await this.resolveOuterRealmsScoring(temporaryServerData, redisClient);
       scoringSystemType = scoring.scoringSystemType;
       LT = scoring.LT;
 
@@ -2256,13 +2256,14 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
-  private resolveOuterRealmsScoring(temporaryServerData: string): {
+  private async resolveOuterRealmsScoring(
+    temporaryServerData: string,
+    redisClient: ReturnType<typeof createClient>,
+  ): Promise<{
     scoringSystemType: 'collector' | 'might' | 'rankSwap';
     LT: number | null;
-  } {
-    const tempServerSetting = TEMP_SERVER_SETTINGS.find(
-      (el) => el.settingID && Number(el.settingID) === Number(temporaryServerData),
-    );
+  }> {
+    const tempServerSetting = await findTempServerSetting(temporaryServerData, redisClient);
     if (!tempServerSetting) {
       throw new Error(
         `No matching temporary server setting found for temporaryServerData value: ${temporaryServerData}`,

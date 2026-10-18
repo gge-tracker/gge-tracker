@@ -5,6 +5,7 @@ import path from 'node:path';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { HttpCache } from '../helper/http-cache';
+import { TemporaryServerSettings } from '../helper/temporary-server-settings';
 import { AssetFileCache } from '../services/asset-file-cache';
 import { AssetImageVariant, AssetImageRenderer } from '../services/asset-image-renderer';
 import { AssetSymbolResolver } from '../services/asset-symbol-resolver';
@@ -679,6 +680,9 @@ export abstract class ApiAssets implements ApiHelper {
     if (!itemsJsonResource.ok) throw new Error('Failed to fetch items JSON: ' + itemsJsonResource.status);
     const itemsJsonText = await itemsJsonResource.text();
     await fs.promises.writeFile(path.join(__dirname, './../assets/items.json'), itemsJsonText);
+    await TemporaryServerSettings.publishFromItems(JSON.parse(itemsJsonText)).catch((error) =>
+      ApiHelper.logError(error, 'updateItems.tempServerSettings', null),
+    );
   }
 
   private static applyAssetCaching(request: express.Request, response: express.Response, cacheKey: string): boolean {

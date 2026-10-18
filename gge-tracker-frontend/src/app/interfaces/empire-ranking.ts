@@ -417,7 +417,36 @@ export type IOuterRealmEvent = 'might' | 'collector' | 'rankSwap' | null;
 export interface ApiLiveRankingResponse {
   players: ApiLiveRanking[];
   current_event: IOuterRealmEvent;
+  event_rules: { peace_duration_minutes: number; daily_ranking: boolean } | null;
+  collected_at: string;
+  previous_collected_at: string;
+  servers: string[];
   pagination: ApiPagination;
+}
+
+export type LiveRankingSortField =
+  'rank' | 'score' | 'might' | 'level' | 'score_diff' | 'rank_diff' | 'player_name' | 'distance';
+
+export type LiveRankingMovement = 'up' | 'down' | 'steady';
+
+export type LiveRankingExportFormat = 'csv' | 'json' | 'ndjson';
+
+export interface LiveRankingFilters {
+  playerName?: string;
+  servers?: string[];
+  minLevel?: number;
+  maxLevel?: number;
+  minMight?: number;
+  maxMight?: number;
+  minScore?: number;
+  maxScore?: number;
+  minRank?: number;
+  maxRank?: number;
+  activeOnly?: boolean;
+  movement?: LiveRankingMovement;
+  near?: { x: number; y: number; radius?: number };
+  orderBy?: LiveRankingSortField;
+  orderDir?: 'asc' | 'desc';
 }
 
 export interface ApiWoaEventListResponse {
@@ -488,6 +517,7 @@ export interface ApiLiveRanking {
   castle_position: [number, number];
   rank_diff: number;
   score_diff: number;
+  distance?: number;
 }
 export interface ApiAllianceSearchResponse {
   alliance_id: number;

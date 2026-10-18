@@ -18,7 +18,7 @@ interface OuterRealmsRankingRow {
   rank_diff: string;
 }
 
-interface OuterRealmsPlayer {
+export interface OuterRealmsPlayer {
   player_id: number;
   player_name: string;
   server: string;
@@ -30,11 +30,50 @@ interface OuterRealmsPlayer {
   rank_diff: number;
   score_diff: number;
   castle_position: [number | null, number | null];
+  distance?: number;
 }
 
 interface OuterRealmsSnapshotDates {
   lastDate: string | null;
   previousDate: string | null;
+}
+
+export type OuterRealmsMetric = 'level' | 'might' | 'score' | 'rank';
+export type OuterRealmsMovement = 'up' | 'down' | 'steady';
+export type OuterRealmsSortField =
+  | 'rank'
+  | 'score'
+  | 'might'
+  | 'level'
+  | 'score_diff'
+  | 'rank_diff'
+  | 'player_name'
+  | 'distance';
+
+export interface OuterRealmsRange {
+  metric: OuterRealmsMetric;
+  min: number | null;
+  max: number | null;
+}
+
+export interface OuterRealmsArea {
+  x: number;
+  y: number;
+  radius: number;
+}
+
+export interface OuterRealmsFilter {
+  name: string | null;
+  servers: string[];
+  ranges: OuterRealmsRange[];
+  activeOnly: boolean;
+  movement: OuterRealmsMovement | null;
+  near: OuterRealmsArea | null;
+}
+
+export interface OuterRealmsSort {
+  field: OuterRealmsSortField;
+  descending: boolean;
 }
 
 export interface OuterRealmsPage {
@@ -43,12 +82,17 @@ export interface OuterRealmsPage {
 }
 
 export class OuterRealmsBoard {
+  public static readonly DEFAULT_SORT: OuterRealmsSort = { field: 'rank', descending: false };
+
+  public readonly servers: string[];
   private readonly players: OuterRealmsPlayer[];
   private readonly namesLower: string[];
   private readonly serverByPlayerId = new Map<number, string>();
+  private readonly ordersBySort = new Map<string, number[]>();
 
   constructor(
     public readonly snapshot: string,
+    public readonly previousSnapshot: string,
     rows: OuterRealmsRankingRow[],
   ) {
     this.players = rows.map((row) => ({
@@ -66,33 +110,115 @@ export class OuterRealmsBoard {
     }));
     this.namesLower = rows.map((row) => row.player_name.toLowerCase());
     rows.forEach((row) => this.serverByPlayerId.set(row.player_id, row.server));
+    this.servers = [...new Set(rows.map((row) => row.server))].sort();
+  }
+
+  public static isUnfiltered(filter: OuterRealmsFilter): boolean {
+    return (
+      filter.name === null &&
+      filter.servers.length === 0 &&
+      filter.ranges.length === 0 &&
+      !filter.activeOnly &&
+      filter.movement === null &&
+      filter.near === null
+    );
+  }
+
+  private static metricOf(player: OuterRealmsPlayer, metric: OuterRealmsMetric): number {
+    return metric === 'level' ? player.level + player.legendary_level : player[metric];
+  }
+
+  private static distanceBetween(player: OuterRealmsPlayer, area: OuterRealmsArea): number | null {
+    const [x, y] = player.castle_position;
+    if (x === null || y === null) return null;
+    return Math.hypot(x - area.x, y - area.y);
   }
 
   public get collectedAt(): Date {
     return new Date(this.snapshot);
   }
 
-  public slice(nameFilter: string | null, offset: number, limit: number): OuterRealmsPage {
-    const matches = nameFilter === null ? null : this.matchingIndices(nameFilter);
-    const totalItems = matches === null ? this.players.length : matches.length;
-    const end = Math.min(offset + limit, totalItems);
-    const players: OuterRealmsPlayer[] = [];
-    for (let position = offset; position < end; position++) {
-      players.push(this.players[matches === null ? position : matches[position]]);
-    }
-    return { players, totalItems };
+  public get previousCollectedAt(): Date {
+    return new Date(this.previousSnapshot);
+  }
+
+  public slice(filter: OuterRealmsFilter, sort: OuterRealmsSort, offset: number, limit: number): OuterRealmsPage {
+    const selection = this.select(filter, sort);
+    const players = selection.slice(offset, offset + limit).map((index) => this.present(index, filter));
+    return { players, totalItems: selection.length };
+  }
+
+  public list(filter: OuterRealmsFilter, sort: OuterRealmsSort): OuterRealmsPlayer[] {
+    return this.select(filter, sort).map((index) => this.present(index, filter));
   }
 
   public serverOf(playerId: number): string | null {
     return this.serverByPlayerId.get(playerId) ?? null;
   }
 
-  private matchingIndices(nameFilter: string): number[] {
-    const matches: number[] = [];
-    this.namesLower.forEach((name, index) => {
-      if (name.includes(nameFilter)) matches.push(index);
-    });
-    return matches;
+  private select(filter: OuterRealmsFilter, sort: OuterRealmsSort): number[] {
+    if (sort.field === 'distance' && filter.near) {
+      const area = filter.near;
+      const matches = this.orderOf(OuterRealmsBoard.DEFAULT_SORT).filter((index) => this.matches(index, filter));
+      const distances = new Map(
+        matches.map((index) => [index, OuterRealmsBoard.distanceBetween(this.players[index], area)!]),
+      );
+      const direction = sort.descending ? -1 : 1;
+      return matches.sort((a, b) => direction * (distances.get(a)! - distances.get(b)!) || a - b);
+    }
+    const order = this.orderOf(sort);
+    return OuterRealmsBoard.isUnfiltered(filter) ? order : order.filter((index) => this.matches(index, filter));
+  }
+
+  private orderOf(sort: OuterRealmsSort): number[] {
+    const key = `${sort.field}:${sort.descending ? 'desc' : 'asc'}`;
+    let order = this.ordersBySort.get(key);
+    if (!order) {
+      order = this.players.map((_, index) => index);
+      const direction = sort.descending ? -1 : 1;
+      const compare = this.comparatorFor(sort.field);
+      // Players arrive in rank order, so the index is the tiebreak that keeps paging stable
+      order.sort((a, b) => direction * compare(a, b) || a - b);
+      this.ordersBySort.set(key, order);
+    }
+    return order;
+  }
+
+  private comparatorFor(field: OuterRealmsSortField): (a: number, b: number) => number {
+    if (field === 'player_name') return (a, b) => this.namesLower[a].localeCompare(this.namesLower[b]);
+    if (field === 'level') {
+      return (a, b) =>
+        OuterRealmsBoard.metricOf(this.players[a], 'level') - OuterRealmsBoard.metricOf(this.players[b], 'level');
+    }
+    if (field === 'distance') return (a, b) => a - b;
+    return (a, b) => this.players[a][field] - this.players[b][field];
+  }
+
+  private matches(index: number, filter: OuterRealmsFilter): boolean {
+    const player = this.players[index];
+    if (filter.name !== null && !this.namesLower[index].includes(filter.name)) return false;
+    if (filter.servers.length > 0 && !filter.servers.includes(player.server)) return false;
+    if (filter.activeOnly && player.score_diff <= 0) return false;
+    if (filter.movement === 'up' && player.rank_diff <= 0) return false;
+    if (filter.movement === 'down' && player.rank_diff >= 0) return false;
+    if (filter.movement === 'steady' && player.rank_diff !== 0) return false;
+    for (const range of filter.ranges) {
+      const value = OuterRealmsBoard.metricOf(player, range.metric);
+      if (range.min !== null && value < range.min) return false;
+      if (range.max !== null && value > range.max) return false;
+    }
+    if (filter.near) {
+      const distance = OuterRealmsBoard.distanceBetween(player, filter.near);
+      if (distance === null || distance > filter.near.radius) return false;
+    }
+    return true;
+  }
+
+  private present(index: number, filter: OuterRealmsFilter): OuterRealmsPlayer {
+    const player = this.players[index];
+    if (!filter.near) return player;
+    const distance = OuterRealmsBoard.distanceBetween(player, filter.near)!;
+    return { ...player, distance: Math.round(distance * 10) / 10 };
   }
 }
 
@@ -227,6 +353,6 @@ export abstract class OuterRealmsBoardCache {
       query_params: { lastDate, previousDate },
     });
     const parsedBoard = await rawBoard.json();
-    return new OuterRealmsBoard(lastDate, parsedBoard.data as OuterRealmsRankingRow[]);
+    return new OuterRealmsBoard(lastDate, previousDate, parsedBoard.data as OuterRealmsRankingRow[]);
   }
 }

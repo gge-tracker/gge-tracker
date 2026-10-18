@@ -40,6 +40,7 @@ import { RoutesManager } from './managers/routes.manager';
 import { errorCodeMiddleware } from './helper/error-codes';
 import { ApiHelper } from './helper/api-helper';
 import { OfferSnapshot } from './services/offer-snapshot';
+import { TemporaryServerSettings } from './helper/temporary-server-settings';
 
 /* ------------------------------------------------
  *           Redis Client Configuration
@@ -5224,6 +5225,7 @@ publicRoutes.get(
  *     description: |
  *       Returns the current live ranking for the Outer Realms event
  *       Results include score and rank differences compared to the previous fetch snapshot
+ *       Every filter runs on the ranking already held in memory, so filters and sorts cost no database query
  *       Returns 403 if the event is not currently active in-game
  *     tags:
  *       - Live Ranking
@@ -5235,14 +5237,30 @@ publicRoutes.get(
  *         schema:
  *           type: integer
  *           example: 1
- *       - name: player_name
+ *       - name: size
  *         in: query
  *         required: false
- *         description: Filter results by player name (case-insensitive)
+ *         description: Players per page (default 10)
  *         schema:
- *           type: string
- *           maxLength: 50
- *           example: "PlayerName"
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *       - $ref: '#/components/parameters/OuterRealmsPlayerName'
+ *       - $ref: '#/components/parameters/OuterRealmsServer'
+ *       - $ref: '#/components/parameters/OuterRealmsMinLevel'
+ *       - $ref: '#/components/parameters/OuterRealmsMaxLevel'
+ *       - $ref: '#/components/parameters/OuterRealmsMinMight'
+ *       - $ref: '#/components/parameters/OuterRealmsMaxMight'
+ *       - $ref: '#/components/parameters/OuterRealmsMinScore'
+ *       - $ref: '#/components/parameters/OuterRealmsMaxScore'
+ *       - $ref: '#/components/parameters/OuterRealmsMinRank'
+ *       - $ref: '#/components/parameters/OuterRealmsMaxRank'
+ *       - $ref: '#/components/parameters/OuterRealmsActive'
+ *       - $ref: '#/components/parameters/OuterRealmsMovement'
+ *       - $ref: '#/components/parameters/OuterRealmsNear'
+ *       - $ref: '#/components/parameters/OuterRealmsRadius'
+ *       - $ref: '#/components/parameters/OuterRealmsOrderBy'
+ *       - $ref: '#/components/parameters/OuterRealmsOrderDir'
  *     responses:
  *       200:
  *         description: Live outer realms ranking with pagination
@@ -5295,13 +5313,44 @@ publicRoutes.get(
  *                         minItems: 2
  *                         maxItems: 2
  *                         example: [120, 340]
+ *                       distance:
+ *                         type: number
+ *                         description: Distance from the near coordinates, only present when near is sent
+ *                         example: 12.4
  *                 current_event:
  *                   type: string
  *                   nullable: true
  *                   description: Identifier of the currently active Outer Realms event
- *                   example: "3"
+ *                   example: "collector"
+ *                 event_rules:
+ *                   type: object
+ *                   nullable: true
+ *                   description: Rules of the running event, when it is known
+ *                   properties:
+ *                     peace_duration_minutes:
+ *                       type: integer
+ *                       example: 120
+ *                     daily_ranking:
+ *                       type: boolean
+ *                       example: true
+ *                 collected_at:
+ *                   type: string
+ *                   format: date-time
+ *                   description: When the ranking shown was read
+ *                 previous_collected_at:
+ *                   type: string
+ *                   format: date-time
+ *                   description: The previous reading, which score_diff and rank_diff compare against
+ *                 servers:
+ *                   type: array
+ *                   description: Every server with a player in the ranking
+ *                   items:
+ *                     type: string
+ *                   example: ["DE1", "FR1"]
  *                 pagination:
  *                   $ref: '#/components/schemas/Pagination'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
  *       403:
  *         description: Event is not currently active
  *         content:
@@ -5316,6 +5365,137 @@ publicRoutes.get(
  *         $ref: '#/components/responses/InternalServerError'
  */
 publicRoutes.get('/live-ranking/outer-realms', routingInstance.getLiveOuterRealmsRanking.bind(routingInstance));
+
+/**
+ * @swagger
+ * /live-ranking/outer-realms/export:
+ *   get:
+ *     summary: Export the whole live Outer Realms ranking
+ *     description: |
+ *       Returns every player of the current reading in one response, with the same filters and sorts as
+ *       /live-ranking/outer-realms. The ETag only changes when a new reading lands (about every few minutes),
+ *       so polling with If-None-Match costs a 304 in between
+ *       Without format, the Accept header picks the format (application/x-ndjson, text/csv), JSON otherwise
+ *       Returns 403 if the event is not currently active in-game
+ *     tags:
+ *       - Live Ranking
+ *     parameters:
+ *       - name: format
+ *         in: query
+ *         required: false
+ *         description: Output format (default json)
+ *         schema:
+ *           type: string
+ *           enum: [json, ndjson, csv]
+ *       - $ref: '#/components/parameters/OuterRealmsPlayerName'
+ *       - $ref: '#/components/parameters/OuterRealmsServer'
+ *       - $ref: '#/components/parameters/OuterRealmsMinLevel'
+ *       - $ref: '#/components/parameters/OuterRealmsMaxLevel'
+ *       - $ref: '#/components/parameters/OuterRealmsMinMight'
+ *       - $ref: '#/components/parameters/OuterRealmsMaxMight'
+ *       - $ref: '#/components/parameters/OuterRealmsMinScore'
+ *       - $ref: '#/components/parameters/OuterRealmsMaxScore'
+ *       - $ref: '#/components/parameters/OuterRealmsMinRank'
+ *       - $ref: '#/components/parameters/OuterRealmsMaxRank'
+ *       - $ref: '#/components/parameters/OuterRealmsActive'
+ *       - $ref: '#/components/parameters/OuterRealmsMovement'
+ *       - $ref: '#/components/parameters/OuterRealmsNear'
+ *       - $ref: '#/components/parameters/OuterRealmsRadius'
+ *       - $ref: '#/components/parameters/OuterRealmsOrderBy'
+ *       - $ref: '#/components/parameters/OuterRealmsOrderDir'
+ *     responses:
+ *       200:
+ *         description: Every matching player. ndjson streams one player object per line, csv carries a header row
+ *         headers:
+ *           X-Item-Count:
+ *             description: Number of players in the body
+ *             schema:
+ *               type: integer
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 current_event:
+ *                   type: string
+ *                   nullable: true
+ *                   example: "might"
+ *                 event_rules:
+ *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     peace_duration_minutes:
+ *                       type: integer
+ *                     daily_ranking:
+ *                       type: boolean
+ *                 collected_at:
+ *                   type: string
+ *                   format: date-time
+ *                 previous_collected_at:
+ *                   type: string
+ *                   format: date-time
+ *                 servers:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                 count:
+ *                   type: integer
+ *                   example: 14973
+ *                 players:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       player_id:
+ *                         type: integer
+ *                       player_name:
+ *                         type: string
+ *                       server:
+ *                         type: string
+ *                       score:
+ *                         type: integer
+ *                       rank:
+ *                         type: integer
+ *                       level:
+ *                         type: integer
+ *                       legendary_level:
+ *                         type: integer
+ *                       might:
+ *                         type: integer
+ *                       rank_diff:
+ *                         type: integer
+ *                       score_diff:
+ *                         type: integer
+ *                       castle_position:
+ *                         type: array
+ *                         items:
+ *                           type: integer
+ *                       distance:
+ *                         type: number
+ *           application/x-ndjson:
+ *             schema:
+ *               type: string
+ *           text/csv:
+ *             schema:
+ *               type: string
+ *       304:
+ *         description: Not modified since the reading named by the ETag
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       403:
+ *         description: Event is not currently active
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "The event is not active"
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+publicRoutes.get('/live-ranking/outer-realms/export', routingInstance.getLiveOuterRealmsExport.bind(routingInstance));
 
 /**
  * @swagger
@@ -7199,6 +7379,7 @@ async function main(): Promise<void> {
     .listen(APPLICATION_PORT, () => {
       void printHeader();
       OfferSnapshot.start();
+      TemporaryServerSettings.start();
     })
     .on('error', (error) => {
       throw new Error(error.message);
