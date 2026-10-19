@@ -4810,7 +4810,8 @@ publicRoutes.get(
  *         description: |
  *           Drops the rows that do not change a chart: for `player_might_history` and
  *           `player_loot_history`, points equal to both of their neighbours; for the event tables, the
- *           occurrences the player sat out and the leading zeroes of the ones they played
+ *           occurrences the player sat out. Every played occurrence is kept whole and opens on a zero
+ *           one hourly fill before its first sample, unless `since` may have cut its start
  *         schema:
  *           type: boolean
  *           example: true

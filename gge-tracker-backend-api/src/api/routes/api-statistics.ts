@@ -993,7 +993,9 @@ export abstract class ApiStatistics implements ApiHelper {
       }
       let kept = rows;
       if (options.dedup) {
-        kept = this.CONTINUOUS_TABLES.has(table) ? this.dropFlatRuns(kept) : this.dropUnplayedEvents(kept);
+        kept = this.CONTINUOUS_TABLES.has(table)
+          ? this.dropFlatRuns(kept)
+          : this.dropUnplayedEvents(kept, this.getWindowStart(options.since));
       }
       points[table] = options.limit === null ? kept : kept.slice(Math.max(0, kept.length - options.limit));
     }
@@ -1014,22 +1016,33 @@ export abstract class ApiStatistics implements ApiHelper {
     });
   }
 
+  private static getWindowStart(sinceInDays: number | null): number | null {
+    return sinceInDays === null ? null : Date.now() - sinceInDays * 24 * 60 * 60 * 1000;
+  }
+
   /**
-   * Drops the event occurrences the player did not take part in, and the zeroes that lead into the
-   * ones they did
+   * Drops the event occurrences the player did not take part in, and keeps the ones they did from
+   * their first sample to their last, starting on zero
    *
    * @param rows The point rows of one event table, in chronological order
-   * @returns The rows with unplayed occurrences and redundant leading zeroes removed
+   * @param windowStart The earliest instant the rows were queried from, null when unbounded
+   * @returns The rows of the played occurrences
    */
-  private static dropUnplayedEvents(rows: any[]): any[] {
+  private static dropUnplayedEvents(rows: any[], windowStart: number | null = null): any[] {
     const EVENT_GAP_MS = 24 * 60 * 60 * 1000;
+    const FILL_INTERVAL_MS = 60 * 60 * 1000;
     const kept: any[] = [];
     let occurrence: any[] = [];
     const flush = (): void => {
       if (occurrence.length === 0) return;
-      const firstScored = occurrence.findIndex((row) => Number(row.point) > 0);
-      if (firstScored !== -1) {
-        kept.push(...occurrence.slice(Math.max(0, firstScored - 1)));
+      if (occurrence.some((row) => Number(row.point) > 0)) {
+        const startedAt = new Date(occurrence[0].date).getTime();
+        // event_dates only starts at the first fill that ranked someone: the fill before saw everyone at zero
+        const mayBeCut = windowStart !== null && startedAt - windowStart < EVENT_GAP_MS;
+        if (!mayBeCut) {
+          occurrence.unshift({ date: new Date(startedAt - FILL_INTERVAL_MS).toISOString(), point: '0' });
+        }
+        kept.push(...occurrence);
       }
       occurrence = [];
     };

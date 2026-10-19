@@ -72,6 +72,7 @@ import { LayeredSceneComponent } from '@ggetracker-components/layered-scene/laye
 
 const MS_PER_HOUR = 3_600_000;
 const HOURS_PER_WEEK = 168;
+const HOURS_PER_DAY = 24;
 // Below three recorded runs the card list already says everything a summary could
 const WOA_SUMMARY_MIN_EVENTS = 3;
 const WOA_TREND_MIN_EVENTS = 4;
@@ -249,6 +250,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     { label: 'Position', sortKey: 'position' },
   ];
   private readonly EVENT_SERIES_DEFAULT_LIMIT = 5;
+  private readonly EVENT_OVERLAY_VISIBLE = 3;
 
   private readonly CHART_SOURCES: Record<string, { table: ApiPlayerStatsType; days: number }> = {
     might: { table: ApiPlayerStatsType.might, days: 30 },
@@ -886,6 +888,112 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     }
   }
 
+  private initEventOverlayChart(chartName: string, points: EventGenericVariation[], eventColor: string): void {
+    const occurrences = this.groupEventDataByTimeGaps(this.eventDataSegments[chartName], points).filter(
+      (occurrence) => !this.isCutByLoadedWindow(chartName, occurrence),
+    );
+    const series = this.applySeriesLimit(chartName, this.generateEventSeries(occurrences)).reverse();
+    const runs = series.map((serie) => serie.data as [number, number][]);
+    const startedAts = runs.map((run) => run[0]?.[0] ?? 0);
+    const hourlyRuns = runs.map((run) => this.toHoursSinceEventStart(run));
+    const hourCount = Math.max(0, ...hourlyRuns.map((run) => run.length));
+    series.forEach((serie, index) => {
+      serie.data = Array.from({ length: hourCount }, (_, hour) => [hour, hourlyRuns[index][hour] ?? null]);
+      serie['hidden'] = index >= this.EVENT_OVERLAY_VISIBLE;
+    });
+    this.initChartOption(chartName, series, this.eventRunColors(eventColor, series.length));
+    const chart = this.charts[chartName];
+    this.styleOverlaidPeriods(chart, series.length);
+    this.useEventHoursAxis(chart, hourCount, startedAts);
+    this.labelEventRunEnds(chart, hourlyRuns, startedAts);
+  }
+
+  private eventRunColors(eventColor: string, runCount: number): string[] {
+    const previous = new Gradient().setColorGradient(eventColor, '#2b211b').setMidpoint(3).getColors()[1];
+    const older = new Gradient().setColorGradient(eventColor, '#a89c8e').setMidpoint(4).getColors()[2];
+    return Array.from({ length: runCount }, (_, index) => [eventColor, previous][index] ?? older);
+  }
+
+  private labelEventRunEnds(chart: ChartOptions, hourlyRuns: number[][], startedAts: number[]): void {
+    const locale = this.languageService.getCurrentLang();
+    const labels = hourlyRuns.map((run, index) => {
+      const score = this.getUnitByValue(run.at(-1) ?? 0);
+      if (index === 0 && this.isRunInProgress(startedAts[0], run.length)) {
+        return `${this.translateService.instant('En cours')} · ${score}`;
+      }
+      return `${new Date(startedAts[index]).toLocaleDateString(locale).slice(0, -5)} · ${score}`;
+    });
+    chart.dataLabels = {
+      enabled: true,
+      formatter: (_value, { seriesIndex, dataPointIndex }): string =>
+        dataPointIndex === hourlyRuns[seriesIndex].length - 1 ? labels[seriesIndex] : '',
+      textAnchor: 'end',
+      offsetY: -8,
+      style: { fontSize: '11px', fontWeight: 600 },
+      background: { enabled: true, foreColor: '#fff', borderWidth: 0, borderRadius: 4, padding: 4, opacity: 0.95 },
+    };
+  }
+
+  private isRunInProgress(startedAt: number, hourCount: number): boolean {
+    // Same margin as generateEventSeries: a run read within the last 3 hours is still open
+    return startedAt + (hourCount + 2) * MS_PER_HOUR > Date.now();
+  }
+
+  private isCutByLoadedWindow(chartName: string, occurrence: [number, number][]): boolean {
+    const loadedDays = this.loadedDaysFor(chartName);
+    if (loadedDays === 0 || occurrence.length === 0) return false;
+    const msPerDay = HOURS_PER_DAY * MS_PER_HOUR;
+    return occurrence[0][0] - (Date.now() - loadedDays * msPerDay) < msPerDay;
+  }
+
+  private toHoursSinceEventStart(occurrence: [number, number][]): number[] {
+    const startedAt = occurrence[0]?.[0] ?? 0;
+    const hourly: number[] = [];
+    for (const [timestamp, point] of occurrence) {
+      const hour = Math.round((timestamp - startedAt) / MS_PER_HOUR);
+      // A missed fill holds the previous score rather than breaking the line
+      while (hourly.length < hour) hourly.push(hourly.at(-1) ?? 0);
+      hourly[hour] = Number(point);
+    }
+    return hourly;
+  }
+
+  private useEventHoursAxis(chart: ChartOptions, hourCount: number, startedAts: number[]): void {
+    const dayCount = Math.max(1, Math.ceil((hourCount - 1) / HOURS_PER_DAY));
+    const halfDay = HOURS_PER_DAY / 2;
+    const locale = this.languageService.getCurrentLang();
+    const dayLabel = (hour: number): string =>
+      this.translateService.instant('Jour 0', { day: Math.floor(hour / HOURS_PER_DAY) + 1 });
+    chart.xaxis = {
+      type: 'numeric',
+      min: 0,
+      max: dayCount * HOURS_PER_DAY,
+      tickAmount: dayCount * 2,
+      tooltip: { enabled: false },
+      labels: {
+        formatter: (value: string): string => {
+          const halfDays = Math.round(Number(value) / halfDay);
+          return halfDays % 2 === 1 ? dayLabel(halfDays * halfDay) : '';
+        },
+      },
+    };
+    const hourUnit = this.translateService.instant('heures_h');
+    chart.tooltip.x = { formatter: (hour: number): string => `${dayLabel(hour)} · ${hour}${hourUnit}` };
+    chart.tooltip.y = {
+      formatter: (value: number | null | undefined, { seriesIndex, dataPointIndex }): string => {
+        if (typeof value !== 'number') return '–';
+        const readAt = new Date(startedAts[seriesIndex] + dataPointIndex * MS_PER_HOUR).toLocaleString(locale, {
+          weekday: 'short',
+          day: '2-digit',
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+        return `${formatThousands(value.toString())}  ·  ${readAt}`;
+      },
+    };
+  }
+
   private applySeriesLimit(chartName: string, series: ApexAxisChartSeries): ApexAxisChartSeries {
     this.eventSeriesTotalCount[chartName] = series.length;
     if (this.eventSeriesExpanded[chartName]) return series;
@@ -1398,11 +1506,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   private initWarRealmsData(): void {
     const warRealms = this.data['player_event_war_realms_history'];
     // this.setGenericVariations(warRealms);
-    const eventData = this.groupEventDataByTimeGaps(this.eventDataSegments['warRealms'], warRealms);
-    const series = this.applySeriesLimit('warRealms', this.generateEventSeries(eventData));
-    series.forEach((serie, index) => (serie['hidden'] = index !== series.length - 1));
-    const colors = ['#d2b8f2', '#c4a1f0', '#ae81e6', '#945adb', '#7d37d4'];
-    this.initChartOption('warRealms', series, colors);
+    this.initEventOverlayChart('warRealms', warRealms, '#7d37d4');
     const occurrences = this.eventOccurrences['warRealms'] ?? [];
     const { data, categories } = this.buildFinalScoresSeries(occurrences);
     this.initFinalScoresChartOption('warRealms-scores', data, categories, '#7d37d4');
@@ -1413,12 +1517,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   private initNomadHistoryData(): void {
     const nomadPoints = this.data['player_event_nomad_history'];
     // this.setGenericVariations(nomadPoints);
-    const eventData = this.groupEventDataByTimeGaps(this.eventDataSegments['nomad'], nomadPoints);
-    const series = this.applySeriesLimit('nomad', this.generateEventSeries(eventData));
-    series.forEach((serie, index) => (serie['hidden'] = index !== series.length - 1));
-    const colors = new Gradient();
-    colors.setColorGradient('#ffcc00', '#ff0000');
-    this.initChartOption('nomad', series, colors.getColors());
+    this.initEventOverlayChart('nomad', nomadPoints, '#ff8800');
     const occurrences = this.eventOccurrences['nomad'] ?? [];
     const { data, categories } = this.buildFinalScoresSeries(occurrences);
     this.initFinalScoresChartOption('nomad-scores', data, categories, '#ff8800');
@@ -1585,7 +1684,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     });
   }
 
-  private styleLootWeeks(chart: ChartOptions, weekCount: number): void {
+  private styleOverlaidPeriods(chart: ChartOptions, weekCount: number): void {
     const weeks = Array.from({ length: weekCount }, (_, index) => index);
     chart.fill = { type: 'solid', opacity: weeks.map((index) => (index === 0 ? 0.42 : 0)) };
     chart.stroke = {
@@ -1604,12 +1703,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   private initBerimondKingdomData(): void {
     const berimondPoints = this.data['player_event_berimond_kingdom_history'];
     // this.setGenericVariations(berimondPoints);
-    const eventData = this.groupEventDataByTimeGaps(this.eventDataSegments['berimondKingdom'], berimondPoints);
-    const series = this.applySeriesLimit('berimondKingdom', this.generateEventSeries(eventData));
-    series.forEach((serie, index) => (serie['hidden'] = index !== series.length - 1));
-    const colors = new Gradient();
-    colors.setColorGradient('#00aaff', '#00aaff');
-    this.initChartOption('berimondKingdom', series, colors.getColors());
+    this.initEventOverlayChart('berimondKingdom', berimondPoints, '#00aaff');
     const occurrences = this.eventOccurrences['berimondKingdom'] ?? [];
     const { data, categories } = this.buildFinalScoresSeries(occurrences);
     this.initFinalScoresChartOption('berimondKingdom-scores', data, categories, '#00aaff');
@@ -1620,12 +1714,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   private initSamuraiHistoryData(): void {
     const samuraiPoints = this.data['player_event_samurai_history'];
     // this.setGenericVariations(samuraiPoints);
-    const eventData = this.groupEventDataByTimeGaps(this.eventDataSegments['samurai'], samuraiPoints);
-    const series = this.applySeriesLimit('samurai', this.generateEventSeries(eventData));
-    series.forEach((serie, index) => (serie['hidden'] = index !== series.length - 1));
-    const colors = new Gradient();
-    colors.setColorGradient('#9ED334', '#58771D');
-    this.initChartOption('samurai', series, colors.getColors());
+    this.initEventOverlayChart('samurai', samuraiPoints, '#6a9420');
     const occurrences = this.eventOccurrences['samurai'] ?? [];
     const { data, categories } = this.buildFinalScoresSeries(occurrences);
     this.initFinalScoresChartOption('samurai-scores', data, categories, '#6a9420');
@@ -1636,12 +1725,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   private initBloodcrowHistoryData(): void {
     const bloodcrowPoints = this.data['player_event_bloodcrow_history'];
     // this.setGenericVariations(bloodcrowPoints);
-    const eventData = this.groupEventDataByTimeGaps(this.eventDataSegments['bloodcrow'], bloodcrowPoints);
-    const series = this.applySeriesLimit('bloodcrow', this.generateEventSeries(eventData));
-    series.forEach((serie, index) => (serie['hidden'] = index !== series.length - 1));
-    const colors = new Gradient();
-    colors.setColorGradient('#8e5da3', '#8e5da3');
-    this.initChartOption('bloodcrow', series, colors.getColors());
+    this.initEventOverlayChart('bloodcrow', bloodcrowPoints, '#8e5da3');
     const occurrences = this.eventOccurrences['bloodcrow'] ?? [];
     const { data, categories } = this.buildFinalScoresSeries(occurrences);
     this.initFinalScoresChartOption('bloodcrow-scores', data, categories, '#8e5da3');
@@ -1923,9 +2007,9 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     this.initAverageGainChart('avg-gain-hour', seriesAvgGain);
     // Initialize the chart 'loot' (area loot history)
     this.initChartOption('loot', seriesNewestFirst.slice(0, this.LOOT_OVERVIEW_WEEKS), colors);
-    this.styleLootWeeks(this.charts['loot'], this.LOOT_OVERVIEW_WEEKS);
+    this.styleOverlaidPeriods(this.charts['loot'], this.LOOT_OVERVIEW_WEEKS);
     this.charts['loot-weeks'] = { ...this.charts['loot'], series: seriesNewestFirst };
-    this.styleLootWeeks(this.charts['loot-weeks'], seriesNewestFirst.length);
+    this.styleOverlaidPeriods(this.charts['loot-weeks'], seriesNewestFirst.length);
     this.spinnerLoadingByChart['loot-weeks'] = false;
     const { data: weeklyScores, categories: weeklyLabels } = this.buildLootWeeklyScoresSeries(
       this.eventOccurrences['loot'] ?? weeklyTotals,
@@ -2054,21 +2138,15 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       const currentDate = new Date();
       const lastEvent = event.at(-1);
       const lastDate = lastEvent ? new Date(lastEvent[0]) : new Date();
-      let lastPoint: number | string | null = lastEvent ? lastEvent[1] : 0;
-      if (!lastPoint) {
-        lastPoint = 0;
-      }
-      lastPoint = Number(lastPoint) > 0 ? this.getUnitByValue(Number(lastPoint)) : '0';
       lastDate.setHours(lastDate.getHours() + 3);
       if (lastDate.getTime() < currentDate.getTime()) {
         const locale = this.languageService.getCurrentLang();
         const firstDate = new Date(event[0][0]);
         const lastDateForName = lastEvent ? new Date(lastEvent[0]) : new Date();
-        const name =
-          this.translateService.instant('Événement du 0 au 0', {
-            start: firstDate.toLocaleDateString(locale).slice(0, -5),
-            end: lastDateForName.toLocaleDateString(locale).slice(0, -5),
-          }) + ` (${lastPoint})`;
+        const name = this.translateService.instant('Événement du 0 au 0', {
+          start: firstDate.toLocaleDateString(locale).slice(0, -5),
+          end: lastDateForName.toLocaleDateString(locale).slice(0, -5),
+        });
         series.push({
           name,
           data: event,

@@ -847,7 +847,7 @@ output {
 .stats-panel .apexcharts-tooltip.apexcharts-theme-light,
 .stats-panel .apexcharts-xaxistooltip,
 .stats-panel .apexcharts-yaxistooltip {
-  background: rgb(250 244 230 / 97%);
+  background: rgb(250 244 230 / 75%);
   border-color: var(--gge-parchment-line);
   color: var(--gge-parchment-ink);
 }

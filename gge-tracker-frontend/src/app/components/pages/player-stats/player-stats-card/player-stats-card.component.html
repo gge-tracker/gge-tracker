@@ -140,57 +140,56 @@
     </div>
   }
 
-  @if (stats() && selectedTab === STATS_TAB_KEY) {
-    <div class="mx-3 py-3">
-      <div class="row g-3 text-center">
-
-        <div class="col-12 col-sm-4">
-          <div class="p-3 rounded border h-100 d-flex flex-column align-items-center justify-content-center">
-            <i class="fas fa-trophy text-warning mb-2 fs-3"></i>
-            <div class="fw-bold fs-4">{{ stats()!.averageScore | formatNumber }}</div>
-            <div class="text-muted small mt-1">{{ 'Score moyen' | translate }}</div>
+  @if (stats(); as kpis) {
+    @if (selectedTab === STATS_TAB_KEY) {
+      <div class="event-kpis" [style.--kpi-accent]="backgroundColour()">
+        <section class="event-kpi event-kpi-hero">
+          <span class="event-kpi-chip"><i class="fas fa-trophy"></i></span>
+          <span class="event-kpi-label">{{ 'Score moyen' | translate }}</span>
+          <div class="event-kpi-value">{{ kpis.averageScore | formatNumber }}</div>
+          <div class="event-kpi-detail">
+            {{ 'Sur 0 événements joués' | translate: { count: kpis.participatingEvents } }}
           </div>
-        </div>
+        </section>
 
-        <div class="col-12 col-sm-4">
-          <div class="p-3 rounded border h-100 d-flex flex-column align-items-center justify-content-center">
-            <i class="fas fa-calendar-check text-primary mb-2 fs-3"></i>
-            @if (stats()!.totalCompletedEvents === 0) {
-              <div class="fw-bold fs-4">-</div>
-            } @else {
-              <div class="fw-bold fs-4">{{ stats()!.participatingEvents }} / {{ stats()!.totalCompletedEvents }}</div>
-              <div class="text-muted small mt-1">{{ 'Participation' | translate }}</div>
-              <div class="mt-1" style="font-size:0.72rem">
-                <span [ngClass]="stats()!.participationRate >= 75 ? 'text-success' : stats()!.participationRate >= 50 ? 'text-warning' : 'text-danger'">
-                  {{ stats()!.participationRate }}%
-                </span>
-                {{ 'des événements' | translate }}
-              </div>
-            }
-          </div>
-        </div>
-
-        @if (stats()!.trendPercent !== null) {
-          <div class="col-12 col-sm-4">
-            <div class="p-3 rounded border h-100 d-flex flex-column align-items-center justify-content-center">
-              @if (stats()!.trendPercent! > 5) {
-                <i class="fas fa-arrow-up text-success mb-2 fs-3"></i>
-                <div class="fw-bold fs-4 text-success">+{{ stats()!.trendPercent }}%</div>
-              } @else if (stats()!.trendPercent! < -5) {
-                <i class="fas fa-arrow-down text-danger mb-2 fs-3"></i>
-                <div class="fw-bold fs-4 text-danger">{{ stats()!.trendPercent }}%</div>
-              } @else {
-                <i class="fas fa-minus text-secondary mb-2 fs-3"></i>
-                <div class="fw-bold fs-4 text-secondary">{{ stats()!.trendPercent! > 0 ? '+' : '' }}{{ stats()!.trendPercent }}%</div>
-              }
-              <div class="text-muted small mt-1">{{ 'Tendance récente' | translate }}</div>
-              <div class="text-muted mt-1" style="font-size:0.72rem">{{ '3 derniers vs. moyenne' | translate }}</div>
+        <section class="event-kpi">
+          <span class="event-kpi-chip"><i class="fas fa-calendar-check"></i></span>
+          <span class="event-kpi-label">{{ 'Participation' | translate }}</span>
+          @if (kpis.totalCompletedEvents === 0) {
+            <div class="event-kpi-value">–</div>
+            <div class="event-kpi-detail"></div>
+          } @else {
+            <div class="event-kpi-value">
+              {{ kpis.participatingEvents }}<span class="event-kpi-value-total"> / {{ kpis.totalCompletedEvents }}</span>
             </div>
-          </div>
-        }
+            <div class="event-kpi-detail">
+              <div class="event-kpi-bar" role="progressbar" [attr.aria-valuenow]="kpis.participationRate"
+                aria-valuemin="0" aria-valuemax="100">
+                <span [style.width.%]="kpis.participationRate"></span>
+              </div>
+              <span class="event-kpi-rate">{{ kpis.participationRate }}%</span>
+            </div>
+          }
+        </section>
 
+        <section class="event-kpi">
+          <span class="event-kpi-chip"><i class="fas fa-chart-line"></i></span>
+          <span class="event-kpi-label">{{ 'Tendance récente' | translate }}</span>
+          @if (kpis.trendPercent === null) {
+            <div class="event-kpi-value">–</div>
+          } @else {
+            <div class="event-kpi-value event-kpi-trend"
+              [class.is-up]="kpis.trendPercent > 5" [class.is-down]="kpis.trendPercent < -5">
+              <i class="fas" [class.fa-arrow-trend-up]="kpis.trendPercent > 5"
+                [class.fa-arrow-trend-down]="kpis.trendPercent < -5"
+                [class.fa-arrows-left-right]="kpis.trendPercent >= -5 && kpis.trendPercent <= 5"></i>
+              {{ kpis.trendPercent > 0 ? '+' : '' }}{{ kpis.trendPercent }}%
+            </div>
+          }
+          <div class="event-kpi-detail">{{ '3 derniers vs. moyenne' | translate }}</div>
+        </section>
       </div>
-    </div>
+    }
   }
 
   <ng-content></ng-content>

@@ -98,3 +98,142 @@ button.event-scope:disabled {
   border-style: dashed;
   opacity: 0.75;
 }
+
+.event-kpis {
+  --kpi-ink: var(--gge-parchment-ink);
+  --kpi-ink-soft: var(--gge-parchment-ink-soft, #6b5533);
+  --kpi-tone: color-mix(in srgb, var(--kpi-accent, #a0702a) 45%, var(--kpi-ink));
+  display: grid;
+  gap: 10px;
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  margin: 0 1rem;
+  min-height: 450px;
+  padding: 1rem 0;
+}
+.event-kpi {
+  align-items: center;
+  background: rgb(255 250 236 / 72%);
+  border: 1px solid var(--gge-parchment-line);
+  border-inline-start: 4px solid color-mix(in srgb, var(--kpi-tone) 35%, transparent);
+  border-radius: 0.85rem;
+  column-gap: 14px;
+  display: grid;
+  grid-template-areas:
+    "chip label value"
+    "chip detail value";
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  min-width: 0;
+  padding: 14px 18px;
+  row-gap: 6px;
+}
+.event-kpi-hero {
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--kpi-accent, #a0702a) 24%, var(--gge-parchment-light)) 0%,
+    rgb(255 250 236 / 72%) 75%
+  );
+  border-inline-start-color: var(--kpi-tone);
+}
+.event-kpi-chip {
+  align-items: center;
+  background: color-mix(in srgb, var(--kpi-accent, #a0702a) 24%, var(--gge-parchment-light));
+  border: 1px solid color-mix(in srgb, var(--kpi-tone) 30%, transparent);
+  border-radius: 0.65rem;
+  color: var(--kpi-tone);
+  display: inline-flex;
+  font-size: 1rem;
+  grid-area: chip;
+  height: 40px;
+  justify-content: center;
+  width: 40px;
+}
+.event-kpi-label {
+  align-self: end;
+  color: var(--kpi-ink);
+  font-size: 0.78rem;
+  font-weight: 700;
+  grid-area: label;
+  letter-spacing: 0.06em;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+.event-kpi-detail {
+  align-items: center;
+  align-self: start;
+  color: var(--kpi-ink-soft);
+  display: flex;
+  font-size: 0.85rem;
+  gap: 10px;
+  grid-area: detail;
+  line-height: 1.35;
+  min-height: 1.35em;
+}
+.event-kpi-value {
+  align-items: baseline;
+  color: var(--kpi-ink);
+  display: flex;
+  font-size: 2rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  gap: 0.35rem;
+  grid-area: value;
+  justify-content: flex-end;
+  line-height: 1;
+  white-space: nowrap;
+}
+.event-kpi-hero .event-kpi-value {
+  color: var(--kpi-tone);
+  font-size: 2.6rem;
+}
+.event-kpi-value-total {
+  color: var(--kpi-ink-soft);
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+.event-kpi-bar {
+  background: rgb(110 78 36 / 14%);
+  border-radius: 999px;
+  flex: 1;
+  height: 8px;
+  max-width: 220px;
+  overflow: hidden;
+}
+.event-kpi-bar > span {
+  background: var(--kpi-tone);
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+  min-width: 4px;
+}
+.event-kpi-rate {
+  color: var(--kpi-ink);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.event-kpi-trend i {
+  font-size: 0.6em;
+  transform: translateY(-0.12em);
+}
+.event-kpi-trend.is-up {
+  color: #2f7d32;
+}
+.event-kpi-trend.is-down {
+  color: #b3261e;
+}
+@media (max-width: 575.98px) {
+  .event-kpis {
+    grid-template-rows: none;
+    min-height: 0;
+  }
+  .event-kpi {
+    grid-template-areas:
+      "chip label"
+      "chip value"
+      "chip detail";
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .event-kpi-value {
+    justify-content: flex-start;
+  }
+}
