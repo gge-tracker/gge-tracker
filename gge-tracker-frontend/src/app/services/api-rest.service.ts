@@ -1130,6 +1130,14 @@ export class ApiRestService {
     );
   }
 
+  public async getPlayerNameSuggestions(
+    query: string,
+  ): Promise<ApiResponse<ApiSuggestionsResponse<Pick<ApiPlayerSuggestion, 'name'>>>> {
+    return this.apiFetch<ApiSuggestionsResponse<Pick<ApiPlayerSuggestion, 'name'>>>(
+      `${ApiRestService.apiUrl}players/search?query=${encodeURIComponent(query)}&fields=name`,
+    );
+  }
+
   public async getAllianceSuggestions(
     query: string,
   ): Promise<ApiResponse<ApiSuggestionsResponse<ApiAllianceSuggestion>>> {

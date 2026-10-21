@@ -38,6 +38,7 @@ export enum RouteErrorMessagesEnum {
   InvalidEventName = 'Invalid event name',
   InvalidEventType = 'Invalid event type',
   InvalidExportFields = 'Unknown fields requested',
+  InvalidSuggestionFields = 'Unknown suggestion fields requested',
   InvalidExportFormat = 'Invalid format. Supported values are json and ndjson',
   InvalidExportLimit = 'Invalid limit. It must be an integer between 1 and 5000',
   InvalidFlatDateFormat = 'Invalid date format. Please use YYYY-MM-DDTHH:00:00.000Z',

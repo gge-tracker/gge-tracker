@@ -74,6 +74,8 @@ export abstract class ApiMiniGame implements ApiHelper {
   }
 
   public static async getAutoCompletePlayerNames(request: express.Request, response: express.Response): Promise<void> {
+    response.setHeader('Deprecation', 'true');
+    response.setHeader('Link', '</api/v1/players/search>; rel="successor-version"');
     try {
       const { query } = request.query;
       if (typeof query !== 'string' || query.trim() === '' || query.length > 50) {

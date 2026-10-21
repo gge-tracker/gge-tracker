@@ -379,8 +379,11 @@ protectedRoutes.post('/mini-games/guess', routingInstance.submitMiniGameGuess.bi
  * @swagger
  * /mini-games/guesses/autocomplete:
  *   get:
- *     summary: Autocomplete player names for the daily mini-game
- *     description: Returns up to 10 player names matching the provided search string, ordered by current might. Used to assist guessing in the daily mini-game
+ *     summary: (Legacy) Autocomplete player names for the daily mini-game
+ *     description: |
+ *       Legacy, will be removed in a future version: use `GET /players/search?fields=name` instead.
+ *       Returns up to 10 player names matching the provided search string, ordered by current might
+ *     deprecated: true
  *     tags:
  *       - Mini-Games
  *     parameters:
@@ -3542,6 +3545,13 @@ protectedRoutes.get('/alliances', routingInstance.getAlliances.bind(routingInsta
  *         description: Partial alliance name to search for, at least 2 characters and at most 40
  *         schema:
  *           type: string
+ *       - name: fields
+ *         in: query
+ *         required: false
+ *         description: "Comma-separated projection of each suggestion, all fields when omitted. Available: id, name, might_current, player_count"
+ *         schema:
+ *           type: string
+ *           example: name
  *     responses:
  *       '200':
  *         description: The matching alliances, most powerful first
@@ -3568,7 +3578,7 @@ protectedRoutes.get('/alliances', routingInstance.getAlliances.bind(routingInsta
  *                         type: integer
  *                         description: The number of players in the alliance
  *       '400':
- *         description: Invalid or missing query parameter
+ *         description: Invalid or missing query parameter, or an unknown field
  *       '500':
  *         description: Internal server error
  */
@@ -4103,6 +4113,13 @@ publicRoutes.get('/global-ranking/players', routingInstance.getGlobalRankingPlay
  *         description: Partial player name to search for, at least 2 characters and at most 40
  *         schema:
  *           type: string
+ *       - name: fields
+ *         in: query
+ *         required: false
+ *         description: "Comma-separated projection of each suggestion, all fields when omitted. Available: id, name, might_current, level, legendary_level, alliance_name"
+ *         schema:
+ *           type: string
+ *           example: name
  *     responses:
  *       '200':
  *         description: The matching players, most powerful first
@@ -4136,7 +4153,7 @@ publicRoutes.get('/global-ranking/players', routingInstance.getGlobalRankingPlay
  *                         nullable: true
  *                         description: The alliance the player belongs to
  *       '400':
- *         description: Invalid or missing query parameter
+ *         description: Invalid or missing query parameter, or an unknown field
  *       '500':
  *         description: Internal server error
  */

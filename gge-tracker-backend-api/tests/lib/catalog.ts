@@ -397,6 +397,8 @@ export const CATALOG: Endpoint[] = [
       { label: 'a one-character query is refused', path: () => '/alliances/search' + q({ query: 'a' }), expect: [400] },
       { label: 'a missing query is refused', path: () => '/alliances/search', expect: [400] },
       { label: 'a wildcard matches itself', path: () => '/alliances/search' + q({ query: '%%' }), expect: [200] },
+      { label: 'a fields projection is accepted', path: (s) => '/alliances/search' + q({ query: (s.allianceName ?? 'aa').slice(0, 2), fields: 'id,name' }), expect: [200] },
+      { label: 'an unknown field is refused', path: () => '/alliances/search' + q({ query: 'aa', fields: 'name,password' }), expect: [400] },
     ],
   },
 
@@ -552,6 +554,8 @@ export const CATALOG: Endpoint[] = [
       { label: 'a one-character query is refused', path: () => '/players/search' + q({ query: 'a' }), expect: [400] },
       { label: 'a missing query is refused', path: () => '/players/search', expect: [400] },
       { label: 'a wildcard matches itself', path: () => '/players/search' + q({ query: '%%' }), expect: [200] },
+      { label: 'a fields projection is accepted', path: (s) => '/players/search' + q({ query: (s.playerName ?? 'aa').slice(0, 2), fields: 'id,name' }), expect: [200] },
+      { label: 'an unknown field is refused', path: () => '/players/search' + q({ query: 'aa', fields: 'name,password' }), expect: [400] },
     ],
   },
   { id: 'players-by-name', method: 'GET', scope: 'protected', path: (s) => `/players/${encodeURIComponent(s.playerName ?? 'a')}`, okStatuses: [200, 400, 404], needs: ['server', 'player'], fuzzPathParamIndex: 2 },

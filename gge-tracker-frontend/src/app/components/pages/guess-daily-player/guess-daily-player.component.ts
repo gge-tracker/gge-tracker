@@ -288,15 +288,11 @@ export class GuessDailyPlayerComponent extends GenericComponent implements OnIni
       .pipe(
         debounceTime(400),
         distinctUntilChanged(),
-        switchMap((value: string) =>
-          this.apiRestService.apiFetch(
-            ApiRestService.apiUrl + 'mini-games/guesses/autocomplete?query=' + encodeURIComponent(value),
-          ),
-        ),
+        switchMap((value: string) => this.apiRestService.getPlayerNameSuggestions(value)),
       )
-      .subscribe((response: any) => {
+      .subscribe((response) => {
         if (!response.success) return;
-        this.autoCompleteSuggestions = response.data as string[];
+        this.autoCompleteSuggestions = response.data.suggestions.map((suggestion) => suggestion.name);
         this.isInputFocused = true;
       });
   }

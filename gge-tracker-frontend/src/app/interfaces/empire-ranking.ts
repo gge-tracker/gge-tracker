@@ -621,7 +621,7 @@ export interface ApiAllianceSuggestion extends ApiSuggestion {
   player_count: number;
 }
 
-export interface ApiSuggestionsResponse<T extends ApiSuggestion> {
+export interface ApiSuggestionsResponse<T extends Partial<ApiSuggestion>> {
   suggestions: T[];
 }
 

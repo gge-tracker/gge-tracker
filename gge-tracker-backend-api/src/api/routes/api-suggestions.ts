@@ -13,12 +13,16 @@ export abstract class ApiSuggestions implements ApiHelper {
   public static readonly CACHE_TTL_SECONDS = 300;
 
   private static readonly MIN_QUERY_LENGTH = 2;
+  private static readonly PLAYER_FIELDS = ['id', 'name', 'might_current', 'level', 'legendary_level', 'alliance_name'];
+  private static readonly ALLIANCE_FIELDS = ['id', 'name', 'might_current', 'player_count'];
 
   public static async getPlayerSuggestions(request: express.Request, response: express.Response): Promise<void> {
     const term = this.readTerm(request, response, RouteErrorMessagesEnum.InvalidPlayerName);
     if (term === null) return;
+    const fields = this.readFields(request, response, this.PLAYER_FIELDS);
+    if (fields === null) return;
     try {
-      const cached = await this.serveFromCache(request, response, 'players', term);
+      const cached = await this.serveFromCache(request, response, 'players', term, fields);
       if (cached) return;
 
       const query = `
@@ -39,7 +43,7 @@ export abstract class ApiSuggestions implements ApiHelper {
         legendary_level: Number(row.legendary_level),
         alliance_name: row.alliance_name,
       }));
-      await this.send(request, response, 'players', term, suggestions);
+      await this.send(request, response, 'players', term, suggestions, fields);
     } catch (error) {
       this.fail(request, response, error, 'getPlayerSuggestions');
     }
@@ -48,8 +52,10 @@ export abstract class ApiSuggestions implements ApiHelper {
   public static async getAllianceSuggestions(request: express.Request, response: express.Response): Promise<void> {
     const term = this.readTerm(request, response, RouteErrorMessagesEnum.InvalidAllianceName);
     if (term === null) return;
+    const fields = this.readFields(request, response, this.ALLIANCE_FIELDS);
+    if (fields === null) return;
     try {
-      const cached = await this.serveFromCache(request, response, 'alliances', term);
+      const cached = await this.serveFromCache(request, response, 'alliances', term, fields);
       if (cached) return;
 
       const query = `
@@ -69,7 +75,7 @@ export abstract class ApiSuggestions implements ApiHelper {
         might_current: Number(row.might_current),
         player_count: Number(row.player_count),
       }));
-      await this.send(request, response, 'alliances', term, suggestions);
+      await this.send(request, response, 'alliances', term, suggestions, fields);
     } catch (error) {
       this.fail(request, response, error, 'getAllianceSuggestions');
     }
@@ -86,6 +92,22 @@ export abstract class ApiSuggestions implements ApiHelper {
       return null;
     }
     return term;
+  }
+
+  private static readFields(request: express.Request, response: express.Response, allowed: string[]): string[] | null {
+    const raw = ApiHelper.getParsedString(request.query.fields);
+    if (raw === null) return allowed;
+    const requested = raw.split(',').map((field) => field.trim());
+    if (requested.some((field) => !allowed.includes(field))) {
+      const error = `${RouteErrorMessagesEnum.InvalidSuggestionFields}. Allowed: ${allowed.join(', ')}`;
+      response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error });
+      return null;
+    }
+    return [...new Set(requested)];
+  }
+
+  private static project(suggestions: Record<string, unknown>[], fields: string[]): Record<string, unknown>[] {
+    return suggestions.map((suggestion) => Object.fromEntries(fields.map((field) => [field, suggestion[field]])));
   }
 
   private static patterns(term: string): string[] {
@@ -107,11 +129,13 @@ export abstract class ApiSuggestions implements ApiHelper {
     response: express.Response,
     subject: string,
     term: string,
+    fields: string[],
   ): Promise<boolean> {
     const version = await ApiHelper.getCacheVersion(ApiHelper.redisClient, request['language']);
     const cached = await ApiHelper.redisClient.get(this.cacheKey(request, subject, term, version)).catch(() => null);
     if (!cached) return false;
-    response.status(ApiHelper.HTTP_OK).send(JSON.parse(cached));
+    const { suggestions } = JSON.parse(cached);
+    response.status(ApiHelper.HTTP_OK).send({ suggestions: this.project(suggestions, fields) });
     return true;
   }
 
@@ -121,11 +145,11 @@ export abstract class ApiSuggestions implements ApiHelper {
     subject: string,
     term: string,
     suggestions: Record<string, unknown>[],
+    fields: string[],
   ): Promise<void> {
     const version = await ApiHelper.getCacheVersion(ApiHelper.redisClient, request['language']);
-    const body = { suggestions };
-    void ApiHelper.updateCache(this.cacheKey(request, subject, term, version), body, this.CACHE_TTL_SECONDS);
-    response.status(ApiHelper.HTTP_OK).send(body);
+    void ApiHelper.updateCache(this.cacheKey(request, subject, term, version), { suggestions }, this.CACHE_TTL_SECONDS);
+    response.status(ApiHelper.HTTP_OK).send({ suggestions: this.project(suggestions, fields) });
   }
 
   private static fail(request: express.Request, response: express.Response, error: unknown, route: string): void {
