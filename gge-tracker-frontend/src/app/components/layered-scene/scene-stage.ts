@@ -1,9 +1,18 @@
 import { Container, DisplayObject, Stage, loadImage } from './scene-libraries';
-import { cameraDrift, flicker, hostsMotes, lightAlpha, animateObject as moveProperty, pivotOf } from './scene-motion';
+import { Hotspot, SceneEffects, SceneEffectsDescription } from './scene-effects';
+import {
+  acceptsCue,
+  cameraDrift,
+  flicker,
+  hostsMotes,
+  lightAlpha,
+  animateObject as moveProperty,
+  pivotOf,
+} from './scene-motion';
 import { Beam, SceneParticles, Volley } from './scene-particles';
 
 export interface SceneLayer {
-  kind: 'image' | 'light' | 'prop' | 'flame' | 'volley';
+  kind: 'image' | 'light' | 'prop' | 'flame' | 'volley' | 'effects';
   id?: string;
   x: number;
   y: number;
@@ -22,6 +31,8 @@ export interface SceneDescription {
   width: number;
   height: number;
   layers: SceneLayer[];
+  effects?: SceneEffectsDescription;
+  hotspots?: Hotspot[];
 }
 
 export interface Framing {
@@ -57,6 +68,10 @@ const EMBER_MIN_SCALE = 0.2;
 export class SceneStage {
   private readonly placed: Placed[] = [];
   private particles: SceneParticles | null = null;
+  private effects: SceneEffects | null = null;
+  private readonly cues: Record<string, number> = {};
+  private readonly focus: Record<string, number> = {};
+  private hovered: Hotspot | null = null;
   private view: View = { scale: 1, x: 0, y: 0, focusX: 0, focusY: 0 };
   private readonly pointer = { x: 0, y: 0, targetX: 0, targetY: 0 };
   private frameRequest = 0;
@@ -87,6 +102,12 @@ export class SceneStage {
     const stageView = new SceneStage(canvas, stage, root, scene);
     scene.layers.forEach((layer, index) => {
       if (layer.kind === 'volley') return;
+      if (layer.kind === 'effects') {
+        stageView.effects = new SceneEffects(createjs, scene, scene.effects!, scene.hotspots ?? []);
+        root.addChild(stageView.effects.far);
+        stageView.placed.push({ layer, node: stageView.effects.far, x: 0, y: 0, depth: layer.depth ?? 1, tempo: 1 });
+        return;
+      }
       const image = layer.kind === 'flame' ? flame : images[index]!;
       const node = new createjs.Bitmap(image);
       const pivot =
@@ -134,6 +155,14 @@ export class SceneStage {
     if (!bounds.width || !bounds.height) return;
     this.pointer.targetX = Math.max(-0.5, Math.min(0.5, (clientX - bounds.left) / bounds.width - 0.5));
     this.pointer.targetY = Math.max(-0.5, Math.min(0.5, (clientY - bounds.top) / bounds.height - 0.5));
+    const hovered = this.hotspotAt(clientX, clientY);
+    if (hovered?.hover && hovered !== this.hovered) this.cue(hovered.hover);
+    this.hovered = hovered;
+  }
+
+  public press(clientX: number, clientY: number): void {
+    const hotspot = this.hotspotAt(clientX, clientY);
+    if (hotspot) this.cue(hotspot.cue);
   }
 
   public play(): void {
@@ -157,6 +186,25 @@ export class SceneStage {
     this.stage.clear();
   }
 
+  private cue(name: string): void {
+    const seconds = this.clock(performance.now());
+    if (acceptsCue(name, seconds, this.cues)) this.cues[name] = seconds;
+  }
+
+  private clock(now: number): number {
+    return (now - this.startedAt) / 1000;
+  }
+
+  private hotspotAt(clientX: number, clientY: number): Hotspot | null {
+    const bounds = this.canvas.getBoundingClientRect();
+    const canvasX = ((clientX - bounds.left) / bounds.width) * this.canvas.width;
+    const canvasY = ((clientY - bounds.top) / bounds.height) * this.canvas.height;
+    if (canvasX < 0 || canvasY < 0 || canvasX > this.canvas.width || canvasY > this.canvas.height) return null;
+    const x = (canvasX - this.root.x) / this.root.scaleX;
+    const y = (canvasY - this.root.y) / this.root.scaleY;
+    return this.scene.hotspots?.find((spot) => Math.hypot(x - spot.x, y - spot.y) <= spot.radius) ?? null;
+  }
+
   private addParticles(images: (HTMLImageElement | null)[]): void {
     const beams: Beam[] = this.scene.layers.flatMap((layer, index) => {
       const image = images[index];
@@ -176,6 +224,7 @@ export class SceneStage {
       }));
     this.particles = new SceneParticles(globalThis.createjs!, this.scene, beams, flames, volleys);
     this.root.addChild(this.particles.layer);
+    if (this.effects) this.root.addChild(this.effects.near);
   }
 
   private frame(seconds: number): void {
@@ -189,7 +238,7 @@ export class SceneStage {
   private render(now: number): void {
     const delta = Math.min(now - this.lastFrame, 100);
     this.lastFrame = now;
-    const seconds = (now - this.startedAt) / 1000;
+    const seconds = this.clock(now);
     this.pointer.x += (this.pointer.targetX - this.pointer.x) * 0.06;
     this.pointer.y += (this.pointer.targetY - this.pointer.y) * 0.06;
     this.frame(seconds);
@@ -197,7 +246,7 @@ export class SceneStage {
       item.node.x = item.x - this.pointer.x * PARALLAX_X * item.depth;
       item.node.y = item.y - this.pointer.y * PARALLAX_Y * item.depth;
       const id = item.layer.id ?? '';
-      if (item.layer.kind === 'prop') moveProperty(id, item.node, seconds);
+      if (item.layer.kind === 'prop') moveProperty(id, item.node, seconds, this.cues);
       if (item.layer.kind === 'flame')
         flicker(item.node, seconds, item.x, item.layer.scale ?? 1, item.layer.alpha ?? 1);
       if (item.layer.kind === 'light') item.node.alpha = lightAlpha(id, seconds, item.tempo);
@@ -206,6 +255,15 @@ export class SceneStage {
       this.particles.update(seconds);
       this.particles.layer.x = -this.pointer.x * PARALLAX_X * PARTICLE_DEPTH;
       this.particles.layer.y = -this.pointer.y * PARALLAX_Y * PARTICLE_DEPTH;
+    }
+    if (this.effects) {
+      for (const hotspot of this.scene.hotspots ?? []) {
+        const target = hotspot === this.hovered ? 1 : 0;
+        this.focus[hotspot.cue] = (this.focus[hotspot.cue] ?? 0) + (target - (this.focus[hotspot.cue] ?? 0)) * 0.1;
+      }
+      this.effects.update(seconds, this.cues, this.focus);
+      this.effects.near.x = this.particles?.layer.x ?? 0;
+      this.effects.near.y = this.particles?.layer.y ?? 0;
     }
     this.stage.update({ delta });
   }

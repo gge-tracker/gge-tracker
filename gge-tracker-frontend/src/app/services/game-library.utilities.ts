@@ -7,6 +7,7 @@ export interface DisplayObject {
   scaleX: number;
   scaleY: number;
   rotation: number;
+  skewX: number;
   regX: number;
   regY: number;
   visible: boolean;

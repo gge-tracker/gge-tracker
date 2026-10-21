@@ -59,7 +59,7 @@ const FLASH_SECONDS = 0.4;
 const EMBERS_PER_FLAME = 2;
 const MASK_SCALE = 1 / 8;
 
-function glowDot(color: string): HTMLCanvasElement {
+export function glowDot(color: string): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 24;
   const context = canvas.getContext('2d')!;

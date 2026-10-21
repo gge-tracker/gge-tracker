@@ -12,6 +12,8 @@ import {
 import { loadSceneLibraries } from './scene-libraries';
 import { Framing, SceneDescription, SceneStage } from './scene-stage';
 
+const INTERACTIVE = 'a, button, input, select, textarea, label, [role="button"], [contenteditable]';
+
 @Component({
   selector: 'app-layered-scene',
   standalone: true,
@@ -106,6 +108,12 @@ export class LayeredSceneComponent implements OnDestroy {
       globalThis.addEventListener('pointermove', pointing, { passive: true });
       this.teardown.push(() => globalThis.removeEventListener('pointermove', pointing));
     }
+    const pressing = (event: PointerEvent): void => {
+      const target = event.target as Element | null;
+      if (event.button === 0 && !target?.closest(INTERACTIVE)) stage.press(event.clientX, event.clientY);
+    };
+    globalThis.addEventListener('pointerdown', pressing, { passive: true });
+    this.teardown.push(() => globalThis.removeEventListener('pointerdown', pressing));
     refresh();
   }
 }

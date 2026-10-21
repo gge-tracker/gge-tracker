@@ -22,6 +22,21 @@
       "depth": 0.45
     },
     {
+      "kind": "light",
+      "id": "moonglow-harvest",
+      "x": 16,
+      "y": -2,
+      "width": 300,
+      "height": 300,
+      "scale": 4,
+      "depth": 0.45,
+      "poster": false
+    },
+    {
+      "kind": "effects",
+      "depth": 0.5
+    },
+    {
       "kind": "prop",
       "id": "cloud-3",
       "x": 901,
@@ -165,6 +180,53 @@
       "depth": 0.9
     },
     {
+      "kind": "image",
+      "id": "standard-top",
+      "x": 193,
+      "y": 340,
+      "width": 95,
+      "height": 29,
+      "depth": 1.3
+    },
+    {
+      "kind": "image",
+      "id": "standard-pole",
+      "x": 233,
+      "y": 554,
+      "width": 16,
+      "height": 86,
+      "depth": 1.3
+    },
+    {
+      "kind": "prop",
+      "id": "standard-cloth",
+      "x": 199,
+      "y": 369,
+      "width": 84,
+      "height": 187,
+      "depth": 1.3
+    },
+    {
+      "kind": "prop",
+      "id": "raven-glide",
+      "x": 422,
+      "y": 375,
+      "width": 96,
+      "height": 110,
+      "depth": 1,
+      "poster": false
+    },
+    {
+      "kind": "prop",
+      "id": "raven-beat",
+      "x": 422,
+      "y": 375,
+      "width": 96,
+      "height": 110,
+      "depth": 1,
+      "poster": false
+    },
+    {
       "kind": "prop",
       "id": "ledge",
       "x": -43,
@@ -181,6 +243,162 @@
       "width": 390,
       "height": 282,
       "depth": 1.4
+    }
+  ],
+  "effects": {
+    "depth": 0.5,
+    "sky": [
+      [
+        0,
+        0
+      ],
+      [
+        1920,
+        0
+      ],
+      [
+        1920,
+        320
+      ],
+      [
+        1500,
+        320
+      ],
+      [
+        1480,
+        250
+      ],
+      [
+        1380,
+        250
+      ],
+      [
+        1360,
+        165
+      ],
+      [
+        1320,
+        165
+      ],
+      [
+        1300,
+        250
+      ],
+      [
+        1200,
+        250
+      ],
+      [
+        1180,
+        320
+      ],
+      [
+        0,
+        320
+      ]
+    ],
+    "stars": 46,
+    "patrol": [
+      [
+        1250,
+        690
+      ],
+      [
+        1240,
+        657
+      ],
+      [
+        1223,
+        640
+      ],
+      [
+        1190,
+        627
+      ],
+      [
+        1147,
+        617
+      ],
+      [
+        1130,
+        605
+      ],
+      [
+        1135,
+        592
+      ],
+      [
+        1163,
+        577
+      ],
+      [
+        1207,
+        557
+      ],
+      [
+        1238,
+        542
+      ],
+      [
+        1222,
+        528
+      ],
+      [
+        1218,
+        516
+      ],
+      [
+        1238,
+        505
+      ],
+      [
+        1255,
+        497
+      ]
+    ],
+    "fireworks": [
+      [
+        1340,
+        120
+      ],
+      [
+        1235,
+        165
+      ],
+      [
+        1450,
+        150
+      ]
+    ],
+    "meteorsFrom": [
+      166,
+      148
+    ],
+    "glint": [
+      656,
+      331
+    ]
+  },
+  "hotspots": [
+    {
+      "cue": "meteors",
+      "x": 166,
+      "y": 148,
+      "radius": 70,
+      "brightens": "moonglow"
+    },
+    {
+      "cue": "raven",
+      "x": 500,
+      "y": 430,
+      "radius": 130
+    },
+    {
+      "cue": "fireworks",
+      "x": 1340,
+      "y": 370,
+      "radius": 170,
+      "brightens": "windowglow"
     }
   ]
 }

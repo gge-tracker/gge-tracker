@@ -16,6 +16,22 @@ function smoothstep(from: number, to: number, value: number): number {
   return t * t * (3 - 2 * t);
 }
 
+export type Cues = Readonly<Record<string, number>>;
+
+export type Season = 'harvest' | 'winter' | null;
+
+export function season(date = new Date()): Season {
+  const day = (date.getMonth() + 1) * 100 + date.getDate();
+  if (day >= 1024 && day <= 1102) return 'harvest';
+  if (day >= 1215 || day <= 106) return 'winter';
+  return null;
+}
+
+export function cycleStart(seconds: number, first: number, every: number, cued = -Infinity): number {
+  const anchor = cued === -Infinity ? first : cued;
+  return seconds < anchor ? -Infinity : anchor + Math.floor((seconds - anchor) / every) * every;
+}
+
 const CLOUD_FIRST_AT = 9;
 const CLOUD_EVERY = 31;
 const CLOUD_LENGTH = 9;
@@ -41,23 +57,69 @@ export function cameraDrift(seconds: number): Drift {
   };
 }
 
-function breathe(
-  depth: number,
-  period: number,
-  sway = 0,
-  swayPeriod = 1,
-): (node: DisplayObject, seconds: number) => void {
+type Motion = (node: DisplayObject, seconds: number, cues: Cues) => void;
+
+function breathe(depth: number, period: number, sway = 0, swayPeriod = 1): Motion {
   return (node, seconds) => {
     node.scaleY = 1 + depth * swell(seconds, period);
     node.rotation = sway * oscillate(seconds, swayPeriod);
   };
 }
 
-function drift(distance: number, period: number): (node: DisplayObject, seconds: number) => void {
+function wave(node: DisplayObject, seconds: number): void {
+  node.skewX = 1.8 * oscillate(seconds, 3.3) + 0.7 * oscillate(seconds, 1.45);
+  node.scaleX = 1 + 0.015 * swell(seconds, 2.2);
+}
+
+type Point = readonly [number, number];
+
+const RAVEN = { first: 7, every: 47, length: 7.5 };
+const RAVEN_PATH: readonly Point[] = [
+  [0, 0],
+  [-50, -180],
+  [-220, -260],
+  [-610, -390],
+];
+
+function bezier(points: readonly Point[], t: number): { x: number; y: number } {
+  const u = 1 - t;
+  const weights = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t];
+  return {
+    x: points.reduce((sum, [x], index) => sum + x * weights[index], 0),
+    y: points.reduce((sum, [, y], index) => sum + y * weights[index], 0),
+  };
+}
+
+function ravenAge(seconds: number, cues: Cues): number {
+  return seconds - cycleStart(seconds, RAVEN.first, RAVEN.every, cues['raven']);
+}
+
+function ravenFlight(wingsDown: boolean): Motion {
+  return (node, seconds, cues) => {
+    const age = ravenAge(seconds, cues);
+    if (!(age >= 0 && age <= RAVEN.length)) {
+      node.alpha = 0;
+      return;
+    }
+    const progress = Math.pow(age / RAVEN.length, 1.25);
+    const at = bezier(RAVEN_PATH, progress);
+    const ahead = bezier(RAVEN_PATH, Math.min(1, progress + 0.02));
+    node.x += at.x;
+    node.y += at.y;
+    node.scaleX = node.scaleY = 1 - 0.62 * progress;
+    const climb = (Math.atan2(at.y - ahead.y, at.x - ahead.x) * 180) / Math.PI;
+    node.rotation = 0.6 * Math.max(-30, Math.min(30, climb));
+    const flapping = age < 2.6 || (age > 3.6 && age < 4.6);
+    const down = flapping && Math.sin(age * TAU * 3) > 0;
+    node.alpha = down === wingsDown ? Math.min(1, age / 0.25, (RAVEN.length - age) / 0.6) : 0;
+  };
+}
+
+function drift(distance: number, period: number): Motion {
   return (node, seconds) => (node.x += distance * oscillate(seconds, period));
 }
 
-const OBJECT_MOTIONS: Record<string, (node: DisplayObject, seconds: number) => void> = {
+const OBJECT_MOTIONS: Record<string, Motion> = {
   chandelier: (node, seconds) => (node.rotation = 0.35 * oscillate(seconds, 6.3)),
   king: breathe(0.01, 3.8, 0.45, 7.1),
   scout: breathe(0.008, 3.2, 0.35, 5.3),
@@ -70,15 +132,26 @@ const OBJECT_MOTIONS: Record<string, (node: DisplayObject, seconds: number) => v
   'cloud-3': drift(35, 83),
   'fog-1': drift(70, 67),
   'fog-2': drift(-55, 79),
+  'standard-cloth': wave,
+  'raven-glide': ravenFlight(false),
+  'raven-beat': ravenFlight(true),
 };
 
-export function pivotOf(id: string, width: number, height: number): { x: number; y: number } {
-  // The chandelier hangs from the top edge, people stand on their feet
-  return id === 'chandelier' ? { x: width / 2, y: 0 } : { x: width / 2, y: height };
+const CUE_COOLDOWN = 2.5;
+
+export function acceptsCue(name: string, seconds: number, cues: Cues): boolean {
+  if (name === 'raven') return !(ravenAge(seconds, cues) <= RAVEN.length);
+  return !(seconds - (cues[name] ?? -Infinity) < CUE_COOLDOWN);
 }
 
-export function animateObject(id: string, node: DisplayObject, seconds: number): void {
-  OBJECT_MOTIONS[id]?.(node, seconds);
+export function pivotOf(id: string, width: number, height: number): { x: number; y: number } {
+  if (id === 'chandelier' || id === 'standard-cloth') return { x: width / 2, y: 0 };
+  if (id.startsWith('raven')) return { x: width / 2, y: height / 2 };
+  return { x: width / 2, y: height };
+}
+
+export function animateObject(id: string, node: DisplayObject, seconds: number, cues: Cues): void {
+  OBJECT_MOTIONS[id]?.(node, seconds, cues);
 }
 
 export function flicker(node: DisplayObject, seconds: number, seed: number, scale: number, alpha: number): void {
@@ -98,6 +171,7 @@ export function lightAlpha(id: string, seconds: number, tempo: number): number {
   if (id.startsWith('windowglow')) {
     return 1 - 0.25 * swell(seconds, 2.3 * tempo) - 0.15 * swell(seconds, 1.1 * tempo);
   }
+  if (id === 'moonglow-harvest') return season() === 'harvest' ? 1 - 0.2 * swell(seconds, 11) : 0;
   if (id === 'moonglow') return 1 - 0.15 * swell(seconds, 11);
   if (id.startsWith('motes')) return 1;
   if (id.startsWith('candleglow')) {
