@@ -806,6 +806,25 @@ export interface ApiGlobalPlayersResponse {
   players: ApiGlobalPlayer[];
 }
 
+export interface ApiGlobalAlliance {
+  alliance_id: string;
+  alliance_name: string | null;
+  server: string;
+  might_current: number;
+  might_all_time: number;
+  loot_current: number;
+  loot_all_time: number;
+  current_fame: number;
+  highest_fame: number;
+  player_count: number;
+  active_player_count: number;
+}
+
+export interface ApiGlobalAlliancesResponse {
+  pagination: ApiPagination;
+  alliances: ApiGlobalAlliance[];
+}
+
 export interface ApiAllianceResponse extends ApiGenericResponse {
   alliances: ApiAllianceSearchResponse[];
 }

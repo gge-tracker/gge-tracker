@@ -10,6 +10,7 @@ import {
   ApiEventThresholdsResponse,
   ApiTop3EventsById,
   ApiPlayersResponse,
+  ApiGlobalAlliancesResponse,
   ApiGlobalPlayersResponse,
   ApiAllianceResponse,
   ApiServerStats,
@@ -395,6 +396,19 @@ export class ApiRestService {
     return this.apiFetch<ApiGlobalPlayersResponse>(`${ApiRestService.apiUrl}global-ranking/players?${parameters}`);
   }
 
+  public async getGlobalAlliances(
+    page: number,
+    orderBy: string,
+    orderType: 'ASC' | 'DESC',
+    filters: Record<string, string | number>,
+    size?: number,
+  ): Promise<ApiResponse<ApiGlobalAlliancesResponse>> {
+    const parameters = new URLSearchParams({ page: String(page), orderBy, orderType });
+    if (size) parameters.set('size', String(size));
+    for (const [key, value] of Object.entries(filters)) parameters.set(key, String(value));
+    return this.apiFetch<ApiGlobalAlliancesResponse>(`${ApiRestService.apiUrl}global-ranking/alliances?${parameters}`);
+  }
+
   /**
    * Get the alliances from the API and filter them by the given parameters
    * @param page The page number to fetch
@@ -407,8 +421,10 @@ export class ApiRestService {
     orderBy?: string,
     orderType?: string,
     filters?: Record<string, string | number>,
+    size?: number,
   ): Promise<ApiResponse<ApiAllianceResponse>> {
     let request = `${ApiRestService.apiUrl}alliances?page=${page}`;
+    if (size) request += `&size=${size}`;
     if (orderBy) request += `&orderBy=${orderBy}`;
     if (orderType) request += `&orderType=${orderType}`;
     if (filters) {

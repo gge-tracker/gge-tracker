@@ -1,0 +1,105 @@
+<div [ngClass]="{ 'loading': isInLoading }">
+  <app-search-form [formFilters]="null" [isInLoading]="isInLoading" [inputTip]="'Rechercher une alliance' | translate"
+    [defaultSearch]="search" [searchTypes]="{ player: false, alliance: true }"
+    (searchAlliance)="searchAlliance($event)"></app-search-form>
+
+  <div class="global-toolbar mt-2">
+    <div class="game-filter" role="group">
+      @for (option of games; track option.value) {
+        <button type="button" class="game-chip" [class.game-chip--on]="game === option.value"
+          [attr.aria-pressed]="game === option.value" [disabled]="isInLoading" (click)="selectGame(option.value)">
+          {{ option.label | translate }}
+        </button>
+      }
+    </div>
+    <span class="global-count">{{ allianceCount | formatNumber:'visual' }} {{ 'alliances' | translate }}</span>
+  </div>
+
+  <div class="flex flex-col justify-between gap-6 mt-2">
+    <app-table [sort]="sort" [reverse]="reverse" [isInLoading]="isInLoading" [maxPage]="maxPage" [page]="page"
+      [search]="search" [headers]="headers" (sortOutput)="sortAlliances($event)" (navigateToPage)="navigateTo($event)"
+      (previousPage)="navigateTo(page - 1)" (nextPage)="navigateTo(page + 1)">
+      @if (alliances.length === 0 && !isInLoading) {
+        <tr>
+          <td colspan="12" class="no-data">{{ 'Aucune alliance trouvée' | translate }}</td>
+        </tr>
+      }
+      @for (alliance of alliances; track alliance.alliance_id; let index = $index) {
+        <tr>
+          <td class="col-rank">
+            <span class="mobile-only">#</span>
+            {{ rankOf(index) }}
+          </td>
+          <td class="col-name">
+            <span class="name" [title]="alliance.alliance_name">{{ alliance.alliance_name }}</span>
+          </td>
+          <td class="col-server">
+            <img [src]="serverService.getFlagUrl(alliance.server)" alt="" height="20">
+            {{ alliance.server }}
+          </td>
+          <td class="col-metric px-2" [title]="alliance.player_count | formatNumber:'visual'">
+            <div class="metric">
+              <div class="metric-header">
+                <span class="metric-current"><span class="cell-label">{{ 'Nombre de joueurs' | translate }}</span>{{ alliance.player_count | formatNumber }}</span>
+                <span class="metric-max">{{ maxMembers }}</span>
+              </div>
+              <div class="metric-bar-bg">
+                <div class="metric-bar bar-purple" [style.width.%]="(alliance.player_count / maxMembers) * 100"></div>
+              </div>
+            </div>
+          </td>
+          <td class="col-metric px-2" [title]="alliance.might_all_time | formatNumber:'visual'">
+            <div class="metric">
+              <div class="metric-header">
+                <span class="metric-current"><span class="cell-label">{{ 'Puissance' | translate }}</span>{{ alliance.might_current | formatNumber }}</span>
+                <span class="metric-max">{{ alliance.might_all_time | formatNumber }}</span>
+              </div>
+              <div class="metric-bar-bg">
+                <div class="metric-bar bar-yellow" [style.width.%]="alliance.might_all_time ? (alliance.might_current / alliance.might_all_time) * 100 : 0"></div>
+              </div>
+            </div>
+          </td>
+          <td class="col-metric px-2" [title]="alliance.loot_all_time | formatNumber:'visual'">
+            <div class="metric">
+              <div class="metric-header">
+                <span class="metric-current"><span class="cell-label">{{ 'Pillage hebdomadaire' | translate }}</span>{{ alliance.loot_current | formatNumber }}</span>
+                <span class="metric-max">{{ alliance.loot_all_time | formatNumber }}</span>
+              </div>
+              <div class="metric-bar-bg">
+                <div class="metric-bar bar-gray" [style.width.%]="alliance.loot_all_time ? (alliance.loot_current / alliance.loot_all_time) * 100 : 0"></div>
+              </div>
+            </div>
+          </td>
+          <td class="col-metric px-2" [title]="alliance.highest_fame | formatNumber:'visual'">
+            <div class="metric">
+              <div class="metric-header">
+                <span class="metric-current"><span class="cell-label">{{ 'Points de gloire' | translate }}</span>{{ alliance.current_fame | formatNumber }}</span>
+                <span class="metric-max">{{ alliance.highest_fame | formatNumber }}</span>
+              </div>
+              <div class="metric-bar-bg">
+                <div class="metric-bar bar-blue" [style.width.%]="alliance.highest_fame ? (alliance.current_fame / alliance.highest_fame) * 100 : 0"></div>
+              </div>
+            </div>
+          </td>
+          <td class="col-metric px-2" [title]="alliance.active_player_count + ' / ' + alliance.player_count + ' (' + (activeShare(alliance) | number:'1.0-2') + '%)'">
+            <div class="metric">
+              <div class="metric-header">
+                <span class="metric-current"><span class="cell-label">{{ 'Nombre de joueurs actifs' | translate }}</span>{{ alliance.active_player_count }} / {{ alliance.player_count }}</span>
+                <span class="metric-max">{{ activeShare(alliance) | number:'1.0-2' }}%</span>
+              </div>
+              <div class="metric-bar-bg">
+                <div class="metric-bar bar-green" [style.width.%]="activeShare(alliance)"></div>
+              </div>
+            </div>
+          </td>
+          <td class="col-actions">
+            <a [routerLink]="['/', 'alliance', alliance.alliance_id]">
+              <img src="/assets/icon_analyze.png" [alt]="'Analyser l\'alliance' | translate"
+                [title]="'Analyser l\'alliance' | translate" height="24" class="btn-icon">
+            </a>
+          </td>
+        </tr>
+      }
+    </app-table>
+  </div>
+</div>

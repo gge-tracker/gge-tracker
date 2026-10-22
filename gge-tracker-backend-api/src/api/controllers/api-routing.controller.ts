@@ -165,6 +165,10 @@ export class ApiRoutingController {
     void ApiGlobalRanking.getPlayers(request, response);
   }
 
+  public getGlobalRankingAlliances(request: express.Request, response: express.Response): void {
+    void ApiGlobalRanking.getAlliances(request, response);
+  }
+
   public getGrandTournamentEventDates(request: express.Request, response: express.Response): void {
     void ApiGrandTournament.getEventDates(request, response);
   }

@@ -315,6 +315,7 @@ export abstract class ApiAlliances implements ApiHelper {
         maxActivePlayerCount,
       } = parsedQuery;
       let { page } = parsedQuery;
+      const pageSize = ApiHelper.parsePageSize(request.query.size);
       /* ---------------------------------
        * Check cache
        * --------------------------------- */
@@ -334,7 +335,7 @@ export abstract class ApiAlliances implements ApiHelper {
       const cacheKey = new CacheKeyBuilder(request['language'])
         .with(cacheVersion)
         .with('alliances')
-        .withParams({ page, orderBy, orderType })
+        .withParams({ page, size: pageSize, orderBy, orderType })
         .withParams(filterParameters)
         .build();
       const countCacheKey = new CacheKeyBuilder(request['language'])
@@ -380,7 +381,7 @@ export abstract class ApiAlliances implements ApiHelper {
           COUNT(P.id) > 0
           ${havingConditions.join('\n          ')}
       `;
-      v.push(ApiHelper.PAGINATION_LIMIT, (page - 1) * ApiHelper.PAGINATION_LIMIT);
+      v.push(pageSize, (page - 1) * pageSize);
       const query = `
         SELECT
           A.id AS alliance_id,
@@ -465,7 +466,7 @@ export abstract class ApiAlliances implements ApiHelper {
       }
 
       allianceCount = resolvedCount;
-      totalPages = Math.ceil(allianceCount / ApiHelper.PAGINATION_LIMIT);
+      totalPages = Math.ceil(allianceCount / pageSize);
       if (page > totalPages) {
         page = totalPages;
       }

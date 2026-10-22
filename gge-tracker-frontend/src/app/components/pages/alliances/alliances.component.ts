@@ -10,10 +10,13 @@ import { Alliance, ApiAllianceResponse, ErrorType } from '@ggetracker-interfaces
 import { BoundType, FilterKeyMap } from '@ggetracker-interfaces/filter';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
+import { ServerService } from '@ggetracker-services/server.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { ArrowBigRightDash, LucideAngularModule } from 'lucide-angular';
+import { GlobalAlliancesComponent } from './global-alliances/global-alliances.component';
 
 type FilterField = 'might' | 'loot' | 'fame' | 'playerCount';
+type AlliancesScope = 'server' | 'global';
 
 interface FormFilters {
   minMight?: number;
@@ -41,16 +44,18 @@ interface FormFilters {
     TranslateModule,
     DecimalPipe,
     ModalFormGroupComponent,
+    GlobalAlliancesComponent,
   ],
   standalone: true,
   templateUrl: './alliances.component.html',
   styleUrl: './alliances.component.css',
 })
 export class AlliancesComponent extends GenericComponent implements OnInit {
+  public scope: AlliancesScope = 'server';
   public alliances: Alliance[] = [];
   public page = 1;
   public maxPage?: number;
-  public pageSize = 15;
+  public pageSize = 12;
   public lastUpdate?: string;
   public responseTime = 0;
   public allianceCount = 0;
@@ -85,6 +90,7 @@ export class AlliancesComponent extends GenericComponent implements OnInit {
     { value: 'active_player_count', label: 'Nombre de joueurs actifs' },
   ];
   public ArrowBigRightDash = ArrowBigRightDash;
+  public readonly serverService = inject(ServerService);
   private readonly FILTER_KEYS: FilterKeyMap<FormFilters, FilterField> = {
     might: { min: 'minMight', max: 'maxMight' },
     loot: { min: 'minLoot', max: 'maxLoot' },
@@ -102,9 +108,29 @@ export class AlliancesComponent extends GenericComponent implements OnInit {
 
   public ngOnInit(): void {
     const urlParameters = this.route.snapshot.queryParams;
+    if (urlParameters['scope'] === 'global') {
+      this.scope = 'global';
+      this.isInLoading = false;
+      return;
+    }
     const page = urlParameters['page'] ? Number(urlParameters['page']) : 1;
     this.page = page;
     void this.init();
+  }
+
+  public async switchScope(scope: AlliancesScope): Promise<void> {
+    if (this.scope === scope || this.isInLoading) return;
+    this.scope = scope;
+    this.search = '';
+    this.page = 1;
+    await this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: scope === 'global' ? { scope } : {},
+    });
+    if (scope === 'server') {
+      this.isInLoading = true;
+      await this.init();
+    }
   }
 
   public exportData(): void {
@@ -193,6 +219,7 @@ export class AlliancesComponent extends GenericComponent implements OnInit {
         this.sort,
         this.reverse ? 'DESC' : 'ASC',
         this.constructFilters(),
+        this.pageSize,
       );
       this.responseTime = data.response;
       this.alliances = this.mapAlliancesFromApi(
@@ -216,6 +243,7 @@ export class AlliancesComponent extends GenericComponent implements OnInit {
       this.sort,
       this.reverse ? 'DESC' : 'ASC',
       this.constructFilters(),
+      this.pageSize,
     );
     this.responseTime = data.response;
     const alliances = data.data;
@@ -236,6 +264,7 @@ export class AlliancesComponent extends GenericComponent implements OnInit {
       this.sort,
       this.reverse ? 'DESC' : 'ASC',
       this.constructFilters(),
+      this.pageSize,
     );
     this.responseTime = data.response;
     const alliances = data.data;
@@ -256,6 +285,7 @@ export class AlliancesComponent extends GenericComponent implements OnInit {
       this.sort,
       this.reverse ? 'DESC' : 'ASC',
       this.constructFilters(),
+      this.pageSize,
     );
     this.responseTime = data.response;
     const alliances = data.data;
@@ -275,6 +305,7 @@ export class AlliancesComponent extends GenericComponent implements OnInit {
       this.sort,
       this.reverse ? 'DESC' : 'ASC',
       this.constructFilters(),
+      this.pageSize,
     );
     this.responseTime = data.response;
     const alliances = data.data;
@@ -366,6 +397,8 @@ export class AlliancesComponent extends GenericComponent implements OnInit {
         this.page,
         this.sort,
         this.reverse ? 'DESC' : 'ASC',
+        undefined,
+        this.pageSize,
       );
       this.responseTime = data.response;
       this.maxPage = data.data.pagination.total_pages;
