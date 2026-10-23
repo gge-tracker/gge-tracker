@@ -9,6 +9,7 @@ export interface ServerEntry {
   enabled: boolean;
   storm: boolean;
   fortress: boolean;
+  advancedCastle: boolean;
   ggeServerName: string;
   name: string;
   flagUrl?: string;
@@ -168,6 +169,7 @@ export class ServerService {
       const enabled = node.querySelector('enabled')?.textContent?.trim() === 'true';
       const storm = node.querySelector('storm')?.textContent?.trim() !== 'false';
       const fortress = node.querySelector('fortress')?.textContent?.trim() !== 'false';
+      const advancedCastle = node.querySelector('advanced-castle')?.textContent?.trim() === 'true';
       const ggeServerName = node.querySelector('gge-server-name')?.textContent?.trim() ?? '';
       const name = node.querySelector('name')?.textContent?.trim() ?? '';
       const flagUrl = this.getFlagUrl(name);
@@ -175,6 +177,7 @@ export class ServerService {
         enabled,
         storm,
         fortress,
+        advancedCastle,
         ggeServerName,
         name,
         flagUrl,

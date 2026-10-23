@@ -46,8 +46,12 @@
                   <img [src]="srv.flagUrl" width="20" class="me-2" alt="{{ srv.name }}" title="{{ srv.name }}">
                   <span class="server-badge">{{srv.name}}</span>
                 </div>
-                <div>
+                <div class="flex items-center gap-2">
                   <div class="font-bold text-sm">{{ srv.ggeServerName }}</div>
+                  @if (srv.advancedCastle) {
+                    <i class="fa-solid fa-chess-rook advanced-castle-icon" title="{{ 'Analyse avancée des châteaux' | translate }}"
+                      [attr.aria-label]="'Analyse avancée des châteaux' | translate"></i>
+                  }
                 </div>
               </button>
             }

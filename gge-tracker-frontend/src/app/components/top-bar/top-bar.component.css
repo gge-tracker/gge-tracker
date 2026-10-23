@@ -243,6 +243,11 @@ a:visited {
   margin: 0.5rem 0;
 }
 
+.advanced-castle-icon {
+  color: #f5c542;
+  font-size: 0.75rem;
+}
+
 .server-badge {
   font-weight: bold;
 }
