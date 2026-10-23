@@ -49,8 +49,7 @@
               "node_modules/@ng-select/ng-select/themes/default.theme.css"
             ],
             "scripts": [
-              "node_modules/bootstrap/dist/js/bootstrap.bundle.min.js",
-              "node_modules/katex/dist/katex.min.js"
+              "node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"
             ]
           },
           "configurations": {
@@ -133,9 +132,7 @@
               "node_modules/leaflet/dist/leaflet.css",
               "node_modules/@ng-select/ng-select/themes/default.theme.css"
             ],
-            "scripts": [
-              "node_modules/katex/dist/katex.min.js"
-            ]
+            "scripts": []
           }
         },
         "lint": {

@@ -55,7 +55,6 @@ import { WindowService } from '@ggetracker-services/window.service';
 import { RouterLink } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { format } from 'date-fns';
-import katex from 'katex';
 import {
   Activity,
   BriefcaseConveyorBelt,
@@ -901,7 +900,8 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
    * Open the modal for the first formula.
    * This method uses KaTeX to render the formula in the modal.
    */
-  public openModal1(): void {
+  public async openModal1(): Promise<void> {
+    const { default: katex } = await import('katex');
     const target = this.el.nativeElement.querySelector('.katex-target');
     katex.render(
       String.raw`\text{Might}_{\text{day}} = \frac{1}{N} \sum_{i=1}^{N} \left( M_i^{\text{end}} - M_i^{\text{start}} \right)`,
@@ -917,7 +917,8 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
    * Open the modal for the second formula.
    * This method uses KaTeX to render the formula in the modal.
    */
-  public openModal2(): void {
+  public async openModal2(): Promise<void> {
+    const { default: katex } = await import('katex');
     const target = this.el.nativeElement.querySelector('.katex-target-var');
     katex.render(
       String.raw`\text{Might}_{\text{day}} = \frac{1}{N} \sum_{i=1}^{N} \left( \max(M_i^{\text{day}}) - \min(M_i^{\text{day}}) \right)`,

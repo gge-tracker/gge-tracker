@@ -27,6 +27,7 @@ RUN if [ "$BUILD_ENV" = "beta" ]; then \
     cp src/environments/environment.production-beta.ts src/environments/environment.production.ts; \
     fi
 RUN npm run build --output-path=dist --configuration=production
+RUN node scripts/inject-resource-hints.mjs
 
 FROM node:24-slim AS production
 

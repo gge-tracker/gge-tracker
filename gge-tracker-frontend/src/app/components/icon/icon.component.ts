@@ -1,38 +1,38 @@
 import { Component, Input } from '@angular/core';
 
-import { LucideAngularModule, icons } from 'lucide-angular';
+import {
+  ArrowDown01,
+  ArrowUpRight,
+  ChevronDown,
+  Clock,
+  CodeXml,
+  Globe,
+  Info,
+  LucideAngularModule,
+  Menu,
+  Search,
+  TrendingDown,
+  TriangleAlert,
+  Trophy,
+  X,
+  Zap,
+} from 'lucide-angular';
 
-export const myIcons: Pick<
-  typeof icons,
-  | 'ChevronDown'
-  | 'Menu'
-  | 'Search'
-  | 'Info'
-  | 'Globe'
-  | 'CodeXml'
-  | 'ArrowDown01'
-  | 'Clock'
-  | 'TrendingDown'
-  | 'Trophy'
-  | 'Zap'
-  | 'TriangleAlert'
-  | 'ArrowUpRight'
-  | 'X'
-> = {
-  ChevronDown: icons.ChevronDown,
-  Menu: icons.Menu,
-  Search: icons.Search,
-  Info: icons.Info,
-  Globe: icons.Globe,
-  CodeXml: icons.CodeXml,
-  ArrowDown01: icons.ArrowDown01,
-  Clock: icons.Clock,
-  TrendingDown: icons.TrendingDown,
-  Trophy: icons.Trophy,
-  Zap: icons.Zap,
-  TriangleAlert: icons.TriangleAlert,
-  ArrowUpRight: icons.ArrowUpRight,
-  X: icons.X,
+export const myIcons = {
+  ChevronDown,
+  Menu,
+  Search,
+  Info,
+  Globe,
+  CodeXml,
+  ArrowDown01,
+  Clock,
+  TrendingDown,
+  Trophy,
+  Zap,
+  TriangleAlert,
+  ArrowUpRight,
+  X,
 };
 
 /**

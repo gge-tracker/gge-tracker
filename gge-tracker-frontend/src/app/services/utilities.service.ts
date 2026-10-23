@@ -5,8 +5,6 @@ import { BehaviorSubject, firstValueFrom } from 'rxjs';
 import { ApiRestService } from './api-rest.service';
 import { ToastService } from './toast.service';
 import { ApiLastUpdates, ErrorType } from '@ggetracker-interfaces/empire-ranking';
-import * as ExcelJS from 'exceljs';
-import { saveAs } from 'file-saver';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 
 @Injectable({
@@ -79,6 +77,7 @@ export class UtilitiesService {
     dataRows: any[][],
     fileName: string,
   ): Promise<void> {
+    const [{ default: ExcelJS }, { default: FileSaver }] = await Promise.all([import('exceljs'), import('file-saver')]);
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet(worksheetName);
     const headerRow = worksheet.addRow(headers);
@@ -119,7 +118,7 @@ export class UtilitiesService {
     }
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    saveAs(blob, fileName);
+    FileSaver.saveAs(blob, fileName);
   }
 
   public calculateWoaEventEndTime(collectDate: Date): Date {
