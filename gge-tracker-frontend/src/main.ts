@@ -5,7 +5,7 @@ import { HttpClient, provideHttpClient, withInterceptorsFromDi } from '@angular/
 import { APP_INITIALIZER, LOCALE_ID, importProvidersFrom, isDevMode } from '@angular/core';
 import { BrowserModule, bootstrapApplication, provideClientHydration } from '@angular/platform-browser';
 import { provideAnimations } from '@angular/platform-browser/animations';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withNavigationErrorHandler } from '@angular/router';
 import { ServiceWorkerModule } from '@angular/service-worker';
 import { myIcons } from '@ggetracker-components/icon/icon.component';
 import { ServerService } from '@ggetracker-services/server.service';
@@ -15,6 +15,7 @@ import { LUCIDE_ICONS, LucideAngularModule, LucideIconProvider, Spline } from 'l
 import { AppComponent } from './app/app.component';
 import { DynamicTranslateLoaderFactory } from './app/app.module';
 import { routes } from './app/app.routes';
+import { reloadOnStaleChunk } from './app/stale-chunk-reload';
 
 void bootstrapApplication(AppComponent, {
   providers: [
@@ -47,7 +48,7 @@ void bootstrapApplication(AppComponent, {
     { provide: LOCALE_ID, useValue: 'en-GB' },
     provideHttpClient(withInterceptorsFromDi()),
     provideAnimations(),
-    provideRouter(routes),
+    provideRouter(routes, withNavigationErrorHandler(reloadOnStaleChunk)),
   ],
 }).then(() => {
   document.querySelector('app-loader')?.remove();

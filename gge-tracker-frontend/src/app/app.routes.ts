@@ -1,40 +1,14 @@
 import { Routes } from '@angular/router';
 
-import { MaintenanceComponent } from '@ggetracker-components/maintenance/maintenance.component';
-import { AboutComponent } from '@ggetracker-pages/about/about.component';
-import { LegalDocumentComponent } from '@ggetracker-pages/legal/legal-document.component';
-import { AllianceStatsComponent } from '@ggetracker-pages/alliance-stats/alliance-stats.component';
-import { AlliancesComponent } from '@ggetracker-pages/alliances/alliances.component';
-import { EventsComponent } from '@ggetracker-pages/events/events.component';
-import { MovementsComponent } from '@ggetracker-pages/movements/movements.component';
-import { OffersComponent } from '@ggetracker-pages/offers/offers.component';
-import { PlayerStatsComponent } from '@ggetracker-pages/player-stats/player-stats.component';
-import { PlayersComponent } from '@ggetracker-pages/players/players.component';
-import { ReleaseNotesComponent } from '@ggetracker-pages/release-notes/release-notes.component';
-import { RenamesComponent } from '@ggetracker-pages/renames/renames.component';
-import { ServerCartographyComponent } from '@ggetracker-pages/server-cartography/server-cartography.component';
-import { ServerStatisticsComponent } from '@ggetracker-pages/server-statistics/server-statistics.component';
-import { TrackerComponent } from '@ggetracker-pages/tracker/tracker.component';
 import { SkeletonComponent } from '@ggetracker-components/skeleton/skeleton.component';
 import { PlayerStatsResolver } from '@ggetracker-resolvers/player-stats.resolver';
 import { titleResolver } from '@ggetracker-resolvers/title.resolver';
-import { ViewCastleComponent } from '@ggetracker-pages/view-castle/view-castle.component';
-import { GrandTournamentComponent } from '@ggetracker-pages/grand-tournament/grand-tournament.component';
-import { RiftRaidComponent } from '@ggetracker-pages/rift-raid/rift-raid.component';
-import { EventThresholdsComponent } from '@ggetracker-pages/event-thresholds/event-thresholds.component';
-import { LiveOuterRealmsComponent } from '@ggetracker-pages/live-outer-realms/live-outer-realms.component';
-import { GuessDailyPlayerComponent } from '@ggetracker-pages/guess-daily-player/guess-daily-player.component';
-import { WoaComponent } from '@ggetracker-pages/events/woa/woa.component';
-import { StormTrackerComponent } from '@ggetracker-pages/storm-tracker/storm-tracker.component';
-import { StormyIslesComponent } from '@ggetracker-pages/stormy-isles/stormy-isles.component';
-import { CompareComponent } from '@ggetracker-pages/compare/compare.component';
-import { HomeComponent } from '@ggetracker-pages/home/home.component';
-import { NotFoundComponent } from '@ggetracker-pages/not-found/not-found.component';
 
 export const routes: Routes = [
   {
     path: 'maintenance',
-    component: MaintenanceComponent,
+    loadComponent: () =>
+      import('@ggetracker-components/maintenance/maintenance.component').then((m) => m.MaintenanceComponent),
     data: {
       description: '',
       titleKey: 'Maintenance',
@@ -42,7 +16,8 @@ export const routes: Routes = [
   },
   {
     path: 'release-notes',
-    component: ReleaseNotesComponent,
+    loadComponent: () =>
+      import('@ggetracker-pages/release-notes/release-notes.component').then((m) => m.ReleaseNotesComponent),
     data: {
       description: 'Discover the latest updates and changes in the Goodgame Empire Tracker.',
       titleKey: 'Release Notes',
@@ -55,7 +30,7 @@ export const routes: Routes = [
       {
         path: '',
         pathMatch: 'full',
-        component: HomeComponent,
+        loadComponent: () => import('@ggetracker-pages/home/home.component').then((m) => m.HomeComponent),
         data: {
           description:
             'Goodgame Empire statistics for every server: your might and rank, your alliance and the players you follow',
@@ -65,7 +40,7 @@ export const routes: Routes = [
       },
       {
         path: 'players',
-        component: PlayersComponent,
+        loadComponent: () => import('@ggetracker-pages/players/players.component').then((m) => m.PlayersComponent),
         data: {
           description: 'Browse the list of players on Goodgame Empire, with detailed statistics.',
           titleKey: 'Liste des joueurs',
@@ -74,7 +49,10 @@ export const routes: Routes = [
       },
       {
         path: 'guess',
-        component: GuessDailyPlayerComponent,
+        loadComponent: () =>
+          import('@ggetracker-pages/guess-daily-player/guess-daily-player.component').then(
+            (m) => m.GuessDailyPlayerComponent,
+          ),
         resolve: { titleResolver },
         data: {
           description: '',
@@ -82,7 +60,8 @@ export const routes: Routes = [
       },
       {
         path: 'player/:playerId',
-        component: PlayerStatsComponent,
+        loadComponent: () =>
+          import('@ggetracker-pages/player-stats/player-stats.component').then((m) => m.PlayerStatsComponent),
         data: {
           description: 'View detailed statistics of a player on Goodgame Empire.',
         },
@@ -90,7 +69,8 @@ export const routes: Routes = [
       },
       {
         path: 'alliances',
-        component: AlliancesComponent,
+        loadComponent: () =>
+          import('@ggetracker-pages/alliances/alliances.component').then((m) => m.AlliancesComponent),
         data: {
           description: 'Explore the list of alliances on Goodgame Empire, with detailed statistics.',
           titleKey: 'Liste des alliances',
@@ -99,7 +79,8 @@ export const routes: Routes = [
       },
       {
         path: 'alliance/:allianceId',
-        component: AllianceStatsComponent,
+        loadComponent: () =>
+          import('@ggetracker-pages/alliance-stats/alliance-stats.component').then((m) => m.AllianceStatsComponent),
         data: {
           description: 'View detailed statistics of an alliance on Goodgame Empire.',
         },
@@ -112,7 +93,7 @@ export const routes: Routes = [
       },
       {
         path: 'compare/:type',
-        component: CompareComponent,
+        loadComponent: () => import('@ggetracker-pages/compare/compare.component').then((m) => m.CompareComponent),
         resolve: { titleResolver },
         data: {
           description: 'Compare two players or two alliances of Goodgame Empire side by side',
@@ -121,7 +102,7 @@ export const routes: Routes = [
       },
       {
         path: 'dungeons',
-        component: TrackerComponent,
+        loadComponent: () => import('@ggetracker-pages/tracker/tracker.component').then((m) => m.TrackerComponent),
         data: {
           description: 'Goodgame Empire Tracker: Track fortress attacks in real-time.',
           titleKey: 'Forteresses',
@@ -130,7 +111,10 @@ export const routes: Routes = [
       },
       {
         path: 'map',
-        component: ServerCartographyComponent,
+        loadComponent: () =>
+          import('@ggetracker-pages/server-cartography/server-cartography.component').then(
+            (m) => m.ServerCartographyComponent,
+          ),
         data: {
           description: 'View the world map of Goodgame Empire, with alliance positions and territories.',
           titleKey: 'Cartographie',
@@ -139,7 +123,10 @@ export const routes: Routes = [
       },
       {
         path: 'map/:alliance',
-        component: ServerCartographyComponent,
+        loadComponent: () =>
+          import('@ggetracker-pages/server-cartography/server-cartography.component').then(
+            (m) => m.ServerCartographyComponent,
+          ),
         data: {
           description: 'Explore the world map of Goodgame Empire, with alliance positions and territories.',
           titleKey: 'Cartographie',
@@ -148,7 +135,10 @@ export const routes: Routes = [
       },
       {
         path: 'statistics',
-        component: ServerStatisticsComponent,
+        loadComponent: () =>
+          import('@ggetracker-pages/server-statistics/server-statistics.component').then(
+            (m) => m.ServerStatisticsComponent,
+          ),
         data: {
           description: 'Analyze the global statistics of the Goodgame Empire server',
           titleKey: 'Statistiques',
@@ -157,7 +147,8 @@ export const routes: Routes = [
       },
       {
         path: 'movements',
-        component: MovementsComponent,
+        loadComponent: () =>
+          import('@ggetracker-pages/movements/movements.component').then((m) => m.MovementsComponent),
         resolve: { titleResolver },
         data: {
           description: 'Analyze alliance movements on Goodgame Empire: relocations, new outposts, conquests, and more.',
@@ -170,7 +161,7 @@ export const routes: Routes = [
       },
       {
         path: 'renames/:type',
-        component: RenamesComponent,
+        loadComponent: () => import('@ggetracker-pages/renames/renames.component').then((m) => m.RenamesComponent),
         resolve: { titleResolver },
         data: {
           description: 'Discover the list of player and alliance name changes on Goodgame Empire.',
@@ -179,7 +170,7 @@ export const routes: Routes = [
       },
       {
         path: 'about',
-        component: AboutComponent,
+        loadComponent: () => import('@ggetracker-pages/about/about.component').then((m) => m.AboutComponent),
         resolve: { titleResolver },
         data: {
           description:
@@ -189,7 +180,8 @@ export const routes: Routes = [
       },
       {
         path: 'legal',
-        component: LegalDocumentComponent,
+        loadComponent: () =>
+          import('@ggetracker-pages/legal/legal-document.component').then((m) => m.LegalDocumentComponent),
         resolve: { titleResolver },
         data: {
           document: 'legal',
@@ -199,7 +191,8 @@ export const routes: Routes = [
       },
       {
         path: 'privacy',
-        component: LegalDocumentComponent,
+        loadComponent: () =>
+          import('@ggetracker-pages/legal/legal-document.component').then((m) => m.LegalDocumentComponent),
         resolve: { titleResolver },
         data: {
           document: 'privacy',
@@ -209,7 +202,7 @@ export const routes: Routes = [
       },
       {
         path: 'offers',
-        component: OffersComponent,
+        loadComponent: () => import('@ggetracker-pages/offers/offers.component').then((m) => m.OffersComponent),
         resolve: { titleResolver },
         data: {
           description: 'Discover the available offers and promotions for Goodgame Empire.',
@@ -218,7 +211,10 @@ export const routes: Routes = [
       },
       {
         path: 'grand-tournament',
-        component: GrandTournamentComponent,
+        loadComponent: () =>
+          import('@ggetracker-pages/grand-tournament/grand-tournament.component').then(
+            (m) => m.GrandTournamentComponent,
+          ),
         resolve: { titleResolver },
         data: {
           description: 'Analyze the events of Goodgame Empire: Grand Tournament',
@@ -227,7 +223,10 @@ export const routes: Routes = [
       },
       {
         path: 'event-thresholds',
-        component: EventThresholdsComponent,
+        loadComponent: () =>
+          import('@ggetracker-pages/event-thresholds/event-thresholds.component').then(
+            (m) => m.EventThresholdsComponent,
+          ),
         resolve: { titleResolver },
         data: {
           description:
@@ -237,7 +236,7 @@ export const routes: Routes = [
       },
       {
         path: 'rift-raid',
-        component: RiftRaidComponent,
+        loadComponent: () => import('@ggetracker-pages/rift-raid/rift-raid.component').then((m) => m.RiftRaidComponent),
         resolve: { titleResolver },
         data: {
           description: 'Follow the Rift Tournament of the Goodgame Empire Rift Raid, hour by hour',
@@ -246,7 +245,8 @@ export const routes: Routes = [
       },
       {
         path: 'stormy-isles',
-        component: StormyIslesComponent,
+        loadComponent: () =>
+          import('@ggetracker-pages/stormy-isles/stormy-isles.component').then((m) => m.StormyIslesComponent),
         resolve: { titleResolver },
         data: {
           description: 'Browse the Stormy Isles leaderboard on Goodgame Empire, with aquamarine metrics.',
@@ -255,7 +255,8 @@ export const routes: Routes = [
       },
       {
         path: 'storm-tracker',
-        component: StormTrackerComponent,
+        loadComponent: () =>
+          import('@ggetracker-pages/storm-tracker/storm-tracker.component').then((m) => m.StormTrackerComponent),
         resolve: { titleResolver },
         data: {
           description: 'Goodgame Empire Tracker: Track Storm Islands forts and resource isles in real-time.',
@@ -264,7 +265,7 @@ export const routes: Routes = [
       },
       {
         path: 'woa',
-        component: WoaComponent,
+        loadComponent: () => import('@ggetracker-pages/events/woa/woa.component').then((m) => m.WoaComponent),
         resolve: { titleResolver },
         data: {
           description: 'Discover the latest Wheel of Unimaginable Affluence ranking and events in Goodgame Empire.',
@@ -273,7 +274,7 @@ export const routes: Routes = [
       },
       {
         path: 'woa/:id',
-        component: WoaComponent,
+        loadComponent: () => import('@ggetracker-pages/events/woa/woa.component').then((m) => m.WoaComponent),
         resolve: { titleResolver },
         data: {
           description: 'Discover the latest Wheel of Unimaginable Affluence ranking and events in Goodgame Empire.',
@@ -282,7 +283,7 @@ export const routes: Routes = [
       },
       {
         path: 'events',
-        component: EventsComponent,
+        loadComponent: () => import('@ggetracker-pages/events/events.component').then((m) => m.EventsComponent),
         resolve: { titleResolver },
         data: {
           description: 'Analyze the events of Goodgame Empire: outer realms and beyond the horizon.',
@@ -291,7 +292,7 @@ export const routes: Routes = [
       },
       {
         path: 'events/:eventType',
-        component: EventsComponent,
+        loadComponent: () => import('@ggetracker-pages/events/events.component').then((m) => m.EventsComponent),
         resolve: { titleResolver },
         data: {
           description: 'Analyze the events of Goodgame Empire: outer realms and beyond the horizon.',
@@ -300,7 +301,7 @@ export const routes: Routes = [
       },
       {
         path: 'events/:eventType/:eventId',
-        component: EventsComponent,
+        loadComponent: () => import('@ggetracker-pages/events/events.component').then((m) => m.EventsComponent),
         resolve: { titleResolver },
         data: {
           description: 'Analyze the events of Goodgame Empire: outer realms and beyond the horizon.',
@@ -309,7 +310,8 @@ export const routes: Routes = [
       },
       {
         path: 'castles',
-        component: ViewCastleComponent,
+        loadComponent: () =>
+          import('@ggetracker-pages/view-castle/view-castle.component').then((m) => m.ViewCastleComponent),
         resolve: { titleResolver },
         data: {
           description: 'View detailed information about a specific castle in Goodgame Empire.',
@@ -318,7 +320,10 @@ export const routes: Routes = [
       },
       {
         path: 'live/outer-realms',
-        component: LiveOuterRealmsComponent,
+        loadComponent: () =>
+          import('@ggetracker-pages/live-outer-realms/live-outer-realms.component').then(
+            (m) => m.LiveOuterRealmsComponent,
+          ),
         resolve: { titleResolver },
         data: {
           description: 'Real-time tracking of Outer Realms rankings and player activities in Goodgame Empire.',
@@ -327,7 +332,10 @@ export const routes: Routes = [
       },
       {
         path: 'live/outer-realms/:playerId',
-        component: LiveOuterRealmsComponent,
+        loadComponent: () =>
+          import('@ggetracker-pages/live-outer-realms/live-outer-realms.component').then(
+            (m) => m.LiveOuterRealmsComponent,
+          ),
         resolve: { titleResolver },
         data: {
           description: 'Real-time tracking of Outer Realms rankings and player activities in Goodgame Empire.',
@@ -336,7 +344,7 @@ export const routes: Routes = [
       },
       {
         path: '**',
-        component: NotFoundComponent,
+        loadComponent: () => import('@ggetracker-pages/not-found/not-found.component').then((m) => m.NotFoundComponent),
         resolve: { titleResolver },
         data: {
           description: '',

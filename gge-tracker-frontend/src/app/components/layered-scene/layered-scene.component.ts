@@ -26,13 +26,14 @@ export class LayeredSceneComponent implements OnDestroy {
   public readonly live = signal(false);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
+  private readonly poster = viewChild.required<ElementRef<HTMLImageElement>>('poster');
   private readonly teardown: (() => void)[] = [];
   private stage: SceneStage | null = null;
   private destroyed = false;
 
   constructor() {
     afterNextRender(() => {
-      if (this.motionAllowed()) void this.start();
+      if (this.motionAllowed()) void this.startOncePosterShown();
     });
   }
 
@@ -44,6 +45,18 @@ export class LayeredSceneComponent implements OnDestroy {
     this.destroyed = true;
     for (const release of this.teardown) release();
     this.stage?.destroy();
+  }
+
+  private async startOncePosterShown(): Promise<void> {
+    await this.poster()
+      .nativeElement.decode()
+      .catch(() => {});
+    await new Promise<void>((resolve) =>
+      'requestIdleCallback' in globalThis
+        ? requestIdleCallback(() => resolve(), { timeout: 2000 })
+        : setTimeout(resolve, 200),
+    );
+    if (!this.destroyed) await this.start();
   }
 
   private async start(): Promise<void> {
