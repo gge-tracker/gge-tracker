@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 const environmentFile = new URL('../src/environments/environment.production.ts', import.meta.url);
-const indexFile = path.join(process.argv[2] ?? 'dist/gge-tracker-frontend/browser', 'index.html');
+const indexFile = process.argv[2] ?? 'dist/gge-tracker-frontend/browser/index.csr.html';
 const anchor = '<base href="/">';
 
 function environmentUrl(environment, key) {
@@ -21,6 +21,6 @@ const hints = [
 ];
 
 const index = readFileSync(indexFile, 'utf8');
-if (!index.includes(anchor)) throw new Error(`index.html has no ${anchor} to insert the resource hints after`);
+if (!index.includes(anchor)) throw new Error(`${indexFile} has no ${anchor} to insert the resource hints after`);
 writeFileSync(indexFile, index.replace(anchor, [anchor, ...hints].join('\n  ')));
-console.log(`index.html: ${hints.length} resource hints for ${api.origin} and ${i18n.origin}`);
+console.log(`${path.basename(indexFile)}: ${hints.length} resource hints for ${api.origin} and ${i18n.origin}`);

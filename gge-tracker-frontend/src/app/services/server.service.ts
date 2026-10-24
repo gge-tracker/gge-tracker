@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 
 import { LanguageService } from './language.service';
 import { LocalStorageService } from './local-storage.service';
+import { RenderedFetchService } from './rendered-fetch.service';
 import { environment } from 'environments/environment';
 import { stripTrailingDigits } from './text-format.utilities';
 
@@ -106,6 +107,7 @@ export class ServerService {
   ];
   private readonly languageService = inject(LanguageService);
   private readonly localStorage = inject(LocalStorageService);
+  private readonly renderedFetch = inject(RenderedFetchService);
 
   public changeServer(server: string): void {
     this.localStorage.setItem('server', server);
@@ -140,10 +142,10 @@ export class ServerService {
 
   public async init(): Promise<void> {
     const url = environment.apiUrl + 'servers/catalog';
-    await fetch(url)
-      .then((response) => response.text())
-      .then((xml) => {
-        this.xmlServers = this.parseServers(xml);
+    await this.renderedFetch
+      .fetchText(url)
+      .then(({ body }) => {
+        this.xmlServers = this.parseServers(body ?? '');
       })
       .catch((error) => console.error('Error loading servers:', error));
     const lang = this.languageService.currentLang.trim().toUpperCase() + '1';
@@ -158,30 +160,24 @@ export class ServerService {
   }
 
   private parseServers(xml: string): ServerEntry[] {
-    const document = new DOMParser().parseFromString(xml, 'application/xml');
-    const parserError = document.querySelector('parsererror');
-    if (parserError) {
-      console.error('XML parse error:', parserError.textContent);
-      return [];
-    }
-    const nodes = [...(document.querySelectorAll('root > servers > server') as unknown as Iterable<Element>)];
-    return nodes.map((node) => {
-      const enabled = node.querySelector('enabled')?.textContent?.trim() === 'true';
-      const storm = node.querySelector('storm')?.textContent?.trim() !== 'false';
-      const fortress = node.querySelector('fortress')?.textContent?.trim() !== 'false';
-      const advancedCastle = node.querySelector('advanced-castle')?.textContent?.trim() === 'true';
-      const ggeServerName = node.querySelector('gge-server-name')?.textContent?.trim() ?? '';
-      const name = node.querySelector('name')?.textContent?.trim() ?? '';
-      const flagUrl = this.getFlagUrl(name);
+    return [...xml.matchAll(/<server>([\S\s]*?)<\/server>/g)].map(([, node]) => {
+      const name = readXmlField(node, 'name');
       return {
-        enabled,
-        storm,
-        fortress,
-        advancedCastle,
-        ggeServerName,
+        enabled: readXmlField(node, 'enabled') === 'true',
+        storm: readXmlField(node, 'storm') !== 'false',
+        fortress: readXmlField(node, 'fortress') !== 'false',
+        advancedCastle: readXmlField(node, 'advanced-castle') === 'true',
+        ggeServerName: readXmlField(node, 'gge-server-name'),
         name,
-        flagUrl,
+        flagUrl: this.getFlagUrl(name),
       };
     });
   }
+}
+
+const XML_ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+
+function readXmlField(node: string, field: string): string {
+  const value = new RegExp(`<${field}>([^<]*)</${field}>`).exec(node)?.[1] ?? '';
+  return value.replaceAll(/&(amp|lt|gt|quot|apos);/g, (_, entity: string) => XML_ENTITIES[entity]).trim();
 }

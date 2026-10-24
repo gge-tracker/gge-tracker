@@ -51,6 +51,7 @@ import { formatThousands } from '@ggetracker-services/text-format.utilities';
 import { LevelPipe } from '@ggetracker-pipes/level.pipe';
 import { LanguageService } from '@ggetracker-services/language.service';
 import { FollowService } from '@ggetracker-services/follow.service';
+import { HydrationStateService } from '@ggetracker-services/hydration-state.service';
 import {
   DEFAULT_LOOT_RESET,
   LootReset,
@@ -304,6 +305,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   private readonly followService = inject(FollowService);
   private readonly languageService = inject(LanguageService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly hydrationState = inject(HydrationStateService);
   private readonly worlds = [
     { name: 'Le Grand Empire', id: 0 },
     { name: 'Le Glacier éternel', id: 2 },
@@ -311,7 +313,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     { name: 'Les Pics du feu', id: 3 },
     { name: 'Les Îles orageuses', id: 4 },
   ];
-  private observer!: IntersectionObserver;
+  private observer?: IntersectionObserver;
   @ViewChildren('chartContainer', { read: ElementRef }) private readonly chartContainers!: QueryList<ElementRef>;
 
   constructor() {
@@ -319,6 +321,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   }
 
   public ngAfterViewInit(): void {
+    if (!this.isBrowser) return;
     this.observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -329,7 +332,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
             this.chartVisibles[chartName] = true;
             void this.ensureSeries(chartName);
           }
-          this.observer.unobserve(element);
+          this.observer?.unobserve(element);
           this.cdr.detectChanges();
         });
       },
@@ -1571,6 +1574,10 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   }
 
   private animateStatTo(statKey: keyof IRankingStatsPlayer, targetValue: number): void {
+    if (!this.isBrowser || this.hydrationState.isHydrating()) {
+      this.animatedStats[statKey] = targetValue;
+      return;
+    }
     const target = this.animatedStats[statKey] || 0;
     if (target) {
       cancelAnimationFrame(target);
@@ -2519,13 +2526,13 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
 
       if (!element.dataset['observed']) {
         element.dataset['observed'] = 'true';
-        this.observer.observe(element);
+        this.observer?.observe(element);
       }
     });
   }
 
   private clearChartsObservers(): void {
-    this.observer.disconnect();
+    this.observer?.disconnect();
     this.chartContainers.forEach((chart) => {
       const element = chart.nativeElement as HTMLElement;
       delete element.dataset['observed'];

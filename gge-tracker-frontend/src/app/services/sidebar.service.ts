@@ -1,4 +1,5 @@
-import { Injectable } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Injectable, PLATFORM_ID, REQUEST, inject } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 
 @Injectable({
@@ -14,14 +15,19 @@ export class SidebarService {
   public isLanguageMenuOpen$ = this._isLanguageMenuOpen.asObservable();
   public _searchQuery = new BehaviorSubject<string>('');
   public searchQuery$ = this._searchQuery.asObservable();
-  public isMobileView: boolean = window.innerWidth < SidebarService.OVERLAY_MAX_WIDTH;
+  public isMobileView: boolean;
+  private readonly platformId = inject(PLATFORM_ID);
+  private readonly request = inject(REQUEST, { optional: true });
 
   constructor() {
+    this.isMobileView = this.measureMobileView();
     if (this.isMobileView) {
       this._isSidebarOpen.next(false);
     }
-    this.handleResize = this.handleResize.bind(this);
-    window.addEventListener('resize', this.handleResize);
+    if (isPlatformBrowser(this.platformId)) {
+      this.handleResize = this.handleResize.bind(this);
+      window.addEventListener('resize', this.handleResize);
+    }
   }
 
   public setSearchQuery(query: string): void {
@@ -82,6 +88,11 @@ export class SidebarService {
       this.closeSidebar();
     }
   };
+
+  private measureMobileView(): boolean {
+    if (isPlatformBrowser(this.platformId)) return window.innerWidth < SidebarService.OVERLAY_MAX_WIDTH;
+    return /mobi|android|ipad|tablet/i.test(this.request?.headers.get('user-agent') ?? '');
+  }
 
   private handleResize(): void {
     const wasMobileView = this.isMobileView;

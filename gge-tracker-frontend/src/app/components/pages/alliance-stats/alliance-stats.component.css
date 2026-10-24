@@ -429,7 +429,7 @@ app-layered-scene.alliance-hero-backdrop::after {
 .alliances-stats-content {
   background:
     linear-gradient(180deg, rgb(10 14 22 / 86%), rgb(10 14 22 / 93%) 40%, rgb(10 14 22 / 97%)),
-    url(/assets/scenes/council/poster.webp) center top / cover no-repeat;
+    url(/assets/scenes/council/poster-960.webp) center top / cover no-repeat;
   border-bottom: 1px solid rgb(255 255 255 / 8%);
   border-right: 1px solid rgb(255 255 255 / 8%);
   color: #e6e2d8;

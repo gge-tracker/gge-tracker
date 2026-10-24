@@ -1,4 +1,5 @@
-import { Injectable } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { inject, Injectable, PLATFORM_ID } from '@angular/core';
 
 @Injectable({
   providedIn: 'root',
@@ -10,8 +11,10 @@ export class ToastService {
     date: Date;
     type: 'error' | 'info';
   }[] = [];
+  private readonly platformId = inject(PLATFORM_ID);
 
   public add(message: string, duration = 3000, type: 'error' | 'info' = 'error'): void {
+    if (!isPlatformBrowser(this.platformId)) return;
     this.toasts.push({ message, duration, date: new Date(), type });
     setTimeout(() => this.remove(0), duration);
   }

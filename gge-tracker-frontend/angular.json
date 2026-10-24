@@ -19,6 +19,18 @@
             "outputPath": "dist/gge-tracker-frontend",
             "index": "src/index.html",
             "browser": "src/main.ts",
+            "server": "src/main.server.ts",
+            "outputMode": "server",
+            "ssr": {
+              "entry": "src/server.ts"
+            },
+            "security": {
+              "allowedHosts": [
+                "gge-tracker.com",
+                "beta.gge-tracker.com",
+                "localhost"
+              ]
+            },
             "polyfills": [
               "zone.js"
             ],
@@ -142,35 +154,6 @@
               "src/**/*.ts",
               "src/**/*.html"
             ]
-          }
-        },
-        "prerender": {
-          "builder": "@angular-devkit/build-angular:prerender",
-          "options": {
-            "browserTarget": "gge-tracker:build:production",
-            "serverTarget": "gge-tracker:server:production",
-            "routes": []
-          }
-        },
-        "server": {
-          "builder": "@angular-devkit/build-angular:server",
-          "options": {
-            "outputPath": "dist/gge-tracker/server",
-            "main": "server.ts",
-            "tsConfig": "tsconfig.server.json"
-          },
-          "configurations": {
-            "production": {
-              "sourceMap": false,
-              "optimization": true
-            }
-          }
-        },
-        "serve-ssr": {
-          "builder": "@angular-devkit/build-angular:ssr-dev-server",
-          "options": {
-            "browserTarget": "gge-tracker:build",
-            "serverTarget": "gge-tracker:server"
           }
         }
       }

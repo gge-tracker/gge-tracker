@@ -15,6 +15,7 @@ import { ServerService } from '@ggetracker-services/server.service';
 import { WindowService } from '@ggetracker-services/window.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { formatThousands } from '@ggetracker-services/text-format.utilities';
+import { first } from 'rxjs';
 
 interface StatPoint {
   x: string;
@@ -48,12 +49,9 @@ export class ServerStatisticsComponent extends GenericComponent implements OnIni
   private readonly data: AllianceStatsData[] = [];
 
   public ngOnInit(): void {
-    const lastUpdate = this.utilitiesService.data$.subscribe((data) => {
-      if (data) {
-        this.lastUpdate = data.last_update.might;
-        lastUpdate.unsubscribe();
-        this.cdr.detectChanges();
-      }
+    this.utilitiesService.data$.pipe(first((data) => data !== null)).subscribe((data) => {
+      this.lastUpdate = data.last_update.might;
+      this.cdr.detectChanges();
     });
     void this.getGlobalStats().then((data) => {
       if (data.success) {

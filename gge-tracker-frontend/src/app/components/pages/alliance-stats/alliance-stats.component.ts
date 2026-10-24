@@ -43,6 +43,7 @@ import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { formatThousands } from '@ggetracker-services/text-format.utilities';
 import { LanguageService } from '@ggetracker-services/language.service';
 import { FollowService } from '@ggetracker-services/follow.service';
+import { HydrationStateService } from '@ggetracker-services/hydration-state.service';
 import {
   DEFAULT_LOOT_RESET,
   LootReset,
@@ -76,6 +77,7 @@ import { StatsCardContentComponent } from './stats-card-content/stats-card-conte
 import { PlayerTableContentComponent } from '@ggetracker-pages/players/player-table-content/player-table-content.component';
 import { DecodeHtmlPipe } from '../../../pipes/decode-html.pipe';
 import { GameDescriptionPipe } from '../../../pipes/game-description.pipe';
+import { first } from 'rxjs';
 
 enum ChartTypeHeights {
   DEFAULT = 450,
@@ -123,7 +125,7 @@ interface DescriptionChange {
 }
 
 const DESCRIPTION_DIFF_MAX_TOKENS = 600;
-const HERO_BACKDROP_URL = '/assets/scenes/council/poster.webp';
+const HERO_BACKDROP_ROOT = '/assets/scenes/council/';
 const HERO_BACKDROP_GRACE_MS = 1200;
 const SKELETON_LEDGERS = [3, 3, 2, 2, 3].map((rows) => Array.from({ length: rows }));
 
@@ -487,6 +489,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     variation: number;
   }[] = [];
   public el = inject(ElementRef);
+  public readonly hydrating = inject(HydrationStateService).isHydrating();
   public membersTableHeader: [string, string, (string | undefined)?, (boolean | undefined)?][] = [
     ['player_name', 'Pseudonyme'],
     ['level', 'Niveau', '/assets/lvl.png'],
@@ -1007,7 +1010,9 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       return Promise.resolve();
     }
     const image = new Image();
-    image.src = HERO_BACKDROP_URL;
+    image.sizes = '100vw';
+    image.srcset = `${HERO_BACKDROP_ROOT}poster-960.webp 960w, ${HERO_BACKDROP_ROOT}poster.webp 1920w`;
+    image.src = `${HERO_BACKDROP_ROOT}poster.webp`;
     return image.decode().catch(() => {});
   }
 
@@ -1033,7 +1038,9 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     this.processUpdatesData();
     const globalResponse = await this.apiRestService.getServerGlobalStats();
     this.initLedgers(globalResponse.success ? (globalResponse.data.at(-1) ?? null) : null);
-    await Promise.race([heroBackdrop, new Promise((resolve) => setTimeout(resolve, HERO_BACKDROP_GRACE_MS))]);
+    if (this.isBrowser && !this.hydrating) {
+      await Promise.race([heroBackdrop, new Promise((resolve) => setTimeout(resolve, HERO_BACKDROP_GRACE_MS))]);
+    }
     if (this.isDestroyed) {
       return;
     }
@@ -1080,24 +1087,25 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     };
   }
 
+  private rotateLoadingMessages(): void {
+    this.intervalId = setInterval(() => {
+      this.currentMessageIndex = (this.currentMessageIndex + 1) % this.loadingMessages.length;
+      this.message = this.loadingMessages[this.currentMessageIndex];
+      this.cdr.detectChanges();
+    }, 2000);
+  }
+
   private init(): void {
-    const lastUpdate = this.utilitiesService.data$.subscribe((data) => {
-      if (data) {
-        this.lastUpdate = data.last_update.might;
-        lastUpdate.unsubscribe();
-        this.cdr.detectChanges();
-      }
+    this.utilitiesService.data$.pipe(first((data) => data !== null)).subscribe((data) => {
+      this.lastUpdate = data.last_update.might;
+      this.cdr.detectChanges();
     });
     const serverName = this.apiRestService.serverService.currentServer?.name;
     const allianceDistancePlayerName = this.localStorage.getItem('allianceDistancePlayerName_' + serverName);
     if (allianceDistancePlayerName) {
       this.playerNameForDistance = allianceDistancePlayerName;
     }
-    this.intervalId = setInterval(() => {
-      this.currentMessageIndex = (this.currentMessageIndex + 1) % this.loadingMessages.length;
-      this.message = this.loadingMessages[this.currentMessageIndex];
-      this.cdr.detectChanges();
-    }, 2000);
+    if (this.isBrowser) this.rotateLoadingMessages();
     this.route.params.subscribe(async (parameters) => {
       const allianceId = parameters['allianceId'];
       this.allianceId = allianceId;

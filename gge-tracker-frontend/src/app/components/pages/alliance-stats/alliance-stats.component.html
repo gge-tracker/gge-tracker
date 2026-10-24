@@ -1,4 +1,4 @@
-@if (isInLoading) {
+@if (isInLoading && !hydrating) {
   <output class="alliance-hero alliance-hero--skeleton"
     [attr.aria-label]="'Chargement' | translate">
     <div class="alliance-hero-backdrop" aria-hidden="true"></div>
@@ -266,12 +266,13 @@
           <div class="players-container">
             <app-table [sort]="sort" [reverse]="reverse" [isInLoading]="isInLoading" [maxPage]="maxPage!" [page]="page"
               [search]="search" (sortOutput)="sortPlayers($event)" [headers]="membersTableHeader">
-              <app-player-table-content
+              <tbody
+                appPlayerTableContent
                 [players]="players"
                 [distanceEnabled]="membersTableHeader.length > defaultMembersTableHeaderSize"
                 [playersTableHeader]="membersTableHeader"
                 (toggleFavorite)="toggleFavorite($event)"
-              ></app-player-table-content>
+              ></tbody>
             </app-table>
           </div>
         </div>
