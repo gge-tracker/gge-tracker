@@ -26,7 +26,7 @@
 
 .mfg-label {
   color: var(--text-secondary);
-  font-family: "Inter", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  font-family: "Inter", "Inter Fallback", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.07em;
@@ -65,7 +65,7 @@
   caret-color: var(--accent);
   color: var(--text) !important;
   flex: 1 1 100%;
-  font-family: "Inter", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  font-family: "Inter", "Inter Fallback", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
   font-size: 13px;
   min-width: 60px;
   padding: 7px 11px;
@@ -98,7 +98,7 @@
   color: var(--muted);
   display: inline-flex;
   flex-shrink: 0;
-  font-family: "Inter", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  font-family: "Inter", "Inter Fallback", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
   font-size: 11px;
   font-weight: 700;
   justify-content: center;
@@ -142,7 +142,7 @@
   border: 1px solid var(--border);
   box-shadow: none;
   color: var(--text);
-  font-family: "Inter", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  font-family: "Inter", "Inter Fallback", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
   font-size: 13px;
   min-height: 34px;
   transition:
@@ -190,7 +190,7 @@
   border-radius: 8px;
   border: 1px solid var(--border);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  font-family: "Inter", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  font-family: "Inter", "Inter Fallback", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
   font-size: 13px;
   margin-top: 4px;
   overflow: hidden;
@@ -219,7 +219,7 @@
   border: none;
   cursor: pointer;
   display: inline-flex;
-  font-family: "Inter", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  font-family: "Inter", "Inter Fallback", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
   font-size: 13px;
   font-weight: 500;
   gap: 6px;

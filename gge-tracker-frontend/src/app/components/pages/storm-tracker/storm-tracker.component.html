@@ -11,7 +11,7 @@
                 [attr.aria-pressed]="view === 'map' ? isLayerShown('fort') : null"
                 [class.storm-segment--on]="view === 'list' ? activeTab === 'forts' : isLayerShown('fort')"
                 (click)="onSegmentClick('forts')">
-                <img src="/assets/storm-tracker/fort.png" class="storm-menu-icon" alt="">
+                <img src="/assets/storm-tracker/fort.png" class="storm-menu-icon" width="110" height="101" alt="">
                 <span class="storm-segment__label d-none d-lg-inline-block">{{ 'Forteresses des tempêtes' | translate }}</span>
                 @if (stormMeta) {
                 <span class="storm-count">{{ stormMeta.forts_count }}</span>
@@ -26,7 +26,7 @@
                 [attr.aria-pressed]="view === 'map' ? isLayerShown('isle') : null"
                 [class.storm-segment--on]="view === 'list' ? activeTab === 'isles' : isLayerShown('isle')"
                 (click)="onSegmentClick('isles')">
-                <img src="/assets/storm-tracker/village/6.png" class="storm-menu-icon" alt="">
+                <img src="/assets/storm-tracker/village/6.png" class="storm-menu-icon" width="96" height="63" alt="">
                 <span class="storm-segment__label d-none d-lg-inline-block">{{ 'Îles de ressources' | translate }}</span>
                 @if (stormMeta) {
                 <span class="storm-count">{{ stormMeta.isles_count }}</span>
@@ -102,10 +102,10 @@
           </div>
           }
 
-          @if (view === 'list' && stormMeta && stormMeta.last_scan_at) {
-          <div class="storm-status">
+          @if (view === 'list' && isServerAllowed) {
+          <div class="storm-status" [class.storm-status--pending]="!stormMeta?.last_scan_at">
             <i class="fa-solid fa-satellite-dish"></i>
-            <span>{{ 'Dernier scan' | translate }} : {{ stormMeta.last_scan_at | date:'short' }}</span>
+            <span>{{ 'Dernier scan' | translate }} : {{ stormMeta?.last_scan_at | date:'short' }}</span>
           </div>
           }
         </header>

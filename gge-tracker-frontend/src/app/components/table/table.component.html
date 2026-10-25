@@ -41,7 +41,7 @@
               }
               @if (header[2]) {
                 <img [src]="header[2]" [title]="header[1] | translate" [alt]="header[1] | translate"
-                  height="41" />
+                  [attr.width]="headerIconSize(header[2])?.width" [attr.height]="headerIconSize(header[2])?.height ?? 41" />
               }
               @if (!header[3]) {
                 <ng-container

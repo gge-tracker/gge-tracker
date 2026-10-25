@@ -18,7 +18,7 @@
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
   color: var(--text);
-  font-family: "Inter", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  font-family: "Inter", "Inter Fallback", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
   overflow: hidden;
   position: relative;
 }
@@ -77,7 +77,7 @@
   background: transparent;
   border-collapse: collapse;
   color: var(--text);
-  font-family: "Inter", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  font-family: "Inter", "Inter Fallback", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
 }
 
 :host ::ng-deep .modern-table thead {
@@ -195,7 +195,7 @@
 
 .empty-state {
   color: var(--muted);
-  font-family: "Inter", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  font-family: "Inter", "Inter Fallback", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
   font-size: 13px;
   font-style: italic;
   padding: 20px 0;

@@ -362,6 +362,10 @@
   padding-top: var(--storm-gap);
 }
 
+.storm-status--pending {
+  visibility: hidden;
+}
+
 .guard-img {
   width: 18px;
   margin-right: .25rem
@@ -577,6 +581,7 @@ th {
 }
 
 .storm-menu-icon {
+  height: auto;
   width: 45px;
 }
 

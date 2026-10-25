@@ -3,6 +3,24 @@ import { Component, input, output } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
 import { ChevronsDown, ChevronsUp, ChevronsUpDown, LucideAngularModule } from 'lucide-angular';
 
+const HEADER_ICON_SIZES: Record<string, { width: number; height: number }> = {
+  '/assets/glory.png': { width: 37, height: 49 },
+  '/assets/honor.png': { width: 26, height: 35 },
+  '/assets/loot.png': { width: 36, height: 41 },
+  '/assets/lvl.png': { width: 40, height: 38 },
+  '/assets/member-list-activity.png': { width: 40, height: 39 },
+  '/assets/member-list.png': { width: 40, height: 39 },
+  '/assets/min-alliance.png': { width: 60, height: 41 },
+  '/assets/pp1.png': { width: 46, height: 44 },
+  '/assets/aquamarine_15.webp': { width: 39, height: 35 },
+  '/assets/aquamarine_16.webp': { width: 156, height: 135 },
+  '/assets/aquamarine_17.webp': { width: 110, height: 101 },
+  '/assets/aquamarine_18.webp': { width: 41, height: 34 },
+  '/assets/aquamarine_19.webp': { width: 40, height: 25 },
+  '/assets/aquamarine_20.webp': { width: 39, height: 39 },
+  '/assets/aquamarine_100.webp': { width: 40, height: 40 },
+};
+
 @Component({
   selector: 'app-table',
   imports: [NgTemplateOutlet, NgClass, TranslateModule, LucideAngularModule],
@@ -26,6 +44,10 @@ export class TableComponent {
   public readonly ChevronsUpDown = ChevronsUpDown;
   public readonly ChevronsUp = ChevronsUp;
   public readonly ChevronsDown = ChevronsDown;
+
+  public headerIconSize(source: string): { width: number; height: number } | undefined {
+    return HEADER_ICON_SIZES[source];
+  }
 
   public mobileSortHeaders(): [string, string, string?, boolean?][] {
     if (!this.sort()) return [];

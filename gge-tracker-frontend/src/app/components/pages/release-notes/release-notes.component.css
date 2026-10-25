@@ -91,7 +91,7 @@ a {
 .release-notes-page {
   background: #0f111a;
   color: #f9fafb;
-  font-family: "Inter", "Segoe UI", sans-serif;
+  font-family: "Inter", "Inter Fallback", "Segoe UI", sans-serif;
   min-height: 100vh;
 }
 

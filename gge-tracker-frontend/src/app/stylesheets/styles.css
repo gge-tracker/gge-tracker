@@ -31,13 +31,13 @@ a:hover {
 }
 
 img.alliance-rank-icon {
-  max-height: 19px;
+  height: 18.5px;
   vertical-align: middle;
-  max-width: 37px;
+  width: 37px;
 }
 
 body, html {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Inter', 'Inter Fallback', sans-serif;
   margin: 0;
   padding: 0;
 }
