@@ -84,6 +84,9 @@ app.use(
       'X-RateLimit-Reset',
       'X-RateLimit-Window',
       'Retry-After',
+      'X-Offers-Fetched-At',
+      'X-Offers-Currency',
+      'X-Offers-Prices-Learned-At',
     ],
   }),
 );
@@ -6580,7 +6583,9 @@ publicRoutes.get('/dungeons/player/:playerId', routingInstance.getDungeonsByPlay
  *     summary: Retrieve the current cash offers catalog
  *     description: >
  *       Returns the cash offers the official Goodgame Empire store would show to a player of the given
- *       keep level and legendary level
+ *       keep level and legendary level. The catalog is read from the store at most every 30 minutes, and
+ *       prices outside EUR come from tiers learned once a day; the X-Offers-* headers say when. Send the ETag
+ *       back as If-None-Match to be answered 304 while the catalog and its prices have not changed
  *     tags:
  *       - Offers
  *     parameters:
@@ -6614,13 +6619,40 @@ publicRoutes.get('/dungeons/player/:playerId', routingInstance.getDungeonsByPlay
  *         example: 950
  *         schema:
  *           type: integer
+ *       - name: If-None-Match
+ *         in: header
+ *         required: false
+ *         description: ETag returned by a previous call. A matching value answers 304 with an empty body
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: Successfully retrieved the cash offers catalog, as returned by the GGS API
+ *         headers:
+ *           ETag:
+ *             description: Changes only when the offers or their prices change
+ *             schema:
+ *               type: string
+ *           X-Offers-Fetched-At:
+ *             description: When the catalog was read from the store (ISO 8601)
+ *             schema:
+ *               type: string
+ *               format: date-time
+ *           X-Offers-Currency:
+ *             description: The currency the offers are priced in. EUR while the asked currency is not learned yet
+ *             schema:
+ *               type: string
+ *           X-Offers-Prices-Learned-At:
+ *             description: When the prices of a currency other than EUR were learned (ISO 8601)
+ *             schema:
+ *               type: string
+ *               format: date-time
  *         content:
  *           application/json:
  *             schema:
  *               type: object
+ *       304:
+ *         description: The If-None-Match ETag still matches - the offers and their prices have not changed, empty body
  *       400:
  *         $ref: '#/components/responses/BadRequest'
  *       500:

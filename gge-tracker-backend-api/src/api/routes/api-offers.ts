@@ -1,17 +1,22 @@
 import * as express from 'express';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
+import { HttpCache } from '../helper/http-cache';
 import { OfferPriceTables } from '../services/offer-price-tables';
 import { CatalogProfile, StoreCatalogClient } from '../services/store-catalog-client';
 
 interface StoredReference {
   fetchedAt: number;
   catalog: unknown;
+  hash?: string;
 }
 
 export interface PricedCatalog {
   catalog: unknown;
   pricedIn: string;
+  fetchedAt: number;
+  pricesLearnedAt: number | null;
+  etag: string;
 }
 
 /**
@@ -30,8 +35,9 @@ export abstract class ApiOffers implements ApiHelper {
   private static readonly REFERENCE_FRESH_MS = 1800 * 1000;
   private static readonly REFERENCE_KEEP_SECONDS = 2 * 24 * 3600;
   private static readonly DEFAULT_CURRENCY = 'EUR';
+  private static readonly CLIENT_MAX_AGE_SECONDS = 60;
 
-  private static readonly pendingReferences = new Map<string, Promise<unknown>>();
+  private static readonly pendingReferences = new Map<string, Promise<StoredReference | null>>();
 
   public static async getOffers(request: express.Request, response: express.Response): Promise<void> {
     try {
@@ -73,6 +79,9 @@ export abstract class ApiOffers implements ApiHelper {
       /* ---------------------------------
        * Send response
        * --------------------------------- */
+      this.setFreshnessHeaders(response, priced);
+      const caching = { etag: priced.etag, maxAgeSeconds: this.CLIENT_MAX_AGE_SECONDS };
+      if (HttpCache.handleConditional(request, response, caching)) return;
       response.status(ApiHelper.HTTP_OK).send(priced.catalog);
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
@@ -87,32 +96,52 @@ export abstract class ApiOffers implements ApiHelper {
     locale: string,
     level: number,
     legendaryLevel: number,
+    requireFresh = false,
   ): Promise<PricedCatalog | null> {
     const profile: CatalogProfile = {
       locale,
       level: this.roundUpToRange(level, this.LEVEL_RANGE_BOUNDS),
       legendaryLevel: this.roundUpToRange(legendaryLevel, this.LEGENDARY_RANGE_BOUNDS),
     };
-    const reference = await this.readReference(profile);
+    const reference = await this.readReference(profile, requireFresh);
     if (!reference) return null;
+    const { fetchedAt, hash, catalog: referenceCatalog } = reference;
+    const referenceHash = hash ?? HttpCache.etagFromPayload(referenceCatalog);
     const base = StoreCatalogClient.REFERENCE_CURRENCY;
-    if (currency === base) return { catalog: reference, pricedIn: base };
+    const unpriced: PricedCatalog = {
+      catalog: referenceCatalog,
+      pricedIn: base,
+      fetchedAt,
+      pricesLearnedAt: null,
+      etag: HttpCache.etagFromPayload([referenceHash, base]),
+    };
+    if (currency === base) return unpriced;
     const table = await OfferPriceTables.read(currency);
     if (!table || table.base !== base) {
       OfferPriceTables.requestRefresh(currency);
-      return { catalog: reference, pricedIn: base };
+      return unpriced;
     }
-    const { catalog, approximate } = OfferPriceTables.apply(reference, table);
+    const { catalog, approximate } = OfferPriceTables.apply(referenceCatalog, table);
     if (approximate) OfferPriceTables.requestRefresh(currency, profile);
-    return { catalog, pricedIn: currency };
+    // A relearned table with the same tiers prices the same catalog : it keeps the same ETag
+    const etag = HttpCache.etagFromPayload([referenceHash, currency, table.fixedCategories, table.tiers]);
+    return { catalog, pricedIn: currency, fetchedAt, pricesLearnedAt: table.learnedAt, etag };
   }
 
-  private static async readReference(profile: CatalogProfile): Promise<unknown> {
+  private static setFreshnessHeaders(response: express.Response, priced: PricedCatalog): void {
+    response.setHeader('X-Offers-Fetched-At', new Date(priced.fetchedAt).toISOString());
+    response.setHeader('X-Offers-Currency', priced.pricedIn);
+    if (priced.pricesLearnedAt !== null) {
+      response.setHeader('X-Offers-Prices-Learned-At', new Date(priced.pricesLearnedAt).toISOString());
+    }
+  }
+
+  private static async readReference(profile: CatalogProfile, requireFresh: boolean): Promise<StoredReference | null> {
     const key = `${this.REFERENCE_KEY_PREFIX}${profile.locale}:${profile.level}:${profile.legendaryLevel}`;
     const stored = await this.readStoredReference(key);
-    if (stored && Date.now() - stored.fetchedAt < this.REFERENCE_FRESH_MS) return stored.catalog;
+    if (stored && Date.now() - stored.fetchedAt < this.REFERENCE_FRESH_MS) return stored;
     const refreshing = this.refreshReference(key, profile);
-    if (stored) return stored.catalog;
+    if (stored && !requireFresh) return stored;
     return refreshing;
   }
 
@@ -126,7 +155,7 @@ export abstract class ApiOffers implements ApiHelper {
     }
   }
 
-  private static refreshReference(key: string, profile: CatalogProfile): Promise<unknown> {
+  private static refreshReference(key: string, profile: CatalogProfile): Promise<StoredReference | null> {
     const pending = this.pendingReferences.get(key);
     if (pending) return pending;
     const refresh = StoreCatalogClient.fetchReferenceCatalog(profile)
@@ -136,9 +165,13 @@ export abstract class ApiOffers implements ApiHelper {
           return null;
         }
         const stripped = StoreCatalogClient.stripPrivateFields(catalog);
-        const stored: StoredReference = { fetchedAt: Date.now(), catalog: stripped };
+        const stored: StoredReference = {
+          fetchedAt: Date.now(),
+          catalog: stripped,
+          hash: HttpCache.etagFromPayload(stripped),
+        };
         await ApiHelper.updateCache(key, stored, this.REFERENCE_KEEP_SECONDS);
-        return stripped;
+        return stored;
       })
       .catch((error: unknown) => {
         ApiHelper.logError(error, 'ApiOffers.refreshReference');

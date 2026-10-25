@@ -71,6 +71,20 @@
             </div>
           </div>
 
+          @if (updatedAgo) {
+          <p class="offers-freshness" [title]="updatedAt">
+            <lucide-icon class="lucide" [img]="Clock" [size]="14"></lucide-icon>
+            <span>{{ 'Boutique mise à jour' | translate: { time: updatedAgo } }}</span>
+          </p>
+          }
+
+          @if (pricedIn) {
+          <div class="offers-notice">
+            <i class="fa-solid fa-circle-info"></i>
+            <em>{{ 'offers-currency-pending' | translate: { currency: currency, fallback: pricedIn } }}</em>
+          </div>
+          }
+
           @if (failedCategories.length > 0) {
           <div class="offers-notice">
             <i class="fa-solid fa-circle-info"></i>
@@ -177,7 +191,8 @@
               <h2 class="offer-card__name" [title]="offer.name">{{ offer.name }}</h2>
 
               <div class="offer-card__price-row">
-                <span class="offer-price" [class.offer-price--free]="offer.isFree">{{ offer.formattedPrice }}</span>
+                <span class="offer-price" [class.offer-price--free]="offer.isFree"
+                  [attr.title]="offer.isApproximate ? ('Prix estimé' | translate) : null">{{ offer.formattedPrice }}</span>
               </div>
 
               @if (offer.rubiesPerUnit) {

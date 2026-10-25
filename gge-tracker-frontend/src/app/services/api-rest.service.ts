@@ -69,6 +69,7 @@ import {
   ApiDungeonsMetaResponse,
   ApiAquamarinePlayerResponse,
   ApiStormyIslesLeaderboardResponse,
+  ApiOffersCatalog,
   ApiOffersCatalogResponse,
 } from '@ggetracker-interfaces/empire-ranking';
 
@@ -152,7 +153,7 @@ export class ApiRestService {
       const data = await response.json();
       this.updateResponseMs(now, Date.now());
       if (data.error) return { success: false, error: data.error };
-      return { success: true, data };
+      return { success: true, data, headers: response.headers };
     } catch (error: unknown) {
       if (doNotUpdateLocation && error instanceof Error) {
         const message = error.message;
@@ -209,11 +210,16 @@ export class ApiRestService {
     legendaryLevel: number,
     locale: string,
     currency: string,
-  ): Promise<ApiResponse<ApiOffersCatalogResponse>> {
+  ): Promise<ApiResponse<ApiOffersCatalog>> {
     const request = `${ApiRestService.apiUrl}offers?locale=${locale}&currency=${currency}&level=${level}&legendaryLevel=${legendaryLevel}`;
     const response = await this.apiFetch<ApiOffersCatalogResponse>(request);
     if (!response.success) return response;
-    return { success: true, data: response.data };
+    const catalog: ApiOffersCatalog = {
+      catalog: response.data,
+      fetchedAt: response.headers?.get('X-Offers-Fetched-At') ?? null,
+      pricedIn: response.headers?.get('X-Offers-Currency') ?? null,
+    };
+    return { success: true, data: catalog };
   }
 
   public async getDungeonsByPlayerId(playerId: number): Promise<ApiResponse<ApiDungeonsByPlayerIdResponse>> {

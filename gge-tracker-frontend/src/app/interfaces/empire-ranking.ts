@@ -331,7 +331,8 @@ export enum WatchModeStats {
 
 export type SearchType = 'alliance' | 'player';
 
-export type ApiResponse<T> = { success: true; error?: string; data: T } | { success: false; error: string };
+export type ApiResponse<T> =
+  { success: true; error?: string; data: T; headers?: Headers } | { success: false; error: string };
 
 export interface ApiPagination {
   current_page: number;
@@ -1002,6 +1003,12 @@ export interface ApiOffersCatalogResponse {
   [category: string]: ApiOfferCategory | Record<string, unknown> | undefined;
 }
 
+export interface ApiOffersCatalog {
+  catalog: ApiOffersCatalogResponse;
+  fetchedAt: string | null;
+  pricedIn: string | null;
+}
+
 export interface ApiOfferCategory {
   data?: {
     offers?: ApiOffer[] | null;
@@ -1030,6 +1037,7 @@ export interface ApiOffer {
   active?: boolean;
   purchased?: boolean;
   type?: string;
+  approximatePrice?: boolean;
 }
 
 export interface ApiOfferReward {
