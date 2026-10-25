@@ -124,13 +124,13 @@ export abstract class OfferSnapshot {
     let stored = 0;
     let failed = 0;
     for (const profile of this.profiles()) {
-      const catalog = await ApiOffers.readCatalogFor(
+      const priced = await ApiOffers.readPricedCatalog(
         profile.currency,
         this.LOCALE,
         profile.level,
         profile.legendaryLevel,
       );
-      const rows = this.toRows(catalog, profile, collectedAt);
+      const rows = priced?.pricedIn === profile.currency ? this.toRows(priced.catalog, profile, collectedAt) : [];
       if (rows.length === 0) {
         failed++;
         continue;

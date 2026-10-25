@@ -39,6 +39,7 @@ import { ApiGgeTrackerManager } from './managers/api.manager';
 import { RoutesManager } from './managers/routes.manager';
 import { errorCodeMiddleware } from './helper/error-codes';
 import { ApiHelper } from './helper/api-helper';
+import { OfferPriceTables } from './services/offer-price-tables';
 import { OfferSnapshot } from './services/offer-snapshot';
 import { TemporaryServerSettings } from './helper/temporary-server-settings';
 
@@ -6609,7 +6610,7 @@ publicRoutes.get('/dungeons/player/:playerId', routingInstance.getDungeonsByPlay
  *       - in: query
  *         name: legendaryLevel
  *         required: false
- *         description: The legendary level of the player the offers are computed for. Defaults to 950
+ *         description: The legendary level of the player the offers are computed for. Defaults to 0
  *         example: 950
  *         schema:
  *           type: integer
@@ -7564,6 +7565,7 @@ async function main(): Promise<void> {
     .listen(APPLICATION_PORT, () => {
       void printHeader();
       OfferSnapshot.start();
+      OfferPriceTables.start();
       TemporaryServerSettings.start();
     })
     .on('error', (error) => {
