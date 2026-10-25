@@ -18,6 +18,13 @@ export interface PriceTable {
 
 type RefreshOutcome = 'learned' | 'failed' | 'budget';
 
+type LevelRange = Pick<CatalogProfile, 'level' | 'legendaryLevel'>;
+
+interface DueCurrency {
+  currency: string;
+  profile: CatalogProfile;
+}
+
 /**
  * Learns, through the proxy and in the background, how each currency prices the reference catalog
  */
@@ -61,9 +68,10 @@ export abstract class OfferPriceTables {
     }
   }
 
-  public static requestRefresh(currency: string): void {
+  public static requestRefresh(currency: string, range?: LevelRange): void {
+    const wanted = range ? JSON.stringify({ level: range.level, legendaryLevel: range.legendaryLevel }) : '1';
     void ApiHelper.redisClient
-      .set(this.WANTED_KEY_PREFIX + currency, '1', { EX: this.WANTED_SECONDS })
+      .set(this.WANTED_KEY_PREFIX + currency, wanted, { EX: this.WANTED_SECONDS })
       .catch(() => null);
   }
 
@@ -107,45 +115,75 @@ export abstract class OfferPriceTables {
 
   private static async refreshDueCurrencies(): Promise<void> {
     const due = await this.findDueCurrencies();
-    if (due.length === 0) return;
-    const reference = await StoreCatalogClient.fetchReferenceCatalog(this.PROFILE);
-    if (!reference) {
-      console.warn('[offers-prices] reference catalog unreadable, %d currencies left for later', due.length);
-      return;
+    const byProfile = new Map<string, DueCurrency[]>();
+    for (const entry of due) {
+      const key = this.profileKey(entry.profile);
+      byProfile.set(key, [...(byProfile.get(key) ?? []), entry]);
     }
-    const pending = new Set(due);
-    for (const currency of due) {
-      if (!pending.has(currency)) continue;
-      if ((await this.refresh(currency, reference, pending)) === 'budget') {
+    for (const group of byProfile.values()) {
+      if ((await this.refreshProfile(group[0].profile, group)) === 'budget') {
         console.warn('[offers-prices] daily proxy budget of %d calls spent', this.MAX_DAILY_PROXY_CALLS);
         return;
       }
     }
   }
 
-  private static async findDueCurrencies(): Promise<string[]> {
-    const due: string[] = [];
+  private static async refreshProfile(profile: CatalogProfile, due: DueCurrency[]): Promise<RefreshOutcome | null> {
+    const reference = await StoreCatalogClient.fetchReferenceCatalog(profile);
+    if (!reference) {
+      console.warn('[offers-prices] reference catalog unreadable, %d currencies left for later', due.length);
+      return null;
+    }
+    const pending = new Set(due.map((entry) => entry.currency));
+    for (const { currency } of due) {
+      if (!pending.has(currency)) continue;
+      if ((await this.refresh(currency, profile, reference, pending)) === 'budget') return 'budget';
+    }
+    return null;
+  }
+
+  private static async findDueCurrencies(): Promise<DueCurrency[]> {
+    const due: DueCurrency[] = [];
     for (const currency of Object.keys(StoreCatalogClient.CURRENCY_REGIONS)) {
       if (currency === StoreCatalogClient.REFERENCE_CURRENCY) continue;
       if (await ApiHelper.redisClient.get(this.FAILED_KEY_PREFIX + currency)) continue;
       const table = await this.read(currency);
       const age = table ? Date.now() - table.learnedAt : Infinity;
       const wanted = await ApiHelper.redisClient.get(this.WANTED_KEY_PREFIX + currency);
-      if (age > this.REFRESH_AFTER_MS || (wanted && age > this.WANTED_REFRESH_AFTER_MS)) due.push(currency);
+      if (wanted && age > this.WANTED_REFRESH_AFTER_MS) due.push({ currency, profile: this.readWantedProfile(wanted) });
+      else if (age > this.REFRESH_AFTER_MS) due.push({ currency, profile: this.PROFILE });
     }
     return due;
   }
 
-  private static async refresh(currency: string, reference: unknown, pending: Set<string>): Promise<RefreshOutcome> {
+  // A tier unseen at the full shop is learned from the level range that showed it
+  private static readWantedProfile(wanted: string): CatalogProfile {
+    try {
+      const { level, legendaryLevel } = JSON.parse(wanted) as Partial<LevelRange>;
+      if (Number.isInteger(level) && Number.isInteger(legendaryLevel)) {
+        return { ...this.PROFILE, level: Number(level), legendaryLevel: Number(legendaryLevel) };
+      }
+    } catch {
+      // A wanted refresh without a range relearns the full shop
+    }
+    return this.PROFILE;
+  }
+
+  private static async refresh(
+    currency: string,
+    profile: CatalogProfile,
+    reference: unknown,
+    pending: Set<string>,
+  ): Promise<RefreshOutcome> {
     const region = StoreCatalogClient.CURRENCY_REGIONS[currency];
     let session = (await ApiHelper.redisClient.get(this.SESSION_KEY_PREFIX + region)) ?? this.createSession();
     let answered: string | null = null;
     for (let attempt = 0; attempt < this.ATTEMPTS_PER_CURRENCY; attempt++) {
       if (!(await this.spendProxyCall())) return 'budget';
-      const regional = await StoreCatalogClient.fetchRegionalCatalog(this.PROFILE, region, session);
+      const regional = await StoreCatalogClient.fetchRegionalCatalog(profile, region, session);
       answered = regional ? StoreCatalogClient.readCountry(regional) : null;
       // The store reports a country change late, so an answer is learned for the country it is priced in
-      const learned = regional ? await this.learnFromAnswer(reference, regional, session) : null;
+      const learned = regional ? await this.learnFromAnswer(reference, regional, profile, session) : null;
       if (learned) pending.delete(learned);
       if (learned === currency) return 'learned';
       if (answered === null || attempt > 0) session = this.createSession();
@@ -155,7 +193,12 @@ export abstract class OfferPriceTables {
     return 'failed';
   }
 
-  private static async learnFromAnswer(reference: unknown, regional: unknown, session: string): Promise<string | null> {
+  private static async learnFromAnswer(
+    reference: unknown,
+    regional: unknown,
+    profile: CatalogProfile,
+    session: string,
+  ): Promise<string | null> {
     const country = StoreCatalogClient.readCountry(regional);
     const currency = Object.keys(StoreCatalogClient.CURRENCY_REGIONS).find(
       (candidate) =>
@@ -165,8 +208,13 @@ export abstract class OfferPriceTables {
     if (!currency) return null;
     const table = this.learn(reference, regional, currency, await this.read(currency));
     if (!table) return null;
-    await this.store(table, StoreCatalogClient.CURRENCY_REGIONS[currency], session);
-    console.log('[offers-prices] %s: %d tiers learned', currency, Object.keys(table.tiers).length);
+    await this.store(table, StoreCatalogClient.CURRENCY_REGIONS[currency], session, profile);
+    console.log(
+      '[offers-prices] %s: %d tiers learned at %s',
+      currency,
+      Object.keys(table.tiers).length,
+      this.profileKey(profile),
+    );
     return currency;
   }
 
@@ -206,10 +254,22 @@ export abstract class OfferPriceTables {
     return { currency, base, learnedAt: Date.now(), fixedCategories: [...fixedCategories], tiers };
   }
 
-  private static async store(table: PriceTable, region: string, session: string): Promise<void> {
+  private static async store(
+    table: PriceTable,
+    region: string,
+    session: string,
+    profile: CatalogProfile,
+  ): Promise<void> {
     await ApiHelper.redisClient.set(this.TABLE_KEY_PREFIX + table.currency, JSON.stringify(table));
     await ApiHelper.redisClient.setEx(this.SESSION_KEY_PREFIX + region, this.SESSION_SECONDS, session);
-    await ApiHelper.redisClient.del(this.WANTED_KEY_PREFIX + table.currency);
+    const wanted = await ApiHelper.redisClient.get(this.WANTED_KEY_PREFIX + table.currency);
+    if (wanted && this.profileKey(this.readWantedProfile(wanted)) === this.profileKey(profile)) {
+      await ApiHelper.redisClient.del(this.WANTED_KEY_PREFIX + table.currency);
+    }
+  }
+
+  private static profileKey(profile: LevelRange): string {
+    return `${profile.level}/${profile.legendaryLevel}`;
   }
 
   private static async spendProxyCall(): Promise<boolean> {

@@ -103,7 +103,7 @@ export abstract class ApiOffers implements ApiHelper {
       return { catalog: reference, pricedIn: base };
     }
     const { catalog, approximate } = OfferPriceTables.apply(reference, table);
-    if (approximate) OfferPriceTables.requestRefresh(currency);
+    if (approximate) OfferPriceTables.requestRefresh(currency, profile);
     return { catalog, pricedIn: currency };
   }
 
