@@ -1,3 +1,7 @@
+:host {
+  display: contents;
+}
+
 .col-distance,
 .col-honor {
   color: #ddd;

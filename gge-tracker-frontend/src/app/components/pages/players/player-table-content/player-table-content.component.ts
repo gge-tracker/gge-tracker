@@ -7,7 +7,7 @@ import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
-  selector: 'tbody[appPlayerTableContent]',
+  selector: 'app-player-table-content',
   standalone: true,
   imports: [NgClass, TranslateModule, DatePipe, FormatNumberPipe, RouterLink, NgTemplateOutlet],
   templateUrl: './player-table-content.component.html',

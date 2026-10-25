@@ -1,5 +1,5 @@
 import { NgClass, TitleCasePipe } from '@angular/common';
-import { Component, ElementRef, OnDestroy, ViewChild, afterNextRender, inject } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import package_ from '../../../../package.json';
 import { SidebarService } from '@ggetracker-services/sidebar.service';
@@ -28,7 +28,7 @@ type OrderedSection = SiteNavigationSection & {
     '[class.sb-overlay]': 'sidebarService.isMobileView',
   },
 })
-export class SidebarComponent implements OnDestroy {
+export class SidebarComponent implements AfterViewInit, OnDestroy {
   @ViewChild('panel', { read: ElementRef }) public panel?: ElementRef<HTMLElement>;
   @ViewChild('scroll', { read: ElementRef }) public scroll?: ElementRef<HTMLElement>;
   public sidebarService = inject(SidebarService);
@@ -49,7 +49,22 @@ export class SidebarComponent implements OnDestroy {
         item.order = order++;
       }
     }
-    afterNextRender(() => this.measureOnceRendered());
+  }
+
+  public ngAfterViewInit(): void {
+    this.revealActiveItem();
+
+    const panel = this.panel?.nativeElement;
+    if (!panel || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    this.widthObserver = new ResizeObserver(() => {
+      const width = panel.getBoundingClientRect().width;
+      if (width > 0) {
+        this.host.nativeElement.style.setProperty('--sb-w', `${Math.ceil(width)}px`);
+      }
+    });
+    this.widthObserver.observe(panel);
   }
 
   public ngOnDestroy(): void {
@@ -74,22 +89,6 @@ export class SidebarComponent implements OnDestroy {
 
   public closeSidebar(): void {
     this.sidebarService.closeSidebar();
-  }
-
-  private measureOnceRendered(): void {
-    this.revealActiveItem();
-
-    const panel = this.panel?.nativeElement;
-    if (!panel || typeof ResizeObserver === 'undefined') {
-      return;
-    }
-    this.widthObserver = new ResizeObserver(() => {
-      const width = panel.getBoundingClientRect().width;
-      if (width > 0) {
-        this.host.nativeElement.style.setProperty('--sb-w', `${Math.ceil(width)}px`);
-      }
-    });
-    this.widthObserver.observe(panel);
   }
 
   private revealActiveItem(): void {

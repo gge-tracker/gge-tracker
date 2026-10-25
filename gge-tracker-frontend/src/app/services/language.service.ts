@@ -1,5 +1,4 @@
-import { DOCUMENT } from '@angular/common';
-import { inject, Injectable, REQUEST } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { LocalStorageService } from './local-storage.service';
 
@@ -22,17 +21,18 @@ export class LanguageService {
     { code: 'tr', label: 'Türkçe', flagUrl: '/assets/flags/TR.png', locale: 'tr-TR' },
   ];
 
+  private readonly browserLanguages = navigator.languages?.length ? navigator.languages : [navigator.language];
   private readonly localStorage = inject(LocalStorageService);
-  private readonly request = inject(REQUEST, { optional: true });
   private readonly defaultLang = 'en';
 
   constructor(private readonly translate: TranslateService) {
-    const stored = this.localStorage.getItem('lang');
-    this.currentLang = stored && this.acceptLangs.includes(stored) ? stored : this.getPreferredLanguage();
-    if (stored !== this.currentLang) this.localStorage.setItem('lang', this.currentLang);
+    if (!this.localStorage.getItem('lang')) {
+      this.localStorage.setItem('lang', this.getPreferredLanguage());
+    }
+    this.currentLang = this.localStorage.getItem('lang') || this.defaultLang;
     this.translate.setDefaultLang(this.defaultLang);
     this.translate.use(this.currentLang);
-    inject(DOCUMENT).documentElement.lang = this.currentLang;
+    document.documentElement.lang = this.currentLang;
   }
 
   public getFlagUrlForLang(lang: string): string {
@@ -61,19 +61,12 @@ export class LanguageService {
   }
 
   private getPreferredLanguage(): string {
-    for (const language of this.visitorLanguages()) {
+    for (const language of this.browserLanguages) {
       const baseCode = (language || '').toLowerCase().split('-')[0];
       if (this.acceptLangs.includes(baseCode)) {
         return baseCode;
       }
     }
     return this.defaultLang;
-  }
-
-  private visitorLanguages(): readonly string[] {
-    const acceptLanguage = this.request?.headers.get('accept-language');
-    if (acceptLanguage) return acceptLanguage.split(',').map((entry) => entry.split(';')[0].trim());
-    if (globalThis.navigator === undefined) return [];
-    return navigator.languages?.length ? navigator.languages : [navigator.language];
   }
 }

@@ -42,6 +42,7 @@ export const routes: Routes = [
         path: 'players',
         loadComponent: () => import('@ggetracker-pages/players/players.component').then((m) => m.PlayersComponent),
         data: {
+          preload: true,
           description: 'Browse the list of players on Goodgame Empire, with detailed statistics.',
           titleKey: 'Liste des joueurs',
         },
@@ -63,6 +64,7 @@ export const routes: Routes = [
         loadComponent: () =>
           import('@ggetracker-pages/player-stats/player-stats.component').then((m) => m.PlayerStatsComponent),
         data: {
+          preload: true,
           description: 'View detailed statistics of a player on Goodgame Empire.',
         },
         resolve: { stats: PlayerStatsResolver },
@@ -72,6 +74,7 @@ export const routes: Routes = [
         loadComponent: () =>
           import('@ggetracker-pages/alliances/alliances.component').then((m) => m.AlliancesComponent),
         data: {
+          preload: true,
           description: 'Explore the list of alliances on Goodgame Empire, with detailed statistics.',
           titleKey: 'Liste des alliances',
         },
@@ -82,6 +85,7 @@ export const routes: Routes = [
         loadComponent: () =>
           import('@ggetracker-pages/alliance-stats/alliance-stats.component').then((m) => m.AllianceStatsComponent),
         data: {
+          preload: true,
           description: 'View detailed statistics of an alliance on Goodgame Empire.',
         },
         resolve: { titleResolver },

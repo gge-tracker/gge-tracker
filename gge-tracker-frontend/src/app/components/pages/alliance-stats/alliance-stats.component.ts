@@ -43,7 +43,6 @@ import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { formatThousands } from '@ggetracker-services/text-format.utilities';
 import { LanguageService } from '@ggetracker-services/language.service';
 import { FollowService } from '@ggetracker-services/follow.service';
-import { HydrationStateService } from '@ggetracker-services/hydration-state.service';
 import {
   DEFAULT_LOOT_RESET,
   LootReset,
@@ -489,7 +488,6 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     variation: number;
   }[] = [];
   public el = inject(ElementRef);
-  public readonly hydrating = inject(HydrationStateService).isHydrating();
   public membersTableHeader: [string, string, (string | undefined)?, (boolean | undefined)?][] = [
     ['player_name', 'Pseudonyme'],
     ['level', 'Niveau', '/assets/lvl.png'],
@@ -1038,9 +1036,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     this.processUpdatesData();
     const globalResponse = await this.apiRestService.getServerGlobalStats();
     this.initLedgers(globalResponse.success ? (globalResponse.data.at(-1) ?? null) : null);
-    if (this.isBrowser && !this.hydrating) {
-      await Promise.race([heroBackdrop, new Promise((resolve) => setTimeout(resolve, HERO_BACKDROP_GRACE_MS))]);
-    }
+    await Promise.race([heroBackdrop, new Promise((resolve) => setTimeout(resolve, HERO_BACKDROP_GRACE_MS))]);
     if (this.isDestroyed) {
       return;
     }
@@ -1087,14 +1083,6 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     };
   }
 
-  private rotateLoadingMessages(): void {
-    this.intervalId = setInterval(() => {
-      this.currentMessageIndex = (this.currentMessageIndex + 1) % this.loadingMessages.length;
-      this.message = this.loadingMessages[this.currentMessageIndex];
-      this.cdr.detectChanges();
-    }, 2000);
-  }
-
   private init(): void {
     this.utilitiesService.data$.pipe(first((data) => data !== null)).subscribe((data) => {
       this.lastUpdate = data.last_update.might;
@@ -1105,7 +1093,11 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     if (allianceDistancePlayerName) {
       this.playerNameForDistance = allianceDistancePlayerName;
     }
-    if (this.isBrowser) this.rotateLoadingMessages();
+    this.intervalId = setInterval(() => {
+      this.currentMessageIndex = (this.currentMessageIndex + 1) % this.loadingMessages.length;
+      this.message = this.loadingMessages[this.currentMessageIndex];
+      this.cdr.detectChanges();
+    }, 2000);
     this.route.params.subscribe(async (parameters) => {
       const allianceId = parameters['allianceId'];
       this.allianceId = allianceId;

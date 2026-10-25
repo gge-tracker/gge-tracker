@@ -26,6 +26,7 @@ import { ServerService } from '@ggetracker-services/server.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { LucideAngularModule, MessageCircleQuestion, Search, X } from 'lucide-angular';
 import { DUNGEON_REALMS, DungeonMapComponent, DungeonMapFocus } from './dungeon-map/dungeon-map.component';
+import Modal from 'bootstrap/js/dist/modal';
 
 interface DungeonAttackHistory extends ApiDungeonsAttackHistory {
   image: string;
@@ -158,10 +159,7 @@ export class TrackerComponent extends GenericComponent {
   public openAttackHistory(attacker: { playerId: string; playerName: string }): void {
     void this.loadAttackHistory(Number(attacker.playerId), attacker.playerName);
     const modal = document.querySelector('#dungeonHistoryModal');
-    const bootstrap = (
-      globalThis as { bootstrap?: { Modal: { getOrCreateInstance(element: Element): { show(): void } } } }
-    ).bootstrap;
-    if (modal && bootstrap) bootstrap.Modal.getOrCreateInstance(modal).show();
+    if (modal) Modal.getOrCreateInstance(modal).show();
   }
 
   public async getDungeonsByPlayerId(dungeon: Dungeon): Promise<void> {

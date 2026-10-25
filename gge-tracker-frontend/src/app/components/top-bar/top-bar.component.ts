@@ -8,10 +8,8 @@ import {
   inject,
   Injector,
   input,
-  PLATFORM_ID,
   ViewChild,
 } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
 import { ServerService } from '@ggetracker-services/server.service';
 import { SidebarService } from '@ggetracker-services/sidebar.service';
 import { IconComponent } from '@ggetracker-components/icon/icon.component';
@@ -49,7 +47,6 @@ export class TopBarComponent implements AfterViewInit {
   private readonly appRef = inject(ApplicationRef);
   private listener?: (event: PointerEvent) => void;
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly platformId = inject(PLATFORM_ID);
 
   constructor() {
     this.utilitiesService.data$.subscribe((data) => {
@@ -68,10 +65,8 @@ export class TopBarComponent implements AfterViewInit {
   public ngAfterViewInit(): void {
     const outlet = new DomPortalOutlet(this.host.nativeElement, this.appRef, this.injector);
     this.topBarService.registerOutlet(outlet);
-    if (isPlatformBrowser(this.platformId)) {
-      this.listener = this.handlePointerDown.bind(this);
-      document.addEventListener('pointerdown', this.listener, { capture: true });
-    }
+    this.listener = this.handlePointerDown.bind(this);
+    document.addEventListener('pointerdown', this.listener, { capture: true });
     this.cdr.markForCheck();
   }
 
@@ -105,7 +100,7 @@ export class TopBarComponent implements AfterViewInit {
   }
 
   public isDevMode(): boolean {
-    return isPlatformBrowser(this.platformId) && !!localStorage.getItem('lang_dev');
+    return !!localStorage.getItem('lang_dev');
   }
 
   public selectLanguage(lang: string): void {

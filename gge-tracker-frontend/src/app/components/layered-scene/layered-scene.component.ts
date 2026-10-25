@@ -66,7 +66,8 @@ export class LayeredSceneComponent implements OnDestroy {
         loadSceneLibraries(),
       ]);
       if (this.destroyed) return;
-      const stage = await SceneStage.create(this.canvas().nativeElement, scene, this.assetRoot());
+      const phone = this.poster().nativeElement.currentSrc.endsWith('poster-960.webp');
+      const stage = await SceneStage.create(this.canvas().nativeElement, scene, this.assetRoot(), phone);
       if (this.destroyed) {
         stage.destroy();
         return;

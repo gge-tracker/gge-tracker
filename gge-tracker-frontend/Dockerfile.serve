@@ -28,4 +28,4 @@ RUN chown node:node /app
 USER node
 
 EXPOSE 4200
-CMD ["node_modules/.bin/ng", "serve", "--host", "0.0.0.0", "--configuration", "development"]
+CMD ["npm", "start", "--", "--configuration", "development"]

@@ -1,4 +1,4 @@
-import { Component, afterNextRender, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, inject, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
 
@@ -11,19 +11,17 @@ const BETA_BANNER_HIDDEN_KEY = 'beta-banner-hidden';
   styleUrl: './app.component.css',
   imports: [RouterOutlet],
 })
-export class AppComponent {
+export class AppComponent implements AfterViewInit {
   private readonly localStorage = inject(LocalStorageService);
 
   public readonly betaBannerVisible = signal(this.localStorage.getItem(BETA_BANNER_HIDDEN_KEY) !== '1');
 
-  constructor() {
-    afterNextRender(() => {
-      const overlay: HTMLElement | null = document.querySelector('#startup-overlay');
-      if (!overlay) return;
-      requestAnimationFrame(() => {
-        overlay.classList.add('startup-dismissed');
-        setTimeout(() => overlay.remove(), STARTUP_OVERLAY_FADE_MS);
-      });
+  public ngAfterViewInit(): void {
+    const overlay: HTMLElement | null = document.querySelector('#startup-overlay');
+    if (!overlay) return;
+    requestAnimationFrame(() => {
+      overlay.classList.add('startup-dismissed');
+      setTimeout(() => overlay.remove(), STARTUP_OVERLAY_FADE_MS);
     });
   }
 

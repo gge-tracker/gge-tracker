@@ -217,6 +217,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
   }
 
   public ngOnInit(): void {
+    if (globalThis.window === undefined) return;
     if (this.route.snapshot.queryParams['scope'] === 'global') {
       this.scope = 'global';
       return;

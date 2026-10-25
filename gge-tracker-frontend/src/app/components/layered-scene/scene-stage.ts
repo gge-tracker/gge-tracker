@@ -65,6 +65,14 @@ const PARTICLE_DEPTH = 1.2;
 const FLAME_BASE = { x: 32, y: 120 };
 const EMBER_MIN_SCALE = 0.2;
 
+const PHONE_WIDTH = 960;
+
+function layerFile(layer: SceneLayer, phone: boolean): string {
+  return phone && layer.kind === 'image' && (layer.width ?? 0) > PHONE_WIDTH
+    ? `${layer.id}-${PHONE_WIDTH}.webp`
+    : `${layer.id}.webp`;
+}
+
 export class SceneStage {
   private readonly placed: Placed[] = [];
   private particles: SceneParticles | null = null;
@@ -90,11 +98,12 @@ export class SceneStage {
     canvas: HTMLCanvasElement,
     scene: SceneDescription,
     assetRoot: string,
+    phone: boolean,
   ): Promise<SceneStage> {
     const createjs = globalThis.createjs!;
     const [flame, ...images] = await Promise.all([
       loadImage(`${assetRoot}flame.webp`),
-      ...scene.layers.map((layer) => (layer.id ? loadImage(`${assetRoot}${layer.id}.webp`) : null)),
+      ...scene.layers.map((layer) => (layer.id ? loadImage(`${assetRoot}${layerFile(layer, phone)}`) : null)),
     ]);
     const stage = new createjs.Stage(canvas);
     const root = new createjs.Container();
@@ -122,6 +131,7 @@ export class SceneStage {
       }
       if (layer.kind === 'light' || layer.kind === 'flame') node.compositeOperation = 'lighter';
       if (layer.kind === 'light') node.scaleX = node.scaleY = layer.scale ?? 1;
+      if (layer.kind === 'image' && layer.width) node.scaleX = node.scaleY = layer.width / image.naturalWidth;
       const x = layer.x + (layer.kind === 'flame' ? 0 : (pivot?.x ?? 0));
       const y = layer.y + (layer.kind === 'flame' ? 0 : (pivot?.y ?? 0));
       root.addChild(node);

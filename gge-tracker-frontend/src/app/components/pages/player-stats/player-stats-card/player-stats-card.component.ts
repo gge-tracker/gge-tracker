@@ -78,7 +78,7 @@ export class PlayerStatsCardComponent implements AfterViewInit, OnInit {
   }
 
   public ngAfterViewInit(): void {
-    if (!this.needSpecialLoader() && this.isBrowser) {
+    if (!this.needSpecialLoader()) {
       setTimeout(() => {
         this.isReady = true;
         this.cdr.detectChanges();

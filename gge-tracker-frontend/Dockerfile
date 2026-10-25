@@ -28,13 +28,13 @@ RUN if [ "$BUILD_ENV" = "beta" ]; then \
     fi
 RUN npm run build --output-path=dist --configuration=production
 RUN node scripts/inject-resource-hints.mjs \
-    && cp dist/gge-tracker-frontend/browser/index.csr.html dist/gge-tracker-frontend/browser/index.html \
-    && npx ngsw-config dist/gge-tracker-frontend/browser ngsw-config.json
+    && npx ngsw-config dist/gge-tracker-frontend/browser ngsw-config.json \
+    && node scripts/precompress.mjs
 
 FROM node:24-slim AS production
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends nginx \
+    && apt-get install -y --no-install-recommends nginx libnginx-mod-http-brotli-static \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/dist /usr/share/nginx/html
 

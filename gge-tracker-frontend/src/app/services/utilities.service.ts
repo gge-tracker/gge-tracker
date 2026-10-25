@@ -1,5 +1,4 @@
-import { isPlatformBrowser } from '@angular/common';
-import { inject, Injectable, PLATFORM_ID } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { BehaviorSubject, firstValueFrom } from 'rxjs';
 
@@ -18,7 +17,6 @@ export class UtilitiesService {
   private readonly apiRestService = inject(ApiRestService);
   private readonly toastService = inject(ToastService);
   private readonly translateService = inject(TranslateService);
-  private readonly platformId = inject(PLATFORM_ID);
 
   constructor() {
     this.loadLastUpdates();
@@ -186,11 +184,9 @@ export class UtilitiesService {
         this.dataSubject.next(lastUpdate);
         const dateLoot = new Date(lastUpdate.last_update['loot']);
         const dateMight = new Date(lastUpdate.last_update['might']);
-        if (isPlatformBrowser(this.platformId)) {
-          setInterval(() => {
-            void this.updateRefreshDate(dateLoot, dateMight);
-          }, 60_000);
-        }
+        setInterval(() => {
+          void this.updateRefreshDate(dateLoot, dateMight);
+        }, 60_000);
         void this.updateRefreshDate(dateLoot, dateMight);
       } catch {
         this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);

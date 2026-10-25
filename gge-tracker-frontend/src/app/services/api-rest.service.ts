@@ -1,7 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 
 import { PageTemplateService } from './page-template.service';
-import { RenderedFetchService } from './rendered-fetch.service';
 import { ServerService } from './server.service';
 import { ToastService } from './toast.service';
 import { environment } from '../../environments/environment';
@@ -127,7 +126,6 @@ export class ApiRestService {
   public serverService = inject(ServerService);
   public toastService = inject(ToastService);
   private readonly pageTemplateService = inject(PageTemplateService);
-  private readonly renderedFetch = inject(RenderedFetchService);
 
   /**
    * Fetch data from the API
@@ -139,19 +137,19 @@ export class ApiRestService {
       const now = Date.now();
       const headers = new Headers(options?.headers ?? { 'gge-server': this.serverService.currentServer!.name });
       headers.set('X-GGE-Page', this.pageTemplateService.current());
-      const { status, body } = await this.renderedFetch.fetchJson<T & { error?: string }>(url, { ...options, headers });
-      if (status < 200 || status >= 300) {
-        if (status === 429) {
+      const response = await fetch(url, { ...options, headers });
+      if (!response.ok) {
+        if (response.status === 429) {
           this.toastService.add(ErrorType.RATE_LIMIT_EXCEEDED, 5000);
           throw new Error('Too many requests, please try again later.');
         }
+        const error = await response.json();
         return {
           success: false,
-          error: body?.error || ErrorType.ERROR_OCCURRED,
+          error: error.error || ErrorType.ERROR_OCCURRED,
         };
       }
-      if (body === null) return { success: false, error: ErrorType.ERROR_OCCURRED };
-      const data = body;
+      const data = await response.json();
       this.updateResponseMs(now, Date.now());
       if (data.error) return { success: false, error: data.error };
       return { success: true, data };

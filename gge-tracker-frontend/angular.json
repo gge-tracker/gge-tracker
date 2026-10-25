@@ -19,18 +19,6 @@
             "outputPath": "dist/gge-tracker-frontend",
             "index": "src/index.html",
             "browser": "src/main.ts",
-            "server": "src/main.server.ts",
-            "outputMode": "server",
-            "ssr": {
-              "entry": "src/server.ts"
-            },
-            "security": {
-              "allowedHosts": [
-                "gge-tracker.com",
-                "beta.gge-tracker.com",
-                "localhost"
-              ]
-            },
             "polyfills": [
               "zone.js"
             ],
@@ -44,13 +32,8 @@
             ],
             "styles": [
               "node_modules/bootstrap/dist/css/bootstrap.min.css",
-              "node_modules/@fortawesome/fontawesome-free/css/all.min.css",
-              "node_modules/@fontsource/inter/300.css",
-              "node_modules/@fontsource/inter/400.css",
-              "node_modules/@fontsource/inter/500.css",
-              "node_modules/@fontsource/inter/600.css",
-              "node_modules/@fontsource/inter/700.css",
-              "node_modules/@fontsource/inter/800.css",
+              "src/generated/font-awesome/font-awesome.css",
+              "src/app/stylesheets/inter.css",
               "node_modules/@fontsource/outfit/400.css",
               "node_modules/@fontsource/outfit/600.css",
               "src/app/stylesheets/font-faces.css",
@@ -60,9 +43,7 @@
               "node_modules/leaflet/dist/leaflet.css",
               "node_modules/@ng-select/ng-select/themes/default.theme.css"
             ],
-            "scripts": [
-              "node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"
-            ]
+            "scripts": []
           },
           "configurations": {
             "production": {
@@ -154,6 +135,35 @@
               "src/**/*.ts",
               "src/**/*.html"
             ]
+          }
+        },
+        "prerender": {
+          "builder": "@angular-devkit/build-angular:prerender",
+          "options": {
+            "browserTarget": "gge-tracker:build:production",
+            "serverTarget": "gge-tracker:server:production",
+            "routes": []
+          }
+        },
+        "server": {
+          "builder": "@angular-devkit/build-angular:server",
+          "options": {
+            "outputPath": "dist/gge-tracker/server",
+            "main": "server.ts",
+            "tsConfig": "tsconfig.server.json"
+          },
+          "configurations": {
+            "production": {
+              "sourceMap": false,
+              "optimization": true
+            }
+          }
+        },
+        "serve-ssr": {
+          "builder": "@angular-devkit/build-angular:ssr-dev-server",
+          "options": {
+            "browserTarget": "gge-tracker:build",
+            "serverTarget": "gge-tracker:server"
           }
         }
       }
