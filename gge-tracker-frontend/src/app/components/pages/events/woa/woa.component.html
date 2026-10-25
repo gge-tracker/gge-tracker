@@ -45,10 +45,10 @@
           ></app-events-header>
           <div class="row g-2 mb-3" [ngClass]="{'table-loading': tableLoading}">
             <div class="col-auto">
-              <button class="back-btn" [routerLink]="['/woa']">
+              <a class="back-btn" [routerLink]="['/woa']">
                 <i class="fa-solid fa-arrow-left"></i>
                 <span class="d-none d-sm-inline-block">{{ 'Retour' | translate }}</span>
-              </button>
+              </a>
             </div>
             <div class="col">
               <app-search-form

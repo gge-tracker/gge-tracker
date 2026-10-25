@@ -2,7 +2,7 @@
 
 import { CommonModule } from '@angular/common';
 import { HttpClient, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
-import { APP_INITIALIZER, LOCALE_ID, importProvidersFrom, isDevMode } from '@angular/core';
+import { APP_INITIALIZER, LOCALE_ID, importProvidersFrom, isDevMode, provideZoneChangeDetection } from '@angular/core';
 import { BrowserModule, bootstrapApplication } from '@angular/platform-browser';
 import { provideRouter, withNavigationErrorHandler, withPreloading } from '@angular/router';
 import { ServiceWorkerModule } from '@angular/service-worker';
@@ -19,6 +19,7 @@ import { reloadOnStaleChunk } from './app/stale-chunk-reload';
 
 void bootstrapApplication(AppComponent, {
   providers: [
+    provideZoneChangeDetection({ eventCoalescing: true, runCoalescing: true }),
     importProvidersFrom(
       BrowserModule,
       CommonModule,
