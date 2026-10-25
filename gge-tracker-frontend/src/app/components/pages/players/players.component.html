@@ -38,7 +38,8 @@
     </div>
   </div>
   }
-  <div class="modal fade" id="filtersModal" tabindex="-1" aria-labelledby="filtersModalLabel" aria-hidden="true">
+  <div class="modal fade" id="filtersModal" tabindex="-1" aria-labelledby="filtersModalLabel" aria-hidden="true"
+    (show.bs.modal)="filtersOpened = true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header">
@@ -49,6 +50,7 @@
             [attr.aria-label]="'Fermer' | translate"></button>
         </div>
         <div class="modal-body">
+          @defer (when filtersOpened; prefetch on idle) {
           <div class="filters-container">
             <div class="row">
               <!-- Honor -->
@@ -451,6 +453,7 @@
               </div>
             </div>
           </div>
+          }
         </div>
       </div>
     </div>

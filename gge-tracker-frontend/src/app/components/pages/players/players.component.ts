@@ -109,6 +109,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
   private static readonly DEFAULT_PAGE_SIZE = 12;
   private static readonly MAX_PAGE_SIZE = 100;
   @ViewChild('searchForm') public searchForm!: SearchFormComponent;
+  public filtersOpened = false;
   public readonly REALM_ORDER = ['0', '2', '1', '3'];
   public players: Player[] = [];
   public scope: PlayersScope = 'server';

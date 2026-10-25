@@ -570,6 +570,8 @@
     border-radius: 12px;
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
     column-gap: 10px;
+    contain-intrinsic-size: auto 214px;
+    content-visibility: auto;
     display: flex;
     flex-wrap: wrap;
     padding: 10px 12px;
