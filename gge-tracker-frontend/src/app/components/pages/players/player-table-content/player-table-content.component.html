@@ -96,15 +96,15 @@
       @if (hasAllianceColumn) {
         <td class="col-alliance">
           @if (player.allianceName) {
-            <a class="alliance-link"
-              (click)="clickOnAlliance.emit(player.allianceName)" (keydown.enter)="clickOnAlliance.emit(player.allianceName)">
+            <button type="button" class="alliance-link button-reset"
+              (click)="clickOnAlliance.emit(player.allianceName)">
               @if (player.allianceId) {
                 <img src="/assets/alliance_ranks/{{ player.allianceRank ?? 0 }}.png"
                   class="alliance-rank-icon" [alt]="'Rank ' + (player.allianceRank ?? 0)">
               }
               {{ player.allianceName }}
               <ng-container *ngTemplateOutlet="allianceHistory"></ng-container>
-            </a>
+            </button>
           } @else {
             -
             <ng-container *ngTemplateOutlet="allianceHistory"></ng-container>

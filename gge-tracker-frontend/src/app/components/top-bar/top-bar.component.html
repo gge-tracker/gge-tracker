@@ -23,8 +23,7 @@
         <button class="server-selector" [class.rotate]="isServerMenuOpen()" (click)="toggleServerMenu()"
           [title]="serverService.currentServer?.name">
           <span>{{serverService.currentServer?.name}}</span>
-          <img [src]="serverService.currentServer?.flagUrl" width="20" class="me-2"
-            alt="{{ serverService.currentServer?.name }}" title="{{ serverService.currentServer?.name }}">
+          <img [src]="serverService.currentServer?.flagUrl" width="20" class="me-2" alt="">
 
           <app-icon name="ChevronDown" class="chevron" [size]="16"></app-icon>
         </button>
@@ -43,7 +42,7 @@
                 && !srv.ggeServerName.toLowerCase().includes(filteredServerInput.toLowerCase())
               )">
                 <div>
-                  <img [src]="srv.flagUrl" width="20" class="me-2" alt="{{ srv.name }}" title="{{ srv.name }}">
+                  <img [src]="srv.flagUrl" width="20" class="me-2" alt="">
                   <span class="server-badge">{{srv.name}}</span>
                 </div>
                 <div class="flex items-center gap-2">
@@ -67,7 +66,7 @@
 
       <!-- Discord -->
       <div class="position-relative">
-        <a href="https://discord.gg/eb6WSHQqYh" target="_blank" rel="noopener" class="action-icon">
+        <a href="https://discord.gg/eb6WSHQqYh" target="_blank" rel="noopener" class="action-icon" aria-label="Discord">
           <i class="fa-brands fa-discord"></i>
           <span class="label d-none d-xxl-inline">Discord</span>
         </a>
@@ -93,7 +92,8 @@
       </a>
 
       <!-- GitHub -->
-      <a href="https://github.com/gge-tracker/gge-tracker" target="_blank" rel="noopener" class="action-icon github-btn">
+      <a href="https://github.com/gge-tracker/gge-tracker" target="_blank" rel="noopener" class="action-icon github-btn"
+          aria-label="GitHub">
         <i class="fa-brands fa-github"></i>
       </a>
 
@@ -110,8 +110,7 @@
           <div class="lang-dropdown">
             @for (lang of languageService.langs; track lang) {
               <button (click)="selectLanguage(lang.code)">
-                <img [src]="languageService.getFlagUrlForLang(lang.code)" width="20" class="me-2" alt="{{ lang.label }}"
-                  title="{{ lang.label }}">
+                <img [src]="languageService.getFlagUrlForLang(lang.code)" width="20" class="me-2" alt="">
                 {{ lang.label }}
               </button>
             }

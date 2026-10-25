@@ -536,3 +536,11 @@ a:visited {
     min-height: 44px;
   }
 }
+
+.topbar-actions .fa-discord {
+  width: 1.25em;
+}
+
+.topbar-actions .fa-github {
+  width: 0.97em;
+}

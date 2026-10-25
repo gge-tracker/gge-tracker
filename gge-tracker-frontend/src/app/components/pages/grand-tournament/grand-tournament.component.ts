@@ -49,6 +49,7 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
   public search = '';
   public alliances: (IGrandTournamentAlliances | IGrandTournamentSearchAlliances)[] = [];
   public selectedAllianceInAnalyzer: ApiGrandTournamenAllianceAnalysisResponse | null = null;
+  public analyzingAllianceId: number | null = null;
   public events: { dates: string[]; event_id: number }[] = [];
   public currentDate = '';
   public defaultDate = '';
@@ -93,7 +94,10 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
       this.toastService.add(ErrorType.ERROR_OCCURRED, 5000, 'error');
       return;
     }
-    const response = await this.apiRestService.getGrandTournamentAllianceAnalysis(allianceId, eventId);
+    this.analyzingAllianceId = allianceId;
+    const response = await this.apiRestService
+      .getGrandTournamentAllianceAnalysis(allianceId, eventId)
+      .finally(() => (this.analyzingAllianceId = null));
     if (!response.success) {
       this.toastService.add(ErrorType.ERROR_OCCURRED, 5000, 'error');
       return;

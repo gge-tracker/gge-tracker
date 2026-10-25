@@ -47,7 +47,8 @@
           <div class="home-me-field">
             <input id="home-me-input" class="home-input" type="search" autocomplete="off"
               [placeholder]="'home.me-placeholder' | translate" [ngModel]="meQuery"
-              (ngModelChange)="onQueryChange($event)" aria-controls="home-me-suggestions" />
+              (ngModelChange)="onQueryChange($event)"
+              [attr.aria-controls]="suggestions().length > 0 ? 'home-me-suggestions' : null" />
             @if (suggestions().length > 0) {
               <ul id="home-me-suggestions" class="home-suggestions">
                 @for (suggestion of suggestions(); track suggestion.id) {

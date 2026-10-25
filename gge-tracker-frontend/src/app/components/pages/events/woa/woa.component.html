@@ -103,7 +103,7 @@
                   </td>
                   <td class="col-alliance alliance-link">
                     @if (player.allianceName) {
-                      <a (click)="router.navigate(['/alliance', player.allianceId])" (keydown.enter)="router.navigate(['/alliance', player.allianceId])">
+                      <a [routerLink]="['/alliance', player.allianceId]">
                         @if (player.allianceId) {
                           <img src="/assets/alliance_ranks/{{ player.playerAllianceRank ?? 0 }}.png"
                             class="alliance-rank-icon" [alt]="'Rank ' + (player.playerAllianceRank ?? 0)">

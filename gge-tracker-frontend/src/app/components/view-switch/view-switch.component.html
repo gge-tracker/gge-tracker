@@ -1,11 +1,11 @@
 <div class="view-switch" role="group" [attr.aria-label]="'Affichage des données en' | translate">
   <button type="button" class="view-option" [class.is-on]="view() === 'list'" [attr.aria-pressed]="view() === 'list'"
-    (click)="select('list')">
+    [attr.aria-label]="'Liste' | translate" (click)="select('list')">
     <i class="fa-solid fa-list" aria-hidden="true"></i>
     <span>{{ 'Liste' | translate }}</span>
   </button>
   <button type="button" class="view-option" [class.is-on]="view() === 'map'" [attr.aria-pressed]="view() === 'map'"
-    (click)="select('map')">
+    [attr.aria-label]="'Carte' | translate" (click)="select('map')">
     <i class="fa-solid fa-map-location-dot" aria-hidden="true"></i>
     <span>{{ 'Carte' | translate }}</span>
   </button>

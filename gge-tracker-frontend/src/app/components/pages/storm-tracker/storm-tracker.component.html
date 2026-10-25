@@ -10,12 +10,10 @@
                 [attr.aria-selected]="view === 'list' ? activeTab === 'forts' : null"
                 [attr.aria-pressed]="view === 'map' ? isLayerShown('fort') : null"
                 [class.storm-segment--on]="view === 'list' ? activeTab === 'forts' : isLayerShown('fort')"
-                (click)="onSegmentClick('forts')">
+                [attr.aria-label]="('Forteresses des tempêtes' | translate) + (stormMeta ? ' ' + stormMeta.forts_count : '')" (click)="onSegmentClick('forts')">
                 <img src="/assets/storm-tracker/fort.png" class="storm-menu-icon" width="110" height="101" alt="">
                 <span class="storm-segment__label d-none d-lg-inline-block">{{ 'Forteresses des tempêtes' | translate }}</span>
-                @if (stormMeta) {
-                <span class="storm-count">{{ stormMeta.forts_count }}</span>
-                }
+                <span class="storm-count" [class.storm-count--pending]="!stormMeta">{{ stormMeta?.forts_count ?? '000' }}</span>
                 @if (view === 'map') {
                 <i class="fa-solid storm-segment__eye" [class.fa-eye]="isLayerShown('fort')"
                   [class.fa-eye-slash]="!isLayerShown('fort')"></i>
@@ -25,12 +23,10 @@
                 [attr.aria-selected]="view === 'list' ? activeTab === 'isles' : null"
                 [attr.aria-pressed]="view === 'map' ? isLayerShown('isle') : null"
                 [class.storm-segment--on]="view === 'list' ? activeTab === 'isles' : isLayerShown('isle')"
-                (click)="onSegmentClick('isles')">
+                [attr.aria-label]="('Îles de ressources' | translate) + (stormMeta ? ' ' + stormMeta.isles_count : '')" (click)="onSegmentClick('isles')">
                 <img src="/assets/storm-tracker/village/6.png" class="storm-menu-icon" width="96" height="63" alt="">
                 <span class="storm-segment__label d-none d-lg-inline-block">{{ 'Îles de ressources' | translate }}</span>
-                @if (stormMeta) {
-                <span class="storm-count">{{ stormMeta.isles_count }}</span>
-                }
+                <span class="storm-count" [class.storm-count--pending]="!stormMeta">{{ stormMeta?.isles_count ?? '000' }}</span>
                 @if (view === 'map') {
                 <i class="fa-solid storm-segment__eye" [class.fa-eye]="isLayerShown('isle')"
                   [class.fa-eye-slash]="!isLayerShown('isle')"></i>
@@ -67,21 +63,24 @@
                   (selectEmitter)="changeState($event)"></app-select>
               </div>
               }
-              <button class="storm-btn" data-bs-toggle="modal" data-bs-target="#stormFilterModal">
+              <button class="storm-btn" data-bs-toggle="modal" data-bs-target="#stormFilterModal"
+                [attr.aria-label]="('Filtrer' | translate) + (activeFilterCount > 0 ? ' ' + activeFilterCount : '')">
                 <i class="fa-solid fa-filter"></i>
                 <span>{{ 'Filtrer' | translate }}</span>
                 @if (activeFilterCount > 0) {
                 <span class="storm-count storm-count--accent d-none d-lg-inline-block">{{ activeFilterCount }}</span>
                 }
               </button>
-              <button class="storm-btn" data-bs-toggle="modal" data-bs-target="#stormSortModal">
+              <button class="storm-btn" data-bs-toggle="modal" data-bs-target="#stormSortModal"
+                [attr.aria-label]="('Trier' | translate) + (activeSortCount > 0 ? ' ' + activeSortCount : '')">
                 <i class="fa-solid fa-arrow-down-short-wide"></i>
                 <span>{{ 'Trier' | translate }}</span>
                 @if (activeSortCount > 0) {
                 <span class="storm-count storm-count--accent d-none d-lg-inline-block">{{ activeSortCount }}</span>
                 }
               </button>
-              <button class="storm-btn" data-bs-toggle="modal" data-bs-target="#stormPagingModal">
+              <button class="storm-btn" data-bs-toggle="modal" data-bs-target="#stormPagingModal"
+                [attr.aria-label]="'Pagination' | translate">
                 <i class="fa-solid fa-list-ol"></i>
                 <span>{{ 'Pagination' | translate }}</span>
               </button>

@@ -2,10 +2,9 @@
   <div class="gge-stats-grid">
     <div class="gge-stat-card" *ngFor="let card of cards; let i = index">
       <button class="gge-stat-ctl h-100" aria-haspopup="dialog"
-        [attr.aria-label]="card.label + (card.value ? ' : ' + card.value : '')"
         [attr.data-bs-toggle]="card.identifier !== 'events_participation_rate' ? 'modal' : false"
         [attr.data-bs-target]="card.identifier !== 'events_participation_rate' ? '#statsModal' : false"
-        (click)="openModal(card.identifier, card)" (keyup.enter)="openModal(card.identifier, card)"
+        (click)="openModal(card.identifier, card)"
         [disabled]="card.identifier === 'events_participation_rate'">
         <div class="gge-stat-inner">
           <div class="gge-stat-top">

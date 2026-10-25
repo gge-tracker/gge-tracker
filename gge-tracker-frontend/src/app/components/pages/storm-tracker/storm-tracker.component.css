@@ -362,7 +362,8 @@
   padding-top: var(--storm-gap);
 }
 
-.storm-status--pending {
+.storm-status--pending,
+.storm-count--pending {
   visibility: hidden;
 }
 

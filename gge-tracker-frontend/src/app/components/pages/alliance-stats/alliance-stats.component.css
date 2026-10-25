@@ -756,6 +756,10 @@ app-layered-scene.alliance-hero-backdrop::after {
   scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
 }
 
+.alliance-tab-list {
+  display: contents;
+}
+
 .alliance-tabs-scroller::-webkit-scrollbar {
   height: 4px;
 }

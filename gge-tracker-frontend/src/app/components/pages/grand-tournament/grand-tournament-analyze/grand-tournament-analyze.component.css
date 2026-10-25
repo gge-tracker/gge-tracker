@@ -83,6 +83,7 @@
 
 .analyze-chart {
   margin-bottom: 1rem;
+  min-height: calc(465px + 0.5rem + 2px);
   padding: 0.5rem 0.75rem 0;
 }
 

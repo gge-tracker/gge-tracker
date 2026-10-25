@@ -225,7 +225,10 @@
   transition: color 0.2s ease;
 }
 
-::ng-deep #table-component a.alliance-link {
+::ng-deep #table-component a.alliance-link,
+::ng-deep #table-component button.alliance-link {
+  color: #9ab4ff;
+  cursor: pointer;
   display: flex;
   align-content: center;
   justify-content: flex-start;
@@ -703,8 +706,10 @@ ul {
   flex-wrap: wrap;
 
   li {
-    a {
+    button {
       display: block;
+      font-family: inherit;
+      line-height: inherit;
       padding: 0.45rem 0.8rem;
       text-decoration: none !important;
       border-radius: 0.6rem;
@@ -732,7 +737,7 @@ ul {
       }
     }
 
-    &.active a {
+    &.active button {
       background: rgba(240, 240, 240, 0.08);
       color: #fff;
       font-weight: 600;
@@ -740,7 +745,7 @@ ul {
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
     }
 
-    &.out-of-range a {
+    &.out-of-range button {
       pointer-events: none;
       opacity: 0.5;
       font-style: italic;

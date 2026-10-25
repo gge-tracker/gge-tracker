@@ -89,9 +89,15 @@
                   <span class="cell-label">{{ 'Classement dans la sous-division' | translate }}</span>{{ alliance.rank }}
                 </td>
                 <td class="col-actions">
-                  <button type="button" class="action-icon" [class.disabled]="alliance.disabled" [disabled]="alliance.disabled"
+                  <button type="button" class="action-icon" [class.disabled]="alliance.disabled"
+                    [class.analyzing]="analyzingAllianceId === alliance.alliance_id"
+                    [disabled]="alliance.disabled || analyzingAllianceId !== null"
+                    [attr.aria-busy]="analyzingAllianceId === alliance.alliance_id"
                     (click)="analyzeAlliance(alliance)" [title]="'Score' | translate">
                     <img src="/assets/icon_points.png" alt="points" height="24" class="ms-1 btn-icon">
+                    @if (analyzingAllianceId === alliance.alliance_id) {
+                      <span class="analyze-spinner" aria-hidden="true"></span>
+                    }
                   </button>
                 </td>
               </tr>
