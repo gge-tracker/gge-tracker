@@ -7,10 +7,11 @@
 //
 //  Copyrights (c) 2026 - gge-tracker.com & gge-tracker contributors
 //
-import { BridgeStatus, isSocketDown, readBridgeStatus } from './bridge-status';
+import { BridgeStatus, isSocketDown, readBridgeStatus, reportDisconnectedAccount } from './bridge-status';
 import { FailureStreaks } from './failure-streaks';
 import { GenericFetchAndSaveBackend } from './main';
 import { ScrapingServer, readScrapingServers } from './servers-file';
+import { WORKER_LANES, runInLanes } from './worker-lanes';
 
 export type ServerConfig = ScrapingServer;
 
@@ -67,7 +68,7 @@ async function processServer(
   server: ServerConfig,
   index: string,
   total: number,
-  discoveryAllowed: boolean,
+  claimDiscovery: () => boolean,
 ): Promise<ServerRunResult> {
   logStep(`[${index}/${total}] Updating ${server.name}`);
 
@@ -89,7 +90,7 @@ async function processServer(
   let discoveryAttempted = false;
   let discoveryCompleted = false;
   try {
-    if (discoveryAllowed && (await backend.isDungeonDiscoveryDue())) {
+    if ((await backend.isDungeonDiscoveryDue()) && claimDiscovery()) {
       logStep(`${server.name} is due for the weekly dungeon discovery`);
       discoveryAttempted = true;
       discoveryCompleted = await backend.discoverNewDungeons();
@@ -130,15 +131,22 @@ async function runOnce(): Promise<void> {
   let failed = 0;
   let skipped = 0;
   let attemptsLeft = DISCOVERY_ATTEMPTS_PER_CYCLE;
-  for (const [index, server] of servers.entries()) {
+  let discoveryRunning = false;
+  const claimDiscovery = (): boolean => {
+    if (discoveryRunning || attemptsLeft <= 0) return false;
+    discoveryRunning = true;
+    attemptsLeft--;
+    return true;
+  };
+  await runInLanes(servers, WORKER_LANES, async (server, index) => {
     const cleanIndex: string = `${index + 1}`.padStart(servers.length.toString().length, ' ');
     if (isSocketDown(bridge, server.zone)) {
-      logWarn(`[${cleanIndex}/${servers.length}] ${server.name} skipped: its bridge socket is down`);
+      reportDisconnectedAccount(server.name, `${BASE_API_HOST}/${server.zone}/`, 'dungeon sweep');
       skipped++;
-      continue;
+      return;
     }
-    const result = await processServer(server, cleanIndex, servers.length, attemptsLeft > 0);
-    if (result.discoveryAttempted) attemptsLeft--;
+    const result = await processServer(server, cleanIndex, servers.length, claimDiscovery);
+    if (result.discoveryAttempted) discoveryRunning = false;
     if (result.discoveryCompleted) attemptsLeft = 0;
     if (result.failure === null) {
       failedSweeps.recordSuccess(server);
@@ -147,7 +155,7 @@ async function runOnce(): Promise<void> {
       failedSweeps.recordFailure(server, result.failure);
       failed++;
     }
-  }
+  });
   logInfo(`Run completed : ${success} success / ${failed} failed / ${skipped} skipped`);
 }
 

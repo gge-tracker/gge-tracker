@@ -37,7 +37,6 @@ import {
   LucideAngularModule,
   RefreshCw,
   Search,
-  Smartphone,
   Sparkles,
   X,
 } from 'lucide-angular';
@@ -114,7 +113,6 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
   public readonly Gem = Gem;
   public readonly ChevronLeft = ChevronLeft;
   public readonly ChevronRight = ChevronRight;
-  public readonly Smartphone = Smartphone;
   public readonly Clock = Clock;
 
   public readonly maxLevel = 70;
@@ -219,21 +217,15 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
     return this.allOffers.length;
   }
 
+  public get hasEstimatedPrices(): boolean {
+    return this.allOffers.some((offer) => offer.isApproximate);
+  }
+
   public get isBusy(): boolean {
     return this.isInLoading || this.isRefreshing;
   }
 
-  public get isE4kServer(): boolean {
-    return this.serverService.isE4kServer();
-  }
-
   public async getData(withSkeletons = false): Promise<void> {
-    if (this.isE4kServer) {
-      this.isInLoading = false;
-      this.isRefreshing = false;
-      this.refreshDataAnimationSpinner = false;
-      return;
-    }
     if (withSkeletons) {
       this.buildSkeletons();
       this.isRefreshing = true;
@@ -453,13 +445,15 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
       description: offer.desc ?? null,
       image: offer.teaserImg ?? offer.headerImageUrl ?? null,
       price,
-      formattedPrice: (offer.approximatePrice ? '≈ ' : '') + this.formatPrice(price, currency),
+      formattedPrice: offer.priceUnknown
+        ? this.translateService.instant('Prix inconnu')
+        : (offer.approximatePrice ? '≈ ' : '') + this.formatPrice(price, currency),
       currency,
-      isFree: price === 0,
+      isFree: price === 0 && !offer.priceUnknown,
       isApproximate: offer.approximatePrice === true,
       bonusPercent: offer.bonus && offer.bonus > 0 ? offer.bonus : null,
       rubies,
-      rubiesPerUnit: rubies && price > 0 ? Math.round(rubies / (price / 100)) : null,
+      rubiesPerUnit: rubies && price > 0 && !offer.priceUnknown ? Math.round(rubies / (price / 100)) : null,
       rewards,
       isSpecial: offer.special === true,
       isPurchased: offer.purchased === true,

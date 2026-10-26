@@ -9,6 +9,8 @@ import { GgeEmpireSocket } from '../../src/utils/ws/empire-socket.js';
 
 const FLOOR_MS = 1000;
 const CEILING_MS = 3000;
+const HARD_CEILING_MS = 8000;
+const SINGAPORE_E4K_ROUND_TRIP_MS = 284;
 const SINGAPORE_ROUND_TRIP_MS = 155;
 const AMERICAS_ROUND_TRIP_MS = 90;
 const NEARBY_ROUND_TRIP_MS = 10;
@@ -52,9 +54,19 @@ export async function runLatency(report: Report): Promise<void> {
     for (let sample = 0; sample < 20; sample++) feedRoundTrip(socket, SINGAPORE_ROUND_TRIP_MS);
     const farBudget = socket.responseTimeoutMs;
     section.expect('a server on the other side of the world gets room for its answer', {
-      // The slowest measured answer on the Singapore servers is 950ms
-      ok: farBudget > nearbyBudget && farBudget >= 2000 && farBudget <= CEILING_MS,
+      ok: farBudget > nearbyBudget && farBudget >= 3000 && farBudget <= socket.responseCeilingMs,
       detail: `roundTrip=${roundTripOf(socket)?.toFixed(0)}ms timeout=${farBudget}ms (was ${nearbyBudget}ms)`,
+    });
+
+    section.expect('a far server is not held to the ceiling a nearby one gets', {
+      ok: socket.responseCeilingMs > CEILING_MS && socket.responseCeilingMs < HARD_CEILING_MS,
+      detail: `roundTrip=${roundTripOf(socket)?.toFixed(0)}ms ceiling=${socket.responseCeilingMs}ms`,
+    });
+
+    for (let sample = 0; sample < 20; sample++) feedRoundTrip(socket, SINGAPORE_E4K_ROUND_TRIP_MS);
+    section.expect('the farthest servers get the most room, still under the hard ceiling', {
+      ok: socket.responseTimeoutMs > farBudget && socket.responseTimeoutMs <= HARD_CEILING_MS,
+      detail: `roundTrip=${roundTripOf(socket)?.toFixed(0)}ms timeout=${socket.responseTimeoutMs}ms`,
     });
 
     for (let sample = 0; sample < 20; sample++) feedRoundTrip(socket, AMERICAS_ROUND_TRIP_MS);
@@ -72,8 +84,8 @@ export async function runLatency(report: Report): Promise<void> {
     });
 
     for (let sample = 0; sample < 3; sample++) feedRoundTrip(socket, 4000);
-    section.expect('a route that really did get slower is followed', {
-      ok: socket.responseTimeoutMs === CEILING_MS,
+    section.expect('a route that really did get slower is followed, up to the hard ceiling', {
+      ok: socket.responseTimeoutMs === HARD_CEILING_MS,
       detail: `roundTrip=${roundTripOf(socket)?.toFixed(0)}ms timeout=${socket.responseTimeoutMs}ms`,
     });
 

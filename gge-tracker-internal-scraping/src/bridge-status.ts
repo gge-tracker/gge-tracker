@@ -8,6 +8,7 @@
 //  Copyrights (c) 2026 - gge-tracker.com & gge-tracker contributors
 //
 import axios from 'axios';
+import Utils from './utils';
 
 export type BridgeStatus = Record<string, boolean>;
 
@@ -28,4 +29,18 @@ export function isSocketDown(status: BridgeStatus | null, zone: string): boolean
 
 export function zoneOf(baseApiUrl: string): string {
   return new URL(baseApiUrl).pathname.split('/').find(Boolean) ?? '';
+}
+
+export function bridgeOf(baseApiUrl: string): string {
+  return new URL(baseApiUrl).hostname.endsWith('-realtime') ? 'realtime' : 'standard';
+}
+
+export function reportDisconnectedAccount(server: string, baseApiUrl: string, job: string): void {
+  const zone = zoneOf(baseApiUrl);
+  const bridge = bridgeOf(baseApiUrl);
+  Utils.logRecord(
+    'warn',
+    { event: 'account_disconnected', server, zone, bridge, job },
+    `${server} skipped by ${job}: its game account is disconnected on the ${bridge} bridge`,
+  );
 }

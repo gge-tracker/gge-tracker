@@ -33,7 +33,7 @@ import {
   StormSeasonReport,
 } from './interfaces';
 import Utils from './utils';
-import { isSocketDown, readBridgeStatus, zoneOf } from './bridge-status';
+import { isSocketDown, readBridgeStatus, reportDisconnectedAccount, zoneOf } from './bridge-status';
 import { LootReading, LootReadingKind, lootCounterValue, unwrapLootRun } from './loot-counter';
 import { LootReset, lootWeekStart } from './loot-reset';
 import { findScrapingServer, readPublicPlayerIdCodes } from './servers-file';
@@ -177,6 +177,13 @@ export interface JobFailure {
 
 export type StormSweepHealth = 'refreshed' | 'blind' | 'closed';
 
+interface StormTile {
+  AX1: number;
+  AY1: number;
+  AX2: number;
+  AY2: number;
+}
+
 export interface DiscordApiMessageBody {
   channelId: string;
   embeds: {
@@ -314,6 +321,7 @@ export class GenericFetchAndSaveBackend {
   private readonly STORM_ENTRY_EVENT_ID = 16;
   private readonly STORM_SEASON_CHECK_BACKOFF_MINUTES = 15;
   private readonly STORM_MAX_FAILED_TILES = 10;
+  private readonly STORM_QUARTER_RETRY_DELAY_MS = 1000;
   private readonly FILL_BRIDGE_WAIT_ATTEMPTS = 24;
   private readonly FILL_BRIDGE_POLL_MS = 20_000;
   private readonly RANKING_FIRST_PAGE_RETRIES = 10;
@@ -999,9 +1007,7 @@ export class GenericFetchAndSaveBackend {
 
   public async executeFillInOrder(): Promise<boolean> {
     if (!(await this.waitForBridgeSocket())) {
-      Utils.logWarning(
-        `Fill skipped: the bridge socket of ${zoneOf(this.BASE_API_URL)} stayed down for the whole wait`,
-      );
+      reportDisconnectedAccount(this.server, this.BASE_API_URL, 'hourly fill');
       await this.closePool();
       return false;
     }
@@ -2682,10 +2688,7 @@ export class GenericFetchAndSaveBackend {
     let saturatedTiles = 0;
     let done = requestsSoFar;
     for (const tile of this.getStormRingTiles(ring)) {
-      const json = `"KID":${this.STORM_KID},"AX1":${tile.AX1},"AY1":${tile.AY1},"AX2":${tile.AX2},"AY2":${tile.AY2}`;
-      console.log('Fetching zone: ' + json);
-      const url: string = encodeURI(this.BASE_API_URL + 'gaa/' + json);
-      const area = await this.fetchStormArea(url);
+      const area = await this.fetchStormArea(tile);
       if (area.failed) failedTiles++;
       if (this.isSaturatedStormTile(area.objects)) saturatedTiles++;
       const currentTime = new Date();
@@ -2766,22 +2769,52 @@ export class GenericFetchAndSaveBackend {
   }
 
   /**
-   * Performs a single gaa call on the storm kingdom,
-   * retrying once on an invalid payload
+   * Reads one storm tile, asking again for its quarters when the whole tile did not answer
    *
-   * @param url The gaa URL
-   * @returns The AI array of the area, and whether the tile answered at all
+   * @param tile The area to read
+   * @returns The AI array of the area, and whether part of it never answered
    */
-  private async fetchStormArea(url: string): Promise<{ objects: any[]; failed: boolean }> {
-    const attempt = await this.requestStormArea(url);
-    if (!attempt.failed) return attempt;
-    await this.sleep(3000);
-    const retry = await this.requestStormArea(url);
-    if (retry.failed) console.error('Storm retry failed for URL:', url);
-    return retry;
+  private async fetchStormArea(tile: StormTile): Promise<{ objects: any[]; failed: boolean }> {
+    const whole = await this.requestStormArea(tile);
+    if (!whole.failed) return whole;
+    // A quarter frame is a quarter the size, so it survives the losses that time out a full tile on far servers
+    const objects: any[] = [];
+    let answered = false;
+    for (const quarter of this.splitStormTile(tile)) {
+      let area = await this.requestStormArea(quarter);
+      if (area.failed && !answered) {
+        console.error('Storm tile and its first quarter both failed, giving up the tile:', tile);
+        return { objects, failed: true };
+      }
+      if (area.failed) {
+        await this.sleep(this.STORM_QUARTER_RETRY_DELAY_MS);
+        area = await this.requestStormArea(quarter);
+      }
+      if (area.failed) {
+        console.error('Storm quarter failed twice:', quarter);
+        return { objects, failed: true };
+      }
+      answered = true;
+      objects.push(...area.objects);
+    }
+    return { objects, failed: false };
   }
 
-  private async requestStormArea(url: string): Promise<{ objects: any[]; failed: boolean }> {
+  private splitStormTile(tile: StormTile): StormTile[] {
+    const midX = Math.floor((tile.AX1 + tile.AX2) / 2);
+    const midY = Math.floor((tile.AY1 + tile.AY2) / 2);
+    return [
+      { AX1: tile.AX1, AY1: tile.AY1, AX2: midX, AY2: midY },
+      { AX1: midX + 1, AY1: tile.AY1, AX2: tile.AX2, AY2: midY },
+      { AX1: tile.AX1, AY1: midY + 1, AX2: midX, AY2: tile.AY2 },
+      { AX1: midX + 1, AY1: midY + 1, AX2: tile.AX2, AY2: tile.AY2 },
+    ];
+  }
+
+  private async requestStormArea(tile: StormTile): Promise<{ objects: any[]; failed: boolean }> {
+    const json = `"KID":${this.STORM_KID},"AX1":${tile.AX1},"AY1":${tile.AY1},"AX2":${tile.AX2},"AY2":${tile.AY2}`;
+    console.log('Fetching zone: ' + json);
+    const url: string = encodeURI(this.BASE_API_URL + 'gaa/' + json);
     try {
       const response = await axios.get(url);
       if (response.data?.['return_code'] == '0') {
@@ -3153,8 +3186,8 @@ export class GenericFetchAndSaveBackend {
     return boundary;
   }
 
-  private getStormRingTiles(ring: number): { AX1: number; AY1: number; AX2: number; AY2: number }[] {
-    const tiles: { AX1: number; AY1: number; AX2: number; AY2: number }[] = [];
+  private getStormRingTiles(ring: number): StormTile[] {
+    const tiles: StormTile[] = [];
     for (let tileY = -ring; tileY <= ring; tileY++) {
       for (let tileX = -ring; tileX <= ring; tileX++) {
         if (ring > 0 && Math.abs(tileX) !== ring && Math.abs(tileY) !== ring) continue;

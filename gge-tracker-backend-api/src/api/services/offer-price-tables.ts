@@ -75,7 +75,11 @@ export abstract class OfferPriceTables {
       .catch(() => null);
   }
 
-  public static apply(catalog: unknown, table: PriceTable): { catalog: unknown; approximate: boolean } {
+  public static apply(
+    catalog: unknown,
+    table: PriceTable,
+    estimateAll = false,
+  ): { catalog: unknown; approximate: boolean } {
     const priced = structuredClone(catalog);
     const fixed = new Set(table.fixedCategories);
     const byPrice = this.indexByBasePrice(table);
@@ -83,12 +87,14 @@ export abstract class OfferPriceTables {
     const localCurrency = this.readLocalCurrency(table);
     let approximate = false;
     StoreCatalogClient.forEachOffer(priced, (category, offer) => {
-      if (fixed.has(category) || StoreCatalogClient.readOfferCurrency(offer) !== table.base) return;
+      if (fixed.has(category) || offer.priceUnknown === true) return;
+      if (StoreCatalogClient.readOfferCurrency(offer) !== table.base) return;
       const base = Number(offer.price);
       if (!Number.isFinite(base)) return;
       const tier = table.tiers[this.tierKey(category, base)] ?? byPrice.get(base);
       if (tier) {
         this.setPrice(offer, tier.price, tier.currency);
+        if (estimateAll) offer.approximatePrice = true;
         return;
       }
       approximate = true;

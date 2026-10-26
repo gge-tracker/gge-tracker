@@ -13,16 +13,6 @@
             </p>
           </div>
 
-          @if (isE4kServer) {
-          <aside class="offers-banner" role="note">
-            <lucide-icon class="lucide offers-banner__icon" [img]="Smartphone" [size]="20"></lucide-icon>
-            <div class="offers-banner__body">
-              <p class="offers-banner__title">{{ 'Boutique indisponible sur les serveurs E4K' | translate }}</p>
-              <p class="offers-banner__text">{{ 'offers-e4k-unavailable' | translate }}</p>
-            </div>
-          </aside>
-          } @else {
-
           <div class="offers-toolbar">
             <div class="offers-toolbar__group offers-toolbar__group--profile">
               <div class="offers-field offers-field--level">
@@ -78,6 +68,13 @@
           </p>
           }
 
+          @if (hasEstimatedPrices) {
+          <div class="offers-notice">
+            <i class="fa-solid fa-circle-info"></i>
+            <em>{{ 'offers-prices-estimated' | translate }}</em>
+          </div>
+          }
+
           @if (pricedIn) {
           <div class="offers-notice">
             <i class="fa-solid fa-circle-info"></i>
@@ -92,11 +89,7 @@
               failedCategories.join(', ') }}</em>
           </div>
           }
-
-          }
         </header>
-
-        @if (!isE4kServer) {
 
         @if (tabs.length > 0) {
         <div class="offers-tabs" [class.offers-tabs--overflow-start]="canScrollTabsBack"
@@ -267,8 +260,6 @@
           </article>
           }
         </div>
-
-        }
 
         }
 

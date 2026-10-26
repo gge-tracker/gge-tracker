@@ -151,7 +151,7 @@ export abstract class OfferSnapshot {
         this.LOCALE,
         profile.level,
         profile.legendaryLevel,
-        true,
+        { requireFresh: true },
       );
       // A currency whose prices are not learned yet is retried at the next check
       const rows = priced?.pricedIn === profile.currency ? this.toRows(priced, profile, slot, new Date()) : [];

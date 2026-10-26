@@ -2,6 +2,8 @@ import * as express from 'express';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { HttpCache } from '../helper/http-cache';
+import { RankingGame, RankingUniverse } from '../helper/ranking-universe';
+import { OfferPackagePrices, PackagePrices } from '../services/offer-package-prices';
 import { OfferPriceTables } from '../services/offer-price-tables';
 import { CatalogProfile, StoreCatalogClient } from '../services/store-catalog-client';
 
@@ -9,6 +11,11 @@ interface StoredReference {
   fetchedAt: number;
   catalog: unknown;
   hash?: string;
+}
+
+export interface PricedCatalogOptions {
+  requireFresh?: boolean;
+  game?: RankingGame;
 }
 
 export interface PricedCatalog {
@@ -68,7 +75,8 @@ export abstract class ApiOffers implements ApiHelper {
       /* ---------------------------------
        * Read the reference catalog and price it
        * --------------------------------- */
-      const priced = await this.readPricedCatalog(currency, locale, level, legendaryLevel);
+      const game = RankingUniverse.gameOfServerName(String(request['language']));
+      const priced = await this.readPricedCatalog(currency, locale, level, legendaryLevel, { game });
       if (!priced) {
         response
           .status(ApiHelper.HTTP_SERVICE_UNAVAILABLE)
@@ -96,17 +104,21 @@ export abstract class ApiOffers implements ApiHelper {
     locale: string,
     level: number,
     legendaryLevel: number,
-    requireFresh = false,
+    { requireFresh = false, game = 'ep' }: PricedCatalogOptions = {},
   ): Promise<PricedCatalog | null> {
     const profile: CatalogProfile = {
       locale,
       level: this.roundUpToRange(level, this.LEVEL_RANGE_BOUNDS),
       legendaryLevel: this.roundUpToRange(legendaryLevel, this.LEGENDARY_RANGE_BOUNDS),
     };
-    const reference = await this.readReference(profile, requireFresh);
+    const reference = await this.readReference(profile, game, requireFresh);
     if (!reference) return null;
-    const { fetchedAt, hash, catalog: referenceCatalog } = reference;
-    const referenceHash = hash ?? HttpCache.etagFromPayload(referenceCatalog);
+    const { fetchedAt, hash } = reference;
+    const packagePrices = game === 'ep' ? null : await this.readPackagePrices();
+    const referenceCatalog = packagePrices
+      ? OfferPackagePrices.apply(reference.catalog, packagePrices)
+      : reference.catalog;
+    const referenceHash = [game, hash ?? HttpCache.etagFromPayload(reference.catalog), packagePrices];
     const base = StoreCatalogClient.REFERENCE_CURRENCY;
     const unpriced: PricedCatalog = {
       catalog: referenceCatalog,
@@ -121,11 +133,21 @@ export abstract class ApiOffers implements ApiHelper {
       OfferPriceTables.requestRefresh(currency);
       return unpriced;
     }
-    const { catalog, approximate } = OfferPriceTables.apply(referenceCatalog, table);
-    if (approximate) OfferPriceTables.requestRefresh(currency, profile);
+    // E4K accounts never follow their IP, so E4K borrows the EP tiers and every converted price is an estimate
+    const estimated = game !== 'ep';
+    const { catalog, approximate } = OfferPriceTables.apply(referenceCatalog, table, estimated);
+    if (approximate && !estimated) OfferPriceTables.requestRefresh(currency, profile);
     // A relearned table with the same tiers prices the same catalog : it keeps the same ETag
     const etag = HttpCache.etagFromPayload([referenceHash, currency, table.fixedCategories, table.tiers]);
     return { catalog, pricedIn: currency, fetchedAt, pricesLearnedAt: table.learnedAt, etag };
+  }
+
+  private static async readPackagePrices(): Promise<PackagePrices> {
+    const prices = await OfferPackagePrices.read();
+    if (Object.keys(prices).length > 0) return prices;
+    const fullShop = { locale: 'en', level: this.MAX_LEVEL, legendaryLevel: this.MAX_LEGEND_LEVEL };
+    const reference = await this.readReference(fullShop, 'ep', false);
+    return reference ? OfferPackagePrices.learn(reference.catalog) : {};
   }
 
   private static setFreshnessHeaders(response: express.Response, priced: PricedCatalog): void {
@@ -136,11 +158,16 @@ export abstract class ApiOffers implements ApiHelper {
     }
   }
 
-  private static async readReference(profile: CatalogProfile, requireFresh: boolean): Promise<StoredReference | null> {
-    const key = `${this.REFERENCE_KEY_PREFIX}${profile.locale}:${profile.level}:${profile.legendaryLevel}`;
+  private static async readReference(
+    profile: CatalogProfile,
+    game: RankingGame,
+    requireFresh: boolean,
+  ): Promise<StoredReference | null> {
+    const gamePrefix = game === 'ep' ? '' : `${game}:`;
+    const key = `${this.REFERENCE_KEY_PREFIX}${gamePrefix}${profile.locale}:${profile.level}:${profile.legendaryLevel}`;
     const stored = await this.readStoredReference(key);
     if (stored && Date.now() - stored.fetchedAt < this.REFERENCE_FRESH_MS) return stored;
-    const refreshing = this.refreshReference(key, profile);
+    const refreshing = this.refreshReference(key, profile, game);
     if (stored && !requireFresh) return stored;
     return refreshing;
   }
@@ -155,10 +182,14 @@ export abstract class ApiOffers implements ApiHelper {
     }
   }
 
-  private static refreshReference(key: string, profile: CatalogProfile): Promise<StoredReference | null> {
+  private static refreshReference(
+    key: string,
+    profile: CatalogProfile,
+    game: RankingGame,
+  ): Promise<StoredReference | null> {
     const pending = this.pendingReferences.get(key);
     if (pending) return pending;
-    const refresh = StoreCatalogClient.fetchReferenceCatalog(profile)
+    const refresh = StoreCatalogClient.fetchReferenceCatalog(profile, game)
       .then(async (catalog) => {
         if (!catalog) {
           console.warn('[offers] reference catalog unreadable for %s', key);
@@ -171,6 +202,7 @@ export abstract class ApiOffers implements ApiHelper {
           hash: HttpCache.etagFromPayload(stripped),
         };
         await ApiHelper.updateCache(key, stored, this.REFERENCE_KEEP_SECONDS);
+        if (game === 'ep') await OfferPackagePrices.learn(stripped);
         return stored;
       })
       .catch((error: unknown) => {

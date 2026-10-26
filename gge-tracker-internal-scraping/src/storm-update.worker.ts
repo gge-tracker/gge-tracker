@@ -7,10 +7,11 @@
 //
 //  Copyrights (c) 2026 - gge-tracker.com & gge-tracker contributors
 //
-import { BridgeStatus, isSocketDown, readBridgeStatus } from './bridge-status';
+import { BridgeStatus, isSocketDown, readBridgeStatus, reportDisconnectedAccount } from './bridge-status';
 import { FailureStreaks } from './failure-streaks';
 import { GenericFetchAndSaveBackend } from './main';
 import { ScrapingServer, readScrapingServers } from './servers-file';
+import { WORKER_LANES, runInLanes } from './worker-lanes';
 
 export type ServerConfig = ScrapingServer;
 
@@ -105,12 +106,12 @@ async function runOnce(): Promise<void> {
   let success = 0;
   let failed = 0;
   let skipped = 0;
-  for (const [index, server] of servers.entries()) {
+  await runInLanes(servers, WORKER_LANES, async (server, index) => {
     const cleanIndex: string = `${index + 1}`.padStart(servers.length.toString().length, ' ');
     if (isSocketDown(bridge, server.zone)) {
-      logWarn(`[${cleanIndex}/${servers.length}] ${server.name} skipped: its bridge socket is down`);
+      reportDisconnectedAccount(server.name, `${BASE_API_HOST}/${server.zone}/`, 'storm sweep');
       skipped++;
-      continue;
+      return;
     }
     const failure = await processServer(server, cleanIndex, servers.length);
     if (failure === null) {
@@ -120,7 +121,7 @@ async function runOnce(): Promise<void> {
       blindSweeps.recordFailure(server, failure);
       failed++;
     }
-  }
+  });
   logInfo(`Run completed : ${success} success / ${failed} failed / ${skipped} skipped`);
 }
 

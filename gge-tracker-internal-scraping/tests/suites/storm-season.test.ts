@@ -291,9 +291,64 @@ describe('storm season', () => {
 
         await sandbox.call('updateStormMap');
 
-        assert.equal(sandbox.api.callsFor('gaa').length, 2);
+        assert.equal(sandbox.api.callsFor('gaa').length, 5);
         assert.equal(sandbox.db.matching(PRUNE_FORTS).length, 1);
         assert.equal(sandbox.db.matching(SCAN_STAMP).length, 1);
+      });
+    });
+  });
+
+  describe('a tile that did not answer', () => {
+    const TIMEOUT = { return_code: -1, error: 'Timeout' };
+
+    function boxesAsked(sandbox: Sandbox): number[][] {
+      return sandbox.api
+        .callsFor('gaa')
+        .map((call) => ['AX1', 'AY1', 'AX2', 'AY2'].map((key) => Number(call.parameters[key])));
+    }
+
+    it('is asked again as four quarters that cover it without overlap', async () => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.db.when(STORM_STATE, stormState(sandbox.now));
+        sandbox.api.on('gaa', (request, callIndex) =>
+          callIndex === 0 ? TIMEOUT : stormArea([stormFort(600 + callIndex, 600), [STORM_BORDER_OBJECT, 0, 0]]),
+        );
+
+        assert.equal(await sandbox.call('updateStormMap'), 'refreshed');
+
+        assert.deepEqual(boxesAsked(sandbox), [
+          [594, 594, 694, 694],
+          [594, 594, 644, 644],
+          [645, 594, 694, 644],
+          [594, 645, 644, 694],
+          [645, 645, 694, 694],
+        ]);
+        assert.equal(sandbox.db.matching(PRUNE_FORTS).length, 1, 'four answered quarters are a complete tile');
+      });
+    });
+
+    it('is given up at once when its first quarter fails too, so a silent server costs two requests', async () => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.db.when(STORM_STATE, stormState(sandbox.now));
+        sandbox.api.on('gaa', () => TIMEOUT);
+
+        assert.equal(await sandbox.call('updateStormMap'), 'blind');
+        assert.equal(sandbox.api.callsFor('gaa').length, 2);
+      });
+    });
+
+    it('retries a later quarter once, and keeps what the others answered when it fails again', async () => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.db.when(STORM_STATE, stormState(sandbox.now));
+        sandbox.api.on('gaa', (request, callIndex) =>
+          callIndex === 0 || callIndex >= 3
+            ? TIMEOUT
+            : stormArea([stormFort(600 + callIndex, 600), [STORM_BORDER_OBJECT, 0, 0]]),
+        );
+
+        assert.equal(await sandbox.call('updateStormMap'), 'refreshed');
+        assert.equal(sandbox.api.callsFor('gaa').length, 5, 'the tile, two quarters, the third twice');
+        assert.equal(sandbox.db.matching(PRUNE_FORTS).length, 0, 'a missing quarter cancels the prune');
       });
     });
 

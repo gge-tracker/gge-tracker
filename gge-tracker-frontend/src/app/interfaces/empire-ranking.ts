@@ -1038,6 +1038,7 @@ export interface ApiOffer {
   purchased?: boolean;
   type?: string;
   approximatePrice?: boolean;
+  priceUnknown?: boolean;
 }
 
 export interface ApiOfferReward {

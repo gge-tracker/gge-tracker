@@ -38,7 +38,7 @@ groups:
           severity: critical
           notify: discord
         annotations:
-          summary: '{{ $labels.server }}: {{ $labels.msg }}'
+          summary: '{{ with $labels.identifier }}`#{{ . }}` {{ end }}{{ $labels.msg }}'
       - uid: scraping-stopped
         title: Scraping stopped
         condition: B
@@ -72,6 +72,9 @@ groups:
           notify: discord
         annotations:
           summary: No scraping run has completed in the last 2 hours.
+          action: Check the fill crons on the host and that the empire-api bridge answers.
+          dashboard: /d/scraping-jobs
+          dashboard_title: Scraping jobs
       - uid: scraping-digest
         title: Scraping hourly report
         condition: D
@@ -154,7 +157,10 @@ groups:
           severity: critical
           notify: discord
         annotations:
-          summary: '{{ $labels.server }}: more than 50 players would have gained 2^32 in one run, nothing was added. Check its declared loot reset.'
+          summary: 'More than 50 players would have gained 2^32 in one run, nothing was added.'
+          action: Check the reset declared for this server in servers.xml.
+          dashboard: '/d/loot-counters?var-server={{ $labels.server }}'
+          dashboard_title: Loot counters
       - uid: loot-decrease
         title: Loot decreased mid-week
         condition: B
@@ -187,7 +193,9 @@ groups:
           severity: warning
           notify: discord
         annotations:
-          summary: '{{ $labels.server }}: {{ $values.A }} player(s) lost loot points mid-week. See the Loot counters dashboard.'
+          summary: '{{ $values.A }} player(s) lost loot points mid-week.'
+          dashboard: '/d/loot-counters?var-server={{ $labels.server }}'
+          dashboard_title: Loot counters
       - uid: loot-reset-mismatch
         title: Loot reset not where declared
         condition: B
@@ -221,6 +229,9 @@ groups:
           notify: discord
         annotations:
           summary: '{{ $labels.msg }}'
+          action: Measure the server again with npm run test:api:reset-offset, then fix its reset in servers.xml.
+          dashboard: '/d/loot-counters?var-server={{ $labels.server }}'
+          dashboard_title: Loot counters
       - uid: loot-reset-check-missing
         title: Loot reset check not running
         condition: B
@@ -253,7 +264,10 @@ groups:
           severity: critical
           notify: discord
         annotations:
-          summary: 'The daily loot reset check has not completed in 26 hours: is its cron installed?'
+          summary: The daily loot reset check has not completed in 26 hours.
+          action: 'Install its daily cron on the host: gge-tracker-internal-scraping/scripts/run-docker-loot-reset-check.sh.'
+          dashboard: /d/loot-counters
+          dashboard_title: Loot counters
       - uid: loot-hourly-jump
         title: Loot jump over 3.5 billion
         condition: C
@@ -301,4 +315,79 @@ groups:
           severity: critical
           notify: discord
         annotations:
-          summary: '{{ $labels.server }}: a stored loot score rose by more than 3.5 billion in one hour (the real record is 2.62 billion). The tracker probably added 2^32 by mistake.'
+          summary: 'A stored loot score rose by more than 3.5 billion in one hour'
+          action: The tracker probably added 2^32 by mistake, see the loot_counters records of this server.
+          dashboard: '/d/loot-counters?var-server={{ $labels.server }}'
+          dashboard_title: Loot counters
+      - uid: account-disconnected-realtime
+        title: Game account disconnected (realtime)
+        condition: B
+        for: 4m
+        noDataState: OK
+        execErrState: OK
+        data:
+          - refId: A
+            relativeTimeRange: { from: 360, to: 0 }
+            datasourceUid: loki
+            model:
+              refId: A
+              editorMode: code
+              queryType: instant
+              expr: 'sum by (server, zone, task) (count_over_time({service="internal-scraping", event="account_disconnected"} | json bridge="bridge", zone="zone", task="job" | bridge="realtime" [6m]))'
+          - refId: B
+            relativeTimeRange: { from: 360, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+                  operator: { type: and }
+                  query: { params: [B] }
+                  reducer: { type: last, params: [] }
+                  type: threshold
+        labels:
+          severity: critical
+          notify: discord
+        annotations:
+          summary: 'The {{ $labels.task }} skips this server: its account `{{ $labels.zone }}` is disconnected on the realtime bridge.'
+          action: 'The bridge retries on its own after 3, 5, 20 then every 30 minutes. POST /server/{{ $labels.zone }}/reconnect on the realtime bridge retries at once.'
+          dashboard: /d/empire-api-bridge?var-bridge=realtime
+          dashboard_title: Empire-API bridge
+      - uid: account-disconnected-fill
+        title: Game account disconnected (hourly fill)
+        condition: B
+        for: 0m
+        noDataState: OK
+        execErrState: OK
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3900, to: 0 }
+            datasourceUid: loki
+            model:
+              refId: A
+              editorMode: code
+              queryType: instant
+              expr: 'sum by (server, zone, task) (count_over_time({service="internal-scraping", event="account_disconnected"} | json bridge="bridge", zone="zone", task="job" | bridge="standard" [65m]))'
+          - refId: B
+            relativeTimeRange: { from: 3900, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+                  operator: { type: and }
+                  query: { params: [B] }
+                  reducer: { type: last, params: [] }
+                  type: threshold
+        labels:
+          severity: critical
+          notify: discord
+        annotations:
+          summary: 'The hourly fill was skipped: its account `{{ $labels.zone }}` stayed disconnected on the standard bridge for the whole 8-minute wait.'
+          action: 'Rankings, players and alliances of this server are not updated until it reconnects. POST /server/{{ $labels.zone }}/reconnect on the standard bridge retries at once.'
+          dashboard: /d/empire-api-bridge?var-bridge=standard
+          dashboard_title: Empire-API bridge

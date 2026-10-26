@@ -20,9 +20,12 @@ function readEnvironmentInteger(name: string, fallback: number): number {
 }
 
 const RESPONSE_TIMEOUT_BASE_MS = readEnvironmentInteger('RESPONSE_TIMEOUT_BASE_MS', 800);
-const RESPONSE_TIMEOUT_ROUND_TRIPS = readEnvironmentInteger('RESPONSE_TIMEOUT_ROUND_TRIPS', 8);
+const RESPONSE_TIMEOUT_ROUND_TRIPS = readEnvironmentInteger('RESPONSE_TIMEOUT_ROUND_TRIPS', 16);
 const RESPONSE_TIMEOUT_MIN_MS = readEnvironmentInteger('RESPONSE_TIMEOUT_MIN_MS', 1000);
 const RESPONSE_TIMEOUT_MAX_MS = readEnvironmentInteger('RESPONSE_TIMEOUT_MAX_MS', 3000);
+// A far server's ceiling grows with its round trip: a lost packet costs it several of them
+const RESPONSE_TIMEOUT_CEILING_ROUND_TRIPS = readEnvironmentInteger('RESPONSE_TIMEOUT_CEILING_ROUND_TRIPS', 24);
+const RESPONSE_TIMEOUT_HARD_MAX_MS = readEnvironmentInteger('RESPONSE_TIMEOUT_HARD_MAX_MS', 8000);
 // A fixed budget for every server, for debugging: 0 keeps the per-server one
 const RESPONSE_TIMEOUT_FIXED_MS = readEnvironmentInteger('RESPONSE_TIMEOUT_MS', 0);
 const RESPONSE_TIMEOUT_HEADROOM = readEnvironmentInteger('RESPONSE_TIMEOUT_HEADROOM', 3);
@@ -140,7 +143,13 @@ class BaseSocket extends Log implements GgeMetricsSocket {
     if (RESPONSE_TIMEOUT_FIXED_MS > 0) return RESPONSE_TIMEOUT_FIXED_MS;
     if (this.stats.roundTripMs === null) return RESPONSE_TIMEOUT_MAX_MS;
     const budget = RESPONSE_TIMEOUT_BASE_MS + RESPONSE_TIMEOUT_ROUND_TRIPS * this.stats.roundTripMs;
-    return Math.round(Math.min(Math.max(budget, RESPONSE_TIMEOUT_MIN_MS), RESPONSE_TIMEOUT_MAX_MS));
+    return Math.round(Math.min(Math.max(budget, RESPONSE_TIMEOUT_MIN_MS), this.responseCeilingMs));
+  }
+
+  public get responseCeilingMs(): number {
+    const roundTrip = this.stats.roundTripMs ?? 0;
+    const ceiling = Math.max(RESPONSE_TIMEOUT_MAX_MS, RESPONSE_TIMEOUT_CEILING_ROUND_TRIPS * roundTrip);
+    return Math.round(Math.min(ceiling, RESPONSE_TIMEOUT_HARD_MAX_MS));
   }
 
   public get metricsCommandBudgets(): { command: string; budgetMs: number }[] {
@@ -157,11 +166,11 @@ class BaseSocket extends Log implements GgeMetricsSocket {
     if (!samples || samples.length < ANSWER_MIN_SAMPLES) return this.responseTimeoutMs;
     const slowest = Math.max(...samples);
     const budget = Math.max(slowest * RESPONSE_TIMEOUT_HEADROOM, this.responseTimeoutMs);
-    return Math.round(Math.min(budget, RESPONSE_TIMEOUT_MAX_MS));
+    return Math.round(Math.min(budget, this.responseCeilingMs));
   }
 
   public recordCommandAnswer(command: string, milliseconds: number): void {
-    if (!Number.isFinite(milliseconds) || milliseconds < 0 || milliseconds > ROUND_TRIP_CEILING_MS) return;
+    if (!Number.isFinite(milliseconds) || milliseconds < 0 || milliseconds > RESPONSE_TIMEOUT_HARD_MAX_MS) return;
     const samples = this.answerSamples.get(command) ?? [];
     samples.push(milliseconds);
     if (samples.length > ANSWER_SAMPLES) samples.shift();

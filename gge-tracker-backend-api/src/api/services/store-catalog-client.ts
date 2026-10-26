@@ -2,6 +2,7 @@ import axios from 'axios';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
 import { ApiHelper } from '../helper/api-helper';
+import { RankingGame } from '../helper/ranking-universe';
 
 export interface CatalogProfile {
   locale: string;
@@ -23,7 +24,11 @@ type StoreCatalog = Record<string, { data?: { offers?: unknown } } | undefined>;
  * Reads the GGS cash offers catalog, with one reference account per role
  */
 export abstract class StoreCatalogClient {
-  public static readonly REFERENCE_SERVER = GgeTrackerServersEnum.NL1;
+  // E4K accounts never follow their IP, so E4K has a reference only
+  public static readonly REFERENCE_SERVERS: Readonly<Record<RankingGame, GgeTrackerServersEnum>> = {
+    ep: GgeTrackerServersEnum.NL1,
+    e4k: GgeTrackerServersEnum.E4K_FR1,
+  };
   public static readonly PRICE_SERVER = GgeTrackerServersEnum.ASIA;
   public static readonly REFERENCE_CURRENCY = 'EUR';
   // Mock, dev only
@@ -52,6 +57,20 @@ export abstract class StoreCatalogClient {
   private static readonly TOKEN_CACHE_KEY = 'offers:token';
   private static readonly TOKEN_EXPIRATION_MARGIN = 60;
   private static readonly CATALOG_TIMEOUT = 15_000;
+  private static readonly PLATFORM_CONTEXTS: Readonly<Record<RankingGame, Record<string, unknown>>> = {
+    ep: {
+      gamePlatform: ['web'],
+      gameDistributionChannel: ['goodgamestudios'],
+      storePaymentService: 'ggs_payment',
+      storeIntegrationType: 'embedded',
+    },
+    e4k: {
+      gamePlatform: ['ios', 'android'],
+      gameDistributionChannel: ['googleplay', 'itunes', 'huawei', 'amazon', 'samsung'],
+      storePaymentService: 'ggs_payment',
+      storeIntegrationType: 'standalone',
+    },
+  };
   private static readonly PRIVATE_FIELDS = new Set([
     'customer',
     'transactionId',
@@ -74,10 +93,10 @@ export abstract class StoreCatalogClient {
     return Boolean(STORE_EGRESS_HOST && STORE_EGRESS_PORT && STORE_EGRESS_USER && STORE_EGRESS_PASSWORD);
   }
 
-  public static async fetchReferenceCatalog(profile: CatalogProfile): Promise<unknown> {
+  public static async fetchReferenceCatalog(profile: CatalogProfile, game: RankingGame = 'ep'): Promise<unknown> {
     for (let attempt = 0; attempt < this.REFERENCE_ATTEMPTS; attempt++) {
       if (attempt > 0) await this.wait(this.REGION_SETTLE_MS);
-      const catalog = await this.fetchCatalog(this.REFERENCE_SERVER, profile, null);
+      const catalog = await this.fetchCatalog(this.REFERENCE_SERVERS[game], profile, null, game);
       if (!catalog) return null;
       if (this.readCurrency(catalog) === this.REFERENCE_CURRENCY) return catalog;
     }
@@ -88,7 +107,7 @@ export abstract class StoreCatalogClient {
     if (!this.isEgressConfigured()) return null;
     await this.wait(this.lastRegionalCallAt + this.REGION_SETTLE_MS - Date.now());
     try {
-      return await this.fetchCatalog(this.PRICE_SERVER, profile, { region, session });
+      return await this.fetchCatalog(this.PRICE_SERVER, profile, { region, session }, 'ep');
     } finally {
       this.lastRegionalCallAt = Date.now();
     }
@@ -151,10 +170,11 @@ export abstract class StoreCatalogClient {
     serverName: GgeTrackerServersEnum,
     profile: CatalogProfile,
     egress: { region: string; session: string } | null,
+    game: RankingGame,
   ): Promise<unknown> {
     const server = ApiHelper.ggeTrackerManager.get(serverName);
     if (!server?.zone || !server?.zoneId) return null;
-    const url = this.buildCatalogUrl(profile, server.zoneId);
+    const url = this.buildCatalogUrl(profile, server.zoneId, game);
     const agent = egress ? this.getEgressAgent(egress.region, egress.session) : undefined;
     let token = await this.getBearerToken(server.zone);
     if (!token) return null;
@@ -185,14 +205,11 @@ export abstract class StoreCatalogClient {
     }
   }
 
-  private static buildCatalogUrl(profile: CatalogProfile, zoneId: number): string {
+  private static buildCatalogUrl(profile: CatalogProfile, zoneId: number, game: RankingGame): string {
     const criteria = {
       legendaryLevel: profile.legendaryLevel,
       level: profile.level,
-      gamePlatform: ['web'],
-      gameDistributionChannel: ['goodgamestudios'],
-      storePaymentService: 'ggs_payment',
-      storeIntegrationType: 'embedded',
+      ...this.PLATFORM_CONTEXTS[game],
     };
     const parameters = new URLSearchParams({
       locale: profile.locale,
