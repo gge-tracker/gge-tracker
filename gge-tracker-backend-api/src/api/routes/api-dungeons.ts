@@ -9,7 +9,6 @@ import { CacheKeyBuilder } from '../helper/cache/cache-key-builder';
  */
 export abstract class ApiDungeons implements ApiHelper {
   private static readonly LIVE_CACHE_TTL_SECONDS = 30;
-  private static readonly HISTORY_LATERAL_MAX_ROWS = 250;
   private static readonly PLAYER_COOLDOWN_EXPRESSION = `GREATEST(D.global_available_at, DPC.available_at)`;
   private static readonly PLAYER_COOLDOWN_JOIN_CONDITION = `
     ON D.kid = DPC.kid
@@ -594,6 +593,10 @@ export abstract class ApiDungeons implements ApiHelper {
           D.position_x,
           D.position_y,
           D.global_available_at,
+          D.attack_count,
+          D.last_attack_at,
+          D.previous_attack_at,
+          D.last_attacker_id,
           ${cooldownExpr} AS effective_cooldown_until
           ${distanceSelectSql}
         FROM dungeons D
@@ -610,10 +613,10 @@ export abstract class ApiDungeons implements ApiHelper {
         page.position_x,
         page.position_y,
         page.global_available_at,
-        DH.last_attack,
-        DH.total_attack_count,
-        DH.player_id,
-        DH.seconds_between_last_two_attacks,
+        page.last_attack_at AS last_attack,
+        NULLIF(page.attack_count, 0)::bigint AS total_attack_count,
+        page.last_attacker_id AS player_id,
+        EXTRACT(EPOCH FROM (page.last_attack_at - page.previous_attack_at)) AS seconds_between_last_two_attacks,
         P.id,
         P.name,
         P.might_current AS player_might,
@@ -622,62 +625,11 @@ export abstract class ApiDungeons implements ApiHelper {
         page.effective_cooldown_until
         ${isSorted ? ', page.calculated_distance' : ''}
       FROM page
-      ${this.buildAttackHistoryJoin(viewPerPage)}
       LEFT JOIN players P
-      ON P.id = DH.player_id
+      ON P.id = page.last_attacker_id
       ORDER BY ${rowOrdering}
     `;
     return { query, parameters };
-  }
-
-  /**
-   * Joins the per-dungeon attack history onto a page of dungeons
-   *
-   * A lateral costs one small index range scan per row, which beats aggregating the whole history
-   * table until the page grows past a few hundred rows - the "show everything" sizes then flip it
-   */
-  private static buildAttackHistoryJoin(viewPerPage: number): string {
-    const aggregates = `
-      MAX(attacked_at) AS last_attack,
-      COUNT(*) AS total_attack_count,
-      (ARRAY_AGG(player_id ORDER BY attacked_at DESC))[1] AS player_id,
-      EXTRACT(
-        EPOCH FROM (
-          MAX(attacked_at)
-          -
-          (
-            ARRAY_AGG(attacked_at ORDER BY attacked_at DESC)
-          )[2]
-        )
-      ) AS seconds_between_last_two_attacks`;
-
-    if (viewPerPage > this.HISTORY_LATERAL_MAX_ROWS) {
-      return `
-      LEFT JOIN (
-        SELECT
-          kid,
-          position_x,
-          position_y,
-          ${aggregates}
-        FROM dungeons_history
-        GROUP BY kid, position_x, position_y
-      ) DH
-      ON
-        DH.kid = page.kid
-        AND DH.position_x = page.position_x
-        AND DH.position_y = page.position_y`;
-    }
-
-    return `
-      LEFT JOIN LATERAL (
-        SELECT
-          ${aggregates}
-        FROM dungeons_history DH_ROWS
-        WHERE DH_ROWS.kid = page.kid
-          AND DH_ROWS.position_x = page.position_x
-          AND DH_ROWS.position_y = page.position_y
-        HAVING COUNT(*) > 0
-      ) DH ON TRUE`;
   }
 
   private static executePgQuery(
@@ -898,7 +850,7 @@ export abstract class ApiDungeons implements ApiHelper {
   }
 
   private static isClockDependentView(filterByAttackCooldown: string | null): boolean {
-    return filterByAttackCooldown !== null;
+    return this.buildCooldownConditions('NOW()', filterByAttackCooldown).length > 0;
   }
 
   private static async serveCached(response: express.Response, cacheKey: string): Promise<boolean> {
