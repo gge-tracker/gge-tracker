@@ -146,7 +146,7 @@ export class ServerService {
         this.xmlServers = this.parseServers(xml);
       })
       .catch((error) => console.error('Error loading servers:', error));
-    const lang = this.languageService.currentLang.trim().toUpperCase() + '1';
+    const lang = this.languageService.getHomeServer();
     const defaultServer = this.xmlServers.find((s) => s.name === 'WORLD1' && s.enabled) || this.xmlServers[0];
     const storedServer = this.localStorage.getItem('server');
     const target = this.xmlServers.find((s) => s.name === storedServer && s.enabled);

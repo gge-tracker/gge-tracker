@@ -99,21 +99,45 @@
 
       <!-- Lang selector -->
       <div class="position-relative" id="language-menu">
-        <button type="button" class="lang-pill button-reset" (click)="toggleLanguageMenu()"
-          [class.rotate]="isLanguageMenuOpen()">
-          <img [src]="languageService.getFlagUrlForLang(languageService.currentLang)" width="20" class="me-2"
-            alt="{{ languageService.currentLang }}" title="{{ languageService.currentLang }}">
+        <button #languageToggle type="button" class="lang-pill button-reset" (click)="toggleLanguageMenu()"
+          [class.rotate]="isLanguageMenuOpen()" aria-haspopup="dialog" aria-controls="language-panel"
+          [attr.aria-expanded]="isLanguageMenuOpen()" [attr.aria-label]="'Changer de langue' | translate"
+          [title]="languageService.getCurrentLanguage()?.label ?? ''">
+          <img [src]="languageService.getFlagUrlForLang(languageService.currentLang)" width="20" height="15" alt="">
+          <span class="lang-code">{{ languageService.currentLang }}</span>
           <app-icon name="ChevronDown" class="chevron" [size]="14"></app-icon>
         </button>
 
         @if (isLanguageMenuOpen()) {
-          <div class="lang-dropdown">
-            @for (lang of languageService.langs; track lang) {
-              <button (click)="selectLanguage(lang.code)">
-                <img [src]="languageService.getFlagUrlForLang(lang.code)" width="20" class="me-2" alt="">
-                {{ lang.label }}
-              </button>
-            }
+          <div class="lang-dropdown" id="language-panel" role="dialog" [attr.aria-label]="'Changer de langue' | translate"
+            (keydown)="onLanguagePanelKeydown($event)">
+            <div class="lang-search">
+              <app-icon name="Search" class="lang-search-icon" [size]="15"></app-icon>
+              <input #languageSearch type="search" class="lang-search-input" [(ngModel)]="languageQuery"
+                [placeholder]="'Rechercher' | translate" [attr.aria-label]="'Rechercher' | translate"
+                autocomplete="off" spellcheck="false" (keydown.enter)="selectFirstLanguage()">
+            </div>
+            <div class="lang-options" role="list">
+              @for (lang of filteredLanguages; track lang.code) {
+                <button type="button" class="lang-option" role="listitem" [lang]="lang.code"
+                  [class.active]="lang.code === languageService.currentLang"
+                  [attr.aria-current]="lang.code === languageService.currentLang ? 'true' : null"
+                  (click)="selectLanguage(lang.code)">
+                  <img [src]="lang.flagUrl" width="20" height="15" alt="">
+                  <span class="lang-names">
+                    <span class="lang-label" dir="auto">{{ lang.label }}</span>
+                    @if (lang.englishName !== lang.label) {
+                      <span class="lang-english" lang="en">{{ lang.englishName }}</span>
+                    }
+                  </span>
+                  @if (lang.code === languageService.currentLang) {
+                    <i class="fa-solid fa-check lang-check" aria-hidden="true"></i>
+                  }
+                </button>
+              } @empty {
+                <span class="lang-empty">{{ 'Aucun résultat' | translate }}</span>
+              }
+            </div>
             @if (isDevMode()) {
               <div class="separator"></div>
               <span class="dev-mode-warning">

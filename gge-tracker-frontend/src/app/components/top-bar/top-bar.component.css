@@ -27,6 +27,12 @@ a {
 
 .lang-dropdown .language-dev-btn {
   background-color: #ffc0052b;
+  border-radius: 8px;
+  border: none;
+  color: #d0d4df;
+  cursor: pointer;
+  font-size: 14px;
+  width: 100%;
   margin-top: 5px;
   padding-top: 3px;
   padding-bottom: 3px;
@@ -132,30 +138,132 @@ a:visited {
   border-radius: 12px;
   border: 1px solid rgba(255,255,255,0.08);
   box-shadow: 0 12px 40px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.04);
-  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: min(70vh, 34rem);
+  padding: 8px;
   position: fixed;
-  right: 0;
+  right: 1.5rem;
   top: calc(100% + 0.5rem);
-  width: 150px;
+  width: 22rem;
   z-index: 200;
 }
 
-.lang-dropdown button {
-  background: transparent;
+.lang-search {
+  position: relative;
+}
+
+.lang-search-icon {
+  color: #6b7280;
+  left: 10px;
+  pointer-events: none;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.lang-search-input {
+  background: #1a1b24;
   border-radius: 8px;
-  border: none;
-  color: #d0d4df;
-  cursor: pointer;
-  font-size: 14px;
-  padding: 0.55rem 0.8rem;
-  text-align: left;
-  transition: all 0.2s ease;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: white;
+  font-size: 0.9rem;
+  padding: 0.5rem 0.75rem 0.5rem 2.1rem;
   width: 100%;
 }
 
-.lang-dropdown button:hover {
+.lang-search-input::placeholder {
+  color: #64748b;
+}
+
+.lang-search-input:focus {
+  border-color: rgba(251,191,36,0.4);
+  box-shadow: 0 0 0 2px rgba(251,191,36,0.3);
+  outline: none;
+}
+
+.lang-options {
+  display: grid;
+  gap: 2px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.lang-dropdown .lang-option {
+  align-items: center;
+  background: transparent;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  color: #d0d4df;
+  cursor: pointer;
+  display: flex;
+  gap: 0.6rem;
+  min-height: 44px;
+  padding: 0.4rem 0.6rem;
+  text-align: start;
+  transition: background 0.2s ease, color 0.2s ease;
+  width: 100%;
+}
+
+.lang-option img {
+  border-radius: 2px;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+.lang-names {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  line-height: 1.15;
+  min-width: 0;
+}
+
+.lang-label {
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lang-english {
+  color: #8b93a7;
+  font-size: 11px;
+}
+
+.lang-check {
+  color: #fbbf24;
+  font-size: 12px;
+}
+
+.lang-dropdown .lang-option:hover,
+.lang-dropdown .lang-option:focus-visible {
   background: rgba(255,255,255,0.08);
   color: white;
+  outline: none;
+}
+
+.lang-dropdown .lang-option.active {
+  background: rgba(251,191,36,0.1);
+  border-color: rgba(251,191,36,0.25);
+  color: white;
+}
+
+.lang-empty {
+  color: #8b93a7;
+  font-size: 13px;
+  grid-column: 1 / -1;
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.lang-code {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .lang-pill {
@@ -404,6 +512,10 @@ a:visited {
   .sidebar-btn app-icon {
     animation: none;
   }
+
+  .lang-dropdown {
+    animation: none;
+  }
 }
 
 .topbar {
@@ -479,6 +591,12 @@ a:visited {
 @media (max-width: 480px) {
   .about-btn, .github-btn, .api-btn {
     display: none !important;
+  }
+
+  .lang-dropdown {
+    left: 0.75rem;
+    right: 0.75rem;
+    width: auto;
   }
 
   .topbar {
