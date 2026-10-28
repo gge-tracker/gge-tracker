@@ -32,6 +32,7 @@ const COLUMNS = [
   'current_fame',
   'remaining_relocation_time',
   'peace_disabled_at',
+  'is_ruin',
 ];
 
 function slots(overrides: Record<number, unknown> = {}): any[] {
@@ -52,6 +53,7 @@ function slots(overrides: Record<number, unknown> = {}): any[] {
     [[1, 30, 40, 12]], // 13 castles_realm
     null, // 14 peace_disabled_at
     8, // 15 alliance_rank
+    false, // 16 is_ruin
   ];
   for (const [index, value] of Object.entries(overrides)) base[Number(index)] = value as any;
   return base;
@@ -81,7 +83,7 @@ describe('bulkUpdatePlayers', () => {
       const insert = sandbox.db.one(/INSERT INTO tmp_players_update/);
       assert.equal(
         insert.sql,
-        `INSERT INTO tmp_players_update (${COLUMNS.join(', ')}) VALUES (${placeholders(1, 17)})`,
+        `INSERT INTO tmp_players_update (${COLUMNS.join(', ')}) VALUES (${placeholders(1, 18)})`,
       );
       assert.deepEqual(insert.params, [
         900001,
@@ -101,6 +103,7 @@ describe('bulkUpdatePlayers', () => {
         '999',
         0,
         null, // peace_disabled_at
+        false, // is_ruin
       ]);
     });
   });
@@ -113,7 +116,7 @@ describe('bulkUpdatePlayers', () => {
         900002: slots({ 6: 0, 14: expiry }),
       });
 
-      const rows = chunkRows(sandbox.db.one(/INSERT INTO tmp_players_update/).params, 17);
+      const rows = chunkRows(sandbox.db.one(/INSERT INTO tmp_players_update/).params, 18);
       assert.equal(rows[0][16], expiry, 'a running peace timer carries the instant it expires');
       assert.equal(rows[1][16], null, 'an expired timer drops the instant rather than keeping a stale one');
     });
@@ -129,8 +132,21 @@ describe('bulkUpdatePlayers', () => {
         900005: slots({ 15: undefined }),
       });
 
-      const ranks = chunkRows(sandbox.db.one(/INSERT INTO tmp_players_update/).params, 17).map((row) => row[5]);
+      const ranks = chunkRows(sandbox.db.one(/INSERT INTO tmp_players_update/).params, 18).map((row) => row[5]);
       assert.deepEqual(ranks, [0, 100, null, null, null]);
+    });
+  });
+
+  it('stores the ruin flag only when the slot is exactly true', async () => {
+    await withSandbox({}, async (sandbox) => {
+      await runBulk(sandbox, {
+        900001: slots({ 16: true }),
+        900002: slots({ 16: false }),
+        900003: slots({ 16: undefined }),
+      });
+
+      const flags = chunkRows(sandbox.db.one(/INSERT INTO tmp_players_update/).params, 18).map((row) => row[17]);
+      assert.deepEqual(flags, [true, false, false]);
     });
   });
 
@@ -164,10 +180,10 @@ describe('bulkUpdatePlayers', () => {
 
       const inserts = sandbox.db.matching(/INSERT INTO tmp_players_update/);
       assert.deepEqual(
-        inserts.map((insert) => insert.params.length / 17),
+        inserts.map((insert) => insert.params.length / 18),
         [3000, 3000, 1001],
       );
-      assert.ok(inserts[0].sql.endsWith(`(${placeholders(2999 * 17 + 1, 17)})`));
+      assert.ok(inserts[0].sql.endsWith(`(${placeholders(2999 * 18 + 1, 18)})`));
     });
   });
 
@@ -197,6 +213,7 @@ describe('bulkUpdatePlayers', () => {
             current_fame = tmp.current_fame,
             remaining_relocation_time = tmp.remaining_relocation_time,
             peace_disabled_at = tmp.peace_disabled_at,
+            is_ruin = tmp.is_ruin,
             updated_at = CURRENT_TIMESTAMP
           FROM tmp_players_update tmp
           WHERE p.id = tmp.id

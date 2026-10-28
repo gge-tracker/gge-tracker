@@ -427,6 +427,14 @@ export const CATALOG: Endpoint[] = [
         { param: 'minLevel', field: 'level', kind: 'min' },
         { param: 'maxLevel', field: 'level', kind: 'max', impossible: 0 },
         {
+          param: 'ruinFilter',
+          field: 'is_ruin',
+          kind: 'eq',
+          noUnmatchableValue: true,
+          probeValue: (row) => (row.is_ruin ? 1 : 0),
+          matches: (row, sent) => row.is_ruin === (Number(sent) === 1),
+        },
+        {
           param: 'minLevel',
           field: 'level/legendary_level',
           kind: 'eq',
@@ -469,6 +477,7 @@ export const CATALOG: Endpoint[] = [
       protectionFilter: -1,
       banFilter: 0,
       inactiveFilter: -1,
+      ruinFilter: 0,
       allianceRankFilter: s.alliedPlayerRank ?? '5',
     }),
     okStatuses: [200],

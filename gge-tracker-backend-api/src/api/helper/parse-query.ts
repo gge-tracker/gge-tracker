@@ -152,6 +152,7 @@ export interface QuerySchema {
   protectionFilter: QueryField<QueryFlagValue>;
   banFilter: QueryField<QueryFlagValue>;
   inactiveFilter: QueryField<QueryFlagValue>;
+  ruinFilter: QueryField<QueryFlagValue>;
   playerNameForDistance: QueryField<string | undefined>;
   allianceRankFilter: QueryField<number[] | undefined>;
   orderType: QueryField<string | undefined>;
@@ -198,6 +199,7 @@ export const querySchema = (limits: {
   protectionFilter: qFlag(),
   banFilter: qFlag(),
   inactiveFilter: qFlag(),
+  ruinFilter: qFlag(),
   stormyIslandsFilter: qNumber({ min: -1, max: 1 }),
   kingdomFilter: qKingdomArray(),
   playerNameForDistance: qLowerString(),

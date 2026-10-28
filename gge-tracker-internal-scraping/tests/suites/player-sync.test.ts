@@ -50,7 +50,7 @@ function stored(playerId: number, overrides: Partial<PlayerDatabase> = {}): Play
 
 function tmpRows(sandbox: Sandbox): any[][] {
   const insert = sandbox.db.one(/INSERT INTO tmp_players_update/);
-  const width = 17;
+  const width = 18;
   const rows: any[][] = [];
   for (let index = 0; index < insert.params.length; index += width) {
     rows.push(insert.params.slice(index, index + width));
@@ -61,7 +61,7 @@ function tmpRows(sandbox: Sandbox): any[][] {
 describe('updatePlayersMightAndLoot', () => {
   it('carries every slot of the run state into the row that is written', async () => {
     await withSandbox({}, async (sandbox) => {
-      sandbox.setState('playerLootAndMightPointHistoryList', { 900001: slots({ 6: 3600 }) });
+      sandbox.setState('playerLootAndMightPointHistoryList', { 900001: slots({ 6: 3600, 16: true }) });
       sandbox.setState('currentPlayers', [stored(900001)]);
       await sandbox.call('updatePlayersMightAndLoot');
       assert.deepEqual(tmpRows(sandbox), [
@@ -83,6 +83,7 @@ describe('updatePlayersMightAndLoot', () => {
           '999',
           0,
           '2026-09-01T00:00:00.000Z',
+          true,
         ],
       ]);
     });
@@ -112,6 +113,7 @@ describe('updatePlayersMightAndLoot', () => {
       assert.deepEqual(row.slice(0, 6), [900001, 0, 0, 0, 0, null], 'scores fall back to zero, the rank to null');
       assert.equal(row[6], null, 'castles');
       assert.equal(row[7], null, 'castles_realm');
+      assert.equal(row[17], false, 'is_ruin');
     });
   });
 

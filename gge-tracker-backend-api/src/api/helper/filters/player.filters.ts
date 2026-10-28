@@ -68,6 +68,12 @@ export class PlayerFilters extends AbstractFilterBuilder<PlayerFilters> {
     return this.self();
   }
 
+  public ruin(filter?: number): PlayerFilters {
+    if (filter === 1) this.add(this.raw('P.is_ruin'));
+    if (filter === 0) this.add(this.raw('NOT P.is_ruin'));
+    return this.self();
+  }
+
   public stormyIslandsFilter(stormyIslandsFilter?: number): PlayerFilters {
     if (stormyIslandsFilter === 1) {
       this.add(

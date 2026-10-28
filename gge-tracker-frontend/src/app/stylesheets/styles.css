@@ -107,6 +107,22 @@ html:has(.fullscreen) {
   z-index: 0;
 }
 
+.modal-body .ruin-icon img {
+  position: relative;
+  z-index: 1;
+}
+
+.modal-body .ruin-icon::after {
+  background: #7a6a58;
+  content: "";
+  height: 3px;
+  left: 45px;
+  margin-top: 14px;
+  position: absolute;
+  right: 45px;
+  z-index: 0;
+}
+
 .modal-body .peace-icon {
   height: auto;
   max-height: 1.75em;

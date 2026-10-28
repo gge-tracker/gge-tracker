@@ -70,6 +70,7 @@ export abstract class ApiPlayers implements ApiHelper {
         stormyIslandsFilter,
         banFilter,
         inactiveFilter,
+        ruinFilter,
         allianceRankFilter,
         kingdomFilter,
         playerNameForDistance,
@@ -113,6 +114,7 @@ export abstract class ApiPlayers implements ApiHelper {
           P.current_fame,
           P.remaining_relocation_time,
           P.peace_disabled_at,
+          P.is_ruin,
           P.castles,
           P.updated_at,
           P.alliance_rank,
@@ -179,7 +181,8 @@ export abstract class ApiPlayers implements ApiHelper {
         .allianceStatus(allianceFilter)
         .stormyIslandsFilter(stormyIslandsFilter)
         .kingdom(kingdomFilter)
-        .activity(inactiveFilter);
+        .activity(inactiveFilter)
+        .ruin(ruinFilter);
 
       qb.castle().count(castleCountMin, castleCountMax);
 
@@ -315,6 +318,7 @@ export abstract class ApiPlayers implements ApiHelper {
             castles: result.castles,
             remaining_relocation_time: result.remaining_relocation_time,
             peace_disabled_at: result.peace_disabled_at,
+            is_ruin: result.is_ruin,
             updated_at: new Date(result.updated_at).toISOString(),
             level: result.level,
             legendary_level: result.legendary_level,
@@ -754,6 +758,7 @@ export abstract class ApiPlayers implements ApiHelper {
    * - `protectionFilter`: Filter by protection status (0: not protected, 1: protected)
    * - `banFilter`: Filter by ban status (0: not banned, 1: banned)
    * - `inactiveFilter`: Filter by activity (0: inactive, 1: active)
+   * - `ruinFilter`: Filter by the game's ruin flag (0: not in ruins, 1: castles in ruins)
    * - `playerNameForDistance`: Player name to calculate distance from (required if ordering by distance)
    * - `allianceRankFilter`: Comma-separated list of alliance ranks to exclude
    *
@@ -822,6 +827,7 @@ export abstract class ApiPlayers implements ApiHelper {
       protectionFilter: query.protectionFilter,
       banFilter: query.banFilter,
       inactiveFilter: query.inactiveFilter,
+      ruinFilter: query.ruinFilter,
       kingdomFilter: Array.isArray(query.kingdomFilter) ? query.kingdomFilter.join('-') : undefined,
       playerNameForDistance: query.playerNameForDistance,
       allianceRankFilter: Array.isArray(query.allianceRankFilter) ? query.allianceRankFilter.join('-') : undefined,

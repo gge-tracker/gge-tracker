@@ -94,6 +94,7 @@ describe('fillMightPointsHistory', () => {
         'slot 14: the instant protection expires, derived from the peace timer',
       );
       assert.equal(slots[15], player.AR, 'slot 15: alliance rank');
+      assert.equal(slots[16], player.R === 1, 'slot 16: the castles are ruins');
       assert.equal(slots[0], undefined, 'slot 0 belongs to the loot fill and is left untouched');
     });
   });

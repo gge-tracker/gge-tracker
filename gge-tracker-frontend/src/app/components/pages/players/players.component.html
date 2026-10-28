@@ -400,6 +400,35 @@
                 </div>
               </div>
             </div>
+            <div class="col-12">
+              <div class="text-center mt-1 ruin-icon">
+                <img src="/assets/ruins.png" [alt]="'En ruines' | translate"
+                  [title]="'Filtrer par château en ruines' | translate" height="32">
+              </div>
+              <div class="input-group align-items-center justify-content-center">
+                <div class="col-4 text-center">
+                  <label for="ruin1">{{ 'En ruines' | translate }}</label>
+                  <div>
+                    <input type="radio" class="form-check-input" id="ruin1" name="ruin" value="1"
+                      [(ngModel)]="formFilters.ruinFilter">
+                  </div>
+                </div>
+                <div class="col-4 text-center">
+                  <label for="ruin0">{{ 'Pas en ruines' | translate }}</label>
+                  <div>
+                    <input type="radio" class="form-check-input" id="ruin0" name="ruin" value="0"
+                      [(ngModel)]="formFilters.ruinFilter">
+                  </div>
+                </div>
+                <div class="col-4 text-center">
+                  <label for="noRuin">{{ 'Pas de filtre' | translate }}</label>
+                  <div>
+                    <input type="radio" class="form-check-input" id="noRuin" name="ruin" value="-1" checked
+                      [(ngModel)]="formFilters.ruinFilter">
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="row mt-1">
             <div class="col-12">

@@ -3338,6 +3338,7 @@ export class GenericFetchAndSaveBackend {
     history[11] = infos['CF'];
     history[12] = infos['RRD'];
     history[15] = infos['AR'];
+    history[16] = Number(infos['R']) === 1;
     return history;
   }
 
@@ -4626,7 +4627,8 @@ export class GenericFetchAndSaveBackend {
         highest_fame NUMERIC(20, 0),
         current_fame NUMERIC(20, 0),
         remaining_relocation_time INTEGER,
-        peace_disabled_at TIMESTAMP DEFAULT NULL
+        peace_disabled_at TIMESTAMP DEFAULT NULL,
+        is_ruin BOOLEAN NOT NULL DEFAULT FALSE
       );
     `);
     const CHUNK_SIZE = 3000;
@@ -4648,6 +4650,7 @@ export class GenericFetchAndSaveBackend {
       'current_fame',
       'remaining_relocation_time',
       'peace_disabled_at',
+      'is_ruin',
     ];
     const nbColumns = columns.length;
     const insertValues: any[][] = [];
@@ -4666,6 +4669,7 @@ export class GenericFetchAndSaveBackend {
       const remainingRelocationTime = data[12] || 0;
       const peaceDisabledAt = Number(remaining_peace_time) > 0 ? (data[14] ?? null) : null;
       const alliance_rank = Number(data[15]) >= 0 && Number(data[15]) <= 100 ? Number(data[15]) : null;
+      const isRuin = data[16] === true;
       insertValues.push([
         playerId,
         might_current,
@@ -4684,6 +4688,7 @@ export class GenericFetchAndSaveBackend {
         currentFame,
         remainingRelocationTime,
         peaceDisabledAt,
+        isRuin,
       ]);
     }
     Utils.logMessage('Chunk array...');
@@ -4725,6 +4730,7 @@ export class GenericFetchAndSaveBackend {
         current_fame = tmp.current_fame,
         remaining_relocation_time = tmp.remaining_relocation_time,
         peace_disabled_at = tmp.peace_disabled_at,
+        is_ruin = tmp.is_ruin,
         updated_at = CURRENT_TIMESTAMP
       FROM tmp_players_update tmp
       WHERE p.id = tmp.id
@@ -4863,6 +4869,7 @@ export class GenericFetchAndSaveBackend {
         const remainingRelocationTime = this.playerLootAndMightPointHistoryList[key][12];
         const peaceDisabledAt = Number(rpt) > 0 ? this.playerLootAndMightPointHistoryList[key][14] : null;
         const allianceRank = this.playerLootAndMightPointHistoryList[key][15];
+        const isRuin = this.playerLootAndMightPointHistoryList[key][16];
         updates[playerId] = [
           loot_current, // loot_current
           might_current, // might_current
@@ -4880,6 +4887,7 @@ export class GenericFetchAndSaveBackend {
           realmAp, // realm castles
           peaceDisabledAt, // peace_disabled_at
           allianceRank, // alliance rank
+          isRuin, // is_ruin
         ];
         const targetedPlayer = this.currentPlayers.find((p) => p.playerId == playerId);
         const shouldInsert =

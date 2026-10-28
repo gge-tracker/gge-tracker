@@ -3837,6 +3837,19 @@ publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayer
  *             - -1
  *             - 0
  *             - 1
+ *       - name: ruinFilter
+ *         in: query
+ *         description: |
+ *           Filter by the game's ruin flag
+ *           0: Castles not in ruins, 1: Castles in ruins
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: -1
+ *           enum:
+ *             - -1
+ *             - 0
+ *             - 1
  *       - name: allianceRankFilter
  *         in: query
  *         description: Comma-separated list of alliance ranks to exclude
@@ -3907,6 +3920,9 @@ publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayer
  *                       peace_disabled_at:
  *                         type: string
  *                         description: The date and time when the player's peace was disabled, in UTC
+ *                       is_ruin:
+ *                         type: boolean
+ *                         description: Whether the game shows the player's castles as ruins
  *                       updated_at:
  *                         type: string
  *                         description: The last time the player's data was updated
