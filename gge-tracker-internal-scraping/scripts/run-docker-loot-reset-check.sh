@@ -14,7 +14,8 @@ BASE_SCRIPT_DIR="$(cd "$(dirname "$0")/.."; pwd)"
 
 . "$BASE_SCRIPT_DIR/scripts/lib/servers.sh"
 
-docker run --rm --network backend --env-file=$BASE_SCRIPT_DIR/.env \
+docker rm -f ic-loot-reset-check >/dev/null 2>&1
+docker run --network backend --env-file=$BASE_SCRIPT_DIR/.env \
     --name ic-loot-reset-check \
     -v "$SERVERS_CONFIG_DIR:/app/config:ro" \
     -e LOOT_RESET_CHECK_DAYS="${LOOT_RESET_CHECK_DAYS:-15}" \
