@@ -1,5 +1,6 @@
 import appFactory from './app.controller.js';
 import { SocketService } from './utils/ws/sockets.js';
+import { StatusNotifier } from './utils/status/status-notifier.js';
 
 const APPLICATION_PORT = process.env.PORT ?? 3000;
 
@@ -28,5 +29,6 @@ console.log('Getting sockets...');
 const sockets = await SocketService.getSockets();
 SocketService.connectSockets(sockets);
 const app = appFactory(sockets);
+StatusNotifier.fromEnvironment(sockets)?.start();
 await new Promise((resolve) => setTimeout(resolve, 10_000));
 app.listen(APPLICATION_PORT, () => printHeader());

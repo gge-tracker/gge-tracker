@@ -228,6 +228,7 @@ services:
     volumes:
       - ./../empire-api/src/data:/app/data
       - ./../empire-api/src/config:/app/config:ro
+      - ./../gge-tracker-backend-api/config:/app/servers:ro
     environment:
       NODE_ENV: production
       RESPONSE_TIMEOUT_BASE_MS: ${RESPONSE_TIMEOUT_BASE_MS:-}
@@ -237,6 +238,10 @@ services:
       RESPONSE_TIMEOUT_HEADROOM: ${RESPONSE_TIMEOUT_HEADROOM:-}
       RESPONSE_TIMEOUT_SAMPLES: ${RESPONSE_TIMEOUT_SAMPLES:-}
       RESPONSE_TIMEOUT_MS: ${RESPONSE_TIMEOUT_MS:-}
+      STATUS_DISCORD_API_URL: ${STATUS_DISCORD_API_URL:-}
+      STATUS_DISCORD_CHANNEL_ID: ${STATUS_DISCORD_CHANNEL_ID:-}
+      STATUS_DISCORD_WEBHOOK_URL: ${STATUS_DISCORD_WEBHOOK_URL:-}
+      STATUS_REMINDER_MS: ${STATUS_REMINDER_MS:-}
     networks:
       - backend
     restart: always
@@ -249,6 +254,7 @@ services:
     volumes:
       - ./../empire-api/src/data:/app/data
       - ./../empire-api/src/config:/app/config:ro
+      - ./../gge-tracker-backend-api/config:/app/servers:ro
     environment:
       NODE_ENV: production
       API_TYPE: realtime
@@ -259,6 +265,10 @@ services:
       RESPONSE_TIMEOUT_HEADROOM: ${RESPONSE_TIMEOUT_HEADROOM:-}
       RESPONSE_TIMEOUT_SAMPLES: ${RESPONSE_TIMEOUT_SAMPLES:-}
       RESPONSE_TIMEOUT_MS: ${RESPONSE_TIMEOUT_MS:-}
+      STATUS_DISCORD_API_URL: ${STATUS_DISCORD_API_URL:-}
+      STATUS_DISCORD_CHANNEL_ID: ${STATUS_DISCORD_CHANNEL_ID:-}
+      STATUS_DISCORD_WEBHOOK_URL: ${STATUS_DISCORD_WEBHOOK_URL:-}
+      STATUS_REMINDER_MS: ${STATUS_REMINDER_MS:-}
     networks:
       - backend
     restart: always

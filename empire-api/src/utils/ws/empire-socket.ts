@@ -49,7 +49,9 @@ class GgeEmpireSocket extends BaseSocket implements GgeEmpireSocketImpl {
       }
     } catch (error) {
       this.error('[connect] Error during connection process:', error instanceof Error ? error.message : error);
+      this.noteDownReason(`connection failed: ${error instanceof Error ? error.message : String(error)}`);
       this.kill();
+      this.noteNextAttempt(60 * 2 * 1000);
       setTimeout(
         () => {
           this.log('Retrying connection after login failure...');
@@ -69,9 +71,9 @@ class GgeEmpireSocket extends BaseSocket implements GgeEmpireSocketImpl {
    * rate-limited, so none of them may be shortened
    */
   private handleLoginFailure(lliResponse: { payload: { status: number; data?: Record<string, unknown> } }): void {
-    this.countLoginFailure();
     switch (lliResponse.payload.status) {
       case 21: {
+        this.countLoginFailure('login refused: invalid credentials');
         this.kill();
         this.error('[connect] Login failed: Invalid credentials. Please check your USERNAME and PASSWORD.');
         return;
@@ -83,6 +85,8 @@ class GgeEmpireSocket extends BaseSocket implements GgeEmpireSocketImpl {
           banDurationinSeconds > 0
             ? `Account is banned for another ${Math.ceil(banDurationinSeconds / 60)} minutes.`
             : 'Account is permanently banned.';
+        const banLength = banDurationinSeconds > 0 ? ` for ${Math.ceil(banDurationinSeconds / 60)} min` : '';
+        this.countLoginFailure(`login refused: account banned${banLength}`);
         this.error(`[connect] Login failed: Account is banned. ${banDurationMessage}`);
         this.restartAfter(
           banDurationinSeconds > 0 ? banDurationinSeconds * 1000 : 60 * 60 * 1000,
@@ -92,6 +96,7 @@ class GgeEmpireSocket extends BaseSocket implements GgeEmpireSocketImpl {
       }
       case 453: {
         const timeoutDurationInSeconds = lliResponse.payload.data?.CD ? Number(lliResponse.payload.data.CD) : 300;
+        this.countLoginFailure('login refused: too many login attempts');
         this.error(
           '[connect] Login failed: Too many login attempts. Retrying in ' +
             Math.ceil(timeoutDurationInSeconds / 60) +
@@ -102,6 +107,7 @@ class GgeEmpireSocket extends BaseSocket implements GgeEmpireSocketImpl {
         return;
       }
       default: {
+        this.countLoginFailure(`login refused (status ${lliResponse.payload.status})`);
         this.error(`Login failed with status: ${lliResponse.payload.status} 🔄 Retrying in 1 minute...`);
         this.kill();
         this.restartAfter(60 * 1000, 'Retrying connection after login failure...');
@@ -110,6 +116,7 @@ class GgeEmpireSocket extends BaseSocket implements GgeEmpireSocketImpl {
   }
 
   private restartAfter(delayMilliseconds: number, message: string): void {
+    this.noteNextAttempt(delayMilliseconds);
     setTimeout(() => {
       this.log(message);
       this.socketState = SocketState.CONNECTING;
