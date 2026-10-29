@@ -4,6 +4,7 @@ import * as fs from 'node:fs';
 import path from 'node:path';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
+import { PrecompressedJson } from '../helper/cache/precompressed-json';
 import { HttpCache } from '../helper/http-cache';
 import { TemporaryServerSettings } from '../helper/temporary-server-settings';
 import { AssetFileCache } from '../services/asset-file-cache';
@@ -12,6 +13,17 @@ import { AssetSymbolResolver } from '../services/asset-symbol-resolver';
 
 const IMAGE_CACHE_CONTROL = 'public, max-age=2592000, immutable';
 const ASSET_CATALOGUE_MAX_AGE_SECONDS = 7200;
+const ASSET_CATALOGUE_REDIS_TTL_SECONDS = 60 * 60 * 24 * 7;
+const PUBLIC_ITEM_KEYS = new Set([
+  'versionInfo',
+  'effects',
+  'effecttypes',
+  'effectCaps',
+  'buildings',
+  'constructionItems',
+  'worldmapskins',
+  'equipments',
+]);
 const MISSING_ASSET_TTL_SECONDS = 60 * 60;
 const WARM_CONCURRENCY = Number(process.env.ASSET_WARM_CONCURRENCY) || 3;
 
@@ -108,36 +120,9 @@ export abstract class ApiAssets implements ApiHelper {
       const languageCacheBuildVersion = await ApiHelper.getGgeBuildVersion();
       const cachedKey = `assets_items_v2_${languageCacheBuildVersion}`;
       if (ApiAssets.applyAssetCaching(request, response, cachedKey)) return;
-      const cachedData = await ApiHelper.redisClient.get(cachedKey);
-      if (cachedData) {
-        response.status(ApiHelper.HTTP_OK).json(JSON.parse(cachedData));
-        return;
-      }
-      /* ---------------------------------
-       * Read and filter items data from local JSON file
-       * --------------------------------- */
-      const itemsData = await fs.promises.readFile(path.join(__dirname, './../assets/items.json'));
-      const filteredItems = JSON.parse(itemsData.toString());
-      const keysToKeep = new Set([
-        'versionInfo',
-        'effects',
-        'effecttypes',
-        'effectCaps',
-        'buildings',
-        'constructionItems',
-        'worldmapskins',
-        'equipments',
-      ]);
-      for (const key of Object.keys(filteredItems)) {
-        if (!keysToKeep.has(key)) {
-          delete filteredItems[key];
-        }
-      }
-      /* ---------------------------------
-       * Update Redis cache and send response
-       * --------------------------------- */
-      await ApiHelper.updateCache(cachedKey, filteredItems, 60 * 60 * 24 * 7);
-      response.status(ApiHelper.HTTP_OK).json(filteredItems);
+      await PrecompressedJson.send(request, response, cachedKey, () =>
+        ApiAssets.readThroughCache(cachedKey, () => ApiAssets.readPublicItems()),
+      );
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
@@ -181,24 +166,9 @@ export abstract class ApiAssets implements ApiHelper {
       const languageCacheBuildVersion = await ApiHelper.getGgeBuildVersion();
       const cachedKey = `assets_lang_${languageCacheBuildVersion}_${lang}`;
       if (ApiAssets.applyAssetCaching(request, response, cachedKey)) return;
-      const cachedData = await ApiHelper.redisClient.get(cachedKey);
-      if (cachedData) {
-        response.status(ApiHelper.HTTP_OK).json(JSON.parse(cachedData));
-        return;
-      }
-      /* ---------------------------------
-       * Fetch language data from remote source
-       * --------------------------------- */
-      const versionsJson = `${ApiHelper.CONFIG_BASE_URL}/languages/version.json`;
-      const { data: versionsData } = await axios.get(versionsJson);
-      const code = versionsData['languages'][lang];
-      const targetLangJson = `${ApiHelper.CONFIG_BASE_URL}/languages/${code}/${lang}.json`;
-      const { data: itemsData } = await axios.get(targetLangJson);
-      /* ---------------------------------
-       * Update Redis cache and send response
-       * --------------------------------- */
-      await ApiHelper.updateCache(cachedKey, itemsData, 60 * 60 * 24 * 7);
-      response.status(ApiHelper.HTTP_OK).json(itemsData);
+      await PrecompressedJson.send(request, response, cachedKey, () =>
+        ApiAssets.readThroughCache(cachedKey, () => ApiAssets.fetchGameLanguage(lang)),
+      );
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
@@ -683,6 +653,30 @@ export abstract class ApiAssets implements ApiHelper {
     await TemporaryServerSettings.publishFromItems(JSON.parse(itemsJsonText)).catch((error) =>
       ApiHelper.logError(error, 'updateItems.tempServerSettings', null),
     );
+  }
+
+  private static async readThroughCache(cacheKey: string, build: () => Promise<unknown>): Promise<string> {
+    const cached = await ApiHelper.redisClient.get(cacheKey);
+    if (cached) return cached;
+    const payload = JSON.stringify(await build());
+    await ApiHelper.updateCache(cacheKey, payload, ASSET_CATALOGUE_REDIS_TTL_SECONDS, true);
+    return payload;
+  }
+
+  private static async readPublicItems(): Promise<Record<string, unknown>> {
+    const itemsData = await fs.promises.readFile(path.join(__dirname, './../assets/items.json'));
+    const items = JSON.parse(itemsData.toString());
+    for (const key of Object.keys(items)) {
+      if (!PUBLIC_ITEM_KEYS.has(key)) delete items[key];
+    }
+    return items;
+  }
+
+  private static async fetchGameLanguage(lang: string): Promise<unknown> {
+    const { data: versionsData } = await axios.get(`${ApiHelper.CONFIG_BASE_URL}/languages/version.json`);
+    const code = versionsData['languages'][lang];
+    const { data } = await axios.get(`${ApiHelper.CONFIG_BASE_URL}/languages/${code}/${lang}.json`);
+    return data;
   }
 
   private static applyAssetCaching(request: express.Request, response: express.Response, cacheKey: string): boolean {

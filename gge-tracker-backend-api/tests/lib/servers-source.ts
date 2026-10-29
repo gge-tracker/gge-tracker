@@ -11,10 +11,12 @@ export interface ServerEntry {
   outerName: string;
   code: string;
   olapDatabase: string;
+  sqlDatabase: string;
   resetTimezone: string;
   resetTime: string;
   lootReset: LootReset | null;
   special: boolean;
+  fortress: boolean;
   disabled: boolean;
   line: number;
 }
@@ -54,10 +56,12 @@ export function discoverServers(): ServerEntry[] {
         outerName: text(row['outer-name']),
         code: text(row.code),
         olapDatabase: text(databases.olap),
+        sqlDatabase: text(databases.sql),
         resetTimezone: text(row['reset-timezone']),
         resetTime: text(row['reset-time']),
         lootReset: parseLootReset(text(row['reset-timezone']), text(row['reset-time'])),
         special: KINGDOM_FEATURES.every((feature) => text(section[feature]) === 'true'),
+        fortress: text(section.fortress) === 'true',
         disabled: text(section.enabled) !== 'true',
         line: lineOf(source, key),
       };

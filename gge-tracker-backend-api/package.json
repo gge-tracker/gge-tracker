@@ -16,6 +16,7 @@
     "test:api": "ts-node --project tests/tsconfig.json tests/run.ts",
     "test:api:semantic": "ts-node --project tests/tsconfig.json tests/run.ts semantic",
     "test:api:oracle": "ts-node --project tests/tsconfig.json tests/run.ts oracle",
+    "test:api:dungeons": "ts-node --project tests/tsconfig.json tests/run.ts dungeons",
     "test:api:snapshot": "ts-node --project tests/tsconfig.json tests/run.ts snapshot",
     "test:api:snapshot:update": "TEST_SNAPSHOT_UPDATE=1 ts-node --project tests/tsconfig.json tests/run.ts snapshot",
     "test:api:strict": "TEST_REQUIRE_SEEDS=1 ts-node --project tests/tsconfig.json tests/run.ts all",

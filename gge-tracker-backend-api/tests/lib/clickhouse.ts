@@ -2,10 +2,8 @@
  * Minimal ClickHouse reader for the harness
  */
 import axios from 'axios';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import { parse as parseEnvFile } from 'dotenv';
 import { config } from '../config';
+import { fromDotEnv } from './dotenv';
 import { record, truncate } from './journal';
 
 export interface ClickHouseTarget {
@@ -20,16 +18,6 @@ export interface ClickHouseResult {
   rows: string[][];
   error?: string;
   ms: number;
-}
-
-function fromDotEnv(name: string): string | undefined {
-  for (const candidate of [path.resolve(__dirname, '..', '..', '.env'), path.resolve(__dirname, '..', '..', '..', '.env')]) {
-    try {
-      const value = parseEnvFile(fs.readFileSync(candidate, 'utf8'))[name];
-      if (value !== undefined && value.trim() !== '') return value.trim();
-    } catch {}
-  }
-  return undefined;
 }
 
 function setting(testName: string, serverName: string, fallback = ''): string {

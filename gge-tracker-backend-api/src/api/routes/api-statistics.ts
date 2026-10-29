@@ -85,11 +85,16 @@ export abstract class ApiStatistics implements ApiHelper {
       const language = ApiHelper.ggeTrackerManager.getServerNameFromRequestId(allianceId);
       const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${language}`)) || '1';
       const cachedKey = `statistics:alliances:${language}:${cacheVersion}:${allianceId}`;
+      const isTrimmed = Boolean(requestedEvents?.length) || rowLimit !== null;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
-        response
-          .status(ApiHelper.HTTP_OK)
-          .send(this.trimAllianceStatistics(JSON.parse(cachedData), requestedEvents, rowLimit));
+        if (isTrimmed) {
+          response
+            .status(ApiHelper.HTTP_OK)
+            .send(this.trimAllianceStatistics(JSON.parse(cachedData), requestedEvents, rowLimit));
+        } else {
+          response.status(ApiHelper.HTTP_OK).type('application/json').send(cachedData);
+        }
         return;
       }
 
@@ -97,10 +102,11 @@ export abstract class ApiStatistics implements ApiHelper {
        * Database query
        * --------------------------------- */
       try {
-        const { diffs, points } = await this.getPlayersEventsStatisticsFromAllianceId(allianceId);
+        const statistics = await this.getPlayersEventsStatisticsFromAllianceId(allianceId);
+        if (statistics.error) throw new Error(statistics.error);
         const data = {
-          diffs,
-          points,
+          diffs: statistics.diffs,
+          points: statistics.points,
           timezoneOffset: ApiHelper.ggeTrackerManager.getServerResetOffsetByCode(
             ApiHelper.getCountryCode(String(allianceId)) || '',
           ),
@@ -108,8 +114,13 @@ export abstract class ApiStatistics implements ApiHelper {
             ApiHelper.getCountryCode(String(allianceId)) || '',
           ),
         };
-        void ApiHelper.updateCache(cachedKey, data);
-        response.status(ApiHelper.HTTP_OK).send(this.trimAllianceStatistics(data, requestedEvents, rowLimit));
+        const payload = JSON.stringify(data);
+        void ApiHelper.updateCache(cachedKey, payload, 3600, true);
+        if (isTrimmed) {
+          response.status(ApiHelper.HTTP_OK).send(this.trimAllianceStatistics(data, requestedEvents, rowLimit));
+        } else {
+          response.status(ApiHelper.HTTP_OK).type('application/json').send(payload);
+        }
       } catch (error) {
         console.error('Error executing queries:', error);
         response
@@ -851,7 +862,7 @@ export abstract class ApiStatistics implements ApiHelper {
           const query = `
             SELECT
             player_id,
-            created_at AS first_entry,
+            formatDateTime(created_at, '%Y-%m-%dT%H:%i:%S.000Z', 'UTC') AS date,
             point
             FROM ${database}.${table}
             WHERE player_id IN (${ids.map((id) => `'${id}'`).join(',')})
@@ -863,7 +874,7 @@ export abstract class ApiStatistics implements ApiHelper {
           points[table] = result.data.map((row: any) => {
             return {
               player_id: ApiHelper.addCountryCode(row.player_id, code),
-              date: new Date(row.first_entry).toISOString(),
+              date: row.date,
               point: row.point,
             };
           });

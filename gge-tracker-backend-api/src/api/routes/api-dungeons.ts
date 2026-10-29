@@ -21,6 +21,9 @@ export abstract class ApiDungeons implements ApiHelper {
   };
   private static readonly SCAN_CACHE_TTL_SECONDS = 900;
   private static readonly META_CACHE_TTL_SECONDS = 60;
+  private static readonly DEFAULT_PAGE_SIZE = 15;
+  private static readonly MAX_PAGE_SIZE = 4000;
+  private static readonly DEFAULT_PLAYER_HISTORY_DAYS = 30;
 
   /**
    * Handles the retrieval of dungeon data with various filters, sorting, and pagination options
@@ -49,8 +52,9 @@ export abstract class ApiDungeons implements ApiHelper {
       if (!this.validateRequest(request, response, filterByKid)) return;
 
       const parameters_ = this.constructDungeonsInitialParameters(filterByKid, request);
-      let { filtersKids, sortByPositionX, sortByPositionY } = parameters_;
-      const { filterByAttackCooldown, filterByPlayerName, nearPlayerName, size } = parameters_;
+      let { filtersKids } = parameters_;
+      const { sortByPositionX, sortByPositionY, filterByAttackCooldown, filterByPlayerName, nearPlayerName, size } =
+        parameters_;
 
       if (!this.validateDungeonQueryParams(response, filtersKids, filterByAttackCooldown, filterByPlayerName, size))
         return;
@@ -69,7 +73,7 @@ export abstract class ApiDungeons implements ApiHelper {
       if (nearPlayerName) {
         const sortResult = await this.resolveNearPlayerSortPosition(request, response, nearPlayerName, filtersKids);
         if (sortResult === null) return;
-        ({ sortByPositionX, sortByPositionY, filtersKids, customParameterValues } = sortResult);
+        ({ filtersKids, customParameterValues } = sortResult);
       }
       if (filtersKids.length === 0) {
         response.status(ApiHelper.HTTP_OK).send(this.defaultResponseContent([], 1, 1, 0, 0));
@@ -79,18 +83,10 @@ export abstract class ApiDungeons implements ApiHelper {
       /* ---------------------------------
        * Validate sort coordinates
        * --------------------------------- */
-      const isSorted = this.resolveSortState(response, sortByPositionX, sortByPositionY);
+      const isSorted = nearPlayerName ? true : this.resolveSortState(response, sortByPositionX, sortByPositionY);
       if (isSorted === null) return;
 
-      const MAX_NUMBER = 4000;
-      let viewPerPage: number;
-      if (size === '0') {
-        viewPerPage = MAX_NUMBER;
-      } else if (size === null) {
-        viewPerPage = 15;
-      } else {
-        viewPerPage = Number.parseInt(size);
-      }
+      const viewPerPage = this.resolvePageSize(size);
 
       /* ---------------------------------
        * Resolve filterByPlayerName to a
@@ -190,11 +186,11 @@ export abstract class ApiDungeons implements ApiHelper {
        * Validate parameters
        * --------------------------------- */
       const playerId = ApiHelper.verifyIdWithCountryCode(String(request.params.playerId));
-      const lastDays = ApiHelper.validatePageNumber(request.query.lastDays, 30);
+      const lastDays = this.parseLastDays(request.query.lastDays);
       if (!playerId) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
         return;
-      } else if (lastDays < 1 || lastDays > 365) {
+      } else if (lastDays === null) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidLastDaysParameter });
         return;
       }
@@ -220,15 +216,11 @@ export abstract class ApiDungeons implements ApiHelper {
       }
       const query = `
         SELECT
-          D.kid,
-          D.position_x,
-          D.position_y,
+          DH.kid,
+          DH.position_x,
+          DH.position_y,
           DH.attacked_at
         FROM dungeons_history DH
-        JOIN dungeons D
-          ON D.kid = DH.kid
-          AND D.position_x = DH.position_x
-          AND D.position_y = DH.position_y
         WHERE DH.player_id = $1
           AND DH.attacked_at >= NOW() - INTERVAL '${lastDays} days'
         ORDER BY DH.attacked_at DESC
@@ -255,6 +247,14 @@ export abstract class ApiDungeons implements ApiHelper {
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getDungeonsByPlayer', request);
     }
+  }
+
+  private static parseLastDays(value: unknown): number | null {
+    if (value === undefined) return this.DEFAULT_PLAYER_HISTORY_DAYS;
+    const text = String(value).trim();
+    if (!/^\d+$/.test(text)) return null;
+    const days = Number(text);
+    return days >= 1 && days <= 365 ? days : null;
   }
 
   /**
@@ -294,9 +294,9 @@ export abstract class ApiDungeons implements ApiHelper {
   }
 
   /**
-   * Looks up the castle sort position for a given player name
-   * Sets `sortByPositionX/Y` to the kid-1 castle coords and narrows `filtersKids`
-   * to only kingdoms where the player has a main castle
+   * Looks up the realm castles of a given player name, one per kingdom
+   * Narrows `filtersKids` to the kingdoms where the player has a realm castle:
+   * each dungeon is then sorted by its distance to the castle of its own kingdom
    *
    * Returns `null` and sends an error response if the player is not found or has no castles
    */
@@ -306,8 +306,6 @@ export abstract class ApiDungeons implements ApiHelper {
     nearPlayerName: string,
     filtersKids: number[],
   ): Promise<{
-    sortByPositionX: string | null;
-    sortByPositionY: string | null;
     filtersKids: number[];
     customParameterValues: number[];
   } | null> {
@@ -356,8 +354,6 @@ export abstract class ApiDungeons implements ApiHelper {
     const s3 = sortPositionKid3 ?? [0, 0];
 
     return {
-      sortByPositionX: sortPositionKid1 ? String(sortPositionKid1[0]) : null,
-      sortByPositionY: sortPositionKid1 ? String(sortPositionKid1[1]) : null,
       filtersKids: resolvedKids,
       customParameterValues: [s1[0], s1[0], s1[1], s2[0], s2[0], s2[1], s3[0], s3[0], s3[1]],
     };
@@ -673,6 +669,13 @@ export abstract class ApiDungeons implements ApiHelper {
     }));
   }
 
+  private static resolvePageSize(size: string | null): number {
+    if (size === null) return this.DEFAULT_PAGE_SIZE;
+    const requested = Number.parseInt(size);
+    if (requested === 0) return this.MAX_PAGE_SIZE;
+    return Math.min(Math.max(requested || this.DEFAULT_PAGE_SIZE, 1), this.MAX_PAGE_SIZE);
+  }
+
   private static calculateAvailableDuration(secondsBetweenAttacks: number | null): number {
     if (secondsBetweenAttacks === null) return 0;
     const cooldown = 24 * 3600;
@@ -746,33 +749,26 @@ export abstract class ApiDungeons implements ApiHelper {
   }
 
   /**
-   * Get the SQL query for calculating the distance between dungeons
-   * This SQL snippet calculates the distance considering the kingdom (kid)
-   * and wrapping around the map edges
-   * The map width is considered to be 1287 units for wrapping calculations
-   * If a kid does not have a castle, it assigns a large distance (999999)
-   * to effectively exclude it
+   * Get the SQL expression for the squared distance between a dungeon and the player's realm castle
+   * of the same kingdom, the x axis wrapping around the 1287 wide map
+   * Dungeons of a kingdom where the player has no castle are filtered out before this is used
    *
-   * @upgrade Improvement note: This calculation shall be improved in the future
    * @returns The SQL query string
    */
   private static getCalculatedDistanceSql(startIndex: number): { sql: string; paramCount: number } {
     const index = startIndex;
     const sql = `
-      LEAST(
-        CASE WHEN D.kid = 1 THEN
+      CASE D.kid
+        WHEN 1 THEN
           POWER(LEAST(ABS(D.position_x::int - $${index}),     1287 - ABS(D.position_x::int - $${index + 1})), 2) +
           POWER(ABS(D.position_y::int - $${index + 2}), 2)
-        ELSE 999999 END,
-        CASE WHEN D.kid = 2 THEN
+        WHEN 2 THEN
           POWER(LEAST(ABS(D.position_x::int - $${index + 3}), 1287 - ABS(D.position_x::int - $${index + 4})), 2) +
           POWER(ABS(D.position_y::int - $${index + 5}), 2)
-        ELSE 999999 END,
-        CASE WHEN D.kid = 3 THEN
+        WHEN 3 THEN
           POWER(LEAST(ABS(D.position_x::int - $${index + 6}), 1287 - ABS(D.position_x::int - $${index + 7})), 2) +
           POWER(ABS(D.position_y::int - $${index + 8}), 2)
-        ELSE 999999 END
-      ) AS calculated_distance
+      END AS calculated_distance
     `;
     return { sql, paramCount: 9 };
   }
@@ -822,8 +818,8 @@ export abstract class ApiDungeons implements ApiHelper {
     const sortByPositionX = ApiHelper.getParsedString(request.query.positionX, null);
     const sortByPositionY = ApiHelper.getParsedString(request.query.positionY, null);
     const nearPlayerName = ApiHelper.getParsedString(request.query.nearPlayerName, null);
-    const sizeValue = Number(request.query.size);
-    const size = !Number.isNaN(sizeValue) && sizeValue > 0 ? String(sizeValue) : null;
+    const sizeValue = request.query.size === '' ? Number.NaN : Number(request.query.size);
+    const size = !Number.isNaN(sizeValue) && sizeValue >= 0 ? String(sizeValue) : null;
     return {
       filtersKids,
       filterByAttackCooldown,

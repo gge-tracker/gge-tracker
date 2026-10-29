@@ -26,6 +26,11 @@ function fetchFromBridge(url: string): Promise<globalThis.Response> {
  * @abstract
  */
 export abstract class ApiCastle implements ApiHelper {
+  private static readonly RANDOM_CASTLE_COUNT = 12;
+  private static readonly RANDOM_CASTLE_POOL_SIZE = 24;
+  private static readonly RANDOM_CASTLE_POOL_TTL_SECONDS = 600;
+  private static readonly pendingRandomPools = new Map<string, Promise<any[] | null>>();
+
   /**
    * Handles the HTTP request to retrieve detailed information about a castle by its ID
    *
@@ -290,67 +295,70 @@ export abstract class ApiCastle implements ApiHelper {
         return;
       }
 
-      /* ---------------------------------
-       * Query 12 random level-70 players with castles
-       * --------------------------------- */
-      const query = `SELECT id FROM players WHERE castles IS NOT NULL AND castles != '[]' AND level = 70 ORDER BY RANDOM() LIMIT 12;`;
-      const result = await (request['pg_pool'] as pg.Pool).query(query);
-      if (!result?.rows || result.rows.length === 0) {
+      const castles = await ApiCastle.randomCastlePool(request['pg_pool'] as pg.Pool, code, targetEmpireEx);
+      if (castles === null) {
         response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.PlayerNotFound });
         return;
       }
-
-      /* ---------------------------------
-       * Fetch castle list from GGE API for each player concurrently
-       * --------------------------------- */
-      const basePath = process.env.GGE_API_URL;
-      const castlePromises = result.rows.map(async (row: { id: number }) => {
-        try {
-          const apiUrl = `${basePath}/${targetEmpireEx}/gdi/"PID":${row.id}`;
-          const responseData = await fetchFromBridge(apiUrl);
-          if (!responseData.ok) return null;
-          const data = await responseData.json();
-          if (!data?.content?.gcl?.C) return null;
-          const castleObject = data['content']['gcl']['C'];
-          for (const c of castleObject) {
-            if (c.KID !== 0) continue;
-            for (const ai of c.AI) {
-              if (ai.AI[0] === 1) {
-                return {
-                  kingdomId: 0,
-                  isAvailable: true,
-                  id: Number(ApiHelper.addCountryCode(ai.AI[3], code)),
-                  positionX: ai.AI[1],
-                  positionY: ai.AI[2],
-                  type: ai.AI[0],
-                  name: ai.AI[10],
-                  keepLevel: ai.AI[5],
-                  wallLevel: ai.AI[6],
-                  gateLevel: ai.AI[7],
-                  towerLevel: ai.AI[8],
-                  moatLevel: ai.AI[9],
-                  equipmentUniqueIdSkin: ai.AI[17],
-                };
-              }
-            }
-          }
-          return null;
-        } catch {
-          return null;
-        }
-      });
-
-      /* ---------------------------------
-       * Send response
-       * --------------------------------- */
-      const castleResults = await Promise.all(castlePromises);
-      const castles = castleResults.filter(Boolean);
-      response.status(ApiHelper.HTTP_OK).send(castles);
+      response.status(ApiHelper.HTTP_OK).send(ApiCastle.sample(castles, ApiCastle.RANDOM_CASTLE_COUNT));
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getRandomCastle', request);
     }
+  }
+
+  private static randomCastlePool(pool: pg.Pool, code: string, zone: string): Promise<any[] | null> {
+    const pending =
+      ApiCastle.pendingRandomPools.get(code) ??
+      ApiCastle.loadRandomCastlePool(pool, code, zone).finally(() => ApiCastle.pendingRandomPools.delete(code));
+    ApiCastle.pendingRandomPools.set(code, pending);
+    return pending;
+  }
+
+  private static async loadRandomCastlePool(pool: pg.Pool, code: string, zone: string): Promise<any[] | null> {
+    const cacheKey = `castle:random-pool:${code}`;
+    const cached = await ApiHelper.redisClient.get(cacheKey).catch(() => null);
+    if (cached) return JSON.parse(cached);
+    const result = await pool.query(
+      `SELECT id FROM players WHERE castles IS NOT NULL AND castles != '[]' AND level = 70 ORDER BY RANDOM() LIMIT $1`,
+      [ApiCastle.RANDOM_CASTLE_POOL_SIZE],
+    );
+    if (result.rows.length === 0) return null;
+    const fetched = await Promise.all(
+      result.rows.map((row: { id: number }) => ApiCastle.fetchMainCastle(zone, row.id, code)),
+    );
+    const castles = fetched.filter(Boolean);
+    if (castles.length > 0) {
+      void ApiHelper.updateCache(cacheKey, castles, ApiCastle.RANDOM_CASTLE_POOL_TTL_SECONDS);
+    }
+    return castles;
+  }
+
+  private static async fetchMainCastle(zone: string, playerId: number, code: string): Promise<any | null> {
+    try {
+      const responseData = await fetchFromBridge(`${process.env.GGE_API_URL}/${zone}/gdi/"PID":${playerId}`);
+      if (!responseData.ok) return null;
+      const data = await responseData.json();
+      if (!data?.content?.gcl?.C) return null;
+      for (const c of data['content']['gcl']['C']) {
+        if (c.KID !== 0) continue;
+        const ai = c.AI.find((castle: any) => castle.AI[0] === 1);
+        if (ai) return ApiCastle.mapPlayerCastles([{ KID: 0, AI: [ai] }], code)[0];
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  private static sample<T>(items: T[], count: number): T[] {
+    const shuffled = [...items];
+    for (let index = shuffled.length - 1; index > 0; index--) {
+      const other = Math.floor(Math.random() * (index + 1));
+      [shuffled[index], shuffled[other]] = [shuffled[other], shuffled[index]];
+    }
+    return shuffled.slice(0, count);
   }
 
   private static async sendPlayerCastles(

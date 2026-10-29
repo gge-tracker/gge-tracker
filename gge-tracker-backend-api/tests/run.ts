@@ -14,6 +14,7 @@ import { runOpenApi } from './suites/openapi';
 import { runFunctional } from './suites/functional';
 import { runSemantic } from './suites/semantic';
 import { runOracle } from './suites/oracle';
+import { runDungeons } from './suites/dungeons';
 import { runSnapshot } from './suites/snapshot';
 import { runSecurity } from './suites/security';
 import { runRobustness } from './suites/robustness';
@@ -28,6 +29,7 @@ const SUITES: Record<string, (r: Report, s: Awaited<ReturnType<typeof bootstrap>
   functional: runFunctional,
   semantic: runSemantic,
   oracle: runOracle,
+  dungeons: runDungeons,
   snapshot: runSnapshot,
   security: runSecurity,
   robustness: runRobustness,
@@ -38,7 +40,7 @@ const SUITES: Record<string, (r: Report, s: Awaited<ReturnType<typeof bootstrap>
 };
 
 const ALL_SUITES = Object.keys(SUITES);
-const DEFAULT_SUITES = ['openapi', 'coverage', 'functional', 'semantic', 'oracle', 'snapshot', 'security', 'robustness', 'ratelimit', 'timing'];
+const DEFAULT_SUITES = ['openapi', 'coverage', 'functional', 'semantic', 'oracle', 'dungeons', 'snapshot', 'security', 'robustness', 'ratelimit', 'timing'];
 
 function parseSuites(argv: string[]): string[] {
   const names = argv.filter((a) => !a.startsWith('--'));
