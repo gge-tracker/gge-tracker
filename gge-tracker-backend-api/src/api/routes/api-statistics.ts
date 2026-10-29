@@ -179,9 +179,14 @@ export abstract class ApiStatistics implements ApiHelper {
       const language = ApiHelper.ggeTrackerManager.getServerNameFromRequestId(playerId);
       const cacheVersion = (await ApiHelper.redisClient.get(`fill-version:${language}`)) || '1';
       const cacheKey = `statistics:players:${language}:${cacheVersion}:${playerId}${this.buildFetchCacheSuffix(options)}`;
+      const isTrimmed = options.dedup || options.limit !== null;
       const cachedData = await ApiHelper.redisClient.get(cacheKey);
       if (cachedData) {
-        response.status(ApiHelper.HTTP_OK).send(this.trimPlayerStatistics(JSON.parse(cachedData), options));
+        if (isTrimmed) {
+          response.status(ApiHelper.HTTP_OK).send(this.trimPlayerStatistics(JSON.parse(cachedData), options));
+        } else {
+          response.status(ApiHelper.HTTP_OK).type('application/json').send(cachedData);
+        }
         return;
       }
 
@@ -254,8 +259,13 @@ export abstract class ApiStatistics implements ApiHelper {
             ApiHelper.getCountryCode(String(playerId)) || '',
           ),
         };
-        void ApiHelper.updateCache(cacheKey, data);
-        response.status(ApiHelper.HTTP_OK).send(this.trimPlayerStatistics(data, options));
+        const payload = JSON.stringify(data);
+        void ApiHelper.updateCache(cacheKey, payload, 3600, true);
+        if (isTrimmed) {
+          response.status(ApiHelper.HTTP_OK).send(this.trimPlayerStatistics(data, options));
+        } else {
+          response.status(ApiHelper.HTTP_OK).type('application/json').send(payload);
+        }
       } catch {
         response
           .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
@@ -1568,7 +1578,7 @@ export abstract class ApiStatistics implements ApiHelper {
             // Special handling for tables without event_dates. They will return only actual entries
             const query = `
               SELECT
-                created_at,
+                formatDateTime(created_at, '%Y-%m-%dT%H:%i:%S.000Z', 'UTC') AS date,
                 point
               FROM ${database}.${table}
               WHERE player_id = {playerId:UInt32}
@@ -1582,17 +1592,12 @@ export abstract class ApiStatistics implements ApiHelper {
               },
             });
             const result = await clickhouseQuery.json();
-            points[table] = result.data.map((row: any) => {
-              return {
-                date: new Date(row.created_at).toISOString(),
-                point: row.point,
-              };
-            });
+            points[table] = result.data;
           } else {
             // Standard handling for tables with event_dates
             const query = `
               SELECT
-                ed.created_at,
+                formatDateTime(ed.created_at, '%Y-%m-%dT%H:%i:%S.000Z', 'UTC') AS date,
                 COALESCE(pe.point, 0) AS point
               FROM
                 ${database}.event_dates AS ed
@@ -1611,12 +1616,7 @@ export abstract class ApiStatistics implements ApiHelper {
               },
             });
             const result = await clickhouseQuery.json();
-            points[table] = result.data.map((row: any) => {
-              return {
-                date: new Date(row.created_at).toISOString(),
-                point: row.point,
-              };
-            });
+            points[table] = result.data;
           }
           dates_stop[table] = new Date();
         } catch (error) {

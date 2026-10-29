@@ -16,6 +16,7 @@ export enum RouteErrorMessagesEnum {
   AssetNotFound = 'Asset not found',
   EventNotActive = 'The event is not active',
   EventNotFound = 'Event not found',
+  GameServerUnreachable = 'The game server did not answer. Please try again in a moment.',
   InvalidAllianceId = 'Invalid alliance ID',
   InvalidAllianceName = 'Invalid alliance name',
   InvalidApiKey = 'Invalid or revoked API key. Remove the X-Api-Key header to use the anonymous limits',

@@ -39,6 +39,7 @@ import { ApiGgeTrackerManager } from './managers/api.manager';
 import { RoutesManager } from './managers/routes.manager';
 import { errorCodeMiddleware } from './helper/error-codes';
 import { ApiHelper } from './helper/api-helper';
+import { withCacheNamespace } from './helper/cache/cache-namespace';
 import { OfferPriceTables } from './services/offer-price-tables';
 import { OfferSnapshot } from './services/offer-snapshot';
 import { TemporaryServerSettings } from './helper/temporary-server-settings';
@@ -143,7 +144,10 @@ app.use(
   }),
 );
 
-const routingInstance = new ApiRoutingController(managerInstance, redisClient as any);
+const routingInstance = new ApiRoutingController(
+  managerInstance,
+  withCacheNamespace(redisClient, process.env.REDIS_CACHE_PREFIX) as any,
+);
 
 // Protected routes require the gge-server header
 // These routes are specific to a gge server and may require additional validation
@@ -3035,6 +3039,12 @@ protectedRoutes.get(
  *                 constructionItems:
  *                   type: object
  *                   description: The construction items for the castle
+ *       '404':
+ *         description: The game knows no castle with this ID in this kingdom
+ *       '503':
+ *         description: The game bridge is not connected to this server
+ *       '504':
+ *         description: The game server did not answer in time
  */
 publicRoutes.get('/castle/analysis/:castleId', routingInstance.getCastleById.bind(routingInstance));
 
@@ -3094,6 +3104,12 @@ publicRoutes.get('/castle/analysis/:castleId', routingInstance.getCastleById.bin
  *                   equipmentUniqueIdSkin:
  *                     type: integer
  *                     description: The unique ID of the castle's skin equipment. If not present, defaults to 0
+ *       '404':
+ *         description: No player with this name, or the game knows no castles for them
+ *       '503':
+ *         description: The game bridge is not connected to this server
+ *       '504':
+ *         description: The game server did not answer in time
  */
 protectedRoutes.get('/castle/search/:playerName', routingInstance.getCastleByPlayerName.bind(routingInstance));
 
@@ -3152,6 +3168,12 @@ protectedRoutes.get('/castle/search/:playerName', routingInstance.getCastleByPla
  *                   equipmentUniqueIdSkin:
  *                     type: integer
  *                     description: The unique ID of the castle's skin equipment. If not present, defaults to 0
+ *       '404':
+ *         description: The game knows no castles for this player
+ *       '503':
+ *         description: The game bridge is not connected to this server
+ *       '504':
+ *         description: The game server did not answer in time
  */
 publicRoutes.get('/castle/player/:playerId', routingInstance.getCastleByPlayerId.bind(routingInstance));
 

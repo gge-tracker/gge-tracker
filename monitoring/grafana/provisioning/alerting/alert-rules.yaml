@@ -391,3 +391,38 @@ groups:
           action: 'Rankings, players and alliances of this server are not updated until it reconnects. POST /server/{{ $labels.zone }}/reconnect on the standard bridge retries at once.'
           dashboard: /d/empire-api-bridge?var-bridge=standard
           dashboard_title: Empire-API bridge
+      - uid: bridge-command-dead
+        title: Game command never answered
+        condition: B
+        for: 0m
+        noDataState: OK
+        execErrState: OK
+        data:
+          - refId: A
+            relativeTimeRange: { from: 10800, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              range: false
+              expr: 'sum by (bridge, command) (increase(empire_api_commands_total{command=~"jca|gdi", outcome="timeout"}[3h])) >= 5 unless on (bridge, command) sum by (bridge, command) (increase(empire_api_commands_total{command=~"jca|gdi", outcome="ok"}[1h])) > 0'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+                  operator: { type: and }
+                  query: { params: [B] }
+                  reducer: { type: last, params: [] }
+                  type: threshold
+        labels:
+          severity: critical
+          notify: discord
+        annotations:
+          summary: 'Every `{{ $labels.command }}` sent through the {{ $labels.bridge }} bridge times out while its sockets stay connected: castle pages answer 504.'
+          action: 'Restart the {{ $labels.bridge }} bridge container. The socket status cannot see this: on 2026-10-26 jca failed for 2.5 days with every socket connected.'
+          dashboard: '/d/empire-api-bridge?var-bridge={{ $labels.bridge }}'
+          dashboard_title: Empire-API bridge

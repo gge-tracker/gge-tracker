@@ -16,6 +16,19 @@ function fetchFromBridge(url: string): Promise<globalThis.Response> {
   });
 }
 
+type BridgeAnswer = { data: any } | { status: number; error: RouteErrorMessagesEnum };
+
+async function readBridgeAnswer(answer: globalThis.Response): Promise<BridgeAnswer> {
+  if (!answer.ok) {
+    return { status: ApiHelper.HTTP_SERVICE_UNAVAILABLE, error: RouteErrorMessagesEnum.GameServerUnreachable };
+  }
+  const data = await answer.json();
+  if (data?.error) {
+    return { status: ApiHelper.HTTP_GATEWAY_TIMEOUT, error: RouteErrorMessagesEnum.GameServerUnreachable };
+  }
+  return { data };
+}
+
 /**
  * Abstract class providing API endpoints related to castle data retrieval and analysis
  *
@@ -75,12 +88,14 @@ export abstract class ApiCastle implements ApiHelper {
        * --------------------------------- */
       const basePath = kingdomId === 0 ? process.env.GGE_API_URL : process.env.GGE_API_URL_REALTIME;
       const zone = ApiHelper.ggeTrackerManager.getZoneFromRequestId(castleId);
-      const responseData = await fetchFromBridge(`${basePath}/${zone}/jca/"CID":${globalCastleId},"KID":${kingdomId}`);
-      if (!responseData.ok) {
-        response.status(responseData.status).send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
+      const answer = await readBridgeAnswer(
+        await fetchFromBridge(`${basePath}/${zone}/jca/"CID":${globalCastleId},"KID":${kingdomId}`),
+      );
+      if ('error' in answer) {
+        response.status(answer.status).send({ error: answer.error });
         return;
       }
-      const data = await responseData.json();
+      const data = answer.data;
       if (!data?.content?.gca) {
         response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.PlayerNotFound });
         return;
@@ -370,12 +385,12 @@ export abstract class ApiCastle implements ApiHelper {
     const targetEmpireEx = ApiHelper.ggeTrackerManager.getZoneFromCode(code);
     // We send directly request to internal GGE API proxy, because this data is not stored in our DB
     const apiUrl = `${process.env.GGE_API_URL}/${targetEmpireEx}/gdi/"PID":${gamePlayerId}`;
-    const responseData = await fetchFromBridge(apiUrl);
-    if (!responseData.ok) {
-      response.status(responseData.status).send({ error: RouteErrorMessagesEnum.GenericInternalServerError });
+    const answer = await readBridgeAnswer(await fetchFromBridge(apiUrl));
+    if ('error' in answer) {
+      response.status(answer.status).send({ error: answer.error });
       return;
     }
-    const data = await responseData.json();
+    const data = answer.data;
     if (!data?.content?.O?.AP) {
       response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.PlayerNotFound });
       return;
