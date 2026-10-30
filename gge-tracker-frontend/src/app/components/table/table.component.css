@@ -112,6 +112,61 @@
   transform: translateY(-3px) scale(1.06);
 }
 
+::ng-deep #table-component .action-button {
+  border-radius: 8px;
+  position: relative;
+}
+
+::ng-deep #table-component tbody tr:has(.action-button:hover, .action-button:focus-visible) {
+  position: relative;
+  z-index: 2;
+}
+
+::ng-deep #table-component .action-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+::ng-deep #table-component .action-button[data-tooltip]::after {
+  background: #111816;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  bottom: calc(100% + 6px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  color: var(--text);
+  content: attr(data-tooltip);
+  font-size: 12px;
+  font-weight: 600;
+  left: 50%;
+  opacity: 0;
+  padding: 4px 8px;
+  pointer-events: none;
+  position: absolute;
+  transform: translate(-50%, 4px);
+  transition:
+    opacity 120ms,
+    transform 120ms;
+  white-space: nowrap;
+  z-index: 5;
+}
+
+::ng-deep #table-component .action-button:last-child[data-tooltip]::after {
+  left: auto;
+  right: 0;
+  transform: translateY(4px);
+}
+
+::ng-deep #table-component .action-button:hover[data-tooltip]::after,
+::ng-deep #table-component .action-button:focus-visible[data-tooltip]::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+::ng-deep #table-component .action-button:last-child:hover[data-tooltip]::after,
+::ng-deep #table-component .action-button:last-child:focus-visible[data-tooltip]::after {
+  transform: translateY(0);
+}
+
 ::ng-deep #table-component .col-rank {
   color: #cccccc80;
   font-weight: bold;
@@ -278,22 +333,29 @@
 }
 
 ::ng-deep .table-custom tbody tr.row-favorite {
-  background-color: #0733ff4d !important;
-  box-shadow: 0 0 12px rgba(10, 40, 255, 0.3);
+  background: linear-gradient(
+    90deg,
+    rgba(251, 191, 36, 0.11),
+    rgba(251, 191, 36, 0.03) 45%,
+    rgba(10, 10, 10, 0.63)
+  ) !important;
   position: relative;
 }
 
 ::ng-deep .table-custom tbody tr.row-favorite::after {
-  animation: favoritePulse 2.5s ease-in-out infinite;
-  background-size: 100% 200%;
-  background-image: linear-gradient(180deg, #4d76ff, #1a47ff, #4d76ff);
-  border-radius: 0 4px 4px 0;
+  background: #fbbf24;
+  border-radius: 0 3px 3px 0;
   content: "";
   height: 100%;
   left: 0;
+  opacity: 0.85;
   position: absolute;
   top: 0;
-  width: 4px;
+  width: 3px;
+}
+
+::ng-deep .table-custom tbody tr.row-favorite .name {
+  color: #fde68a;
 }
 
 ::ng-deep .table-custom tbody tr:focus,
@@ -447,19 +509,6 @@
   }
 }
 
-@keyframes favoritePulse {
-  0% {
-    background-position: 0% 0%;
-  }
-
-  100% {
-    background-position: 0% 0%;
-  }
-
-  50% {
-    background-position: 0% 100%;
-  }
-}
 ::ng-deep .table-custom .cell-label {
   display: none;
 }
