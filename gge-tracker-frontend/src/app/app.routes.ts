@@ -15,15 +15,6 @@ export const routes: Routes = [
     },
   },
   {
-    path: 'release-notes',
-    loadComponent: () =>
-      import('@ggetracker-pages/release-notes/release-notes.component').then((m) => m.ReleaseNotesComponent),
-    data: {
-      description: 'Discover the latest updates and changes in the Goodgame Empire Tracker.',
-      titleKey: 'Release Notes',
-    },
-  },
-  {
     path: '',
     component: SkeletonComponent,
     children: [
@@ -181,6 +172,16 @@ export const routes: Routes = [
           description:
             'Discover the modern analysis tool for Goodgame Empire, with detailed statistics and interactive graphs.',
           titleKey: 'A propos',
+        },
+      },
+      {
+        path: 'release-notes',
+        loadComponent: () =>
+          import('@ggetracker-pages/release-notes/release-notes.component').then((m) => m.ReleaseNotesComponent),
+        resolve: { titleResolver },
+        data: {
+          description: 'Discover the latest updates and changes in the Goodgame Empire Tracker.',
+          titleKey: 'Release Notes',
         },
       },
       {

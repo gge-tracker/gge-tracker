@@ -1048,12 +1048,20 @@ export interface ApiOfferReward {
   iconUrl?: string;
 }
 
+export interface ApiEventWinner {
+  player_id: string | null;
+  player_name: string;
+  server: string;
+  point: string;
+}
+
 export interface ApiEventlist {
   events: {
     event_num: number;
     collect_date: string;
     player_count: number;
     type: 'outer_realms' | 'beyond_the_horizon';
+    winner?: ApiEventWinner | null;
   }[];
   pagination: ApiPagination;
 }

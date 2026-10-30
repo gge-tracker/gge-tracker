@@ -1,40 +1,55 @@
-<body class="release-notes-page">
-  <div class="container py-5">
-    <h1 class="page-title text-center mb-5">
-      Release Notes - gge-tracker.com
-    </h1>
-    <em>
-      This is a community-driven project, and I am always looking for ways to improve it.
-      If you have any suggestions or ideas, please feel free to share them :
-      <div class="d-inline-block">
-        <span class="discord">
-          <i class="fa-brands fa-discord"></i>
-          &nbsp;
-          <a href="https://discord.gg/eb6WSHQqYh" target="_blank">GGE Tracker Discord</a>
-        </span>
-      </div>. Thanks! :)
-    </em>
-    <div class="timeline mt-3">
-      @for (note of releaseNotes; track note) {
-        <div class="release-card glass-card">
-          <div class="release-header d-flex justify-content-between align-items-center">
-            <div class="version d-flex align-items-center">
-              <span class="badge-type me-2" [ngClass]="note.type.toLowerCase()">{{ note.type }}</span>
-              <i class="fa-regular fa-bookmark me-1"></i> {{ note.version }}
-            </div>
-            <div class="date">
-              <i class="fa-regular fa-calendar"></i> {{ note.date | date:'MM/dd' }}
-            </div>
-          </div>
-          <ul class="release-items mt-3">
-            @for (item of note.items; track item) {
-              <li>
-                <i class="fa-regular fa-circle-dot"></i> {{ item }}
-              </li>
-            }
-          </ul>
-        </div>
-      }
+<div class="release-page">
+  <header class="release-hero">
+    <div>
+      <h1 class="release-title">What's new on GGE Tracker</h1>
+      <p class="release-intro">
+        GGE Tracker is a community project. Ideas and bug reports are welcome on Discord.
+      </p>
     </div>
-  </div>
-</body>
+    <a class="discord-button" href="https://discord.gg/eb6WSHQqYh" target="_blank" rel="noopener">
+      <i class="fa-brands fa-discord" aria-hidden="true"></i>
+      Share an idea
+    </a>
+  </header>
+
+  <ol class="release-timeline">
+    @for (release of releases; track release.version; let first = $first) {
+      <li class="release">
+        <details class="release-card" [open]="first">
+          <summary class="release-summary">
+            <span class="release-dot" aria-hidden="true"></span>
+            <span class="release-heading">
+              <span class="release-version">{{ release.version }}</span>
+              @if (first) {
+                <span class="release-latest">Latest</span>
+              }
+              <span class="release-date">{{ release.date | date: 'd MMM y' }}</span>
+            </span>
+            <span class="release-counts">{{ release.summary }}</span>
+            <i class="fa-solid fa-chevron-down release-chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="release-body">
+            @for (group of release.groups; track group.kind.id) {
+              <section class="release-group">
+                <h2 class="release-group-title" [attr.data-kind]="group.kind.id">
+                  <i [class]="group.kind.icon" aria-hidden="true"></i>
+                  {{ group.kind.label }}
+                </h2>
+                <ul class="release-items">
+                  @for (item of group.items; track $index) {
+                    <li>
+                      @if (item.area) {
+                        <span class="release-area">{{ item.area }}</span>
+                      }
+                      <span>{{ item.text }}</span>
+                    </li>
+                  }
+                </ul>
+              </section>
+            }
+          </div>
+        </details>
+      </li>
+    }
+  </ol>
+</div>

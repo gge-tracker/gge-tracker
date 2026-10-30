@@ -826,6 +826,22 @@ publicRoutes.get('/servers/catalog', routingInstance.getServersCatalog.bind(rout
  *                         type: string
  *                         description: The timestamp when the data was collected
  *                         example: "2025-06-01 16:00:00"
+ *                       winner:
+ *                         type: object
+ *                         nullable: true
+ *                         description: The player ranked first, or null when the ranking is empty
+ *                         properties:
+ *                           player_id:
+ *                             type: string
+ *                             nullable: true
+ *                             description: The id of the player with the server code of their origin server
+ *                           player_name:
+ *                             type: string
+ *                           server:
+ *                             type: string
+ *                             description: The origin server of the player
+ *                           point:
+ *                             type: string
  *                 pagination:
  *                   $ref: '#/components/schemas/Pagination'
  *       304:

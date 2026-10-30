@@ -2,15 +2,38 @@
   <div class="row g-4">
     <div class="col-12" [ngClass]="{'loading': isInLoading}">
       @if (!currentEvent) {
-        <div class="row mt-3 row-gap-3">
-          @for (event of events; track event; let i = $index) {
+        <div class="events-list-header">
+          <h1 class="events-list-title">{{ 'Scores finaux' | translate }}</h1>
+          <nav class="events-filter" [attr.aria-label]="'Événements' | translate">
+            @for (filter of listFilters; track filter.label) {
+              <a class="events-filter-chip" [class.events-filter-chip--on]="listType === filter.type"
+                [attr.aria-current]="listType === filter.type ? 'page' : null"
+                [routerLink]="filter.type ? ['/events', filter.type] : ['/events']">{{ filter.label | translate }}</a>
+            }
+          </nav>
+        </div>
+        <div class="row mt-1 row-gap-3">
+          @for (event of events; track event.type + event.id) {
             <div class="col-12 col-lg-6">
               <app-event-card
                 [event]="event"
                 [options]="{ displayMode: 'player-count' }"
                 [loading]="cardLoading"
                 (eventClick)="onEventClick($event)"
-              ></app-event-card>
+                tabindex="0"
+                role="link"
+                (keydown.enter)="onEventClick(event)"
+              >
+                @if (event.winner; as winner) {
+                  <div event-body class="event-winner">
+                    <i class="fa-solid fa-crown event-winner-crown" aria-hidden="true"></i>
+                    <span class="event-winner-rank">{{ '1er' | translate }}</span>
+                    <img [src]="serverService.getFlagUrl(winner.server)" alt="" class="event-winner-flag">
+                    <span class="event-winner-name">{{ winner.player_name }}</span>
+                    <span class="event-winner-points">{{ winner.point | formatNumber }} {{ 'points' | translate }}</span>
+                  </div>
+                }
+              </app-event-card>
             </div>
           }
         </div>

@@ -65,6 +65,21 @@ interface WoaTrackingCoverage {
   tracked_events_since_player: number;
 }
 
+interface EventWinnerRow {
+  event_num: number;
+  player_id: number | null;
+  player_name: string;
+  server: string;
+  point: string;
+}
+
+interface EventWinner {
+  player_id: string | null;
+  player_name: string;
+  server: string;
+  point: string;
+}
+
 const EVENT_TABLE_PREFIXES: Record<string, string> = {
   [EventTypes.OUTER_REALMS]: 'outer_realms',
   [EventTypes.BEYOND_THE_HORIZON]: 'beyond_the_horizon',
@@ -191,9 +206,14 @@ export abstract class ApiEvents implements ApiHelper {
        * Slice the requested page
        * --------------------------------- */
       const offset = (page - 1) * ApiEvents.EVENT_LIST_ITEMS_PER_PAGE;
-      const events = selected
+      const pageEntries = selected
         .filter((entry) => entry.player_count !== '0')
         .slice(offset, offset + ApiEvents.EVENT_LIST_ITEMS_PER_PAGE);
+      const winners = await ApiEvents.readEventWinners(eventPgDbpool, pageEntries);
+      const events = pageEntries.map((entry) => ({
+        ...entry,
+        winner: winners.get(`${entry.type}:${entry.event_num}`) ?? null,
+      }));
       const pagination = {
         current_page: page,
         total_pages: Math.ceil(totalCount / ApiEvents.EVENT_LIST_ITEMS_PER_PAGE),
@@ -2240,5 +2260,35 @@ export abstract class ApiEvents implements ApiHelper {
       });
     }
     return metricsByPlayerId;
+  }
+
+  private static async readEventWinners(
+    eventPgDbpool: pg.Pool,
+    entries: { type: string; event_num: number }[],
+  ): Promise<Map<string, EventWinner>> {
+    const winners = new Map<string, EventWinner>();
+    for (const tablePrefix of Object.values(EVENT_TABLE_PREFIXES)) {
+      const eventNumbers = entries.filter((entry) => entry.type === tablePrefix).map((entry) => entry.event_num);
+      if (eventNumbers.length === 0) continue;
+      const { rows } = await eventPgDbpool.query<EventWinnerRow>(
+        `SELECT DISTINCT ON (event_num) event_num, player_id, player_name, server, point
+          FROM ${tablePrefix}_ranking
+          WHERE event_num = ANY($1::int[]) AND rank = 1
+          ORDER BY event_num, point DESC`,
+        [eventNumbers],
+      );
+      for (const row of rows) {
+        const code = row.player_id
+          ? ApiHelper.ggeTrackerManager.getOuterServer(row.server as GgeTrackerServersEnum)?.code
+          : undefined;
+        winners.set(`${tablePrefix}:${row.event_num}`, {
+          player_id: code ? `${row.player_id}${code}` : null,
+          player_name: row.player_name,
+          server: row.server,
+          point: row.point,
+        });
+      }
+    }
+    return winners;
   }
 }

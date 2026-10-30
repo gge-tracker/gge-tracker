@@ -115,8 +115,16 @@ export class TrackerComponent extends GenericComponent {
   constructor() {
     super();
     this.isInLoading = true;
-    this.resetHeaders();
+    this.updateHeaders();
     this.init();
+  }
+
+  public get showRealm(): boolean {
+    return this.filterByKid.length !== 1;
+  }
+
+  public get showDistance(): boolean {
+    return (this.positionX !== null && this.positionY !== null) || this.nearPlayerName !== null;
   }
 
   public get isServerAllowed(): boolean {
@@ -246,7 +254,7 @@ export class TrackerComponent extends GenericComponent {
     this.localStorage.removeItem('positionX');
     this.localStorage.removeItem('positionY');
     this.activeSortCount = 0;
-    this.resetHeaders();
+    this.updateHeaders();
     this.page = 1;
     void this.getData();
   }
@@ -264,9 +272,7 @@ export class TrackerComponent extends GenericComponent {
     this.nearPlayerName = playerName;
     this.localStorage.setItem('nearPlayerName', playerName);
     this.activeSortCount = 1;
-    if (this.headers.length === 5) {
-      this.headers.splice(2, 0, ['distance', 'Distance', '', true]);
-    }
+    this.updateHeaders();
     this.page = 1;
     void this.getData();
   }
@@ -276,7 +282,7 @@ export class TrackerComponent extends GenericComponent {
     this.localStorage.removeItem('nearPlayerName');
     this.page = 1;
     this.activeSortCount = 0;
-    this.resetHeaders();
+    this.updateHeaders();
     void this.getData();
   }
 
@@ -294,9 +300,7 @@ export class TrackerComponent extends GenericComponent {
     this.localStorage.setItem('positionX', positionX.toString());
     this.localStorage.setItem('positionY', positionY.toString());
     this.activeSortCount = 1;
-    if (this.headers.length === 5) {
-      this.headers.splice(2, 0, ['distance', 'Distance', '', true]);
-    }
+    this.updateHeaders();
     this.page = 1;
     void this.getData();
   }
@@ -387,7 +391,7 @@ export class TrackerComponent extends GenericComponent {
     this.localStorage.removeItem('positionY');
     this.localStorage.removeItem('nearPlayerName');
     this.activeSortCount = 0;
-    this.resetHeaders();
+    this.updateHeaders();
     this.page = 1;
     void this.getData();
   }
@@ -489,11 +493,9 @@ export class TrackerComponent extends GenericComponent {
       if (this.localStorage.getItem('nearPlayerName')) {
         this.nearPlayerName = this.localStorage.getItem('nearPlayerName');
       }
-      if ((this.positionX !== null && this.positionY !== null) || this.nearPlayerName !== null) {
-        this.headers.splice(2, 0, ['distance', 'Distance', '', true]);
-        this.activeSortCount++;
-      }
+      if (this.showDistance) this.activeSortCount++;
       this.filterByKid = this.selectedRealm;
+      this.updateHeaders();
       this.filterByAttackCooldown = this.states[this.selectedState];
       void this.getData();
     } catch {
@@ -654,15 +656,17 @@ export class TrackerComponent extends GenericComponent {
 
   private onRealmChange(): void {
     this.filterByKid = this.selectedRealm;
+    this.updateHeaders();
     this.localStorage.setItem('selectedRealm', JSON.stringify(this.selectedRealm));
     this.page = 1;
     void this.getData();
   }
 
-  private resetHeaders(): void {
+  private updateHeaders(): void {
     this.headers = [
-      ['kid', 'Royaume', '', true],
+      ...(this.showRealm ? [['kid', 'Royaume', '', true] as [string, string, string, boolean]] : []),
       ['position', 'Position', '', true],
+      ...(this.showDistance ? [['distance', 'Distance', '', true] as [string, string, string, boolean]] : []),
       ['state', 'Etat', '', true],
       ['playerName', 'Attaqué par', '', true],
       ['availableDurationSeconds', 'Durée de disponibilité', '', true],

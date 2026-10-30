@@ -402,3 +402,108 @@ h5,
     font-size: 0.95rem;
   }
 }
+
+.events-list-header {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+}
+
+.events-list-title {
+  color: #e6efe9;
+  font-size: 1.45rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.events-filter {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+}
+
+.events-filter-chip {
+  border-radius: 999px;
+  color: #8d988f;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 5px 14px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.events-filter-chip:hover {
+  color: #e6efe9;
+}
+
+.events-filter-chip--on {
+  background: rgba(255, 215, 0, 0.16);
+  color: #ffd76a;
+}
+
+app-event-card {
+  border-radius: 1.5rem;
+  display: block;
+}
+
+app-event-card:focus-visible {
+  outline: 2px solid #ffd76a;
+  outline-offset: 3px;
+}
+
+.event-winner {
+  align-items: center;
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  background: rgba(6, 10, 18, 0.55);
+  border: 1px solid rgba(255, 215, 0, 0.18);
+  border-radius: 10px;
+  color: #e6efe9;
+  display: inline-flex;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  gap: 4px 8px;
+  max-width: 100%;
+  padding: 5px 10px;
+}
+
+.event-winner-crown {
+  color: #ffd76a;
+}
+
+.event-winner-rank {
+  color: #ffd76a;
+  font-weight: 700;
+}
+
+.event-winner .event-winner-flag {
+  height: 12px;
+  width: 18px;
+}
+
+.event-winner-name {
+  font-weight: 700;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-winner-points {
+  color: #c9d3cd;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 575px) {
+  .events-filter {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+}

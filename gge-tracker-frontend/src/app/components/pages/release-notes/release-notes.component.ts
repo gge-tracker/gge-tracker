@@ -1,5 +1,8 @@
-import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { RankingService } from '@ggetracker-services/ranking.service';
+
+import { parseReleaseNote, ReleaseNote } from './release-note-parser';
 
 export enum EnumTypeReleaseNote {
   MAJOR = 'Major',
@@ -9,13 +12,14 @@ export enum EnumTypeReleaseNote {
 
 @Component({
   selector: 'app-release-notes',
-  imports: [CommonModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [DatePipe],
   standalone: true,
   templateUrl: './release-notes.component.html',
   styleUrl: './release-notes.component.css',
 })
 export class ReleaseNotesComponent {
-  public readonly releaseNotes = [
+  public readonly releases: ReleaseNote[] = [
     {
       version: 'v26-10-04',
       type: EnumTypeReleaseNote.MAJOR,
@@ -246,5 +250,11 @@ export class ReleaseNotesComponent {
         '🐞 [Bugfix] Fixed realtime fortress tracker tool for CZ1, RO1, FR1 and IT1',
       ],
     },
-  ];
+  ].map(parseReleaseNote);
+
+  private readonly rankingService = inject(RankingService);
+
+  constructor() {
+    queueMicrotask(() => (this.rankingService.isInLoading = false));
+  }
 }
