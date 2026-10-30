@@ -11,9 +11,10 @@ import {
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
-import { ApiRenamesResponse, ErrorType, Rename, SearchType } from '@ggetracker-interfaces/empire-ranking';
+import { ApiRenames, ApiRenamesResponse, ErrorType, Rename, SearchType } from '@ggetracker-interfaces/empire-ranking';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { TopBarService } from '@ggetracker-services/topbar.service';
+import { RouterLink } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { RenamesSwitcherComponent } from './renames-switcher/renames-switcher.component';
 import { CURRENT } from './rename.token';
@@ -21,7 +22,7 @@ import { CURRENT } from './rename.token';
 @Component({
   selector: 'app-renames',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgClass, SearchFormComponent, TableComponent, FormatNumberPipe, DatePipe, TranslateModule],
+  imports: [NgClass, RouterLink, SearchFormComponent, TableComponent, FormatNumberPipe, DatePipe, TranslateModule],
   standalone: true,
   templateUrl: './renames.component.html',
   styleUrl: './renames.component.css',
@@ -193,6 +194,7 @@ export class RenamesComponent extends GenericComponent implements AfterViewInit,
     return renames.renames.map((movement, index) => {
       return {
         rank: rankFunction(index),
+        subjectLink: this.subjectLinkOf(movement),
         player: movement.player_name,
         alliance: movement.alliance_name,
         date: this.formatMovementDate(movement.date),
@@ -201,6 +203,11 @@ export class RenamesComponent extends GenericComponent implements AfterViewInit,
         oldPlayerName: movement.old_player_name,
       };
     });
+  }
+
+  private subjectLinkOf(rename: ApiRenames): string[] | null {
+    if (this.currentViewType === 'alliances') return rename.alliance_id ? ['/', 'alliance', rename.alliance_id] : null;
+    return rename.player_id ? ['/', 'player', rename.player_id] : null;
   }
 
   /**

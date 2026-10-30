@@ -347,6 +347,8 @@ export class MovementsComponent extends GenericComponent implements OnInit {
       return {
         rank: rankFunction(index),
         player: movement.player_name,
+        playerId: movement.player_id ?? null,
+        allianceId: movement.alliance_id ?? null,
         might: movement.player_might,
         level: movement.player_level,
         legendaryLevel: movement.player_legendary_level,

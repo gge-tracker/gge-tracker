@@ -40,6 +40,7 @@
           [maxPage]="maxPage!"
           [page]="page"
           [search]="search"
+          [iconCaptions]="true"
           [headers]="[
             ['name', 'Nom'],
             ['player_count', 'Nombre de joueurs', '/assets/member-list.png'],
@@ -59,7 +60,7 @@
             </tr>
           }
           @for (alliance of alliances; track alliance.id) {
-            <tr>
+            <tr [class.row-favorite]="follow.isFollowingAlliance(alliance.id)">
               <!-- Rank -->
               <td class="col-rank">
                 <span class="mobile-only">#</span>
@@ -139,16 +140,22 @@
               </td>
               <!-- Actions -->
               <td class="col-actions">
-                <div class="d-flex justify-content-center">
-                  <a [routerLink]="['/', 'map', alliance.id]">
-                    <img src="/assets/icon_world.png" [alt]="'Carte d\'alliance' | translate"
-                      [title]="'Carte d\'alliance' | translate" height="24" class="btn-icon">
+                <div class="action-buttons d-flex justify-content-center">
+                  <a [routerLink]="['/', 'alliance', alliance.id]" class="action-button"
+                    [attr.aria-label]="'Analyser l\'alliance' | translate" [attr.data-tooltip]="'Analyser l\'alliance' | translate">
+                    <img src="/assets/icon_analyze.png" alt="" height="24" class="btn-icon">
                   </a>
-                  <a [routerLink]="['/', 'alliance', alliance.id]">
-                    <img src="/assets/icon_analyze.png" [alt]="'Analyser l\'alliance' | translate"
-                      [title]="'Analyser l\'alliance' | translate" height="24"
-                      class="ms-1 btn-icon">
+                  <a [routerLink]="['/', 'map', alliance.id]" class="action-button"
+                    [attr.aria-label]="'Carte d\'alliance' | translate" [attr.data-tooltip]="'Carte d\'alliance' | translate">
+                    <img src="/assets/icon_world.png" alt="" height="24" class="btn-icon">
                   </a>
+                  <button type="button" class="button-reset d-inline-flex action-button" (click)="follow.toggleAlliance(alliance.id)"
+                    [attr.aria-pressed]="follow.isFollowingAlliance(alliance.id)"
+                    [attr.aria-label]="(follow.isFollowingAlliance(alliance.id) ? 'follow.unfollow' : 'follow.follow') | translate"
+                    [attr.data-tooltip]="(follow.isFollowingAlliance(alliance.id) ? 'follow.unfollow' : 'follow.follow') | translate">
+                    <img [src]="'/assets/icon_friends' + (follow.isFollowingAlliance(alliance.id) ? '2' : '') + '.png'" alt=""
+                      class="btn-icon btn-favorite" [class.is-favorite]="follow.isFollowingAlliance(alliance.id)">
+                  </button>
                 </div>
               </td>
             </tr>

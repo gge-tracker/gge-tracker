@@ -84,6 +84,7 @@ export interface Card {
 
 export interface Rename {
   rank: number;
+  subjectLink: string[] | null;
   might: number | null;
   alliance: string | null;
   oldPlayerName: string;
@@ -156,6 +157,8 @@ export interface StormIsle {
 export interface Movement {
   rank: number;
   player: string;
+  playerId: string | null;
+  allianceId: string | null;
   might: number | null;
   level: number | null;
   legendaryLevel: number | null;
@@ -831,6 +834,8 @@ export interface ApiAllianceResponse extends ApiGenericResponse {
 }
 
 export interface ApiMovement {
+  player_id?: string | null;
+  alliance_id?: string | null;
   alliance_name: string | null;
   created_at: string;
   movement_type: 'add' | 'remove' | 'move';
@@ -847,6 +852,8 @@ export interface ApiMovement {
 
 export interface ApiRenames {
   date: string;
+  player_id?: string | null;
+  alliance_id?: string | null;
   player_name: string;
   player_might: number | null;
   alliance_name: string | null;

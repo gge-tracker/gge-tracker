@@ -273,6 +273,18 @@
   white-space: nowrap;
 }
 
+::ng-deep #table-component a.name-link {
+  color: var(--text);
+  font-weight: 600;
+}
+
+::ng-deep #table-component a.name-link:hover,
+::ng-deep #table-component a.name-link:focus-visible {
+  color: #9ab4ff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 ::ng-deep #table-component a {
   color: #9ab4ff;
   cursor: pointer;
@@ -464,6 +476,36 @@
   object-fit: contain;
   vertical-align: middle;
   width: auto;
+}
+
+.table-custom thead th:has(.header-icon-captioned) {
+  padding-bottom: 8px;
+  padding-top: 8px;
+}
+
+.table-custom thead th .header-icon-captioned {
+  align-items: center;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: 130px;
+  vertical-align: middle;
+}
+
+.table-custom thead th .header-icon-captioned img {
+  height: 22px;
+}
+
+.table-custom thead th .header-caption {
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  display: -webkit-box;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  overflow: hidden;
+  text-transform: uppercase;
 }
 
 .table-custom thead th:has(.lucide-icon) img {

@@ -2377,6 +2377,14 @@ protectedRoutes.get('/storms/meta', routingInstance.getStormMeta.bind(routingIns
  *                       legendary_level:
  *                         type: integer
  *                         description: The legendary level of the player
+ *                       player_id:
+ *                         type: string
+ *                         nullable: true
+ *                         description: The id of the player
+ *                       alliance_id:
+ *                         type: string
+ *                         nullable: true
+ *                         description: The id of the player's current alliance
  *                       alliance_name:
  *                         type: string
  *                         description: The name of the alliance of the player
@@ -2490,6 +2498,14 @@ protectedRoutes.get('/server/movements', routingInstance.getServerMovements.bind
  *                       date:
  *                         type: string
  *                         description: The timestamp when the rename occurred
+ *                       player_id:
+ *                         type: string
+ *                         nullable: true
+ *                         description: The id of the renamed player (players view)
+ *                       alliance_id:
+ *                         type: string
+ *                         nullable: true
+ *                         description: The id of the renamed alliance (alliances view)
  *                       player_name:
  *                         type: string
  *                         description: The name of the player who made the rename

@@ -27,7 +27,7 @@
 
       <div class="flex flex-col justify-between gap-6 mt-2">
         <app-table #table [sort]="sort" [reverse]="reverse" [isInLoading]="isInLoading" [maxPage]="maxPage!"
-          [page]="page" [search]="search" [headers]="playersTableHeader" (sortOutput)="sortPlayers($event)"
+          [page]="page" [search]="search" [iconCaptions]="true" [headers]="playersTableHeader" (sortOutput)="sortPlayers($event)"
           (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
           <app-player-table-content [players]="players" [playersTableHeader]="playersTableHeader"
             [distanceEnabled]="playersTableHeader.length > defaultPlayersTableHeaderSize"

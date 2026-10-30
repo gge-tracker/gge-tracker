@@ -39,7 +39,13 @@
               @if (header[1] && !header[2]) {
                 <span>{{ header[1] | translate }}</span>
               }
-              @if (header[2]) {
+              @if (header[2] && iconCaptions()) {
+                <span class="header-icon-captioned">
+                  <img [src]="header[2]" alt=""
+                    [attr.width]="headerIconSize(header[2])?.width" [attr.height]="headerIconSize(header[2])?.height ?? 41" />
+                  <span class="header-caption">{{ header[1] | translate }}</span>
+                </span>
+              } @else if (header[2]) {
                 <img [src]="header[2]" [title]="header[1] | translate" [alt]="header[1] | translate"
                   [attr.width]="headerIconSize(header[2])?.width" [attr.height]="headerIconSize(header[2])?.height ?? 41" />
               }

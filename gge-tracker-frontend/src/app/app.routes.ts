@@ -161,6 +161,7 @@ export const routes: Routes = [
       },
       {
         path: 'renames',
+        pathMatch: 'full',
         redirectTo: 'renames/players',
       },
       {

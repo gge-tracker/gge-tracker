@@ -14,6 +14,7 @@
       ></app-search-form>
       <div class="flex flex-col justify-between gap-6 mt-2">
         <app-table
+          [iconCaptions]="true"
           [sort]="''"
           [reverse]="false"
           [isInLoading]="isInLoading"
@@ -44,7 +45,14 @@
               <!-- New player name -->
               <td class="col-name new-value">
                 <span class="cell-label">{{ 'Nouveau nom' | translate }}</span>
-                <span class="name">{{ movement.updatedPlayerName }}</span>
+                <span class="new-name">
+                  <i class="fa-solid fa-arrow-right rename-arrow" aria-hidden="true"></i>
+                  @if (movement.subjectLink) {
+                    <a [routerLink]="movement.subjectLink" class="name name-link">{{ movement.updatedPlayerName }}</a>
+                  } @else {
+                    <span class="name">{{ movement.updatedPlayerName }}</span>
+                  }
+                </span>
               </td>
               <!-- Might -->
               @if (currentViewType === 'players') {

@@ -37,6 +37,7 @@ export class TableComponent {
   public isInLoading = input.required<boolean>();
   public isPaginationHidden = input<boolean>();
   public headers = input.required<[string, string, string?, boolean?][]>();
+  public iconCaptions = input<boolean>(false);
   public sortOutput = output<string>();
   public previousPage = output<void>();
   public nextPage = output<void>();
