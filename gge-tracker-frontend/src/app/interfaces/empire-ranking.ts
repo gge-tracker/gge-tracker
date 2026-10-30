@@ -72,16 +72,6 @@ export interface AllianceStatsData {
   player_count: number;
 }
 
-export interface Card {
-  identifier: keyof ApiServerStats;
-  label: string;
-  logo: string;
-  value: string;
-  avg: string;
-  valueCompare: number;
-  link?: string;
-}
-
 export interface Rename {
   rank: number;
   subjectLink: string[] | null;
@@ -1501,6 +1491,8 @@ export interface ApiServerStats {
   event_war_realms_players: number | null;
   created_at: string;
   players_in_peace: number;
+  max_might_player_id?: number | null;
+  max_loot_player_id?: number | null;
   avg_fame: number;
   max_fame: number;
   total_fame: number;

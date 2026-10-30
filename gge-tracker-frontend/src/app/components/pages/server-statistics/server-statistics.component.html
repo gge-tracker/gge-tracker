@@ -1,79 +1,137 @@
-<div *ngIf="!isInLoading" class="container-fluid">
-  <div class="gge-stats-grid">
-    <div class="gge-stat-card" *ngFor="let card of cards; let i = index">
-      <button class="gge-stat-ctl h-100" aria-haspopup="dialog"
-        [attr.data-bs-toggle]="card.identifier !== 'events_participation_rate' ? 'modal' : false"
-        [attr.data-bs-target]="card.identifier !== 'events_participation_rate' ? '#statsModal' : false"
-        (click)="openModal(card.identifier, card)"
-        [disabled]="card.identifier === 'events_participation_rate'">
-        <div class="gge-stat-inner">
-          <div class="gge-stat-top">
-            <div class="gge-stat-iconwrap">
-              <img [src]="card.logo" alt="" class="gge-stat-icon">
-            </div>
-            <div class="gge-stat-meta">
-              <div class="gge-stat-label" [title]="card.label | translate">{{ card.label | translate }}</div>
-              <div class="gge-stat-mini"> {{ serverService.currentServer?.name }} </div>
-            </div>
-            <div class="gge-stat-cta">
-              <span class="gge-stat-chevron" aria-hidden="true">›</span>
-            </div>
-          </div>
-          <div class="gge-stat-mid">
-            <div class="gge-stat-value" aria-live="polite">{{ card.value }}</div>
-            <div class="gge-stat-change"
-              [ngClass]="{ 'gge-up': card.valueCompare > 0, 'gge-down': card.valueCompare < 0 }">
-              {{ card.avg === '0' ? '-' : card.avg + ' ' + ('(depuis 1h)' | translate) }}
-            </div>
-          </div>
-          <div class="gge-stat-bottom">
-            <span class="gge-stat-badge" *ngIf="card.identifier !== 'events_participation_rate'">{{ 'Voir le détail' |
-              translate }}</span>
-          </div>
-        </div>
-        <span class="gge-ripple" aria-hidden="true"></span>
-      </button>
+@if (loaded()) {
+  <div class="stats-page">
+    <header class="stats-header">
+      <h1 class="stats-title">{{ 'Statistiques globales' | translate }}</h1>
+      @if (lastSnapshotAt(); as at) {
+        <p class="stats-subtitle">
+          {{ serverService.currentServer?.name }} ·
+          {{ 'Dernière mise à jour des données' | translate: { date: (at | date: ('Date_1' | translate)) } }}
+        </p>
+      }
+    </header>
+
+    <div class="kpi-strip">
+      @for (metric of keyMetrics(); track metric.key) {
+        <button type="button" class="kpi" [class.kpi--on]="metric.key === selectedMetric()?.key"
+          [attr.aria-pressed]="metric.key === selectedMetric()?.key" (click)="select(metric)">
+          <span class="kpi-label">
+            <img [src]="metric.logo" alt="">
+            {{ metric.label | translate }}
+          </span>
+          <span class="kpi-value" [title]="metric.fullValue">{{ metric.value }}</span>
+          <span class="kpi-change" [ngClass]="'change--' + metric.day.direction">
+            {{ metric.day.text }} <span class="kpi-change-window">{{ 'Dernières 24h' | translate }}</span>
+          </span>
+        </button>
+      }
     </div>
-  </div>
 
-
-
-
-
-  <div class="modal fade" id="statsModal" tabindex="-1" aria-labelledby="statsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="statsModalLabel" *ngIf="selectedCard"><img class="cardIcon"
-              [src]="selectedCard!.logo" [alt]="selectedCard.label | translate"> {{ selectedCard!.label | translate }}
-          </h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"
-            [attr.aria-label]="'Fermer' | translate"></button>
-        </div>
-        <div class="modal-body" *ngIf="charts['statistics']">
-          <ul class="nav nav-tabs pt-3 ps-3">
-            <li class="nav-item">
-              <button class="nav-link" (click)="changeTab('graph')" [ngClass]="selectedTab === 'graph' ? 'active' : ''">
-                <i class="fas fa-chart-line"></i>
-                {{ 'Visualisation' | translate }}</button>
-            </li>
-            <li class="nav-item">
-              <button class="nav-link" (click)="export()">
-                <i class="fas fa-download"></i>
-                {{ 'Exporter les données' | translate }}
-              </button>
-            </li>
-          </ul>
-          <app-charts-wrapper [ngClass]="selectedTab === 'graph' ? 'd-block' : 'd-none'"
-            [series]="charts['statistics'].series" *ngIf="isBrowser" [chart]="charts['statistics'].chart"
-            [xaxis]="charts['statistics'].xaxis" [yaxis]="charts['statistics'].yaxis"
-            [plotOptions]="charts['statistics'].plotOptions" [dataLabels]="charts['statistics'].dataLabels"
-            [grid]="charts['statistics'].grid" [colors]="charts['statistics'].colors" [fill]="charts['statistics'].fill"
-            [legend]="charts['statistics'].legend" [stroke]="charts['statistics'].stroke"
-            [title]="charts['statistics'].title" [tooltip]="charts['statistics'].tooltip"
-            [forecastDataPoints]="charts['statistics'].forecastDataPoints!"
-            [annotations]="charts['statistics'].annotations!"></app-charts-wrapper>
-        </div>
+    <div class="stats-layout">
+      <div class="metrics-panel">
+        <table class="metrics-table">
+          <thead>
+            <tr>
+              <th scope="col" class="col-metric">{{ 'Indicateurs' | translate }}</th>
+              <th scope="col" class="col-num">{{ 'Actuelle' | translate }}</th>
+              <th scope="col" class="col-num col-hour">{{ 'Dernière heure' | translate }}</th>
+              <th scope="col" class="col-num">{{ 'Dernières 24h' | translate }}</th>
+              <th scope="col" class="col-num col-week">{{ 'Derniers 7 jours' | translate }}</th>
+              <th scope="col" class="col-spark"><span class="visually-hidden">{{ 'Evolution' | translate }}</span></th>
+            </tr>
+          </thead>
+          @for (group of groups(); track group.title) {
+            <tbody>
+              <tr class="group-row">
+                <th scope="colgroup" colspan="6">{{ group.title | translate }}</th>
+              </tr>
+              @for (metric of group.metrics; track metric.key) {
+                <tr class="metric-row" [class.metric-row--on]="metric.key === selectedMetric()?.key" tabindex="0"
+                  [attr.aria-selected]="metric.key === selectedMetric()?.key"
+                  (click)="select(metric)" (keydown.enter)="select(metric)" (keydown.space)="select(metric); $event.preventDefault()">
+                  <th scope="row" class="col-metric">
+                    <img [src]="metric.logo" alt="" class="metric-icon">
+                    <span>{{ metric.label | translate }}</span>
+                  </th>
+                  <td class="col-num metric-value" [title]="metric.fullValue">{{ metric.value }}</td>
+                  <td class="col-num col-hour" [ngClass]="'change--' + metric.hour.direction">{{ metric.hour.text }}</td>
+                  <td class="col-num" [ngClass]="'change--' + metric.day.direction">{{ metric.day.text }}</td>
+                  <td class="col-num col-week" [ngClass]="'change--' + metric.week.direction">{{ metric.week.text }}</td>
+                  <td class="col-spark" aria-hidden="true">
+                    @if (metric.sparkline; as spark) {
+                      <span class="spark">
+                        <svg viewBox="0 0 100 100" preserveAspectRatio="none"><path [attr.d]="spark.path" /></svg>
+                        <span class="spark-dot" [style.left.%]="spark.lastX" [style.top.%]="spark.lastY"></span>
+                      </span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          }
+        </table>
       </div>
+
+      <aside class="side-panel">
+        @if (selectedMetric(); as metric) {
+          <section class="chart-panel" #chartPanel>
+            <div class="chart-head">
+              <img [src]="metric.logo" alt="" class="chart-icon">
+              <div class="chart-heading">
+                <h2 class="chart-title">{{ metric.label | translate }}</h2>
+                <p class="chart-figures">
+                  <span class="chart-value" [title]="metric.fullValue">{{ metric.value }}</span>
+                  <span [ngClass]="'change--' + metric.day.direction">{{ metric.day.text }}</span>
+                  <span class="chart-window">{{ 'Dernières 24h' | translate }}</span>
+                </p>
+              </div>
+            </div>
+            <div class="chart-toolbar">
+              <div class="range-switch" role="group">
+                <button type="button" [class.range-on]="range() === 'day'" [attr.aria-pressed]="range() === 'day'"
+                  (click)="range.set('day')">{{ 'Dernières 24h' | translate }}</button>
+                <button type="button" [class.range-on]="range() === 'week'" [attr.aria-pressed]="range() === 'week'"
+                  (click)="range.set('week')">{{ 'Derniers 7 jours' | translate }}</button>
+              </div>
+              <button type="button" class="export-button" (click)="export()"
+                [attr.aria-label]="'Exporter les données' | translate" [title]="'Exporter les données' | translate">
+                <i class="fas fa-download" aria-hidden="true"></i>
+              </button>
+            </div>
+            @if (chart(); as options) {
+              <div class="chart-body">
+                <app-charts-wrapper [series]="options.series" [chart]="options.chart" [xaxis]="options.xaxis"
+                  [yaxis]="options.yaxis" [plotOptions]="options.plotOptions" [dataLabels]="options.dataLabels"
+                  [grid]="options.grid" [colors]="options.colors" [fill]="options.fill" [legend]="options.legend"
+                  [stroke]="options.stroke" [markers]="options.markers!" [title]="options.title"
+                  [tooltip]="options.tooltip"></app-charts-wrapper>
+              </div>
+            }
+          </section>
+        }
+
+        @if (records().length > 0) {
+          <section class="records-panel">
+            <h2 class="panel-title">{{ 'Record' | translate }}</h2>
+            @for (record of records(); track record.label) {
+              <a class="record" [routerLink]="['/', 'player', record.playerId]">
+                <img [src]="record.logo" alt="" class="record-icon">
+                <span class="record-text">
+                  <span class="record-label">{{ record.label | translate }}</span>
+                  <span class="record-player">{{ record.playerName ?? ('Voir le profil du joueur' | translate) }}</span>
+                </span>
+                <span class="record-value">{{ record.value }}</span>
+                <i class="fa-solid fa-chevron-right record-chevron" aria-hidden="true"></i>
+              </a>
+            }
+          </section>
+        }
+
+        <nav class="explore-links">
+          <a [routerLink]="['/', 'players']"><i class="fa-solid fa-ranking-star" aria-hidden="true"></i>{{ 'Classement' | translate }}</a>
+          <a [routerLink]="['/', 'movements']"><i class="fa-solid fa-route" aria-hidden="true"></i>{{ 'Mouvements' | translate }}</a>
+          <a [routerLink]="['/', 'renames']"><i class="fa-solid fa-signature" aria-hidden="true"></i>{{ 'Changements de nom' | translate }}</a>
+        </nav>
+      </aside>
     </div>
   </div>
+}
