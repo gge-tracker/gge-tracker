@@ -29,6 +29,8 @@ Usage: $(basename "$0") <diff|pull|push|channels> [--yes] [--prod]
   channels   per server, every <api> flag where beta and public disagree (exit 1 when any does)
              reads the local file, or the production one with --prod
 
+diff, push and channels also list the enabled servers that lack tracked-since, reset-timezone or reset-time.
+
 Both sides keep the last $BACKUPS_KEPT copies as servers.xml.bak-<date>.
 SERVERS_REMOTE_HOST and SERVERS_REMOTE_FILE are read from the repository .env when not exported.
 SERVERS_FILE overrides the local file, SERVERS_ENV_FILE the .env location.
@@ -143,6 +145,29 @@ sys.exit(1)
 PY
 }
 
+missing_data() {
+  python3 - "$1" "$2" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+REQUIRED = ('tracked-since', 'reset-timezone', 'reset-time')
+path, label = sys.argv[1:3]
+rows = []
+for server in ET.parse(path).getroot().iter('server'):
+    channels = [channel for channel in ('beta', 'public')
+                if (server.findtext(f'api/{channel}/enabled') or '').strip() == 'true']
+    missing = [field for field in REQUIRED if not (server.findtext(field) or '').strip()]
+    if channels and missing:
+        rows.append(((server.findtext('name') or '').strip(), '+'.join(channels), ', '.join(missing)))
+
+if rows:
+    print(f'enabled servers with missing data ({label}):')
+    print(f'  {"server":<14} {"enabled on":<12} missing')
+    for name, channels, missing in rows:
+        print(f'  {name:<14} {channels:<12} {missing}')
+PY
+}
+
 confirm() {
   $ASSUME_YES && return 0
   read -r -p "$1 [y/N] " answer
@@ -155,6 +180,7 @@ prune_local_backups() {
 
 run_diff() {
   fetch_remote
+  missing_data "$LOCAL_FILE" local
   semantic_diff "$REMOTE_COPY" "$LOCAL_FILE" prod local
 }
 
@@ -185,6 +211,7 @@ run_push() {
     return 0
   fi
   channel_diff "$LOCAL_FILE" local || true
+  missing_data "$LOCAL_FILE" local
   confirm "Replace the production file with this one?" || exit 1
 
   local incoming="$REMOTE_FILE.push-$STAMP"
@@ -216,8 +243,10 @@ run_channels() {
   if $FROM_PROD; then
     require_remote
     fetch_remote
+    missing_data "$REMOTE_COPY" prod
     channel_diff "$REMOTE_COPY" prod
   else
+    missing_data "$LOCAL_FILE" local
     channel_diff "$LOCAL_FILE" local
   fi
 }
