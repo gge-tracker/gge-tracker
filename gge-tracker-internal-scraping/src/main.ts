@@ -2899,7 +2899,7 @@ export class GenericFetchAndSaveBackend {
           isle_id       = EXCLUDED.isle_id,
           victory_count = EXCLUDED.victory_count,
           is_visible    = EXCLUDED.is_visible,
-          available_at  = EXCLUDED.available_at,
+          ${this.stormAvailabilityAssignments('storm_forts', 'EXCLUDED.available_at <= NOW()', 'storm_forts.available_at <= storm_forts.updated_at')},
           updated_at    = NOW()`,
         values,
       );
@@ -2941,11 +2941,28 @@ export class GenericFetchAndSaveBackend {
           isle_id      = EXCLUDED.isle_id,
           occupier_id  = EXCLUDED.occupier_id,
           state        = EXCLUDED.state,
-          available_at = EXCLUDED.available_at,
+          ${this.stormAvailabilityAssignments('storm_isles', `EXCLUDED.state = ${StormIsleState.FREE}`, `storm_isles.state = ${StormIsleState.FREE}`)},
           updated_at   = NOW()`,
         values,
       );
     }
+  }
+
+  private stormAvailabilityAssignments(table: string, isAvailable: string, wasAvailable: string): string {
+    return `available_at = CASE
+            WHEN ${isAvailable} AND ${table}.available_at <= EXCLUDED.available_at THEN ${table}.available_at
+            ELSE EXCLUDED.available_at
+          END,
+          available_since_observed = CASE
+            WHEN NOT (${isAvailable}) THEN FALSE
+            WHEN ${wasAvailable} THEN ${table}.available_since_observed
+            ELSE TRUE
+          END,
+          last_available_seconds = CASE
+            WHEN NOT (${isAvailable}) AND ${wasAvailable} AND ${table}.available_since_observed
+              THEN ROUND(EXTRACT(EPOCH FROM ${table}.updated_at + (NOW() - ${table}.updated_at) / 2 - ${table}.available_at))::integer
+            ELSE ${table}.last_available_seconds
+          END`;
   }
 
   private stormRunLevel(season: StormSeasonReport): 'info' | 'warn' | 'error' {

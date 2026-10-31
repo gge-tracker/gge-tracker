@@ -2102,7 +2102,20 @@ protectedRoutes.get('/dungeons/meta', routingInstance.getDungeonsMeta.bind(routi
  *                         description: Whether the fort is currently on the map
  *                       available_at:
  *                         type: string
- *                         description: When the fort is attackable, or when it reappears if hidden
+ *                         description: >
+ *                           When the fort is attackable, or when it reappears if hidden. Once attackable,
+ *                           the moment it became attackable
+ *                       available_since_observed:
+ *                         type: boolean
+ *                         description: >
+ *                           Whether the scan saw the fort become attackable. When false, available_at is
+ *                           only the first time it was seen attackable
+ *                       last_available_seconds:
+ *                         type: integer
+ *                         nullable: true
+ *                         description: >
+ *                           How long the fort stayed attackable the last time before being attacked,
+ *                           measured to within one scan (about 2 minutes). Null until observed
  *                       updated_at:
  *                         type: string
  *                         description: When this row was last refreshed by the scan
@@ -2243,8 +2256,19 @@ protectedRoutes.get('/storms/forts', routingInstance.getStormForts.bind(routingI
  *                       available_at:
  *                         type: string
  *                         description: >
- *                           When the isle becomes capturable: now if free, when it sinks if
- *                           occupied, or when it reappears if it has been harvested
+ *                           When the isle becomes capturable: when it became free if free, when it
+ *                           sinks if occupied, or when it reappears if it has been harvested
+ *                       available_since_observed:
+ *                         type: boolean
+ *                         description: >
+ *                           Whether the scan saw the isle become free. When false, available_at is only
+ *                           the first time it was seen free
+ *                       last_available_seconds:
+ *                         type: integer
+ *                         nullable: true
+ *                         description: >
+ *                           How long the isle stayed free the last time before being occupied, measured
+ *                           to within one scan (about 2 minutes). Null until observed
  *                       updated_at:
  *                         type: string
  *                         description: When this row was last refreshed by the scan

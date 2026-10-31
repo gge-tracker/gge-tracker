@@ -119,6 +119,10 @@ export interface StormFort {
   attacksLeft: number;
   isVisible: boolean;
   availableAt: string;
+  availableSinceObserved: boolean;
+  lastAvailableSeconds: number | null;
+  availabilityAnimDelay?: string;
+  availabilityExceeded?: boolean;
   updatedAt: string;
   distance?: number | null;
   effectiveCooldownUntil: string;
@@ -139,6 +143,10 @@ export interface StormIsle {
   occupierLegendaryLevel?: number | null;
   occupierAllianceName?: string | null;
   availableAt: string;
+  availableSinceObserved: boolean;
+  lastAvailableSeconds: number | null;
+  availabilityAnimDelay?: string;
+  availabilityExceeded?: boolean;
   updatedAt: string;
   distance?: number | null;
   effectiveCooldownUntil: string;
@@ -733,6 +741,8 @@ export interface ApiStormFort {
   attacks_left: number;
   is_visible: boolean;
   available_at: string;
+  available_since_observed: boolean;
+  last_available_seconds: number | null;
   updated_at: string;
   distance?: number | null;
 }
@@ -751,6 +761,8 @@ export interface ApiStormIsle {
   occupier_legendary_level: number | null;
   occupier_alliance_name: string | null;
   available_at: string;
+  available_since_observed: boolean;
+  last_available_seconds: number | null;
   updated_at: string;
   distance?: number | null;
 }

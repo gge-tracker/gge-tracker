@@ -9,7 +9,9 @@ import { TableComponent } from '@ggetracker-components/table/table.component';
 import { RealmMapLocateRequest } from '@ggetracker-components/realm-map/realm-map.models';
 import { TrackerView, ViewSwitchComponent } from '@ggetracker-components/view-switch/view-switch.component';
 import {
+  ApiStormFort,
   ApiStormFortsResponse,
+  ApiStormIsle,
   ApiStormIslesResponse,
   ApiStormMetaResponse,
   ErrorType,
@@ -32,6 +34,7 @@ import {
   StormResource,
 } from '../../../definitions/storm-isles.definition';
 import { CooldownPipe } from '@ggetracker-pipes/cooldown.pipe';
+import { DurationPipe } from '@ggetracker-pipes/duration.pipe';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
 import { ServerService } from '@ggetracker-services/server.service';
 import { TranslateModule } from '@ngx-translate/core';
@@ -60,6 +63,7 @@ interface StormIsleRow extends StormIsle {
     SelectComponent,
     TranslateModule,
     CooldownPipe,
+    DurationPipe,
     FormsModule,
     DatePipe,
     DecimalPipe,
@@ -623,6 +627,9 @@ export class StormTrackerComponent extends GenericComponent implements OnInit {
       attacksLeft: fort.attacks_left,
       isVisible: fort.is_visible,
       availableAt: fort.available_at,
+      availableSinceObserved: fort.available_since_observed,
+      lastAvailableSeconds: fort.last_available_seconds,
+      ...this.availabilityProgress(fort),
       updatedAt: fort.updated_at,
       distance: fort.distance,
       effectiveCooldownUntil: fort.available_at,
@@ -648,12 +655,28 @@ export class StormTrackerComponent extends GenericComponent implements OnInit {
       occupierLegendaryLevel: isle.occupier_legendary_level,
       occupierAllianceName: isle.occupier_alliance_name,
       availableAt: isle.available_at,
+      availableSinceObserved: isle.available_since_observed,
+      lastAvailableSeconds: isle.last_available_seconds,
+      ...this.availabilityProgress(isle),
       updatedAt: isle.updated_at,
       distance: isle.distance,
       effectiveCooldownUntil: isle.available_at,
       definition: getStormIsleDefinition(isle.isle_id),
       image: getStormIsleImage(isle.isle_id),
     }));
+  }
+
+  private availabilityProgress(item: ApiStormFort | ApiStormIsle): {
+    availabilityAnimDelay?: string;
+    availabilityExceeded?: boolean;
+  } {
+    const lastAvailableSeconds = item.last_available_seconds;
+    const elapsedSeconds = (Date.now() - new Date(item.available_at).getTime()) / 1000;
+    if (!lastAvailableSeconds || !item.available_since_observed || elapsedSeconds < 0) return {};
+    return {
+      availabilityAnimDelay: `-${Math.min(lastAvailableSeconds, elapsedSeconds)}s`,
+      availabilityExceeded: elapsedSeconds >= lastAvailableSeconds,
+    };
   }
 
   public get activeFilterCount(): number {
@@ -669,6 +692,10 @@ export class StormTrackerComponent extends GenericComponent implements OnInit {
     return active.filter(Boolean).length;
   }
 
+  public get hasDistanceColumn(): boolean {
+    return this.headers.some(([key]) => key === 'distance');
+  }
+
   public get isDistanceShown(): boolean {
     return (this.positionX !== null && this.positionY !== null) || this.nearPlayerName !== null;
   }
@@ -680,6 +707,7 @@ export class StormTrackerComponent extends GenericComponent implements OnInit {
             ['fort', 'Forteresse', '', true],
             ['position', 'Position', '', true],
             ['state', 'Etat', '', true],
+            ['lastAvailableSeconds', 'Durée de disponibilité', '', true],
             ['attacksLeft', 'Attaques restantes', '', true],
             ['units', 'Défenseurs', '', true],
           ]
@@ -687,6 +715,7 @@ export class StormTrackerComponent extends GenericComponent implements OnInit {
             ['isle', 'Île', '', true],
             ['position', 'Position', '', true],
             ['state', 'Etat', '', true],
+            ['lastAvailableSeconds', 'Durée de disponibilité', '', true],
             ['occupierName', 'Occupant', '', true],
             ['loot', 'Butin', '', true],
           ];

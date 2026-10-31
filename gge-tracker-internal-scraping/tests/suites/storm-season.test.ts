@@ -21,6 +21,8 @@ const SEASON_CHECK = /INSERT INTO storm_meta \(id, season_checked_at/;
 const PRUNE_FORTS = /DELETE FROM storm_forts WHERE updated_at/;
 const PRUNE_ISLES = /DELETE FROM storm_isles WHERE updated_at/;
 const SCAN_STAMP = /UPDATE storm_meta SET scan_radius/;
+const UPSERT_FORTS = /INSERT INTO storm_forts/;
+const UPSERT_ISLES = /INSERT INTO storm_isles/;
 
 const OWN_ISLE = { x: 619, y: 609, objectId: 515 };
 const BACKOFF_MINUTES = 15;
@@ -375,6 +377,46 @@ describe('storm season', () => {
         await sandbox.call('updateStormMap');
 
         assert.equal(sandbox.db.one(SCAN_STAMP).params[0], 151);
+      });
+    });
+  });
+
+  describe('tracking how long an object stays available', () => {
+    it('keeps the moment a fort became attackable, and judges it on its timer', async () => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.db.when(STORM_STATE, stormState(sandbox.now));
+        servesOneFort(sandbox);
+
+        await sandbox.call('updateStormMap');
+
+        const sql = sandbox.db.one(UPSERT_FORTS).sql;
+        assert.match(
+          sql,
+          /available_at = CASE WHEN EXCLUDED\.available_at <= NOW\(\) AND storm_forts\.available_at <= EXCLUDED\.available_at THEN storm_forts\.available_at/,
+        );
+        assert.match(
+          sql,
+          /WHEN storm_forts\.available_at <= storm_forts\.updated_at THEN storm_forts\.available_since_observed ELSE TRUE/,
+        );
+      });
+    });
+
+    it('judges an isle on its state, and measures its free time only when it was seen becoming free', async () => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.db.when(STORM_STATE, stormState(sandbox.now));
+        servesOneFort(sandbox);
+
+        await sandbox.call('updateStormMap');
+
+        const sql = sandbox.db.one(UPSERT_ISLES).sql;
+        assert.match(
+          sql,
+          /available_at = CASE WHEN EXCLUDED\.state = 0 AND storm_isles\.available_at <= EXCLUDED\.available_at/,
+        );
+        assert.match(
+          sql,
+          /last_available_seconds = CASE WHEN NOT \(EXCLUDED\.state = 0\) AND storm_isles\.state = 0 AND storm_isles\.available_since_observed THEN/,
+        );
       });
     });
   });

@@ -164,7 +164,7 @@
                     </button>
                   </span>
                 </td>
-                @if (isDistanceShown && headers.length > 5) {
+                @if (hasDistanceColumn) {
                 <td class="col-stat"><span class="cell-label">{{ 'Distance' | translate }}</span>{{ fort.distance !== null && fort.distance !== undefined ? fort.distance + 'm' : '?' }}</td>
                 }
                 <td class="col-state">
@@ -180,6 +180,24 @@
                   } @else {
                     <i class="fa-solid fa-chess-rook special-fa me-1"></i>
                     <span class="storm-available">{{ 'Attaquable' | translate }}</span>
+                    <div class="mono small">{{ fort | cooldown: 'elapsed' }}</div>
+                  @if (fort.availabilityAnimDelay) {
+                  <div class="storm-avail-progress">
+                    <div class="storm-avail-fill"
+                      [class.storm-avail-fill--exceeded]="fort.availabilityExceeded"
+                      [style.animation-duration]="fort.lastAvailableSeconds + 's'"
+                      [style.animation-delay]="fort.availabilityAnimDelay">
+                    </div>
+                  </div>
+                  }
+                  }
+                </td>
+                <td class="col-stat">
+                  <span class="cell-label">{{ 'Durée de disponibilité' | translate }}</span>
+                  @if (fort.lastAvailableSeconds) {
+                  <span>{{ fort.lastAvailableSeconds | duration }}</span>
+                  } @else {
+                  -
                   }
                 </td>
                 <td class="col-stat">
@@ -274,6 +292,25 @@
                   </span>
                   @if (isle.state !== StormIsleState.FREE && isInCooldown(isle)) {
                   <div class="mono small">{{ isle | cooldown }}</div>
+                  } @else if (isle.state === StormIsleState.FREE) {
+                  <div class="mono small">{{ isle | cooldown: 'elapsed' }}</div>
+                  @if (isle.availabilityAnimDelay) {
+                  <div class="storm-avail-progress">
+                    <div class="storm-avail-fill"
+                      [class.storm-avail-fill--exceeded]="isle.availabilityExceeded"
+                      [style.animation-duration]="isle.lastAvailableSeconds + 's'"
+                      [style.animation-delay]="isle.availabilityAnimDelay">
+                    </div>
+                  </div>
+                  }
+                  }
+                </td>
+                <td class="col-stat">
+                  <span class="cell-label">{{ 'Durée de disponibilité' | translate }}</span>
+                  @if (isle.lastAvailableSeconds) {
+                  <span>{{ isle.lastAvailableSeconds | duration }}</span>
+                  } @else {
+                  -
                   }
                 </td>
                 <td class="col-stat">
