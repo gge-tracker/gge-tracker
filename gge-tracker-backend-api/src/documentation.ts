@@ -26,7 +26,7 @@ export const options = {
                 **Link back.** Every entity has a stable page: \`https://gge-tracker.com/player/{playerId}\` and
                 \`https://gge-tracker.com/alliance/{allianceId}\`. Add \`?utm_source=<your-integration>\` to the links
                 you render, so the visits you send can be counted and credited.
-                `,
+                `.replaceAll(/^ +/gm, ''),
       license: {
         name: 'MIT',
         url: 'https://opensource.org/licenses/MIT',

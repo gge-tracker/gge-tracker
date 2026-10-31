@@ -557,13 +557,13 @@ th {
 
 .modal-body .storm-chip {
   --chip-bg: rgba(0, 0, 0, 0.05);
-  --chip-fg: #1e293b;
+  --chip-fg: #bbc7da;
   border-color: rgba(0, 0, 0, 0.1);
 }
 
 .modal-body .storm-chip:hover {
   --chip-bg: rgba(0, 0, 0, 0.1);
-  --chip-fg: #0f172a;
+  --chip-fg: #355c99;
 }
 
 .modal-body .storm-chip--on {
