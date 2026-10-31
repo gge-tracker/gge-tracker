@@ -2,6 +2,10 @@ import { DatePipe, NgClass } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import {
+  GlobalRangeField,
+  GlobalRankingFiltersComponent,
+} from '@ggetracker-components/global-ranking-filters/global-ranking-filters.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
 import { ApiGlobalPlayer, ErrorType } from '@ggetracker-interfaces/empire-ranking';
@@ -15,17 +19,57 @@ type GlobalGame = 'all' | 'ep' | 'e4k';
   selector: 'app-global-players',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgClass, DatePipe, RouterLink, TranslateModule, FormatNumberPipe, SearchFormComponent, TableComponent],
+  imports: [
+    NgClass,
+    DatePipe,
+    RouterLink,
+    TranslateModule,
+    FormatNumberPipe,
+    SearchFormComponent,
+    TableComponent,
+    GlobalRankingFiltersComponent,
+  ],
   templateUrl: './global-players.component.html',
   styleUrl: './global-players.component.css',
 })
 export class GlobalPlayersComponent extends GenericComponent implements OnInit {
   private static readonly DEFAULT_SORT = 'might_current';
   private static readonly PAGE_SIZE = 12;
-  public readonly games: { value: GlobalGame; label: string }[] = [
+  public readonly games: { value: GlobalGame; label: string; icon?: string }[] = [
     { value: 'all', label: 'Tous' },
-    { value: 'ep', label: 'Empire' },
-    { value: 'e4k', label: 'E4K' },
+    { value: 'ep', label: 'Empire', icon: 'fa-solid fa-desktop' },
+    { value: 'e4k', label: 'E4K', icon: 'fa-solid fa-mobile-screen-button' },
+  ];
+  public readonly filterFields: GlobalRangeField[] = [
+    {
+      icon: '/assets/pp1.png',
+      label: 'Puissance',
+      title: 'Filtrer par point de puissance',
+      min: { key: 'minMight', placeholder: 'Puissance min' },
+      max: { key: 'maxMight', placeholder: 'Puissance max' },
+    },
+    {
+      icon: '/assets/loot.png',
+      label: 'Pillage',
+      title: 'Filtrer par point de pillage',
+      min: { key: 'minLoot', placeholder: 'Pillage min.' },
+      max: { key: 'maxLoot', placeholder: 'Pillage max.' },
+    },
+    {
+      icon: '/assets/glory.png',
+      label: 'Points de gloire',
+      title: 'Filtrer par gloire',
+      min: { key: 'minFame', placeholder: 'Gloire min.' },
+      max: { key: 'maxFame', placeholder: 'Gloire max.' },
+    },
+    {
+      icon: '/assets/lvl.png',
+      label: 'Niveau',
+      title: 'Filtrer par niveau',
+      min: { key: 'minLevel', placeholder: 'Niveau min' },
+      max: { key: 'maxLevel', placeholder: 'Niveau max' },
+      freeText: true,
+    },
   ];
   public readonly headers: [string, string, string?, boolean?][] = [
     ['player_name', 'Pseudonyme'],
@@ -43,6 +87,8 @@ export class GlobalPlayersComponent extends GenericComponent implements OnInit {
   public playerCount = 0;
   public search = '';
   public game: GlobalGame = 'all';
+  public rangeFilters: Record<string, string> = {};
+  public filterBadge: Record<string, string | boolean> = { isFiltered: true };
   public sort = GlobalPlayersComponent.DEFAULT_SORT;
   public reverse = true;
   public readonly serverService = inject(ServerService);
@@ -58,6 +104,7 @@ export class GlobalPlayersComponent extends GenericComponent implements OnInit {
       this.sort = parameters['sort'];
     }
     this.reverse = parameters['order'] !== 'asc';
+    this.setRangeFilters(this.readRangeFilters(parameters));
     void this.load();
   }
 
@@ -70,6 +117,52 @@ export class GlobalPlayersComponent extends GenericComponent implements OnInit {
     this.game = game;
     this.page = 1;
     await this.load();
+  }
+
+  public async applyRangeFilters(filters: Record<string, string>): Promise<void> {
+    if (this.isInLoading) return;
+    this.setRangeFilters(filters);
+    this.page = 1;
+    await this.load();
+  }
+
+  public exportData(): void {
+    const headers = [
+      'Rank',
+      'Player Name',
+      'Server',
+      'Alliance Name',
+      'Level',
+      'Current Might',
+      'Highest Might',
+      'Current Loot',
+      'Highest Loot',
+      'Current Glory',
+      'Highest Glory',
+      'Current Honor',
+      'Highest Honor',
+    ];
+    const rows = this.players.map((player, index) => [
+      this.rankOf(index),
+      this.utilitiesService.escapeCsv(player.player_name),
+      player.server,
+      this.utilitiesService.escapeCsv(player.alliance_name ?? ''),
+      this.utilitiesService.constructPlayerLevel(player.level ?? 0, player.legendary_level ?? 0),
+      player.might_current,
+      player.might_all_time,
+      player.loot_current,
+      player.loot_all_time,
+      player.current_fame,
+      player.highest_fame,
+      Number(player.honor ?? 0),
+      Number(player.max_honor ?? 0),
+    ]);
+    void this.utilitiesService.exportDataXlsx(
+      'Players',
+      headers,
+      rows,
+      `players_global_${this.game}_page_${this.page}_${new Date().toISOString()}.xlsx`,
+    );
   }
 
   public async searchPlayer(playerName: string): Promise<void> {
@@ -125,16 +218,49 @@ export class GlobalPlayersComponent extends GenericComponent implements OnInit {
         game: this.game,
         sort: this.sort,
         order: this.reverse ? 'desc' : 'asc',
+        ...this.rangeFilterParams(),
       },
-      { page: 1, name: '', game: 'all', sort: GlobalPlayersComponent.DEFAULT_SORT, order: 'desc' },
+      {
+        page: 1,
+        name: '',
+        game: 'all',
+        sort: GlobalPlayersComponent.DEFAULT_SORT,
+        order: 'desc',
+        ...this.rangeFilterDefaults(),
+      },
     );
     this.cdr.detectChanges();
   }
 
   private filters(): Record<string, string> {
-    const filters: Record<string, string> = {};
+    const filters: Record<string, string> = { ...this.rangeFilters };
     if (this.search) filters['playerName'] = this.search;
     if (this.game !== 'all') filters['game'] = this.game;
     return filters;
+  }
+
+  private setRangeFilters(filters: Record<string, string>): void {
+    this.rangeFilters = filters;
+    this.filterBadge = { ...filters, isFiltered: true };
+  }
+
+  private readRangeFilters(parameters: Record<string, string>): Record<string, string> {
+    const filters: Record<string, string> = {};
+    for (const key of this.rangeFilterKeys()) {
+      if (parameters[key]) filters[key] = String(parameters[key]);
+    }
+    return filters;
+  }
+
+  private rangeFilterParams(): Record<string, string> {
+    return Object.fromEntries(this.rangeFilterKeys().map((key) => [key, this.rangeFilters[key] ?? '']));
+  }
+
+  private rangeFilterDefaults(): Record<string, string> {
+    return Object.fromEntries(this.rangeFilterKeys().map((key) => [key, '']));
+  }
+
+  private rangeFilterKeys(): string[] {
+    return this.filterFields.flatMap((field) => [field.min.key, field.max.key]);
   }
 }

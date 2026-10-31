@@ -11,6 +11,7 @@ import { Filter, LucideAngularModule } from 'lucide-angular';
 })
 export class FilterComponent {
   public countFilterActivated = input.required<number>();
+  public modalId = input<string>('filtersModal');
 
   public readonly Funnel = Filter;
 }

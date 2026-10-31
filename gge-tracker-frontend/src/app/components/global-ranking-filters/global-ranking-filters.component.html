@@ -1,0 +1,42 @@
+<div class="modal fade" [id]="modalId()" tabindex="-1" [attr.aria-labelledby]="modalId() + 'Label'" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" [id]="modalId() + 'Label'">
+          <i class="fa-solid fa-filter"></i>&nbsp;{{ 'Filtrer les résultats' | translate }}
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" [attr.aria-label]="'Fermer' | translate"></button>
+      </div>
+      <div class="modal-body">
+        <div class="filters-grid">
+          @for (field of fields(); track field.min.key) {
+            <app-modal-form-group class="compact">
+              <span field prefix>
+                <img [src]="field.icon" [attr.alt]="field.label | translate" [title]="field.title | translate">
+              </span>
+              <input field type="text" inputmode="text" [value]="display[field.min.key] ?? ''"
+                (focus)="onFocus(field.min.key)" (blur)="onBlur(field.min.key, field)"
+                (input)="onInput(field.min.key, field, $event)"
+                [placeholder]="field.min.placeholder | translate" [attr.aria-label]="field.min.placeholder | translate">
+              <input field type="text" inputmode="text" [value]="display[field.max.key] ?? ''"
+                (focus)="onFocus(field.max.key)" (blur)="onBlur(field.max.key, field)"
+                (input)="onInput(field.max.key, field, $event)"
+                [placeholder]="field.max.placeholder | translate" [attr.aria-label]="field.max.placeholder | translate">
+            </app-modal-form-group>
+          }
+        </div>
+        <hr class="my-4">
+        <div class="text-center">
+          <div class="btn-group">
+            <button type="button" class="gge-btn success" data-bs-dismiss="modal" (click)="submit()">
+              <i class="fa-solid fa-check"></i>&nbsp;<span>{{ 'Appliquer les filtres' | translate }}</span>
+            </button>
+            <button type="button" class="gge-btn reset" [disabled]="!hasValues()" (click)="reset()">
+              <i class="fa-solid fa-rotate-left"></i>&nbsp;<span>{{ 'Réinitialiser les filtres' | translate }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -40,6 +40,7 @@ export class SearchFormComponent implements OnChanges, OnInit {
   public searchPlayer = output<string>();
   public searchAlliance = output<string>();
   public exportDataEnabled = input<boolean>(false);
+  public filtersModalId = input<string>('filtersModal');
   public exportData = output<void>();
   public filterActive = false;
   public defaultSearch = input<string>();

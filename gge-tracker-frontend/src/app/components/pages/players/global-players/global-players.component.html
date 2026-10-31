@@ -1,13 +1,17 @@
 <div [ngClass]="{ 'loading': isInLoading }">
-  <app-search-form [formFilters]="null" [isInLoading]="isInLoading" [inputTip]="'Rechercher un joueur' | translate"
+  <app-search-form [formFilters]="filterBadge" filtersModalId="globalPlayersFiltersModal" [isInLoading]="isInLoading" [inputTip]="'Rechercher un joueur' | translate"
     [defaultSearch]="search" [searchTypes]="{ player: true, alliance: false }"
-    (searchPlayer)="searchPlayer($event)"></app-search-form>
+    (searchPlayer)="searchPlayer($event)"
+    [exportDataEnabled]="true" (exportData)="exportData()"></app-search-form>
 
   <div class="global-toolbar mt-2">
     <div class="game-filter" role="group">
       @for (option of games; track option.value) {
         <button type="button" class="game-chip" [class.game-chip--on]="game === option.value"
           [attr.aria-pressed]="game === option.value" [disabled]="isInLoading" (click)="selectGame(option.value)">
+          @if (option.icon) {
+            <i [class]="option.icon" aria-hidden="true"></i>
+          }
           {{ option.label | translate }}
         </button>
       }
@@ -115,3 +119,6 @@
     </app-table>
   </div>
 </div>
+
+<app-global-ranking-filters modalId="globalPlayersFiltersModal" [fields]="filterFields" [applied]="rangeFilters"
+  (apply)="applyRangeFilters($event)"></app-global-ranking-filters>
