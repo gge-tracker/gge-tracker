@@ -1,7 +1,7 @@
 <app-layered-scene scene="lists" class="compare-scene" />
 <div class="compare-page">
   <header class="compare-hero">
-    <img class="compare-wordmark" src="/assets/brand/wordmark.webp" alt="GGE Tracker" width="525" height="89">
+    <app-brand-wordmark class="compare-wordmark" />
     <h1 class="compare-title">{{ 'Comparer' | translate }}</h1>
     <nav class="compare-subjects" [attr.aria-label]="'Comparer' | translate">
       @for (tab of subjectTabs; track tab.key) {

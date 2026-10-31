@@ -1,4 +1,5 @@
 import { Component, computed, input } from '@angular/core';
+import { BrandWordmarkComponent } from '@ggetracker-components/brand-wordmark/brand-wordmark.component';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { formatThousands } from '@ggetracker-services/text-format.utilities';
 import { TranslateModule } from '@ngx-translate/core';
@@ -8,7 +9,7 @@ import { CompareMetricRow, CompareSide, scoreRows } from '../compare-metrics';
 @Component({
   selector: 'app-compare-tape',
   standalone: true,
-  imports: [TranslateModule],
+  imports: [TranslateModule, BrandWordmarkComponent],
   templateUrl: './compare-tape.component.html',
   styleUrl: './compare-tape.component.css',
 })

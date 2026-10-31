@@ -1,0 +1,27 @@
+:host {
+  -webkit-text-stroke: 0.09em #3b2205;
+  color: #3b2205;
+  display: inline-block;
+  font-family: 'New Rocker', serif;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  line-height: 1.15;
+  position: relative;
+  text-shadow: 0 0.055em 0 #1d0f02, 0 0.14em 0.29em rgba(0, 0, 0, 0.85);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+:host::after {
+  -webkit-background-clip: text;
+  -webkit-text-stroke: 0;
+  background-clip: text;
+  background-image: linear-gradient(180deg, #fffbe0 0%, #ffe08a 25%, #e4ad40 47%, #9a6114 52%, #c98a26 60%, #f6cf6a 82%, #fff3c0 100%);
+  color: transparent;
+  content: 'GGE Tracker';
+  content: 'GGE Tracker' / '';
+  filter: drop-shadow(0 -1px 0 rgba(255, 250, 220, 0.6));
+  inset: 0;
+  position: absolute;
+  text-shadow: none;
+}

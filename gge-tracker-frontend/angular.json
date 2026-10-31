@@ -36,6 +36,7 @@
               "src/app/stylesheets/inter.css",
               "node_modules/@fontsource/outfit/400.css",
               "node_modules/@fontsource/outfit/600.css",
+              "node_modules/@fontsource/new-rocker/latin-400.css",
               "src/app/stylesheets/font-faces.css",
               "src/app/stylesheets/styles.css",
               "src/app/stylesheets/website-beta-preview.css",

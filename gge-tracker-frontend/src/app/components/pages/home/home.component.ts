@@ -11,6 +11,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { BrandWordmarkComponent } from '@ggetracker-components/brand-wordmark/brand-wordmark.component';
 import { LayeredSceneComponent } from '@ggetracker-components/layered-scene/layered-scene.component';
 import { HOME_ROUTE, SITE_NAVIGATION, SiteNavigationSection } from '@ggetracker-components/sidebar/site-navigation';
 import {
@@ -142,7 +143,7 @@ const EXPLORE_SECTIONS: SiteNavigationSection[] = [
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [FormsModule, RouterLink, TranslateModule, DecimalPipe, LayeredSceneComponent],
+  imports: [FormsModule, RouterLink, TranslateModule, DecimalPipe, LayeredSceneComponent, BrandWordmarkComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

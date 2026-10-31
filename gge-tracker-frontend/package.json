@@ -35,6 +35,7 @@
     "@createjs/easeljs": "^2.0.0-beta.4",
     "@createjs/tweenjs": "^2.0.0-beta.4",
     "@fontsource-variable/inter": "5.3.0",
+    "@fontsource/new-rocker": "^5.3.0",
     "@fontsource/outfit": "^5.3.0",
     "@fortawesome/fontawesome-free": "^6.7.1",
     "@ng-select/ng-select": "^20.0.1",
