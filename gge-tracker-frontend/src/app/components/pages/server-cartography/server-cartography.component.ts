@@ -1020,7 +1020,14 @@ export class ServerCartographyComponent extends GenericComponent implements Afte
         [WorldSizeDimensions.Y.MIN - margin, WorldSizeDimensions.X.MIN - margin],
         [WorldSizeDimensions.Y.MAX + margin, WorldSizeDimensions.X.MAX + margin],
       ],
+      zoomControl: false,
     });
+    this.L.control
+      .zoom({
+        zoomInTitle: this.translateService.instant('Zoom avant'),
+        zoomOutTitle: this.translateService.instant('Zoom arrière'),
+      })
+      .addTo(this.map);
     const center = WorldSizeDimensions.X.MAX / 2;
     this.map.setView([center, center], -1);
     this.fitWorld();

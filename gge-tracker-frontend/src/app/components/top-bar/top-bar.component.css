@@ -529,7 +529,7 @@ a:visited {
   padding: 0 1.5rem;
   position: sticky;
   top: 0;
-  z-index: 30;
+  z-index: 800;
   max-width: 100%;
 }
 

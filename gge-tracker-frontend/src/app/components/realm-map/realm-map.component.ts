@@ -15,6 +15,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
+import { TranslateService } from '@ngx-translate/core';
 import type * as Leaflet from 'leaflet';
 import {
   RealmMapExtent,
@@ -60,6 +61,7 @@ export class RealmMapComponent implements AfterViewInit, OnDestroy {
 
   private readonly host = viewChild.required<ElementRef<HTMLDivElement>>('mapHost');
   private readonly zone = inject(NgZone);
+  private readonly translateService = inject(TranslateService);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly ready = signal(false);
   private readonly placed = new Map<string, PlacedMarker>();
@@ -151,7 +153,14 @@ export class RealmMapComponent implements AfterViewInit, OnDestroy {
       wheelPxPerZoomLevel: 120,
       minZoom: -3,
       maxZoom: 5,
+      zoomControl: false,
     });
+    L.control
+      .zoom({
+        zoomInTitle: this.translateService.instant('Zoom avant'),
+        zoomOutTitle: this.translateService.instant('Zoom arrière'),
+      })
+      .addTo(this.map);
     this.map.setView([0, 0], 0);
     this.DiamondMarker = this.createDiamondMarkerClass();
     this.fieldLayer = L.layerGroup().addTo(this.map);

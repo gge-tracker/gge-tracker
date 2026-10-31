@@ -88,7 +88,7 @@
     <li class="nav-item">
       <button class="nav-link" (click)="selectedTab = 'strategic'"
         [ngClass]="selectedTab === 'strategic' ? 'active' : ''">
-        <img src="/assets/map.png" width="24" [alt]="'Carte' | translate "> <span class="ms-1">{{ 'Vue stratégique' |
+        <img src="/assets/map.webp" width="24" alt=""> <span class="ms-1">{{ 'Vue stratégique' |
           translate }} (<b id="results">{{ watchModeAlliance
             === 'one' ? nbPlayers : loadedAlliancesQuantity === -1 ? ('Chargement du nombre d\'alliances...' |
             translate) :

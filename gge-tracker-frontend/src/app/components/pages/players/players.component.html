@@ -9,7 +9,7 @@
     </button>
     <button type="button" class="scope-tab" role="tab" [attr.aria-selected]="scope === 'global'"
       [class.scope-tab--on]="scope === 'global'" (click)="switchScope('global')">
-      <img src="/assets/icon_world.png" alt="" height="18">
+      <img src="/assets/map.webp" alt="" height="22">
       <span>{{ 'Classement mondial' | translate }}</span>
     </button>
   </nav>
@@ -182,7 +182,7 @@
             <div class="col-6">
               <app-modal-form-group [label]="'Royaume' | translate">
                 <span field prefix>
-                  <img src="/assets/map.png" [attr.alt]="'Royaume' | translate">
+                  <img src="/assets/map.webp" alt="" height="22">
                 </span>
                 <ng-select field [items]="realms" bindLabel="label" bindValue="key"
                   [(ngModel)]="formFilters.kingdomFilter" (change)="onRealmChange($event)" [multiple]="true"

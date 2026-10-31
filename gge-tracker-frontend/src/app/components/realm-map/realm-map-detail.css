@@ -90,12 +90,16 @@
 }
 
 .rmd-state {
-  border-radius: 999px;
+  border-radius: 10px;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.03em;
+  line-height: 1.35;
+  max-width: 100%;
   padding: 2px 9px;
+  text-align: center;
   text-transform: uppercase;
+  text-wrap: balance;
 }
 
 .rmd-state-ready {
