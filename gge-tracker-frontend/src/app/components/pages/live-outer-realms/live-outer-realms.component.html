@@ -301,15 +301,13 @@
               </button>
             </app-modal-form-group>
           </div>
-          <div class="col-12 mt-4 d-flex flex-wrap justify-content-center gap-2">
-            <button class="gge-btn" type="button" (click)="resetFilters()" data-bs-dismiss="modal">
+          <div class="col-12 modal-actions">
+            <button type="button" class="modal-action quiet" (click)="resetFilters()" data-bs-dismiss="modal">
               <i class="fa-solid fa-rotate-left"></i>
-              &nbsp;
               <span>{{ 'Réinitialiser les filtres' | translate }}</span>
             </button>
-            <button class="gge-btn search" (click)="applyFilters()" data-bs-dismiss="modal">
+            <button type="button" class="modal-action primary" (click)="applyFilters()" data-bs-dismiss="modal">
               <i class="fa-solid fa-check"></i>
-              &nbsp;
               <span>{{ 'Appliquer les filtres' | translate }}</span>
             </button>
           </div>

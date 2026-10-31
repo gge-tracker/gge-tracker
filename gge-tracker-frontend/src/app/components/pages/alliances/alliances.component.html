@@ -278,15 +278,11 @@
                   </app-modal-form-group>
                 </div>
               </div>
-              <hr class="my-4">
-              <div class="row">
-                <div class="col text-center">
-                  <button class="gge-btn search" (click)="applyFilters()" data-bs-dismiss="modal">
-                    <i class="fa-solid fa-check"></i>
-                    &nbsp;
-                    <span>{{ 'Appliquer les filtres' | translate }}</span>
-                  </button>
-                </div>
+              <div class="modal-actions">
+                <button type="button" class="modal-action primary" (click)="applyFilters()" data-bs-dismiss="modal">
+                  <i class="fa-solid fa-check"></i>
+                  <span>{{ 'Appliquer les filtres' | translate }}</span>
+                </button>
               </div>
             </div>
           </div>

@@ -278,138 +278,58 @@
                 </app-modal-form-group>
               </div>
             </div>
-              <div class="row mt-1">
-                <div class="container-fluid">
-                  <!-- Filter by alliance -->
-                  <div class="col-12">
-                    <div class="text-center mt-1 alliance-icon">
-                      <img src="/assets/min-alliance.png" [alt]="'Alliance' | translate"
-                        [title]="'Filtrer par alliance' | translate" height="32">
-                    </div>
-                    <div class="input-group align-items-center justify-content-center">
-                      <div class="col-4 text-center">
-                        <label for="alliance1">{{ 'Avec alliance' | translate }}</label>
-                        <div>
-                          <input type="radio" class="form-check-input" id="alliance1" value="1"
-                            [(ngModel)]="formFilters.allianceFilter">
-                        </div>
-                      </div>
-                      <div class="col-4 text-center">
-                        <label for="alliance0">{{ 'Sans alliance' | translate }}</label>
-                        <div>
-                          <input type="radio" class="form-check-input" id="alliance0" name="alliance" value="0"
-                            [(ngModel)]="formFilters.allianceFilter">
-                        </div>
-                      </div>
-                      <div class="col-4 text-center">
-                        <label for="noAlliance">{{ 'Pas de filtre' | translate }}</label>
-                        <div>
-                          <input type="radio" class="form-check-input" id="noAlliance" name="alliance" value="-1"
-                            [(ngModel)]="formFilters.allianceFilter">
-                        </div>
-                      </div>
+              <div class="mt-1">
+                <div class="filter-switch-list mt-3">
+                  <div class="filter-switch">
+                    <span class="filter-switch-label"><img src="/assets/min-alliance.png" alt="" [title]="'Filtrer par alliance' | translate">{{ 'Alliance' | translate }}</span>
+                    <div class="filter-switch-options" role="radiogroup" [attr.aria-label]="'Alliance' | translate">
+                      <input type="radio" class="filter-switch-input" id="noAlliance" name="alliance" value="-1" [(ngModel)]="formFilters.allianceFilter">
+                      <label class="filter-switch-option" for="noAlliance">{{ 'Pas de filtre' | translate }}</label>
+                      <input type="radio" class="filter-switch-input" id="alliance1" name="alliance" value="1" [(ngModel)]="formFilters.allianceFilter">
+                      <label class="filter-switch-option is-filter" for="alliance1">{{ 'Avec alliance' | translate }}</label>
+                      <input type="radio" class="filter-switch-input" id="alliance0" name="alliance" value="0" [(ngModel)]="formFilters.allianceFilter">
+                      <label class="filter-switch-option is-filter" for="alliance0">{{ 'Sans alliance' | translate }}</label>
                     </div>
                   </div>
-                  <!-- Protection -->
-                  <div class="col-12">
-                    <div class="text-center mt-1 peace-icon">
-                      <img src="/assets/peace.png" [alt]="'Protection'  | translate"
-                        [title]="'Filtrer par protection' | translate" height="32">
-                    </div>
-                    <div class="input-group align-items-center justify-content-center">
-                      <div class="col-4 text-center">
-                        <label for="peace1">{{ 'En protection' | translate }}</label>
-                        <div>
-                          <input type="radio" class="form-check-input" id="peace1" name="peace" value="1"
-                            [(ngModel)]="formFilters.protectionFilter">
-                        </div>
-                      </div>
-                      <div class="col-4 text-center">
-                        <label for="peace0">{{ 'Hors protection' | translate }}</label>
-                        <div>
-                          <input type="radio" class="form-check-input" id="peace0" name="peace" value="0"
-                            [(ngModel)]="formFilters.protectionFilter">
-                        </div>
-                      </div>
-                      <div class="col-4 text-center">
-                        <label for="noPeace">{{ 'Pas de filtre' | translate }}</label>
-                        <div>
-                          <input type="radio" class="form-check-input" id="noPeace" name="peace" value="-1" checked
-                            [(ngModel)]="formFilters.protectionFilter">
-                        </div>
-                      </div>
+                  <div class="filter-switch">
+                    <span class="filter-switch-label"><img src="/assets/peace.png" alt="" [title]="'Filtrer par protection' | translate">{{ 'Protection' | translate }}</span>
+                    <div class="filter-switch-options" role="radiogroup" [attr.aria-label]="'Protection' | translate">
+                      <input type="radio" class="filter-switch-input" id="noPeace" name="peace" value="-1" [(ngModel)]="formFilters.protectionFilter">
+                      <label class="filter-switch-option" for="noPeace">{{ 'Pas de filtre' | translate }}</label>
+                      <input type="radio" class="filter-switch-input" id="peace1" name="peace" value="1" [(ngModel)]="formFilters.protectionFilter">
+                      <label class="filter-switch-option is-filter" for="peace1">{{ 'En protection' | translate }}</label>
+                      <input type="radio" class="filter-switch-input" id="peace0" name="peace" value="0" [(ngModel)]="formFilters.protectionFilter">
+                      <label class="filter-switch-option is-filter" for="peace0">{{ 'Hors protection' | translate }}</label>
                     </div>
                   </div>
-                  <!-- Ban -->
-                  <div class="col-12">
-                    <div class="text-center mt-1 ban-icon">
-                      <img src="/assets/error.png" [alt]="'Banissement' | translate"
-                        [title]="'Filtrer par banissement' | translate" height="32">
-                    </div>
-                    <div class="input-group align-items-center justify-content-center">
-                      <div class="col-4 text-center">
-                        <label for="ban1">{{ 'Banni' | translate }}</label>
-                        <div>
-                          <input type="radio" class="form-check-input" id="ban1" name="ban" value="1"
-                            [(ngModel)]="formFilters.banFilter">
-                        </div>
-                      </div>
-                      <div class="col-4 text-center">
-                        <label for="ban0">{{ 'Non banni' | translate }}</label>
-                        <div>
-                          <input type="radio" class="form-check-input" id="ban0" name="ban" value="0"
-                            [(ngModel)]="formFilters.banFilter">
-                        </div>
-                      </div>
-                      <div class="col-4 text-center">
-                        <label for="noBan">{{ 'Pas de filtre' | translate }}</label>
-                        <div>
-                          <input type="radio" class="form-check-input" id="noBan" name="ban" value="-1" checked
-                            [(ngModel)]="formFilters.banFilter">
-                        </div>
-                      </div>
+                  <div class="filter-switch">
+                    <span class="filter-switch-label"><img src="/assets/error.png" alt="" [title]="'Filtrer par banissement' | translate">{{ 'Banissement' | translate }}</span>
+                    <div class="filter-switch-options" role="radiogroup" [attr.aria-label]="'Banissement' | translate">
+                      <input type="radio" class="filter-switch-input" id="noBan" name="ban" value="-1" [(ngModel)]="formFilters.banFilter">
+                      <label class="filter-switch-option" for="noBan">{{ 'Pas de filtre' | translate }}</label>
+                      <input type="radio" class="filter-switch-input" id="ban1" name="ban" value="1" [(ngModel)]="formFilters.banFilter">
+                      <label class="filter-switch-option is-filter" for="ban1">{{ 'Banni' | translate }}</label>
+                      <input type="radio" class="filter-switch-input" id="ban0" name="ban" value="0" [(ngModel)]="formFilters.banFilter">
+                      <label class="filter-switch-option is-filter" for="ban0">{{ 'Non banni' | translate }}</label>
                     </div>
                   </div>
-                  <!-- Inactive player -->
-                  <div class="col-12">
-                    <div class="text-center mt-1 inactive-icon">
-                      <img src="/assets/compass.png" [alt]="'Inactif' | translate"
-                        [title]="'Filtrer par joueur inactif (N\'étant pas sur la carte)' | translate" height="32">
-                    </div>
-                    <div class="input-group align-items-center justify-content-center">
-                      <div class="col-4 text-center">
-                        <label for="inactive1">{{ 'Inactif' | translate }}</label>
-                        <div>
-                          <input type="radio" class="form-check-input" id="inactive1" name="inactive" value="0"
-                            [(ngModel)]="formFilters.inactiveFilter">
-                        </div>
-                      </div>
-                      <div class="col-4 text-center">
-                        <label for="inactive0">{{ 'Actif' | translate }}</label>
-                        <div>
-                          <input type="radio" class="form-check-input" id="inactive0" name="inactive" value="1"
-                            [(ngModel)]="formFilters.inactiveFilter">
-                        </div>
-                      </div>
-                      <div class="col-4 text-center">
-                        <label for="noInactive">{{ 'Pas de filtre' | translate }}</label>
-                        <div>
-                          <input type="radio" class="form-check-input" id="noInactive" name="inactive" value="-1" checked
-                            [(ngModel)]="formFilters.inactiveFilter">
-                        </div>
-                      </div>
+                  <div class="filter-switch">
+                    <span class="filter-switch-label"><img src="/assets/compass.png" alt="" [title]="'Filtrer par joueur inactif (N\'étant pas sur la carte)' | translate">{{ 'Inactif' | translate }}</span>
+                    <div class="filter-switch-options" role="radiogroup" [attr.aria-label]="'Inactif' | translate">
+                      <input type="radio" class="filter-switch-input" id="noInactive" name="inactive" value="-1" [(ngModel)]="formFilters.inactiveFilter">
+                      <label class="filter-switch-option" for="noInactive">{{ 'Pas de filtre' | translate }}</label>
+                      <input type="radio" class="filter-switch-input" id="inactive1" name="inactive" value="0" [(ngModel)]="formFilters.inactiveFilter">
+                      <label class="filter-switch-option is-filter" for="inactive1">{{ 'Inactif' | translate }}</label>
+                      <input type="radio" class="filter-switch-input" id="inactive0" name="inactive" value="1" [(ngModel)]="formFilters.inactiveFilter">
+                      <label class="filter-switch-option is-filter" for="inactive0">{{ 'Actif' | translate }}</label>
                     </div>
                   </div>
                 </div>
-                <hr class="my-4">
-                <div class="row">
-                  <div class="col text-center">
-                    <button class="gge-btn search" (click)="applyFilters()" data-bs-dismiss="modal">
-                      <i class="fa-solid fa-check"></i>
-                      &nbsp;
-                      <span>{{ 'Appliquer les filtres' | translate }}</span>
-                    </button>
-                  </div>
+                <div class="modal-actions">
+                  <button type="button" class="modal-action primary" (click)="applyFilters()" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-check"></i>
+                    <span>{{ 'Appliquer les filtres' | translate }}</span>
+                  </button>
                 </div>
               </div>
             </div>

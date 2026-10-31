@@ -230,7 +230,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="filtersModalLabel">
-          &nbsp;<i class="fa-solid fa-filter"></i>{{ 'Filtrer les résultats' | translate}}
+          <i class="fa-solid fa-filter"></i>&nbsp;{{ 'Filtrer les résultats' | translate }}
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"
         [attr.aria-label]="'Fermer' | translate"></button>
@@ -259,12 +259,11 @@
               </ng-select>
             </app-modal-form-group>
           </div>
-          <div class="row g-4 mt-3">
-            <div class="col text-center">
-              <button class="gge-btn search" (click)="applyFilters()" data-bs-dismiss="modal">
-                <span>{{ 'Appliquer les filtres' | translate }}</span>
-              </button>
-            </div>
+          <div class="modal-actions">
+            <button type="button" class="modal-action primary" (click)="applyFilters()" data-bs-dismiss="modal">
+              <i class="fa-solid fa-check"></i>
+              <span>{{ 'Appliquer les filtres' | translate }}</span>
+            </button>
           </div>
         </div>
       </div>

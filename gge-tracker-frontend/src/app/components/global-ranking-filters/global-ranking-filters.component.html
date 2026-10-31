@@ -25,16 +25,15 @@
             </app-modal-form-group>
           }
         </div>
-        <hr class="my-4">
-        <div class="text-center">
-          <div class="btn-group">
-            <button type="button" class="gge-btn success" data-bs-dismiss="modal" (click)="submit()">
-              <i class="fa-solid fa-check"></i>&nbsp;<span>{{ 'Appliquer les filtres' | translate }}</span>
-            </button>
-            <button type="button" class="gge-btn reset" [disabled]="!hasValues()" (click)="reset()">
-              <i class="fa-solid fa-rotate-left"></i>&nbsp;<span>{{ 'Réinitialiser les filtres' | translate }}</span>
-            </button>
-          </div>
+        <div class="modal-actions">
+          <button type="button" class="modal-action quiet" [disabled]="!hasValues()" (click)="reset()">
+            <i class="fa-solid fa-rotate-left"></i>
+            <span>{{ 'Réinitialiser les filtres' | translate }}</span>
+          </button>
+          <button type="button" class="modal-action primary" data-bs-dismiss="modal" (click)="submit()">
+            <i class="fa-solid fa-check"></i>
+            <span>{{ 'Appliquer les filtres' | translate }}</span>
+          </button>
         </div>
       </div>
     </div>
