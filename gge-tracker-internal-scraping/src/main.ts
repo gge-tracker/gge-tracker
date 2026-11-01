@@ -320,6 +320,7 @@ export class GenericFetchAndSaveBackend {
   private readonly STORM_CHUNK_SIZE = 500;
   private readonly STORM_ENTRY_EVENT_ID = 16;
   private readonly STORM_SEASON_CHECK_BACKOFF_MINUTES = 15;
+  private readonly STORM_HELD_ISLE_CHECK_MINUTES = 60;
   private readonly STORM_MAX_FAILED_TILES = 10;
   private readonly STORM_QUARTER_RETRY_DELAY_MS = 1000;
   private readonly FILL_BRIDGE_WAIT_ATTEMPTS = 24;
@@ -342,6 +343,7 @@ export class GenericFetchAndSaveBackend {
   private readonly server: string;
   private playerLootAndMightPointHistoryList: { [key: string]: any[] } = {};
   private lootReset: LootReset | null | undefined;
+  private serverKind: string | undefined;
   private playerEventPointHistoryList: { [key: string]: { [key: string]: number | null } } = {};
   private customPlayersAttributesList: { [key: string]: any } = {};
   private currentPlayers: PlayerDatabase[] = [];
@@ -3049,7 +3051,10 @@ export class GenericFetchAndSaveBackend {
 
     const probe = await this.fetchOwnStormIsle(playerId);
     if (probe.failed) return { state: 'unreachable', ownIsle: meta.ownIsle };
-    if (probe.isle === null) return this.enterStormSeason(playerId);
+    if (probe.isle === null) {
+      if (meta.ownIsle && !this.stormSeasonRollsMonthly()) this.reportLostStormIsle(meta.ownIsle);
+      return this.enterStormSeason(playerId);
+    }
 
     if (meta.ownIsle && !this.isSameStormIsle(meta.ownIsle, probe.isle)) {
       await this.startNewStormSeason(probe.isle);
@@ -3071,7 +3076,21 @@ export class GenericFetchAndSaveBackend {
       : Number.POSITIVE_INFINITY;
     if (sinceLastCheck < this.STORM_SEASON_CHECK_BACKOFF_MINUTES * 60_000) return false;
     if (meta.mapIsEmpty || meta.ownIsle === null) return true;
+    if (!this.stormSeasonRollsMonthly()) return sinceLastCheck >= this.STORM_HELD_ISLE_CHECK_MINUTES * 60_000;
     return meta.seasonStartedAt === null || meta.seasonStartedAt < this.getLastStormSeasonBoundary();
+  }
+
+  private stormSeasonRollsMonthly(): boolean {
+    return this.resolveServerKind() !== 'partner';
+  }
+
+  private reportLostStormIsle(isle: StormOwnIsle): void {
+    Utils.logPersistentFailure(
+      this.server,
+      '423',
+      `Storm isle lost on ${this.server}: the scraper account no longer holds a castle in the storm kingdom`,
+      `last held isle ${isle.objectId} at ${isle.positionX}:${isle.positionY}, trying to enter the event again`,
+    );
   }
 
   private isSameStormIsle(stored: StormOwnIsle, observed: StormOwnIsle): boolean {
@@ -3733,6 +3752,18 @@ export class GenericFetchAndSaveBackend {
       Utils.logCritical('018', error, ' [KO] Final error while processing statistics');
       this.DB_UPDATES.criticalErrors++;
     }
+  }
+
+  private resolveServerKind(): string {
+    if (this.serverKind === undefined) {
+      try {
+        this.serverKind = findScrapingServer(this.server)?.kind ?? '';
+      } catch (error) {
+        Utils.logMessage(' [warn] Cannot read the servers file:', (error as Error).message);
+        this.serverKind = '';
+      }
+    }
+    return this.serverKind;
   }
 
   private resolveLootReset(): LootReset | null {

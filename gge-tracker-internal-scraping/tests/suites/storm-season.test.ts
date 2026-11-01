@@ -238,6 +238,91 @@ describe('storm season', () => {
     });
   });
 
+  describe('on a partner server, whose season never rolls over', () => {
+    function partnerStorm(now: Date, minutesSinceCheck: number): { rows: Record<string, unknown>[] } {
+      return dueStorm(now, { season_checked_at: minutesBefore(now, minutesSinceCheck) });
+    }
+
+    it('ignores the calendar month while the account holds its isle', async () => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.setState('serverKind', 'partner');
+        sandbox.db.when(STORM_STATE, partnerStorm(sandbox.now, 59));
+        inEvent(sandbox);
+        servesOneFort(sandbox);
+
+        await sandbox.call('updateStormMap');
+
+        assert.equal(sandbox.api.callsFor('gpi').length, 0);
+        assert.equal(sandbox.api.callsFor('gaa').length, 1);
+      });
+    });
+
+    it('checks the isle is still held once an hour, without wiping anything', async () => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.setState('serverKind', 'partner');
+        sandbox.db.when(STORM_STATE, partnerStorm(sandbox.now, 61));
+        inEvent(sandbox);
+        servesOneFort(sandbox);
+
+        await sandbox.call('updateStormMap');
+
+        assert.equal(sandbox.api.callsFor('gdi').length, 1);
+        assert.equal(sandbox.db.matching(TRUNCATE).length, 0);
+      });
+    });
+
+    it('reports an error when the account lost its isle, then tries to enter again', async () => {
+      await withLogSpy(async (logs) => {
+        await withSandbox({}, async (sandbox) => {
+          sandbox.backend.deferFailureAlerts = true;
+          sandbox.setState('serverKind', 'partner');
+          sandbox.db.when(STORM_STATE, partnerStorm(sandbox.now, 61));
+          outOfEvent(sandbox);
+          sandbox.api.on('ksc', () => ({ return_code: 21 }));
+
+          await sandbox.call('updateStormMap');
+
+          assert.equal(logs.calls.logPersistentFailure.length, 1);
+          assert.equal(logs.calls.logPersistentFailure[0][1], '423');
+          assert.equal(sandbox.api.callsFor('ksc').length, 1);
+        });
+      });
+    });
+
+    it('does not report it again once the loss is recorded', async () => {
+      await withLogSpy(async (logs) => {
+        await withSandbox({}, async (sandbox) => {
+          sandbox.setState('serverKind', 'partner');
+          sandbox.db.when(
+            STORM_STATE,
+            dueStorm(sandbox.now, { own_isle_object_id: null, own_isle_x: null, own_isle_y: null }),
+          );
+          outOfEvent(sandbox);
+          sandbox.api.on('ksc', () => ({ return_code: 21 }));
+
+          await sandbox.call('updateStormMap');
+
+          assert.equal(logs.calls.logPersistentFailure.length, 0);
+        });
+      });
+    });
+
+    it('says nothing on a regular server, where losing the isle is the monthly reset', async () => {
+      await withLogSpy(async (logs) => {
+        await withSandbox({}, async (sandbox) => {
+          sandbox.setState('serverKind', 'ep');
+          sandbox.db.when(STORM_STATE, dueStorm(sandbox.now));
+          outOfEvent(sandbox);
+          sandbox.api.on('ksc', () => ({ return_code: 21 }));
+
+          await sandbox.call('updateStormMap');
+
+          assert.equal(logs.calls.logPersistentFailure.length, 0);
+        });
+      });
+    });
+  });
+
   describe('when the bridge does not answer', () => {
     it('scans nothing and touches nothing', async () => {
       await withSandbox({}, async (sandbox) => {
