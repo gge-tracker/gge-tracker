@@ -75,6 +75,7 @@ app.use(
   cors({
     origin: '*',
     methods: ['GET', 'POST', 'HEAD', 'OPTIONS'],
+    maxAge: 86_400,
     exposedHeaders: [
       'ETag',
       'X-Data-Version',
