@@ -38,6 +38,7 @@ import { AdminGuard } from './guard/admin-guard';
 import { ApiGgeTrackerManager } from './managers/api.manager';
 import { RoutesManager } from './managers/routes.manager';
 import { errorCodeMiddleware } from './helper/error-codes';
+import { HttpCache } from './helper/http-cache';
 import { ApiHelper } from './helper/api-helper';
 import { withCacheNamespace } from './helper/cache/cache-namespace';
 import { OfferPriceTables } from './services/offer-price-tables';
@@ -92,6 +93,7 @@ app.use(
   }),
 );
 app.use(errorCodeMiddleware);
+app.use(HttpCache.uncacheableFailures);
 app.use((error: unknown, request: express.Request, response: express.Response, next: express.NextFunction) => {
   if (error instanceof SyntaxError && 'body' in error) {
     response.status(400).json({
