@@ -1634,3 +1634,33 @@ export interface ApiEventThresholdsResponse {
   occurrences: ApiEventThresholdOccurrence[];
   pace: { started_at: string; running: boolean; points: { hour: number; thresholds: number[] }[] }[];
 }
+
+export type ApiReleaseItemKind = 'new' | 'improved' | 'servers' | 'translations' | 'fixed';
+
+export type ApiReleaseChangeKind = 'new' | 'changed' | 'legacy' | 'removed';
+
+export interface ApiReleaseItem {
+  kind: ApiReleaseItemKind;
+  area: string | null;
+  text: string;
+}
+
+export interface ApiReleaseChange {
+  change: ApiReleaseChangeKind;
+  method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
+  path: string;
+  tag: string;
+  note: string;
+}
+
+export interface ApiRelease {
+  version: string;
+  type: 'Major' | 'Minor' | 'Fix';
+  date: string;
+  items: ApiReleaseItem[];
+  api_changes: ApiReleaseChange[];
+}
+
+export interface ApiReleaseNotesResponse {
+  releases: ApiRelease[];
+}

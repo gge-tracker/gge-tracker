@@ -768,6 +768,84 @@ publicRoutes.get('/servers', routingInstance.getServers.bind(routingInstance));
 publicRoutes.get('/servers/catalog', routingInstance.getServersCatalog.bind(routingInstance));
 
 /**
+ * @openapi
+ * /release-notes:
+ *   get:
+ *     summary: Every GGE Tracker release, newest first
+ *     description: >
+ *       What each release of the website changed, grouped by kind, and the API routes it added, changed or
+ *       removed. The first entry is the release this API runs. Send the ETag back as If-None-Match to be
+ *       answered 304 while nothing changed
+ *     tags:
+ *       - Status
+ *     parameters:
+ *       - $ref: '#/components/parameters/IfNoneMatch'
+ *     responses:
+ *       '200':
+ *         description: The releases
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [releases]
+ *               properties:
+ *                 releases:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     required: [version, type, date, items, api_changes]
+ *                     properties:
+ *                       version:
+ *                         type: string
+ *                         example: v26-11-02
+ *                       type:
+ *                         type: string
+ *                         enum: [Major, Minor, Fix]
+ *                       date:
+ *                         type: string
+ *                         format: date
+ *                       items:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           required: [kind, area, text]
+ *                           properties:
+ *                             kind:
+ *                               type: string
+ *                               enum: [new, improved, servers, translations, fixed]
+ *                             area:
+ *                               type: string
+ *                               nullable: true
+ *                               description: The part of the site it concerns, null for a bug fix
+ *                             text:
+ *                               type: string
+ *                       api_changes:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           required: [change, method, path, tag, note]
+ *                           properties:
+ *                             change:
+ *                               type: string
+ *                               enum: [new, changed, legacy, removed]
+ *                             method:
+ *                               type: string
+ *                               enum: [GET, POST, PATCH, PUT, DELETE]
+ *                             path:
+ *                               type: string
+ *                             tag:
+ *                               type: string
+ *                               description: The OpenAPI tag the route is documented under
+ *                             note:
+ *                               type: string
+ *       '304':
+ *         description: The If-None-Match ETag still matches, so the releases have not changed
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+publicRoutes.get('/release-notes', routingInstance.getReleaseNotes.bind(routingInstance));
+
+/**
  * @swagger
  * /events/list:
  *   get:
@@ -7437,6 +7515,45 @@ publicRoutes.get('/assets/og/player/:playerId.jpg', routingInstance.getPlayerSha
  *         $ref: '#/components/responses/InternalServerError'
  */
 publicRoutes.get('/assets/og/alliance/:allianceId.jpg', routingInstance.getAllianceShareCard.bind(routingInstance));
+
+/**
+ * @openapi
+ * /assets/og/release-notes.jpg:
+ *   get:
+ *     summary: Share card image of the latest release notes
+ *     description: >
+ *       A 1200x630 JPEG naming the running GGE Tracker version, its release date and its highlights.
+ *       Link it to https://gge-tracker.com/release-notes. Rendered once per release, then cached, so the URL
+ *       may carry any v= query to bust a client cache. A new render is budgeted per caller, and one over
+ *       budget is answered 429
+ *     tags:
+ *       - Previews
+ *     parameters:
+ *       - $ref: '#/components/parameters/IfNoneMatch'
+ *       - name: v
+ *         in: query
+ *         required: false
+ *         description: Ignored. Lets a client bust its own cache, as the preview document does with a hash of the card
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: The card image
+ *         content:
+ *           image/jpeg:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       '304':
+ *         description: The If-None-Match ETag still matches, so this card has not changed
+ *       '404':
+ *         $ref: '#/components/responses/NotFound'
+ *       '429':
+ *         description: A new render was needed and this caller spent its render budget; retry after Retry-After seconds
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+publicRoutes.get('/assets/og/release-notes.jpg', routingInstance.getReleaseNotesShareCard.bind(routingInstance));
 
 /**
  * @openapi

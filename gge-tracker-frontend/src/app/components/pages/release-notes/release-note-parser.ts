@@ -1,11 +1,14 @@
-export interface ReleaseItem {
-  area: string;
-  text: string;
-}
+import {
+  ApiRelease,
+  ApiReleaseChange,
+  ApiReleaseChangeKind,
+  ApiReleaseItem,
+  ApiReleaseItemKind,
+} from '@ggetracker-interfaces/empire-ranking';
 
 export interface ReleaseGroup {
   kind: ReleaseKind;
-  items: ReleaseItem[];
+  items: ApiReleaseItem[];
 }
 
 export interface ReleaseNote {
@@ -13,17 +16,28 @@ export interface ReleaseNote {
   type: string;
   date: string;
   groups: ReleaseGroup[];
+  api: ApiChangeGroup[];
   summary: string;
 }
 
+export interface ApiChangeItem extends ApiReleaseChange {
+  documentationUrl: string | null;
+}
+
+export interface ApiChangeGroup {
+  kind: ApiReleaseChangeKind;
+  label: string;
+  items: ApiChangeItem[];
+}
+
 export interface ReleaseKind {
-  id: string;
+  id: ApiReleaseItemKind;
   label: string;
   unit: [string, string];
   icon: string;
 }
 
-const KINDS: Record<string, ReleaseKind> = {
+const KINDS: Record<ApiReleaseItemKind, ReleaseKind> = {
   new: { id: 'new', label: 'New', unit: ['new', 'new'], icon: 'fa-solid fa-plus' },
   improved: { id: 'improved', label: 'Improved', unit: ['improved', 'improved'], icon: 'fa-solid fa-arrow-trend-up' },
   servers: { id: 'servers', label: 'Servers', unit: ['server', 'servers'], icon: 'fa-solid fa-server' },
@@ -36,41 +50,55 @@ const KINDS: Record<string, ReleaseKind> = {
   fixed: { id: 'fixed', label: 'Fixed', unit: ['fixed', 'fixed'], icon: 'fa-solid fa-bug' },
 };
 
-const KIND_ORDER = ['new', 'improved', 'servers', 'translations', 'fixed'];
+const KIND_ORDER: ApiReleaseItemKind[] = ['new', 'improved', 'servers', 'translations', 'fixed'];
 
-const KIND_BY_EMOJI: Record<string, string> = {
-  '🛠️': 'new',
-  '✨': 'improved',
-  '🎨': 'improved',
-  '⚙️': 'improved',
-  '📦': 'servers',
-  '🌍': 'translations',
-  '🐞': 'fixed',
+const API_DOCUMENTATION_URL = 'https://docs.gge-tracker.com';
+
+const API_CHANGE_LABELS: Record<ApiReleaseChangeKind, string> = {
+  new: 'New endpoints',
+  changed: 'Changed',
+  legacy: 'Legacy',
+  removed: 'Removed',
 };
 
-const ITEM_PATTERN = /^(\S+)\s+\[([^\]]+)\]\s+(.*)$/u;
+const API_CHANGE_ORDER: ApiReleaseChangeKind[] = ['new', 'changed', 'legacy', 'removed'];
 
-export function parseReleaseNote(release: {
-  version: string;
-  type: string;
-  date: string;
-  items: string[];
-}): ReleaseNote {
-  const byKind = new Map<string, ReleaseItem[]>();
-  for (const raw of release.items) {
-    const match = ITEM_PATTERN.exec(raw);
-    const kind = (match && KIND_BY_EMOJI[match[1]]) ?? 'improved';
-    const item = match ? { area: match[2] === 'Bugfix' ? '' : match[2], text: match[3] } : { area: '', text: raw };
-    byKind.set(kind, [...(byKind.get(kind) ?? []), item]);
+export function parseReleaseNote(release: ApiRelease): ReleaseNote {
+  const groups = KIND_ORDER.map((id) => ({
+    kind: KINDS[id],
+    items: release.items.filter((item) => item.kind === id),
+  })).filter((group) => group.items.length > 0);
+  const api = groupApiChanges(release.api_changes);
+  const counts = groups.map((group) => countLabel(group.items.length, group.kind.unit));
+  if (release.api_changes.length > 0) {
+    counts.push(countLabel(release.api_changes.length, ['API change', 'API changes']));
   }
-  const groups = KIND_ORDER.filter((id) => byKind.has(id)).map((id) => ({ kind: KINDS[id], items: byKind.get(id)! }));
   return {
     version: release.version,
     type: release.type,
     date: release.date,
     groups,
-    summary: groups.map((group) => countLabel(group.items.length, group.kind.unit)).join(' · '),
+    api,
+    summary: counts.join(' · '),
   };
+}
+
+function groupApiChanges(changes: ApiReleaseChange[]): ApiChangeGroup[] {
+  return API_CHANGE_ORDER.map((kind) => ({
+    kind,
+    label: API_CHANGE_LABELS[kind],
+    items: changes
+      .filter((change) => change.change === kind)
+      .map((change) => ({ ...change, documentationUrl: documentationUrl(change) })),
+  })).filter((group) => group.items.length > 0);
+}
+
+function documentationUrl(change: ApiReleaseChange): string | null {
+  if (change.change === 'removed') {
+    return null;
+  }
+  const operation = `${change.method.toLowerCase()}${change.path.replaceAll(/\W/g, '_')}`;
+  return `${API_DOCUMENTATION_URL}/#/${encodeURIComponent(change.tag)}/${operation}`;
 }
 
 function countLabel(count: number, [singular, plural]: [string, string]): string {

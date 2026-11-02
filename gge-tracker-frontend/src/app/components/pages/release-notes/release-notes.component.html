@@ -12,8 +12,12 @@
     </a>
   </header>
 
+  @if (failed()) {
+    <p class="release-status">The release notes could not be loaded. Please try again later.</p>
+  }
+
   <ol class="release-timeline">
-    @for (release of releases; track release.version; let first = $first) {
+    @for (release of releases(); track release.version; let first = $first) {
       <li class="release">
         <details class="release-card" [open]="first">
           <summary class="release-summary">
@@ -45,6 +49,43 @@
                     </li>
                   }
                 </ul>
+              </section>
+            }
+            @if (release.api.length) {
+              <section class="release-api">
+                <div class="release-api-header">
+                  <h2 class="release-group-title" data-kind="api">
+                    <i class="fa-solid fa-code" aria-hidden="true"></i>
+                    API
+                  </h2>
+                  <a class="release-api-docs" href="https://docs.gge-tracker.com" target="_blank" rel="noopener">
+                    API docs
+                    <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+                  </a>
+                </div>
+                @for (group of release.api; track group.kind) {
+                  <div class="release-api-group" [attr.data-change]="group.kind">
+                    <h3 class="release-api-kind">
+                      {{ group.label }}
+                      <span class="release-api-count">{{ group.items.length }}</span>
+                    </h3>
+                    <ul class="release-api-list">
+                      @for (item of group.items; track item.method + item.path) {
+                        <li class="release-api-item">
+                          <span class="release-api-method">{{ item.method }}</span>
+                          @if (item.documentationUrl) {
+                            <a class="release-api-path" [href]="item.documentationUrl" target="_blank" rel="noopener">
+                              {{ item.path }}
+                            </a>
+                          } @else {
+                            <span class="release-api-path">{{ item.path }}</span>
+                          }
+                          <span class="release-api-note">{{ item.note }}</span>
+                        </li>
+                      }
+                    </ul>
+                  </div>
+                }
               </section>
             }
           </div>
