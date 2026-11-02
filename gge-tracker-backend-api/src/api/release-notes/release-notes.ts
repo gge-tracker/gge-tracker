@@ -39,7 +39,7 @@ export const RELEASE_NOTES: readonly ReleaseNote[] = [
       {
         kind: 'servers',
         area: 'Server',
-        text: 'Added new servers: E4K-IN1, E4K-PH, E4K-US2, PARTNER-SP',
+        text: 'Added new servers: E4K-IN1, E4K-PH, E4K-US2, EP-HIS1, PARTNER-SP',
       },
       {
         kind: 'new',
