@@ -46,7 +46,8 @@
           <div class="d-inline-block alliance-more-info position-relative"
             [attr.data-updates]="allianceUpdates!.length-1">
             <img src="/assets/icon_alliance.png" width="50" [title]="'Voir l\'historique des alliances' | translate"
-              class="img-fluid mt-3" alt="Alliance" data-bs-toggle="modal" data-bs-target="#allianceModal">
+              class="img-fluid mt-3" alt="Alliance" role="button" tabindex="0"
+              (click)="openAllianceHistory()" (keydown.enter)="openAllianceHistory()">
           </div>
           @if (playerUpdates && playerUpdates.length > 1) {
           <div class="d-inline-block alliance-more-info position-relative"
@@ -219,7 +220,7 @@
           </div>
         </div>
       </div>
-      <div class="tabs-container">
+      <div class="tabs-container" #tabsContainer>
         @for (tab of tabs; track tab) {
         <button class="tab-button" (click)="updateTab(tab.key)" [ngClass]="{'active': currentTab === tab.key}">
           @if (tab.assetIcon) {
@@ -423,7 +424,14 @@
           [subtitle]="'Historique des changements d\'alliances' | translate" [accent]="'#4d7a35'"
           [bannerImage]="'/assets/scenes/council/council.webp'" [style.--ps-head-position]="'center 72%'">
           <div class="ps-body">
-            <ng-container *ngTemplateOutlet="allianceHistoryContentTimeline"></ng-container>
+            @if (allianceUpdates && allianceUpdates.length > 0) {
+              <app-alliance-history [updates]="allianceUpdates"></app-alliance-history>
+            } @else {
+              <div class="ps-empty">
+                <i class="fas fa-search"></i>
+                <span>{{ 'Aucun résultat' | translate }}</span>
+              </div>
+            }
           </div>
         </app-stats-panel>
       </div>
@@ -848,136 +856,6 @@
     </div>
   </div>
 </div>
-
-<div class="modal fade" id="allianceModal" tabindex="-1" aria-labelledby="allianceModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="allianceModalLabel">{{ 'Historique des changements d\'alliances' | translate }}</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"
-          [attr.aria-label]="'Fermer' | translate"></button>
-      </div>
-      <div class="modal-body">
-        <ng-container *ngTemplateOutlet="allianceHistoryContent"></ng-container>
-      </div>
-    </div>
-  </div>
-</div>
-
-<ng-template #allianceHistoryContentTimeline>
-  @if (!allianceUpdates || allianceUpdates.length === 0) {
-    <div class="ps-empty">
-      <i class="fas fa-search"></i>
-      <span>{{ 'Aucun résultat' | translate }}</span>
-    </div>
-  } @else {
-    <div class="ps-list ps-list--capped">
-      @for (alliance of allianceUpdates; track alliance) {
-        <div class="ps-item" [ngClass]="{
-          'is-danger': !alliance.alliance,
-          'is-warn': alliance.original_new_alliance_name,
-          'is-ok': alliance.alliance && !alliance.original_new_alliance_name
-          }">
-          <span class="ps-item-mark">
-            @if (!alliance.alliance) {
-              <i class="fas fa-sign-out-alt"></i>
-            } @else {
-              <i class="fas fa-sign-in-alt"></i>
-            }
-          </span>
-          <div class="ps-item-body">
-            <div class="ps-row">
-              <span class="ps-meta">
-                <i class="fas fa-calendar"></i>
-                {{ alliance.date ? (alliance.date | date: 'dd MMM yy, HH') + 'h' : ('Alliance initiale' | translate) }}
-              </span>
-              <span class="ps-meta">{{ alliance.duration }}</span>
-            </div>
-            <div class="ps-item-title">
-              @if (alliance.original_new_alliance_name) {
-                <span>{{ alliance.original_new_alliance_name }}</span>
-                <span class="ps-badge">
-                  {{ "Nouveau nom d'alliance" | translate: {'0': alliance.alliance} }}
-                </span>
-              } @else {
-                <span>{{ alliance.alliance ?? ('Sans alliance' | translate) }}</span>
-              }
-            </div>
-            <div class="ps-meter ps-meter--thin">
-              <div class="ps-meter-fill" [style.width.%]="(alliance.durationValue / maxDuration) * 100"></div>
-            </div>
-          </div>
-        </div>
-      }
-    </div>
-  }
-</ng-template>
-
-<ng-template #allianceHistoryContent>
-  <div class="table-responsive">
-    <table class="table table-striped table-hover">
-      <thead>
-        <tr>
-          <th scope="col">
-            <img src="/assets/date.png" class="img-fluid" alt="Date">
-            {{ 'Date' | translate }}
-          </th>
-          <th scope="col">
-            <img src="/assets/alliance.png" class="img-fluid" alt="Alliance">
-            {{ 'Alliance' | translate }}
-          </th>
-          <th scope="col">
-            <img src="/assets/time.png" class="img-fluid" alt="Durée">
-            {{ 'Durée' | translate }}
-          </th>
-          <th scope="col">
-            {{ 'Actions' | translate }}
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (alliance of allianceUpdates; track alliance) {
-        <tr>
-          <td>{{ alliance.date ? ((alliance.date | date: 'dd/MM/yyyy HH') + 'h') : ('Alliance initiale' |
-            translate) }}</td>
-          <td [ngClass]="{'text-muted': !alliance.alliance}">
-            {{ alliance.original_new_alliance_name ?? (alliance.alliance ?? ('Sans alliance' | translate)) }}
-            @if (alliance.original_new_alliance_name) {
-            <div class="badge-alliance-name-history px-2">
-              <span [title]="'Nouveau nom d\'alliance' | translate: {'0': alliance.alliance}">{{ alliance.alliance
-                }}</span>
-            </div>
-            }
-          </td>
-          <td>{{ alliance.duration }}</td>
-          @if (alliance.alliance) {
-          <td>
-            <div class="btn-group">
-              <a class="gge-btn search btn-sm" data-bs-dismiss="modal" [routerLink]="['/', 'players']"
-                [queryParams]="{'alliance': alliance.alliance}" [title]="'Voir les membres de l\'alliance' | translate">
-                <i class="fas fa-eye"></i>
-                <span class="d-none d-lg-inline">&nbsp;{{ 'Voir les membres' | translate }}</span>
-              </a>
-              <a class="gge-btn search btn-sm" data-bs-dismiss="modal" [routerLink]="['/', 'map', alliance.id]"
-                [title]="'Voir l\'alliance sur la carte' | translate">
-                <img src="/assets/map.png" width="16" class="img-fluid" [alt]="'Voir sur la carte' | translate">
-                <span class="d-none d-lg-inline">&nbsp;{{ 'Voir sur la carte' | translate }}</span>
-              </a>
-            </div>
-          </td>
-          } @else {
-          <td>
-            <span class="text-muted"><em>
-                {{ 'Aucune action' | translate }}
-              </em></span>
-          </td>
-          }
-        </tr>
-        }
-      </tbody>
-    </table>
-  </div>
-</ng-template>
 
 <ng-template #patriarchOverviewContent>
   <div class="ps-holdings">

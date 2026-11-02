@@ -197,6 +197,8 @@ export abstract class ApiServer implements ApiHelper {
        * --------------------------------- */
       let query = `
         SELECT
+          M.player_id,
+          P.alliance_id,
           P.name AS player_name,
           P.might_current AS player_might,
           P.level AS player_level,
@@ -236,10 +238,12 @@ export abstract class ApiServer implements ApiHelper {
            * --------------------------------- */
           const movements = results.rows.map((result: any) => {
             return {
+              player_id: ApiHelper.addCountryCode(result.player_id, request['code']),
               player_name: result.player_name,
               player_might: result.player_might,
               player_level: result.player_level,
               player_legendary_level: result.player_legendary_level,
+              alliance_id: ApiHelper.addCountryCode(result.alliance_id, request['code']),
               alliance_name: result.alliance_name,
               movement_type: result.movement_type,
               castle_type: result.castle_type,
@@ -390,6 +394,7 @@ export abstract class ApiServer implements ApiHelper {
           ? `
           SELECT
             R.created_at,
+            R.player_id,
             P.name AS player_name,
             A.name AS alliance_name,
             P.might_current AS player_might,
@@ -405,6 +410,7 @@ export abstract class ApiServer implements ApiHelper {
           : `
           SELECT
             R.created_at,
+            R.alliance_id,
             R.old_name,
             R.new_name
           FROM
@@ -428,6 +434,8 @@ export abstract class ApiServer implements ApiHelper {
           const renames = results.rows.map((result: any) => {
             return {
               date: new Date(result.created_at).toISOString(),
+              player_id: ApiHelper.addCountryCode(result.player_id, request['code']),
+              alliance_id: ApiHelper.addCountryCode(result.alliance_id, request['code']),
               player_name: result.player_name,
               player_might: result.player_might,
               alliance_name: result.alliance_name,

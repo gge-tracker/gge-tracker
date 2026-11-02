@@ -88,7 +88,7 @@
     <li class="nav-item">
       <button class="nav-link" (click)="selectedTab = 'strategic'"
         [ngClass]="selectedTab === 'strategic' ? 'active' : ''">
-        <img src="/assets/map.png" width="24" [alt]="'Carte' | translate "> <span class="ms-1">{{ 'Vue stratégique' |
+        <img src="/assets/map.webp" width="24" alt=""> <span class="ms-1">{{ 'Vue stratégique' |
           translate }} (<b id="results">{{ watchModeAlliance
             === 'one' ? nbPlayers : loadedAlliancesQuantity === -1 ? ('Chargement du nombre d\'alliances...' |
             translate) :
@@ -276,14 +276,11 @@
             </app-modal-form-group>
           </div>
           }
-          <div class="row g-4 mt-3">
-            <div class="col text-center">
-              <button class="gge-btn search" (click)="applyFilters()" data-bs-dismiss="modal">
-                <i class="fa-solid fa-check"></i>
-                &nbsp;
-                <span>{{ 'Appliquer les filtres' | translate }}</span>
-              </button>
-            </div>
+          <div class="modal-actions">
+            <button type="button" class="modal-action primary" (click)="applyFilters()" data-bs-dismiss="modal">
+              <i class="fa-solid fa-check"></i>
+              <span>{{ 'Appliquer les filtres' | translate }}</span>
+            </button>
           </div>
         </div>
       </div>

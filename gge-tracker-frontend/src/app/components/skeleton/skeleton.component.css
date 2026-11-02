@@ -111,3 +111,14 @@
     transform: translateY(0);
   }
 }
+
+#main {
+  animation: main-fade-in 600ms ease-out;
+}
+
+@keyframes main-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}

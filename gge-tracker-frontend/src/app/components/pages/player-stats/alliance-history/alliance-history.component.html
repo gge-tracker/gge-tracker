@@ -1,0 +1,159 @@
+<div class="ah-summary">
+  @if (current(); as stint) {
+    <div class="ah-stat ah-stat--wide" [style.--ah-color]="stint.color">
+      <span class="ah-stat-label">{{ 'Alliance actuelle' | translate }}</span>
+      <span class="ah-stat-value" [class.is-none]="!stint.name">{{ stint.name ?? ('Sans alliance' | translate) }}</span>
+      @if (stint.start) {
+        <span class="ah-stat-sub">
+          {{ stint.start | date: 'dd MMM yyyy' }} · {{ 'depuis' | translate }} {{ formatDuration(stint.durationMs) }}
+        </span>
+      }
+    </div>
+  }
+  <div class="ah-stat">
+    <span class="ah-stat-label">{{ 'Alliances rejointes' | translate }}</span>
+    <span class="ah-stat-value">{{ joinedCount() }}</span>
+    <span class="ah-stat-sub">{{ 'Changements d\'alliance' | translate }} : {{ changeCount() }}</span>
+  </div>
+  @if (longest(); as total) {
+    <div class="ah-stat" [style.--ah-color]="total.color">
+      <span class="ah-stat-label">{{ 'Plus longue durée' | translate }}</span>
+      <span class="ah-stat-value ah-ellipsis" [title]="total.name">{{ total.name }}</span>
+      <span class="ah-stat-sub">{{ formatDuration(total.durationMs) }}</span>
+    </div>
+  }
+  <div class="ah-stat" [style.--ah-color]="'#a23a2e'">
+    <span class="ah-stat-label">{{ 'Temps sans alliance' | translate }}</span>
+    <span class="ah-stat-value">{{ timeWithoutAllianceMs() > 0 ? formatDuration(timeWithoutAllianceMs()) : '-' }}</span>
+  </div>
+</div>
+
+@if (segments().length > 1) {
+  <div class="ah-strip-wrap">
+    <div class="ah-strip">
+      @for (segment of segments(); track $index) {
+        <button type="button" class="ah-segment" [class.is-none]="!segment.stint.name"
+          [class.is-dimmed]="!isMatch(segment.stint)" [style.flex-grow]="segment.widthPercent"
+          [style.--ah-color]="segment.stint.color" (click)="focusAlliance(segment.stint)"
+          [title]="(segment.stint.name ?? ('Sans alliance' | translate)) + ' · ' + (segment.stint.start | date: 'dd/MM/yyyy') + ' → ' + (segment.stint.isCurrent ? '…' : (segment.stint.end | date: 'dd/MM/yyyy')) + ' · ' + formatDuration(segment.stint.durationMs)">
+          @if (segment.stint.name) {
+            <span class="ah-segment-label">{{ segment.stint.name }}</span>
+          }
+        </button>
+      }
+    </div>
+    <div class="ah-axis">
+      <span class="ah-axis-edge">{{ segments()[0].stint.start | date: 'MMM yyyy' }}</span>
+      @for (tick of yearTicks(); track tick.year) {
+        <span class="ah-tick" [style.left.%]="tick.leftPercent">{{ tick.year }}</span>
+      }
+      <span class="ah-axis-edge ah-axis-edge--end">{{ 'Aujourd\'hui' | translate }}</span>
+    </div>
+  </div>
+}
+
+<div class="ah-toolbar">
+  <div class="ah-tabs" role="tablist">
+    <button type="button" role="tab" class="ah-tab" [class.is-active]="view() === 'timeline'"
+      [attr.aria-selected]="view() === 'timeline'" (click)="setView('timeline')">
+      <i class="fas fa-stream"></i> {{ 'Chronologie' | translate }}
+      <span class="ah-count">{{ stints().length }}</span>
+    </button>
+    <button type="button" role="tab" class="ah-tab" [class.is-active]="view() === 'alliances'"
+      [attr.aria-selected]="view() === 'alliances'" (click)="setView('alliances')">
+      <i class="fas fa-shield-alt"></i> {{ 'Par alliance' | translate }}
+      <span class="ah-count">{{ totals().length }}</span>
+    </button>
+  </div>
+  @if (hasFilter()) {
+    <div class="ah-search">
+      <i class="fas fa-search"></i>
+      <input type="search" [value]="query()" (input)="setQuery($any($event.target).value)"
+        [placeholder]="'Rechercher une alliance' | translate" [attr.aria-label]="'Rechercher une alliance' | translate">
+    </div>
+  }
+</div>
+
+@if (view() === 'timeline') {
+  @if (filteredStints().length === 0) {
+    <div class="ah-empty">{{ 'Aucun résultat' | translate }}</div>
+  }
+  @for (year of stintYears(); track year.label) {
+    <div class="ah-year">
+      <span>{{ year.label }}</span>
+      <span class="ah-year-line"></span>
+    </div>
+    <ol class="ah-rows">
+      @for (stint of year.stints; track $index) {
+        <li class="ah-row" [class.is-none]="!stint.name" [class.is-current]="stint.isCurrent"
+          [style.--ah-color]="stint.color">
+          <span class="ah-dot"></span>
+          <span class="ah-period" [title]="stint.start ? (stint.start | date: 'dd/MM/yyyy HH') + 'h → ' + (stint.end | date: 'dd/MM/yyyy HH') + 'h' : ''">
+            @if (stint.start) {
+              {{ stint.start | date: 'dd MMM yy' }}
+            } @else {
+              …
+            }
+            <i class="fas fa-long-arrow-alt-right"></i>
+            @if (stint.isCurrent) {
+              <span class="ah-now">{{ 'Actuelle' | translate }}</span>
+            } @else {
+              {{ stint.end | date: 'dd MMM yy' }}
+            }
+          </span>
+          <span class="ah-name">
+            <button type="button" class="ah-name-btn ah-ellipsis" (click)="focusAlliance(stint)">
+              {{ stint.formerName ?? stint.name ?? ('Sans alliance' | translate) }}
+            </button>
+            @if (stint.formerName && stint.formerName !== stint.name) {
+              <span class="ah-renamed ah-ellipsis" [title]="'Nouveau nom d\'alliance' | translate: {'0': stint.name}">
+                → {{ stint.name }}
+              </span>
+            }
+          </span>
+          <span class="ah-duration">
+            <span>{{ stint.start ? formatDuration(stint.durationMs) : '-' }}</span>
+            <span class="ah-meter"><span [style.width.%]="(stint.durationMs / maxStintMs()) * 100"></span></span>
+          </span>
+        </li>
+      }
+    </ol>
+  }
+  @if (hiddenStintCount() > 0) {
+    <button type="button" class="ah-more" (click)="showMore()">
+      {{ 'Voir plus' | translate }} ({{ hiddenStintCount() }})
+    </button>
+  }
+} @else {
+  @if (filteredTotals().length === 0) {
+    <div class="ah-empty">{{ 'Aucun résultat' | translate }}</div>
+  }
+  <ol class="ah-rows">
+    @for (total of filteredTotals(); track total.key) {
+      <li class="ah-row ah-row--total" [class.is-none]="!total.name" [class.is-current]="total.isCurrent"
+        [style.--ah-color]="total.color">
+        <span class="ah-dot"></span>
+        <span class="ah-name">
+          <span class="ah-ellipsis">{{ total.name ?? ('Sans alliance' | translate) }}</span>
+          @if (total.isCurrent) {
+            <span class="ah-now">{{ 'Actuelle' | translate }}</span>
+          }
+        </span>
+        <span class="ah-period">
+          @if (total.firstStart) {
+            {{ total.firstStart | date: 'dd MMM yy' }}
+          } @else {
+            …
+          }
+          <i class="fas fa-long-arrow-alt-right"></i>
+          {{ total.isCurrent ? ('Aujourd\'hui' | translate) : (total.lastEnd | date: 'dd MMM yy') }}
+        </span>
+        <span class="ah-stints" [title]="'Passages' | translate">×{{ total.stintCount }}</span>
+        <span class="ah-duration">
+          <span>{{ total.durationMs > 0 ? formatDuration(total.durationMs) : '-' }}</span>
+          <span class="ah-meter"><span [style.width.%]="(total.durationMs / maxTotalMs()) * 100"></span></span>
+        </span>
+      </li>
+    }
+  </ol>
+}

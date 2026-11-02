@@ -53,6 +53,7 @@ interface FormFilters {
   banFilter: string;
   isFiltered: boolean;
   inactiveFilter: string;
+  ruinFilter: string;
   playerCastleDistance: string;
   allianceRankFilter: string[];
 }
@@ -104,11 +105,13 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     'stormyIslandsFilter',
     'banFilter',
     'inactiveFilter',
+    'ruinFilter',
   ] as const;
   private static readonly PAGE_SIZE_STORAGE_KEY = 'playersPageSize';
   private static readonly DEFAULT_PAGE_SIZE = 12;
   private static readonly MAX_PAGE_SIZE = 100;
   @ViewChild('searchForm') public searchForm!: SearchFormComponent;
+  public filtersOpened = false;
   public readonly REALM_ORDER = ['0', '2', '1', '3'];
   public players: Player[] = [];
   public scope: PlayersScope = 'server';
@@ -178,6 +181,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     banFilter: '-1',
     isFiltered: false,
     inactiveFilter: '1',
+    ruinFilter: '-1',
     playerCastleDistance: '',
     allianceRankFilter: ['0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'],
     kingdomFilter: ['999'],

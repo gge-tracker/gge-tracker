@@ -1,22 +1,27 @@
 {
   "name": "gge-tracker",
-  "version": "26.10.04",
+  "version": "26.11.02",
   "engines": {
     "node": ">=24"
   },
   "scripts": {
     "ng": "ng",
+    "icons": "node scripts/font-awesome-subset.mjs",
+    "prestart": "npm run icons",
     "start": "ng serve --host 0.0.0.0",
+    "prebuild": "npm run icons",
     "build": "ng build --configuration production",
+    "prebuild:dev": "npm run icons",
     "build:dev": "ng build --configuration development",
+    "prewatch": "npm run icons",
     "watch": "ng build --watch --configuration development",
+    "pretest": "npm run icons",
     "test": "ng test",
     "lint": "ng lint && node scripts/check-spa-routes.mjs",
     "build:server": "ng run gge-tracker:server:production"
   },
   "private": true,
   "dependencies": {
-    "@angular/animations": "^20.3.26",
     "@angular/cdk": "^20.2.14",
     "@angular/common": "^20.3.27",
     "@angular/compiler": "^20.3.27",
@@ -29,7 +34,8 @@
     "@angular/service-worker": "^20.3.26",
     "@createjs/easeljs": "^2.0.0-beta.4",
     "@createjs/tweenjs": "^2.0.0-beta.4",
-    "@fontsource/inter": "^5.3.0",
+    "@fontsource-variable/inter": "5.3.0",
+    "@fontsource/new-rocker": "^5.3.0",
     "@fontsource/outfit": "^5.3.0",
     "@fortawesome/fontawesome-free": "^6.7.1",
     "@ng-select/ng-select": "^20.0.1",
@@ -76,6 +82,7 @@
     "franc": "^6.2.0",
     "nodemon": "^3.1.10",
     "prettier": "^3.6.2",
+    "subset-font": "2.9.0",
     "typescript": "~5.8.3",
     "typescript-eslint": "8.34.1"
   },

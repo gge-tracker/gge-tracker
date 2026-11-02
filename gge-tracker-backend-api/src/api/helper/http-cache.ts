@@ -11,6 +11,22 @@ interface CachingOptions {
 export abstract class HttpCache {
   public static readonly DEFAULT_MAX_AGE_SECONDS = 300;
 
+  public static readonly uncacheableFailures = (
+    _request: express.Request,
+    response: express.Response,
+    next: express.NextFunction,
+  ): void => {
+    const writeHead = response.writeHead.bind(response) as (...parameters: unknown[]) => express.Response;
+    response.writeHead = ((statusCode: number, ...rest: unknown[]) => {
+      if (statusCode >= 500 || statusCode === 429) {
+        response.setHeader('Cache-Control', 'no-store');
+        response.removeHeader('ETag');
+      }
+      return writeHead(statusCode, ...rest);
+    }) as typeof response.writeHead;
+    next();
+  };
+
   public static etagFromCacheKey(key: string): string {
     return `W/"${crypto.createHash('sha1').update(key).digest('hex').slice(0, 32)}"`;
   }

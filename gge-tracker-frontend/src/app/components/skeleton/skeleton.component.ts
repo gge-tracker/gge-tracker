@@ -1,4 +1,3 @@
-import { trigger, transition, style, animate } from '@angular/animations';
 import { Component, inject } from '@angular/core';
 
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
@@ -15,14 +14,6 @@ import { TranslatePipe } from '@ngx-translate/core';
   selector: 'app-skeleton',
   templateUrl: './skeleton.component.html',
   styleUrls: ['./skeleton.component.css'],
-  animations: [
-    trigger('fadeIn', [
-      transition(':enter', [
-        style({ opacity: 0, transform: 'translateY(10px)' }),
-        animate('600ms ease-out', style({ opacity: 1, transform: 'none' })),
-      ]),
-    ]),
-  ],
   imports: [
     NgClass,
     SidebarComponent,

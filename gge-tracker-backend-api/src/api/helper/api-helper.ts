@@ -44,6 +44,7 @@ export abstract class ApiHelper {
   public static readonly HTTP_TOO_MANY_REQUESTS = Status.TOO_MANY_REQUESTS;
   public static readonly HTTP_INTERNAL_SERVER_ERROR = Status.INTERNAL_SERVER_ERROR;
   public static readonly HTTP_SERVICE_UNAVAILABLE = Status.SERVICE_UNAVAILABLE;
+  public static readonly HTTP_GATEWAY_TIMEOUT = Status.GATEWAY_TIMEOUT;
   public static readonly GGE_BASE_URL = 'https://empire-html5.goodgamestudios.com';
   public static readonly ASSETS_BASE_URL = this.GGE_BASE_URL + '/default';
   public static readonly CONFIG_BASE_URL = this.GGE_BASE_URL + '/config';

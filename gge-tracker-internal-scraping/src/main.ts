@@ -33,7 +33,7 @@ import {
   StormSeasonReport,
 } from './interfaces';
 import Utils from './utils';
-import { isSocketDown, readBridgeStatus, zoneOf } from './bridge-status';
+import { isSocketDown, readBridgeStatus, reportDisconnectedAccount, zoneOf } from './bridge-status';
 import { LootReading, LootReadingKind, lootCounterValue, unwrapLootRun } from './loot-counter';
 import { LootReset, lootWeekStart } from './loot-reset';
 import { findScrapingServer, readPublicPlayerIdCodes } from './servers-file';
@@ -177,6 +177,13 @@ export interface JobFailure {
 
 export type StormSweepHealth = 'refreshed' | 'blind' | 'closed';
 
+interface StormTile {
+  AX1: number;
+  AY1: number;
+  AX2: number;
+  AY2: number;
+}
+
 export interface DiscordApiMessageBody {
   channelId: string;
   embeds: {
@@ -313,7 +320,9 @@ export class GenericFetchAndSaveBackend {
   private readonly STORM_CHUNK_SIZE = 500;
   private readonly STORM_ENTRY_EVENT_ID = 16;
   private readonly STORM_SEASON_CHECK_BACKOFF_MINUTES = 15;
+  private readonly STORM_HELD_ISLE_CHECK_MINUTES = 60;
   private readonly STORM_MAX_FAILED_TILES = 10;
+  private readonly STORM_QUARTER_RETRY_DELAY_MS = 1000;
   private readonly FILL_BRIDGE_WAIT_ATTEMPTS = 24;
   private readonly FILL_BRIDGE_POLL_MS = 20_000;
   private readonly RANKING_FIRST_PAGE_RETRIES = 10;
@@ -334,6 +343,7 @@ export class GenericFetchAndSaveBackend {
   private readonly server: string;
   private playerLootAndMightPointHistoryList: { [key: string]: any[] } = {};
   private lootReset: LootReset | null | undefined;
+  private serverKind: string | undefined;
   private playerEventPointHistoryList: { [key: string]: { [key: string]: number | null } } = {};
   private customPlayersAttributesList: { [key: string]: any } = {};
   private currentPlayers: PlayerDatabase[] = [];
@@ -999,9 +1009,7 @@ export class GenericFetchAndSaveBackend {
 
   public async executeFillInOrder(): Promise<boolean> {
     if (!(await this.waitForBridgeSocket())) {
-      Utils.logWarning(
-        `Fill skipped: the bridge socket of ${zoneOf(this.BASE_API_URL)} stayed down for the whole wait`,
-      );
+      reportDisconnectedAccount(this.server, this.BASE_API_URL, 'hourly fill');
       await this.closePool();
       return false;
     }
@@ -2682,10 +2690,7 @@ export class GenericFetchAndSaveBackend {
     let saturatedTiles = 0;
     let done = requestsSoFar;
     for (const tile of this.getStormRingTiles(ring)) {
-      const json = `"KID":${this.STORM_KID},"AX1":${tile.AX1},"AY1":${tile.AY1},"AX2":${tile.AX2},"AY2":${tile.AY2}`;
-      console.log('Fetching zone: ' + json);
-      const url: string = encodeURI(this.BASE_API_URL + 'gaa/' + json);
-      const area = await this.fetchStormArea(url);
+      const area = await this.fetchStormArea(tile);
       if (area.failed) failedTiles++;
       if (this.isSaturatedStormTile(area.objects)) saturatedTiles++;
       const currentTime = new Date();
@@ -2766,22 +2771,52 @@ export class GenericFetchAndSaveBackend {
   }
 
   /**
-   * Performs a single gaa call on the storm kingdom,
-   * retrying once on an invalid payload
+   * Reads one storm tile, asking again for its quarters when the whole tile did not answer
    *
-   * @param url The gaa URL
-   * @returns The AI array of the area, and whether the tile answered at all
+   * @param tile The area to read
+   * @returns The AI array of the area, and whether part of it never answered
    */
-  private async fetchStormArea(url: string): Promise<{ objects: any[]; failed: boolean }> {
-    const attempt = await this.requestStormArea(url);
-    if (!attempt.failed) return attempt;
-    await this.sleep(3000);
-    const retry = await this.requestStormArea(url);
-    if (retry.failed) console.error('Storm retry failed for URL:', url);
-    return retry;
+  private async fetchStormArea(tile: StormTile): Promise<{ objects: any[]; failed: boolean }> {
+    const whole = await this.requestStormArea(tile);
+    if (!whole.failed) return whole;
+    // A quarter frame is a quarter the size, so it survives the losses that time out a full tile on far servers
+    const objects: any[] = [];
+    let answered = false;
+    for (const quarter of this.splitStormTile(tile)) {
+      let area = await this.requestStormArea(quarter);
+      if (area.failed && !answered) {
+        console.error('Storm tile and its first quarter both failed, giving up the tile:', tile);
+        return { objects, failed: true };
+      }
+      if (area.failed) {
+        await this.sleep(this.STORM_QUARTER_RETRY_DELAY_MS);
+        area = await this.requestStormArea(quarter);
+      }
+      if (area.failed) {
+        console.error('Storm quarter failed twice:', quarter);
+        return { objects, failed: true };
+      }
+      answered = true;
+      objects.push(...area.objects);
+    }
+    return { objects, failed: false };
   }
 
-  private async requestStormArea(url: string): Promise<{ objects: any[]; failed: boolean }> {
+  private splitStormTile(tile: StormTile): StormTile[] {
+    const midX = Math.floor((tile.AX1 + tile.AX2) / 2);
+    const midY = Math.floor((tile.AY1 + tile.AY2) / 2);
+    return [
+      { AX1: tile.AX1, AY1: tile.AY1, AX2: midX, AY2: midY },
+      { AX1: midX + 1, AY1: tile.AY1, AX2: tile.AX2, AY2: midY },
+      { AX1: tile.AX1, AY1: midY + 1, AX2: midX, AY2: tile.AY2 },
+      { AX1: midX + 1, AY1: midY + 1, AX2: tile.AX2, AY2: tile.AY2 },
+    ];
+  }
+
+  private async requestStormArea(tile: StormTile): Promise<{ objects: any[]; failed: boolean }> {
+    const json = `"KID":${this.STORM_KID},"AX1":${tile.AX1},"AY1":${tile.AY1},"AX2":${tile.AX2},"AY2":${tile.AY2}`;
+    console.log('Fetching zone: ' + json);
+    const url: string = encodeURI(this.BASE_API_URL + 'gaa/' + json);
     try {
       const response = await axios.get(url);
       if (response.data?.['return_code'] == '0') {
@@ -2866,7 +2901,7 @@ export class GenericFetchAndSaveBackend {
           isle_id       = EXCLUDED.isle_id,
           victory_count = EXCLUDED.victory_count,
           is_visible    = EXCLUDED.is_visible,
-          available_at  = EXCLUDED.available_at,
+          ${this.stormAvailabilityAssignments('storm_forts', 'EXCLUDED.available_at <= NOW()', 'storm_forts.available_at <= storm_forts.updated_at')},
           updated_at    = NOW()`,
         values,
       );
@@ -2908,11 +2943,28 @@ export class GenericFetchAndSaveBackend {
           isle_id      = EXCLUDED.isle_id,
           occupier_id  = EXCLUDED.occupier_id,
           state        = EXCLUDED.state,
-          available_at = EXCLUDED.available_at,
+          ${this.stormAvailabilityAssignments('storm_isles', `EXCLUDED.state = ${StormIsleState.FREE}`, `storm_isles.state = ${StormIsleState.FREE}`)},
           updated_at   = NOW()`,
         values,
       );
     }
+  }
+
+  private stormAvailabilityAssignments(table: string, isAvailable: string, wasAvailable: string): string {
+    return `available_at = CASE
+            WHEN ${isAvailable} AND ${table}.available_at <= EXCLUDED.available_at THEN ${table}.available_at
+            ELSE EXCLUDED.available_at
+          END,
+          available_since_observed = CASE
+            WHEN NOT (${isAvailable}) THEN FALSE
+            WHEN ${wasAvailable} THEN ${table}.available_since_observed
+            ELSE TRUE
+          END,
+          last_available_seconds = CASE
+            WHEN NOT (${isAvailable}) AND ${wasAvailable} AND ${table}.available_since_observed
+              THEN ROUND(EXTRACT(EPOCH FROM ${table}.updated_at + (NOW() - ${table}.updated_at) / 2 - ${table}.available_at))::integer
+            ELSE ${table}.last_available_seconds
+          END`;
   }
 
   private stormRunLevel(season: StormSeasonReport): 'info' | 'warn' | 'error' {
@@ -2999,7 +3051,10 @@ export class GenericFetchAndSaveBackend {
 
     const probe = await this.fetchOwnStormIsle(playerId);
     if (probe.failed) return { state: 'unreachable', ownIsle: meta.ownIsle };
-    if (probe.isle === null) return this.enterStormSeason(playerId);
+    if (probe.isle === null) {
+      if (meta.ownIsle && !this.stormSeasonRollsMonthly()) this.reportLostStormIsle(meta.ownIsle);
+      return this.enterStormSeason(playerId);
+    }
 
     if (meta.ownIsle && !this.isSameStormIsle(meta.ownIsle, probe.isle)) {
       await this.startNewStormSeason(probe.isle);
@@ -3021,7 +3076,21 @@ export class GenericFetchAndSaveBackend {
       : Number.POSITIVE_INFINITY;
     if (sinceLastCheck < this.STORM_SEASON_CHECK_BACKOFF_MINUTES * 60_000) return false;
     if (meta.mapIsEmpty || meta.ownIsle === null) return true;
+    if (!this.stormSeasonRollsMonthly()) return sinceLastCheck >= this.STORM_HELD_ISLE_CHECK_MINUTES * 60_000;
     return meta.seasonStartedAt === null || meta.seasonStartedAt < this.getLastStormSeasonBoundary();
+  }
+
+  private stormSeasonRollsMonthly(): boolean {
+    return this.resolveServerKind() !== 'partner';
+  }
+
+  private reportLostStormIsle(isle: StormOwnIsle): void {
+    Utils.logPersistentFailure(
+      this.server,
+      '423',
+      `Storm isle lost on ${this.server}: the scraper account no longer holds a castle in the storm kingdom`,
+      `last held isle ${isle.objectId} at ${isle.positionX}:${isle.positionY}, trying to enter the event again`,
+    );
   }
 
   private isSameStormIsle(stored: StormOwnIsle, observed: StormOwnIsle): boolean {
@@ -3153,8 +3222,8 @@ export class GenericFetchAndSaveBackend {
     return boundary;
   }
 
-  private getStormRingTiles(ring: number): { AX1: number; AY1: number; AX2: number; AY2: number }[] {
-    const tiles: { AX1: number; AY1: number; AX2: number; AY2: number }[] = [];
+  private getStormRingTiles(ring: number): StormTile[] {
+    const tiles: StormTile[] = [];
     for (let tileY = -ring; tileY <= ring; tileY++) {
       for (let tileX = -ring; tileX <= ring; tileX++) {
         if (ring > 0 && Math.abs(tileX) !== ring && Math.abs(tileY) !== ring) continue;
@@ -3305,6 +3374,7 @@ export class GenericFetchAndSaveBackend {
     history[11] = infos['CF'];
     history[12] = infos['RRD'];
     history[15] = infos['AR'];
+    history[16] = Number(infos['R']) === 1;
     return history;
   }
 
@@ -3682,6 +3752,18 @@ export class GenericFetchAndSaveBackend {
       Utils.logCritical('018', error, ' [KO] Final error while processing statistics');
       this.DB_UPDATES.criticalErrors++;
     }
+  }
+
+  private resolveServerKind(): string {
+    if (this.serverKind === undefined) {
+      try {
+        this.serverKind = findScrapingServer(this.server)?.kind ?? '';
+      } catch (error) {
+        Utils.logMessage(' [warn] Cannot read the servers file:', (error as Error).message);
+        this.serverKind = '';
+      }
+    }
+    return this.serverKind;
   }
 
   private resolveLootReset(): LootReset | null {
@@ -4593,7 +4675,8 @@ export class GenericFetchAndSaveBackend {
         highest_fame NUMERIC(20, 0),
         current_fame NUMERIC(20, 0),
         remaining_relocation_time INTEGER,
-        peace_disabled_at TIMESTAMP DEFAULT NULL
+        peace_disabled_at TIMESTAMP DEFAULT NULL,
+        is_ruin BOOLEAN NOT NULL DEFAULT FALSE
       );
     `);
     const CHUNK_SIZE = 3000;
@@ -4615,6 +4698,7 @@ export class GenericFetchAndSaveBackend {
       'current_fame',
       'remaining_relocation_time',
       'peace_disabled_at',
+      'is_ruin',
     ];
     const nbColumns = columns.length;
     const insertValues: any[][] = [];
@@ -4633,6 +4717,7 @@ export class GenericFetchAndSaveBackend {
       const remainingRelocationTime = data[12] || 0;
       const peaceDisabledAt = Number(remaining_peace_time) > 0 ? (data[14] ?? null) : null;
       const alliance_rank = Number(data[15]) >= 0 && Number(data[15]) <= 100 ? Number(data[15]) : null;
+      const isRuin = data[16] === true;
       insertValues.push([
         playerId,
         might_current,
@@ -4651,6 +4736,7 @@ export class GenericFetchAndSaveBackend {
         currentFame,
         remainingRelocationTime,
         peaceDisabledAt,
+        isRuin,
       ]);
     }
     Utils.logMessage('Chunk array...');
@@ -4692,6 +4778,7 @@ export class GenericFetchAndSaveBackend {
         current_fame = tmp.current_fame,
         remaining_relocation_time = tmp.remaining_relocation_time,
         peace_disabled_at = tmp.peace_disabled_at,
+        is_ruin = tmp.is_ruin,
         updated_at = CURRENT_TIMESTAMP
       FROM tmp_players_update tmp
       WHERE p.id = tmp.id
@@ -4830,6 +4917,7 @@ export class GenericFetchAndSaveBackend {
         const remainingRelocationTime = this.playerLootAndMightPointHistoryList[key][12];
         const peaceDisabledAt = Number(rpt) > 0 ? this.playerLootAndMightPointHistoryList[key][14] : null;
         const allianceRank = this.playerLootAndMightPointHistoryList[key][15];
+        const isRuin = this.playerLootAndMightPointHistoryList[key][16];
         updates[playerId] = [
           loot_current, // loot_current
           might_current, // might_current
@@ -4847,6 +4935,7 @@ export class GenericFetchAndSaveBackend {
           realmAp, // realm castles
           peaceDisabledAt, // peace_disabled_at
           allianceRank, // alliance rank
+          isRuin, // is_ruin
         ];
         const targetedPlayer = this.currentPlayers.find((p) => p.playerId == playerId);
         const shouldInsert =

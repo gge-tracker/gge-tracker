@@ -66,6 +66,35 @@
   pointer-events: none;
 }
 
+.action-icon {
+  position: relative;
+}
+
+.action-icon:disabled:not(.disabled) {
+  cursor: progress;
+}
+
+.analyze-spinner {
+  animation: analyze-spin 800ms linear infinite;
+  background: rgba(8, 12, 18, 0.7);
+  border: 3px solid rgba(255, 255, 255, 0.18);
+  border-radius: 50%;
+  border-top-color: #fbbf24;
+  height: 28px;
+  left: calc(50% + 0.125rem);
+  margin: -14px 0 0 -14px;
+  position: absolute;
+  top: 50%;
+  width: 28px;
+  z-index: 1;
+}
+
+@keyframes analyze-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
 .action-icon:hover img.btn-icon {
   filter: drop-shadow(0 6px 14px rgba(0,0,0,0.5));
   transform: translateY(-3px);

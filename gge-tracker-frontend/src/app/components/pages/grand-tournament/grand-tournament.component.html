@@ -87,11 +87,16 @@
                 <td>
                   <span class="cell-label">{{ 'Classement dans la sous-division' | translate }}</span>{{ alliance.rank }}</td>
                   <td class="col-actions">
-                    <a class="action-icon" [ngClass]="{'disabled': alliance.disabled}"
-                      (click)="analyzeAlliance(alliance.alliance_id)" href="javascript:void(0);"
-                      title="{{ 'Score' | translate }}">
+                    <button type="button" class="action-icon button-reset" [class.disabled]="alliance.disabled"
+                      [class.analyzing]="analyzingAllianceId === alliance.alliance_id"
+                      [disabled]="alliance.disabled || analyzingAllianceId !== null"
+                      [attr.aria-busy]="analyzingAllianceId === alliance.alliance_id"
+                      (click)="analyzeAlliance(alliance.alliance_id)" [title]="'Score' | translate">
                       <img src="/assets/icon_points.png" alt="points" height="24" class="ms-1 btn-icon">
-                    </a>
+                      @if (analyzingAllianceId === alliance.alliance_id) {
+                        <span class="analyze-spinner" aria-hidden="true"></span>
+                      }
+                    </button>
                   </td>
                 </tr>
               }

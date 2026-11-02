@@ -1,0 +1,35 @@
+.navigation-progress {
+  height: 3px;
+  inset: 0 0 auto;
+  overflow: hidden;
+  pointer-events: none;
+  position: fixed;
+  z-index: 10000;
+}
+
+.navigation-progress-bar {
+  animation: navigation-progress-slide 1.1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0), #fbbf24 40%, #fde68a 60%, rgba(251, 191, 36, 0));
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.6);
+  height: 100%;
+  width: 40%;
+}
+
+@keyframes navigation-progress-slide {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(250%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navigation-progress-bar {
+    animation: none;
+    background: #fbbf24;
+    opacity: 0.8;
+    width: 100%;
+  }
+}

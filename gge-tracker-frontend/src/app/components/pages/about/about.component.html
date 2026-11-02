@@ -1,7 +1,7 @@
 <div class="container about-container my-5 pb-0">
   <ng-container *ngTemplateOutlet="apiLink; context: { message: 'API gge-tracker.com' }"></ng-container>
   <div class="text-end mb-2 release-note">
-    <a href="/release-notes" class="text-decoration-none" target="_blank">
+    <a routerLink="/release-notes" class="text-decoration-none">
       <i class="fa-solid fa-file-lines" style="color: #007bff;"></i>
       &nbsp;{{ 'about.release-notes' | translate }}
     </a>
@@ -44,6 +44,20 @@
       </article>
       <article class="integration-card">
         <h3 class="integration-name">
+          <i class="fa-brands fa-chrome" aria-hidden="true"></i>
+          GGE WebSocket Studio
+        </h3>
+        <p>{{ 'about.integrations-ws-studio' | translate }}</p>
+        <div class="integration-actions">
+          <a class="integration-action integration-action--primary text-decoration-none"
+            href="https://chromewebstore.google.com/detail/gge-websocket-studio/deaaangkjfdcpegbebpdhkiknaniomeg"
+            target="_blank" rel="noopener">
+            {{ 'about.integrations-ws-studio-add' | translate }}
+          </a>
+        </div>
+      </article>
+      <article class="integration-card">
+        <h3 class="integration-name">
           <i class="fa-solid fa-code" aria-hidden="true"></i>
           {{ 'about.integrations-build-title' | translate }}
         </h3>
@@ -61,6 +75,19 @@
           <a class="integration-action text-decoration-none" href="https://discord.gg/eb6WSHQqYh" target="_blank"
             rel="noopener">
             {{ 'about.integrations-request-key' | translate }}
+          </a>
+        </div>
+      </article>
+      <article class="integration-card">
+        <h3 class="integration-name">
+          <i class="fa-solid fa-star" aria-hidden="true"></i>
+          {{ 'about.integrations-featured-title' | translate }}
+        </h3>
+        <p>{{ 'about.integrations-featured' | translate }}</p>
+        <div class="integration-actions">
+          <a class="integration-action integration-action--primary text-decoration-none"
+            href="https://discord.gg/eb6WSHQqYh" target="_blank" rel="noopener">
+            {{ 'about.integrations-featured-contact' | translate }}
           </a>
         </div>
       </article>

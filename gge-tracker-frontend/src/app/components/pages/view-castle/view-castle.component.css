@@ -391,7 +391,7 @@
   padding: 1rem;
   border-radius: 0;
   color: #e4e7eb;
-  font-family: 'Inter', 'Roboto', sans-serif;
+  font-family: 'Inter', 'Inter Fallback', 'Roboto', sans-serif;
 }
 
 .modern-panel {

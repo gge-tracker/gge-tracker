@@ -1,4 +1,29 @@
-::ng-deep .movements td img {
-  width: 55px;
-  height: auto;
+.movement-description {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  text-align: left;
+}
+
+.movement-icon {
+  flex: 0 0 auto;
+  height: 44px;
+  position: relative;
+  width: 48px;
+}
+
+.movement-castle {
+  height: 44px;
+  object-fit: contain;
+  width: 44px;
+}
+
+::ng-deep .movements .movement-action img {
+  bottom: -4px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.7));
+  height: 26px;
+  object-fit: contain;
+  position: absolute;
+  right: -4px;
+  width: 26px;
 }

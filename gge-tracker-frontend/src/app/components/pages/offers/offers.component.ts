@@ -32,11 +32,11 @@ import { TranslateModule } from '@ngx-translate/core';
 import {
   ChevronLeft,
   ChevronRight,
+  Clock,
   Gem,
   LucideAngularModule,
   RefreshCw,
   Search,
-  Smartphone,
   Sparkles,
   X,
 } from 'lucide-angular';
@@ -61,6 +61,7 @@ interface OfferCard {
   formattedPrice: string;
   currency: string;
   isFree: boolean;
+  isApproximate: boolean;
   bonusPercent: number | null;
   rubies: number | null;
   rubiesPerUnit: number | null;
@@ -112,7 +113,7 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
   public readonly Gem = Gem;
   public readonly ChevronLeft = ChevronLeft;
   public readonly ChevronRight = ChevronRight;
-  public readonly Smartphone = Smartphone;
+  public readonly Clock = Clock;
 
   public readonly maxLevel = 70;
   public readonly maxLegendaryLevel = 950;
@@ -139,6 +140,9 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
   public refreshDataAnimationSpinner = false;
   public isRefreshing = false;
   public skeletonCards: OfferSkeleton[] = [];
+  public updatedAgo: string | null = null;
+  public updatedAt: string | null = null;
+  public pricedIn: string | null = null;
 
   public sorts: { label: string; value: string }[] = [];
   public currencyOptions: OfferCurrencyOption[] = [];
@@ -213,21 +217,15 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
     return this.allOffers.length;
   }
 
+  public get hasEstimatedPrices(): boolean {
+    return this.allOffers.some((offer) => offer.isApproximate);
+  }
+
   public get isBusy(): boolean {
     return this.isInLoading || this.isRefreshing;
   }
 
-  public get isE4kServer(): boolean {
-    return this.serverService.isE4kServer();
-  }
-
   public async getData(withSkeletons = false): Promise<void> {
-    if (this.isE4kServer) {
-      this.isInLoading = false;
-      this.isRefreshing = false;
-      this.refreshDataAnimationSpinner = false;
-      return;
-    }
     if (withSkeletons) {
       this.buildSkeletons();
       this.isRefreshing = true;
@@ -255,10 +253,13 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
       this.toastService.add(response.error || ErrorType.ERROR_OCCURRED, 5000);
       return;
     }
-    this.categories = this.buildCategories(response.data);
+    const { catalog, fetchedAt, pricedIn } = response.data;
+    this.setFreshness(fetchedAt);
+    this.pricedIn = pricedIn && pricedIn !== this.currency ? pricedIn : null;
+    this.categories = this.buildCategories(catalog);
     this.allOffers = this.buildAllOffers(this.categories);
     this.tabs = this.buildTabs(this.categories);
-    this.failedCategories = Object.keys(response.data._failed ?? {});
+    this.failedCategories = Object.keys(catalog._failed ?? {});
     this.expandedOffers.clear();
     if (!this.tabs.some((tab) => tab.key === this.selectedCategory)) {
       this.selectedCategory = this.allCategoryKey;
@@ -444,12 +445,15 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
       description: offer.desc ?? null,
       image: offer.teaserImg ?? offer.headerImageUrl ?? null,
       price,
-      formattedPrice: this.formatPrice(price, currency),
+      formattedPrice: offer.priceUnknown
+        ? this.translateService.instant('Prix inconnu')
+        : (offer.approximatePrice ? '≈ ' : '') + this.formatPrice(price, currency),
       currency,
-      isFree: price === 0,
+      isFree: price === 0 && !offer.priceUnknown,
+      isApproximate: offer.approximatePrice === true,
       bonusPercent: offer.bonus && offer.bonus > 0 ? offer.bonus : null,
       rubies,
-      rubiesPerUnit: rubies && price > 0 ? Math.round(rubies / (price / 100)) : null,
+      rubiesPerUnit: rubies && price > 0 && !offer.priceUnknown ? Math.round(rubies / (price / 100)) : null,
       rewards,
       isSpecial: offer.special === true,
       isPurchased: offer.purchased === true,
@@ -485,6 +489,27 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
     if (offer.bonusHCValue) return offer.bonusHCValue;
     const premium = (offer.rewards ?? []).find((reward) => reward.type === 'currencyPremium');
     return premium?.qty ?? null;
+  }
+
+  private setFreshness(fetchedAt: string | null): void {
+    const date = fetchedAt ? new Date(fetchedAt) : null;
+    if (!date || Number.isNaN(date.getTime())) {
+      this.updatedAgo = null;
+      this.updatedAt = null;
+      return;
+    }
+    const locale = this.langageService.getCurrentLocale();
+    this.updatedAt = date.toLocaleString(locale);
+    this.updatedAgo = this.formatElapsed(Date.now() - date.getTime(), locale);
+  }
+
+  private formatElapsed(elapsedMs: number, locale: string): string {
+    const format = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+    const minutes = Math.max(0, Math.floor(elapsedMs / 60_000));
+    if (minutes < 60) return format.format(-minutes, 'minute');
+    const hours = Math.floor(minutes / 60);
+    if (hours < 48) return format.format(-hours, 'hour');
+    return format.format(-Math.floor(hours / 24), 'day');
   }
 
   private formatPrice(price: number, currency: string): string {

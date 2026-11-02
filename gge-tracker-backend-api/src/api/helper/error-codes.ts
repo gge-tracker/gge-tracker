@@ -9,6 +9,7 @@ const STATUS_FALLBACK_CODES: Record<number, string> = {
   [Status.NOT_FOUND]: 'NOT_FOUND',
   [Status.INTERNAL_SERVER_ERROR]: 'INTERNAL_SERVER_ERROR',
   [Status.SERVICE_UNAVAILABLE]: 'SERVICE_UNAVAILABLE',
+  [Status.GATEWAY_TIMEOUT]: 'GATEWAY_TIMEOUT',
 };
 
 const toScreamingSnakeCase = (key: string): string =>

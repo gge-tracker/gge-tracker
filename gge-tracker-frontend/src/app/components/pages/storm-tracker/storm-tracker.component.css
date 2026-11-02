@@ -362,6 +362,11 @@
   padding-top: var(--storm-gap);
 }
 
+.storm-status--pending,
+.storm-count--pending {
+  visibility: hidden;
+}
+
 .guard-img {
   width: 18px;
   margin-right: .25rem
@@ -552,13 +557,13 @@ th {
 
 .modal-body .storm-chip {
   --chip-bg: rgba(0, 0, 0, 0.05);
-  --chip-fg: #1e293b;
+  --chip-fg: #bbc7da;
   border-color: rgba(0, 0, 0, 0.1);
 }
 
 .modal-body .storm-chip:hover {
   --chip-bg: rgba(0, 0, 0, 0.1);
-  --chip-fg: #0f172a;
+  --chip-fg: #355c99;
 }
 
 .modal-body .storm-chip--on {
@@ -576,7 +581,37 @@ th {
   font-weight: 600;
 }
 
+.storm-avail-progress {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  height: 2px;
+  margin: 1px auto 0;
+  max-width: 190px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.storm-avail-fill {
+  animation-fill-mode: both;
+  animation-name: storm-avail-grow;
+  animation-timing-function: linear;
+  background: linear-gradient(90deg, #3e9212, #a8e063);
+  border-radius: 3px;
+  height: 100%;
+  width: 0%;
+}
+
+.storm-avail-fill--exceeded {
+  background: linear-gradient(90deg, #b45309, #f59e0b);
+}
+
+@keyframes storm-avail-grow {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
 .storm-menu-icon {
+  height: auto;
   width: 45px;
 }
 

@@ -427,6 +427,14 @@ export const CATALOG: Endpoint[] = [
         { param: 'minLevel', field: 'level', kind: 'min' },
         { param: 'maxLevel', field: 'level', kind: 'max', impossible: 0 },
         {
+          param: 'ruinFilter',
+          field: 'is_ruin',
+          kind: 'eq',
+          noUnmatchableValue: true,
+          probeValue: (row) => (row.is_ruin ? 1 : 0),
+          matches: (row, sent) => row.is_ruin === (Number(sent) === 1),
+        },
+        {
           param: 'minLevel',
           field: 'level/legendary_level',
           kind: 'eq',
@@ -469,6 +477,7 @@ export const CATALOG: Endpoint[] = [
       protectionFilter: -1,
       banFilter: 0,
       inactiveFilter: -1,
+      ruinFilter: 0,
       allianceRankFilter: s.alliedPlayerRank ?? '5',
     }),
     okStatuses: [200],
@@ -1155,6 +1164,7 @@ export const CATALOG: Endpoint[] = [
     kind: 'any',
     cases: [
       { label: 'a ranking page answers its own preview', path: () => '/seo/page' + q({ path: '/players' }), expect: [200] },
+      { label: 'the release notes answer the running release', path: () => '/seo/page' + q({ path: '/release-notes' }), expect: [200] },
       { label: 'an unknown path answers the generic preview', path: () => '/seo/page' + q({ path: '/not-a-page' }), expect: [200] },
       { label: 'a missing path answers the generic preview', path: () => '/seo/page', expect: [200] },
       { label: 'an unknown event answers the page preview', path: () => '/seo/page' + q({ path: '/event-thresholds', event: 'unknown' }), expect: [200] },
@@ -1206,6 +1216,31 @@ export const CATALOG: Endpoint[] = [
       { label: 'a non-numeric event number is refused', path: () => '/assets/og/event/outer-realms/1e3.jpg', expect: [400] },
       { label: 'an event never collected answers 404', path: () => '/assets/og/event/beyond-the-horizon/999999.jpg', expect: [404] },
       { label: 'If-None-Match * is answered 304', path: (s) => `/assets/og/event/outer-realms/${s.outerRealmsEventNumber ?? 1}.jpg`, expect: [304], headers: () => ({ 'If-None-Match': '*' }) },
+    ],
+  },
+  {
+    id: 'release-notes',
+    method: 'GET',
+    scope: 'public',
+    path: () => '/release-notes',
+    okStatuses: [200],
+    shapeKeys: ['releases'],
+    cases: [
+      { label: 'If-None-Match * is answered 304', path: () => '/release-notes', expect: [304], headers: () => ({ 'If-None-Match': '*' }) },
+    ],
+  },
+  {
+    id: 'og-release-notes-card',
+    snapshot: 'shape',
+    method: 'GET',
+    scope: 'public',
+    bypass: true,
+    path: () => '/assets/og/release-notes.jpg',
+    okStatuses: [200],
+    kind: 'binary',
+    cases: [
+      { label: 'a cache-busting version is ignored', path: () => '/assets/og/release-notes.jpg' + q({ v: 'anything' }), expect: [200] },
+      { label: 'If-None-Match * is answered 304', path: () => '/assets/og/release-notes.jpg', expect: [304], headers: () => ({ 'If-None-Match': '*' }) },
     ],
   },
   {

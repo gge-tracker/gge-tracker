@@ -38,8 +38,8 @@ td, th {
   filter: brightness(1.2);
 }
 
-.mono {
-  font-family: monospace;
+.dungeon-state {
+  font-variant-numeric: tabular-nums;
 }
 .dungeons-status {
   align-items: center;
@@ -382,10 +382,6 @@ td, th {
 
   :host ::ng-deep #table-component .table-custom td.col-name > div {
     justify-content: flex-start !important;
-  }
-
-  td.col-state-wide .mono {
-    font-family: inherit;
   }
 
   .dungeon-avail-progress {

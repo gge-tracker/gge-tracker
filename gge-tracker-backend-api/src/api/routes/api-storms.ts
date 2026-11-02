@@ -547,6 +547,8 @@ export abstract class ApiStorms implements ApiHelper {
         S.victory_count,
         S.is_visible,
         S.available_at,
+        S.available_since_observed,
+        S.last_available_seconds,
         S.updated_at
         ${distanceSelectSql}
       FROM storm_forts S
@@ -623,6 +625,8 @@ export abstract class ApiStorms implements ApiHelper {
         S.occupier_id,
         S.state,
         S.available_at,
+        S.available_since_observed,
+        S.last_available_seconds,
         S.updated_at
         ${distanceSelectSql}
       FROM storm_isles S
@@ -684,6 +688,8 @@ export abstract class ApiStorms implements ApiHelper {
       attacks_left: Math.max(this.MAX_VICTORIES - result.victory_count, 0),
       is_visible: result.is_visible,
       available_at: result.available_at,
+      available_since_observed: result.available_since_observed,
+      last_available_seconds: result.last_available_seconds,
       updated_at: result.updated_at,
       distance: this.toDistance(result.calculated_distance),
     }));
@@ -704,6 +710,8 @@ export abstract class ApiStorms implements ApiHelper {
       occupier_legendary_level: result.occupier_legendary_level,
       occupier_alliance_name: result.occupier_alliance_name,
       available_at: result.available_at,
+      available_since_observed: result.available_since_observed,
+      last_available_seconds: result.last_available_seconds,
       updated_at: result.updated_at,
       distance: this.toDistance(result.calculated_distance),
     }));

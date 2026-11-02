@@ -21,6 +21,8 @@ const SEASON_CHECK = /INSERT INTO storm_meta \(id, season_checked_at/;
 const PRUNE_FORTS = /DELETE FROM storm_forts WHERE updated_at/;
 const PRUNE_ISLES = /DELETE FROM storm_isles WHERE updated_at/;
 const SCAN_STAMP = /UPDATE storm_meta SET scan_radius/;
+const UPSERT_FORTS = /INSERT INTO storm_forts/;
+const UPSERT_ISLES = /INSERT INTO storm_isles/;
 
 const OWN_ISLE = { x: 619, y: 609, objectId: 515 };
 const BACKOFF_MINUTES = 15;
@@ -236,6 +238,91 @@ describe('storm season', () => {
     });
   });
 
+  describe('on a partner server, whose season never rolls over', () => {
+    function partnerStorm(now: Date, minutesSinceCheck: number): { rows: Record<string, unknown>[] } {
+      return dueStorm(now, { season_checked_at: minutesBefore(now, minutesSinceCheck) });
+    }
+
+    it('ignores the calendar month while the account holds its isle', async () => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.setState('serverKind', 'partner');
+        sandbox.db.when(STORM_STATE, partnerStorm(sandbox.now, 59));
+        inEvent(sandbox);
+        servesOneFort(sandbox);
+
+        await sandbox.call('updateStormMap');
+
+        assert.equal(sandbox.api.callsFor('gpi').length, 0);
+        assert.equal(sandbox.api.callsFor('gaa').length, 1);
+      });
+    });
+
+    it('checks the isle is still held once an hour, without wiping anything', async () => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.setState('serverKind', 'partner');
+        sandbox.db.when(STORM_STATE, partnerStorm(sandbox.now, 61));
+        inEvent(sandbox);
+        servesOneFort(sandbox);
+
+        await sandbox.call('updateStormMap');
+
+        assert.equal(sandbox.api.callsFor('gdi').length, 1);
+        assert.equal(sandbox.db.matching(TRUNCATE).length, 0);
+      });
+    });
+
+    it('reports an error when the account lost its isle, then tries to enter again', async () => {
+      await withLogSpy(async (logs) => {
+        await withSandbox({}, async (sandbox) => {
+          sandbox.backend.deferFailureAlerts = true;
+          sandbox.setState('serverKind', 'partner');
+          sandbox.db.when(STORM_STATE, partnerStorm(sandbox.now, 61));
+          outOfEvent(sandbox);
+          sandbox.api.on('ksc', () => ({ return_code: 21 }));
+
+          await sandbox.call('updateStormMap');
+
+          assert.equal(logs.calls.logPersistentFailure.length, 1);
+          assert.equal(logs.calls.logPersistentFailure[0][1], '423');
+          assert.equal(sandbox.api.callsFor('ksc').length, 1);
+        });
+      });
+    });
+
+    it('does not report it again once the loss is recorded', async () => {
+      await withLogSpy(async (logs) => {
+        await withSandbox({}, async (sandbox) => {
+          sandbox.setState('serverKind', 'partner');
+          sandbox.db.when(
+            STORM_STATE,
+            dueStorm(sandbox.now, { own_isle_object_id: null, own_isle_x: null, own_isle_y: null }),
+          );
+          outOfEvent(sandbox);
+          sandbox.api.on('ksc', () => ({ return_code: 21 }));
+
+          await sandbox.call('updateStormMap');
+
+          assert.equal(logs.calls.logPersistentFailure.length, 0);
+        });
+      });
+    });
+
+    it('says nothing on a regular server, where losing the isle is the monthly reset', async () => {
+      await withLogSpy(async (logs) => {
+        await withSandbox({}, async (sandbox) => {
+          sandbox.setState('serverKind', 'ep');
+          sandbox.db.when(STORM_STATE, dueStorm(sandbox.now));
+          outOfEvent(sandbox);
+          sandbox.api.on('ksc', () => ({ return_code: 21 }));
+
+          await sandbox.call('updateStormMap');
+
+          assert.equal(logs.calls.logPersistentFailure.length, 0);
+        });
+      });
+    });
+  });
+
   describe('when the bridge does not answer', () => {
     it('scans nothing and touches nothing', async () => {
       await withSandbox({}, async (sandbox) => {
@@ -291,9 +378,64 @@ describe('storm season', () => {
 
         await sandbox.call('updateStormMap');
 
-        assert.equal(sandbox.api.callsFor('gaa').length, 2);
+        assert.equal(sandbox.api.callsFor('gaa').length, 5);
         assert.equal(sandbox.db.matching(PRUNE_FORTS).length, 1);
         assert.equal(sandbox.db.matching(SCAN_STAMP).length, 1);
+      });
+    });
+  });
+
+  describe('a tile that did not answer', () => {
+    const TIMEOUT = { return_code: -1, error: 'Timeout' };
+
+    function boxesAsked(sandbox: Sandbox): number[][] {
+      return sandbox.api
+        .callsFor('gaa')
+        .map((call) => ['AX1', 'AY1', 'AX2', 'AY2'].map((key) => Number(call.parameters[key])));
+    }
+
+    it('is asked again as four quarters that cover it without overlap', async () => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.db.when(STORM_STATE, stormState(sandbox.now));
+        sandbox.api.on('gaa', (request, callIndex) =>
+          callIndex === 0 ? TIMEOUT : stormArea([stormFort(600 + callIndex, 600), [STORM_BORDER_OBJECT, 0, 0]]),
+        );
+
+        assert.equal(await sandbox.call('updateStormMap'), 'refreshed');
+
+        assert.deepEqual(boxesAsked(sandbox), [
+          [594, 594, 694, 694],
+          [594, 594, 644, 644],
+          [645, 594, 694, 644],
+          [594, 645, 644, 694],
+          [645, 645, 694, 694],
+        ]);
+        assert.equal(sandbox.db.matching(PRUNE_FORTS).length, 1, 'four answered quarters are a complete tile');
+      });
+    });
+
+    it('is given up at once when its first quarter fails too, so a silent server costs two requests', async () => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.db.when(STORM_STATE, stormState(sandbox.now));
+        sandbox.api.on('gaa', () => TIMEOUT);
+
+        assert.equal(await sandbox.call('updateStormMap'), 'blind');
+        assert.equal(sandbox.api.callsFor('gaa').length, 2);
+      });
+    });
+
+    it('retries a later quarter once, and keeps what the others answered when it fails again', async () => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.db.when(STORM_STATE, stormState(sandbox.now));
+        sandbox.api.on('gaa', (request, callIndex) =>
+          callIndex === 0 || callIndex >= 3
+            ? TIMEOUT
+            : stormArea([stormFort(600 + callIndex, 600), [STORM_BORDER_OBJECT, 0, 0]]),
+        );
+
+        assert.equal(await sandbox.call('updateStormMap'), 'refreshed');
+        assert.equal(sandbox.api.callsFor('gaa').length, 5, 'the tile, two quarters, the third twice');
+        assert.equal(sandbox.db.matching(PRUNE_FORTS).length, 0, 'a missing quarter cancels the prune');
       });
     });
 
@@ -320,6 +462,46 @@ describe('storm season', () => {
         await sandbox.call('updateStormMap');
 
         assert.equal(sandbox.db.one(SCAN_STAMP).params[0], 151);
+      });
+    });
+  });
+
+  describe('tracking how long an object stays available', () => {
+    it('keeps the moment a fort became attackable, and judges it on its timer', async () => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.db.when(STORM_STATE, stormState(sandbox.now));
+        servesOneFort(sandbox);
+
+        await sandbox.call('updateStormMap');
+
+        const sql = sandbox.db.one(UPSERT_FORTS).sql;
+        assert.match(
+          sql,
+          /available_at = CASE WHEN EXCLUDED\.available_at <= NOW\(\) AND storm_forts\.available_at <= EXCLUDED\.available_at THEN storm_forts\.available_at/,
+        );
+        assert.match(
+          sql,
+          /WHEN storm_forts\.available_at <= storm_forts\.updated_at THEN storm_forts\.available_since_observed ELSE TRUE/,
+        );
+      });
+    });
+
+    it('judges an isle on its state, and measures its free time only when it was seen becoming free', async () => {
+      await withSandbox({}, async (sandbox) => {
+        sandbox.db.when(STORM_STATE, stormState(sandbox.now));
+        servesOneFort(sandbox);
+
+        await sandbox.call('updateStormMap');
+
+        const sql = sandbox.db.one(UPSERT_ISLES).sql;
+        assert.match(
+          sql,
+          /available_at = CASE WHEN EXCLUDED\.state = 0 AND storm_isles\.available_at <= EXCLUDED\.available_at/,
+        );
+        assert.match(
+          sql,
+          /last_available_seconds = CASE WHEN NOT \(EXCLUDED\.state = 0\) AND storm_isles\.state = 0 AND storm_isles\.available_since_observed THEN/,
+        );
       });
     });
   });

@@ -31,6 +31,10 @@
   color: #fff;
 }
 
+.game-chip i {
+  margin-right: 0.35rem;
+}
+
 .game-chip--on {
   background: rgba(255, 255, 255, 0.2);
   color: #fff;

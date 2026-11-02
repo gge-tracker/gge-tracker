@@ -20,6 +20,8 @@ import { ApiPlayers } from '../routes/api-players';
 import { ApiProfiles } from '../routes/api-profiles';
 import { ApiSeo } from '../routes/api-seo';
 import { ApiSeoPages } from '../routes/api-seo-pages';
+import { ApiSeoReleaseNotes } from '../routes/api-seo-release-notes';
+import { ApiReleaseNotes } from '../routes/api-release-notes';
 import { ApiEventPodium } from '../routes/api-event-podium';
 import { ApiEventThresholds } from '../routes/api-event-thresholds';
 import { ApiGlobalRanking } from '../routes/api-global-ranking';
@@ -456,6 +458,14 @@ export class ApiRoutingController {
 
   public getAllianceShareCard(request: express.Request, response: express.Response): void {
     void ApiSeo.getAllianceCard(request, response);
+  }
+
+  public getReleaseNotes(request: express.Request, response: express.Response): void {
+    ApiReleaseNotes.getReleaseNotes(request, response);
+  }
+
+  public getReleaseNotesShareCard(request: express.Request, response: express.Response): void {
+    void ApiSeoReleaseNotes.getCard(request, response);
   }
 
   public getEventThresholds(request: express.Request, response: express.Response): void {

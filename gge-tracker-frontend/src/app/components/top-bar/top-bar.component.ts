@@ -18,7 +18,7 @@ import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import { UtilitiesService } from '@ggetracker-services/utilities.service';
 import { RouterModule } from '@angular/router';
-import { LanguageService } from '@ggetracker-services/language.service';
+import { LanguageService, SiteLanguage } from '@ggetracker-services/language.service';
 import { DomPortalOutlet } from '@angular/cdk/portal';
 import { TopBarService } from '@ggetracker-services/topbar.service';
 import { OverlayModule } from '@angular/cdk/overlay';
@@ -33,11 +33,13 @@ import { OverlayModule } from '@angular/cdk/overlay';
 })
 export class TopBarComponent implements AfterViewInit {
   @ViewChild('topbarHost', { read: ElementRef }) public host!: ElementRef;
+  @ViewChild('languageToggle') public languageToggle?: ElementRef<HTMLButtonElement>;
   public sidebarBtn = input<boolean>(true);
   public discordMemberCount = 0;
   public serverService = inject(ServerService);
   public languageService = inject(LanguageService);
   public searchQuery: string = '';
+  public languageQuery: string = '';
   public filteredServerInput: string = '';
   public sidebarOpen = false;
   private readonly sidebarService = inject(SidebarService);
@@ -90,9 +92,41 @@ export class TopBarComponent implements AfterViewInit {
     this.sidebarService.setSearchQuery(this.searchQuery);
   }
 
+  @ViewChild('languageSearch') public set languageSearch(input: ElementRef<HTMLInputElement> | undefined) {
+    input?.nativeElement.focus();
+  }
+
   public toggleLanguageMenu(): void {
+    this.languageQuery = '';
     this.sidebarService.toggleLanguageMenu();
     this.cdr.markForCheck();
+  }
+
+  public get filteredLanguages(): SiteLanguage[] {
+    return this.languageService.searchLangs(this.languageQuery);
+  }
+
+  public selectFirstLanguage(): void {
+    const first = this.filteredLanguages[0];
+    if (first) this.selectLanguage(first.code);
+  }
+
+  public onLanguagePanelKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      this.sidebarService.closeLanguageMenu();
+      this.languageToggle?.nativeElement.focus();
+      this.cdr.markForCheck();
+      return;
+    }
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    const panel = event.currentTarget as HTMLElement;
+    const focusable = [
+      ...(panel.querySelectorAll<HTMLElement>('.lang-search-input, .lang-option') as unknown as Iterable<HTMLElement>),
+    ];
+    const index = focusable.indexOf(document.activeElement as HTMLElement);
+    const step = event.key === 'ArrowDown' ? 1 : -1;
+    focusable[(index + step + focusable.length) % focusable.length]?.focus();
+    event.preventDefault();
   }
 
   public isLanguageMenuOpen(): boolean {

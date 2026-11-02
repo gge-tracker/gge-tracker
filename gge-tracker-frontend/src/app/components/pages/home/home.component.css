@@ -942,9 +942,7 @@
 }
 
 .home-brand-wordmark {
-  filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.75));
-  height: auto;
-  width: clamp(210px, 26vw, 330px);
+  font-size: clamp(2.2rem, 4.6vw, 3.5rem);
 }
 
 .home-welcome-title {

@@ -20,7 +20,7 @@
 .check {
   opacity: 0;
   transform: scale(0.5) rotate(-90deg);
-  color: #ffffff;
+  color: currentColor;
 }
 
 .icon-wrapper.validated .base {

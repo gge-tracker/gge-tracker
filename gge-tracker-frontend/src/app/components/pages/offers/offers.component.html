@@ -13,16 +13,6 @@
             </p>
           </div>
 
-          @if (isE4kServer) {
-          <aside class="offers-banner" role="note">
-            <lucide-icon class="lucide offers-banner__icon" [img]="Smartphone" [size]="20"></lucide-icon>
-            <div class="offers-banner__body">
-              <p class="offers-banner__title">{{ 'Boutique indisponible sur les serveurs E4K' | translate }}</p>
-              <p class="offers-banner__text">{{ 'offers-e4k-unavailable' | translate }}</p>
-            </div>
-          </aside>
-          } @else {
-
           <div class="offers-toolbar">
             <div class="offers-toolbar__group offers-toolbar__group--profile">
               <div class="offers-field offers-field--level">
@@ -71,6 +61,27 @@
             </div>
           </div>
 
+          @if (updatedAgo) {
+          <p class="offers-freshness" [title]="updatedAt">
+            <lucide-icon class="lucide" [img]="Clock" [size]="14"></lucide-icon>
+            <span>{{ 'Boutique mise à jour' | translate: { time: updatedAgo } }}</span>
+          </p>
+          }
+
+          @if (hasEstimatedPrices) {
+          <div class="offers-notice">
+            <i class="fa-solid fa-circle-info"></i>
+            <em>{{ 'offers-prices-estimated' | translate }}</em>
+          </div>
+          }
+
+          @if (pricedIn) {
+          <div class="offers-notice">
+            <i class="fa-solid fa-circle-info"></i>
+            <em>{{ 'offers-currency-pending' | translate: { currency: currency, fallback: pricedIn } }}</em>
+          </div>
+          }
+
           @if (failedCategories.length > 0) {
           <div class="offers-notice">
             <i class="fa-solid fa-circle-info"></i>
@@ -78,11 +89,7 @@
               failedCategories.join(', ') }}</em>
           </div>
           }
-
-          }
         </header>
-
-        @if (!isE4kServer) {
 
         @if (tabs.length > 0) {
         <div class="offers-tabs" [class.offers-tabs--overflow-start]="canScrollTabsBack"
@@ -177,7 +184,8 @@
               <h2 class="offer-card__name" [title]="offer.name">{{ offer.name }}</h2>
 
               <div class="offer-card__price-row">
-                <span class="offer-price" [class.offer-price--free]="offer.isFree">{{ offer.formattedPrice }}</span>
+                <span class="offer-price" [class.offer-price--free]="offer.isFree"
+                  [attr.title]="offer.isApproximate ? ('Prix estimé' | translate) : null">{{ offer.formattedPrice }}</span>
               </div>
 
               @if (offer.rubiesPerUnit) {
@@ -252,8 +260,6 @@
           </article>
           }
         </div>
-
-        }
 
         }
 

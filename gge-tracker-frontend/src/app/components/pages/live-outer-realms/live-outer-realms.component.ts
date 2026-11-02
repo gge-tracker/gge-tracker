@@ -24,6 +24,7 @@ import { NgLabelTemplateDirective, NgOptionTemplateDirective, NgSelectComponent 
 import { TranslateModule } from '@ngx-translate/core';
 import { ApexAxisChartSeries, ApexChart, ApexNonAxisChartSeries, ApexOptions, ApexPlotOptions } from 'ng-apexcharts';
 import { LiveOuterRealmsStatisticsModalComponent } from './live-outer-realms-statistics-modal/live-outer-realms-statistics-modal.component';
+import Modal from 'bootstrap/js/dist/modal';
 
 type TableHeader = [string, string, string?, boolean?];
 
@@ -175,10 +176,7 @@ export class LiveOuterRealmsComponent extends GenericComponent {
 
   public openExportModal(): void {
     const modal = document.querySelector('#exportModal');
-    const bootstrap = (
-      globalThis as { bootstrap?: { Modal: { getOrCreateInstance(element: Element): { show(): void } } } }
-    ).bootstrap;
-    if (modal && bootstrap) bootstrap.Modal.getOrCreateInstance(modal).show();
+    if (modal) Modal.getOrCreateInstance(modal).show();
   }
 
   public async copyExportUrl(): Promise<void> {

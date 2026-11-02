@@ -52,7 +52,8 @@ export class SidebarComponent implements AfterViewInit, OnDestroy {
   }
 
   public ngAfterViewInit(): void {
-    this.revealActiveItem();
+    if ('requestIdleCallback' in globalThis) requestIdleCallback(() => this.revealActiveItem(), { timeout: 2000 });
+    else setTimeout(() => this.revealActiveItem(), 200);
 
     const panel = this.panel?.nativeElement;
     if (!panel || typeof ResizeObserver === 'undefined') {

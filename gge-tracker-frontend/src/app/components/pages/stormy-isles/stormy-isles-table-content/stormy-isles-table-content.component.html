@@ -46,10 +46,10 @@
     <!-- Alliance -->
     <td class="col-alliance ps-4">
       @if (player.alliance_name) {
-        <a class="alliance-link"
-          (click)="clickOnAlliance.emit(player.alliance_name)" (keydown.enter)="clickOnAlliance.emit(player.alliance_name)">
+        <button type="button" class="alliance-link button-reset"
+          (click)="clickOnAlliance.emit(player.alliance_name)">
           {{ player.alliance_name }}
-        </a>
+        </button>
         <div class="alliance-stats">
           <span [title]="'Puissance de l\'alliance' | translate">
             <img src="/assets/pp1.png" [alt]="'Puissance de l\'alliance' | translate">

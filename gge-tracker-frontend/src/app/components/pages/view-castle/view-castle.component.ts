@@ -50,6 +50,7 @@ import {
   ResourceEstimate,
 } from './castle-production-estimator';
 import { formatThousands } from '@ggetracker-services/text-format.utilities';
+import Modal from 'bootstrap/js/dist/modal';
 
 type CastleFilterValue = number | string | null;
 
@@ -568,10 +569,7 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
   public onIsoBuildingSelected(building: IMappedBuildingWithGround): void {
     this.updateSelectedItem(building);
     const modal = document.querySelector('#viewItemModal');
-    const bootstrap = (
-      globalThis as { bootstrap?: { Modal: { getOrCreateInstance(element: Element): { show(): void } } } }
-    ).bootstrap;
-    if (modal && bootstrap) bootstrap.Modal.getOrCreateInstance(modal).show();
+    if (modal) Modal.getOrCreateInstance(modal).show();
   }
 
   public setActiveView(view: CastleView): void {

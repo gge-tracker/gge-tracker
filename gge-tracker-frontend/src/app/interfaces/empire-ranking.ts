@@ -72,18 +72,9 @@ export interface AllianceStatsData {
   player_count: number;
 }
 
-export interface Card {
-  identifier: keyof ApiServerStats;
-  label: string;
-  logo: string;
-  value: string;
-  avg: string;
-  valueCompare: number;
-  link?: string;
-}
-
 export interface Rename {
   rank: number;
+  subjectLink: string[] | null;
   might: number | null;
   alliance: string | null;
   oldPlayerName: string;
@@ -128,6 +119,10 @@ export interface StormFort {
   attacksLeft: number;
   isVisible: boolean;
   availableAt: string;
+  availableSinceObserved: boolean;
+  lastAvailableSeconds: number | null;
+  availabilityAnimDelay?: string;
+  availabilityExceeded?: boolean;
   updatedAt: string;
   distance?: number | null;
   effectiveCooldownUntil: string;
@@ -148,6 +143,10 @@ export interface StormIsle {
   occupierLegendaryLevel?: number | null;
   occupierAllianceName?: string | null;
   availableAt: string;
+  availableSinceObserved: boolean;
+  lastAvailableSeconds: number | null;
+  availabilityAnimDelay?: string;
+  availabilityExceeded?: boolean;
   updatedAt: string;
   distance?: number | null;
   effectiveCooldownUntil: string;
@@ -156,6 +155,8 @@ export interface StormIsle {
 export interface Movement {
   rank: number;
   player: string;
+  playerId: string | null;
+  allianceId: string | null;
   might: number | null;
   level: number | null;
   legendaryLevel: number | null;
@@ -331,7 +332,8 @@ export enum WatchModeStats {
 
 export type SearchType = 'alliance' | 'player';
 
-export type ApiResponse<T> = { success: true; error?: string; data: T } | { success: false; error: string };
+export type ApiResponse<T> =
+  { success: true; error?: string; data: T; headers?: Headers } | { success: false; error: string };
 
 export interface ApiPagination {
   current_page: number;
@@ -739,6 +741,8 @@ export interface ApiStormFort {
   attacks_left: number;
   is_visible: boolean;
   available_at: string;
+  available_since_observed: boolean;
+  last_available_seconds: number | null;
   updated_at: string;
   distance?: number | null;
 }
@@ -757,6 +761,8 @@ export interface ApiStormIsle {
   occupier_legendary_level: number | null;
   occupier_alliance_name: string | null;
   available_at: string;
+  available_since_observed: boolean;
+  last_available_seconds: number | null;
   updated_at: string;
   distance?: number | null;
 }
@@ -830,6 +836,8 @@ export interface ApiAllianceResponse extends ApiGenericResponse {
 }
 
 export interface ApiMovement {
+  player_id?: string | null;
+  alliance_id?: string | null;
   alliance_name: string | null;
   created_at: string;
   movement_type: 'add' | 'remove' | 'move';
@@ -846,6 +854,8 @@ export interface ApiMovement {
 
 export interface ApiRenames {
   date: string;
+  player_id?: string | null;
+  alliance_id?: string | null;
   player_name: string;
   player_might: number | null;
   alliance_name: string | null;
@@ -1002,6 +1012,12 @@ export interface ApiOffersCatalogResponse {
   [category: string]: ApiOfferCategory | Record<string, unknown> | undefined;
 }
 
+export interface ApiOffersCatalog {
+  catalog: ApiOffersCatalogResponse;
+  fetchedAt: string | null;
+  pricedIn: string | null;
+}
+
 export interface ApiOfferCategory {
   data?: {
     offers?: ApiOffer[] | null;
@@ -1030,6 +1046,8 @@ export interface ApiOffer {
   active?: boolean;
   purchased?: boolean;
   type?: string;
+  approximatePrice?: boolean;
+  priceUnknown?: boolean;
 }
 
 export interface ApiOfferReward {
@@ -1042,12 +1060,20 @@ export interface ApiOfferReward {
   iconUrl?: string;
 }
 
+export interface ApiEventWinner {
+  player_id: string | null;
+  player_name: string;
+  server: string;
+  point: string;
+}
+
 export interface ApiEventlist {
   events: {
     event_num: number;
     collect_date: string;
     player_count: number;
     type: 'outer_realms' | 'beyond_the_horizon';
+    winner?: ApiEventWinner | null;
   }[];
   pagination: ApiPagination;
 }
@@ -1485,6 +1511,8 @@ export interface ApiServerStats {
   event_war_realms_players: number | null;
   created_at: string;
   players_in_peace: number;
+  max_might_player_id?: number | null;
+  max_loot_player_id?: number | null;
   avg_fame: number;
   max_fame: number;
   total_fame: number;
@@ -1605,4 +1633,34 @@ export interface ApiEventThresholdsResponse {
   typical: ApiEventThresholdRange | null;
   occurrences: ApiEventThresholdOccurrence[];
   pace: { started_at: string; running: boolean; points: { hour: number; thresholds: number[] }[] }[];
+}
+
+export type ApiReleaseItemKind = 'new' | 'improved' | 'servers' | 'translations' | 'fixed';
+
+export type ApiReleaseChangeKind = 'new' | 'changed' | 'legacy' | 'removed';
+
+export interface ApiReleaseItem {
+  kind: ApiReleaseItemKind;
+  area: string | null;
+  text: string;
+}
+
+export interface ApiReleaseChange {
+  change: ApiReleaseChangeKind;
+  method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
+  path: string;
+  tag: string;
+  note: string;
+}
+
+export interface ApiRelease {
+  version: string;
+  type: 'Major' | 'Minor' | 'Fix';
+  date: string;
+  items: ApiReleaseItem[];
+  api_changes: ApiReleaseChange[];
+}
+
+export interface ApiReleaseNotesResponse {
+  releases: ApiRelease[];
 }

@@ -3,6 +3,7 @@ import { ApiHelper } from '../helper/api-helper';
 import { HttpCache } from '../helper/http-cache';
 import { SeoHead } from '../helper/seo-head';
 import { ApiEventThresholds } from './api-event-thresholds';
+import { ApiSeoReleaseNotes } from './api-seo-release-notes';
 
 interface PageHead {
   title: string;
@@ -137,7 +138,7 @@ export abstract class ApiSeoPages implements ApiHelper {
       const page = Object.hasOwn(this.PAGES, path) ? this.PAGES[path] : null;
       const event = path === '/event-thresholds' ? this.eventSlug(request.query.event) : null;
       const etag = HttpCache.etagFromCacheKey(
-        `seo-page:${page ? path : 'unknown'}:${event ?? ''}:${SeoHead.siteUrl()}:${SeoHead.apiUrl()}`,
+        `seo-page:${page ? path : 'unknown'}:${event ?? ''}:${ApiSeoReleaseNotes.CONTENT_DIGEST}:${SeoHead.siteUrl()}:${SeoHead.apiUrl()}`,
       );
       if (
         HttpCache.handleConditional(request, response, { etag, dataVersion: null, maxAgeSeconds: this.MAX_AGE_SECONDS })
@@ -160,6 +161,9 @@ export abstract class ApiSeoPages implements ApiHelper {
   }
 
   private static render(path: string, page: PageHead, event: string | null, indexable = true): string {
+    if (path === ApiSeoReleaseNotes.PATH) {
+      return SeoHead.render({ path, ...ApiSeoReleaseNotes.head(), indexable, type: 'website' });
+    }
     const eventName = event ? this.EVENT_NAMES[event] : null;
     const heading = eventName ? `${eventName} thresholds` : page.title;
     const description = eventName

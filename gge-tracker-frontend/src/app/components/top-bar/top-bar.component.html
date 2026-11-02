@@ -23,8 +23,7 @@
         <button class="server-selector" [class.rotate]="isServerMenuOpen()" (click)="toggleServerMenu()"
           [title]="serverService.currentServer?.name">
           <span>{{serverService.currentServer?.name}}</span>
-          <img [src]="serverService.currentServer?.flagUrl" width="20" class="me-2"
-            alt="{{ serverService.currentServer?.name }}" title="{{ serverService.currentServer?.name }}">
+          <img [src]="serverService.currentServer?.flagUrl" width="20" class="me-2" alt="">
 
           <app-icon name="ChevronDown" class="chevron" [size]="16"></app-icon>
         </button>
@@ -43,7 +42,7 @@
                 && !srv.ggeServerName.toLowerCase().includes(filteredServerInput.toLowerCase())
               )">
                 <div>
-                  <img [src]="srv.flagUrl" width="20" class="me-2" alt="{{ srv.name }}" title="{{ srv.name }}">
+                  <img [src]="srv.flagUrl" width="20" class="me-2" alt="">
                   <span class="server-badge">{{srv.name}}</span>
                 </div>
                 <div class="flex items-center gap-2">
@@ -67,7 +66,7 @@
 
       <!-- Discord -->
       <div class="position-relative">
-        <a href="https://discord.gg/eb6WSHQqYh" target="_blank" rel="noopener" class="action-icon">
+        <a href="https://discord.gg/eb6WSHQqYh" target="_blank" rel="noopener" class="action-icon" aria-label="Discord">
           <i class="fa-brands fa-discord"></i>
           <span class="label d-none d-xxl-inline">Discord</span>
         </a>
@@ -80,10 +79,10 @@
       </div>
 
       <!-- About -->
-      <button class="action-icon about-btn" [routerLink]="['/', 'about']" [title]="'A propos' | translate">
+      <a class="action-icon about-btn" [routerLink]="['/', 'about']" [title]="'A propos' | translate">
         <app-icon name="Info" [size]="19"></app-icon>
         <span class="label d-none d-xxl-inline">{{ 'A propos' | translate }}</span>
-      </button>
+      </a>
 
       <!-- Dev API -->
       <a href="https://docs.gge-tracker.com"
@@ -93,28 +92,52 @@
       </a>
 
       <!-- GitHub -->
-      <a href="https://github.com/gge-tracker/gge-tracker" target="_blank" rel="noopener" class="action-icon github-btn">
+      <a href="https://github.com/gge-tracker/gge-tracker" target="_blank" rel="noopener" class="action-icon github-btn"
+          aria-label="GitHub">
         <i class="fa-brands fa-github"></i>
       </a>
 
       <!-- Lang selector -->
       <div class="position-relative" id="language-menu">
-        <button type="button" class="lang-pill button-reset" (click)="toggleLanguageMenu()"
-          [class.rotate]="isLanguageMenuOpen()">
-          <img [src]="languageService.getFlagUrlForLang(languageService.currentLang)" width="20" class="me-2"
-            alt="{{ languageService.currentLang }}" title="{{ languageService.currentLang }}">
+        <button #languageToggle type="button" class="lang-pill button-reset" (click)="toggleLanguageMenu()"
+          [class.rotate]="isLanguageMenuOpen()" aria-haspopup="dialog" aria-controls="language-panel"
+          [attr.aria-expanded]="isLanguageMenuOpen()" [attr.aria-label]="'Changer de langue' | translate"
+          [title]="languageService.getCurrentLanguage()?.label ?? ''">
+          <img [src]="languageService.getFlagUrlForLang(languageService.currentLang)" width="20" height="15" alt="">
+          <span class="lang-code">{{ languageService.currentLang }}</span>
           <app-icon name="ChevronDown" class="chevron" [size]="14"></app-icon>
         </button>
 
         @if (isLanguageMenuOpen()) {
-          <div class="lang-dropdown">
-            @for (lang of languageService.langs; track lang) {
-              <button (click)="selectLanguage(lang.code)">
-                <img [src]="languageService.getFlagUrlForLang(lang.code)" width="20" class="me-2" alt="{{ lang.label }}"
-                  title="{{ lang.label }}">
-                {{ lang.label }}
-              </button>
-            }
+          <div class="lang-dropdown" id="language-panel" role="dialog" [attr.aria-label]="'Changer de langue' | translate"
+            (keydown)="onLanguagePanelKeydown($event)">
+            <div class="lang-search">
+              <app-icon name="Search" class="lang-search-icon" [size]="15"></app-icon>
+              <input #languageSearch type="search" class="lang-search-input" [(ngModel)]="languageQuery"
+                [placeholder]="'Rechercher' | translate" [attr.aria-label]="'Rechercher' | translate"
+                autocomplete="off" spellcheck="false" (keydown.enter)="selectFirstLanguage()">
+            </div>
+            <div class="lang-options" role="list">
+              @for (lang of filteredLanguages; track lang.code) {
+                <button type="button" class="lang-option" role="listitem" [lang]="lang.code"
+                  [class.active]="lang.code === languageService.currentLang"
+                  [attr.aria-current]="lang.code === languageService.currentLang ? 'true' : null"
+                  (click)="selectLanguage(lang.code)">
+                  <img [src]="lang.flagUrl" width="20" height="15" alt="">
+                  <span class="lang-names">
+                    <span class="lang-label" dir="auto">{{ lang.label }}</span>
+                    @if (lang.englishName !== lang.label) {
+                      <span class="lang-english" lang="en">{{ lang.englishName }}</span>
+                    }
+                  </span>
+                  @if (lang.code === languageService.currentLang) {
+                    <i class="fa-solid fa-check lang-check" aria-hidden="true"></i>
+                  }
+                </button>
+              } @empty {
+                <span class="lang-empty">{{ 'Aucun résultat' | translate }}</span>
+              }
+            </div>
             @if (isDevMode()) {
               <div class="separator"></div>
               <span class="dev-mode-warning">

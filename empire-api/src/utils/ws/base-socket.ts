@@ -20,9 +20,12 @@ function readEnvironmentInteger(name: string, fallback: number): number {
 }
 
 const RESPONSE_TIMEOUT_BASE_MS = readEnvironmentInteger('RESPONSE_TIMEOUT_BASE_MS', 800);
-const RESPONSE_TIMEOUT_ROUND_TRIPS = readEnvironmentInteger('RESPONSE_TIMEOUT_ROUND_TRIPS', 8);
+const RESPONSE_TIMEOUT_ROUND_TRIPS = readEnvironmentInteger('RESPONSE_TIMEOUT_ROUND_TRIPS', 16);
 const RESPONSE_TIMEOUT_MIN_MS = readEnvironmentInteger('RESPONSE_TIMEOUT_MIN_MS', 1000);
 const RESPONSE_TIMEOUT_MAX_MS = readEnvironmentInteger('RESPONSE_TIMEOUT_MAX_MS', 3000);
+// A far server's ceiling grows with its round trip: a lost packet costs it several of them
+const RESPONSE_TIMEOUT_CEILING_ROUND_TRIPS = readEnvironmentInteger('RESPONSE_TIMEOUT_CEILING_ROUND_TRIPS', 24);
+const RESPONSE_TIMEOUT_HARD_MAX_MS = readEnvironmentInteger('RESPONSE_TIMEOUT_HARD_MAX_MS', 8000);
 // A fixed budget for every server, for debugging: 0 keeps the per-server one
 const RESPONSE_TIMEOUT_FIXED_MS = readEnvironmentInteger('RESPONSE_TIMEOUT_MS', 0);
 const RESPONSE_TIMEOUT_HEADROOM = readEnvironmentInteger('RESPONSE_TIMEOUT_HEADROOM', 3);
@@ -34,6 +37,7 @@ const LOG_UNMATCHED_FRAMES = process.env.LOG_UNMATCHED_FRAMES === '1';
 const TEXT_CHECKS_BEFORE_PARSE = 8;
 const LATE_ANSWER_WINDOW_MS = readEnvironmentInteger('EMPIRE_LATE_ANSWER_WINDOW_MS', 30_000);
 const WS_PER_MESSAGE_DEFLATE = process.env.WS_PER_MESSAGE_DEFLATE !== '0';
+const RECENT_DOWN_REASON_MS = 5000;
 
 export type GgeFrame =
   | { type: 'json'; payload: JsonFramePayload }
@@ -79,6 +83,9 @@ class BaseSocket extends Log implements GgeMetricsSocket {
   protected hasGbl: boolean;
   protected nbReconnects: number;
   private restartScheduled = false;
+  public downReason: string | null = null;
+  public nextAttemptAtMs: number | null = null;
+  private downReasonAtMs = 0;
   protected serverType: GgeServerType;
   protected readonly stats: GgeSocketStats = createSocketStats();
   protected readonly watchedCommands = new Set<string>();
@@ -140,7 +147,13 @@ class BaseSocket extends Log implements GgeMetricsSocket {
     if (RESPONSE_TIMEOUT_FIXED_MS > 0) return RESPONSE_TIMEOUT_FIXED_MS;
     if (this.stats.roundTripMs === null) return RESPONSE_TIMEOUT_MAX_MS;
     const budget = RESPONSE_TIMEOUT_BASE_MS + RESPONSE_TIMEOUT_ROUND_TRIPS * this.stats.roundTripMs;
-    return Math.round(Math.min(Math.max(budget, RESPONSE_TIMEOUT_MIN_MS), RESPONSE_TIMEOUT_MAX_MS));
+    return Math.round(Math.min(Math.max(budget, RESPONSE_TIMEOUT_MIN_MS), this.responseCeilingMs));
+  }
+
+  public get responseCeilingMs(): number {
+    const roundTrip = this.stats.roundTripMs ?? 0;
+    const ceiling = Math.max(RESPONSE_TIMEOUT_MAX_MS, RESPONSE_TIMEOUT_CEILING_ROUND_TRIPS * roundTrip);
+    return Math.round(Math.min(ceiling, RESPONSE_TIMEOUT_HARD_MAX_MS));
   }
 
   public get metricsCommandBudgets(): { command: string; budgetMs: number }[] {
@@ -157,11 +170,11 @@ class BaseSocket extends Log implements GgeMetricsSocket {
     if (!samples || samples.length < ANSWER_MIN_SAMPLES) return this.responseTimeoutMs;
     const slowest = Math.max(...samples);
     const budget = Math.max(slowest * RESPONSE_TIMEOUT_HEADROOM, this.responseTimeoutMs);
-    return Math.round(Math.min(budget, RESPONSE_TIMEOUT_MAX_MS));
+    return Math.round(Math.min(budget, this.responseCeilingMs));
   }
 
   public recordCommandAnswer(command: string, milliseconds: number): void {
-    if (!Number.isFinite(milliseconds) || milliseconds < 0 || milliseconds > ROUND_TRIP_CEILING_MS) return;
+    if (!Number.isFinite(milliseconds) || milliseconds < 0 || milliseconds > RESPONSE_TIMEOUT_HARD_MAX_MS) return;
     const samples = this.answerSamples.get(command) ?? [];
     samples.push(milliseconds);
     if (samples.length > ANSWER_SAMPLES) samples.shift();
@@ -176,8 +189,19 @@ class BaseSocket extends Log implements GgeMetricsSocket {
     this.stats.roundTripMs = sorted[Math.floor(sorted.length / 2)];
   }
 
-  public countLoginFailure(): void {
+  public countLoginFailure(reason: string): void {
     this.stats.loginFailures++;
+    this.noteDownReason(reason);
+  }
+
+  public noteDownReason(reason: string, overwriteRecent = true): void {
+    if (!overwriteRecent && this.downReason && Date.now() - this.downReasonAtMs < RECENT_DOWN_REASON_MS) return;
+    this.downReason = reason;
+    this.downReasonAtMs = Date.now();
+  }
+
+  public noteNextAttempt(delayMilliseconds: number): void {
+    this.nextAttemptAtMs = Date.now() + delayMilliseconds;
   }
 
   public async pingAndCheck(): Promise<void> {
@@ -187,6 +211,8 @@ class BaseSocket extends Log implements GgeMetricsSocket {
     }
     this.success('[pingAndCheck] Login successful, checking connection...');
     this.stats.connectedSinceMs = Date.now();
+    this.downReason = null;
+    this.nextAttemptAtMs = null;
     this.connected.set();
     this.setSocketState(SocketState.CONNECTED);
     setTimeout(() => this.ping(), 5000);
@@ -235,6 +261,7 @@ class BaseSocket extends Log implements GgeMetricsSocket {
     }
     clearTimeout(this.restartTimeout);
     this.log(`[restart] Attempting to restart socket connection in ${finalDelay} seconds...`);
+    this.noteNextAttempt(finalDelay * 1000);
     this.restartTimeout = setTimeout(async () => {
       this.restartScheduled = false;
       await this.connectMethod();
@@ -295,6 +322,7 @@ class BaseSocket extends Log implements GgeMetricsSocket {
       this.connected.clear();
       this.closed.set();
       this.clearTimeouts();
+      this.noteNextAttempt(10 * 60 * 1000);
       this.restartTimeout = setTimeout(
         () => {
           if (this.reconnect && this.socketState !== SocketState.KILLED) {
@@ -318,6 +346,7 @@ class BaseSocket extends Log implements GgeMetricsSocket {
     } catch (error) {
       this.error(`[checkConnection] Connection check failed, restarting socket in 10 seconds...`);
       this.error('Error details:', error instanceof Error ? error.message : error);
+      this.noteDownReason('heartbeat unanswered');
       this.log('Disconnecting and attempting to restart socket connection due to failed connection check.');
       this.disconnect();
       this.restartTimeout = setTimeout(() => {
@@ -345,6 +374,7 @@ class BaseSocket extends Log implements GgeMetricsSocket {
 
   public handleErrorState(error: unknown): void {
     this.error('[onError] Error occurred in socket', error instanceof Error ? error.message : error);
+    this.noteDownReason(`socket error: ${error instanceof Error ? error.message : String(error)}`);
     if (this.socketState === SocketState.KILLED) {
       this.warn('[onError] Error occurred but socket is killed. No action will be taken.');
       return;
@@ -359,6 +389,7 @@ class BaseSocket extends Log implements GgeMetricsSocket {
       return;
     }
     this.disconnect();
+    this.noteDownReason(BaseSocket.describeClose(code, reason), false);
     this.log(
       '⚡ [onClose] Socket closed with code:',
       code,
@@ -397,8 +428,10 @@ class BaseSocket extends Log implements GgeMetricsSocket {
 
   public handleErrorResponse(message: string, timeout: number = 5 * 60 * 1000): void {
     this.error('[connect]', message);
+    this.noteDownReason(message.split(' 🔄')[0]);
     if (this.restartScheduled) return;
     clearTimeout(this.restartTimeout);
+    this.noteNextAttempt(timeout);
     this.restartTimeout = setTimeout(() => {
       void this.restart();
     }, timeout);
@@ -635,6 +668,13 @@ class BaseSocket extends Log implements GgeMetricsSocket {
       if (BaseSocket.satisfies(message.conditions.data, payload)) return message;
     }
     return undefined;
+  }
+
+  // A TCP socket closes with a 'hadError' boolean, a WebSocket with a close code
+  private static describeClose(code: unknown, reason: unknown): string {
+    if (typeof code !== 'number') return code ? 'connection lost after an error' : 'connection closed';
+    const text = reason ? reason.toString().trim() : '';
+    return text ? `closed by the game (${code}: ${text})` : `closed by the game (${code})`;
   }
 
   private static satisfies(expected: unknown, payload: JsonFramePayload): boolean {

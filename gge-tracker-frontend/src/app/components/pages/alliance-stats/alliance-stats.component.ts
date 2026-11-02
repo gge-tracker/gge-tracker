@@ -76,6 +76,7 @@ import { StatsCardContentComponent } from './stats-card-content/stats-card-conte
 import { PlayerTableContentComponent } from '@ggetracker-pages/players/player-table-content/player-table-content.component';
 import { DecodeHtmlPipe } from '../../../pipes/decode-html.pipe';
 import { GameDescriptionPipe } from '../../../pipes/game-description.pipe';
+import { first, firstValueFrom } from 'rxjs';
 
 enum ChartTypeHeights {
   DEFAULT = 450,
@@ -123,8 +124,8 @@ interface DescriptionChange {
 }
 
 const DESCRIPTION_DIFF_MAX_TOKENS = 600;
-const HERO_BACKDROP_URL = '/assets/scenes/council/poster.webp';
-const HERO_BACKDROP_GRACE_MS = 1200;
+const HERO_BACKDROP_ROOT = '/assets/scenes/council/';
+const HERO_GRACE_MS = 1200;
 const SKELETON_LEDGERS = [3, 3, 2, 2, 3].map((rows) => Array.from({ length: rows }));
 
 interface CardConfig {
@@ -1007,13 +1008,16 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       return Promise.resolve();
     }
     const image = new Image();
-    image.src = HERO_BACKDROP_URL;
+    image.sizes = '100vw';
+    image.srcset = `${HERO_BACKDROP_ROOT}poster-960.webp 960w, ${HERO_BACKDROP_ROOT}poster.webp 1920w`;
+    image.src = `${HERO_BACKDROP_ROOT}poster.webp`;
     return image.decode().catch(() => {});
   }
 
   private async processAllianceInit(allianceId: number): Promise<void> {
     const heroBackdrop = this.preloadHeroBackdrop();
-    void this.loadTournamentBadges(allianceId);
+    const tournamentBadges = this.loadTournamentBadges(allianceId);
+    const lastUpdate = this.loadLastUpdate();
     const data = await this.getAllianceMembers();
     if (!data) return;
     this.players = this.mapPlayersFromApi(data.players);
@@ -1033,7 +1037,11 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     this.processUpdatesData();
     const globalResponse = await this.apiRestService.getServerGlobalStats();
     this.initLedgers(globalResponse.success ? (globalResponse.data.at(-1) ?? null) : null);
-    await Promise.race([heroBackdrop, new Promise((resolve) => setTimeout(resolve, HERO_BACKDROP_GRACE_MS))]);
+    // A hero that grows once shown shifts the whole page
+    await Promise.race([
+      Promise.all([heroBackdrop, tournamentBadges, lastUpdate]),
+      new Promise((resolve) => setTimeout(resolve, HERO_GRACE_MS)),
+    ]);
     if (this.isDestroyed) {
       return;
     }
@@ -1080,14 +1088,14 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     };
   }
 
+  private async loadLastUpdate(): Promise<void> {
+    const data = await firstValueFrom(this.utilitiesService.data$.pipe(first((data) => data !== null)));
+    if (this.isDestroyed) return;
+    this.lastUpdate = data.last_update.might;
+    this.cdr.detectChanges();
+  }
+
   private init(): void {
-    const lastUpdate = this.utilitiesService.data$.subscribe((data) => {
-      if (data) {
-        this.lastUpdate = data.last_update.might;
-        lastUpdate.unsubscribe();
-        this.cdr.detectChanges();
-      }
-    });
     const serverName = this.apiRestService.serverService.currentServer?.name;
     const allianceDistancePlayerName = this.localStorage.getItem('allianceDistancePlayerName_' + serverName);
     if (allianceDistancePlayerName) {
@@ -1302,6 +1310,8 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       return {
         rank: rankFunction(index),
         player: movement.player_name,
+        playerId: movement.player_id ?? null,
+        allianceId: movement.alliance_id ?? null,
         might: movement.player_might,
         level: movement.player_level,
         legendaryLevel: movement.player_legendary_level,

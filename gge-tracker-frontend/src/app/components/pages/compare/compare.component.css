@@ -46,9 +46,7 @@
 }
 
 .compare-wordmark {
-  filter: drop-shadow(0 3px 10px rgba(0, 0, 0, 0.6));
-  height: auto;
-  width: clamp(140px, 15cqw, 210px);
+  font-size: clamp(1.4rem, 2.2cqw, 2rem);
 }
 
 .compare-title {

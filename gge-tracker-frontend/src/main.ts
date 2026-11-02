@@ -2,28 +2,27 @@
 
 import { CommonModule } from '@angular/common';
 import { HttpClient, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
-import { APP_INITIALIZER, LOCALE_ID, importProvidersFrom, isDevMode } from '@angular/core';
-import { BrowserModule, bootstrapApplication, provideClientHydration } from '@angular/platform-browser';
-import { provideAnimations } from '@angular/platform-browser/animations';
-import { provideRouter, withNavigationErrorHandler } from '@angular/router';
+import { APP_INITIALIZER, LOCALE_ID, importProvidersFrom, isDevMode, provideZoneChangeDetection } from '@angular/core';
+import { BrowserModule, bootstrapApplication } from '@angular/platform-browser';
+import { provideRouter, withNavigationErrorHandler, withPreloading } from '@angular/router';
 import { ServiceWorkerModule } from '@angular/service-worker';
 import { myIcons } from '@ggetracker-components/icon/icon.component';
 import { ServerService } from '@ggetracker-services/server.service';
-import { NgSelectModule } from '@ng-select/ng-select';
 import { TranslateLoader, TranslateModule } from '@ngx-translate/core';
 import { LUCIDE_ICONS, LucideAngularModule, LucideIconProvider, Spline } from 'lucide-angular';
+import 'bootstrap/js/dist/modal';
 import { AppComponent } from './app/app.component';
 import { DynamicTranslateLoaderFactory } from './app/app.module';
 import { routes } from './app/app.routes';
+import { CoreRoutePreloading } from './app/core-route-preloading';
 import { reloadOnStaleChunk } from './app/stale-chunk-reload';
 
 void bootstrapApplication(AppComponent, {
   providers: [
-    provideClientHydration(),
+    provideZoneChangeDetection({ eventCoalescing: true, runCoalescing: true }),
     importProvidersFrom(
       BrowserModule,
       CommonModule,
-      NgSelectModule,
       LucideAngularModule.pick({ Spline }),
       TranslateModule.forRoot({
         loader: {
@@ -47,8 +46,7 @@ void bootstrapApplication(AppComponent, {
     },
     { provide: LOCALE_ID, useValue: 'en-GB' },
     provideHttpClient(withInterceptorsFromDi()),
-    provideAnimations(),
-    provideRouter(routes, withNavigationErrorHandler(reloadOnStaleChunk)),
+    provideRouter(routes, withNavigationErrorHandler(reloadOnStaleChunk), withPreloading(CoreRoutePreloading)),
   ],
 }).then(() => {
   document.querySelector('app-loader')?.remove();

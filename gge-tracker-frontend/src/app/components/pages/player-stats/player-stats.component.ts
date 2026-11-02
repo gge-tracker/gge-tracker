@@ -8,6 +8,7 @@ import {
   inject,
   OnInit,
   QueryList,
+  viewChild,
   ViewChildren,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -64,6 +65,7 @@ import { ApexAxisChartSeries } from 'ng-apexcharts';
 import { ModalTableColumn, ModalTableComponent } from '@ggetracker-components/modal-table/modal-table.component';
 import { PlayerStatsCardComponent } from './player-stats-card/player-stats-card.component';
 import { StatsPanelComponent } from './stats-panel/stats-panel.component';
+import { AllianceHistoryComponent } from './alliance-history/alliance-history.component';
 import { combineLatest, firstValueFrom } from 'rxjs';
 import { CalendarCheck, LucideAngularModule, SquareUser } from 'lucide-angular';
 import { EventCardComponent } from '@ggetracker-pages/events/event-card/event-card.component';
@@ -101,6 +103,7 @@ type FillDataState = 'idle' | 'loading' | 'loaded' | 'error';
     EventCardComponent,
     ModalTableComponent,
     StatsPanelComponent,
+    AllianceHistoryComponent,
   ],
   standalone: true,
   templateUrl: './player-stats.component.html',
@@ -170,7 +173,6 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   public activeOptionButton = '';
   public currentSemaine?: string;
   public isAtRisk = false;
-  public maxDuration = 0;
   public data: Record<ApiPlayerStatsType, EventGenericVariation[]> = {
     player_event_berimond_invasion_history: [],
     player_event_berimond_kingdom_history: [],
@@ -313,6 +315,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   ];
   private observer!: IntersectionObserver;
   @ViewChildren('chartContainer', { read: ElementRef }) private readonly chartContainers!: QueryList<ElementRef>;
+  private readonly tabsContainer = viewChild<ElementRef<HTMLElement>>('tabsContainer');
 
   constructor() {
     super();
@@ -351,6 +354,11 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       return Math.ceil(diff / (1000 * 60 * 60 * 24));
     }
     return null;
+  }
+
+  public openAllianceHistory(): void {
+    this.updateTab('alliances');
+    this.tabsContainer()?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   public updateTab(key: PlayerStatsTabs): void {
@@ -2408,7 +2416,6 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
         });
       }
     }
-    this.maxDuration = Math.max(...this.allianceUpdates!.map((update) => update.durationValue));
   }
 
   private toAllianceUpdate(update: ApiAllianceUpdates, previousDate: string | null): AlliancesUpdates {

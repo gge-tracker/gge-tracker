@@ -2,15 +2,38 @@
   <div class="row g-4">
     <div class="col-12" [ngClass]="{'loading': isInLoading}">
       @if (!currentEvent) {
-        <div class="row mt-3 row-gap-3">
-          @for (event of events; track event; let i = $index) {
+        <div class="events-list-header">
+          <h1 class="events-list-title">{{ 'Scores finaux' | translate }}</h1>
+          <nav class="events-filter" [attr.aria-label]="'Événements' | translate">
+            @for (filter of listFilters; track filter.label) {
+              <a class="events-filter-chip" [class.events-filter-chip--on]="listType === filter.type"
+                [attr.aria-current]="listType === filter.type ? 'page' : null"
+                [routerLink]="filter.type ? ['/events', filter.type] : ['/events']">{{ filter.label | translate }}</a>
+            }
+          </nav>
+        </div>
+        <div class="row mt-1 row-gap-3">
+          @for (event of events; track event.type + event.id) {
             <div class="col-12 col-lg-6">
               <app-event-card
                 [event]="event"
                 [options]="{ displayMode: 'player-count' }"
                 [loading]="cardLoading"
                 (eventClick)="onEventClick($event)"
-              ></app-event-card>
+                tabindex="0"
+                role="link"
+                (keydown.enter)="onEventClick(event)"
+              >
+                @if (event.winner; as winner) {
+                  <div event-body class="event-winner">
+                    <i class="fa-solid fa-crown event-winner-crown" aria-hidden="true"></i>
+                    <span class="event-winner-rank">{{ '1er' | translate }}</span>
+                    <img [src]="serverService.getFlagUrl(winner.server)" alt="" class="event-winner-flag">
+                    <span class="event-winner-name">{{ winner.player_name }}</span>
+                    <span class="event-winner-points">{{ winner.point | formatNumber }} {{ 'points' | translate }}</span>
+                  </div>
+                }
+              </app-event-card>
             </div>
           }
         </div>
@@ -35,10 +58,10 @@
           [eventType]="eventType!"></app-events-header>
           <div class="row g-2 mb-3" [ngClass]="{'table-loading': tableLoading}">
             <div class="col-auto">
-              <button class="back-btn" [routerLink]="['/events']">
+              <a class="back-btn" [routerLink]="['/events']">
                 <i class="fa-solid fa-arrow-left"></i>
                 <span class="d-none d-sm-inline-block">{{ 'Retour' | translate }}</span>
-              </button>
+              </a>
             </div>
             <div class="col">
               <app-search-form [isInLoading]="isInLoading" [formFilters]="formFilters"
@@ -207,7 +230,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="filtersModalLabel">
-          &nbsp;<i class="fa-solid fa-filter"></i>{{ 'Filtrer les résultats' | translate}}
+          <i class="fa-solid fa-filter"></i>&nbsp;{{ 'Filtrer les résultats' | translate }}
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"
         [attr.aria-label]="'Fermer' | translate"></button>
@@ -236,12 +259,11 @@
               </ng-select>
             </app-modal-form-group>
           </div>
-          <div class="row g-4 mt-3">
-            <div class="col text-center">
-              <button class="gge-btn search" (click)="applyFilters()" data-bs-dismiss="modal">
-                <span>{{ 'Appliquer les filtres' | translate }}</span>
-              </button>
-            </div>
+          <div class="modal-actions">
+            <button type="button" class="modal-action primary" (click)="applyFilters()" data-bs-dismiss="modal">
+              <i class="fa-solid fa-check"></i>
+              <span>{{ 'Appliquer les filtres' | translate }}</span>
+            </button>
           </div>
         </div>
       </div>

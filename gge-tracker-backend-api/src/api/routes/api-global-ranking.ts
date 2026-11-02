@@ -87,6 +87,7 @@ export abstract class ApiGlobalRanking implements ApiHelper {
     ['minPlayerCount', 'COUNT(*)', '>='],
     ['maxPlayerCount', 'COUNT(*)', '<='],
   ];
+  private static readonly REGION_CONDITION = 'region IN (SELECT unnest($1::text[]))';
   private static readonly GAME_KINDS: Record<GlobalGame, string[]> = {
     ep: ['ep', 'partner'],
     e4k: ['e4k'],
@@ -255,7 +256,7 @@ export abstract class ApiGlobalRanking implements ApiHelper {
     playerName: string | undefined,
   ): GlobalPlayersFilter {
     const values: (string | number | string[])[] = [regions];
-    const conditions = ['active', 'region = ANY($1::text[])'];
+    const conditions = ['active', ApiGlobalRanking.REGION_CONDITION];
     const columns: [string, string, '>=' | '<='][] = [
       ['minMight', 'might_current', '>='],
       ['maxMight', 'might_current', '<='],
@@ -338,7 +339,7 @@ export abstract class ApiGlobalRanking implements ApiHelper {
     allianceName: string | undefined,
   ): GlobalPlayersFilter {
     const values: (string | number | string[])[] = [regions];
-    const conditions = ['active', 'alliance_id IS NOT NULL', 'region = ANY($1::text[])'];
+    const conditions = ['active', 'alliance_id IS NOT NULL', ApiGlobalRanking.REGION_CONDITION];
     if (allianceName) {
       values.push(`%${ApiHelper.escapeLike(allianceName)}%`);
       conditions.push(`alliance_name ILIKE $${values.length} ESCAPE '\\'`);

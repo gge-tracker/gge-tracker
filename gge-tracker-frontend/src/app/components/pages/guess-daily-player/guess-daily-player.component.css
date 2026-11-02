@@ -22,7 +22,7 @@
 body {
 	background-color: var(--gge-bg);
 	color: #f8fafc;
-	font-family: "Inter", system-ui, -apple-system, sans-serif;
+	font-family: "Inter", "Inter Fallback", system-ui, -apple-system, sans-serif;
 }
 
 .badge-server {

@@ -41,7 +41,7 @@
               <lucide-icon class="lucide" [img]="X"></lucide-icon>
             </button>
             <button class="dungeon-icon-btn" data-bs-toggle="modal" data-bs-target="#questionModal"
-              [attr.aria-label]="'Aide' | translate">
+              [title]="'Aide' | translate" [attr.aria-label]="'Aide' | translate">
               <lucide-icon class="lucide" [img]="MessageCircleQuestionMark"></lucide-icon>
             </button>
           </div>
@@ -112,6 +112,7 @@
                 <span class="mobile-only">#</span>
                 {{ dungeon.rank }}
               </td>
+              @if (showRealm) {
               <td class="col-name">
                 <div class="d-flex align-items-center justify-content-center">
                   <div>
@@ -120,6 +121,7 @@
                   <span class="ms-2 dungeon-{{ dungeon.kid }}">{{ getRealmName(dungeon.kid) | translate }}</span>
                 </div>
               </td>
+              }
               <td class="col-stat col-position">
                 <span class="cell-label">{{ 'Position' | translate }}</span><span class="text-nowrap">{{ dungeon.position }}
                   <button type="button" class="dungeon-map-link" [title]="'Voir sur la carte' | translate"
@@ -128,7 +130,7 @@
                   </button>
                 </span>
               </td>
-              @if (headers.length === 6) {
+              @if (showDistance) {
               <td class="col-stat">
                 <span class="cell-label">{{ 'Distance' | translate }}</span>
                 {{ dungeon.distance ? dungeon.distance + 'm' : '?' }}
@@ -138,7 +140,7 @@
                 @if (!isInCooldown(dungeon)) {
                 <i class="fa-solid fa-dungeon special-fa"></i>
                 }
-                <span class="mono">{{ dungeon | cooldown }}</span>
+                <span class="dungeon-state">{{ dungeon | cooldown }}</span>
                 @if (dungeon.availabilityAnimDelay) {
                 <div class="dungeon-avail-progress">
                   <div class="dungeon-avail-fill"

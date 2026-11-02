@@ -38,7 +38,10 @@ import { AdminGuard } from './guard/admin-guard';
 import { ApiGgeTrackerManager } from './managers/api.manager';
 import { RoutesManager } from './managers/routes.manager';
 import { errorCodeMiddleware } from './helper/error-codes';
+import { HttpCache } from './helper/http-cache';
 import { ApiHelper } from './helper/api-helper';
+import { withCacheNamespace } from './helper/cache/cache-namespace';
+import { OfferPriceTables } from './services/offer-price-tables';
 import { OfferSnapshot } from './services/offer-snapshot';
 import { TemporaryServerSettings } from './helper/temporary-server-settings';
 
@@ -83,10 +86,14 @@ app.use(
       'X-RateLimit-Reset',
       'X-RateLimit-Window',
       'Retry-After',
+      'X-Offers-Fetched-At',
+      'X-Offers-Currency',
+      'X-Offers-Prices-Learned-At',
     ],
   }),
 );
 app.use(errorCodeMiddleware);
+app.use(HttpCache.uncacheableFailures);
 app.use((error: unknown, request: express.Request, response: express.Response, next: express.NextFunction) => {
   if (error instanceof SyntaxError && 'body' in error) {
     response.status(400).json({
@@ -139,7 +146,10 @@ app.use(
   }),
 );
 
-const routingInstance = new ApiRoutingController(managerInstance, redisClient as any);
+const routingInstance = new ApiRoutingController(
+  managerInstance,
+  withCacheNamespace(redisClient, process.env.REDIS_CACHE_PREFIX) as any,
+);
 
 // Protected routes require the gge-server header
 // These routes are specific to a gge server and may require additional validation
@@ -760,6 +770,84 @@ publicRoutes.get('/servers', routingInstance.getServers.bind(routingInstance));
 publicRoutes.get('/servers/catalog', routingInstance.getServersCatalog.bind(routingInstance));
 
 /**
+ * @openapi
+ * /release-notes:
+ *   get:
+ *     summary: Every GGE Tracker release, newest first
+ *     description: >
+ *       What each release of the website changed, grouped by kind, and the API routes it added, changed or
+ *       removed. The first entry is the release this API runs. Send the ETag back as If-None-Match to be
+ *       answered 304 while nothing changed
+ *     tags:
+ *       - Status
+ *     parameters:
+ *       - $ref: '#/components/parameters/IfNoneMatch'
+ *     responses:
+ *       '200':
+ *         description: The releases
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [releases]
+ *               properties:
+ *                 releases:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     required: [version, type, date, items, api_changes]
+ *                     properties:
+ *                       version:
+ *                         type: string
+ *                         example: v26-11-02
+ *                       type:
+ *                         type: string
+ *                         enum: [Major, Minor, Fix]
+ *                       date:
+ *                         type: string
+ *                         format: date
+ *                       items:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           required: [kind, area, text]
+ *                           properties:
+ *                             kind:
+ *                               type: string
+ *                               enum: [new, improved, servers, translations, fixed]
+ *                             area:
+ *                               type: string
+ *                               nullable: true
+ *                               description: The part of the site it concerns, null for a bug fix
+ *                             text:
+ *                               type: string
+ *                       api_changes:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           required: [change, method, path, tag, note]
+ *                           properties:
+ *                             change:
+ *                               type: string
+ *                               enum: [new, changed, legacy, removed]
+ *                             method:
+ *                               type: string
+ *                               enum: [GET, POST, PATCH, PUT, DELETE]
+ *                             path:
+ *                               type: string
+ *                             tag:
+ *                               type: string
+ *                               description: The OpenAPI tag the route is documented under
+ *                             note:
+ *                               type: string
+ *       '304':
+ *         description: The If-None-Match ETag still matches, so the releases have not changed
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+publicRoutes.get('/release-notes', routingInstance.getReleaseNotes.bind(routingInstance));
+
+/**
  * @swagger
  * /events/list:
  *   get:
@@ -818,6 +906,22 @@ publicRoutes.get('/servers/catalog', routingInstance.getServersCatalog.bind(rout
  *                         type: string
  *                         description: The timestamp when the data was collected
  *                         example: "2025-06-01 16:00:00"
+ *                       winner:
+ *                         type: object
+ *                         nullable: true
+ *                         description: The player ranked first, or null when the ranking is empty
+ *                         properties:
+ *                           player_id:
+ *                             type: string
+ *                             nullable: true
+ *                             description: The id of the player with the server code of their origin server
+ *                           player_name:
+ *                             type: string
+ *                           server:
+ *                             type: string
+ *                             description: The origin server of the player
+ *                           point:
+ *                             type: string
  *                 pagination:
  *                   $ref: '#/components/schemas/Pagination'
  *       304:
@@ -2078,7 +2182,20 @@ protectedRoutes.get('/dungeons/meta', routingInstance.getDungeonsMeta.bind(routi
  *                         description: Whether the fort is currently on the map
  *                       available_at:
  *                         type: string
- *                         description: When the fort is attackable, or when it reappears if hidden
+ *                         description: >
+ *                           When the fort is attackable, or when it reappears if hidden. Once attackable,
+ *                           the moment it became attackable
+ *                       available_since_observed:
+ *                         type: boolean
+ *                         description: >
+ *                           Whether the scan saw the fort become attackable. When false, available_at is
+ *                           only the first time it was seen attackable
+ *                       last_available_seconds:
+ *                         type: integer
+ *                         nullable: true
+ *                         description: >
+ *                           How long the fort stayed attackable the last time before being attacked,
+ *                           measured to within one scan (about 2 minutes). Null until observed
  *                       updated_at:
  *                         type: string
  *                         description: When this row was last refreshed by the scan
@@ -2219,8 +2336,19 @@ protectedRoutes.get('/storms/forts', routingInstance.getStormForts.bind(routingI
  *                       available_at:
  *                         type: string
  *                         description: >
- *                           When the isle becomes capturable: now if free, when it sinks if
- *                           occupied, or when it reappears if it has been harvested
+ *                           When the isle becomes capturable: when it became free if free, when it
+ *                           sinks if occupied, or when it reappears if it has been harvested
+ *                       available_since_observed:
+ *                         type: boolean
+ *                         description: >
+ *                           Whether the scan saw the isle become free. When false, available_at is only
+ *                           the first time it was seen free
+ *                       last_available_seconds:
+ *                         type: integer
+ *                         nullable: true
+ *                         description: >
+ *                           How long the isle stayed free the last time before being occupied, measured
+ *                           to within one scan (about 2 minutes). Null until observed
  *                       updated_at:
  *                         type: string
  *                         description: When this row was last refreshed by the scan
@@ -2369,6 +2497,14 @@ protectedRoutes.get('/storms/meta', routingInstance.getStormMeta.bind(routingIns
  *                       legendary_level:
  *                         type: integer
  *                         description: The legendary level of the player
+ *                       player_id:
+ *                         type: string
+ *                         nullable: true
+ *                         description: The id of the player
+ *                       alliance_id:
+ *                         type: string
+ *                         nullable: true
+ *                         description: The id of the player's current alliance
  *                       alliance_name:
  *                         type: string
  *                         description: The name of the alliance of the player
@@ -2482,6 +2618,14 @@ protectedRoutes.get('/server/movements', routingInstance.getServerMovements.bind
  *                       date:
  *                         type: string
  *                         description: The timestamp when the rename occurred
+ *                       player_id:
+ *                         type: string
+ *                         nullable: true
+ *                         description: The id of the renamed player (players view)
+ *                       alliance_id:
+ *                         type: string
+ *                         nullable: true
+ *                         description: The id of the renamed alliance (alliances view)
  *                       player_name:
  *                         type: string
  *                         description: The name of the player who made the rename
@@ -3031,6 +3175,12 @@ protectedRoutes.get(
  *                 constructionItems:
  *                   type: object
  *                   description: The construction items for the castle
+ *       '404':
+ *         description: The game knows no castle with this ID in this kingdom
+ *       '503':
+ *         description: The game bridge is not connected to this server
+ *       '504':
+ *         description: The game server did not answer in time
  */
 publicRoutes.get('/castle/analysis/:castleId', routingInstance.getCastleById.bind(routingInstance));
 
@@ -3090,6 +3240,12 @@ publicRoutes.get('/castle/analysis/:castleId', routingInstance.getCastleById.bin
  *                   equipmentUniqueIdSkin:
  *                     type: integer
  *                     description: The unique ID of the castle's skin equipment. If not present, defaults to 0
+ *       '404':
+ *         description: No player with this name, or the game knows no castles for them
+ *       '503':
+ *         description: The game bridge is not connected to this server
+ *       '504':
+ *         description: The game server did not answer in time
  */
 protectedRoutes.get('/castle/search/:playerName', routingInstance.getCastleByPlayerName.bind(routingInstance));
 
@@ -3148,6 +3304,12 @@ protectedRoutes.get('/castle/search/:playerName', routingInstance.getCastleByPla
  *                   equipmentUniqueIdSkin:
  *                     type: integer
  *                     description: The unique ID of the castle's skin equipment. If not present, defaults to 0
+ *       '404':
+ *         description: The game knows no castles for this player
+ *       '503':
+ *         description: The game bridge is not connected to this server
+ *       '504':
+ *         description: The game server did not answer in time
  */
 publicRoutes.get('/castle/player/:playerId', routingInstance.getCastleByPlayerId.bind(routingInstance));
 
@@ -3833,6 +3995,19 @@ publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayer
  *             - -1
  *             - 0
  *             - 1
+ *       - name: ruinFilter
+ *         in: query
+ *         description: |
+ *           Filter by the game's ruin flag
+ *           0: Castles not in ruins, 1: Castles in ruins
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: -1
+ *           enum:
+ *             - -1
+ *             - 0
+ *             - 1
  *       - name: allianceRankFilter
  *         in: query
  *         description: Comma-separated list of alliance ranks to exclude
@@ -3903,6 +4078,9 @@ publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayer
  *                       peace_disabled_at:
  *                         type: string
  *                         description: The date and time when the player's peace was disabled, in UTC
+ *                       is_ruin:
+ *                         type: boolean
+ *                         description: Whether the game shows the player's castles as ruins
  *                       updated_at:
  *                         type: string
  *                         description: The last time the player's data was updated
@@ -6579,7 +6757,9 @@ publicRoutes.get('/dungeons/player/:playerId', routingInstance.getDungeonsByPlay
  *     summary: Retrieve the current cash offers catalog
  *     description: >
  *       Returns the cash offers the official Goodgame Empire store would show to a player of the given
- *       keep level and legendary level
+ *       keep level and legendary level. The catalog is read from the store at most every 30 minutes, and
+ *       prices outside EUR come from tiers learned once a day; the X-Offers-* headers say when. Send the ETag
+ *       back as If-None-Match to be answered 304 while the catalog and its prices have not changed
  *     tags:
  *       - Offers
  *     parameters:
@@ -6609,17 +6789,44 @@ publicRoutes.get('/dungeons/player/:playerId', routingInstance.getDungeonsByPlay
  *       - in: query
  *         name: legendaryLevel
  *         required: false
- *         description: The legendary level of the player the offers are computed for. Defaults to 950
+ *         description: The legendary level of the player the offers are computed for. Defaults to 0
  *         example: 950
  *         schema:
  *           type: integer
+ *       - name: If-None-Match
+ *         in: header
+ *         required: false
+ *         description: ETag returned by a previous call. A matching value answers 304 with an empty body
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: Successfully retrieved the cash offers catalog, as returned by the GGS API
+ *         headers:
+ *           ETag:
+ *             description: Changes only when the offers or their prices change
+ *             schema:
+ *               type: string
+ *           X-Offers-Fetched-At:
+ *             description: When the catalog was read from the store (ISO 8601)
+ *             schema:
+ *               type: string
+ *               format: date-time
+ *           X-Offers-Currency:
+ *             description: The currency the offers are priced in. EUR while the asked currency is not learned yet
+ *             schema:
+ *               type: string
+ *           X-Offers-Prices-Learned-At:
+ *             description: When the prices of a currency other than EUR were learned (ISO 8601)
+ *             schema:
+ *               type: string
+ *               format: date-time
  *         content:
  *           application/json:
  *             schema:
  *               type: object
+ *       304:
+ *         description: The If-None-Match ETag still matches - the offers and their prices have not changed, empty body
  *       400:
  *         $ref: '#/components/responses/BadRequest'
  *       500:
@@ -7313,6 +7520,45 @@ publicRoutes.get('/assets/og/alliance/:allianceId.jpg', routingInstance.getAllia
 
 /**
  * @openapi
+ * /assets/og/release-notes.jpg:
+ *   get:
+ *     summary: Share card image of the latest release notes
+ *     description: >
+ *       A 1200x630 JPEG naming the running GGE Tracker version, its release date and its highlights.
+ *       Link it to https://gge-tracker.com/release-notes. Rendered once per release, then cached, so the URL
+ *       may carry any v= query to bust a client cache. A new render is budgeted per caller, and one over
+ *       budget is answered 429
+ *     tags:
+ *       - Previews
+ *     parameters:
+ *       - $ref: '#/components/parameters/IfNoneMatch'
+ *       - name: v
+ *         in: query
+ *         required: false
+ *         description: Ignored. Lets a client bust its own cache, as the preview document does with a hash of the card
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: The card image
+ *         content:
+ *           image/jpeg:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       '304':
+ *         description: The If-None-Match ETag still matches, so this card has not changed
+ *       '404':
+ *         $ref: '#/components/responses/NotFound'
+ *       '429':
+ *         description: A new render was needed and this caller spent its render budget; retry after Retry-After seconds
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+publicRoutes.get('/assets/og/release-notes.jpg', routingInstance.getReleaseNotesShareCard.bind(routingInstance));
+
+/**
+ * @openapi
  * /assets/og/event/{eventType}/{eventNumber}.jpg:
  *   get:
  *     summary: Podium card image of a finished Outer Realms or Beyond the Horizon event
@@ -7564,6 +7810,7 @@ async function main(): Promise<void> {
     .listen(APPLICATION_PORT, () => {
       void printHeader();
       OfferSnapshot.start();
+      OfferPriceTables.start();
       TemporaryServerSettings.start();
     })
     .on('error', (error) => {

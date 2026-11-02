@@ -97,6 +97,7 @@
 }
 
 ::ng-deep #table-component .btn-icon {
+  aspect-ratio: 83 / 84;
   filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.45));
   height: 32px;
   opacity: 0.92;
@@ -109,6 +110,61 @@
 ::ng-deep #table-component .btn-icon:hover {
   filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.6));
   transform: translateY(-3px) scale(1.06);
+}
+
+::ng-deep #table-component .action-button {
+  border-radius: 8px;
+  position: relative;
+}
+
+::ng-deep #table-component tbody tr:has(.action-button:hover, .action-button:focus-visible) {
+  position: relative;
+  z-index: 2;
+}
+
+::ng-deep #table-component .action-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+::ng-deep #table-component .action-button[data-tooltip]::after {
+  background: #111816;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  bottom: calc(100% + 6px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  color: var(--text);
+  content: attr(data-tooltip);
+  font-size: 12px;
+  font-weight: 600;
+  left: 50%;
+  opacity: 0;
+  padding: 4px 8px;
+  pointer-events: none;
+  position: absolute;
+  transform: translate(-50%, 4px);
+  transition:
+    opacity 120ms,
+    transform 120ms;
+  white-space: nowrap;
+  z-index: 5;
+}
+
+::ng-deep #table-component .action-button:last-child[data-tooltip]::after {
+  left: auto;
+  right: 0;
+  transform: translateY(4px);
+}
+
+::ng-deep #table-component .action-button:hover[data-tooltip]::after,
+::ng-deep #table-component .action-button:focus-visible[data-tooltip]::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+::ng-deep #table-component .action-button:last-child:hover[data-tooltip]::after,
+::ng-deep #table-component .action-button:last-child:focus-visible[data-tooltip]::after {
+  transform: translateY(0);
 }
 
 ::ng-deep #table-component .col-rank {
@@ -217,6 +273,18 @@
   white-space: nowrap;
 }
 
+::ng-deep #table-component a.name-link {
+  color: var(--text);
+  font-weight: 600;
+}
+
+::ng-deep #table-component a.name-link:hover,
+::ng-deep #table-component a.name-link:focus-visible {
+  color: #9ab4ff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 ::ng-deep #table-component a {
   color: #9ab4ff;
   cursor: pointer;
@@ -224,7 +292,10 @@
   transition: color 0.2s ease;
 }
 
-::ng-deep #table-component a.alliance-link {
+::ng-deep #table-component a.alliance-link,
+::ng-deep #table-component button.alliance-link {
+  color: #9ab4ff;
+  cursor: pointer;
   display: flex;
   align-content: center;
   justify-content: flex-start;
@@ -274,22 +345,29 @@
 }
 
 ::ng-deep .table-custom tbody tr.row-favorite {
-  background-color: #0733ff4d !important;
-  box-shadow: 0 0 12px rgba(10, 40, 255, 0.3);
+  background: linear-gradient(
+    90deg,
+    rgba(251, 191, 36, 0.11),
+    rgba(251, 191, 36, 0.03) 45%,
+    rgba(10, 10, 10, 0.63)
+  ) !important;
   position: relative;
 }
 
 ::ng-deep .table-custom tbody tr.row-favorite::after {
-  animation: favoritePulse 2.5s ease-in-out infinite;
-  background-size: 100% 200%;
-  background-image: linear-gradient(180deg, #4d76ff, #1a47ff, #4d76ff);
-  border-radius: 0 4px 4px 0;
+  background: #fbbf24;
+  border-radius: 0 3px 3px 0;
   content: "";
   height: 100%;
   left: 0;
+  opacity: 0.85;
   position: absolute;
   top: 0;
-  width: 4px;
+  width: 3px;
+}
+
+::ng-deep .table-custom tbody tr.row-favorite .name {
+  color: #fde68a;
 }
 
 ::ng-deep .table-custom tbody tr:focus,
@@ -330,17 +408,16 @@
 }
 
 .table-custom {
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.02),
-    rgba(0, 0, 0, 0.02)
-  );
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.12)) bottom / 100% 28px no-repeat,
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(0, 0, 0, 0.02));
   border-collapse: collapse;
   border-radius: var(--radius);
   box-shadow: var(--shadow-1);
   color: var(--text);
   font-family:
     "Inter",
+    "Inter Fallback",
     "Segoe UI",
     Roboto,
     system-ui,
@@ -401,6 +478,36 @@
   width: auto;
 }
 
+.table-custom thead th:has(.header-icon-captioned) {
+  padding-bottom: 8px;
+  padding-top: 8px;
+}
+
+.table-custom thead th .header-icon-captioned {
+  align-items: center;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: 130px;
+  vertical-align: middle;
+}
+
+.table-custom thead th .header-icon-captioned img {
+  height: 22px;
+}
+
+.table-custom thead th .header-caption {
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  display: -webkit-box;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  overflow: hidden;
+  text-transform: uppercase;
+}
+
 .table-custom thead th:has(.lucide-icon) img {
   margin-right: 8px;
 }
@@ -434,18 +541,6 @@
   z-index: 1;
 }
 
-.table-custom::after {
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.12));
-  border-radius: 0 0 var(--radius) var(--radius);
-  bottom: 0;
-  content: "";
-  height: 28px;
-  left: 0;
-  pointer-events: none;
-  position: absolute;
-  right: 0;
-}
-
 @keyframes fadeInUp {
   0% {
     opacity: 0;
@@ -456,19 +551,6 @@
   }
 }
 
-@keyframes favoritePulse {
-  0% {
-    background-position: 0% 0%;
-  }
-
-  100% {
-    background-position: 0% 0%;
-  }
-
-  50% {
-    background-position: 0% 100%;
-  }
-}
 ::ng-deep .table-custom .cell-label {
   display: none;
 }
@@ -553,10 +635,6 @@
     display: block;
   }
 
-  ::ng-deep #table-component .table-custom::after {
-    display: none;
-  }
-
   ::ng-deep #table-component .table-custom tbody {
     display: flex;
     flex-direction: column;
@@ -570,6 +648,8 @@
     border-radius: 12px;
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
     column-gap: 10px;
+    contain-intrinsic-size: auto 214px;
+    content-visibility: auto;
     display: flex;
     flex-wrap: wrap;
     padding: 10px 12px;
@@ -717,8 +797,10 @@ ul {
   flex-wrap: wrap;
 
   li {
-    a {
+    button {
       display: block;
+      font-family: inherit;
+      line-height: inherit;
       padding: 0.45rem 0.8rem;
       text-decoration: none !important;
       border-radius: 0.6rem;
@@ -746,7 +828,7 @@ ul {
       }
     }
 
-    &.active a {
+    &.active button {
       background: rgba(240, 240, 240, 0.08);
       color: #fff;
       font-weight: 600;
@@ -754,7 +836,7 @@ ul {
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
     }
 
-    &.out-of-range a {
+    &.out-of-range button {
       pointer-events: none;
       opacity: 0.5;
       font-style: italic;

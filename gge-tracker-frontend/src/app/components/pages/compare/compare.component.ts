@@ -12,6 +12,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { BrandWordmarkComponent } from '@ggetracker-components/brand-wordmark/brand-wordmark.component';
 import { LayeredSceneComponent } from '@ggetracker-components/layered-scene/layered-scene.component';
 import { ApiAllianceProfile, ApiPlayerProfile } from '@ggetracker-interfaces/empire-ranking';
 import { TranslateModule } from '@ngx-translate/core';
@@ -60,6 +61,7 @@ const SCALE_MAX_TILT = 14;
     CompareLootComponent,
     CompareEventsComponent,
     LayeredSceneComponent,
+    BrandWordmarkComponent,
   ],
   providers: [CompareRequests],
   templateUrl: './compare.component.html',

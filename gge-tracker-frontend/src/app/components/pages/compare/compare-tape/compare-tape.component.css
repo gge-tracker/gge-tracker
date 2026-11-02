@@ -227,10 +227,9 @@
   padding: 0.55rem 1.25rem;
 }
 
-.tape-mark img {
-  height: auto;
-  opacity: 0.85;
-  width: 84px;
+.tape-wordmark {
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
 }
 
 .tape-share-a {
@@ -240,26 +239,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tape-mark {
-  align-items: center;
-  border-top: 1px solid rgba(242, 193, 78, 0.14);
-  color: #8a96a8;
-  display: flex;
-  font-size: 0.72rem;
-  font-weight: 700;
-  gap: 0.6rem;
-  justify-content: flex-end;
-  letter-spacing: 0.08em;
-  padding: 0.55rem 1.25rem;
-}
-
-.tape-mark img {
-  height: auto;
-  opacity: 0.85;
-  width: 84px;
-}
-
-.tape-share-a {
+  .tape-share-a {
     transition: none;
   }
 }

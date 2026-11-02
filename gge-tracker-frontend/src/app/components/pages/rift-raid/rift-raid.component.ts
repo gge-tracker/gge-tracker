@@ -68,6 +68,7 @@ export class RiftRaidComponent extends GenericComponent implements OnInit {
   public isDataLoading = false;
   public isEventMissing = false;
   public selectedAllianceInAnalyzer: ApiRiftRaidAllianceAnalysisResponse | null = null;
+  public analyzingAllianceId: number | null = null;
 
   constructor() {
     super();
@@ -137,7 +138,10 @@ export class RiftRaidComponent extends GenericComponent implements OnInit {
       this.toastService.add(ErrorType.ERROR_OCCURRED, 5000, 'error');
       return;
     }
-    const response = await this.apiRestService.getRiftRaidAllianceAnalysis(alliance.alliance_id, eventId);
+    this.analyzingAllianceId = alliance.alliance_id;
+    const response = await this.apiRestService
+      .getRiftRaidAllianceAnalysis(alliance.alliance_id, eventId)
+      .finally(() => (this.analyzingAllianceId = null));
     if (!response.success) {
       this.toastService.add(ErrorType.ERROR_OCCURRED, 5000, 'error');
       return;

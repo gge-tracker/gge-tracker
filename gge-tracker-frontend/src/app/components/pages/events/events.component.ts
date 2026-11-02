@@ -8,6 +8,7 @@ import { SearchFormComponent } from '@ggetracker-components/search-form/search-f
 import { TableComponent } from '@ggetracker-components/table/table.component';
 import {
   ApiEventlist,
+  ApiEventWinner,
   ApiOuterRealmEvent,
   ApiOuterRealmPlayer,
   ChartAdvancedOptions,
@@ -45,6 +46,7 @@ export interface EventList {
   from: Date;
   to: Date;
   playerCount: number;
+  winner?: ApiEventWinner | null;
 }
 
 @Component({
@@ -82,6 +84,12 @@ export class EventsComponent extends GenericComponent {
   public eventType: EventType | null = null;
   public responseTime = 0;
   public events: EventList[] = [];
+  public listType: EventType | null = null;
+  public readonly listFilters: { type: EventType | null; label: string }[] = [
+    { type: null, label: 'Tous' },
+    { type: EventType.OUTER_REALM, label: 'Royaume extérieur' },
+    { type: EventType.BEYOND_THE_HORIZON, label: 'Lacis' },
+  ];
   public activatedRoute = inject(ActivatedRoute);
   public serverService = inject(ServerService);
   public tableHeaders: [string, string, string?, boolean?][] = [
@@ -317,6 +325,7 @@ export class EventsComponent extends GenericComponent {
   }
 
   private async initEventList(page: number, eventType?: EventType): Promise<void> {
+    this.listType = eventType ?? null;
     const events = await this.getEventList(page, eventType);
     this.responseTime = events.response;
     this.events = events.data.events.map((event) => ({
@@ -325,6 +334,7 @@ export class EventsComponent extends GenericComponent {
       from: this.utilitiesService.generateOuterRealmsEventFromDate(event.collect_date),
       to: new Date(event.collect_date),
       playerCount: event.player_count,
+      winner: event.winner ?? null,
     }));
     this.pagination = events.data.pagination;
   }

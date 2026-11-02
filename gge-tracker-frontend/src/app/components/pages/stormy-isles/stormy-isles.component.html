@@ -152,35 +152,16 @@
             </div>
           </div>
 
-          <div class="row">
-            <!-- Filter by alliance membership -->
-            <div class="col-12">
-              <div class="text-center mt-1 alliance-icon">
-                <img src="/assets/min-alliance.png" [alt]="'Alliance' | translate"
-                  [title]="'Filtrer par alliance' | translate" height="32">
-              </div>
-              <div class="input-group align-items-center justify-content-center">
-                <div class="col-4 text-center">
-                  <label for="alliance1">{{ 'Avec alliance' | translate }}</label>
-                  <div>
-                    <input type="radio" class="form-check-input" id="alliance1" value="1" name="alliance"
-                      [(ngModel)]="formFilters.allianceFilter">
-                  </div>
-                </div>
-                <div class="col-4 text-center">
-                  <label for="alliance0">{{ 'Sans alliance' | translate }}</label>
-                  <div>
-                    <input type="radio" class="form-check-input" id="alliance0" name="alliance" value="0"
-                      [(ngModel)]="formFilters.allianceFilter">
-                  </div>
-                </div>
-                <div class="col-4 text-center">
-                  <label for="noAlliance">{{ 'Pas de filtre' | translate }}</label>
-                  <div>
-                    <input type="radio" class="form-check-input" id="noAlliance" name="alliance" value="-1"
-                      [(ngModel)]="formFilters.allianceFilter">
-                  </div>
-                </div>
+          <div class="filter-switch-list mt-3">
+            <div class="filter-switch">
+              <span class="filter-switch-label"><img src="/assets/min-alliance.png" alt="" [title]="'Filtrer par alliance' | translate">{{ 'Alliance' | translate }}</span>
+              <div class="filter-switch-options" role="radiogroup" [attr.aria-label]="'Alliance' | translate">
+                <input type="radio" class="filter-switch-input" id="noAlliance" name="alliance" value="-1" [(ngModel)]="formFilters.allianceFilter">
+                <label class="filter-switch-option" for="noAlliance">{{ 'Pas de filtre' | translate }}</label>
+                <input type="radio" class="filter-switch-input" id="alliance1" value="1" name="alliance" [(ngModel)]="formFilters.allianceFilter">
+                <label class="filter-switch-option is-filter" for="alliance1">{{ 'Avec alliance' | translate }}</label>
+                <input type="radio" class="filter-switch-input" id="alliance0" name="alliance" value="0" [(ngModel)]="formFilters.allianceFilter">
+                <label class="filter-switch-option is-filter" for="alliance0">{{ 'Sans alliance' | translate }}</label>
               </div>
             </div>
           </div>
@@ -202,30 +183,26 @@
             </div>
           </div>
 
-          <hr class="my-4">
-          <div class="row">
-            <div class="col text-center">
-              <div class="btn-group">
-                <button class="gge-btn success" (click)="applyFilters()" data-bs-dismiss="modal">
-                  <i class="fa-solid fa-check"></i>
-                  &nbsp;
-                  <span>{{ 'Appliquer les filtres' | translate }}</span>
-                </button>
-                <button appIconToggle baseIcon="fa-floppy-disk" [validated]="validated['saveFilters']"
-                  [disabled]="!areFiltersChanged()" class="gge-btn search" (click)="saveFilters()">
-                  {{ 'Enregistrer les filtres' | translate }}
-                </button>
-                <button appIconToggle baseIcon="fa-folder-open" [validated]="validated['loadFilters']"
-                  [disabled]="!areFiltersSavedInLocalStorage" class="gge-btn search"
-                  (click)="loadFiltersFromLocalStorage()">
-                  {{ 'Charger les filtres' | translate }}
-                </button>
-                <button appIconToggle baseIcon="fa-rotate-left" [validated]="validated['resetFilters']"
-                  [disabled]="!areFiltersChanged()" class="gge-btn reset" (click)="resetFilters()">
-                  {{ 'Réinitialiser les filtres' | translate }}
-                </button>
-              </div>
+          <div class="modal-actions">
+            <div class="modal-actions-group">
+              <button appIconToggle baseIcon="fa-floppy-disk" [validated]="validated['saveFilters']"
+                [disabled]="!areFiltersChanged()" type="button" class="modal-action secondary" (click)="saveFilters()">
+                {{ 'Enregistrer les filtres' | translate }}
+              </button>
+              <button appIconToggle baseIcon="fa-folder-open" [validated]="validated['loadFilters']"
+                [disabled]="!areFiltersSavedInLocalStorage" type="button" class="modal-action secondary"
+                (click)="loadFiltersFromLocalStorage()">
+                {{ 'Charger les filtres' | translate }}
+              </button>
+              <button appIconToggle baseIcon="fa-rotate-left" [validated]="validated['resetFilters']"
+                [disabled]="!areFiltersChanged()" type="button" class="modal-action quiet" (click)="resetFilters()">
+                {{ 'Réinitialiser les filtres' | translate }}
+              </button>
             </div>
+            <button type="button" class="modal-action primary" (click)="applyFilters()" data-bs-dismiss="modal">
+              <i class="fa-solid fa-check"></i>
+              <span>{{ 'Appliquer les filtres' | translate }}</span>
+            </button>
           </div>
         </div>
       </div>

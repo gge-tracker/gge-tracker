@@ -4,31 +4,59 @@ templates:
   - orgId: 1
     name: gge.title
     template: |-
-      {{ define "gge.title" }}{{ if eq .Status "resolved" }}✅{{ else if eq .CommonLabels.notify "digest" }} {{ else }}🔴{{ end }} {{ .CommonLabels.alertname }}{{ if .CommonLabels.server }} - {{ .CommonLabels.server }}{{ end }}{{ end }}
+      {{ define "gge.title" }}
+      {{- if eq .CommonLabels.notify "digest" }}📊 Scraping · hourly report
+      {{- else if eq .Status "resolved" }}✅ Resolved · {{ .CommonLabels.alertname }}{{ with .CommonLabels.server }} · {{ . }}{{ end }}
+      {{- else }}{{ if eq .CommonLabels.severity "warning" }}🟠{{ else }}🔴{{ end }} {{ .CommonLabels.alertname }}{{ with .CommonLabels.server }} · {{ . }}{{ end }}
+      {{- end }}{{ end }}
 
   - orgId: 1
     name: gge.message
     template: |-
-      {{ define "gge.message" }}
-      {{- if eq .Status "resolved" }}
-      No new errors on **{{ .CommonLabels.server }}**. Scraping is healthy again.
-      {{- else if eq .CommonLabels.notify "digest" }}
-      {{- range .Alerts }}
-      {{- if eq .Annotations.runs "0" }}
-      ⚠️ **No scraping run completed in the last hour.**
-      {{- else if .Annotations.runs }}
-      ✅ **{{ .Annotations.servers }}** servers · **{{ .Annotations.runs }}** runs completed · **{{ .Annotations.errors }}** errors - in the last hour.
-      {{- end }}
-      {{- end }}
-      {{- else }}
-      <@&1473337948098396322> **{{ len .Alerts.Firing }} error(s)** on server **{{ .CommonLabels.server }}**
+      {{ define "gge.alert.line" }}{{ if .Annotations.summary }}{{ printf "%.220s" .Annotations.summary }}{{ else }}{{ with .Labels.identifier }}`#{{ . }}` {{ end }}{{ printf "%.180s" .Labels.msg }}{{ end }}{{ end }}
+
+      {{ define "gge.link" }}🔗 [{{ or .CommonAnnotations.dashboard_title "Scraping health" }}]({{ reReplaceAll "/$" "" .ExternalURL }}{{ if .CommonAnnotations.dashboard }}{{ .CommonAnnotations.dashboard }}{{ else }}/d/scraping-logs-loki{{ with .CommonLabels.server }}?var-server={{ . }}{{ end }}{{ end }}){{ end }}
+
+      {{ define "gge.firing" }}
+      {{- if eq .CommonLabels.severity "critical" }}<@&1473337948098396322>
+      {{ end -}}
+      {{ with .CommonLabels.server }}**Server** · `{{ . }}`
+      {{ end -}}
+      **Since** · <t:{{ (index .Alerts.Firing 0).StartsAt.Unix }}:R>
       {{ range $i, $a := .Alerts.Firing }}{{ if lt $i 6 }}
-      {{ if $a.Labels.identifier }}`#{{ $a.Labels.identifier }}` {{ end }}{{ printf "%.150s" $a.Labels.msg }}
-      {{- end }}{{ end }}
-      {{ if gt (len .Alerts.Firing) 6 }}
-      _…and more. Open the dashboard for the full list._
+      > {{ template "gge.alert.line" $a }}{{ end }}{{ end }}
+      {{- if gt (len .Alerts.Firing) 6 }}
+      _{{ len .Alerts.Firing }} alerts in total, the dashboard lists them all._{{ end }}
+      {{- if .Alerts.Resolved }}
+      ✅ {{ len .Alerts.Resolved }} recovered meanwhile.{{ end }}
+      {{- with .CommonAnnotations.action }}
+
+      💡 {{ . }}{{ end }}
+
+      {{ template "gge.link" . }}
+      {{- end }}
+
+      {{ define "gge.resolved" }}
+      {{- with .CommonLabels.server }}**Server** · `{{ . }}`
+      {{ end -}}
+      {{ range $i, $a := .Alerts.Resolved }}{{ if lt $i 6 }}
+      > {{ template "gge.alert.line" $a }}
+      > <t:{{ $a.StartsAt.Unix }}:t> → <t:{{ $a.EndsAt.Unix }}:t>{{ end }}{{ end }}
+
+      {{ template "gge.link" . }}
+      {{- end }}
+
+      {{ define "gge.digest" }}
+      {{- range .Alerts }}
+      {{- if eq .Annotations.runs "0" }}⚠️ **No scraping run completed in the last hour.**
+      {{- else if .Annotations.runs }}**{{ .Annotations.servers }}** servers · **{{ .Annotations.runs }}** runs · **{{ .Annotations.errors }}** errors in the last hour
+      {{- end }}
       {{- end }}
       {{- end }}
 
-      [Open the scraping dashboard]({{ .ExternalURL }}/d/scraping-logs-loki?var-server={{ .CommonLabels.server }})
-      {{ end }}
+      {{ define "gge.message" }}
+      {{- if eq .CommonLabels.notify "digest" }}{{ template "gge.digest" . }}
+      {{- else if eq .Status "resolved" }}{{ template "gge.resolved" . }}
+      {{- else }}{{ template "gge.firing" . }}
+      {{- end }}
+      {{- end }}

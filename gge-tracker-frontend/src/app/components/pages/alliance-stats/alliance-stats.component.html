@@ -132,15 +132,17 @@
 
 
 @if (!isInLoading) {
-  <nav class="alliance-tabs mt-5" role="tablist" [attr.aria-label]="'Alliance' | translate">
+  <nav class="alliance-tabs mt-5" [attr.aria-label]="'Alliance' | translate">
     <div class="alliance-tabs-scroller pt-1">
-      @for (tab of tabs; track tab.key) {
-        <button type="button" class="alliance-tab" role="tab" [class.active]="selectedTab === tab.key"
-          [attr.aria-selected]="selectedTab === tab.key" (click)="changeTab(tab.key)" title="{{ tab.label | translate }}">
-          <lucide-icon class="alliance-tab-icon" [img]="tab.icon" [size]="18"></lucide-icon>
-          <span class="alliance-tab-label">{{ tab.label | translate }}</span>
-        </button>
-      }
+      <div class="alliance-tab-list" role="tablist" [attr.aria-label]="'Alliance' | translate">
+        @for (tab of tabs; track tab.key) {
+          <button type="button" class="alliance-tab" role="tab" [class.active]="selectedTab === tab.key"
+            [attr.aria-selected]="selectedTab === tab.key" (click)="changeTab(tab.key)" title="{{ tab.label | translate }}">
+            <lucide-icon class="alliance-tab-icon" [img]="tab.icon" [size]="18"></lucide-icon>
+            <span class="alliance-tab-label">{{ tab.label | translate }}</span>
+          </button>
+        }
+      </div>
       <a class="alliance-tab alliance-tab-link" [href]="'/map/' + allianceId" target="_blank" rel="noopener"
         title="{{ 'Carte' | translate }}">
         <lucide-icon class="alliance-tab-icon" [img]="Earth" [size]="18"></lucide-icon>
@@ -230,7 +232,7 @@
                     [class.active]="selectedKingdomId === world.id"
                     (click)="selectKingdom(world.id)"
                     [title]="world.name | translate">
-                    <img width="24" height="24" class="me-2" [alt]="world.name | translate" [src]="'assets/dungeon' + world.id + '.png'">
+                    <img width="24" height="24" class="me-2" alt="" [src]="'assets/dungeon' + world.id + '.png'">
                     {{ world.name | translate }}
                   </button>
                 }

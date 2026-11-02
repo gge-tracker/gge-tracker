@@ -9,6 +9,7 @@ import { TableComponent } from '@ggetracker-components/table/table.component';
 import { Alliance, ApiAllianceResponse, ErrorType } from '@ggetracker-interfaces/empire-ranking';
 import { BoundType, FilterKeyMap } from '@ggetracker-interfaces/filter';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
+import { FollowService } from '@ggetracker-services/follow.service';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
 import { ServerService } from '@ggetracker-services/server.service';
 import { TranslateModule } from '@ngx-translate/core';
@@ -91,6 +92,7 @@ export class AlliancesComponent extends GenericComponent implements OnInit {
   ];
   public ArrowBigRightDash = ArrowBigRightDash;
   public readonly serverService = inject(ServerService);
+  public readonly follow = inject(FollowService);
   private readonly FILTER_KEYS: FilterKeyMap<FormFilters, FilterField> = {
     might: { min: 'minMight', max: 'maxMight' },
     loot: { min: 'minLoot', max: 'maxLoot' },
