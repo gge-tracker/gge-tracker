@@ -49,7 +49,7 @@ export function withCacheNamespace<T extends object>(client: T, namespace: strin
   return new Proxy(client, {
     get(target, property): unknown {
       const value = Reflect.get(target, property, target);
-      if (typeof value !== 'function') return value;
+      if (typeof value !== 'function' || property === 'constructor') return value;
       if (!KEYED_COMMANDS.has(String(property))) return value.bind(target);
       return (...parameters: unknown[]) => {
         const keyIndex = typeof parameters[0] === 'object' && !Array.isArray(parameters[0]) ? 1 : 0;

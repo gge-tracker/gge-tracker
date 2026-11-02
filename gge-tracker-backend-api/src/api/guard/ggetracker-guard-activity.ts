@@ -464,6 +464,7 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
     }
     const limiter = new RateLimiterRedis({
       storeClient: ApiHelper.redisClient,
+      useRedisPackage: true,
       keyPrefix: 'api-key',
       points: apiKey.points,
       duration: apiKey.windowSeconds,

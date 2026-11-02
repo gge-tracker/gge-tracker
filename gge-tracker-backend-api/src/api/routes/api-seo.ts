@@ -150,6 +150,7 @@ export abstract class ApiSeo implements ApiHelper {
   private static async withinRenderBudget(request: express.Request): Promise<boolean> {
     this.renderLimiter ??= new RateLimiterRedis({
       storeClient: ApiHelper.redisClient,
+      useRedisPackage: true,
       keyPrefix: 'seo-render',
       points: this.RENDERS_PER_MINUTE,
       duration: 60,
