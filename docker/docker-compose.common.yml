@@ -87,6 +87,46 @@ services:
     networks:
       - backend
 
+  db-backup:
+    build:
+      context: ./../database/backup
+    container_name: db-backup
+    restart: unless-stopped
+    init: true
+    environment:
+      - BACKUP_AT=${DB_BACKUP_AT:-03:15}
+      - BACKUP_OWNER=${DB_BACKUP_OWNER:-1000:1000}
+      - BACKUP_MIN_FREE_GB=${DB_BACKUP_MIN_FREE_GB:-80}
+      - PGHOST=postgres-container
+      - PGUSER=${SQL_USER}
+      - PGPASSWORD=${SQL_PASSWORD}
+      - PGDATABASE=${SQL_DATABASE}
+      - CLICKHOUSE_URL=http://clickhouse:8123
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+      - CLICKHOUSE_BACKUP_BANDWIDTH_MB=${DB_BACKUP_CLICKHOUSE_BANDWIDTH_MB:-40}
+      - CLICKHOUSE_BACKUP_THREADS=${DB_BACKUP_CLICKHOUSE_THREADS:-2}
+      - COPY_BANDWIDTH_MB=${DB_BACKUP_COPY_BANDWIDTH_MB:-60}
+    volumes:
+      - ${DB_BACKUP_DIR:-./../backups/db}:/backups
+      - type: volume
+        source: clickhouse_data
+        target: /clickhouse-backups
+        volume:
+          subpath: backups
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   clickhouse-webui:
     image: spoonest/clickhouse-tabix-web-client@sha256:fd2b754a5d379e8bb9b0019e1c757ae02ab54c304f590ae2d0e856fbc05feae2
     cpu_quota: 20000
