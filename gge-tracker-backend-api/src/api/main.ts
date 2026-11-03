@@ -7801,6 +7801,7 @@ const ggeServerMiddleware = (request: Request, response: Response, next: NextFun
 app.use(compression());
 app.use('/api/v1', publicRoutes);
 app.use('/api/v1', protectedRoutes);
+ggeTrackerApiGuardActivity.setUpRouteTemplates('/api/v1', [publicRoutes, protectedRoutes]);
 
 publicRoutes.use(ggeServerMiddleware);
 

@@ -9532,6 +9532,952 @@
         "x": 0,
         "y": 62
       },
+      "id": 210,
+      "panels": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "description": "Every 429 the limiter or a quota answered in the range. Ignores the dashboard filters.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 0,
+            "y": 63
+          },
+          "id": 211,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "4.12.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-clickhouse-datasource",
+                "uid": "clickhouse"
+              },
+              "editorType": "sql",
+              "format": 1,
+              "meta": {
+                "builderOptions": {
+                  "columns": [],
+                  "database": "logs",
+                  "limit": 1000,
+                  "mode": "list",
+                  "queryType": "table",
+                  "table": "logs"
+                }
+              },
+              "pluginVersion": "4.12.0",
+              "queryType": "table",
+              "rawSql": "WITH\n  replaceRegexpOne(trim(splitByChar(',', ip)[1]), '^::ffff:', '') AS client_ip,\n  if(partner != '', concat('key:', partner), if(isIPv6String(client_ip), concat(cutIPv6(IPv6StringToNum(client_ip), 8, 0), '/64'), client_ip)) AS client,\n  route IN ('/api/v1/castle/analysis/:castleId', '/api/v1/castle/player/:playerId', '/api/v1/castle/search/:playerName') AS is_game_command,\n  NOT (route IN ('/api/v1', '/api/v1/') OR startsWith(route, '/api/v1/assets') OR startsWith(route, '/api/v1/languages') OR startsWith(route, '/api/v2/view')) AS counts_for_quota\nSELECT count() AS value\nFROM logs.logs\nWHERE $__timeFilter(timestamp) AND job = 'ggetracker-api' AND status = 429",
+              "refId": "A"
+            }
+          ],
+          "title": "Requests refused",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "description": "Distinct clients that got at least one 429 in the range. Ignores the dashboard filters.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 6,
+            "y": 63
+          },
+          "id": 212,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "4.12.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-clickhouse-datasource",
+                "uid": "clickhouse"
+              },
+              "editorType": "sql",
+              "format": 1,
+              "meta": {
+                "builderOptions": {
+                  "columns": [],
+                  "database": "logs",
+                  "limit": 1000,
+                  "mode": "list",
+                  "queryType": "table",
+                  "table": "logs"
+                }
+              },
+              "pluginVersion": "4.12.0",
+              "queryType": "table",
+              "rawSql": "WITH\n  replaceRegexpOne(trim(splitByChar(',', ip)[1]), '^::ffff:', '') AS client_ip,\n  if(partner != '', concat('key:', partner), if(isIPv6String(client_ip), concat(cutIPv6(IPv6StringToNum(client_ip), 8, 0), '/64'), client_ip)) AS client,\n  route IN ('/api/v1/castle/analysis/:castleId', '/api/v1/castle/player/:playerId', '/api/v1/castle/search/:playerName') AS is_game_command,\n  NOT (route IN ('/api/v1', '/api/v1/') OR startsWith(route, '/api/v1/assets') OR startsWith(route, '/api/v1/languages') OR startsWith(route, '/api/v2/view')) AS counts_for_quota\nSELECT uniqExact(client) AS value\nFROM logs.logs\nWHERE $__timeFilter(timestamp) AND job = 'ggetracker-api' AND status = 429",
+              "refId": "A"
+            }
+          ],
+          "title": "Clients refused",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "description": "429s from the game command budget, which protects the game account (castle analysis, player, search). Ignores the dashboard filters.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 12,
+            "y": 63
+          },
+          "id": 213,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "4.12.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-clickhouse-datasource",
+                "uid": "clickhouse"
+              },
+              "editorType": "sql",
+              "format": 1,
+              "meta": {
+                "builderOptions": {
+                  "columns": [],
+                  "database": "logs",
+                  "limit": 1000,
+                  "mode": "list",
+                  "queryType": "table",
+                  "table": "logs"
+                }
+              },
+              "pluginVersion": "4.12.0",
+              "queryType": "table",
+              "rawSql": "WITH\n  replaceRegexpOne(trim(splitByChar(',', ip)[1]), '^::ffff:', '') AS client_ip,\n  if(partner != '', concat('key:', partner), if(isIPv6String(client_ip), concat(cutIPv6(IPv6StringToNum(client_ip), 8, 0), '/64'), client_ip)) AS client,\n  route IN ('/api/v1/castle/analysis/:castleId', '/api/v1/castle/player/:playerId', '/api/v1/castle/search/:playerName') AS is_game_command,\n  NOT (route IN ('/api/v1', '/api/v1/') OR startsWith(route, '/api/v1/assets') OR startsWith(route, '/api/v1/languages') OR startsWith(route, '/api/v2/view')) AS counts_for_quota\nSELECT count() AS value\nFROM logs.logs\nWHERE $__timeFilter(timestamp) AND job = 'ggetracker-api' AND status = 429 AND rate_limit LIKE '%game-commands%'",
+              "refId": "A"
+            }
+          ],
+          "title": "Castle requests refused",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 18,
+            "y": 63
+          },
+          "id": 214,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "4.12.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-clickhouse-datasource",
+                "uid": "clickhouse"
+              },
+              "editorType": "sql",
+              "format": 1,
+              "meta": {
+                "builderOptions": {
+                  "columns": [],
+                  "database": "logs",
+                  "limit": 1000,
+                  "mode": "list",
+                  "queryType": "table",
+                  "table": "logs"
+                }
+              },
+              "pluginVersion": "4.12.0",
+              "queryType": "table",
+              "rawSql": "WITH\n  replaceRegexpOne(trim(splitByChar(',', ip)[1]), '^::ffff:', '') AS client_ip,\n  if(partner != '', concat('key:', partner), if(isIPv6String(client_ip), concat(cutIPv6(IPv6StringToNum(client_ip), 8, 0), '/64'), client_ip)) AS client,\n  route IN ('/api/v1/castle/analysis/:castleId', '/api/v1/castle/player/:playerId', '/api/v1/castle/search/:playerName') AS is_game_command,\n  NOT (route IN ('/api/v1', '/api/v1/') OR startsWith(route, '/api/v1/assets') OR startsWith(route, '/api/v1/languages') OR startsWith(route, '/api/v2/view')) AS counts_for_quota\nSELECT count() AS value\nFROM\n(\n  SELECT client, countIf(counts_for_quota) AS requests, countIf(is_game_command) AS castle\n  FROM logs.logs\n  WHERE timestamp >= now() - INTERVAL 1 DAY AND job = 'ggetracker-api' AND partner = ''\n  GROUP BY client\n  HAVING requests >= 20000 OR castle >= 240\n)",
+              "refId": "A"
+            }
+          ],
+          "title": "Anonymous clients near a quota (24 h)",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "description": "Refused requests by the limit that refused them: window (30 per 5 s), anonymous-daily (25,000 a day), game-commands-minute / -day (30 / 300 castle requests), their partner-* variants, limiter-unavailable (Redis down). Rows written before the rate_limit column was added show as one series. Ignores the dashboard filters.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "bars",
+                "fillOpacity": 60,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "normal"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 24,
+            "x": 0,
+            "y": 67
+          },
+          "id": 215,
+          "options": {
+            "legend": {
+              "calcs": [
+                "sum",
+                "max"
+              ],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": true,
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "4.12.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-clickhouse-datasource",
+                "uid": "clickhouse"
+              },
+              "editorType": "sql",
+              "format": 0,
+              "meta": {
+                "builderOptions": {
+                  "columns": [],
+                  "database": "logs",
+                  "limit": 1000,
+                  "mode": "list",
+                  "queryType": "timeseries",
+                  "table": "logs"
+                }
+              },
+              "pluginVersion": "4.12.0",
+              "queryType": "timeseries",
+              "rawSql": "WITH\n  replaceRegexpOne(trim(splitByChar(',', ip)[1]), '^::ffff:', '') AS client_ip,\n  if(partner != '', concat('key:', partner), if(isIPv6String(client_ip), concat(cutIPv6(IPv6StringToNum(client_ip), 8, 0), '/64'), client_ip)) AS client,\n  route IN ('/api/v1/castle/analysis/:castleId', '/api/v1/castle/player/:playerId', '/api/v1/castle/search/:playerName') AS is_game_command,\n  NOT (route IN ('/api/v1', '/api/v1/') OR startsWith(route, '/api/v1/assets') OR startsWith(route, '/api/v1/languages') OR startsWith(route, '/api/v2/view')) AS counts_for_quota\nSELECT\n  $__timeInterval(timestamp) AS t,\n  if(rate_limit = '', 'before the rate_limit column', rate_limit) AS metric,\n  count() AS refused\nFROM logs.logs\nWHERE $__timeFilter(timestamp) AND job = 'ggetracker-api' AND status = 429\nGROUP BY t, metric\nORDER BY t",
+              "refId": "A"
+            }
+          ],
+          "title": "Refused requests by limit",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "description": "Who was refused in the range, by which limit, and how much of their traffic still went through. A client that keeps coming back after a daily refusal is a candidate for a key, or for a word. Ignores the dashboard filters.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": true,
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "client"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 230
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "user_agent"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 300
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "refused"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "mode": "gradient",
+                      "type": "gauge"
+                    }
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "continuous-GrYlRd"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "first_refused"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "dateTimeAsIso"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "last_refused"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "dateTimeAsIso"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "refused_routes"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 380
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 10,
+            "w": 24,
+            "x": 0,
+            "y": 74
+          },
+          "id": 216,
+          "options": {
+            "cellHeight": "sm",
+            "enablePagination": true,
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true
+          },
+          "pluginVersion": "4.12.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-clickhouse-datasource",
+                "uid": "clickhouse"
+              },
+              "editorType": "sql",
+              "format": 1,
+              "meta": {
+                "builderOptions": {
+                  "columns": [],
+                  "database": "logs",
+                  "limit": 1000,
+                  "mode": "list",
+                  "queryType": "table",
+                  "table": "logs"
+                }
+              },
+              "pluginVersion": "4.12.0",
+              "queryType": "table",
+              "rawSql": "WITH\n  replaceRegexpOne(trim(splitByChar(',', ip)[1]), '^::ffff:', '') AS client_ip,\n  if(partner != '', concat('key:', partner), if(isIPv6String(client_ip), concat(cutIPv6(IPv6StringToNum(client_ip), 8, 0), '/64'), client_ip)) AS client,\n  route IN ('/api/v1/castle/analysis/:castleId', '/api/v1/castle/player/:playerId', '/api/v1/castle/search/:playerName') AS is_game_command,\n  NOT (route IN ('/api/v1', '/api/v1/') OR startsWith(route, '/api/v1/assets') OR startsWith(route, '/api/v1/languages') OR startsWith(route, '/api/v2/view')) AS counts_for_quota\nSELECT\n  client,\n  topK(1)(substring(user_agent, 1, 80))[1] AS user_agent,\n  arrayStringConcat(groupUniqArrayIf(rate_limit, status = 429), ', ') AS limits,\n  countIf(status = 429) AS refused,\n  countIf(status != 429) AS served,\n  minIf(timestamp, status = 429) AS first_refused,\n  maxIf(timestamp, status = 429) AS last_refused,\n  arrayStringConcat(topKIf(3)(route, status = 429), '  ') AS refused_routes,\n  any(country) AS country\nFROM logs.logs\nWHERE $__timeFilter(timestamp) AND job = 'ggetracker-api'\nGROUP BY client\nHAVING refused > 0\nORDER BY refused DESC\nLIMIT 200",
+              "refId": "A"
+            }
+          ],
+          "title": "Refused clients",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "description": "Anonymous clients at 10% or more of the daily quota or of the daily castle budget, over the last 24 hours whatever the range. daily_quota_pct counts what the limiter counts (not /api/v1, /assets, /languages). The limiter's day starts at a client's first request, so this is an approximation of where each one stands. Ignores the dashboard filters.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": true,
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "client"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 230
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "user_agent"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 300
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "daily_quota_pct"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "mode": "gradient",
+                      "type": "gauge"
+                    }
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "continuous-GrYlRd"
+                    }
+                  },
+                  {
+                    "id": "min",
+                    "value": 0
+                  },
+                  {
+                    "id": "max",
+                    "value": 100
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "castle_quota_pct"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "mode": "gradient",
+                      "type": "gauge"
+                    }
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "continuous-GrYlRd"
+                    }
+                  },
+                  {
+                    "id": "min",
+                    "value": 0
+                  },
+                  {
+                    "id": "max",
+                    "value": 100
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "top_routes"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 380
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 10,
+            "w": 24,
+            "x": 0,
+            "y": 84
+          },
+          "id": 217,
+          "options": {
+            "cellHeight": "sm",
+            "enablePagination": true,
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true
+          },
+          "pluginVersion": "4.12.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-clickhouse-datasource",
+                "uid": "clickhouse"
+              },
+              "editorType": "sql",
+              "format": 1,
+              "meta": {
+                "builderOptions": {
+                  "columns": [],
+                  "database": "logs",
+                  "limit": 1000,
+                  "mode": "list",
+                  "queryType": "table",
+                  "table": "logs"
+                }
+              },
+              "pluginVersion": "4.12.0",
+              "queryType": "table",
+              "rawSql": "WITH\n  replaceRegexpOne(trim(splitByChar(',', ip)[1]), '^::ffff:', '') AS client_ip,\n  if(partner != '', concat('key:', partner), if(isIPv6String(client_ip), concat(cutIPv6(IPv6StringToNum(client_ip), 8, 0), '/64'), client_ip)) AS client,\n  route IN ('/api/v1/castle/analysis/:castleId', '/api/v1/castle/player/:playerId', '/api/v1/castle/search/:playerName') AS is_game_command,\n  NOT (route IN ('/api/v1', '/api/v1/') OR startsWith(route, '/api/v1/assets') OR startsWith(route, '/api/v1/languages') OR startsWith(route, '/api/v2/view')) AS counts_for_quota\nSELECT\n  client,\n  topK(1)(substring(user_agent, 1, 80))[1] AS user_agent,\n  countIf(counts_for_quota) AS requests_24h,\n  round(100 * requests_24h / 25000, 1) AS daily_quota_pct,\n  countIf(is_game_command) AS castle_24h,\n  round(100 * castle_24h / 300, 1) AS castle_quota_pct,\n  countIf(status = 429) AS refused_24h,\n  arrayStringConcat(topK(3)(route), '  ') AS top_routes,\n  any(country) AS country\nFROM logs.logs\nWHERE timestamp >= now() - INTERVAL 1 DAY AND job = 'ggetracker-api' AND partner = ''\nGROUP BY client\nHAVING daily_quota_pct >= 10 OR castle_quota_pct >= 10\nORDER BY greatest(daily_quota_pct, castle_quota_pct) DESC\nLIMIT 50",
+              "refId": "A"
+            }
+          ],
+          "title": "Closest to a quota (last 24 h)",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "description": "Who the backend spends its time on in the range. share_pct is the client's share of all server time: one anonymous client above ~30% is a bulk crawler, whether or not it was refused. Ignores the dashboard filters.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": true,
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "client"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 230
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "user_agent"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 300
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "share_pct"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "mode": "gradient",
+                      "type": "gauge"
+                    }
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "continuous-GrYlRd"
+                    }
+                  },
+                  {
+                    "id": "min",
+                    "value": 0
+                  },
+                  {
+                    "id": "max",
+                    "value": 100
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "top_routes"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 380
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 24,
+            "x": 0,
+            "y": 94
+          },
+          "id": 218,
+          "options": {
+            "cellHeight": "sm",
+            "enablePagination": true,
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true
+          },
+          "pluginVersion": "4.12.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-clickhouse-datasource",
+                "uid": "clickhouse"
+              },
+              "editorType": "sql",
+              "format": 1,
+              "meta": {
+                "builderOptions": {
+                  "columns": [],
+                  "database": "logs",
+                  "limit": 1000,
+                  "mode": "list",
+                  "queryType": "table",
+                  "table": "logs"
+                }
+              },
+              "pluginVersion": "4.12.0",
+              "queryType": "table",
+              "rawSql": "WITH\n  replaceRegexpOne(trim(splitByChar(',', ip)[1]), '^::ffff:', '') AS client_ip,\n  if(partner != '', concat('key:', partner), if(isIPv6String(client_ip), concat(cutIPv6(IPv6StringToNum(client_ip), 8, 0), '/64'), client_ip)) AS client,\n  route IN ('/api/v1/castle/analysis/:castleId', '/api/v1/castle/player/:playerId', '/api/v1/castle/search/:playerName') AS is_game_command,\n  NOT (route IN ('/api/v1', '/api/v1/') OR startsWith(route, '/api/v1/assets') OR startsWith(route, '/api/v1/languages') OR startsWith(route, '/api/v2/view')) AS counts_for_quota\nSELECT\n  client,\n  topK(1)(substring(user_agent, 1, 80))[1] AS user_agent,\n  count() AS requests,\n  round(sum(response_time) / 1000) AS server_seconds,\n  round(100 * sum(response_time) / (SELECT sum(response_time) FROM logs.logs WHERE $__timeFilter(timestamp) AND job = 'ggetracker-api'), 1) AS share_pct,\n  countIf(status = 429) AS refused,\n  arrayStringConcat(topK(3)(route), '  ') AS top_routes\nFROM logs.logs\nWHERE $__timeFilter(timestamp) AND job = 'ggetracker-api'\nGROUP BY client\nORDER BY server_seconds DESC\nLIMIT 25",
+              "refId": "A"
+            }
+          ],
+          "title": "Top clients by backend time",
+          "type": "table"
+        }
+      ],
+      "title": "Rate limiting",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 63
+      },
       "id": 190,
       "panels": [
         {
@@ -9921,7 +10867,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 63
+        "y": 64
       },
       "id": 20,
       "panels": [
@@ -10178,7 +11124,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 64
+        "y": 65
       },
       "id": 196,
       "panels": [

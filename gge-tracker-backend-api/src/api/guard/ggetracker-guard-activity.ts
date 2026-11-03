@@ -36,6 +36,12 @@ interface LogEntryRow {
   origin: string;
   referer: string;
   page: string;
+  rate_limit: string;
+}
+
+interface RouteLayer {
+  route?: { path: string; methods: Record<string, boolean> };
+  match(path: string): boolean;
 }
 
 interface RateLimit {
@@ -67,6 +73,7 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
   private managerInstance: ApiGgeTrackerManager;
   private readonly partnerLimiters = new Map<number, { limit: RateLimit; limiter: RateLimiterRedis }>();
   private clientQuotas?: ClientQuotas;
+  private routeTemplates: { base: string; routers: express.Router[] } = { base: '', routers: [] };
 
   /**
    * Returns the singleton instance of GgeTrackerApiGuardActivity.
@@ -96,6 +103,11 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
    */
   public setUpRateLimiter(rateLimiter: RateLimiterRedis): this {
     this.rateLimiter = rateLimiter;
+    return this;
+  }
+
+  public setUpRouteTemplates(base: string, routers: express.Router[]): this {
+    this.routeTemplates = { base, routers };
     return this;
   }
 
@@ -172,6 +184,7 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
       this.applyDailyQuotaHeaders(response, quotas);
       if (quotas.refusal) {
         this.refuseOverQuota(response, quotas.refusal);
+        this.recordRefusal(request, response, quotas.refusal.quota);
         return;
       }
 
@@ -190,6 +203,7 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
           window_seconds: limit.windowSeconds,
         },
       });
+      this.recordRefusal(request, response, state ? (apiKey ? 'partner-window' : 'window') : 'limiter-unavailable');
     }
   }
 
@@ -277,6 +291,48 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
     this.approxBufferBytes += size;
   }
 
+  private routeTemplateOf(request: express.Request): string {
+    const { base, routers } = this.routeTemplates;
+    if (!request.path.startsWith(base)) return 'unmatched';
+    const path = request.path.slice(base.length) || '/';
+    const method = request.method.toLowerCase();
+    for (const router of routers) {
+      const layer = (router as unknown as { stack: RouteLayer[] }).stack.find(
+        (candidate) => candidate.route?.methods[method] && candidate.match(path),
+      );
+      if (layer?.route) return base + layer.route.path;
+    }
+    return 'unmatched';
+  }
+
+  private recordRefusal(request: express.Request, response: express.Response, rateLimit: string): void {
+    try {
+      this.pushToBuffer({
+        labels: {
+          job: 'ggetracker-api',
+          env: this.NODE_ENV,
+          server: (request.headers['gge-server'] as string) || 'none',
+          method: request.method || 'GET',
+          status: '429',
+          route: this.routeTemplateOf(request),
+          level: 'info',
+          partner: (response.locals.partner as string | undefined) ?? 'none',
+        },
+        line: {
+          url: request.originalUrl || request.url,
+          response_time: 0,
+          user_agent: request.headers['user-agent'] || '-',
+          ip: ClientIp.resolve(request),
+          rate_limit: rateLimit,
+          ...RequestContextReader.read(request),
+        },
+        timestamp: Date.now(),
+      });
+    } catch (error) {
+      console.error('Error recording a refused request:', error);
+    }
+  }
+
   /**
    * Transforms a LogEntry into a flat object suitable for insertion into ClickHouse, extracting and normalizing relevant fields.
    * @param logEntry - The structured log entry containing labels and line data.
@@ -299,6 +355,7 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
       origin: logEntry.line.origin ?? '',
       referer: logEntry.line.referer ?? '',
       page: logEntry.line.page ?? '',
+      rate_limit: logEntry.line.rate_limit ?? '',
     };
   }
 

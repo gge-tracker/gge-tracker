@@ -8,6 +8,7 @@ export interface QuotaWindow {
 }
 
 export interface QuotaRefusal {
+  quota: string;
   error: RouteErrorMessagesEnum;
   window: QuotaWindow;
   retryAfterSeconds: number;
@@ -107,6 +108,7 @@ export class ClientQuotas {
       if (!(error instanceof RateLimiterRes)) return null;
       this.logRefusal(quota, clientKey, userAgent);
       return {
+        quota: quota.name,
         error:
           quota === this.anonymousDaily
             ? RouteErrorMessagesEnum.DailyQuotaExceeded
