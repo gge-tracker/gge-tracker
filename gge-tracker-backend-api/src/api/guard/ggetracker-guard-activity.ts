@@ -11,6 +11,7 @@ import { RequestContextReader } from '../helper/request-context';
 import { ApiGgeTrackerManager } from '../managers/api.manager';
 import { RoutesManager, sortBySpecificity } from '../managers/routes.manager';
 import { ApiKey, ApiKeyRegistry } from '../services/api-key-registry';
+import { ClientQuotas, QuotaOutcome, QuotaRefusal } from './client-quotas';
 import { GgeTrackerApiGuardActivityDefaultParameters } from './ggetracker-guard-activity.parameters';
 
 interface LogEntry {
@@ -65,6 +66,7 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
   private rateLimiter: RateLimiterRedis;
   private managerInstance: ApiGgeTrackerManager;
   private readonly partnerLimiters = new Map<number, { limit: RateLimit; limiter: RateLimiterRedis }>();
+  private clientQuotas?: ClientQuotas;
 
   /**
    * Returns the singleton instance of GgeTrackerApiGuardActivity.
@@ -140,8 +142,6 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
     next: express.NextFunction,
     bypassRules: RoutesManager[],
   ): Promise<void> {
-    const normalizedIp = ClientIp.resolve(request);
-
     const apiKey = await this.identifyPartner(request, response);
     if (apiKey === 'refused') return;
     const limit: RateLimit = apiKey
@@ -157,10 +157,23 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
         return next();
       }
 
+      const clientKey = apiKey ? `key:${apiKey.id}` : ClientIp.rateLimitKey(request);
       const consumed = apiKey
-        ? await this.partnerLimiter(apiKey).consume(`key:${apiKey.id}`)
-        : await this.rateLimiter.consume(normalizedIp);
+        ? await this.partnerLimiter(apiKey).consume(clientKey)
+        : await this.rateLimiter.consume(clientKey);
       this.applyRateLimitHeaders(response, consumed, limit);
+
+      const quotas = await this.quotas().consume(
+        clientKey,
+        Boolean(apiKey),
+        request.path,
+        String(request.headers['user-agent'] ?? ''),
+      );
+      this.applyDailyQuotaHeaders(response, quotas);
+      if (quotas.refusal) {
+        this.refuseOverQuota(response, quotas.refusal);
+        return;
+      }
 
       next();
     } catch (error) {
@@ -474,6 +487,29 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
       limiter,
     });
     return limiter;
+  }
+
+  private quotas(): ClientQuotas {
+    this.clientQuotas ??= new ClientQuotas();
+    return this.clientQuotas;
+  }
+
+  private applyDailyQuotaHeaders(response: express.Response, outcome: QuotaOutcome): void {
+    if (!outcome.daily) return;
+    response.setHeader('X-RateLimit-Daily-Limit', String(outcome.daily.window.points));
+    response.setHeader('X-RateLimit-Daily-Remaining', String(outcome.daily.remaining));
+  }
+
+  private refuseOverQuota(response: express.Response, refusal: QuotaRefusal): void {
+    response.setHeader('Retry-After', String(refusal.retryAfterSeconds));
+    response.status(429).send({
+      error: refusal.error,
+      retry_after_seconds: refusal.retryAfterSeconds,
+      limit: {
+        requests: refusal.window.points,
+        window_seconds: refusal.window.windowSeconds,
+      },
+    });
   }
 
   private applyRateLimitHeaders(response: express.Response, state: RateLimiterRes | null, limit: RateLimit): void {

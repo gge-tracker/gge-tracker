@@ -25,6 +25,10 @@ export const config = {
     points: envInt('RATE_LIMIT_POINTS', 30),
     durationSec: envInt('RATE_LIMIT_DURATION', 5),
   },
+  quotas: {
+    anonymousDaily: envInt('ANONYMOUS_DAILY_REQUESTS', 25_000),
+    gameCommandsPerMinute: envInt('GAME_COMMANDS_PER_MINUTE', 30),
+  },
   timing: {
     samples: envInt('TEST_TIMING_SAMPLES', 12),
     p95BudgetMs: envInt('TEST_TIMING_P95_MS', 1500),

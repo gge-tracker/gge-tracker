@@ -61,6 +61,7 @@ export async function runRateLimit(report: Report, seeds: Seeds): Promise<void> 
   }
 
   await runApiKeyChecks(section, seeds, probePath);
+  await runQuotaChecks(section, seeds, probePath);
 
   if (tripped) {
     await sleep((durationSec + 1) * 1000);
@@ -97,6 +98,52 @@ async function runApiKeyChecks(section: ReturnType<Report['section']>, seeds: Se
   }
 
   await runAdminLifecycle(section, probePath);
+}
+
+async function runQuotaChecks(section: ReturnType<Report['section']>, seeds: Seeds, probePath: string): Promise<void> {
+  const { points } = config.rateLimit;
+  const { anonymousDaily, gameCommandsPerMinute } = config.quotas;
+
+  const anonymous = await request({ path: probePath });
+  section.expect('anonymous answers carry the daily quota', {
+    ok: anonymous.headers['x-ratelimit-daily-limit'] === String(anonymousDaily) && anonymous.headers['x-ratelimit-daily-remaining'] !== undefined,
+    detail: `Daily-Limit=${anonymous.headers['x-ratelimit-daily-limit']} Daily-Remaining=${anonymous.headers['x-ratelimit-daily-remaining']}`,
+    expected: `X-RateLimit-Daily-Limit ${anonymousDaily} and an X-RateLimit-Daily-Remaining`,
+    actual: `Daily-Limit ${anonymous.headers['x-ratelimit-daily-limit']}, Daily-Remaining ${anonymous.headers['x-ratelimit-daily-remaining']}`,
+  });
+
+  const prefix = `2001:db8:${(Date.now() % 0xffff).toString(16)}:7`;
+  const rotated: number[] = [];
+  for (let i = 1; i <= points + 5; i++) {
+    const res = await request({ path: probePath, clientIp: `${prefix}::${i.toString(16)}` });
+    rotated.push(res.status);
+    if (res.status === 429) break;
+  }
+  section.expect('addresses of one IPv6 /64 share one bucket', {
+    ok: rotated.includes(429),
+    detail: rotated.includes(429) ? `429 after ${rotated.indexOf(429) + 1} reqs` : `no 429: [${rotated.join(',')}]`,
+    expected: `a 429 within ${points + 5} calls, each from another address of ${prefix}::/64`,
+    actual: rotated.includes(429) ? `429 on call ${rotated.indexOf(429) + 1}` : `no 429 in ${rotated.length} calls`,
+  });
+
+  const castlePath = `/castle/search/${encodeURIComponent(seeds.castlePlayerName ?? seeds.playerName ?? 'a')}`;
+  const castleIp = `198.51.100.${1 + (Date.now() % 250)}`;
+  const spacingMs = Math.ceil((config.rateLimit.durationSec * 1000) / Math.max(1, points - 5));
+  let refusal: { call: number; code?: string } | null = null;
+  for (let i = 1; i <= gameCommandsPerMinute + 3; i++) {
+    const res = await request({ path: castlePath, clientIp: castleIp, headers: seeds.serverHeader() });
+    if (res.status === 429) {
+      refusal = { call: i, code: res.body?.code };
+      break;
+    }
+    await sleep(spacingMs);
+  }
+  section.expect('castle routes stop at the game command budget', {
+    ok: refusal?.code === 'GAME_COMMAND_QUOTA_EXCEEDED' && refusal.call === gameCommandsPerMinute + 1,
+    detail: refusal ? `429 ${refusal.code} on call ${refusal.call}` : 'never refused',
+    expected: `429 GAME_COMMAND_QUOTA_EXCEEDED on call ${gameCommandsPerMinute + 1}, ${gameCommandsPerMinute} castle requests per minute being allowed`,
+    actual: refusal ? `429 ${refusal.code} on call ${refusal.call}` : `${gameCommandsPerMinute + 3} calls, none refused`,
+  });
 }
 
 async function runAdminLifecycle(section: ReturnType<Report['section']>, probePath: string): Promise<void> {

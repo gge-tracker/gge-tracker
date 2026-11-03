@@ -11,6 +11,24 @@ export abstract class ClientIp {
     return this.normalize(ip);
   }
 
+  public static rateLimitKey(request: express.Request): string {
+    const ip = this.resolve(request);
+    return isIP(ip) === 6 ? `${this.ipv6Prefix64(ip)}::/64` : ip;
+  }
+
+  private static ipv6Prefix64(ip: string): string {
+    const address = ip.split('%')[0].toLowerCase();
+    const [head, tail] = address.includes('::') ? address.split('::') : [address, undefined];
+    const headGroups = head ? head.split(':') : [];
+    const tailGroups = tail ? tail.split(':') : [];
+    const missing = tail === undefined ? 0 : 8 - headGroups.length - tailGroups.length;
+    const groups = [...headGroups, ...Array.from({ length: missing }, () => '0'), ...tailGroups];
+    return groups
+      .slice(0, 4)
+      .map((group) => Number.parseInt(group || '0', 16).toString(16))
+      .join(':');
+  }
+
   private static firstHeaderValue(request: express.Request, name: string): string | undefined {
     const value = request.headers[name];
     return (Array.isArray(value) ? value[0] : value)?.trim() || undefined;

@@ -86,6 +86,8 @@ app.use(
       'X-RateLimit-Remaining',
       'X-RateLimit-Reset',
       'X-RateLimit-Window',
+      'X-RateLimit-Daily-Limit',
+      'X-RateLimit-Daily-Remaining',
       'Retry-After',
       'X-Offers-Fetched-At',
       'X-Offers-Currency',
