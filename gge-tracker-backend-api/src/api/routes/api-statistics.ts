@@ -103,6 +103,14 @@ export abstract class ApiStatistics implements ApiHelper {
        * --------------------------------- */
       try {
         const statistics = await this.getPlayersEventsStatisticsFromAllianceId(allianceId);
+        if (statistics.error === RouteErrorMessagesEnum.InvalidAllianceId) {
+          response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceId });
+          return;
+        }
+        if (statistics.error === RouteErrorMessagesEnum.AllianceNotFound) {
+          response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.AllianceNotFound });
+          return;
+        }
         if (statistics.error) throw new Error(statistics.error);
         const data = {
           diffs: statistics.diffs,

@@ -144,6 +144,7 @@ services:
     image: backend-express-rest-api:latest
     container_name: backend-container
     working_dir: /app
+    init: true
     networks:
       - backend
     restart: always
@@ -549,6 +550,10 @@ services:
     cpu_period: 100000
     command:
       - "--v=0"
+      - "--docker_only=true"
+      - "--housekeeping_interval=30s"
+      - "--store_container_labels=false"
+      - "--disable_metrics=advtcp,cpu_topology,cpuset,disk,diskIO,hugetlb,memory_numa,oom_event,percpu,perf_event,process,referenced_memory,resctrl,sched,tcp,udp"
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
