@@ -20,6 +20,7 @@ export abstract class ApiKeyRegistry {
   private static readonly CACHE_TTL_MS = Number(process.env.API_KEY_CACHE_TTL_MS) || 60_000;
   private static readonly CACHE_MAX_ENTRIES = 10_000;
   private static readonly cache = new Map<string, { key: ApiKey | null; expiresAt: number }>();
+  private static readonly misses = new Map<string, number>();
 
   public static generate(): string {
     return `ggt_${crypto.randomBytes(32).toString('base64url')}`;
@@ -34,6 +35,7 @@ export abstract class ApiKeyRegistry {
     const hash = this.hash(rawKey);
     const cached = this.cache.get(hash);
     if (cached && cached.expiresAt > Date.now()) return cached.key ?? 'invalid';
+    if ((this.misses.get(hash) ?? 0) > Date.now()) return 'invalid';
     if (!pool) return 'unverified';
     try {
       const key = await this.lookup(pool, hash);
@@ -45,8 +47,15 @@ export abstract class ApiKeyRegistry {
     }
   }
 
+  public static isCached(rawKey: string): boolean {
+    if (!KEY_FORMAT.test(rawKey)) return true;
+    const hash = this.hash(rawKey);
+    return (this.cache.get(hash)?.expiresAt ?? 0) > Date.now() || (this.misses.get(hash) ?? 0) > Date.now();
+  }
+
   public static forget(hash: string): void {
     this.cache.delete(hash);
+    this.misses.delete(hash);
   }
 
   private static async lookup(pool: pg.Pool, hash: string): Promise<ApiKey | null> {
@@ -71,7 +80,13 @@ export abstract class ApiKeyRegistry {
   }
 
   private static remember(hash: string, key: ApiKey | null): void {
+    const expiresAt = Date.now() + this.CACHE_TTL_MS;
+    if (key === null) {
+      if (this.misses.size >= this.CACHE_MAX_ENTRIES) this.misses.clear();
+      this.misses.set(hash, expiresAt);
+      return;
+    }
     if (this.cache.size >= this.CACHE_MAX_ENTRIES) this.cache.clear();
-    this.cache.set(hash, { key, expiresAt: Date.now() + this.CACHE_TTL_MS });
+    this.cache.set(hash, { key, expiresAt });
   }
 }

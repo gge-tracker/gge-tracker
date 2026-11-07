@@ -13,6 +13,7 @@ import { RoutesManager, sortBySpecificity } from '../managers/routes.manager';
 import { ApiKey, ApiKeyRegistry } from '../services/api-key-registry';
 import { ClientQuotas, QuotaOutcome, QuotaRefusal } from './client-quotas';
 import { GgeTrackerApiGuardActivityDefaultParameters } from './ggetracker-guard-activity.parameters';
+import { redactSecretPath } from '../helper/secret-path';
 
 interface LogEntry {
   labels: Record<string, string>;
@@ -222,7 +223,7 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
   public recordMorganRequest(tokens: morgan.TokenIndexer, request: express.Request, response: express.Response): void {
     try {
       const now = Date.now();
-      const server = (request.headers['gge-server'] as string) || 'none';
+      const server = this.serverLabel(request);
       const ip = ClientIp.resolve(request);
       const route = this.normalizeRouteSafe(request);
 
@@ -237,7 +238,7 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
         partner: (response.locals.partner as string | undefined) ?? 'none',
       };
       const line = {
-        url: tokens.url(request, response),
+        url: redactSecretPath(tokens.url(request, response)),
         response_time: tokens['response-time'](request, response),
         user_agent: tokens['user-agent'](request, response),
         ip,
@@ -263,15 +264,14 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
     try {
       if (request.route?.path) return (request.baseUrl || '') + request.route.path;
     } catch {}
-    const raw = request.path || '/';
-    const segments = raw.split('/').map((seg) => {
-      if (!seg) return '';
-      if (/^\d+$/.test(seg)) return ':id';
-      if (seg.length >= 8 && seg.includes('-')) return ':id';
-      if (/^[\dA-Fa-f]{6,}$/.test(seg)) return ':id';
-      return seg.length > 60 ? seg.slice(0, 60) : seg;
-    });
-    return segments.join('/');
+    return this.routeTemplateOf(request);
+  }
+
+  private serverLabel(request: express.Request): string {
+    const header = request.headers['gge-server'];
+    if (header === undefined) return 'none';
+    if (typeof header !== 'string' || !this.managerInstance?.isValidServer(header)) return 'invalid';
+    return header;
   }
 
   /**
@@ -311,7 +311,7 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
         labels: {
           job: 'ggetracker-api',
           env: this.NODE_ENV,
-          server: (request.headers['gge-server'] as string) || 'none',
+          server: this.serverLabel(request),
           method: request.method || 'GET',
           status: '429',
           route: this.routeTemplateOf(request),
@@ -319,7 +319,7 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
           partner: (response.locals.partner as string | undefined) ?? 'none',
         },
         line: {
-          url: request.originalUrl || request.url,
+          url: redactSecretPath(request.originalUrl || request.url),
           response_time: 0,
           user_agent: request.headers['user-agent'] || '-',
           ip: ClientIp.resolve(request),
@@ -514,17 +514,59 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
   ): Promise<ApiKey | null | 'refused'> {
     const header = request.headers[ApiKeyRegistry.HEADER];
     if (header === undefined) return null;
+    if (
+      typeof header === 'string' &&
+      !ApiKeyRegistry.isCached(header.trim()) &&
+      (await this.anonymousWindowSpent(request))
+    ) {
+      this.refuseRateLimited(request, response);
+      return 'refused';
+    }
     const lookup =
       typeof header === 'string'
         ? await ApiKeyRegistry.resolve(header.trim(), this.managerInstance.getGlobalPgSqlPool())
         : 'invalid';
     if (lookup === 'unverified') return null;
     if (lookup === 'invalid') {
+      if (!(await this.chargeRefusedKey(request))) {
+        this.refuseRateLimited(request, response);
+        return 'refused';
+      }
       response.status(ApiHelper.HTTP_UNAUTHORIZED).send({ error: RouteErrorMessagesEnum.InvalidApiKey });
       return 'refused';
     }
     response.locals.partner = lookup.partner;
     return lookup;
+  }
+
+  private async anonymousWindowSpent(request: express.Request): Promise<boolean> {
+    try {
+      const state = await this.rateLimiter.get(ClientIp.rateLimitKey(request));
+      return state !== null && state.remainingPoints <= 0;
+    } catch {
+      return false;
+    }
+  }
+
+  private async chargeRefusedKey(request: express.Request): Promise<boolean> {
+    try {
+      await this.rateLimiter.consume(ClientIp.rateLimitKey(request));
+      return true;
+    } catch (error) {
+      return !(error instanceof RateLimiterRes);
+    }
+  }
+
+  private refuseRateLimited(request: express.Request, response: express.Response): void {
+    const windowSeconds = ApiHelper.RATE_LIMIT_DURATION_SECONDS;
+    response.setHeader('Retry-After', String(windowSeconds));
+    response.status(429).json({
+      error: RouteErrorMessagesEnum.RateLimited,
+      code: 'RATE_LIMITED',
+      retry_after_seconds: windowSeconds,
+      limit: { requests: ApiHelper.RATE_LIMIT_POINTS, window_seconds: windowSeconds },
+    });
+    this.recordRefusal(request, response, 'window');
   }
 
   private partnerLimiter(apiKey: ApiKey): RateLimiterRedis {

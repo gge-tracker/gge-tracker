@@ -75,8 +75,13 @@ export abstract class ApiCastle implements ApiHelper {
       /* ---------------------------------
        * Cache check
        * --------------------------------- */
+      const zone = ApiHelper.ggeTrackerManager.getZoneFromRequestId(castleId);
+      if (!zone) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidCastleId });
+        return;
+      }
       const globalCastleId = ApiHelper.removeCountryCode(castleId);
-      const cachedKey = '/castle/analysis/' + globalCastleId + '/' + kingdomId;
+      const cachedKey = `castle:analysis:${castleId}:${kingdomId}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
@@ -87,7 +92,6 @@ export abstract class ApiCastle implements ApiHelper {
        * Fetch from GGE API
        * --------------------------------- */
       const basePath = kingdomId === 0 ? process.env.GGE_API_URL : process.env.GGE_API_URL_REALTIME;
-      const zone = ApiHelper.ggeTrackerManager.getZoneFromRequestId(castleId);
       const answer = await readBridgeAnswer(
         await fetchFromBridge(`${basePath}/${zone}/jca/"CID":${globalCastleId},"KID":${kingdomId}`),
       );

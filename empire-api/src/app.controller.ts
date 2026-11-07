@@ -75,7 +75,7 @@ startEventLoopLagProbe();
  * A command with no mapping is answered under the very headers it was sent with
  */
 function buildResponseHeaders(command: string, messageHeaders: Record<string, unknown>): Record<string, unknown> {
-  if (!(command in commands)) return messageHeaders;
+  if (!Object.hasOwn(commands, command)) return messageHeaders;
   const responseHeaders = {};
   for (const [messageKey, responsePath] of Object.entries(commands[command])) {
     if (messageKey in messageHeaders) {
@@ -94,6 +94,16 @@ function answerBody(server: string, command: string, payload: JsonFramePayload):
   return `${envelope},"return_code":${JSON.stringify(payload.status)},"content":${payload.toJson()}}`;
 }
 
+const COMMAND_NAME = /^\w{1,32}$/;
+
+function isServiceCaller(request: express.Request): boolean {
+  if (request.headers.origin !== undefined) return false;
+  const fetchSite = request.headers['sec-fetch-site'];
+  if (fetchSite !== undefined && fetchSite !== 'none') return false;
+  const host = (request.headers.host ?? '').replace(/:\d+$/, '');
+  return host === 'localhost' || /^[\d.]+$/.test(host) || /^\[[\d:a-f]+\]$/i.test(host) || /^[\w-]+$/.test(host);
+}
+
 export default function createApp(sockets: {
   [x: string]: GgeEmpire4KingdomsSocket | GgeEmpireSocket | GgeLiveTemporaryServerSocket | GgeEmpire4KingdomsTcp;
 }): express.Express {
@@ -101,9 +111,10 @@ export default function createApp(sockets: {
   app.use(express.json());
 
   app.use((request, response, next) => {
-    response.header('Access-Control-Allow-Origin', '*');
-    response.header('Access-Control-Allow-Methods', 'GET, POST, DELETE');
-    response.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+    if (!isServiceCaller(request)) {
+      response.status(403).json({ error: 'Forbidden' });
+      return;
+    }
     next();
   });
 
@@ -114,7 +125,7 @@ export default function createApp(sockets: {
         response.status(400).json({ error: 'Missing parameters' });
         return;
       }
-      if (server in sockets) {
+      if (Object.hasOwn(sockets, server)) {
         try {
           sockets[server].kill();
         } catch {
@@ -138,7 +149,7 @@ export default function createApp(sockets: {
         response.status(400).json({ error: 'Missing parameters' });
         return;
       }
-      if (server in sockets) {
+      if (Object.hasOwn(sockets, server)) {
         await sockets[server].restart(true);
         response.status(200).json({ message: 'Server reconnecting' });
       } else {
@@ -207,7 +218,12 @@ export default function createApp(sockets: {
         response.status(400).json({ error: 'Missing parameters' });
         return;
       }
-      if (server in sockets) {
+      const regex = /^[\dA-Za-z-]+\.goodgamestudios\.com$/;
+      if (!regex.test(socket_url)) {
+        response.status(400).json({ error: 'Invalid socket URL' });
+        return;
+      }
+      if (Object.hasOwn(sockets, server)) {
         try {
           sockets[server].kill();
         } catch {
@@ -215,11 +231,6 @@ export default function createApp(sockets: {
         } finally {
           delete sockets[server];
         }
-      }
-      const regex = /^[\dA-Za-z-]+\.goodgamestudios\.com$/;
-      if (!regex.test(socket_url)) {
-        response.status(400).json({ error: 'Invalid socket URL' });
-        return;
       }
       let socketServer:
         | GgeEmpire4KingdomsSocket
@@ -264,7 +275,12 @@ export default function createApp(sockets: {
       recordCommand(labels.server, labels.command, outcome, Number(process.hrtime.bigint() - startedAt) / 1e9);
     };
 
-    if (!(requestedServer in sockets)) {
+    if (!COMMAND_NAME.test(requestedCommand)) {
+      settle('not_found', UNKNOWN_SERVER_LABELS);
+      response.status(400).json({ error: 'Invalid command' });
+      return;
+    }
+    if (!Object.hasOwn(sockets, requestedServer)) {
       settle('not_found', UNKNOWN_SERVER_LABELS);
       response.status(404).json({ error: 'Server not found' });
       return;

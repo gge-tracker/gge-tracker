@@ -16,6 +16,9 @@ enum GgeXmlServerDescriptionUrls {
   SA = 'https://gge-tracker.github.io/gge-cdn-mirror-files/64.xml',
 }
 
+// The directory files come from a mirror, and the bridge sends each zone's stored password to the host they name.
+const GAME_HOST = /^[\da-z-]+\.goodgamestudios\.com(:\d+)?$/i;
+
 const CONFIG_DIRECTORY = process.env.EMPIRE_CONFIG_DIRECTORY ?? '/app/config';
 const CONNECT_STAGGER_MS = 100;
 
@@ -159,7 +162,13 @@ export abstract class SocketService {
     );
     const descriptors = new Map<string, GgeInstanceDescriptor>();
     for (const network of networks) {
-      for (const descriptor of network) descriptors.set(descriptor.zone, descriptor);
+      for (const descriptor of network) {
+        if (descriptors.has(descriptor.zone)) {
+          console.warn(`[SocketService] zone ${descriptor.zone} is declared by two networks, keeping the first`);
+          continue;
+        }
+        descriptors.set(descriptor.zone, descriptor);
+      }
     }
     return descriptors;
   }
@@ -378,12 +387,18 @@ export abstract class SocketService {
     if (!Array.isArray(data.network.instances.instance)) {
       data.network.instances.instance = [data.network.instances.instance];
     }
-    return data.network.instances.instance.map((server: { zone: string; server: string }) => ({
-      zone: server.zone,
-      network: definition.network,
-      url: `${definition.protocol}://${server.server}`,
-      socketClass: definition.socketClass,
-    }));
+    return data.network.instances.instance
+      .filter((server: { zone: string; server: string }) => {
+        if (GAME_HOST.test(String(server.server))) return true;
+        console.warn(`[SocketService] ${definition.network}: zone ${server.zone} names an unexpected host, skipped`);
+        return false;
+      })
+      .map((server: { zone: string; server: string }) => ({
+        zone: server.zone,
+        network: definition.network,
+        url: `${definition.protocol}://${server.server}`,
+        socketClass: definition.socketClass,
+      }));
   }
 
   private static buildSyncResult(

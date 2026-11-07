@@ -28,7 +28,7 @@ interface Quota {
 const DAY_SECONDS = 86_400;
 const REFUSAL_LOG_INTERVAL_MS = 3_600_000;
 // Castle routes that send a command from the game account on a cache miss
-const GAME_COMMAND_ROUTE = /^\/api\/v1\/castle\/(analysis|player|search)\//;
+const GAME_COMMAND_ROUTE = /^\/api\/v1\/castle\/(analysis|player|search)\//i;
 
 const positiveInteger = (value: string | undefined, fallback: number): number => {
   const parsed = Number(value);

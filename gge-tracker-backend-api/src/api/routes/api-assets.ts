@@ -1,5 +1,6 @@
 import axios from 'axios';
 import * as express from 'express';
+import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import path from 'node:path';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
@@ -25,6 +26,7 @@ const PUBLIC_ITEM_KEYS = new Set([
   'equipments',
 ]);
 const MISSING_ASSET_TTL_SECONDS = 60 * 60;
+const FAILED_FETCH_TTL_SECONDS = 10 * 60;
 const WARM_CONCURRENCY = Number(process.env.ASSET_WARM_CONCURRENCY) || 3;
 
 /**
@@ -66,7 +68,7 @@ export abstract class ApiAssets implements ApiHelper {
         return;
       }
       const token = request.params.token;
-      if (!token || token !== process.env.INTERNAL_SECRET) {
+      if (!ApiAssets.isInternalSecret(token)) {
         await new Promise((resolve) => setTimeout(resolve, 3000));
         response.status(ApiHelper.HTTP_FORBIDDEN).send({ error: 'Forbidden' });
         return;
@@ -220,7 +222,7 @@ export abstract class ApiAssets implements ApiHelper {
         return;
       }
       const assetWithoutExtension = asset.replace(/\.[^./]+$/, '');
-      const url = mapping[assetWithoutExtension];
+      const url = Object.hasOwn(mapping, assetWithoutExtension) ? mapping[assetWithoutExtension] : undefined;
       const version = await ApiHelper.getGgeBuildVersion();
       /* ---------------------------------
        * Serve the upstream file from the on-disk cache when it is already there
@@ -238,8 +240,12 @@ export abstract class ApiAssets implements ApiHelper {
       /* ---------------------------------
        * Fetch asset from remote source, cache it and serve it
        * --------------------------------- */
-      const fetched = await this.fetchCommonAsset(extension, url);
+      const missingKey = `assets_common_missing_${version}_${asset}`;
+      const fetched = (await ApiHelper.redisClient.get(missingKey))
+        ? null
+        : await this.fetchCommonAsset(extension, url);
       if (!fetched) {
+        await ApiHelper.updateCache(missingKey, '1', FAILED_FETCH_TTL_SECONDS, true);
         response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.AssetNotFound });
         return;
       }
@@ -305,7 +311,7 @@ export abstract class ApiAssets implements ApiHelper {
       /* ---------------------------------
        * Render, cache and serve
        * --------------------------------- */
-      const rendered = await this.renderAndCache(version, asset, symbol);
+      const rendered = await this.renderOnce(version, asset, symbol);
       if (!rendered) {
         response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.AssetNotFound });
         return;
@@ -446,7 +452,7 @@ export abstract class ApiAssets implements ApiHelper {
     variant: AssetImageVariant,
   ): Promise<string | null> {
     const mapping = await this.readAssetMapping();
-    if (!mapping?.[asset]) return null;
+    if (!mapping || !Object.hasOwn(mapping, asset)) return null;
     const script = await this.readAssetScript(version, asset);
     return script ? AssetSymbolResolver.resolve(`${version}:${asset}`, script, variant) : null;
   }
@@ -481,6 +487,21 @@ export abstract class ApiAssets implements ApiHelper {
       return true;
     }
     return false;
+  }
+
+  private static async renderOnce(
+    version: string,
+    asset: string,
+    symbol: string,
+  ): Promise<{ webp: Buffer | null; png: Buffer } | null> {
+    const failedKey = `assets_render_failed_${version}_${this.symbolCacheName(asset, symbol)}`;
+    if (await ApiHelper.redisClient.get(failedKey)) return null;
+    const rendered = await this.renderAndCache(version, asset, symbol).catch((error: unknown) => {
+      ApiHelper.logError(error, 'renderAndCache');
+      return null;
+    });
+    if (!rendered) await ApiHelper.updateCache(failedKey, '1', FAILED_FETCH_TTL_SECONDS, true);
+    return rendered;
   }
 
   private static async renderAndCache(
@@ -684,5 +705,12 @@ export abstract class ApiAssets implements ApiHelper {
       etag: HttpCache.etagFromCacheKey(cacheKey),
       maxAgeSeconds: ASSET_CATALOGUE_MAX_AGE_SECONDS,
     });
+  }
+
+  private static isInternalSecret(token: string | undefined): boolean {
+    const expected = process.env.INTERNAL_SECRET;
+    if (!token || !expected) return false;
+    const digest = (value: string): Buffer => crypto.createHash('sha256').update(value).digest();
+    return crypto.timingSafeEqual(digest(token), digest(expected));
   }
 }

@@ -176,7 +176,10 @@ export abstract class ApiHelper {
       contextParts.push(`query=${JSON.stringify(request.query)}`);
     }
     if (request?.params && Object.keys(request.params).length > 0) {
-      contextParts.push(`params=${JSON.stringify(request.params)}`);
+      const { token, ...parameters } = request.params;
+      contextParts.push(
+        `params=${JSON.stringify(token === undefined ? parameters : { ...parameters, token: '[redacted]' })}`,
+      );
     }
     const context = contextParts.length > 0 ? ` ${contextParts.join(' ')}` : '';
     const timestamp = new Date().toISOString().replace('T', ' ').split('.')[0];

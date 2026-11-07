@@ -22,10 +22,10 @@ datasources:
     jsonData:
       port: 8123
       host: $CLICKHOUSE_HOST
-      username: $CLICKHOUSE_USER
+      username: $GRAFANA_CLICKHOUSE_USER
       protocol: http
     secureJsonData:
-      password: $CLICKHOUSE_PASSWORD
+      password: $GRAFANA_CLICKHOUSE_PASSWORD
 
   - name: Tempo
     type: tempo

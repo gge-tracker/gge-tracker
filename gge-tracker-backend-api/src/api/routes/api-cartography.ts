@@ -20,6 +20,8 @@ import { ApiHelper } from '../helper/api-helper';
  * @abstract
  */
 export abstract class ApiCartography implements ApiHelper {
+  // Any size past this one is answered as the whole map
+  private static readonly MAX_ALLIANCE_COUNT = 100;
   /**
    * Handles the HTTP request to retrieve cartography data filtered by a specified size
    *
@@ -39,7 +41,7 @@ export abstract class ApiCartography implements ApiHelper {
       /* ---------------------------------
        * Validate parameters
        * --------------------------------- */
-      const pageNumber = request.params.size === '-1' ? -1 : ApiHelper.validatePageNumber(request.params.size, 10);
+      const pageNumber = ApiCartography.allianceCount(request.params.size);
 
       /* ---------------------------------
        * Check cache
@@ -328,5 +330,11 @@ export abstract class ApiCartography implements ApiHelper {
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getCartographyByAllianceId', request);
     }
+  }
+
+  private static allianceCount(size: string): number {
+    if (size === '-1') return -1;
+    const count = ApiHelper.validatePageNumber(size, 10);
+    return count >= ApiCartography.MAX_ALLIANCE_COUNT ? -1 : count;
   }
 }

@@ -36,6 +36,7 @@ const UNDEFINED_TABLE = '42P01';
 export abstract class ApiEventPodium implements ApiHelper {
   private static readonly FROZEN_CARD_MAX_AGE_SECONDS = 7 * 24 * 3600;
   private static readonly PODIUM_SIZE = 3;
+  private static readonly FREEZE_AFTER_MS = Number(process.env.EVENT_PODIUM_FREEZE_AFTER_MS) || 6 * 60 * 60 * 1000;
   private static readonly EVENTS: Record<string, PodiumEvent> = {
     [EventTypes.OUTER_REALMS]: { name: 'Outer Realms', tablePrefix: 'outer_realms' },
     [EventTypes.BEYOND_THE_HORIZON]: { name: 'Beyond the Horizon', tablePrefix: 'beyond_the_horizon' },
@@ -168,7 +169,13 @@ export abstract class ApiEventPodium implements ApiHelper {
       path: `/events/${eventType}/${eventNumber}`,
       entries,
     };
-    return { podium, complete: lookups.every((lookup) => lookup.complete) };
+    const settled = this.collectionSettled(header.rows[0]?.collect_date ?? null);
+    return { podium, complete: settled && lookups.every((lookup) => lookup.complete) };
+  }
+
+  private static collectionSettled(collectDate: Date | null): boolean {
+    if (!collectDate) return false;
+    return Date.now() - collectDate.getTime() >= this.FREEZE_AFTER_MS;
   }
 
   private static async entry(row: PodiumRow, rank: number): Promise<{ entry: PodiumEntry; complete: boolean }> {

@@ -86,7 +86,7 @@ export class ApiRoutingController {
    *
    * @private
    */
-  private readonly castleQueue = new QueueService();
+  private readonly castleQueues = new Map<string, QueueService>();
 
   constructor(apiGgeTrackerManager: ApiGgeTrackerManager, redisClient: RedisClientType<any>) {
     this.apiGgeTrackerManager = apiGgeTrackerManager;
@@ -332,15 +332,26 @@ export class ApiRoutingController {
 
   public getCastleById(request: express.Request, response: express.Response): void {
     // Queue the castle requests to avoid overloading the server with multiple requests at the same time
-    this.castleQueue.enqueue(request, response, ApiCastle.getCastleById);
+    this.castleQueueOf(String(request.params.castleId)).enqueue(request, response, ApiCastle.getCastleById);
   }
 
   public getCastleByPlayerName(request: express.Request, response: express.Response): void {
-    this.castleQueue.enqueue(request, response, ApiCastle.getCastleByPlayerName);
+    this.castleQueueOf(String(request['code'] ?? '')).enqueue(request, response, ApiCastle.getCastleByPlayerName);
   }
 
   public getCastleByPlayerId(request: express.Request, response: express.Response): void {
-    this.castleQueue.enqueue(request, response, ApiCastle.getCastleByPlayerId);
+    this.castleQueueOf(String(request.params.playerId)).enqueue(request, response, ApiCastle.getCastleByPlayerId);
+  }
+
+  // One lane per game server, so a slow zone never holds the castle lookups of the others.
+  private castleQueueOf(idOrCode: string): QueueService {
+    const lane = /^\d{3,}$/.test(idOrCode) ? idOrCode.slice(-3) : 'unknown';
+    let queue = this.castleQueues.get(lane);
+    if (!queue) {
+      queue = new QueueService();
+      this.castleQueues.set(lane, queue);
+    }
+    return queue;
   }
 
   public getRandomCastle(request: express.Request, response: express.Response): void {
