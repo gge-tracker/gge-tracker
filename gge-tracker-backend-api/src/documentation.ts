@@ -26,6 +26,23 @@ export const options = {
                 **Link back.** Every entity has a stable page: \`https://gge-tracker.com/player/{playerId}\` and
                 \`https://gge-tracker.com/alliance/{allianceId}\`. Add \`?utm_source=<your-integration>\` to the links
                 you render, so the visits you send can be counted and credited.
+
+                ## Fair use
+
+                **Limits without a key**: 30 requests per 5 seconds and 25,000 a day.
+                \`/castle/analysis\`, \`/castle/player\` and \`/castle/search\` send a live command to the game on a
+                cache miss, so they also count against 30 calls a minute and 300 a day. With a key there is no daily
+                request quota.
+
+                **Past a limit** the API answers \`429\` with a \`Retry-After\` header. The body's \`code\` is
+                \`DAILY_QUOTA_EXCEEDED\` or \`GAME_COMMAND_QUOTA_EXCEEDED\` for the two quotas. Wait as long as it says
+                before calling again.
+
+                **Reading a whole server.** Do not request players one at a time. \`/export/players\`,
+                \`/export/alliances\` and \`/export/castles\` serve up to 5,000 rows a page, \`/changes\` lists what moved
+                since your last read, and \`/bulk/players\` and \`/bulk/alliances\` read up to 500 ids in one call. Export,
+                profile and bulk answers carry an \`ETag\`: send it back in \`If-None-Match\` and an unchanged answer
+                costs a \`304\`.
                 `.replaceAll(/^ +/gm, ''),
       license: {
         name: 'MIT',

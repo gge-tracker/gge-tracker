@@ -490,7 +490,7 @@ services:
     restart: always
 
   cloudflare-exporter:
-    image: ghcr.io/lablabs/cloudflare_exporter@sha256:6bf84a81725c6d75b14fb584135ccfe5f8aff89d23c36b04511d22b1c6cc10cb
+    image: docker.io/lablabs/cloudflare_exporter@sha256:c213cded2db6b49d3199d1cfa660fba5469ca66309596fbc87c24acd269834a7
     mem_limit: 128m
     cpu_quota: 10000
     cpu_period: 100000

@@ -426,3 +426,183 @@ groups:
           action: 'Restart the {{ $labels.bridge }} bridge container. The socket status cannot see this: on 2026-10-26 jca failed for 2.5 days with every socket connected.'
           dashboard: '/d/empire-api-bridge?var-bridge={{ $labels.bridge }}'
           dashboard_title: Empire-API bridge
+  - orgId: 1
+    name: platform
+    folder: Platform
+    interval: 5m
+    rules:
+      - uid: db-backup-failed
+        title: Database backup failed
+        condition: B
+        for: 0m
+        noDataState: OK
+        execErrState: OK
+        data:
+          - refId: A
+            relativeTimeRange: { from: 90000, to: 0 }
+            datasourceUid: loki
+            model:
+              refId: A
+              editorMode: code
+              queryType: instant
+              expr: 'sum by (step) (count_over_time({event="db_backup", level="error"} | json step="step" [25h]))'
+          - refId: B
+            relativeTimeRange: { from: 90000, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+                  operator: { type: and }
+                  query: { params: [B] }
+                  reducer: { type: last, params: [] }
+                  type: threshold
+        labels:
+          severity: critical
+          notify: discord
+        annotations:
+          summary: 'The nightly database backup failed at step `{{ $labels.step }}`.'
+          action: 'The reason is in the last line of: docker logs db-backup --tail 20'
+          dashboard: /alerting/list
+          dashboard_title: Alert rules
+      - uid: db-backup-missing
+        title: No database backup in 26 hours
+        condition: B
+        for: 10m
+        noDataState: OK
+        execErrState: OK
+        data:
+          - refId: A
+            relativeTimeRange: { from: 93600, to: 0 }
+            datasourceUid: loki
+            model:
+              refId: A
+              editorMode: code
+              queryType: instant
+              expr: 'sum(count_over_time({event="db_backup", level="info"} |= "\"status\":\"success\"" [26h])) or vector(0)'
+          - refId: B
+            relativeTimeRange: { from: 93600, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: lt, params: [1] }
+                  operator: { type: and }
+                  query: { params: [B] }
+                  reducer: { type: last, params: [] }
+                  type: threshold
+        labels:
+          severity: critical
+          notify: discord
+        annotations:
+          summary: No database backup has completed in 26 hours.
+          action: 'Check that the db-backup container is running: docker logs db-backup --tail 20'
+          dashboard: /alerting/list
+          dashboard_title: Alert rules
+      - uid: api-client-backend-share
+        title: One client takes most of the backend time
+        condition: C
+        for: 10m
+        noDataState: OK
+        execErrState: OK
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: clickhouse
+            model:
+              refId: A
+              editorType: sql
+              format: 1
+              queryType: table
+              rawSql: |-
+                WITH
+                  replaceRegexpOne(trim(splitByChar(',', ip)[1]), '^::ffff:', '') AS client_ip,
+                  if(isIPv6String(client_ip), concat(cutIPv6(IPv6StringToNum(client_ip), 8, 0), '/64'), client_ip) AS client,
+                  (SELECT sum(response_time) FROM logs.logs WHERE timestamp >= now() - INTERVAL 1 HOUR AND job = 'ggetracker-api') AS total_ms
+                SELECT client, toFloat64(round(100 * sum(response_time) / total_ms)) AS share_pct
+                FROM logs.logs
+                WHERE timestamp >= now() - INTERVAL 1 HOUR AND job = 'ggetracker-api' AND partner = '' AND client_ip != '127.0.0.1'
+                GROUP BY client
+                HAVING sum(response_time) >= 300000 AND sum(response_time) > 0.3 * total_ms
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last, params: [] }
+                  type: threshold
+        labels:
+          severity: warning
+          notify: discord
+        annotations:
+          summary: 'One anonymous client used {{ $values.B.Value }}% of the backend time over the last hour.'
+          action: See "Top clients by backend time" in the Rate limiting row.
+          dashboard: /d/dashboard-log-backend-clickhouse
+          dashboard_title: API monitoring
+      - uid: api-client-daily-requests
+        title: One client sent over 100k requests in a day
+        condition: C
+        for: 0m
+        noDataState: OK
+        execErrState: OK
+        data:
+          - refId: A
+            relativeTimeRange: { from: 86400, to: 0 }
+            datasourceUid: clickhouse
+            model:
+              refId: A
+              editorType: sql
+              format: 1
+              queryType: table
+              rawSql: |-
+                WITH
+                  replaceRegexpOne(trim(splitByChar(',', ip)[1]), '^::ffff:', '') AS client_ip,
+                  if(isIPv6String(client_ip), concat(cutIPv6(IPv6StringToNum(client_ip), 8, 0), '/64'), client_ip) AS client
+                SELECT client, toFloat64(count()) AS requests
+                FROM logs.logs
+                WHERE timestamp >= now() - INTERVAL 1 DAY AND job = 'ggetracker-api' AND partner = '' AND client_ip != '127.0.0.1'
+                GROUP BY client
+                HAVING requests > 100000
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last, params: [] }
+                  type: threshold
+        labels:
+          severity: warning
+          notify: discord
+        annotations:
+          summary: 'One anonymous client sent {{ $values.B.Value }} requests in the last 24 hours.'
+          action: See "Top clients by backend time" in the Rate limiting row.
+          dashboard: /d/dashboard-log-backend-clickhouse
+          dashboard_title: API monitoring
