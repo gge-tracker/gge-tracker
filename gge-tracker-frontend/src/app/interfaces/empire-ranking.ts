@@ -1649,6 +1649,7 @@ export interface ApiEventThresholdsResponse {
   typical: ApiEventThresholdRange | null;
   occurrences: ApiEventThresholdOccurrence[];
   pace: { started_at: string; running: boolean; points: { hour: number; thresholds: number[] }[] }[];
+  comparable_since?: string | null;
 }
 
 export type ApiReleaseItemKind = 'new' | 'improved' | 'servers' | 'translations' | 'fixed';

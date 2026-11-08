@@ -2854,8 +2854,13 @@ protectedRoutes.get('/server/statistics', routingInstance.getServerStatistics.bi
  *           application/json:
  *             schema:
  *               type: object
- *               required: [event, server, ranks, running, live_events, current, typical, occurrences, pace]
+ *               required: [event, server, ranks, running, live_events, current, typical, occurrences, pace, comparable_since]
  *               properties:
+ *                 comparable_since:
+ *                   type: string
+ *                   format: date-time
+ *                   nullable: true
+ *                   description: Set when a game update changed the score scale. `typical` and `pace` then only hold occurrences since this date
  *                 event:
  *                   type: string
  *                 server:

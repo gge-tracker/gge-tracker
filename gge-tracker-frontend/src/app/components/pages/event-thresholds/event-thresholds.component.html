@@ -76,7 +76,7 @@
           <span class="thresholds-rung-sub" [title]="full(row.current)">
             {{ 'event-thresholds-now' | translate: { value: compact(row.current) } }}
           </span>
-          } @else if (row.low && row.high) {
+          } @else if (row.low && row.high && row.low !== row.high) {
           <span class="thresholds-rung-sub" [title]="full(row.low) + ' - ' + full(row.high)">
             {{ compact(row.low) }} – {{ compact(row.high) }}
           </span>
@@ -87,6 +87,11 @@
       <p class="thresholds-note">
         {{ (data.current ? 'event-thresholds-projection-note' : 'event-thresholds-typical-note') | translate }}
       </p>
+      @if (data.comparable_since; as comparableSince) {
+      <p class="thresholds-note">
+        {{ 'event-thresholds-rules-changed' | translate: { date: (comparableSince | date: 'd MMM yyyy') } }}
+      </p>
+      }
     </section>
 
     <section class="thresholds-card thresholds-detail" #detail>

@@ -52,6 +52,7 @@ export interface EventThresholds {
   typical: ThresholdRange | null;
   occurrences: OccurrenceSummary[];
   pace: OccurrencePace[];
+  comparable_since: string | null;
 }
 
 /**
@@ -75,6 +76,10 @@ export abstract class ApiEventThresholds implements ApiHelper {
   private static readonly HISTORY_SIZE = 12;
   private static readonly PACE_OCCURRENCES = 6;
   private static readonly TYPICAL_OCCURRENCES = 5;
+  // A game update moved the score scale: top 100 to 1000 needed ~1.7x the points on the first run after it
+  private static readonly SCORE_SCALE_CHANGES: Readonly<Record<string, string>> = {
+    'berimond-kingdom': '2026-10-20T00:00:00.000Z',
+  };
 
   public static async getThresholds(request: express.Request, response: express.Response): Promise<void> {
     try {
@@ -128,6 +133,8 @@ export abstract class ApiEventThresholds implements ApiHelper {
     const completed = running ? finals.slice(0, -1) : finals;
     const pace = this.groupPace(readings, running ? last.occurrence : null);
     const completedPace = pace.filter((occurrence) => !occurrence.running);
+    const comparableSince = this.comparableSince(event, completed);
+    const isComparable = (startedAt: string): boolean => comparableSince === null || startedAt >= comparableSince;
     return {
       event,
       server,
@@ -137,13 +144,21 @@ export abstract class ApiEventThresholds implements ApiHelper {
       current: running
         ? { ...this.summarise(last), hour: last.hour, projected: this.project(last, completedPace) }
         : null,
-      typical: this.typicalRange(completed.slice(-this.TYPICAL_OCCURRENCES)),
+      typical: this.typicalRange(
+        completed.filter((snapshot) => isComparable(snapshot.startedAt)).slice(-this.TYPICAL_OCCURRENCES),
+      ),
       occurrences: completed
         .slice(-this.HISTORY_SIZE)
         .reverse()
         .map((snapshot) => this.summarise(snapshot)),
-      pace,
+      pace: pace.filter((occurrence) => occurrence.running || isComparable(occurrence.started_at)),
+      comparable_since: comparableSince,
     };
+  }
+
+  private static comparableSince(event: string, completed: RankingSnapshot[]): string | null {
+    const changedAt = Object.hasOwn(this.SCORE_SCALE_CHANGES, event) ? this.SCORE_SCALE_CHANGES[event] : null;
+    return changedAt && completed.some((snapshot) => snapshot.startedAt >= changedAt) ? changedAt : null;
   }
 
   private static liveEvents(lastReadings: Record<string, string>, now: number): string[] {
