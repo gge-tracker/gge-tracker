@@ -360,6 +360,8 @@ export const CATALOG: Endpoint[] = [
   // Offers (protected)
   { id: 'offers-catalog', snapshot: 'none', method: 'GET', scope: 'protected', path: () => '/offers' + q({ locale: 'en', currency: 'EUR', level: 70, legendaryLevel: 950 }), okStatuses: [200, 400, 503], needs: ['server'], fuzzQuery: ['locale', 'currency', 'level', 'legendaryLevel'], upstream: { status: 503, what: 'the official Goodgame Empire store' } },
 
+  { id: 'offers-history', snapshot: 'none', method: 'GET', scope: 'protected', path: () => '/offers/history' + q({ level: 70, legendaryLevel: 950 }), okStatuses: [200, 400], needs: ['server'], fuzzQuery: ['level', 'legendaryLevel'] },
+
   // Alliances (mixed)
   {
     id: 'alliances-list',

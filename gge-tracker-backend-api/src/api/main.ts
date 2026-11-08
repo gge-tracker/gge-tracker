@@ -6840,6 +6840,86 @@ publicRoutes.get('/dungeons/player/:playerId', routingInstance.getDungeonsByPlay
 protectedRoutes.get('/offers', routingInstance.getOffers.bind(routingInstance));
 
 /**
+ * @swagger
+ * /offers/history:
+ *   get:
+ *     summary: Retrieve when each cash offer has been in the store
+ *     description: >
+ *       Returns, for the game of the requested server and the given player profile, every offer seen by the
+ *       six-hourly store snapshots and its runs: consecutive snapshots holding it. Empty while no snapshot exists
+ *       for that game
+ *     tags:
+ *       - Offers
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - in: query
+ *         name: level
+ *         required: false
+ *         description: The level of the player (1-70). Defaults to 70
+ *         example: 70
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: legendaryLevel
+ *         required: false
+ *         description: The legendary level of the player. Ignored below level 70. Defaults to 0
+ *         example: 950
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved the availability history
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [first_snapshot_at, last_snapshot_at, offers]
+ *               properties:
+ *                 first_snapshot_at:
+ *                   type: string
+ *                   format: date-time
+ *                   nullable: true
+ *                 last_snapshot_at:
+ *                   type: string
+ *                   format: date-time
+ *                   nullable: true
+ *                 offers:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     required: [id, first_seen_at, last_seen_at, run_started_at, previous_run_ended_at, last_completed_run_hours, runs]
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       first_seen_at:
+ *                         type: string
+ *                         format: date-time
+ *                       last_seen_at:
+ *                         type: string
+ *                         format: date-time
+ *                       run_started_at:
+ *                         type: string
+ *                         format: date-time
+ *                         description: First snapshot of the latest run
+ *                       previous_run_ended_at:
+ *                         type: string
+ *                         format: date-time
+ *                         nullable: true
+ *                         description: Last snapshot of the run before the latest one
+ *                       last_completed_run_hours:
+ *                         type: integer
+ *                         nullable: true
+ *                         description: Length of the latest run seen from start to end. Runs repeat their length, so it estimates the time left
+ *                       runs:
+ *                         type: integer
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+protectedRoutes.get('/offers/history', routingInstance.getOfferHistory.bind(routingInstance));
+
+/**
  * @openapi
  * /export/players:
  *   get:

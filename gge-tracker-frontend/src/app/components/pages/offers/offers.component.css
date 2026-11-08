@@ -553,6 +553,46 @@
   color: #8bd98b;
 }
 
+.offer-availability {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  color: var(--offers-text);
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  gap: 0.25rem;
+  line-height: 1;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+.offer-availability--urgent {
+  background: rgba(255, 111, 139, 0.16);
+  color: var(--offers-gem);
+}
+
+.offer-availability--new {
+  background: rgba(139, 217, 139, 0.16);
+  color: #8bd98b;
+}
+
+.offer-availability--since,
+.offer-availability--today {
+  background: transparent;
+  color: var(--offers-text-dim);
+  font-weight: 500;
+  padding-inline: 0;
+}
+
+.offer-card__previous-run {
+  color: var(--offers-text-dim);
+  flex: none;
+  font-size: 0.74rem;
+  margin-top: -0.25rem;
+}
+
 .offer-value {
   align-items: center;
   color: var(--offers-text);

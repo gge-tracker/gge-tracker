@@ -64,11 +64,10 @@ export abstract class ApiOffers implements ApiHelper {
       } else if (!Object.hasOwn(this.CURRENCY_REGIONS, currency)) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidCurrency });
         return;
-      } else if (Number.isNaN(level) || level < 1 || level > this.MAX_LEVEL) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidLevel });
-        return;
-      } else if (Number.isNaN(legendaryLevel) || legendaryLevel < 0 || legendaryLevel > this.MAX_LEGEND_LEVEL) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidLegendaryLevel });
+      }
+      const invalidLevel = this.findLevelError(level, legendaryLevel);
+      if (invalidLevel) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: invalidLevel });
         return;
       }
 
@@ -142,6 +141,25 @@ export abstract class ApiOffers implements ApiHelper {
     return { catalog, pricedIn: currency, fetchedAt, pricesLearnedAt: table.learnedAt, etag };
   }
 
+  /**
+   * Rounds a level up to the highest level serving the same catalog
+   *
+   * @param value The level asked for
+   * @param bounds The upper bound of every range, in ascending order
+   * @returns The upper bound of the range the level falls in
+   */
+  public static roundUpToRange(value: number, bounds: number[]): number {
+    return bounds.find((bound) => value <= bound) ?? bounds.at(-1) ?? value;
+  }
+
+  public static findLevelError(level: number, legendaryLevel: number): RouteErrorMessagesEnum | null {
+    if (Number.isNaN(level) || level < 1 || level > this.MAX_LEVEL) return RouteErrorMessagesEnum.InvalidLevel;
+    if (Number.isNaN(legendaryLevel) || legendaryLevel < 0 || legendaryLevel > this.MAX_LEGEND_LEVEL) {
+      return RouteErrorMessagesEnum.InvalidLegendaryLevel;
+    }
+    return null;
+  }
+
   private static async readPackagePrices(): Promise<PackagePrices> {
     const prices = await OfferPackagePrices.read();
     if (Object.keys(prices).length > 0) return prices;
@@ -212,16 +230,5 @@ export abstract class ApiOffers implements ApiHelper {
       .finally(() => this.pendingReferences.delete(key));
     this.pendingReferences.set(key, refresh);
     return refresh;
-  }
-
-  /**
-   * Rounds a level up to the highest level serving the same catalog
-   *
-   * @param value The level asked for
-   * @param bounds The upper bound of every range, in ascending order
-   * @returns The upper bound of the range the level falls in
-   */
-  private static roundUpToRange(value: number, bounds: number[]): number {
-    return bounds.find((bound) => value <= bound) ?? bounds.at(-1) ?? value;
   }
 }

@@ -18,6 +18,7 @@ import { SelectComponent } from '@ggetracker-components/select/select.component'
 import {
   ApiOffer,
   ApiOfferCategory,
+  ApiOfferHistory,
   ApiOfferReward,
   ApiOffersCatalogResponse,
   ErrorType,
@@ -27,6 +28,7 @@ import { LocalStorageService } from '@ggetracker-services/local-storage.service'
 import { ServerService } from '@ggetracker-services/server.service';
 import { CurrencyPickerComponent } from './currency-picker/currency-picker.component';
 import { buildCurrencyOptions, currencyForServer, OfferCurrencyOption, OFFER_CURRENCIES } from './offer-currencies';
+import { OfferAvailability, OfferAvailabilityKind, resolveOfferAvailability } from './offer-availability';
 import { OfferEffect, parseRewardDescription } from './offer-effects';
 import { TranslateModule } from '@ngx-translate/core';
 import {
@@ -52,6 +54,14 @@ interface OfferReward {
   isDetailed: boolean;
 }
 
+interface OfferAvailabilityBadge {
+  kind: OfferAvailabilityKind;
+  isUrgent: boolean;
+  label: string;
+  detail: string | null;
+  previousRun: string | null;
+}
+
 interface OfferCard {
   id: string;
   name: string;
@@ -68,6 +78,7 @@ interface OfferCard {
   rewards: OfferReward[];
   isSpecial: boolean;
   isPurchased: boolean;
+  availability: OfferAvailabilityBadge | null;
 }
 
 interface OfferCategory {
@@ -148,6 +159,7 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
   public currencyOptions: OfferCurrencyOption[] = [];
   public serverCurrency = '';
 
+  private readonly offerHistoryTimeoutMs = 2000;
   private readonly sortLabels: Record<OfferSort, string> = {
     '': 'Ordre de la boutique',
     'price-asc': 'Prix croissant',
@@ -221,6 +233,12 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
     return this.allOffers.some((offer) => offer.isApproximate);
   }
 
+  public get hasEstimatedDurations(): boolean {
+    return this.allOffers.some(
+      (offer) => offer.availability?.kind === 'remaining' || offer.availability?.kind === 'ending',
+    );
+  }
+
   public get isBusy(): boolean {
     return this.isInLoading || this.isRefreshing;
   }
@@ -236,12 +254,10 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
       label: this.translateService.instant(label),
       value,
     }));
-    const response = await this.apiRestService.getOffers(
-      this.level,
-      this.legendaryLevel,
-      this.currentLang,
-      this.currency,
-    );
+    const [response, history] = await Promise.all([
+      this.apiRestService.getOffers(this.level, this.legendaryLevel, this.currentLang, this.currency),
+      this.readOfferHistory(),
+    ]);
     this.isInLoading = false;
     this.isRefreshing = false;
     this.refreshDataAnimationSpinner = false;
@@ -256,7 +272,7 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
     const { catalog, fetchedAt, pricedIn } = response.data;
     this.setFreshness(fetchedAt);
     this.pricedIn = pricedIn && pricedIn !== this.currency ? pricedIn : null;
-    this.categories = this.buildCategories(catalog);
+    this.categories = this.buildCategories(catalog, history);
     this.allOffers = this.buildAllOffers(this.categories);
     this.tabs = this.buildTabs(this.categories);
     this.failedCategories = Object.keys(catalog._failed ?? {});
@@ -386,6 +402,14 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
     return this.categoryLabels[key] ?? key;
   }
 
+  private readOfferHistory(): Promise<ApiOfferHistory | null> {
+    const request = this.apiRestService
+      .getOfferHistory(this.level, this.legendaryLevel)
+      .then((response) => (response.success ? response.data : null));
+    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), this.offerHistoryTimeoutMs));
+    return Promise.race([request, timeout]);
+  }
+
   private buildSkeletons(): void {
     const shown = this.displayedOffers.length > 0 ? this.displayedOffers.length : this.defaultSkeletonCount;
     const count = Math.min(Math.max(shown, 4), this.maxSkeletonCount);
@@ -394,7 +418,9 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
     }));
   }
 
-  private buildCategories(catalog: ApiOffersCatalogResponse): OfferCategory[] {
+  private buildCategories(catalog: ApiOffersCatalogResponse, history: ApiOfferHistory | null): OfferCategory[] {
+    const historyById = new Map(history?.offers.map((entry) => [entry.id, entry]));
+    const now = Date.now();
     const categories: OfferCategory[] = [];
     for (const [key, value] of Object.entries(catalog)) {
       if (key === '_failed') continue;
@@ -403,7 +429,10 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
       categories.push({
         key,
         label: this.categoryLabel(key),
-        offers: offers.map((offer) => this.buildOffer(offer)),
+        offers: offers.map((offer) => {
+          const availability = history && resolveOfferAvailability(historyById.get(String(offer.id)), history, now);
+          return this.buildOffer(offer, availability ?? null);
+        }),
       });
     }
     return categories;
@@ -434,7 +463,7 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
     ];
   }
 
-  private buildOffer(offer: ApiOffer): OfferCard {
+  private buildOffer(offer: ApiOffer, availability: OfferAvailability | null): OfferCard {
     const currency = offer.currencyCode ?? offer.currency ?? '';
     const price = Number(offer.price) || 0;
     const rubies = this.getRubies(offer);
@@ -457,7 +486,40 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
       rewards,
       isSpecial: offer.special === true,
       isPurchased: offer.purchased === true,
+      availability: availability && this.buildAvailabilityBadge(availability),
     };
+  }
+
+  private buildAvailabilityBadge(availability: OfferAvailability): OfferAvailabilityBadge {
+    const { kind, days, remainingHours, usualRunHours, previousRunEndedAt } = availability;
+    const duration = remainingHours === null ? this.formatDuration(days * 24) : this.formatDuration(remainingHours);
+    return {
+      kind,
+      isUrgent: remainingHours !== null && remainingHours < 24,
+      label: this.translateService.instant(`offers-availability-${kind}`, { duration }),
+      detail:
+        usualRunHours === null
+          ? null
+          : this.translateService.instant('offers-availability-usual', {
+              duration: this.formatDuration(usualRunHours),
+            }),
+      previousRun:
+        previousRunEndedAt === null
+          ? null
+          : this.translateService.instant('offers-availability-previous', {
+              time: this.formatElapsed(Date.now() - previousRunEndedAt, this.langageService.getCurrentLocale()),
+            }),
+    };
+  }
+
+  private formatDuration(hours: number): string {
+    const inDays = hours >= 24;
+    const value = inDays ? Math.round(hours / 24) : Math.max(Math.round(hours / 6) * 6, 6);
+    return new Intl.NumberFormat(this.langageService.getCurrentLocale(), {
+      style: 'unit',
+      unit: inDays ? 'day' : 'hour',
+      unitDisplay: 'long',
+    }).format(value);
   }
 
   private buildReward(reward: ApiOfferReward): OfferReward {

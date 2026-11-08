@@ -69,6 +69,7 @@ import {
   ApiDungeonsMetaResponse,
   ApiAquamarinePlayerResponse,
   ApiStormyIslesLeaderboardResponse,
+  ApiOfferHistory,
   ApiOffersCatalog,
   ApiOffersCatalogResponse,
   ApiReleaseNotesResponse,
@@ -221,6 +222,12 @@ export class ApiRestService {
       pricedIn: response.headers?.get('X-Offers-Currency') ?? null,
     };
     return { success: true, data: catalog };
+  }
+
+  public async getOfferHistory(level: number, legendaryLevel: number): Promise<ApiResponse<ApiOfferHistory>> {
+    return this.apiFetch<ApiOfferHistory>(
+      `${ApiRestService.apiUrl}offers/history?level=${level}&legendaryLevel=${legendaryLevel}`,
+    );
   }
 
   public async getDungeonsByPlayerId(playerId: number): Promise<ApiResponse<ApiDungeonsByPlayerIdResponse>> {

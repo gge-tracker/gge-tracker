@@ -1,8 +1,10 @@
 import { ApiHelper } from '../helper/api-helper';
+import { RankingGame } from '../helper/ranking-universe';
 import { ApiOffers, PricedCatalog } from '../routes/api-offers';
 import { StoreCatalogClient, StoreOffer } from './store-catalog-client';
 
 interface SnapshotProfile {
+  game: RankingGame;
   currency: string;
   level: number;
   legendaryLevel: number;
@@ -10,6 +12,7 @@ interface SnapshotProfile {
 
 interface OfferRow {
   snapshot_at: string;
+  game: RankingGame;
   currency: string;
   level: number;
   legendary_level: number;
@@ -39,15 +42,17 @@ interface OfferReward {
  * Stores the store catalogue of every profile every few hours
  */
 export abstract class OfferSnapshot {
+  public static readonly SLOT_HOURS = 6;
+
   private static readonly TABLE = 'ggetracker_global.store_offer_history';
   private static readonly CHECK_INTERVAL_MS = 3600 * 1000;
   private static readonly FIRST_CHECK_DELAY_MS = 60_000;
-  private static readonly SLOT_HOURS = 6;
   private static readonly LOCK_KEY = 'offers:snapshot:lock';
   private static readonly LOCK_SECONDS = 3600;
   private static readonly DONE_KEY_PREFIX = 'offers:snapshot:done:';
   private static readonly DONE_SECONDS = 2 * 24 * 3600;
   private static readonly LOCALE = 'en';
+  private static readonly GAMES: RankingGame[] = ['ep', 'e4k'];
 
   private static timer: ReturnType<typeof setInterval> | null = null;
 
@@ -60,15 +65,18 @@ export abstract class OfferSnapshot {
   public static profiles(): SnapshotProfile[] {
     const base = StoreCatalogClient.REFERENCE_CURRENCY;
     const profiles: SnapshotProfile[] = Object.keys(ApiOffers.CURRENCY_REGIONS).map((currency) => ({
+      game: 'ep',
       currency,
       level: ApiOffers.MAX_LEVEL,
       legendaryLevel: ApiOffers.MAX_LEGEND_LEVEL,
     }));
-    for (const level of ApiOffers.LEVEL_RANGE_BOUNDS) {
-      profiles.push({ currency: base, level, legendaryLevel: 0 });
-    }
-    for (const legendaryLevel of ApiOffers.LEGENDARY_RANGE_BOUNDS) {
-      profiles.push({ currency: base, level: ApiOffers.MAX_LEVEL, legendaryLevel });
+    for (const game of this.GAMES) {
+      for (const level of ApiOffers.LEVEL_RANGE_BOUNDS) {
+        profiles.push({ game, currency: base, level, legendaryLevel: 0 });
+      }
+      for (const legendaryLevel of ApiOffers.LEGENDARY_RANGE_BOUNDS) {
+        profiles.push({ game, currency: base, level: ApiOffers.MAX_LEVEL, legendaryLevel });
+      }
     }
     const unique = new Map(profiles.map((profile) => [this.profileKey(profile), profile]));
     return [...unique.values()];
@@ -80,10 +88,12 @@ export abstract class OfferSnapshot {
       if (offer.id === undefined || offer.id === null) return;
       const priceCurrency = StoreCatalogClient.readOfferCurrency(offer) ?? '';
       const observed =
-        priced.pricedIn === StoreCatalogClient.REFERENCE_CURRENCY ||
-        priceCurrency === StoreCatalogClient.REFERENCE_CURRENCY;
+        offer.approximatePrice !== true &&
+        (priced.pricedIn === StoreCatalogClient.REFERENCE_CURRENCY ||
+          priceCurrency === StoreCatalogClient.REFERENCE_CURRENCY);
       rows.push({
         snapshot_at: this.toDateTime(slot),
+        game: profile.game,
         currency: profile.currency,
         level: profile.level,
         legendary_level: profile.legendaryLevel,
@@ -151,7 +161,7 @@ export abstract class OfferSnapshot {
         this.LOCALE,
         profile.level,
         profile.legendaryLevel,
-        { requireFresh: true },
+        { requireFresh: true, game: profile.game },
       );
       // A currency whose prices are not learned yet is retried at the next check
       const rows = priced?.pricedIn === profile.currency ? this.toRows(priced, profile, slot, new Date()) : [];
@@ -173,7 +183,7 @@ export abstract class OfferSnapshot {
   }
 
   private static profileKey(profile: SnapshotProfile): string {
-    return `${profile.currency}:${profile.level}:${profile.legendaryLevel}`;
+    return `${profile.game}:${profile.currency}:${profile.level}:${profile.legendaryLevel}`;
   }
 
   private static toDateTime(date: Date): string {

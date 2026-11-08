@@ -68,6 +68,13 @@
           </p>
           }
 
+          @if (hasEstimatedDurations) {
+          <div class="offers-notice">
+            <i class="fa-solid fa-circle-info"></i>
+            <em>{{ 'offers-availability-notice' | translate }}</em>
+          </div>
+          }
+
           @if (hasEstimatedPrices) {
           <div class="offers-notice">
             <i class="fa-solid fa-circle-info"></i>
@@ -186,7 +193,20 @@
               <div class="offer-card__price-row">
                 <span class="offer-price" [class.offer-price--free]="offer.isFree"
                   [attr.title]="offer.isApproximate ? ('Prix estimé' | translate) : null">{{ offer.formattedPrice }}</span>
+                @if (offer.availability; as availability) {
+                <span [class]="'offer-availability offer-availability--' + availability.kind"
+                  [class.offer-availability--urgent]="availability.isUrgent" [attr.title]="availability.detail">
+                  @if (availability.detail) {
+                  <lucide-icon class="lucide" [img]="Clock" [size]="12"></lucide-icon>
+                  }
+                  {{ availability.label }}
+                </span>
+                }
               </div>
+
+              @if (offer.availability?.previousRun; as previousRun) {
+              <div class="offer-card__previous-run">{{ previousRun }}</div>
+              }
 
               @if (offer.rubiesPerUnit) {
               <div class="offer-card__ratio" [title]="'Rubis par unité de devise' | translate">

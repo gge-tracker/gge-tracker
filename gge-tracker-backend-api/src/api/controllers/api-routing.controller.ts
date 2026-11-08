@@ -15,6 +15,7 @@ import { ApiDocumentation } from '../routes/api-documentation';
 import { ApiDungeons } from '../routes/api-dungeons';
 import { ApiEvents } from '../routes/api-events';
 import { ApiExport } from '../routes/api-export';
+import { ApiOfferHistory } from '../routes/api-offer-history';
 import { ApiOffers } from '../routes/api-offers';
 import { ApiPlayers } from '../routes/api-players';
 import { ApiProfiles } from '../routes/api-profiles';
@@ -272,6 +273,10 @@ export class ApiRoutingController {
 
   public getOffers(request: express.Request, response: express.Response): void {
     void ApiOffers.getOffers(request, response);
+  }
+
+  public getOfferHistory(request: express.Request, response: express.Response): void {
+    void ApiOfferHistory.getOfferHistory(request, response);
   }
 
   public getPlayersUpdatesByAlliance(request: express.Request, response: express.Response): void {

@@ -1018,6 +1018,22 @@ export interface ApiOffersCatalog {
   pricedIn: string | null;
 }
 
+export interface ApiOfferHistoryEntry {
+  id: string;
+  first_seen_at: string;
+  last_seen_at: string;
+  run_started_at: string;
+  previous_run_ended_at: string | null;
+  last_completed_run_hours: number | null;
+  runs: number;
+}
+
+export interface ApiOfferHistory {
+  first_snapshot_at: string | null;
+  last_snapshot_at: string | null;
+  offers: ApiOfferHistoryEntry[];
+}
+
 export interface ApiOfferCategory {
   data?: {
     offers?: ApiOffer[] | null;
