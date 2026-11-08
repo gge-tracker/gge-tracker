@@ -18,6 +18,7 @@ CH_THREADS="${CLICKHOUSE_BACKUP_THREADS:-2}"
 CH_TIMEOUT_S="${CLICKHOUSE_BACKUP_TIMEOUT_S:-14400}"
 COPY_BANDWIDTH_MB="${COPY_BANDWIDTH_MB:-60}"
 PG_ZSTD_LEVEL="${PG_ZSTD_LEVEL:-3}"
+CH_ZSTD_LEVEL="${CH_ZSTD_LEVEL:-3}"
 MIN_FREE_GB="${BACKUP_MIN_FREE_GB:-80}"
 OWNER="${BACKUP_OWNER:-1000:1000}"
 
@@ -43,15 +44,15 @@ seconds_since() {
   echo $(( $(date -u +%s) - $1 ))
 }
 
-remove_clickhouse_archives() {
-  find "${CH_LOCAL_DIR}" -maxdepth 1 -type f -name "${CH_PREFIX}*" -delete
+remove_clickhouse_exports() {
+  find "${CH_LOCAL_DIR}" -mindepth 1 -maxdepth 1 -name "${CH_PREFIX}*" -exec rm -rf {} +
 }
 
 fail() {
   trap - ERR
   log error "\"status\":\"failed\",\"step\":\"${step}\",\"reason\":\"$(json_escape "$1")\",\"duration_s\":$(seconds_since "${run_started}")"
   rm -rf "${WORK_DIR}"
-  remove_clickhouse_archives || true
+  remove_clickhouse_exports || true
   exit 1
 }
 trap 'fail "command failed (exit $?) at line ${LINENO}: ${BASH_COMMAND}"' ERR
@@ -79,8 +80,12 @@ prepare() {
   if [[ ! -d ${CH_LOCAL_DIR} ]]; then
     fail "${CH_LOCAL_DIR} is not mounted: the backups subfolder of the ClickHouse volume must exist"
   fi
+  # ClickHouse deletes this folder when a failed backup leaves it empty, which orphans the mount.
+  if ! touch "${CH_LOCAL_DIR}/.keep" 2>/dev/null; then
+    fail "${CH_LOCAL_DIR} is orphaned: create backups in the ClickHouse volume and recreate this container"
+  fi
   rm -rf "${WORK_DIR}"
-  remove_clickhouse_archives
+  remove_clickhouse_exports
   mkdir -p "${WORK_DIR}/postgres"
   chown "${OWNER}" "${BACKUP_ROOT}"
   chmod 0700 "${BACKUP_ROOT}"
@@ -116,9 +121,9 @@ backup_clickhouse() {
   local started answer backup_id status deadline
   started=$(date -u +%s)
   deadline=$(( started + CH_TIMEOUT_S ))
-  ch_name="${CH_PREFIX}$(date -u +%Y%m%dT%H%M%SZ).tar.zst"
+  ch_name="${CH_PREFIX}$(date -u +%Y%m%dT%H%M%SZ)"
 
-  if ! answer=$(clickhouse_query "BACKUP ALL EXCEPT DATABASES system, information_schema, INFORMATION_SCHEMA TO File('${CH_SERVER_DIR}/${ch_name}') SETTINGS backup_threads = ${CH_THREADS}, max_backup_bandwidth = $(( CH_BANDWIDTH_MB * 1048576 )) ASYNC FORMAT TSV" 2>&1); then
+  if ! answer=$(clickhouse_query "BACKUP ALL EXCEPT DATABASES system, information_schema, INFORMATION_SCHEMA TO File('${CH_SERVER_DIR}/${ch_name}/') SETTINGS backup_threads = ${CH_THREADS}, max_backup_bandwidth = $(( CH_BANDWIDTH_MB * 1048576 )) ASYNC FORMAT TSV" 2>&1); then
     fail "ClickHouse refused the backup: ${answer}"
   fi
   backup_id=${answer%%$'\t'*}
@@ -146,15 +151,15 @@ backup_clickhouse() {
   ch_seconds=$(seconds_since "${started}")
 }
 
-copy_clickhouse_archive() {
-  step=clickhouse_copy
+archive_clickhouse_export() {
+  step=clickhouse_archive
   local source="${CH_LOCAL_DIR}/${ch_name}"
-  if [[ ! -f ${source} ]]; then
+  if [[ ! -f ${source}/.backup ]]; then
     fail "ClickHouse reported ${ch_name} but it is not in ${CH_LOCAL_DIR}"
   fi
   # Throttled, and hashed on the way
-  ch_checksum=$(pv -q -L "${COPY_BANDWIDTH_MB}m" < "${source}" | tee "${WORK_DIR}/${CH_ARCHIVE}" | sha256sum | cut -d' ' -f1)
-  rm -f "${source}"
+  ch_checksum=$(tar -C "${source}" -cf - . | pv -q -L "${COPY_BANDWIDTH_MB}m" | nice -n 10 zstd -q -T1 "-${CH_ZSTD_LEVEL}" | tee "${WORK_DIR}/${CH_ARCHIVE}" | sha256sum | cut -d' ' -f1)
+  rm -rf "${source}"
 }
 
 verify_archive() {
@@ -187,9 +192,9 @@ check_free_space
 prepare
 dump_postgres
 backup_clickhouse
-copy_clickhouse_archive
+archive_clickhouse_export
 verify_archive "${WORK_DIR}/${PG_ARCHIVE}" ./globals.sql
-verify_archive "${WORK_DIR}/${CH_ARCHIVE}" .backup
+verify_archive "${WORK_DIR}/${CH_ARCHIVE}" ./.backup
 publish "${PG_ARCHIVE}" "${pg_checksum}"
 publish "${CH_ARCHIVE}" "${ch_checksum}"
 rm -rf "${WORK_DIR}"
