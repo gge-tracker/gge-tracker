@@ -17,6 +17,7 @@
           </p>
         </div>
         <div class="home-banner-actions">
+          <app-chronicle-cta [playerId]="me.profile.player.player_id" />
           <a class="home-action home-action--primary" [routerLink]="['/', 'player', me.profile.player.player_id]">
             {{ 'home.open-profile' | translate }}
           </a>
@@ -68,6 +69,12 @@
           } @else {
             <p class="home-me-hint">{{ 'home.me-hint' | translate: { server: currentServer } }}</p>
           }
+          @if (chronicle.promoted) {
+            <p class="home-me-chronicle">
+              <i class="fas fa-scroll" aria-hidden="true"></i>
+              {{ 'chronicle.landingHint' | translate: { year: chronicleYear } }}
+            </p>
+          }
         </div>
       </section>
     }
@@ -77,6 +84,10 @@
     </p>
   </div>
 </div>
+
+@if (meView(); as me) {
+  <app-chronicle-intro [playerId]="me.profile.player.player_id" [playerName]="me.profile.player.player_name" [mine]="true" />
+}
 
 <div class="home">
   @if (meView(); as me) {

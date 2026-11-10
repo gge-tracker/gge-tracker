@@ -20,6 +20,7 @@ import { ApiOffers } from '../routes/api-offers';
 import { ApiPlayers } from '../routes/api-players';
 import { ApiProfiles } from '../routes/api-profiles';
 import { ApiSeo } from '../routes/api-seo';
+import { ApiChronicle } from '../routes/api-chronicle';
 import { ApiSeoPages } from '../routes/api-seo-pages';
 import { ApiSeoReleaseNotes } from '../routes/api-seo-release-notes';
 import { ApiReleaseNotes } from '../routes/api-release-notes';
@@ -348,17 +349,6 @@ export class ApiRoutingController {
     this.castleQueueOf(String(request.params.playerId)).enqueue(request, response, ApiCastle.getCastleByPlayerId);
   }
 
-  // One lane per game server, so a slow zone never holds the castle lookups of the others.
-  private castleQueueOf(idOrCode: string): QueueService {
-    const lane = /^\d{3,}$/.test(idOrCode) ? idOrCode.slice(-3) : 'unknown';
-    let queue = this.castleQueues.get(lane);
-    if (!queue) {
-      queue = new QueueService();
-      this.castleQueues.set(lane, queue);
-    }
-    return queue;
-  }
-
   public getRandomCastle(request: express.Request, response: express.Response): void {
     void ApiCastle.getRandomCastle(request, response);
   }
@@ -476,6 +466,18 @@ export class ApiRoutingController {
     void ApiSeo.getAllianceCard(request, response);
   }
 
+  public getChronicle(request: express.Request, response: express.Response): void {
+    void ApiChronicle.getChronicle(request, response);
+  }
+
+  public getChronicleShareCard(request: express.Request, response: express.Response): void {
+    void ApiChronicle.getCard(request, response);
+  }
+
+  public getChronicleSeoHead(request: express.Request, response: express.Response): void {
+    void ApiChronicle.getHead(request, response);
+  }
+
   public getReleaseNotes(request: express.Request, response: express.Response): void {
     ApiReleaseNotes.getReleaseNotes(request, response);
   }
@@ -498,5 +500,15 @@ export class ApiRoutingController {
 
   public getAlliancesBulk(request: express.Request, response: express.Response): void {
     void ApiBulk.getAlliancesBulk(request, response);
+  }
+
+  private castleQueueOf(idOrCode: string): QueueService {
+    const lane = /^\d{3,}$/.test(idOrCode) ? idOrCode.slice(-3) : 'unknown';
+    let queue = this.castleQueues.get(lane);
+    if (!queue) {
+      queue = new QueueService();
+      this.castleQueues.set(lane, queue);
+    }
+    return queue;
   }
 }

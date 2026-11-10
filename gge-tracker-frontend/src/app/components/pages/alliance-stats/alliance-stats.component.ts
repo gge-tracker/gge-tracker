@@ -214,6 +214,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   public playerCount = 0;
   public movements: Movement[] = [];
   public toggleCharts: Record<keyof typeof ApiPlayerStatsType, boolean> = {
+    glory: false,
     might: false,
     loot: false,
     berimond_invasion: false,
@@ -251,6 +252,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   public intervalId?: unknown;
   public fullScreenModalKey: keyof typeof ApiPlayerStatsType | null = null;
   public seriesLabels: Record<keyof typeof ApiPlayerStatsType, boolean> = {
+    glory: true,
     might: true,
     berimond_kingdom: true,
     berimond_invasion: true,
@@ -261,6 +263,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     loot: true,
   };
   public cumulSeries: Record<keyof typeof ApiPlayerStatsType, boolean> = {
+    glory: false,
     might: false,
     berimond_kingdom: false,
     berimond_invasion: false,
@@ -271,6 +274,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     loot: false,
   };
   public eventTitles: Record<keyof typeof ApiPlayerStatsType, string> = {
+    glory: '',
     might: '',
     loot: '',
     berimond_invasion: '',
@@ -281,6 +285,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     war_realms: '',
   };
   public charts: Record<keyof typeof ApiPlayerStatsType, ChartOptions | undefined> = {
+    glory: undefined,
     might: undefined,
     loot: undefined,
     berimond_invasion: undefined,
@@ -291,6 +296,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     war_realms: undefined,
   };
   public participationRateCharts: Record<keyof typeof ApiPlayerStatsType, ChartOptions | undefined> = {
+    glory: undefined,
     might: undefined,
     loot: undefined,
     berimond_invasion: undefined,
@@ -301,6 +307,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     war_realms: undefined,
   };
   public radarCharts: Record<keyof typeof ApiPlayerStatsType, ChartOptions | undefined> = {
+    glory: undefined,
     might: undefined,
     loot: undefined,
     berimond_invasion: undefined,
@@ -360,6 +367,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     player_event_nomad_history: -1,
     player_event_samurai_history: -1,
     player_loot_history: 0,
+    player_glory_history: -1,
     player_event_berimond_invasion_history: -1,
   };
   public readonly statsCardConfigs: CardConfig[] = [
@@ -381,6 +389,16 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
       backgroundColour: '#e7a220',
       backgroundIconImage: '/assets/banner-loot.png',
       eventTitleKey: 'loot',
+    },
+    {
+      chartKey: 'glory',
+      title: 'Points de gloire',
+      dataName: 'Points de gloire',
+      data: [],
+      singleChart: true,
+      backgroundColour: '#b08417',
+      backgroundIconImage: '/assets/site/header-glory.webp',
+      eventTitleKey: 'glory',
     },
     {
       chartKey: 'war_realms',
@@ -445,6 +463,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   ];
   public ApiPlayerStatsType: typeof ApiPlayerStatsType = ApiPlayerStatsType;
   public chartsTabs: Record<keyof typeof ApiPlayerStatsType, ChartTypes | null> = {
+    glory: null,
     might: null,
     loot: null,
     berimond_kingdom: null,
@@ -1451,6 +1470,15 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     }
   }
 
+  private initGloryHistoryData(data: ApiPlayerStatsForAlliance): void {
+    if (!data[ApiPlayerStatsType.glory]?.length) return;
+    this.initGenericEventData('glory', ApiPlayerStatsType.glory, data, this.graphPages.player_glory_history);
+    const config = this.statsCardConfigs.find((config) => config.chartKey === 'glory');
+    if (config) {
+      this.initStatsCardData(config, data, ApiPlayerStatsType.glory);
+    }
+  }
+
   private initBerimondKingdomData(data: ApiPlayerStatsForAlliance): void {
     this.initGenericEventData(
       'berimond_kingdom',
@@ -1697,8 +1725,8 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     if (!eventData) return;
     const playerMap = this.groupEventRecordsByPlayer(eventData);
 
-    if (eventKey === ApiPlayerStatsType.might) {
-      this.initMightChart(chartKey, playerMap);
+    if (eventKey === ApiPlayerStatsType.might || eventKey === ApiPlayerStatsType.glory) {
+      this.initContinuousChart(chartKey, playerMap);
       return;
     }
 
@@ -1755,7 +1783,10 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     return playerMap;
   }
 
-  private initMightChart(chartKey: keyof typeof ApiPlayerStatsType, playerMap: Map<number, EventPlayerSeries>): void {
+  private initContinuousChart(
+    chartKey: keyof typeof ApiPlayerStatsType,
+    playerMap: Map<number, EventPlayerSeries>,
+  ): void {
     this.eventTitles[chartKey] = '-';
     const segmentsWithColors: { segment: EventSegment; color: string }[] = [];
     for (const { playerName, segments } of playerMap.values()) {
@@ -2040,6 +2071,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     const logBases: Record<keyof typeof ApiPlayerStatsType, number> = {
       might: 10,
       loot: 10,
+      glory: 10,
       berimond_invasion: 10,
       berimond_kingdom: 10,
       nomad: 10,
@@ -2515,6 +2547,7 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
     this.data = playersData;
     this.initMightHistoryData(playersData);
     this.initLootHistoryData(playersData);
+    this.initGloryHistoryData(playersData);
     this.initBloodcrowData(playersData);
     this.initWarRealmsData(playersData);
     this.initNomadData(playersData);

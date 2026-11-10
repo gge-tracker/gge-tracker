@@ -77,8 +77,8 @@ describe('executeFillInOrder', () => {
       assert.deepEqual(swept, [2, 6, 30, 44, 46, 51, 58]);
       assert.deepEqual(
         sandbox.clickhouse.tables.sort(),
-        ['logs.scrapes', 'player_loot_history', 'player_might_history'],
-        'the two rankings that were up, plus the record of the run itself',
+        ['logs.scrapes', 'player_glory_history', 'player_loot_history', 'player_might_history'],
+        'the two rankings that were up, the glory they carry, and the record of the run itself',
       );
     });
   });

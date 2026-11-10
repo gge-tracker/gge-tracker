@@ -51,6 +51,14 @@ export const routes: Routes = [
         },
       },
       {
+        path: 'chronicle/:year/:playerId',
+        loadComponent: () =>
+          import('@ggetracker-pages/chronicle/chronicle.component').then((m) => m.ChronicleComponent),
+        data: {
+          description: 'A year of Goodgame Empire, told from complete hourly history',
+        },
+      },
+      {
         path: 'player/:playerId',
         loadComponent: () =>
           import('@ggetracker-pages/player-stats/player-stats.component').then((m) => m.PlayerStatsComponent),

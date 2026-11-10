@@ -1,0 +1,36 @@
+@if (layout(); as view) {
+  @if (mine()) {
+    <button type="button" class="intro-scrim" tabindex="-1" [attr.aria-label]="'chronicle.introLater' | translate"
+      (click)="close()"></button>
+  }
+  <a class="intro-hole" [class.intro-hole--dimming]="mine()" tabindex="-1" aria-hidden="true"
+    [style.top.px]="view.hole.top" [style.left.px]="view.hole.left" [style.width.px]="view.hole.width"
+    [style.height.px]="view.hole.height" [routerLink]="['/chronicle', year, playerId()]"></a>
+  <section #card class="intro-card" [class]="'intro-card--' + view.placement" role="dialog" aria-modal="false"
+    aria-labelledby="chronicle-intro-title" [style.top.px]="view.placement === 'sheet' ? null : view.card.top"
+    [style.left.px]="view.placement === 'sheet' ? null : view.card.left" [style.--arrow-left.px]="view.arrowLeft">
+    <div class="intro-art">
+      <img src="/assets/chronicle/intro.webp" alt="" width="880" height="495" />
+      <span class="intro-new">{{ 'chronicle.introNew' | translate }}</span>
+      <button type="button" class="intro-close" [attr.aria-label]="'Fermer' | translate" (click)="close()">
+        <i class="fas fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+    <div class="intro-body">
+      @if (playerName()) {
+        <p class="intro-eyebrow">{{ playerName() }}</p>
+      }
+      <h2 id="chronicle-intro-title" class="intro-title">
+        {{ (mine() ? 'chronicle.introTitle' : 'chronicle.title') | translate: { year: year } }}
+      </h2>
+      <p class="intro-text">{{ (mine() ? 'chronicle.introBodyMine' : 'chronicle.introBodyOther') | translate }}</p>
+      <div class="intro-actions">
+        <a #primary class="intro-open" [routerLink]="['/chronicle', year, playerId()]">
+          <i class="fas fa-scroll" aria-hidden="true"></i>
+          {{ (mine() ? 'chronicle.introOpenMine' : 'chronicle.introOpenOther') | translate }}
+        </a>
+        <button type="button" class="intro-later" (click)="close()">{{ 'chronicle.introLater' | translate }}</button>
+      </div>
+    </div>
+  </section>
+}

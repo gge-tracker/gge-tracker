@@ -31,9 +31,13 @@ interface PlayerStatisticsOptions {
  */
 export abstract class ApiStatistics implements ApiHelper {
   /**
-   * The two histories that are sampled continuously rather than run as events
+   * The histories that are sampled continuously rather than run as events
    */
-  private static readonly CONTINUOUS_TABLES = new Set(['player_might_history', 'player_loot_history']);
+  private static readonly CONTINUOUS_TABLES = new Set([
+    'player_might_history',
+    'player_loot_history',
+    'player_glory_history',
+  ]);
 
   private static readonly WEEKLY_RESET_TABLES = new Set(['player_loot_history']);
 
@@ -863,31 +867,9 @@ export abstract class ApiStatistics implements ApiHelper {
           /* ---------------------------------
            * Build and execute query
            * --------------------------------- */
-          let limit = 0;
-          switch (table) {
-            case 'player_might_history': {
-              limit = 10;
-              break;
-            }
-            case 'player_loot_history': {
-              limit = 21;
-              break;
-            }
-            default: {
-              limit = 30;
-            }
-          }
-          const query = `
-            SELECT
-            player_id,
-            formatDateTime(created_at, '%Y-%m-%dT%H:%i:%S.000Z', 'UTC') AS date,
-            point
-            FROM ${database}.${table}
-            WHERE player_id IN (${ids.map((id) => `'${id}'`).join(',')})
-            AND created_at >= now() - INTERVAL ${limit} DAY
-            ORDER BY created_at DESC
-          `;
-          const clickhouseResult = await clickhouseClient.query({ query });
+          const clickhouseResult = await clickhouseClient.query({
+            query: this.buildAllianceHistoryQuery(database, table, ids),
+          });
           const result = await clickhouseResult.json();
           points[table] = result.data.map((row: any) => {
             return {
@@ -915,6 +897,34 @@ export abstract class ApiStatistics implements ApiHelper {
     } catch {
       return { error: RouteErrorMessagesEnum.GenericInternalServerError };
     }
+  }
+
+  private static buildAllianceHistoryQuery(database: string, table: string, ids: number[]): string {
+    const players = ids.map((id) => `'${id}'`).join(',');
+    if (table === 'player_glory_history') {
+      return `
+        SELECT
+          player_id,
+          formatDateTime(toStartOfDay(created_at), '%Y-%m-%dT%H:%i:%S.000Z', 'UTC') AS date,
+          argMax(point, created_at) AS point
+        FROM ${database}.${table}
+        WHERE player_id IN (${players})
+        AND created_at >= now() - INTERVAL 90 DAY
+        GROUP BY player_id, date
+        ORDER BY date ASC
+      `;
+    }
+    const daysByTable: Record<string, number> = { player_might_history: 10, player_loot_history: 21 };
+    return `
+      SELECT
+      player_id,
+      formatDateTime(created_at, '%Y-%m-%dT%H:%i:%S.000Z', 'UTC') AS date,
+      point
+      FROM ${database}.${table}
+      WHERE player_id IN (${players})
+      AND created_at >= now() - INTERVAL ${daysByTable[table] ?? 30} DAY
+      ORDER BY created_at DESC
+    `;
   }
 
   /**
@@ -1582,7 +1592,7 @@ export abstract class ApiStatistics implements ApiHelper {
           if (!database) {
             throw new Error(RouteErrorMessagesEnum.GenericInternalServerError);
           }
-          if (table === 'player_might_history' || table === 'player_loot_history') {
+          if (this.CONTINUOUS_TABLES.has(table)) {
             // Special handling for tables without event_dates. They will return only actual entries
             const query = `
               SELECT

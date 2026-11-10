@@ -2,3 +2,4 @@ internal/
 logs/*
 **/seed.sql
 fixtures
+backup/pull*

@@ -1,3 +1,4 @@
+import type { ChronicleSlide } from '@ggetracker-pages/chronicle/chronicle.copy';
 import { ApiLootReset } from '@ggetracker-services/loot-reset.utilities';
 import {
   ApexAxisChartSeries,
@@ -331,6 +332,112 @@ export enum WatchModeStats {
 }
 
 export type SearchType = 'alliance' | 'player';
+
+export interface ApiChronicleEvent {
+  runs: number;
+  bestRank: number;
+  podiums: number;
+}
+
+export interface ApiChronicleStanding {
+  rank: number;
+  of: number;
+  higherThanPct: number;
+}
+
+export interface ApiChronicleWorldEvent extends ApiChronicleStanding {
+  events: number;
+  bestRank: number;
+  bestPoint: number;
+  months: number[];
+  ranks: number[];
+}
+
+export interface ApiChronicleRival {
+  id: string;
+  name: string;
+  might: number;
+  loot: number;
+  events: number;
+  activeDays: number;
+  monthly: (number | null)[];
+  monthsAhead: number;
+  monthsCompared: number;
+  monthsNear: number;
+}
+
+export interface ApiChroniclePlayer {
+  id: string;
+  name: string;
+  tier: 'full' | 'short';
+  hours: number;
+  firstDay: string | null;
+  slides: ChronicleSlide[];
+  rival: ApiChronicleRival | null;
+  alliance: {
+    id: number | null;
+    name: string | null;
+    changes: number;
+    timeline: { name: string | null; from: string; to: string }[];
+    daysUnderCurrent: number;
+  };
+  might: ApiChronicleStanding & {
+    start: number;
+    end: number;
+    peak: number;
+    peakDay: string | null;
+    low: number;
+    gain: number;
+    bestDay: string | null;
+    bestDayGain: number;
+    months: number[];
+    monthly: (number | null)[];
+    rankStart: number | null;
+    rankEnd: number | null;
+    rankBest: number | null;
+    rankBestMonth: number | null;
+    rankedPlayers: number;
+  };
+  loot: ApiChronicleStanding & {
+    total: number;
+    bestWeek: number;
+    bestWeekStart: string | null;
+    weekly: number[];
+    weeksLooted: number;
+  };
+  rhythm: ApiChronicleStanding & {
+    activeDays: number;
+    longestStreak: number;
+    calendar: string;
+    hourly: number[];
+    peakHour: number | null;
+    nightShare: number;
+  };
+  events: ApiChronicleStanding & {
+    runs: number;
+    bestRank: number | null;
+    podiums: number;
+    favourite: string | null;
+    perEvent: Record<string, ApiChronicleEvent>;
+  };
+  glory: ApiChronicleStanding & { current: number; highest: number; best: ApiChronicleStanding };
+  world: { outerRealms: ApiChronicleWorldEvent | null; horizon: ApiChronicleWorldEvent | null; servers: number };
+  profile: { might: number; loot: number; events: number; glory: number; activity: number; loyalty: number };
+  persona: string | null;
+}
+
+export interface ApiChronicle {
+  year: number;
+  server: string;
+  serverLabel: string;
+  status: 'ready' | 'too-recent';
+  tier: 'full' | 'season' | 'too-recent';
+  trackedDays: number;
+  dataFrom: number;
+  dataUntil: number;
+  builtAt: number;
+  player: ApiChroniclePlayer | null;
+}
 
 export type ApiResponse<T> =
   { success: true; error?: string; data: T; headers?: Headers } | { success: false; error: string };
@@ -922,6 +1029,7 @@ export interface ApiLastUpdates {
 export enum ApiPlayerStatsType {
   might = 'player_might_history',
   loot = 'player_loot_history',
+  glory = 'player_glory_history',
   berimond_invasion = 'player_event_berimond_invasion_history',
   berimond_kingdom = 'player_event_berimond_kingdom_history',
   bloodcrow = 'player_event_bloodcrow_history',

@@ -16,6 +16,7 @@ export const SERVERS_FILE = process.env.SERVERS_FILE || '/app/config/servers.xml
 export interface ScrapingServer {
   name: string;
   server: string;
+  outerName: string;
   zone: string;
   sql: string;
   olap: string;
@@ -51,6 +52,7 @@ function toServer(row: Record<string, unknown>): ScrapingServer | null {
   return {
     name: text(scraping.section),
     server: text(row.name),
+    outerName: text(row['outer-name']),
     zone: text(row.zone),
     sql: text(databases.sql),
     olap: text(databases.olap),

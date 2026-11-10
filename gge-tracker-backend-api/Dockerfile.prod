@@ -52,6 +52,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     fonts-dejavu-core \
     fonts-freefont-ttf \
+    fonts-noto-cjk \
+    fonts-noto-core \
     libasound2 \
     libatk-bridge2.0-0 \
     libatk1.0-0 \
@@ -83,6 +85,7 @@ COPY --from=build --chown=node:node /app/dist/documentation.json ./dist/document
 COPY --from=build --chown=node:node /app/src/api/lib ./dist/lib
 COPY --chown=node:node package.json ./
 COPY --chown=node:node config ./config
+COPY --chown=node:node card-assets ./card-assets
 
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
     && dpkg --purge --force-remove-essential --force-depends perl-base \

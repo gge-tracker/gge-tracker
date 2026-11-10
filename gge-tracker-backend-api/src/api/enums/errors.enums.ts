@@ -72,6 +72,7 @@ export enum RouteErrorMessagesEnum {
   OffersStoreUnavailable = 'The offers store is unreachable right now. Please try again later.',
   PageOutOfRange = 'Page number is out of range',
   PlayerNotFound = 'Player not found',
+  ChronicleNotFound = 'No chronicle found for this player and year',
   PlayerNotInRealm = 'Player not in this realm',
   RateLimited = 'Too many requests, please try again later',
   RouteMustBeNonEmpty = 'Route must be a non-empty string',

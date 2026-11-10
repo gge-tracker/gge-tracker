@@ -73,6 +73,7 @@ import {
   ApiOffersCatalog,
   ApiOffersCatalogResponse,
   ApiReleaseNotesResponse,
+  ApiChronicle,
 } from '@ggetracker-interfaces/empire-ranking';
 
 export interface DungeonsListQuery {
@@ -205,6 +206,10 @@ export class ApiRestService {
     const response = await this.apiFetch<ApiTop3EventsById>(`${ApiRestService.apiUrl}top-players/${playerId}`);
     if (!response.success) return response;
     return { success: true, data: response.data };
+  }
+
+  public getChronicle(year: number, playerId: string): Promise<ApiResponse<ApiChronicle>> {
+    return this.apiFetch<ApiChronicle>(`${environment.chronicleApiUrl}chronicle/${year}/${playerId}`, false);
   }
 
   public async getOffers(

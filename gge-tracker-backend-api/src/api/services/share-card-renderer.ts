@@ -2,6 +2,7 @@ import { puppeteerManagerInstance } from '../managers/puperteer.manager';
 
 export const SHARE_CARD_WIDTH = 1200;
 export const SHARE_CARD_HEIGHT = 630;
+const SHARE_CARD_SIZE = { width: SHARE_CARD_WIDTH, height: SHARE_CARD_HEIGHT };
 
 export interface ShareCardStat {
   label: string;
@@ -26,10 +27,14 @@ export abstract class ShareCardRenderer {
     return this.renderHtml(key, this.toHtml(card));
   }
 
-  public static renderHtml(key: string, html: string): Promise<Buffer> {
+  public static renderHtml(
+    key: string,
+    html: string,
+    size: { width: number; height: number } = SHARE_CARD_SIZE,
+  ): Promise<Buffer> {
     const running = this.inFlight.get(key);
     if (running !== undefined) return running;
-    const job = this.renderOnce(html).finally(() => this.inFlight.delete(key));
+    const job = this.renderOnce(html, size).finally(() => this.inFlight.delete(key));
     this.inFlight.set(key, job);
     return job;
   }
@@ -63,7 +68,7 @@ export abstract class ShareCardRenderer {
     return value.toLocaleString('en-US');
   }
 
-  private static async renderOnce(html: string): Promise<Buffer> {
+  private static async renderOnce(html: string, size: { width: number; height: number }): Promise<Buffer> {
     return puppeteerManagerInstance.withPage(async (page) => {
       // Names are player input: the page runs no script and reaches nothing outside itself
       await page.setJavaScriptEnabled(false);
@@ -72,7 +77,7 @@ export abstract class ShareCardRenderer {
         if (request.url().startsWith('data:')) void request.continue();
         else void request.abort();
       });
-      await page.setViewport({ width: SHARE_CARD_WIDTH, height: SHARE_CARD_HEIGHT, deviceScaleFactor: 1 });
+      await page.setViewport({ width: size.width, height: size.height, deviceScaleFactor: 1 });
       await page.setContent(html, { waitUntil: 'load' });
       const image = await page.screenshot({ type: 'jpeg', quality: 85 });
       return Buffer.from(image);

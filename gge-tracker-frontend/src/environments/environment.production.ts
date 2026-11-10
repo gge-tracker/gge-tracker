@@ -7,6 +7,8 @@
 export const environment = {
   production: true,
   apiUrl: 'https://api.gge-tracker.com/api/v1/',
+  chronicleApiUrl: 'https://api.gge-tracker.com/api/v1/',
+  chronicleEnabled: false,
   i18nBaseUrl: 'https://ggetracker.github.io/i18n/',
 };
 console.clear();

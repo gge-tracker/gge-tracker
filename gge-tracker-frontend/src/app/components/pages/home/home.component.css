@@ -209,8 +209,10 @@
 }
 
 .home-banner-actions {
+  align-items: center;
   display: flex;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -1035,6 +1037,14 @@
   color: var(--home-down);
 }
 
+.home-me-chronicle {
+  color: var(--home-amber);
+  font-size: 0.86rem;
+  font-weight: 600;
+  margin: 8px 0 0;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9);
+}
+
 .home-suggestions {
   background: #15161e;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -1326,6 +1336,15 @@
 
   .home-banner-actions .home-action {
     flex: 1 1 0;
+  }
+
+  .home-banner-actions app-chronicle-cta {
+    display: block;
+    flex: 1 0 100%;
+  }
+
+  .home-banner-actions app-chronicle-cta ::ng-deep .cta {
+    display: flex;
   }
 }
 

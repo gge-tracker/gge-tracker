@@ -4756,6 +4756,7 @@ protectedRoutes.get('/players/:playerName', routingInstance.getPlayersByPlayerNa
  *               - player_event_nomad_history
  *               - player_event_samurai_history
  *               - player_event_war_realms_history
+ *               - player_glory_history
  *               - player_loot_history
  *               - player_might_history
  *       - name: limit
@@ -4798,6 +4799,9 @@ protectedRoutes.get('/players/:playerName', routingInstance.getPlayersByPlayerNa
  *                     player_event_war_realms_history:
  *                       type: number
  *                       description: The time needed to process player_event_war_realms_history, in seconds
+ *                     player_glory_history:
+ *                       type: number
+ *                       description: The time needed to process player_glory_history, in seconds
  *                     player_loot_history:
  *                       type: number
  *                       description: The time needed to process player_loot_history, in seconds
@@ -5151,6 +5155,7 @@ publicRoutes.get(
  *               - player_event_nomad_history
  *               - player_event_samurai_history
  *               - player_event_war_realms_history
+ *               - player_glory_history
  *               - player_loot_history
  *               - player_might_history
  *       - name: since
@@ -5178,8 +5183,8 @@ publicRoutes.get(
  *         in: query
  *         required: false
  *         description: |
- *           Drops the rows that do not change a chart: for `player_might_history` and
- *           `player_loot_history`, points equal to both of their neighbours; for the event tables, the
+ *           Drops the rows that do not change a chart: for `player_might_history`, `player_loot_history`
+ *           and `player_glory_history`, points equal to both of their neighbours; for the event tables, the
  *           occurrences the player sat out. Every played occurrence is kept whole and opens on a zero
  *           one hourly fill before its first sample, unless `since` may have cut its start
  *         schema:
@@ -5502,6 +5507,7 @@ publicRoutes.get(
  *             - player_event_nomad_history
  *             - player_event_samurai_history
  *             - player_event_war_realms_history
+ *             - player_glory_history
  *             - player_loot_history
  *             - player_might_history
  *           example: "player_event_berimond_invasion_history"
@@ -7528,6 +7534,154 @@ publicRoutes.get('/seo/alliance/:allianceId', routingInstance.getAllianceSeoHead
  *         $ref: '#/components/responses/InternalServerError'
  */
 publicRoutes.get('/seo/page', routingInstance.getPageSeoHead.bind(routingInstance));
+
+/**
+ * @openapi
+ * /chronicle/{year}/{playerId}:
+ *   get:
+ *     summary: A player's yearly Chronicle
+ *     description: >
+ *       The frozen recap of a player's year: might, loot, events, rhythm, alliance and rival, with the
+ *       slides that apply to this player. A server tracked for too short a time answers status too-recent and no
+ *       player
+ *     tags:
+ *       - Players
+ *     parameters:
+ *       - name: year
+ *         in: path
+ *         required: true
+ *         description: The year of the Chronicle
+ *         schema:
+ *           type: integer
+ *       - $ref: '#/components/parameters/PlayerId'
+ *     responses:
+ *       '200':
+ *         description: The Chronicle
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [year, server, serverLabel, status, tier, trackedDays, dataFrom, dataUntil, builtAt, player]
+ *               properties:
+ *                 year:
+ *                   type: integer
+ *                 server:
+ *                   type: string
+ *                 serverLabel:
+ *                   type: string
+ *                 status:
+ *                   type: string
+ *                   enum: [ready, too-recent]
+ *                 tier:
+ *                   type: string
+ *                   enum: [full, season, too-recent]
+ *                 trackedDays:
+ *                   type: integer
+ *                 dataFrom:
+ *                   type: integer
+ *                 dataUntil:
+ *                   type: integer
+ *                 builtAt:
+ *                   type: integer
+ *                 player:
+ *                   type: object
+ *                   nullable: true
+ *       '400':
+ *         $ref: '#/components/responses/BadRequest'
+ *       '404':
+ *         description: No Chronicle exists for this player and year
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+publicRoutes.get('/chronicle/:year/:playerId', routingInstance.getChronicle.bind(routingInstance));
+
+/**
+ * @openapi
+ * /seo/chronicle/{year}/{playerId}:
+ *   get:
+ *     summary: Link preview document of a Chronicle
+ *     description: The HTML head served to link unfurlers for /chronicle/{year}/{playerId} on the website
+ *     tags:
+ *       - Previews
+ *     parameters:
+ *       - name: year
+ *         in: path
+ *         required: true
+ *         description: The year of the Chronicle
+ *         schema:
+ *           type: integer
+ *       - $ref: '#/components/parameters/PlayerId'
+ *       - name: lang
+ *         in: query
+ *         required: false
+ *         description: Language of the text, English when absent, unknown or not published yet
+ *         schema:
+ *           type: string
+ *           enum: [ar, bg, cs, de, el, en, es, fr, hu, it, nl, pl, pt, ro, ru, tr]
+ *     responses:
+ *       '200':
+ *         description: The preview document
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+publicRoutes.get('/seo/chronicle/:year/:playerId', routingInstance.getChronicleSeoHead.bind(routingInstance));
+
+/**
+ * @openapi
+ * /assets/og/chronicle/{year}/{playerId}.jpg:
+ *   get:
+ *     summary: Share card image of a Chronicle
+ *     description: A JPEG of the Chronicle, 1200x630 by default or 1080x1920 with format=story
+ *     tags:
+ *       - Previews
+ *     parameters:
+ *       - name: year
+ *         in: path
+ *         required: true
+ *         description: The year of the Chronicle
+ *         schema:
+ *           type: integer
+ *       - $ref: '#/components/parameters/PlayerId'
+ *       - name: format
+ *         in: query
+ *         required: false
+ *         description: story for the vertical image
+ *         schema:
+ *           type: string
+ *           enum: [story]
+ *       - name: lang
+ *         in: query
+ *         required: false
+ *         description: Language of the text, English when absent, unknown or not published yet
+ *         schema:
+ *           type: string
+ *           enum: [ar, bg, cs, de, el, en, es, fr, hu, it, nl, pl, pt, ro, ru, tr]
+ *       - $ref: '#/components/parameters/IfNoneMatch'
+ *     responses:
+ *       '200':
+ *         description: The card image
+ *         content:
+ *           image/jpeg:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       '304':
+ *         description: The If-None-Match ETag still matches
+ *       '404':
+ *         description: No Chronicle exists for this player and year
+ *       '429':
+ *         description: A new render was needed and this caller spent its render budget
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+publicRoutes.get(
+  '/assets/og/chronicle/:year/:playerId.jpg',
+  routingInstance.getChronicleShareCard.bind(routingInstance),
+);
 
 /**
  * @openapi

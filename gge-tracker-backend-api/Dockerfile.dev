@@ -18,6 +18,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     fonts-freefont-ttf \
+    fonts-noto-cjk \
+    fonts-noto-core \
     libasound2 \
     libfreetype6 \
     libgconf-2-4 \

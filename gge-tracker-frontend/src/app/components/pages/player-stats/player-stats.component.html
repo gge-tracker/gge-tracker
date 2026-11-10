@@ -1,36 +1,46 @@
 <div class="player-stats-view position-relative">
   <app-share-link #playerShare="shareLink" subject="player" [subjectId]="playerId ?? 0" [name]="playerName ?? ''" />
   @if (!isInLoading) {
-  <div class="d-none d-md-block">
-    <div class="btn-exit right">
-      <a class="btn btn-primary mt-3 me-2" [routerLink]="['/compare', 'players']" [queryParams]="{ a: playerId }">
-        <i class="fas fa-scale-balanced"></i>
-        {{ 'Comparer' | translate }}</a>
-      @if (playerId) {
-      <button type="button" class="btn btn-primary mt-3 me-2" aria-haspopup="dialog" (click)="playerShare.open()">
-        <i class="fas fa-share-nodes"></i>
-        {{ 'Partager' | translate }}</button>
-      }
-      @if (!isInFavorites()) {
-      <button class="btn btn-primary mt-3 me-2" (click)="addPlayerToFavorites()">
-        <i class="fas fa-star"></i>
-        {{ 'follow.follow' | translate }}</button>
-      } @else {
-      <button class="btn btn-primary mt-3 me-2" (click)="removePlayerFromFavorites()" [attr.aria-pressed]="true">
-        <i class="fas fa-star"></i>
-        {{ 'follow.unfollow' | translate }}</button>
-      }
-      @if (isMe()) {
-      <span class="btn btn-primary mt-3 player-me-badge">
-        <i class="fas fa-user-check"></i>
-        {{ 'follow.is-me' | translate }}</span>
-      } @else {
-      <button class="btn btn-primary mt-3" (click)="setAsMe()">
-        <i class="fas fa-user"></i>
-        {{ 'home.me-submit' | translate }}</button>
-      }
-    </div>
+  <div class="player-dock d-none d-md-flex" role="toolbar" [attr.aria-label]="'Joueur' | translate">
+    @if (playerId) {
+    <app-chronicle-cta variant="dock" [playerId]="'' + playerId" />
+    }
+    <a class="player-dock-item" [routerLink]="['/compare', 'players']" [queryParams]="{ a: playerId }"
+      [title]="'Comparer' | translate" [attr.aria-label]="'Comparer' | translate">
+      <i class="fas fa-scale-balanced" aria-hidden="true"></i>
+      <span class="player-dock-label">{{ 'Comparer' | translate }}</span>
+    </a>
+    @if (playerId) {
+    <button type="button" class="player-dock-item" aria-haspopup="dialog" [title]="'Partager' | translate"
+      [attr.aria-label]="'Partager' | translate" (click)="playerShare.open()">
+      <i class="fas fa-share-nodes" aria-hidden="true"></i>
+      <span class="player-dock-label">{{ 'Partager' | translate }}</span>
+    </button>
+    }
+    <button type="button" class="player-dock-item" [class.is-active]="isInFavorites()"
+      [attr.aria-pressed]="isInFavorites()"
+      [title]="(isInFavorites() ? 'follow.unfollow' : 'follow.follow') | translate"
+      [attr.aria-label]="(isInFavorites() ? 'follow.unfollow' : 'follow.follow') | translate"
+      (click)="isInFavorites() ? removePlayerFromFavorites() : addPlayerToFavorites()">
+      <i class="fas fa-star" aria-hidden="true"></i>
+      <span class="player-dock-label">{{ (isInFavorites() ? 'follow.unfollow' : 'follow.follow') | translate }}</span>
+    </button>
+    @if (isMe()) {
+    <span class="player-dock-item player-dock-item--static is-active" [title]="'follow.is-me' | translate">
+      <i class="fas fa-user-check" aria-hidden="true"></i>
+      <span class="player-dock-label">{{ 'follow.is-me' | translate }}</span>
+    </span>
+    } @else {
+    <button type="button" class="player-dock-item" [title]="'home.me-submit' | translate"
+      [attr.aria-label]="'home.me-submit' | translate" (click)="setAsMe()">
+      <i class="fas fa-user" aria-hidden="true"></i>
+      <span class="player-dock-label">{{ 'home.me-submit' | translate }}</span>
+    </button>
+    }
   </div>
+  @if (playerId) {
+  <app-chronicle-intro [playerId]="'' + playerId" [playerName]="playerName ?? ''" [mine]="isMe()" />
+  }
   }
   @if (!isInLoading) {
   <app-layered-scene scene="scouting" class="player-stats-scene" />
@@ -68,6 +78,9 @@
       </div>
       @if (playerId) {
       <div class="d-md-none player-share-row">
+        <div class="player-share-chronicle">
+          <app-chronicle-cta variant="pill" [playerId]="'' + playerId" />
+        </div>
         <button type="button" class="player-share-pill" aria-haspopup="dialog" (click)="playerShare.open()">
           <i class="fas fa-share-nodes"></i>
           <span class="ms-1">{{ 'Partager' | translate }}</span>
@@ -245,7 +258,8 @@
             <ng-container *ngTemplateOutlet="chartPlaceholder; context: {
               chart: 'might',
               title: 'Points de puissance' | translate,
-              colour: 'rgb(255 230 35)'
+              colour: 'rgb(255 230 35)',
+              banner: '/assets/banner-pp.png'
             }"></ng-container>
             }
           </div>
@@ -260,7 +274,8 @@
             <ng-container *ngTemplateOutlet="chartPlaceholder; context: {
               chart: 'loot',
               title: 'Pillage hebdomadaire' | translate,
-              colour: '#e7a220'
+              colour: '#e7a220',
+              banner: '/assets/banner-loot.png'
             }"></ng-container>
             }
           </div>
@@ -282,7 +297,8 @@
             <ng-container *ngTemplateOutlet="chartPlaceholder; context: {
               chart: 'warRealms',
               title: 'Guerre des royaumes' | translate,
-              colour: 'rgb(216 182 255)'
+              colour: 'rgb(216 182 255)',
+              banner: '/assets/banner-realm.png'
             }"></ng-container>
             }
           </div>
@@ -302,7 +318,8 @@
             <ng-container *ngTemplateOutlet="chartPlaceholder; context: {
               chart: 'bloodcrow',
               title: 'Corbeaux de sang' | translate,
-              colour: 'rgb(216 182 255)'
+              colour: 'rgb(216 182 255)',
+              banner: '/assets/banner-bloodcrow.png'
             }"></ng-container>
             }
           </div>
@@ -323,7 +340,8 @@
             <ng-container *ngTemplateOutlet="chartPlaceholder; context: {
               chart: 'berimondKingdom',
               title: 'Bataille de Berimond' | translate,
-              colour: '#00aaff'
+              colour: '#00aaff',
+              banner: '/assets/banner-berimond.png'
             }"></ng-container>
             }
           </div>
@@ -342,7 +360,8 @@
             <ng-container *ngTemplateOutlet="chartPlaceholder; context: {
               chart: 'nomad',
               title: 'Nomades' | translate,
-              colour: 'rgb(255 130 54)'
+              colour: 'rgb(255 130 54)',
+              banner: '/assets/banner-nomad.png'
             }"></ng-container>
             }
           </div>
@@ -363,10 +382,29 @@
             <ng-container *ngTemplateOutlet="chartPlaceholder; context: {
               chart: 'samurai',
               title: 'Samouraïs' | translate,
-              colour: '#58771db5'
+              colour: '#58771db5',
+              banner: '/assets/banner-samurai.png'
             }"></ng-container>
             }
           </div>
+          @if (summaryFor('glory')?.row_count !== 0) {
+          <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="glory">
+            @if (charts['glory'] && chartVisibles.glory) {
+            <app-player-stats-card [charts]="{ 'Graphique': charts['glory'] }" [data]="[]"
+              [title]="'Points de gloire' | translate" [dataName]="'Points de gloire' | translate"
+              [playerId]="playerId" [eventName]="'player_glory_history'"
+              [backgroundIconImage]="'/assets/site/header-glory.webp'"
+              [backgroundColour]="'#b08417'"></app-player-stats-card>
+            } @else {
+            <ng-container *ngTemplateOutlet="chartPlaceholder; context: {
+              chart: 'glory',
+              title: 'Points de gloire' | translate,
+              colour: '#b08417',
+              banner: '/assets/site/header-glory.webp'
+            }"></ng-container>
+            }
+          </div>
+          }
         </div>
       </div>
       }
@@ -599,6 +637,17 @@
             </div>
           </div>
         </app-stats-panel>
+        }
+        @if (charts['glory']) {
+        <div class="row mt-3">
+          <div class="col-12">
+            <app-player-stats-card [charts]="{ 'Graphique': charts['glory'] }" [data]="[]"
+              [title]="'Points de gloire' | translate" [dataName]="'Points de gloire' | translate"
+              [playerId]="playerId" [eventName]="'player_glory_history'"
+              [backgroundIconImage]="'/assets/site/header-glory.webp'"
+              [backgroundColour]="'#b08417'"></app-player-stats-card>
+          </div>
+        </div>
         }
       </div>
       }
@@ -884,7 +933,39 @@
   </tr>
 </ng-template>
 
-<ng-template #chartPlaceholder let-chart="chart" let-title="title" let-colour="colour">
+<ng-template #chartSummaryHighlights let-summary="summary">
+  <div class="chart-placeholder-stat">
+    <span class="chart-placeholder-label">{{ 'Points' | translate }}</span>
+    <span class="chart-placeholder-value">{{ (summary.last_point ?? 0) | formatNumber }}</span>
+    <span class="chart-placeholder-sub">{{ summary.last_date | date: ('Date_1' | translate) }}</span>
+  </div>
+  <div class="chart-placeholder-stat">
+    <span class="chart-placeholder-label">{{ 'Record' | translate }}</span>
+    <span class="chart-placeholder-value">{{ (summary.max_point ?? 0) | formatNumber }}</span>
+    <span class="chart-placeholder-sub">{{ summary.max_point_date | date: ('Date_1' | translate) }}</span>
+  </div>
+</ng-template>
+
+<ng-template #chartPlaceholder let-chart="chart" let-title="title" let-colour="colour" let-banner="banner">
+  @if (hasNoSeriesToDraw(chart)) {
+  <app-stats-panel [title]="title" [accent]="colour" [bannerImage]="banner">
+    <div class="chart-no-series">
+      <p class="chart-no-series-note">
+        @if (seriesState[chart] === 'loaded') {
+        {{ 'Derniers 30 jours' | translate }} ·
+        }
+        {{ 'Aucun résultat' | translate }}
+      </p>
+      @if (summaryFor(chart); as summary) {
+        @if (summary.row_count > 0) {
+        <div class="chart-placeholder-stats chart-no-series-stats">
+          <ng-container *ngTemplateOutlet="chartSummaryHighlights; context: { summary: summary }"></ng-container>
+        </div>
+        }
+      }
+    </div>
+  </app-stats-panel>
+  } @else {
   <div class="chart-placeholder" [ngStyle]="{ 'border-left-color': colour }">
     <div class="chart-placeholder-head">
       <span class="chart-placeholder-title">{{ title }}</span>
@@ -897,16 +978,7 @@
       <p class="chart-placeholder-empty">{{ 'Aucun résultat' | translate }}</p>
       } @else {
       <div class="chart-placeholder-stats">
-        <div class="chart-placeholder-stat">
-          <span class="chart-placeholder-label">{{ 'Points' | translate }}</span>
-          <span class="chart-placeholder-value">{{ (summary.last_point ?? 0) | formatNumber }}</span>
-          <span class="chart-placeholder-sub">{{ summary.last_date | date: ('Date_1' | translate) }}</span>
-        </div>
-        <div class="chart-placeholder-stat">
-          <span class="chart-placeholder-label">{{ 'Record' | translate }}</span>
-          <span class="chart-placeholder-value">{{ (summary.max_point ?? 0) | formatNumber }}</span>
-          <span class="chart-placeholder-sub">{{ summary.max_point_date | date: ('Date_1' | translate) }}</span>
-        </div>
+        <ng-container *ngTemplateOutlet="chartSummaryHighlights; context: { summary: summary }"></ng-container>
         <div class="chart-placeholder-stat">
           <span class="chart-placeholder-label">{{ 'Derniers 7 jours' | translate }}</span>
           @if (summary.point_gain_7d === null) {
@@ -930,4 +1002,5 @@
     </button>
     }
   </div>
+  }
 </ng-template>

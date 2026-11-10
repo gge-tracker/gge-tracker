@@ -12,6 +12,8 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { BrandWordmarkComponent } from '@ggetracker-components/brand-wordmark/brand-wordmark.component';
+import { ChronicleCtaComponent } from '@ggetracker-components/chronicle-discovery/chronicle-cta.component';
+import { ChronicleIntroComponent } from '@ggetracker-components/chronicle-discovery/chronicle-intro.component';
 import { LayeredSceneComponent } from '@ggetracker-components/layered-scene/layered-scene.component';
 import { HOME_ROUTE, SITE_NAVIGATION, SiteNavigationSection } from '@ggetracker-components/sidebar/site-navigation';
 import {
@@ -25,6 +27,7 @@ import {
   ApiPlayerStatsType,
   ApiPlayerSuggestion,
 } from '@ggetracker-interfaces/empire-ranking';
+import { CHRONICLE_PROMOTED_YEAR, ChronicleDiscoveryService } from '@ggetracker-services/chronicle-discovery.service';
 import { FollowService, MePlayer, SubjectSnapshot, VisitSnapshot } from '@ggetracker-services/follow.service';
 import { lootResetOf } from '@ggetracker-services/loot-reset.utilities';
 import { ServerService } from '@ggetracker-services/server.service';
@@ -143,7 +146,16 @@ const EXPLORE_SECTIONS: SiteNavigationSection[] = [
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [FormsModule, RouterLink, TranslateModule, DecimalPipe, LayeredSceneComponent, BrandWordmarkComponent],
+  imports: [
+    FormsModule,
+    RouterLink,
+    TranslateModule,
+    DecimalPipe,
+    LayeredSceneComponent,
+    BrandWordmarkComponent,
+    ChronicleCtaComponent,
+    ChronicleIntroComponent,
+  ],
   templateUrl: './home.component.html',
   styleUrl: './home.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -151,6 +163,8 @@ const EXPLORE_SECTIONS: SiteNavigationSection[] = [
 export class HomeComponent extends GenericComponent implements OnInit, OnDestroy {
   public readonly follow = inject(FollowService);
   public readonly serverService = inject(ServerService);
+  public readonly chronicle = inject(ChronicleDiscoveryService);
+  public readonly chronicleYear = CHRONICLE_PROMOTED_YEAR;
   public readonly exploreSections = EXPLORE_SECTIONS;
   public readonly kpiSkeletons = [0, 1, 2];
   public readonly panelSkeletons = [0, 1];

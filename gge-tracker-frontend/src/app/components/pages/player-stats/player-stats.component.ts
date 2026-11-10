@@ -1,3 +1,5 @@
+import { ChronicleCtaComponent } from '@ggetracker-components/chronicle-discovery/chronicle-cta.component';
+import { ChronicleIntroComponent } from '@ggetracker-components/chronicle-discovery/chronicle-intro.component';
 import { DatePipe, NgClass, NgStyle, NgTemplateOutlet } from '@angular/common';
 import {
   AfterViewInit,
@@ -104,6 +106,8 @@ type FillDataState = 'idle' | 'loading' | 'loaded' | 'error';
     ModalTableComponent,
     StatsPanelComponent,
     AllianceHistoryComponent,
+    ChronicleCtaComponent,
+    ChronicleIntroComponent,
   ],
   standalone: true,
   templateUrl: './player-stats.component.html',
@@ -180,6 +184,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     player_event_nomad_history: [],
     player_event_samurai_history: [],
     player_event_war_realms_history: [],
+    player_glory_history: [],
     player_loot_history: [],
     player_might_history: [],
   };
@@ -223,6 +228,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   public chartVisibles = {
     might: false,
     loot: false,
+    glory: false,
     warRealms: false,
     bloodcrow: false,
     berimondKingdom: false,
@@ -257,6 +263,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   private readonly CHART_SOURCES: Record<string, { table: ApiPlayerStatsType; days: number }> = {
     might: { table: ApiPlayerStatsType.might, days: 30 },
     loot: { table: ApiPlayerStatsType.loot, days: 30 },
+    glory: { table: ApiPlayerStatsType.glory, days: 1825 },
     warRealms: { table: ApiPlayerStatsType.war_realms, days: 90 },
     bloodcrow: { table: ApiPlayerStatsType.bloodcrow, days: 90 },
     berimondKingdom: { table: ApiPlayerStatsType.berimond_kingdom, days: 90 },
@@ -266,7 +273,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   private readonly LOOT_TAB_DAYS = 182;
   private readonly LOOT_OVERVIEW_WEEKS = 5;
   private readonly AQUAMARINE_HIDDEN_BY_DEFAULT = new Set([19, 20, 100]);
-  private readonly CONTINUOUS_CHARTS = new Set(['might', 'loot']);
+  private readonly CONTINUOUS_CHARTS = new Set(['might', 'loot', 'glory']);
   private readonly WEEKLY_RESET_CHARTS = new Set(['loot']);
   private readonly FULL_HISTORY_DAYS = 1825;
   private seriesWindow: Partial<Record<ApiPlayerStatsType, number>> = {};
@@ -435,6 +442,11 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     const source = this.CHART_SOURCES[chartName];
     if (!source || !this.eventSummary) return null;
     return this.eventSummary[source.table] ?? null;
+  }
+
+  public hasNoSeriesToDraw(chartName: string): boolean {
+    const state = this.seriesState[chartName];
+    return state === 'empty' || (state === 'loaded' && !this.charts[chartName]);
   }
 
   public navigateToEvent(event: OuterEventData | WoaEventList): void {
@@ -853,6 +865,14 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       }
       case 'loot': {
         this.initLootHistoryData();
+        break;
+      }
+      case 'glory': {
+        this.initContinuousAreaChart(
+          'glory',
+          this.translateService.instant('Points de gloire'),
+          this.data[ApiPlayerStatsType.glory],
+        );
         break;
       }
       default: {
@@ -1675,21 +1695,26 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     const allMightPoints = this.data['player_might_history'];
     const mightPoints = this.filterMightDataByPeriod(allMightPoints);
     // this.setGenericVariations(mightPoints);
-    const { dates, points } = this.getPointsAndDates(mightPoints);
     this.translateService.get('Points de puissance').subscribe((translated) => {
-      this.initChartOption('might', [{ name: translated, data: points }], ['#b08417']);
-      this.charts['might'].fill = {
-        type: 'gradient',
-        gradient: { type: 'vertical', opacityFrom: 0.5, opacityTo: 0.06 },
-      };
-      this.charts['might'].stroke = { width: 2.5 };
-      this.charts['might'].xaxis.categories = dates;
-      this.charts['might'].yaxis.min = undefined;
-      this.charts['might'].chart.height = 420;
-      this.charts['might'].chart.animations = {
-        enabled: false,
-      };
+      this.initContinuousAreaChart('might', translated, mightPoints);
     });
+  }
+
+  private initContinuousAreaChart(name: string, seriesName: string, rows: EventGenericVariation[]): void {
+    const { dates, points } = this.getPointsAndDates(rows);
+    this.initChartOption(name, [{ name: seriesName, data: points }], ['#b08417']);
+    const chart = this.charts[name];
+    chart.fill = {
+      type: 'gradient',
+      gradient: { type: 'vertical', opacityFrom: 0.5, opacityTo: 0.06 },
+    };
+    chart.stroke = { width: 2.5 };
+    chart.xaxis.categories = dates;
+    chart.yaxis.min = undefined;
+    chart.chart.height = 420;
+    chart.chart.animations = {
+      enabled: false,
+    };
   }
 
   private styleOverlaidPeriods(chart: ChartOptions, weekCount: number): void {
@@ -2293,6 +2318,9 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
         }
         this.cdr.detectChanges();
       });
+    }
+    if (fragment === 'glory') {
+      void this.ensureSeries('glory');
     }
     if (fragment === 'loot') {
       // The heatmap and the two activity charts read months of history, where the overview card reads weeks

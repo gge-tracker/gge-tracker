@@ -18,6 +18,7 @@ function server(name: string, olap: string, timezone = 'Europe/Paris', kind = 'e
   return {
     name,
     server: name,
+    outerName: name,
     zone: '',
     sql: '',
     olap,

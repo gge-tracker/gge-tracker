@@ -9,6 +9,8 @@ const useLocalI18n = true;
 export const environment = {
   production: false,
   apiUrl: 'http://localhost:3000/api/v1/',
+  chronicleApiUrl: 'http://localhost:3002/api/v1/',
+  chronicleEnabled: true,
   i18nBaseUrl: useLocalI18n ? '/i18n-local/' : 'https://gge-tracker.github.io/i18n-beta/',
 };
 

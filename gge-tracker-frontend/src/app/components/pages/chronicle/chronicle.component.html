@@ -1,0 +1,457 @@
+<div class="chronicle">
+  @switch (state()) {
+    @case ('loading') {
+      <p class="chronicle-message" role="status" [attr.dir]="direction">{{ t('loading') }}</p>
+    }
+    @case ('missing') {
+      <div class="chronicle-message" [attr.dir]="direction">
+        <h1>{{ t('noneTitle') }}</h1>
+        <p>{{ t('noneText', { year: year() }) }}</p>
+        <a class="action" routerLink="/">{{ t('home') }}</a>
+      </div>
+    }
+    @case ('too-recent') {
+      <div class="chronicle-message" [attr.dir]="direction">
+        <h1>{{ t('recentTitle') }}</h1>
+        <p>{{ t('recentText', { server: server(), date: trackedSince() }) }}</p>
+        <a class="action" [routerLink]="['/player', playerId()]">{{ t('backPlayer') }}</a>
+      </div>
+    }
+    @case ('ready') {
+      @if (player(); as hero) {
+        <section class="story" aria-roledescription="story" (click)="onStoryClick($event)">
+          @for (item of slides(); track item; let position = $index) {
+            <div class="scene" [class.is-active]="position === index()">
+              @if (isSceneLoaded(position)) {
+                <picture>
+                  <source
+                    media="(orientation: portrait)"
+                    [attr.srcset]="'/assets/chronicle/backdrops/' + scene(item) + '-tall.webp'"
+                  />
+                  <img [src]="'/assets/chronicle/backdrops/' + scene(item) + '-wide.webp'" alt="" decoding="async" />
+                </picture>
+              }
+            </div>
+          }
+          <div class="shade"></div>
+          <div class="embers" aria-hidden="true">
+            @for (ember of embers; track $index) {
+              <span
+                [style.left.%]="ember.left"
+                [style.width.px]="ember.size"
+                [style.height.px]="ember.size"
+                [style.animation-delay.s]="ember.delay"
+                [style.animation-duration.s]="ember.duration"
+              ></span>
+            }
+          </div>
+          @for (key of [index()]; track key) {
+            <div class="sweep" aria-hidden="true"></div>
+          }
+
+          <div class="pages" aria-hidden="true">
+            @for (item of slides(); track item; let position = $index) {
+              <span class="tick" [class.done]="position < index()" [class.now]="position === index()"><i></i></span>
+            }
+          </div>
+          <div class="chrome">
+            <button
+              type="button"
+              class="round"
+              [attr.aria-label]="t(musicOn() ? 'musicOff' : 'musicOn')"
+              [attr.aria-pressed]="musicOn()"
+              (click)="toggleMusic()"
+            >
+              <i class="fas" [class.fa-volume-high]="musicOn()" [class.fa-volume-xmark]="!musicOn()"></i>
+            </button>
+            <button type="button" class="round" [attr.aria-label]="root('Fermer')" (click)="close()"><i class="fas fa-xmark"></i></button>
+          </div>
+          @if (index() > 0) {
+            <button type="button" class="side prev" [attr.aria-label]="t('prev')" (click)="previous()">
+              <i class="fas fa-chevron-left"></i>
+            </button>
+          }
+          @if (index() < slides().length - 1) {
+            <button type="button" class="side next" [attr.aria-label]="t('next')" (click)="next()">
+              <i class="fas fa-chevron-right"></i>
+            </button>
+          }
+
+          @for (key of [index()]; track key) {
+            <div class="body" [class.leaving]="leaving()" [attr.dir]="direction" aria-live="polite">
+              @switch (slide()) {
+                @case ('cover') {
+                  <p class="eyebrow">{{ t('title', { year: year() }) }}</p>
+                  <h1 class="title" dir="auto">{{ hero.name }}</h1>
+                  <p class="lead" dir="auto">
+                    {{ server() }}@if (hero.alliance.name) {
+                      &middot; {{ hero.alliance.name }}
+                    }
+                  </p>
+                  @if (isNearlyEmpty()) {
+                    <p class="intro">{{ t('introEmpty') }}</p>
+                  } @else if (arrivalDay()) {
+                    <p class="intro">{{ t('introJoined', { date: arrivalDay() }) }}</p>
+                  } @else {
+                    <p class="intro">{{ t('intro', { count: grouped(hero.hours) }) }}</p>
+                  }
+                  @if (chronicle()?.tier === 'season') {
+                    <p class="note">{{ t('seasonNote', { date: trackedSince(), server: server() }) }}</p>
+                  }
+                  <div class="cover-actions">
+                    <button type="button" class="action primary" (click)="begin(true)">
+                      <i class="fas fa-book-open"></i> {{ t('openMusic') }}
+                    </button>
+                    <button type="button" class="action quiet" (click)="begin(false)">{{ t('openQuiet') }}</button>
+                  </div>
+                }
+                @case ('climb') {
+                  <p class="eyebrow">{{ t('mightEye') }}</p>
+                  <p class="hero" [appCountUp]="hero.might.gain" countPrefix="+"></p>
+                  <p class="lead">{{ t('mightLead', { year: year() }) }}</p>
+                  <app-chronicle-curve
+                    [series]="climbSeries()"
+                    [months]="hero.might.months"
+                    [label]="t('mightChart')"
+                  />
+                  @if (rankGain() > 0) {
+                    <p class="pill">
+                      <i class="fas fa-arrow-trend-up"></i>
+                      {{ t('rankMove', { server: server(), from: grouped(hero.might.rankStart!), to: grouped(hero.might.rankEnd!) }) }}
+                    </p>
+                  }
+                  @if (showsBestRank()) {
+                    <p class="pill">
+                      <i class="fas fa-mountain-sun"></i> {{ t('bestRank', { rank: grouped(hero.might.rankBest!), month: bestRankMonth() }) }}
+                    </p>
+                  }
+                  @if (showsMeter(hero.might.higherThanPct)) {
+                    <app-chronicle-meter
+                      [higherThanPct]="hero.might.higherThanPct"
+                      [rank]="hero.might.rank"
+                      [of]="hero.might.of"
+                      [server]="server()"
+                    />
+                  }
+                }
+                @case ('summit') {
+                  <p class="eyebrow">{{ t('peakEye') }}</p>
+                  <p class="hero" [appCountUp]="hero.might.peak"></p>
+                  <p class="lead">{{ t('peakLead') }}</p>
+                  <app-chronicle-curve
+                    [series]="hero.might.monthly"
+                    [months]="hero.might.months"
+                    [label]="t('peakLead')"
+                  />
+                  @if (hero.might.rankBest) {
+                    <p class="pill">
+                      <i class="fas fa-mountain-sun"></i> {{ t('bestRank', { rank: grouped(hero.might.rankBest), month: bestRankMonth() }) }}
+                    </p>
+                  }
+                }
+                @case ('great-day') {
+                  <p class="eyebrow">{{ t('dayEye') }}</p>
+                  <h2 class="heading">{{ day(hero.might.bestDay) }}</h2>
+                  <p class="hero small" [appCountUp]="hero.might.bestDayGain" countPrefix="+"></p>
+                  <p class="lead">{{ t('dayLead') }}</p>
+                  <div class="duo">
+                    <app-chronicle-day [day]="hero.might.bestDay!" />
+                    <div class="duo-ring">
+                      <app-chronicle-ring [share]="shareOfYear()" />
+                      <p>{{ t('dayShare') }}</p>
+                    </div>
+                  </div>
+                  @if (ordinaryDays() >= 2) {
+                    <p class="pill"><i class="fas fa-bolt"></i> {{ t('dayTimes', { times: ordinaryDays() }) }}</p>
+                  }
+                }
+                @case ('plunder') {
+                  <p class="eyebrow">{{ t('lootEye') }}</p>
+                  <p class="hero" [appCountUp]="hero.loot.total"></p>
+                  <p class="lead">{{ t('lootLead') }}</p>
+                  <app-chronicle-weeks
+                    [series]="hero.loot.weekly"
+                    [label]="bestWeekText()"
+                  />
+                  <p class="pill">
+                    <i class="fas fa-crown"></i> {{ bestWeekText() }}
+                  </p>
+                  @if (showsMeter(hero.loot.higherThanPct)) {
+                    <app-chronicle-meter
+                      [higherThanPct]="hero.loot.higherThanPct"
+                      [rank]="hero.loot.rank"
+                      [of]="hero.loot.of"
+                      [server]="server()"
+                    />
+                  }
+                }
+                @case ('battlefield') {
+                  <p class="eyebrow">{{ t('eventsEye') }}</p>
+                  <p class="hero" [appCountUp]="hero.events.runs" countStyle="grouped"></p>
+                  <p class="lead">{{ t('eventsLead') }}</p>
+                  <ul class="events">
+                    @for (row of eventRows(); track row.key; let position = $index) {
+                      <li [class.favourite]="row.favourite">
+                        <span class="event-name">
+                          @if (row.favourite) {
+                            <i class="fas fa-star"></i>
+                          }
+                          {{ row.name }}
+                        </span>
+                        <span class="event-bar">
+                          <span [style.width.%]="row.width" [style.--i]="position"></span>
+                        </span>
+                        <span class="event-runs">&times;{{ row.runs }}</span>
+                        <span class="event-best">{{ t('eventBest', { rank: grouped(row.bestRank) }) }}</span>
+                      </li>
+                    }
+                  </ul>
+                  @if (hero.events.podiums > 0) {
+                    <p class="pill">
+                      <i class="fas fa-trophy"></i> {{ t('podiums', { count: hero.events.podiums }) }}
+                    </p>
+                  } @else if (hero.events.bestRank && hero.events.runs >= 3) {
+                    <p class="pill">
+                      <i class="fas fa-medal"></i> {{ t('bestFinish', { rank: grouped(hero.events.bestRank), event: bestEventName() }) }}
+                    </p>
+                  }
+                  @if (showsMeter(hero.events.higherThanPct)) {
+                    <app-chronicle-meter
+                      [higherThanPct]="hero.events.higherThanPct"
+                      [rank]="hero.events.rank"
+                      [of]="hero.events.of"
+                      [server]="server()"
+                    />
+                  }
+                }
+                @case ('beyond') {
+                  @if (worldBest(); as top) {
+                    <p class="eyebrow">{{ t('worldEye') }}</p>
+                    <p class="hero" [appCountUp]="top.event.bestRank" countStyle="grouped" countPrefix="#"></p>
+                    <p class="lead">{{ t('worldLead', { event: top.name }) }}</p>
+                    <app-chronicle-world
+                      [outer]="worldSeries(hero.world.outerRealms)"
+                      [horizon]="worldSeries(hero.world.horizon)"
+                      [months]="yearMonths()"
+                      [label]="t('worldChart')"
+                    />
+                    <div class="world-cards">
+                      @for (card of worldCards(); track card.key) {
+                        <div class="world-card">
+                          <span class="world-name"><span class="key" [class.mine]="card.key === 'outer'" [class.rival]="card.key === 'horizon'"></span>{{ card.name }}</span>
+                          <b>#{{ grouped(card.event.bestRank) }}</b>
+                          <span class="world-more">{{ t('worldStats', { events: card.event.events, score: compact(card.event.bestPoint) }) }}</span>
+                        </div>
+                      }
+                    </div>
+                    @if (showsMeter(top.event.higherThanPct)) {
+                      <app-chronicle-meter
+                        [higherThanPct]="top.event.higherThanPct"
+                        [rank]="top.event.rank"
+                        [of]="top.event.of"
+                        [server]="server()"
+                        [everyone]="t('worldAll')"
+                        [detailText]="worldDetail(top)"
+                      />
+                    }
+                  }
+                }
+                @case ('glory') {
+                  <p class="eyebrow">{{ t('gloryEye') }}</p>
+                  <h2 class="heading">{{ gloryTitleName() }}</h2>
+                  <p class="hero small" [appCountUp]="hero.glory.current" countStyle="grouped"></p>
+                  <p class="lead">{{ root('Points de gloire') }}</p>
+                  @if (gloryRungs().length > 0) {
+                    <app-chronicle-ladder [rungs]="gloryRungs()" />
+                  }
+                  @if (nextGloryStep()) {
+                    <p class="pill"><i class="fas fa-angles-up"></i> {{ nextGloryStep() }}</p>
+                  } @else {
+                    <p class="pill"><i class="fas fa-crown"></i> {{ t('topTitle') }}</p>
+                  }
+                  @if (hero.glory.highest > hero.glory.current) {
+                    <p class="note">
+                      {{ t('gloryBest', { points: grouped(hero.glory.highest) }) }}
+                      @if (hero.glory.rank > 0) {
+                        {{ t('gloryToday', { rank: grouped(hero.glory.rank) }) }}
+                      }
+                    </p>
+                  }
+                  @if (showsMeter(hero.glory.best.higherThanPct)) {
+                    <app-chronicle-meter
+                      [higherThanPct]="hero.glory.best.higherThanPct"
+                      [rank]="hero.glory.best.rank"
+                      [of]="hero.glory.best.of"
+                      [server]="server()"
+                      [detailText]="t('meterBestRank', { rank: grouped(hero.glory.best.rank), of: grouped(hero.glory.best.of) })"
+                    />
+                  }
+                }
+                @case ('rhythm') {
+                  <p class="eyebrow">{{ t('yearEye') }}</p>
+                  <p class="hero" [appCountUp]="hero.rhythm.activeDays" countStyle="grouped"></p>
+                  <p class="lead">{{ t('yearLead', { total: windowDays() }) }}</p>
+                  <div class="panel">
+                    <app-chronicle-calendar
+                      [calendar]="hero.rhythm.calendar"
+                      [year]="year()"
+                      [startIndex]="storyStartIndex()"
+                      [label]="t('yearLead', { total: windowDays() })"
+                    />
+                    <p class="legend">
+                      <span class="key streak"></span> {{ t('legendStreak') }} <span class="key on"></span> {{ t('legendActive') }}
+                      <span class="key off"></span> {{ t('legendQuiet') }}
+                    </p>
+                  </div>
+                  <p class="pill">
+                    <i class="fas fa-fire"></i> {{ t('streak', { count: hero.rhythm.longestStreak }) }}
+                  </p>
+                  @if (showsMeter(hero.rhythm.higherThanPct)) {
+                    <app-chronicle-meter
+                      [higherThanPct]="hero.rhythm.higherThanPct"
+                      [rank]="hero.rhythm.rank"
+                      [of]="hero.rhythm.of"
+                      [server]="server()"
+                    />
+                  }
+                }
+                @case ('hours') {
+                  <p class="eyebrow">{{ t('hoursEye') }}</p>
+                  <h2 class="heading">{{ hoursHeading() }}</h2>
+                  <app-chronicle-clock
+                    [hourly]="hero.rhythm.hourly"
+                    [center]="isConstant() ? t('allDay') : busiestWindow().start + 'h-' + ((busiestWindow().start + 6) % 24) + 'h'"
+                    [caption]="t(isConstant() ? 'noFavourite' : 'yourHours')"
+                    [windowStart]="isConstant() ? null : busiestWindow().start"
+                    [label]="hoursHeading()"
+                  />
+                  <p class="caption">{{ t('hoursCaption', { server: server() }) }}</p>
+                  @if (isConstant()) {
+                    <p class="pill">
+                      <i class="fas fa-infinity"></i> {{ t('hoursEven', { pct: busiestPct() }) }}
+                    </p>
+                  } @else {
+                    <p class="pill">
+                      <i class="fas fa-hourglass-half"></i> {{ hoursWindowText() }}
+                    </p>
+                  }
+                }
+                @case ('banner') {
+                  <p class="eyebrow">{{ t('allyEye') }}</p>
+                  <h2 class="heading" dir="auto">{{ hero.alliance.name }}</h2>
+                  @if (hero.alliance.timeline.length === 1) {
+                    <p class="lead">{{ t('allyOne') }}</p>
+                  } @else {
+                    <p class="lead">{{ t('allyChapters', { count: hero.alliance.timeline.length }) }}</p>
+                  }
+                  <app-chronicle-ribbon [segments]="hero.alliance.timeline" />
+                  <p class="pill">
+                    <i class="fas fa-shield-halved"></i>
+                    {{ t('allyDays', { count: grouped(hero.alliance.daysUnderCurrent) }) }}
+                  </p>
+                }
+                @case ('rival') {
+                  <p class="eyebrow">{{ t('rivalEye') }}</p>
+                  <a class="heading rival-link" dir="auto" [routerLink]="['/chronicle', year(), hero.rival?.id]">{{
+                    hero.rival?.name
+                  }}</a>
+                  <p class="lead">{{ t('rivalLead') }}</p>
+                  <p class="note">
+                    {{ t('rivalMonths', { near: hero.rival?.monthsNear, ahead: hero.rival?.monthsAhead, total: hero.rival?.monthsCompared }) }}
+                  </p>
+                  <app-chronicle-curve
+                    [series]="hero.might.monthly"
+                    [months]="hero.might.months"
+                    [rival]="hero.rival?.monthly ?? null"
+                    [label]="t('rivalChart')"
+                  />
+                  <p class="legend centered">
+                    <span class="key mine"></span> {{ t('you') }} <span class="key rival"></span> {{ hero.rival?.name }}
+                  </p>
+                  <div class="scores">
+                    <div class="score-heads"><span>{{ t('you') }}</span><span dir="auto">{{ hero.rival?.name }}</span></div>
+                    @for (row of scoreRows(); track row.label; let position = $index) {
+                      <div class="score" [style.--i]="position">
+                        <b class="side-mine" [class.win]="row.won">{{ row.mine }}</b>
+                        <span class="score-bar left"><span [style.width.%]="row.mineWidth" [class.win]="row.won"></span></span>
+                        <span class="score-label">{{ row.label }}</span>
+                        <span class="score-bar right"><span [style.width.%]="row.theirsWidth" [class.win]="row.lost"></span></span>
+                        <b class="side-theirs" [class.win]="row.lost">{{ row.theirs }}</b>
+                      </div>
+                    }
+                  </div>
+                  <p class="verdict">{{ scoreVerdict() }}</p>
+                }
+                @case ('persona') {
+                  <p class="eyebrow">{{ t('verdictEye') }}</p>
+                  <h2 class="title">{{ persona()?.title }}</h2>
+                  <p class="lead">{{ persona()?.line }}</p>
+                  @if (showsProfile()) {
+                    <app-chronicle-radar [axes]="profileAxes()" [label]="t('profileChart')" />
+                    <p class="caption">{{ t('profileCaption', { server: server() }) }}</p>
+                  }
+                  <p class="pill"><i class="fas fa-feather-pointed"></i> {{ personaReason() }}</p>
+                }
+                @case ('wall') {
+                  <p class="eyebrow">{{ t('wallEye', { year: year() }) }}</p>
+                  <h2 class="heading">{{ t(isNearlyEmpty() ? 'wallFirst' : 'wallShare') }}</h2>
+                  <div class="wall-frame" [class.is-ready]="cardState() === 'ready'">
+                    <img
+                      class="wall-card"
+                      [src]="imageUrl('link')"
+                      [alt]="hero.name + ' - ' + t('title', { year: year() })"
+                      width="1200"
+                      height="630"
+                      (load)="cardState.set('ready')"
+                      (error)="cardState.set('failed')"
+                    />
+                    @if (cardState() === 'loading') {
+                      <div class="wall-loader" role="status">
+                        <span class="seal"><i class="fas fa-feather-pointed"></i></span>
+                        <span>{{ t('sealing') }}</span>
+                      </div>
+                    }
+                    @if (cardState() === 'failed') {
+                      <div class="wall-loader" role="alert"><span>{{ t('cardFailed') }}</span></div>
+                    }
+                  </div>
+                  <div class="wall-actions">
+                    <button type="button" class="action primary" (click)="copyImage()">
+                      <i class="fas fa-copy"></i> {{ t('copyImage') }}
+                    </button>
+                    <button type="button" class="action" (click)="copyLink()"><i class="fas fa-link"></i> {{ root('Copier le lien') }}</button>
+                    <button type="button" class="action" (click)="download('link')">
+                      <i class="fas fa-download"></i> {{ t('download') }}
+                    </button>
+                    @if (canShareFiles) {
+                      <button type="button" class="action" (click)="shareStory()">
+                        <i class="fas fa-share-nodes"></i> {{ t('shareStory') }}
+                      </button>
+                    } @else {
+                      <button type="button" class="action" (click)="download('story')">
+                        <i class="fas fa-mobile-screen"></i> {{ t('storyImage') }}
+                      </button>
+                    }
+                  </div>
+                  <div class="wall-foot">
+                    <button type="button" class="action quiet" (click)="restart()">
+                      <i class="fas fa-rotate-left"></i> {{ t('readAgain') }}
+                    </button>
+                    <span class="credit">
+                      {{ t('music') }} <a href="https://opengameart.org/content/enchanted-festival" target="_blank" rel="noopener">Enchanted Festival</a> &middot;
+                      <a href="https://www.matthewpablo.com" target="_blank" rel="noopener">Matthew Pablo</a>
+                      (<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC-BY 3.0</a>)
+                    </span>
+                  </div>
+                }
+              }
+              @if (quip(); as note) {
+                <p class="quip"><i class="fas fa-feather-pointed"></i> {{ note }}</p>
+              }
+            </div>
+          }
+        </section>
+      }
+    }
+  }
+</div>

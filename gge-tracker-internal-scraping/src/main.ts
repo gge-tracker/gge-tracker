@@ -230,6 +230,8 @@ export interface DiscordApiMessageBody {
  * This file contains a lot of legacy code that needs to be refactored and cleaned up.
  * Comments and logs should be standardized to English.
  */
+const GLORY_HISTORY_MIN_LEVEL = 70;
+
 export class GenericFetchAndSaveBackend {
   private static readonly GLOBAL_REGION_PATTERN = /^[a-z0-9_]+$/;
   private static readonly PG_TRANSIENT_ERRORS = [
@@ -1056,6 +1058,7 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('* Processing Might points (8/9)');
       await this.fillMightPointsHistory();
       await this.updateParameter('might', 1);
+      await this.fillGloryHistory();
       await new Promise((resolve) => setTimeout(resolve, 1000));
       Utils.logMessage('* Updating player might and loot current/total (9/9)');
       await this.updatePlayersMightAndLoot();
@@ -3580,6 +3583,23 @@ export class GenericFetchAndSaveBackend {
     } catch (error) {
       Utils.logCritical('012', error, ' [KO] Final error occurred while processing statistics');
       this.DB_UPDATES.criticalErrors++;
+    }
+  }
+
+  private async fillGloryHistory(): Promise<void> {
+    if (this.DB_UPDATES.criticalErrors > 0) return;
+    const createdAt = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
+    const rows = Object.entries(this.playerLootAndMightPointHistoryList).flatMap(([playerId, history]) => {
+      if (!(Number(history[8]) >= GLORY_HISTORY_MIN_LEVEL)) return [];
+      const currentFame = Number(history[11]) || 0;
+      const highestFame = Number(history[10]) || 0;
+      if (currentFame <= 0 && highestFame <= 0) return [];
+      return [{ player_id: Number(playerId), point: currentFame, created_at: createdAt }];
+    });
+    try {
+      await this.insertRowsClickHouse('player_glory_history', rows, { maxAttempts: 1 });
+    } catch (error) {
+      Utils.logMessage(' [warn] Glory history not stored:', String(error));
     }
   }
 

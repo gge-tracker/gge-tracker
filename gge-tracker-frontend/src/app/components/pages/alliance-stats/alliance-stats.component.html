@@ -408,7 +408,7 @@
           @for (config of statsCardConfigs; track config) {
             <div class="col-12 col-lg-6 mt-4">
               @if (charts[config.chartKey]) {
-<app-player-stats-card [charts]="config.chartKey === 'might' ?
+<app-player-stats-card [charts]="config.singleChart ?
             {
               'Evolution': charts[config.chartKey]!,
               'Données': null,

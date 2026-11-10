@@ -1,0 +1,15 @@
+@if (discovery.promoted) {
+  <a class="cta" [class]="'cta--' + variant()" [class.cta--fresh]="!discovery.opened()" data-chronicle-anchor
+    [routerLink]="['/chronicle', year, playerId()]">
+    <span class="cta-seal" aria-hidden="true"><i class="fas fa-scroll"></i></span>
+    <span class="cta-text">
+      @if (variant() === 'hero') {
+        <span class="cta-eyebrow">{{ 'chronicle.entrySub' | translate }}</span>
+      }
+      <span class="cta-title">{{ 'chronicle.title' | translate: { year: year } }}</span>
+    </span>
+    @if (!discovery.opened()) {
+      <span class="cta-new">{{ 'chronicle.introNew' | translate }}</span>
+    }
+  </a>
+}
