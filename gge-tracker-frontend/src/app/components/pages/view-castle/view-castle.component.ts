@@ -1,4 +1,4 @@
-import { DecimalPipe, NgClass, NgStyle } from '@angular/common';
+import { DecimalPipe, NgStyle } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -49,8 +49,9 @@ import {
   ProducedResource,
   ResourceEstimate,
 } from './castle-production-estimator';
-import { formatThousands } from '@ggetracker-services/text-format.utilities';
+import { formatThousands, punctuate } from '@ggetracker-services/text-format.utilities';
 import Modal from 'bootstrap/js/dist/modal';
+import { PunctuationPipe } from '@ggetracker-pipes/punctuation.pipe';
 
 type CastleFilterValue = number | string | null;
 
@@ -90,9 +91,9 @@ interface ConstructionEffect {
 @Component({
   selector: 'app-view-castle',
   imports: [
+    PunctuationPipe,
     CastleRosterComponent,
     TranslatePipe,
-    NgClass,
     DecimalPipe,
     LucideAngularModule,
     LoadingComponent,
@@ -1926,7 +1927,8 @@ export class ViewCastleComponent extends GenericComponent implements OnInit {
 
     const sign = Number(value) > 0 ? '+' : '-';
     const isFlatAmount = String(effect['name']).includes('Unboosted') || String(effect['name']).includes('Amount');
-    return String(template) + ' : ' + sign + value + (isFlatAmount ? '' : '%');
+    const label = punctuate(String(template), ':', this.langageService.getCurrentLang());
+    return label + ' ' + sign + value + (isFlatAmount ? '' : '%');
   }
 
   private resolveCompositeEffectLabel(effect: Record<string, any>, value: string): EffectLabel | null {

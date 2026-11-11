@@ -27,6 +27,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import { LucideAngularModule, MessageCircleQuestion, Search, X } from 'lucide-angular';
 import { DUNGEON_REALMS, DungeonMapComponent, DungeonMapFocus } from './dungeon-map/dungeon-map.component';
 import Modal from 'bootstrap/js/dist/modal';
+import { PunctuationPipe } from '@ggetracker-pipes/punctuation.pipe';
 
 interface DungeonAttackHistory extends ApiDungeonsAttackHistory {
   image: string;
@@ -36,6 +37,7 @@ interface DungeonAttackHistory extends ApiDungeonsAttackHistory {
 @Component({
   selector: 'app-tracker',
   imports: [
+    PunctuationPipe,
     NgClass,
     TableComponent,
     LucideAngularModule,

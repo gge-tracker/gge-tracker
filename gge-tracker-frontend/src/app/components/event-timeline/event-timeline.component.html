@@ -16,14 +16,14 @@
         }
       </div>
       @if (estimatedEnd(); as end) {
-        <span class="timeline-fact">{{ 'Fin estimée' | translate }} : <strong>{{ end | date: 'EEE d MMM, HH:mm' }}</strong></span>
+        <span class="timeline-fact">{{ 'Fin estimée' | translate | punctuation: ':' }} <strong>{{ end | date: 'EEE d MMM, HH:mm' }}</strong></span>
       }
-      <span class="timeline-fact timeline-muted">{{ 'Dernière lecture' | translate }} : {{ live.end | date: 'EEE HH:mm' }}</span>
+      <span class="timeline-fact timeline-muted">{{ 'Dernière lecture' | translate | punctuation: ':' }} {{ live.end | date: 'EEE HH:mm' }}</span>
     } @else {
       <span class="timeline-badge"><i class="fa-regular fa-calendar" aria-hidden="true"></i>
         {{ 'Aucune édition en cours' | translate }}</span>
       @if (lastEdition(); as last) {
-        <span class="timeline-fact timeline-muted">{{ 'Dernière édition' | translate }} :
+        <span class="timeline-fact timeline-muted">{{ 'Dernière édition' | translate | punctuation: ':' }}
           {{ last.start | date: 'd MMM' }} – {{ last.end | date: 'd MMM' }}</span>
       }
     }

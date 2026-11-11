@@ -27,6 +27,7 @@ import {
   RealmMapPoint,
   REALM_WORLD_EXTENT,
 } from './realm-map.models';
+import { PunctuationPipe } from '@ggetracker-pipes/punctuation.pipe';
 
 const COORDINATES_PATTERN = /^\s*(\d{1,4})\s*[\s,/:;]\s*(\d{1,4})\s*$/;
 const SUGGESTION_DELAY_MS = 250;
@@ -34,7 +35,7 @@ const SUGGESTION_DELAY_MS = 250;
 @Component({
   selector: 'app-realm-map-shell',
   standalone: true,
-  imports: [FormsModule, TranslateModule, DatePipe, DecimalPipe, RealmMapComponent],
+  imports: [PunctuationPipe, FormsModule, TranslateModule, DatePipe, DecimalPipe, RealmMapComponent],
   templateUrl: './realm-map-shell.component.html',
   styleUrl: './realm-map-shell.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -32,7 +32,7 @@ export class CooldownPipe implements PipeTransform, OnDestroy {
       }, 1000);
     });
     this.translateService
-      .get(['jours_j', 'heures_h', 'minutes_m', 'secondes_s', 'Attaquable', 'depuis'])
+      .get(['jours_j', 'heures_h', 'minutes_m', 'secondes_s', 'Attaquable'])
       .subscribe((translations) => {
         this.translations = {
           jours: translations['jours_j'],
@@ -40,7 +40,6 @@ export class CooldownPipe implements PipeTransform, OnDestroy {
           minutes: translations['minutes_m'],
           secondes: translations['secondes_s'],
           Attaquable: translations['Attaquable'],
-          depuis: translations['depuis'],
         };
       });
   }
@@ -77,15 +76,17 @@ export class CooldownPipe implements PipeTransform, OnDestroy {
     if (Math.floor(elapsed / 3_600_000) > 480_000) {
       return this.translations['Attaquable'] + ' (?)';
     }
-    return (
-      this.translations['Attaquable'] + ' (' + this.translations['depuis'] + ' ' + this.formatElapsedTime(elapsed) + ')'
-    );
+    return this.translations['Attaquable'] + ' (' + this.since(this.formatElapsedTime(elapsed)) + ')';
   }
 
   private formatElapsed(elapsed: number, target: CooldownTarget): string {
     if (elapsed <= 0) return '';
     const atLeast = target.availableSinceObserved === false ? '≥ ' : '';
-    return this.translations['depuis'] + ' ' + atLeast + this.formatElapsedTime(elapsed);
+    return this.since(atLeast + this.formatElapsedTime(elapsed));
+  }
+
+  private since(duration: string): string {
+    return this.translateService.instant('depuis 0', { duration });
   }
 
   private formatElapsedTime(elapsed: number): string {

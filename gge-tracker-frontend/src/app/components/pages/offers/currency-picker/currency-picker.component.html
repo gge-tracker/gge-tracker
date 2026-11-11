@@ -1,6 +1,6 @@
 <div class="currency-picker" [class.currency-picker--open]="isOpen()" (keydown)="onKeydown($event)">
   <button type="button" class="currency-trigger" [disabled]="disabled()" [attr.aria-expanded]="isOpen()"
-    [attr.aria-label]="('Devise' | translate) + ' : ' + (current()?.name ?? '')" aria-haspopup="listbox"
+    [attr.aria-label]="('Devise' | translate | punctuation: ':') + ' ' + (current()?.name ?? '')" aria-haspopup="listbox"
     (click)="toggle()">
     <span class="currency-symbol" aria-hidden="true">{{ current()?.symbol }}</span>
     <span class="currency-trigger__text">

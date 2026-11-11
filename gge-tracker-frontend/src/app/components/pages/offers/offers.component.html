@@ -92,7 +92,7 @@
           @if (failedCategories.length > 0) {
           <div class="offers-notice">
             <i class="fa-solid fa-circle-info"></i>
-            <em>{{ 'La boutique n\'a pas répondu pour certaines catégories' | translate }} : {{
+            <em>{{ 'La boutique n\'a pas répondu pour certaines catégories' | translate | punctuation: ':' }} {{
               failedCategories.join(', ') }}</em>
           </div>
           }

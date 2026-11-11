@@ -9,12 +9,12 @@
 
       <div class="px-card">
         <div class="px-card-header">
-          {{ 'Nom du joueur' | translate }}: {{ player().player_name }} ({{ player().server }})
+          {{ 'Nom du joueur' | translate | punctuation: ':' }} {{ player().player_name }} ({{ player().server }})
         </div>
 
         <div class="px-card-body">
           <p>
-            <strong>{{ 'Niveau' | translate }}:</strong> {{ player().level }}
+            <strong>{{ 'Niveau' | translate | punctuation: ':' }}</strong> {{ player().level }}
             @if (player().legendary_level) {
               <span>/ {{ player().legendary_level }}</span>
             }

@@ -183,8 +183,8 @@
     </div>
     @if (tooltipVisible) {
     <div id="tooltip" [style.top.px]="tooltipY" [style.left.px]="tooltipX">
-      <strong>{{ 'Coordonnées' | translate }} :</strong> {{ tooltipData.coords }} <br>
-      <strong>{{ 'Points de puissance' | translate }} :</strong> {{ tooltipData.pp | formatNumber }} <br>
+      <strong>{{ 'Coordonnées' | translate | punctuation: ':' }}</strong> {{ tooltipData.coords }} <br>
+      <strong>{{ 'Points de puissance' | translate | punctuation: ':' }}</strong> {{ tooltipData.pp | formatNumber }} <br>
       <strong>{{ 'Joueurs' | translate }} ({{tooltipData.players.length}}):</strong>
       <ul>
         @for (player of tooltipData.players.slice(0, 5); track $index) {
@@ -310,7 +310,7 @@
                 [attr.aria-label]="legend.name">
               @if (watchModeAlliance !== 'one') {
               <button class="btn btn-outline-danger btn-sm"
-                [title]="('Supprimer' | translate) + ' ' + (legend.name === '1' ? ('Sans alliance' | translate) : legend.name)"
+                [title]="('Supprimer' | translate | punctuation: ':') + ' ' + (legend.name === '1' ? ('Sans alliance' | translate) : legend.name)"
                 (click)="removeItem(legend.name)">
                 <i class="fa-solid fa-trash"></i>
               </button>

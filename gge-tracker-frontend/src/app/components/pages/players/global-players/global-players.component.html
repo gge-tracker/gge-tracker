@@ -44,7 +44,7 @@
                 </span>
               } @else {
                 <span class="badge-ban"
-                  [title]="'Banni jusqu\'au ' + (player.peace_disabled_at | date: ('Date_3' | translate))">
+                  [title]="('Banni jusqu\'au' | translate) + ' ' + (player.peace_disabled_at | date: ('Date_3'))">
                   <i class="fa-solid fa-ban"></i>
                   <span>&nbsp;{{ 'Banni' | translate }}</span>
                 </span>

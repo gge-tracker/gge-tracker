@@ -9,6 +9,8 @@ import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { IconComponent } from '@ggetracker-components/icon/icon.component';
 import { ErrorType } from '@ggetracker-interfaces/empire-ranking';
+import { PunctuationPipe } from '@ggetracker-pipes/punctuation.pipe';
+import { punctuate } from '@ggetracker-services/text-format.utilities';
 
 interface DailyTarget {
   id: string;
@@ -46,7 +48,7 @@ interface GuessResult {
 
 @Component({
   selector: 'app-guess-daily-player',
-  imports: [NgClass, FormsModule, TranslatePipe, DecimalPipe, FormatNumberPipe, IconComponent],
+  imports: [PunctuationPipe, NgClass, FormsModule, TranslatePipe, DecimalPipe, FormatNumberPipe, IconComponent],
   standalone: true,
   templateUrl: './guess-daily-player.component.html',
   styleUrls: ['./guess-daily-player.component.css'],
@@ -236,13 +238,18 @@ export class GuessDailyPlayerComponent extends GenericComponent implements OnIni
       return `${stats} (${distribution}m)`;
     });
 
+    const lang = this.langageService.getCurrentLang();
+    const triesLabel = punctuate(this.translateService.instant('Tentatives'), ':', lang);
+    const outcome = this.isWin
+      ? punctuate(this.translateService.instant('Joueur trouvé'), '!', lang)
+      : this.translateService.instant('Perdu');
     return [
       `🗺️ GGE Daily Player #${date} (${this.dailyTarget?.server})`,
-      ` Tries: ${this.isWin ? attempts : 'X'}/${max === Infinity ? '∞' : max}`,
+      ` ${triesLabel} ${this.isWin ? attempts : 'X'}/${max === Infinity ? '∞' : max}`,
       '',
       ...lines,
       '',
-      this.isWin ? 'Found the player!' : 'Better luck tomorrow!',
+      outcome,
       'https://gge-tracker.com/guess',
     ].join('\n');
   }

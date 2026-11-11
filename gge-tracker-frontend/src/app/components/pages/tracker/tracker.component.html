@@ -86,7 +86,7 @@
         @if (view === 'list' && dungeonsMeta && dungeonsMeta.last_scan_at) {
         <div class="dungeons-status">
           <i class="fa-solid fa-satellite-dish"></i>
-          <span>{{ 'Dernier scan' | translate }} : {{ dungeonsMeta.last_scan_at | date:'short' }}</span>
+          <span>{{ 'Dernier scan' | translate | punctuation: ':' }} {{ dungeonsMeta.last_scan_at | date:'short' }}</span>
         </div>
         }
         @if (view === 'map') {

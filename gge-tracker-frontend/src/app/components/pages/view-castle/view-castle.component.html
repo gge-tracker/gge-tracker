@@ -412,11 +412,11 @@
                               <em>{{ selectedItem.constructionItems[i]['rarenessName'] }}</em>
                             </li>
                             <hr>
-                              <li><b>{{ 'Niveau' | translate }}:</b> {{ selectedItem.constructionItems[i]['level'] ?? ('Aucun' | translate) }}
+                              <li><b>{{ 'Niveau' | translate | punctuation: ':' }}</b> {{ selectedItem.constructionItems[i]['level'] ?? ('Aucun' | translate) }}
                             </li>
-                            <li><b>{{ 'Effet' | translate }}:</b> {{ selectedItem.constructionItems[i]['effect'] ?? ('Aucun' | translate) }}
+                            <li><b>{{ 'Effet' | translate | punctuation: ':' }}</b> {{ selectedItem.constructionItems[i]['effect'] ?? ('Aucun' | translate) }}
                           </li>
-                          <li><b>{{ 'Commentaires' | translate }} :</b> {{ selectedItem.constructionItems[i]['comment2'] ??
+                          <li><b>{{ 'Commentaires' | translate | punctuation: ':' }}</b> {{ selectedItem.constructionItems[i]['comment2'] ??
                           ('Aucun' | translate) }}
                         </li>
                       </ul>
@@ -431,28 +431,28 @@
             </div>
             <div class="row g-3 text-center pb-3">
               <div class="col-6 col-md-4">
-                <span class="stat-label">{{ 'Ordre public' | translate }}:</span>
+                <span class="stat-label">{{ 'Ordre public' | translate | punctuation: ':' }}</span>
                 <span class="stat-value">{{ formatValue(selectedItem.data['publicOrder']) }}</span>
               </div>
               <div class="col-6 col-md-4">
-                <span class="stat-label">{{ 'Brûlable' | translate }}:</span>
+                <span class="stat-label">{{ 'Brûlable' | translate | punctuation: ':' }}</span>
                 <span class="stat-value">{{ ((selectedItem.data['burnable'] == 0) ? 'Non' : 'Oui') | translate }}</span>
               </div>
               <div class="col-6 col-md-4">
-                <span class="stat-label">{{ 'Puissance' | translate }}:</span>
+                <span class="stat-label">{{ 'Puissance' | translate | punctuation: ':' }}</span>
                 <span class="stat-value">{{ formatValue(selectedItem.data['mightValue']) }}</span>
               </div>
               <div class="col-6 col-md-4">
-                <span class="stat-label">{{ 'Dimensions' | translate }}:</span>
+                <span class="stat-label">{{ 'Dimensions' | translate | punctuation: ':' }}</span>
                 <span class="stat-value">{{ selectedItem.data['width'] }} x {{ selectedItem.data['height'] }}</span>
               </div>
               <div class="col-6 col-md-4">
-                <span class="stat-label">{{ 'Prix de vente' | translate }}:</span>
+                <span class="stat-label">{{ 'Prix de vente' | translate | punctuation: ':' }}</span>
                 <span class="stat-value">{{ selectedItem.data['sellC1'] ? formatValue(selectedItem.data['sellC1']) : ('Aucun' | translate)
                 }}</span>
               </div>
               <div class="col-6 col-md-4">
-                <span class="stat-label">{{ 'Commentaires' | translate }}:</span>
+                <span class="stat-label">{{ 'Commentaires' | translate | punctuation: ':' }}</span>
                 @if (selectedItem.data['comment1'] || selectedItem.data['comment2']) {
                   <span class="stat-value"
                     >
@@ -463,12 +463,12 @@
                 }
               </div>
               <div class="col-6 col-md-4">
-                <span class="stat-label">{{ 'Effets' | translate }}:</span>
+                <span class="stat-label">{{ 'Effets' | translate | punctuation: ':' }}</span>
                 <span class="stat-value">
                 {{ parseEffects(selectedItem.data['effects']) }}</span>
               </div>
               <div class="col-6 col-md-4">
-                <span class="stat-label">{{ 'Destructible' | translate }}:</span>
+                <span class="stat-label">{{ 'Destructible' | translate | punctuation: ':' }}</span>
                 <span class="stat-value">
                 {{ (selectedItem.data['smashable'] === undefined ? 'Oui' : 'Non') | translate }}</span>
               </div>

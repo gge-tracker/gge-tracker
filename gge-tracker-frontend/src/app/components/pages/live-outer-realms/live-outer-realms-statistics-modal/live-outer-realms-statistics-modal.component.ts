@@ -2,12 +2,13 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 import { PlayerLiveRankingExtended } from '@ggetracker-interfaces/empire-ranking';
 import { ChartsWrapperComponent } from '@ggetracker-modules/charts-client/charts-wrapper.component';
 import { TranslateModule } from '@ngx-translate/core';
+import { PunctuationPipe } from '@ggetracker-pipes/punctuation.pipe';
 
 @Component({
   selector: 'app-live-outer-realms-statistics-modal',
   changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
-  imports: [TranslateModule, ChartsWrapperComponent],
+  imports: [PunctuationPipe, TranslateModule, ChartsWrapperComponent],
   templateUrl: './live-outer-realms-statistics-modal.component.html',
   styleUrls: ['./live-outer-realms-statistics-modal.component.css'],
 })

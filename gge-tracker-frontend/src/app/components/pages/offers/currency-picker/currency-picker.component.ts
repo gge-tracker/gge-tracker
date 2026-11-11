@@ -16,6 +16,7 @@ import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import { Check, ChevronDown, LucideAngularModule, Search } from 'lucide-angular';
 import { OfferCurrencyOption } from '../offer-currencies';
+import { PunctuationPipe } from '@ggetracker-pipes/punctuation.pipe';
 
 function filterCurrencies(items: OfferCurrencyOption[], search: string): OfferCurrencyOption[] {
   const query = search.trim().toLowerCase();
@@ -35,7 +36,7 @@ function indexOfCurrency(items: OfferCurrencyOption[], code: string): number {
 @Component({
   selector: 'app-currency-picker',
   standalone: true,
-  imports: [FormsModule, TranslateModule, LucideAngularModule],
+  imports: [PunctuationPipe, FormsModule, TranslateModule, LucideAngularModule],
   templateUrl: './currency-picker.component.html',
   styleUrl: './currency-picker.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

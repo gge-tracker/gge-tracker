@@ -17,7 +17,7 @@
     "watch": "ng build --watch --configuration development",
     "pretest": "npm run icons",
     "test": "ng test",
-    "lint": "ng lint && node scripts/check-spa-routes.mjs",
+    "lint": "ng lint && node scripts/check-spa-routes.mjs && node scripts/cloudflare-cache-rule.mjs",
     "build:server": "ng run gge-tracker:server:production"
   },
   "private": true,

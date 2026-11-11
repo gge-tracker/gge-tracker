@@ -3,6 +3,7 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { AlliancesUpdates } from '@ggetracker-interfaces/empire-ranking';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { PunctuationPipe } from '@ggetracker-pipes/punctuation.pipe';
 
 interface AllianceStint {
   key: string;
@@ -66,7 +67,7 @@ const PALETTE = [
 @Component({
   selector: 'app-alliance-history',
   standalone: true,
-  imports: [DatePipe, TranslateModule],
+  imports: [PunctuationPipe, DatePipe, TranslateModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './alliance-history.component.html',
   styleUrl: './alliance-history.component.css',

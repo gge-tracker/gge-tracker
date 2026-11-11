@@ -2456,7 +2456,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
         update['original_new_alliance_name'] === update['new_alliance_name']
           ? null
           : update['original_new_alliance_name'],
-      duration: previousDate ? value : this.translateService.instant('depuis') + ' ' + value,
+      duration: previousDate ? value : this.translateService.instant('depuis 0', { duration: value }),
       durationValue,
     };
   }
@@ -2483,7 +2483,8 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
 
   private formatUpdateDuration(date: string, previousDate: string | null): string {
     if (previousDate) return this.getDateDiff(date, previousDate).value;
-    return this.translateService.instant('depuis') + ' ' + this.getDateDiff(date, new Date().toISOString()).value;
+    const duration = this.getDateDiff(date, new Date().toISOString()).value;
+    return this.translateService.instant('depuis 0', { duration });
   }
 
   private fillQuantity(): void {

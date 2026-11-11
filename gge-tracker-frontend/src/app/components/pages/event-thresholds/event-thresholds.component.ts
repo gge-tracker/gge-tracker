@@ -14,6 +14,7 @@ import { ServerService } from '@ggetracker-services/server.service';
 import { formatThousands } from '@ggetracker-services/text-format.utilities';
 import { TranslateModule } from '@ngx-translate/core';
 import { ApexAxisChartSeries, ApexOptions } from 'ng-apexcharts';
+import { PunctuationPipe } from '@ggetracker-pipes/punctuation.pipe';
 
 interface ThresholdEvent {
   slug: ApiEventThresholdSlug;
@@ -78,7 +79,7 @@ const COLORS = { band: '#5b7186', median: '#a9b7c4', last: '#e2b45a', current: '
 @Component({
   selector: 'app-event-thresholds',
   standalone: true,
-  imports: [DatePipe, DecimalPipe, TranslateModule, ChartsWrapperComponent, LayeredSceneComponent],
+  imports: [PunctuationPipe, DatePipe, DecimalPipe, TranslateModule, ChartsWrapperComponent, LayeredSceneComponent],
   templateUrl: './event-thresholds.component.html',
   styleUrl: './event-thresholds.component.css',
 })

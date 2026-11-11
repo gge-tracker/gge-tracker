@@ -155,7 +155,7 @@
       }
       <footer class="rmap-legend-foot">
         @if (lastScanAt()) {
-        <span><i class="fa-solid fa-satellite-dish"></i> {{ 'Dernier scan' | translate }} : {{ lastScanAt() | date: 'short' }}</span>
+        <span><i class="fa-solid fa-satellite-dish"></i> {{ 'Dernier scan' | translate | punctuation: ':' }} {{ lastScanAt() | date: 'short' }}</span>
         }
         @if (!hasSelection()) {
         <span><i class="fa-solid fa-hand-pointer"></i> {{ 'Cliquer pour afficher les détails' | translate }}</span>

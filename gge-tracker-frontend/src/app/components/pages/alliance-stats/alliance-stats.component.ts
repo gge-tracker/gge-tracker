@@ -1,4 +1,4 @@
-import { DatePipe, LowerCasePipe, NgClass, NgTemplateOutlet, TitleCasePipe } from '@angular/common';
+import { DatePipe, NgClass, NgTemplateOutlet, TitleCasePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -40,7 +40,7 @@ import {
   ApiTournamentStanding,
 } from '@ggetracker-interfaces/empire-ranking';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
-import { formatThousands } from '@ggetracker-services/text-format.utilities';
+import { formatThousands, monthInSentence } from '@ggetracker-services/text-format.utilities';
 import { LanguageService } from '@ggetracker-services/language.service';
 import { FollowService } from '@ggetracker-services/follow.service';
 import {
@@ -77,6 +77,7 @@ import { PlayerTableContentComponent } from '@ggetracker-pages/players/player-ta
 import { DecodeHtmlPipe } from '../../../pipes/decode-html.pipe';
 import { GameDescriptionPipe } from '../../../pipes/game-description.pipe';
 import { first, firstValueFrom } from 'rxjs';
+import { PunctuationPipe } from '@ggetracker-pipes/punctuation.pipe';
 
 enum ChartTypeHeights {
   DEFAULT = 450,
@@ -178,6 +179,7 @@ const WHITESPACE = /\s/;
   selector: 'app-alliance-stats',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    PunctuationPipe,
     NgClass,
     NgTemplateOutlet,
     DatePipe,
@@ -185,7 +187,6 @@ const WHITESPACE = /\s/;
     TranslateModule,
     PlayerStatsCardComponent,
     StatsPanelComponent,
-    LowerCasePipe,
     FormsModule,
     LucideAngularModule,
     TableComponent,
@@ -953,6 +954,10 @@ export class AllianceStatsComponent extends GenericComponent implements OnInit, 
   public getMonthNameByDate(date: string): string {
     const [year, month] = date.split('-');
     return this.translateService.instant(this.monthNames[Number(month) - 1]) + ' ' + year;
+  }
+
+  public getMonthNameInSentence(date: string): string {
+    return monthInSentence(this.getMonthNameByDate(date), this.langageService.getCurrentLang());
   }
 
   public async changeTab(tab: ISelectedTab): Promise<void> {

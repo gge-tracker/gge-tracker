@@ -2,6 +2,7 @@
 import { DatePipe } from '@angular/common';
 import { Component, computed, effect, input, output, signal } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
+import { PunctuationPipe } from '@ggetracker-pipes/punctuation.pipe';
 
 export interface TimelineEvent {
   event_id: number;
@@ -25,7 +26,7 @@ const hoursBetween = (from: string, to: string): number => Math.round((Date.pars
 @Component({
   selector: 'app-event-timeline',
   standalone: true,
-  imports: [DatePipe, TranslateModule],
+  imports: [PunctuationPipe, DatePipe, TranslateModule],
   templateUrl: './event-timeline.component.html',
   styleUrl: './event-timeline.component.css',
 })

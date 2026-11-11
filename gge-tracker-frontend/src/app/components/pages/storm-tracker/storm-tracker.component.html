@@ -104,7 +104,7 @@
           @if (view === 'list' && isServerAllowed) {
           <div class="storm-status" [class.storm-status--pending]="!stormMeta?.last_scan_at">
             <i class="fa-solid fa-satellite-dish"></i>
-            <span>{{ 'Dernier scan' | translate }} : {{ stormMeta?.last_scan_at | date:'short' }}</span>
+            <span>{{ 'Dernier scan' | translate | punctuation: ':' }} {{ stormMeta?.last_scan_at | date:'short' }}</span>
           </div>
           }
         </header>

@@ -13,7 +13,7 @@ export class DurationPipe implements PipeTransform, OnDestroy {
 
   constructor() {
     this.translateService
-      .get(['jours_j', 'heures_h', 'minutes_m', 'secondes_s', 'Attaquable', 'depuis'])
+      .get(['jours_j', 'heures_h', 'minutes_m', 'secondes_s', 'Attaquable'])
       .subscribe((translations) => {
         this.translations = {
           jours: translations['jours_j'],
@@ -21,7 +21,6 @@ export class DurationPipe implements PipeTransform, OnDestroy {
           minutes: translations['minutes_m'],
           secondes: translations['secondes_s'],
           Attaquable: translations['Attaquable'],
-          depuis: translations['depuis'],
         };
       });
   }

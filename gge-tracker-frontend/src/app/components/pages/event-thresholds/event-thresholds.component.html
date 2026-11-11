@@ -43,7 +43,7 @@
     </div>
     <span class="thresholds-status-fact"><strong>{{ current.participants | number }}</strong>
       {{ 'participants' | translate }}</span>
-    <span class="thresholds-status-fact thresholds-muted">{{ 'Dernière lecture' | translate }} :
+    <span class="thresholds-status-fact thresholds-muted">{{ 'Dernière lecture' | translate | punctuation: ':' }}
       {{ current.ended_at | date: 'EEE HH:mm' }}</span>
     } @else {
     <span class="thresholds-status-badge"><i class="fa-regular fa-calendar" aria-hidden="true"></i>
@@ -53,7 +53,7 @@
       <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
     </a>
     @if (lastEdition) {
-    <span class="thresholds-status-fact thresholds-muted">{{ 'Dernière édition' | translate }} :
+    <span class="thresholds-status-fact thresholds-muted">{{ 'Dernière édition' | translate | punctuation: ':' }}
       {{ lastEdition.startedAt | date: 'd MMM' }} · {{ lastEdition.participants | number }}
       {{ 'participants' | translate }}</span>
     }
@@ -104,7 +104,7 @@
         </span>
         } @else if (lastEdition && lastEdition.value) {
         <span class="thresholds-chip">
-          {{ 'Dernière édition' | translate }} : <strong>{{ compact(lastEdition.value) }}</strong>
+          {{ 'Dernière édition' | translate | punctuation: ':' }} <strong>{{ compact(lastEdition.value) }}</strong>
           <span class="thresholds-muted">{{ deltaToMedian(lastEdition.value) }}</span>
         </span>
         }

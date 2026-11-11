@@ -40,6 +40,7 @@ import { ServerService } from '@ggetracker-services/server.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { LucideAngularModule, MessageCircleQuestion, Search, X } from 'lucide-angular';
 import { StormMapComponent, StormMapFocus } from './storm-map/storm-map.component';
+import { PunctuationPipe } from '@ggetracker-pipes/punctuation.pipe';
 
 /** A fort row joined with its in-game configuration */
 interface StormFortRow extends StormFort {
@@ -56,6 +57,7 @@ interface StormIsleRow extends StormIsle {
 @Component({
   selector: 'app-storm-tracker',
   imports: [
+    PunctuationPipe,
     NgClass,
     TableComponent,
     LucideAngularModule,

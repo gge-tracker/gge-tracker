@@ -15,7 +15,7 @@
       @if (player.peaceDisabledAt) {
         @if (!isPeaceDisabledBefore63days(player.peaceDisabledAt)) {
           <span class="badge-ban"
-            [title]="'Banni jusqu\'au ' + (player.peaceDisabledAt | date: ('Date_3' | translate))">
+            [title]="('Banni jusqu\'au' | translate) + ' ' + (player.peaceDisabledAt | date: ('Date_3'))">
             <i class="fa-solid fa-ban"></i>
             <span>&nbsp;{{ 'Banni' | translate }}</span>
           </span>

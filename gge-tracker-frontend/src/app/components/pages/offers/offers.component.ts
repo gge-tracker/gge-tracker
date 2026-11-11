@@ -42,6 +42,7 @@ import {
   Sparkles,
   X,
 } from 'lucide-angular';
+import { PunctuationPipe } from '@ggetracker-pipes/punctuation.pipe';
 
 interface OfferReward {
   title: string;
@@ -103,6 +104,7 @@ type OfferSort = '' | 'price-asc' | 'price-desc';
 @Component({
   selector: 'app-offers',
   imports: [
+    PunctuationPipe,
     NgClass,
     FormsModule,
     TranslateModule,

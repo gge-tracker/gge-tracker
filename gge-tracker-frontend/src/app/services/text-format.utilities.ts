@@ -27,3 +27,17 @@ export const stripTrailingDigits = (text: string): string => {
   while (end > 0 && text[end - 1] >= '0' && text[end - 1] <= '9') end--;
   return text.slice(0, end);
 };
+
+/**
+ * Appends a colon or an exclamation mark the way the language writes it: French puts a space before both
+ */
+export const punctuate = (text: string, mark: ':' | '!', lang: string): string =>
+  text + (lang === 'fr' ? ' ' : '') + mark;
+
+const LANGUAGES_WITH_LOWERCASE_MONTHS = new Set(['fr', 'es', 'it', 'pt', 'nl', 'pl', 'cs', 'ru', 'bg', 'ro', 'hu']);
+
+/**
+ * Writes a month name the way the language does inside a sentence
+ */
+export const monthInSentence = (monthName: string, lang: string): string =>
+  LANGUAGES_WITH_LOWERCASE_MONTHS.has(lang) ? monthName.toLowerCase() : monthName;

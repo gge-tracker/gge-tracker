@@ -89,7 +89,7 @@
                         <span class="stat-ledger-trend" aria-hidden="true">▼</span>
                       }
                       @if (detail.prefixKey) {
-                        {{ detail.prefixKey | translate }} :
+                        {{ detail.prefixKey | translate | punctuation: ':' }}
                       }
                       {{ detail.value }}{{ detail.suffixKey ? (detail.suffixKey | translate) : '' }}
                     </span>
@@ -357,7 +357,7 @@
         @if (!groupedUpdatedByMonths[actualMonth] || groupedUpdatedByMonths[actualMonth].length === 0) {
           <div
             class="text-center">
-            <em>{{ 'Aucun départ ou arrivée en 0' | translate: { time: (getMonthNameByDate(actualMonth) | lowercase) }
+            <em>{{ 'Aucun départ ou arrivée en 0' | translate: { time: getMonthNameInSentence(actualMonth) }
             }}</em>
           </div>
         }

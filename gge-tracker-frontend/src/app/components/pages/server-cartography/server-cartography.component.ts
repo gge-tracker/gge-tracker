@@ -32,6 +32,7 @@ import { WindowService } from '@ggetracker-services/window.service';
 import { TranslateModule } from '@ngx-translate/core';
 import type * as Leaflet from 'leaflet';
 import { combineLatest } from 'rxjs';
+import { PunctuationPipe } from '@ggetracker-pipes/punctuation.pipe';
 
 interface ILegend {
   name: string;
@@ -103,6 +104,7 @@ const DENSITY_STOPS: [number, number, number][] = [
 @Component({
   selector: 'app-server-cartography',
   imports: [
+    PunctuationPipe,
     NgClass,
     FormatNumberPipe,
     NgTemplateOutlet,

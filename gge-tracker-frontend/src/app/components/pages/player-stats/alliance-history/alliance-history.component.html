@@ -5,7 +5,7 @@
       <span class="ah-stat-value" [class.is-none]="!stint.name">{{ stint.name ?? ('Sans alliance' | translate) }}</span>
       @if (stint.start) {
         <span class="ah-stat-sub">
-          {{ stint.start | date: 'dd MMM yyyy' }} · {{ 'depuis' | translate }} {{ formatDuration(stint.durationMs) }}
+          {{ stint.start | date: 'dd MMM yyyy' }} · {{ 'depuis 0' | translate: { duration: formatDuration(stint.durationMs) } }}
         </span>
       }
     </div>
@@ -13,7 +13,7 @@
   <div class="ah-stat">
     <span class="ah-stat-label">{{ 'Alliances rejointes' | translate }}</span>
     <span class="ah-stat-value">{{ joinedCount() }}</span>
-    <span class="ah-stat-sub">{{ 'Changements d\'alliance' | translate }} : {{ changeCount() }}</span>
+    <span class="ah-stat-sub">{{ 'Changements d\'alliance' | translate | punctuation: ':' }} {{ changeCount() }}</span>
   </div>
   @if (longest(); as total) {
     <div class="ah-stat" [style.--ah-color]="total.color">
