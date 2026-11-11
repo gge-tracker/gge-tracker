@@ -3,6 +3,10 @@
   src: url(/assets/fonts/Roboto_Regular_BodyFont.woff2) format("woff2")
 }
 
+:host {
+  --bs-progress-bg: #e9ecef38;
+}
+
 .players-container {
   border-bottom: 2px #000000d4 solid;
 }
@@ -433,7 +437,7 @@ app-layered-scene.alliance-hero-backdrop::after {
   border-bottom: 1px solid rgb(255 255 255 / 8%);
   border-right: 1px solid rgb(255 255 255 / 8%);
   color: #e6e2d8;
-  min-height: 100px;
+  min-height: 55vh;
   margin-bottom: 50px;
 }
 
