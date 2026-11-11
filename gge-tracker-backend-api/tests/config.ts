@@ -27,7 +27,7 @@ export const config = {
   },
   quotas: {
     anonymousDaily: envInt('ANONYMOUS_DAILY_REQUESTS', 25_000),
-    gameCommandsPerMinute: envInt('GAME_COMMANDS_PER_MINUTE', 30),
+    gameCommandsPerMinute: envInt('GAME_COMMANDS_PER_MINUTE', 60),
   },
   timing: {
     samples: envInt('TEST_TIMING_SAMPLES', 12),

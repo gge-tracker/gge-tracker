@@ -2,6 +2,7 @@ import * as express from 'express';
 import * as pg from 'pg';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
+import { ClientQuotas } from '../guard/client-quotas';
 import { ApiKeyRegistry } from '../services/api-key-registry';
 
 interface KeyChanges {
@@ -9,12 +10,17 @@ interface KeyChanges {
   rate_limit_points?: number;
   rate_limit_window_seconds?: number;
   note?: string | null;
+  game_commands_per_minute?: number | null;
+  game_commands_per_day?: number | null;
 }
 
 const UNDEFINED_TABLE = '42P01';
+const UNDEFINED_COLUMN = '42703';
 const DEFAULT_POINTS = 300;
 const DEFAULT_WINDOW_SECONDS = 5;
-const KEY_COLUMNS = `id, partner, key_prefix, rate_limit_points, rate_limit_window_seconds, note, created_at, updated_at, revoked_at`;
+const KEY_COLUMNS = `id, partner, key_prefix, rate_limit_points, rate_limit_window_seconds,
+  game_commands_per_minute, game_commands_per_day, note, created_at, updated_at, revoked_at`;
+const GAME_COMMAND_MAXIMUMS = { game_commands_per_minute: 10_000, game_commands_per_day: 1_000_000 } as const;
 
 class InvalidChangeError extends Error {
   constructor(message: string) {
@@ -37,8 +43,9 @@ export abstract class ApiAdminKeys implements ApiHelper {
       const key = ApiKeyRegistry.generate();
       const result = await pool.query(
         `INSERT INTO ${ApiKeyRegistry.TABLE}
-            (partner, key_hash, key_prefix, rate_limit_points, rate_limit_window_seconds, note)
-          VALUES ($1, $2, $3, $4, $5, $6)
+            (partner, key_hash, key_prefix, rate_limit_points, rate_limit_window_seconds,
+             game_commands_per_minute, game_commands_per_day, note)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
           RETURNING ${KEY_COLUMNS}`,
         [
           changes.partner,
@@ -46,6 +53,8 @@ export abstract class ApiAdminKeys implements ApiHelper {
           key.slice(0, 12),
           changes.rate_limit_points ?? DEFAULT_POINTS,
           changes.rate_limit_window_seconds ?? DEFAULT_WINDOW_SECONDS,
+          changes.game_commands_per_minute ?? null,
+          changes.game_commands_per_day ?? null,
           changes.note ?? null,
         ],
       );
@@ -104,6 +113,12 @@ export abstract class ApiAdminKeys implements ApiHelper {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: error.message });
         return;
       }
+      if ((error as { code?: string }).code === UNDEFINED_COLUMN) {
+        response
+          .status(ApiHelper.HTTP_SERVICE_UNAVAILABLE)
+          .send({ error: RouteErrorMessagesEnum.ApiKeyGameCommandsMissing });
+        return;
+      }
       if ((error as { code?: string }).code === UNDEFINED_TABLE) {
         response.status(ApiHelper.HTTP_SERVICE_UNAVAILABLE).send({ error: RouteErrorMessagesEnum.ApiKeyStoreMissing });
         return;
@@ -152,6 +167,13 @@ export abstract class ApiAdminKeys implements ApiHelper {
       }
       changes[field] = value;
     }
+    for (const [field, maximum] of Object.entries(GAME_COMMAND_MAXIMUMS) as [
+      keyof typeof GAME_COMMAND_MAXIMUMS,
+      number,
+    ][]) {
+      if (input[field] === undefined) continue;
+      changes[field] = this.readGameCommandLimit(input[field], maximum);
+    }
     if (input.note !== undefined) {
       const note = input.note;
       if (note !== null && (typeof note !== 'string' || note.length > 500)) {
@@ -162,12 +184,38 @@ export abstract class ApiAdminKeys implements ApiHelper {
     return changes;
   }
 
+  private static readGameCommandLimit(value: unknown, maximum: number): number | null {
+    if (value === null) return null;
+    if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 1 || value > maximum) {
+      throw new InvalidChangeError(RouteErrorMessagesEnum.InvalidApiKeyGameCommands);
+    }
+    return value;
+  }
+
+  private static gameCommands(row: Record<string, any>): Record<string, any> {
+    const override = {
+      perMinute: row.game_commands_per_minute === null ? null : Number(row.game_commands_per_minute),
+      perDay: row.game_commands_per_day === null ? null : Number(row.game_commands_per_day),
+    };
+    const standard = ClientQuotas.gameCommandLimits('standard', { isPartner: true, gameCommands: override });
+    const realtime = ClientQuotas.gameCommandLimits('realtime', { isPartner: true });
+    return {
+      standard: {
+        per_minute: standard.perMinute,
+        per_day: standard.perDay,
+        custom: override.perMinute !== null || override.perDay !== null,
+      },
+      realtime: { per_minute: realtime.perMinute, per_day: realtime.perDay },
+    };
+  }
+
   private static toKey(row: Record<string, any>): Record<string, any> {
     return {
       id: Number(row.id),
       partner: row.partner,
       key_prefix: row.key_prefix,
       rate_limit: { points: Number(row.rate_limit_points), window_seconds: Number(row.rate_limit_window_seconds) },
+      game_commands: this.gameCommands(row),
       note: row.note,
       created_at: new Date(row.created_at).toISOString(),
       updated_at: new Date(row.updated_at).toISOString(),

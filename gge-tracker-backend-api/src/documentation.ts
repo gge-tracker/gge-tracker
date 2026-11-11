@@ -31,8 +31,9 @@ export const options = {
 
                 **Limits without a key**: 30 requests per 5 seconds and 25,000 a day.
                 \`/castle/analysis\`, \`/castle/player\` and \`/castle/search\` send a live command to the game on a
-                cache miss, so they also count against 30 calls a minute and 300 a day. With a key there is no daily
-                request quota.
+                cache miss, so they also count against 60 calls a minute and 600 a day. An analysis of an outer kingdom
+                (\`kingdomId\` 1 to 3) has its own, smaller budget: 30 a minute and 300 a day. With a key there is no
+                daily request quota.
 
                 **Past a limit** the API answers \`429\` with a \`Retry-After\` header. The body's \`code\` is
                 \`DAILY_QUOTA_EXCEEDED\` or \`GAME_COMMAND_QUOTA_EXCEEDED\` for the two quotas. Wait as long as it says

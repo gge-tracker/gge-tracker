@@ -1,17 +1,20 @@
 import * as crypto from 'node:crypto';
 import * as pg from 'pg';
+import { GameCommandOverride } from '../guard/client-quotas';
 
 export interface ApiKey {
   id: number;
   partner: string;
   points: number;
   windowSeconds: number;
+  gameCommands: GameCommandOverride;
 }
 
 export type ApiKeyLookup = ApiKey | 'invalid' | 'unverified';
 
 const KEY_FORMAT = /^ggt_[\w-]{43}$/;
 const UNDEFINED_TABLE = '42P01';
+const UNDEFINED_COLUMN = '42703';
 
 export abstract class ApiKeyRegistry {
   public static readonly HEADER = 'x-api-key';
@@ -60,23 +63,40 @@ export abstract class ApiKeyRegistry {
 
   private static async lookup(pool: pg.Pool, hash: string): Promise<ApiKey | null> {
     try {
-      const result = await pool.query(
-        `SELECT id, partner, rate_limit_points, rate_limit_window_seconds
-          FROM ${this.TABLE} WHERE key_hash = $1 AND revoked_at IS NULL`,
-        [hash],
+      const row = await this.selectKey(pool, hash, 'game_commands_per_minute, game_commands_per_day').catch(
+        (error: { code?: string }) => {
+          if (error.code !== UNDEFINED_COLUMN) throw error;
+          return this.selectKey(pool, hash, 'NULL AS game_commands_per_minute, NULL AS game_commands_per_day');
+        },
       );
-      const row = result.rows[0];
       if (!row) return null;
       return {
         id: Number(row.id),
         partner: String(row.partner),
         points: Number(row.rate_limit_points),
         windowSeconds: Number(row.rate_limit_window_seconds),
+        gameCommands: {
+          perMinute: this.optionalInteger(row.game_commands_per_minute),
+          perDay: this.optionalInteger(row.game_commands_per_day),
+        },
       };
     } catch (error) {
       if ((error as { code?: string }).code === UNDEFINED_TABLE) return null;
       throw error;
     }
+  }
+
+  private static async selectKey(pool: pg.Pool, hash: string, gameCommandColumns: string): Promise<any> {
+    const result = await pool.query(
+      `SELECT id, partner, rate_limit_points, rate_limit_window_seconds, ${gameCommandColumns}
+        FROM ${this.TABLE} WHERE key_hash = $1 AND revoked_at IS NULL`,
+      [hash],
+    );
+    return result.rows[0];
+  }
+
+  private static optionalInteger(value: unknown): number | null {
+    return value === null || value === undefined ? null : Number(value);
   }
 
   private static remember(hash: string, key: ApiKey | null): void {

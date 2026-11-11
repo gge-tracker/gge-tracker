@@ -177,9 +177,8 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
       this.applyRateLimitHeaders(response, consumed, limit);
 
       const quotas = await this.quotas().consume(
-        clientKey,
-        Boolean(apiKey),
-        request.path,
+        { key: clientKey, isPartner: Boolean(apiKey), gameCommands: apiKey ? apiKey.gameCommands : undefined },
+        ClientQuotas.bridgeOf(request.path, request.query.kingdomId),
         String(request.headers['user-agent'] ?? ''),
       );
       this.applyDailyQuotaHeaders(response, quotas);
