@@ -21,7 +21,10 @@ import {
   chronicleWindow,
   activityCalendar,
   bannerTimeline,
+  buildRanking,
+  buildReign,
   daysUnderBanner,
+  isNotableClimb,
   rankWorldEvent,
   higherThanPct,
   longestRun,
@@ -68,6 +71,7 @@ function player(overrides: Partial<PlayerFeatures> = {}): PlayerFeatures {
     world: {},
     firstDay: '2026-01-01',
     events: { nomad: { runs: 2, bestRank: 9, podiums: 0 } },
+    topDays: [],
     ...overrides,
   };
 }
@@ -276,6 +280,19 @@ describe('Chronicle rivals', () => {
     );
   });
 
+  it("tells the rival's alliance", () => {
+    const players = [
+      player({ id: 1, allianceId: 1, monthly: [100, 100] }),
+      player({ id: 2, allianceId: 2, allianceName: 'Ravens', monthly: [99, 99] }),
+    ];
+    const [entry] = buildEntries(players, {
+      window: WINDOW,
+      months: [202601, 202602],
+      rivals: new Map([[1, { id: 2, months: 6 }]]),
+    });
+    assert.equal(entry.rival?.allianceName, 'Ravens');
+  });
+
   it('needs six months of proximity', () => {
     const players = [player({ id: 1, allianceId: 1 }), player({ id: 2, allianceId: 2 })];
     const short = months([
@@ -372,5 +389,161 @@ describe('Chronicle infographic data', () => {
       { name: 'A', from: '2026-01-01', to: '2026-03-01' },
       { name: 'B', from: '2026-03-01', to: '2026-11-30' },
     ]);
+  });
+});
+
+function days(from: string, count: number): string[] {
+  const start = Date.parse(`${from}T00:00:00Z`);
+  return Array.from({ length: count }, (_, index) => new Date(start + index * 86_400_000).toISOString().slice(0, 10));
+}
+
+function heldAt(position: number, list: string[]): [string, number][] {
+  return list.map((day) => [day, position]);
+}
+
+describe('Chronicle reign', () => {
+  const serverDays = days('2026-01-01', 60);
+
+  it('needs seven days in a tier before it reigns', () => {
+    assert.equal(buildReign(heldAt(1, serverDays.slice(0, 6)), serverDays, '2026-01-01', 2026), null);
+    assert.equal(buildReign(heldAt(1, serverDays.slice(0, 7)), serverDays, '2026-01-01', 2026)?.tier, 1);
+  });
+
+  it('only reigns over #1, the top 10 and the top 100', () => {
+    assert.equal(buildReign(heldAt(101, serverDays), serverDays, '2026-01-01', 2026), null);
+  });
+
+  it('shows the wider tiers and only the tighter ones that were touched', () => {
+    const topDays = [...heldAt(1, serverDays.slice(0, 3)), ...heldAt(8, serverDays.slice(3, 20))];
+    const reign = buildReign(topDays, serverDays, '2026-01-01', 2026)!;
+    assert.equal(reign.tier, 10);
+    assert.equal(reign.days, 20);
+    assert.deepEqual(
+      reign.rows.map((row) => [row.tier, row.days]),
+      [
+        [1, 3],
+        [10, 20],
+        [100, 20],
+      ],
+    );
+    const plain = buildReign(heldAt(50, serverDays.slice(0, 20)), serverDays, '2026-01-01', 2026)!;
+    assert.deepEqual(
+      plain.rows.map((row) => row.tier),
+      [100],
+    );
+  });
+
+  it('merges a dip of three days on the ribbon but counts the days exactly', () => {
+    const topDays = heldAt(1, [...serverDays.slice(0, 10), ...serverDays.slice(13, 30)]);
+    const reign = buildReign(topDays, serverDays, '2026-01-01', 2026)!;
+    assert.equal(reign.days, 27);
+    assert.equal(reign.longest, 17);
+    assert.equal(reign.comebacks, 0);
+    assert.deepEqual(reign.rows[0].segments, [[0, 29]]);
+  });
+
+  it('counts a comeback after a longer loss', () => {
+    const topDays = heldAt(1, [...serverDays.slice(0, 10), ...serverDays.slice(14, 30)]);
+    const reign = buildReign(topDays, serverDays, '2026-01-01', 2026)!;
+    assert.equal(reign.comebacks, 1);
+    assert.deepEqual(reign.rows[0].segments, [
+      [0, 9],
+      [14, 29],
+    ]);
+  });
+
+  it('never breaks a reign on days the server was not read', () => {
+    const withOutage = [...serverDays.slice(0, 10), ...serverDays.slice(20)];
+    const reign = buildReign(heldAt(1, withOutage), withOutage, '2026-01-01', 2026)!;
+    assert.equal(reign.longest, withOutage.length);
+    assert.equal(reign.comebacks, 0);
+    assert.equal(reign.trackedDays, withOutage.length);
+  });
+
+  it('starts the track on the day the player arrived', () => {
+    const reign = buildReign(heldAt(1, serverDays.slice(30)), serverDays, '2026-01-31', 2026)!;
+    assert.equal(reign.start, 30);
+    assert.equal(reign.end, 60);
+    assert.equal(reign.trackedDays, 30);
+  });
+
+  it('calls a reign steady when every row is nearly full', () => {
+    const always = buildReign(heldAt(40, serverDays), serverDays, '2026-01-01', 2026)!;
+    assert.equal(always.steady, true);
+    const topDays = [...heldAt(1, serverDays.slice(0, 20)), ...heldAt(5, serverDays.slice(20))];
+    assert.equal(buildReign(topDays, serverDays, '2026-01-01', 2026)!.steady, false);
+  });
+
+  it('gives the best, usual and worst place held', () => {
+    const topDays = [
+      ...heldAt(3, serverDays.slice(0, 10)),
+      ...heldAt(20, serverDays.slice(10, 40)),
+      ...heldAt(90, serverDays.slice(40)),
+    ];
+    assert.deepEqual(buildReign(topDays, serverDays, '2026-01-01', 2026)!.places, { best: 3, usual: 20, worst: 90 });
+  });
+
+  it('adds the ranking page after the climb', () => {
+    assert.deepEqual(selectSlides(player(), 'full', false, 30, true).slice(0, 3), ['cover', 'climb', 'ranking']);
+  });
+});
+
+describe('Chronicle ranking journey', () => {
+  const months = [202601, 202602, 202603, 202604];
+
+  it('reads the climb from the first and last months the player was ranked', () => {
+    const ranking = buildRanking([null, 9000, 4200, 4500], months)!;
+    assert.equal(ranking.first, 9000);
+    assert.equal(ranking.firstMonth, 202602);
+    assert.equal(ranking.last, 4500);
+    assert.equal(ranking.places, 4500);
+    assert.equal(ranking.best, 4200);
+    assert.equal(ranking.bestMonth, 202603);
+  });
+
+  it('names the tightest milestone reached and the month it was first reached', () => {
+    assert.deepEqual(buildRanking([12_000, 6000, 900, 950], months)!.milestone, { top: 1000, month: 202603 });
+    assert.equal(buildRanking([800, 700, 650, 600], months)!.milestone, null);
+  });
+
+  it('needs two ranked months', () => {
+    assert.equal(buildRanking([null, null, 300, null], months), null);
+  });
+
+  it('only tells a climb worth a page', () => {
+    assert.equal(isNotableClimb(buildRanking([12_000, 11_500], months)), false);
+    assert.equal(isNotableClimb(buildRanking([12_000, 9000], months)), true);
+    assert.equal(isNotableClimb(buildRanking([300, 290], months)), false);
+    assert.equal(isNotableClimb(buildRanking([300, 250], months)), true);
+    assert.equal(isNotableClimb(buildRanking([4000, 5000], months)), false);
+  });
+});
+
+describe('Chronicle entries', () => {
+  it('gives a reign to a top player and a journey to a climber', () => {
+    const serverDays = days('2026-01-01', 40);
+    const king = player({ id: 1, topDays: heldAt(1, serverDays), monthly: [9000, 9500] });
+    const climber = player({ id: 2, monthly: [10, 3000] });
+    const rest = Array.from({ length: 30 }, (_, index) =>
+      player({ id: 100 + index, monthly: [500 + index * 10, 600 + index * 10] }),
+    );
+    const entries = buildEntries([king, climber, ...rest], {
+      window: WINDOW,
+      months: [202601, 202602],
+      serverDays,
+    });
+    const [kingEntry, climberEntry] = entries;
+    assert.equal(kingEntry.might.reign?.days, 40);
+    assert.ok(kingEntry.slides.includes('ranking'));
+    assert.equal(climberEntry.might.reign, null);
+    assert.equal(climberEntry.might.ranking?.first, 32);
+    assert.equal(climberEntry.might.ranking?.last, 2);
+    assert.ok(climberEntry.slides.includes('ranking'));
+    assert.ok(!entries[2].slides.includes('ranking'));
+  });
+
+  it('shows glory only from the first title of the game', () => {
+    assert.ok(!selectSlides(player({ gloryHighest: 4443 }), 'full').includes('glory'));
+    assert.ok(selectSlides(player({ gloryHighest: 4444 }), 'full').includes('glory'));
   });
 });

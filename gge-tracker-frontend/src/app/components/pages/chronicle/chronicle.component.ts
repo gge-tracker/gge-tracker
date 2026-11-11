@@ -19,6 +19,8 @@ import {
   ChronicleLadderComponent,
   ChronicleMeterComponent,
   ChronicleRadarComponent,
+  ChronicleRankComponent,
+  ChronicleReignComponent,
   ChronicleRibbonComponent,
   ChronicleRingComponent,
   ChronicleWeeksComponent,
@@ -57,7 +59,6 @@ interface BusiestWindow {
 interface GloryTitle {
   id: string;
   threshold: number;
-  topX: number | null;
 }
 
 interface ScoreRow {
@@ -75,13 +76,8 @@ const BUSIEST_HOURS = 6;
 const LATE_ARRIVAL_MS = 30 * 86_400_000;
 const CONSTANT_BELOW = 0.35;
 const FOCUSED_FROM = 0.5;
-const TOP_GLORY_TITLES: GloryTitle[] = [
-  { id: '30', threshold: 0, topX: 100 },
-  { id: '31', threshold: 0, topX: 50 },
-  { id: '32', threshold: 0, topX: 10 },
-  { id: '33', threshold: 0, topX: 1 },
-];
 const MIN_METER_PCT = 20;
+const BEST_PLACE_ALWAYS_SHOWN = 1000;
 const SWAP_MS = 240;
 const MUSIC_KEY = 'chronicle-music';
 const EMBERS = Array.from({ length: 16 }, (_, index) => ({
@@ -104,6 +100,8 @@ const EMBERS = Array.from({ length: 16 }, (_, index) => ({
     ChronicleLadderComponent,
     ChronicleMeterComponent,
     ChronicleRadarComponent,
+    ChronicleRankComponent,
+    ChronicleReignComponent,
     ChronicleRibbonComponent,
     ChronicleRingComponent,
     ChronicleWeeksComponent,
@@ -274,12 +272,6 @@ export class ChronicleComponent implements OnInit, OnDestroy {
     return higherThanPct >= MIN_METER_PCT;
   }
 
-  public rankGain(): number {
-    const might = this.player()?.might;
-    if (!might?.rankStart || !might.rankEnd) return 0;
-    return might.rankStart - might.rankEnd;
-  }
-
   public climbSeries(): (number | null)[] {
     const might = this.player()?.might;
     return might ? [might.start, ...might.monthly.slice(1)] : [];
@@ -391,10 +383,61 @@ export class ChronicleComponent implements OnInit, OnDestroy {
     return month ? monthName(month) : '';
   }
 
-  public showsBestRank(): boolean {
-    const might = this.player()?.might;
-    if (!might?.rankBest || !might.rankEnd) return false;
-    return might.rankBest < might.rankEnd * 0.8;
+  public showsBestPlace(): boolean {
+    const hero = this.player();
+    const best = hero?.might.rankBest;
+    if (!hero || !best || hero.slides.includes('ranking')) return false;
+    return best <= BEST_PLACE_ALWAYS_SHOWN || best < (hero.might.rankEnd ?? Infinity) * 0.8;
+  }
+
+  public reignLead(): string {
+    const reign = this.player()?.might.reign;
+    if (!reign) return '';
+    if (reign.tier === 1) return this.t('reignLead1', { server: this.server() });
+    return this.t('reignLeadTop', { count: reign.tier, server: this.server() });
+  }
+
+  public reignLongest(): string {
+    const reign = this.player()?.might.reign;
+    if (!reign) return '';
+    const count = grouped(reign.longest);
+    return reign.tier === 1
+      ? this.t('reignLongest1', { count })
+      : this.t('reignLongestTop', { tier: reign.tier, count });
+  }
+
+  public reignComebacks(): string {
+    const reign = this.player()?.might.reign;
+    if (!reign || reign.comebacks === 0) return '';
+    const count = reign.comebacks;
+    return reign.tier === 1 ? this.t('reignBack1', { count }) : this.t('reignBackTop', { tier: reign.tier, count });
+  }
+
+  public rankFrom(): string {
+    const ranking = this.player()?.might.ranking;
+    if (!ranking) return '';
+    return this.t('rankFrom', {
+      from: grouped(ranking.first),
+      fromMonth: monthName(ranking.firstMonth),
+      to: grouped(ranking.last),
+      toMonth: monthName(ranking.lastMonth),
+    });
+  }
+
+  public rankBest(): string {
+    const ranking = this.player()?.might.ranking;
+    if (!ranking || ranking.best >= ranking.last) return '';
+    return this.t('rankBest', { rank: grouped(ranking.best), month: monthName(ranking.bestMonth) });
+  }
+
+  public rankMilestone(): string {
+    const milestone = this.player()?.might.ranking?.milestone;
+    if (!milestone) return '';
+    return this.t('rankMilestone', { top: grouped(milestone.top), month: monthName(milestone.month) });
+  }
+
+  public meterDetail(key: string, standing: { rank: number; of: number }): string {
+    return this.t(key, { rank: grouped(standing.rank), of: grouped(standing.of) });
   }
 
   public hoursWindowText(): string {
@@ -447,45 +490,35 @@ export class ChronicleComponent implements OnInit, OnDestroy {
     return this.t('worldAhead', { count: grouped(beaten) });
   }
 
-  public currentGloryIndex(): number {
-    const glory = this.player()?.glory;
-    const ladder = this.gloryLadder();
-    return ladder.reduce((found, title, index) => {
-      if (title.topX !== null) return glory && glory.rank > 0 && glory.rank <= title.topX ? index : found;
-      return title.threshold <= (glory?.current ?? 0) ? index : found;
-    }, 0);
+  // The rank titles are held live, so a peak only ever proves the points titles
+  public peakGloryIndex(): number {
+    const highest = this.player()?.glory.highest ?? 0;
+    return this.gloryLadder().reduce((found, title, index) => (title.threshold <= highest ? index : found), 0);
   }
 
   public gloryTitleName(): string {
-    const title = this.gloryLadder()[this.currentGloryIndex()];
+    const title = this.gloryLadder()[this.peakGloryIndex()];
     return title ? this.titleName(title.id) : '';
   }
 
   public gloryRungs(): LadderRung[] {
     const ladder = this.gloryLadder();
-    const current = this.currentGloryIndex();
-    const points = this.player()?.glory.current ?? 0;
-    const from = Math.max(0, current - 1);
-    return ladder.slice(from, current + 3).map((title, offset) => {
+    const peak = this.peakGloryIndex();
+    const from = Math.max(0, peak - 2);
+    return ladder.slice(from, peak + 2).map((title, offset) => {
       const index = from + offset;
-      const previous = ladder[index - 1]?.threshold ?? 0;
-      const span = Math.max(title.threshold - previous, 1);
       return {
         name: this.titleName(title.id),
-        points: title.topX === null ? compact(title.threshold) : this.t('ladderTop', { count: title.topX }),
-        state: index < current ? 'past' : index === current ? 'now' : index === current + 1 ? 'next' : 'ahead',
-        progress: index === current + 1 && title.topX === null ? Math.round((100 * (points - previous)) / span) : 0,
+        points: compact(title.threshold),
+        state: index < peak ? 'past' : index === peak ? 'now' : 'ahead',
+        progress: 0,
       };
     });
   }
 
-  public nextGloryStep(): string {
-    const next = this.gloryLadder()[this.currentGloryIndex() + 1];
-    const glory = this.player()?.glory;
-    if (!next || !glory) return '';
-    const title = this.titleName(next.id);
-    if (next.topX !== null) return this.t('nextPlaces', { title, places: grouped(glory.rank - next.topX) });
-    return this.t('nextPoints', { title, points: compact(Math.max(0, next.threshold - glory.current)) });
+  public reachedTopGloryTitle(): boolean {
+    const ladder = this.gloryLadder();
+    return ladder.length > 0 && this.peakGloryIndex() === ladder.length - 1;
   }
 
   public scoreRows(): ScoreRow[] {
@@ -567,7 +600,7 @@ export class ChronicleComponent implements OnInit, OnDestroy {
         return this.t('streak', { count: hero.rhythm.longestStreak });
       }
       case 'glorious': {
-        return this.t('whyGlory', { pct: hero.glory.higherThanPct, server });
+        return this.t('whyGloryPeak', { pct: hero.glory.best.higherThanPct, server });
       }
       case 'hermit-king': {
         return this.t('whyHermit', { loot: compact(hero.loot.total) });
@@ -684,13 +717,12 @@ export class ChronicleComponent implements OnInit, OnDestroy {
   private async loadGloryTitles(): Promise<void> {
     const response = await fetch('/assets/titles/titles.json');
     const titles = (await response.json()) as { titleID: string; type: string; threshold?: string; topX?: string }[];
-    this.gloryLadder.set([
-      ...titles
+    this.gloryLadder.set(
+      titles
         .filter((title) => title.type === 'FAME' && title.topX === undefined)
-        .map((title) => ({ id: title.titleID, threshold: Number(title.threshold ?? 0), topX: null }))
+        .map((title) => ({ id: title.titleID, threshold: Number(title.threshold ?? 0) }))
         .sort((a, b) => a.threshold - b.threshold),
-      ...TOP_GLORY_TITLES,
-    ]);
+    );
   }
 
   private playMusicByDefault(): void {

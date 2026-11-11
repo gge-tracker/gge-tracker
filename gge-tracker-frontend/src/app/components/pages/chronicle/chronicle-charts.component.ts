@@ -916,6 +916,274 @@ export class ChronicleRibbonComponent {
   });
 }
 
+export interface ReignTrack {
+  start: number;
+  end: number;
+  rows: { tier: number; days: number; segments: [number, number][] }[];
+  steady: boolean;
+  places: { best: number; usual: number; worst: number };
+}
+
+const STANDING_TICKS = [100, 50, 20, 10, 5, 1];
+
+@Component({
+  selector: 'app-chronicle-reign',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <div class="reign" dir="ltr" role="img" [attr.aria-label]="label()">
+      @if (label()) {
+        <p class="title">{{ label() }}</p>
+      }
+      @if (reign().steady) {
+        <div class="standing">
+          <div class="scale">
+            <span class="band" [style.left.%]="standing().from" [style.width.%]="standing().width"></span>
+            <span class="marker" [style.left.%]="standing().usual"
+              ><i>#{{ standing().usualRank }}</i></span
+            >
+          </div>
+          <div class="ticks" aria-hidden="true">
+            @for (tick of standing().ticks; track tick.rank) {
+              <span [style.left.%]="tick.left">#{{ tick.rank }}</span>
+            }
+          </div>
+          <p class="standing-caption">{{ standing().caption }}</p>
+        </div>
+      } @else {
+        @for (row of rows(); track row.tier; let position = $index) {
+          <div class="row" [class.lead]="position === 0">
+            <span class="tier">{{ row.name }}</span>
+            <span class="track">
+              @for (part of row.parts; track $index) {
+                <span
+                  class="held"
+                  [style.left.%]="part.left"
+                  [style.width.%]="part.width"
+                  [style.--i]="position"
+                ></span>
+              }
+            </span>
+            <span class="days">{{ row.days }}</span>
+          </div>
+        }
+        <div class="axis" aria-hidden="true">
+          @for (month of months(); track month.key) {
+            <span [style.left.%]="month.left">{{ month.label }}</span>
+          }
+        </div>
+      }
+    </div>
+  `,
+  styles: `
+    .reign {
+      margin-top: 1.2rem;
+      padding: 0.7rem 0.8rem 0.4rem;
+      border: 1px solid rgb(230 189 108 / 28%);
+      border-radius: 0.6rem;
+      background: rgb(8 10 19 / 76%);
+    }
+    .title {
+      margin: 0 0 0.35rem;
+      color: #a9a290;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    :host-context([dir='rtl']) .title {
+      letter-spacing: 0;
+      text-align: right;
+    }
+    .standing {
+      padding: 1.9rem 0.6rem 0.2rem;
+    }
+    .scale {
+      position: relative;
+      height: 0.7rem;
+      border-radius: 0.35rem;
+      background: rgb(246 239 223 / 11%);
+    }
+    .band {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      min-width: 0.7rem;
+      border-radius: 0.35rem;
+      background: #b78f42;
+      transform-origin: right;
+      animation: unroll 0.9s 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+    }
+    .marker {
+      position: absolute;
+      top: 50%;
+      width: 1rem;
+      height: 1rem;
+      margin: -0.5rem 0 0 -0.5rem;
+      border: 2px solid #fff4d6;
+      border-radius: 50%;
+      background: #ffd98a;
+      box-shadow: 0 0 10px rgb(255 217 138 / 80%);
+      animation: fade 0.5s 1s backwards;
+    }
+    .marker i {
+      position: absolute;
+      bottom: 1.15rem;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #fff;
+      font-size: 0.95rem;
+      font-style: normal;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .ticks {
+      position: relative;
+      height: 1.2rem;
+      margin-top: 0.35rem;
+      color: #a9a290;
+      font-size: 0.7rem;
+    }
+    .ticks span {
+      position: absolute;
+      transform: translateX(-50%);
+    }
+    .ticks span:first-child {
+      transform: none;
+    }
+    .ticks span:last-child {
+      transform: translateX(-100%);
+    }
+    .standing-caption {
+      margin: 0.3rem 0 0.2rem;
+      color: #ffd98a;
+      font-size: 0.92rem;
+      font-weight: 700;
+      text-align: center;
+    }
+    @keyframes fade {
+      from {
+        opacity: 0;
+      }
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 4.2rem minmax(0, 1fr) 3.4rem;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.3rem 0;
+      color: #bdb6a4;
+      font-size: 0.85rem;
+    }
+    .row.lead {
+      color: #ffd98a;
+      font-size: 0.98rem;
+      font-weight: 800;
+    }
+    .tier {
+      white-space: nowrap;
+    }
+    .days {
+      text-align: right;
+      white-space: nowrap;
+    }
+    .track {
+      position: relative;
+      height: 0.7rem;
+      border-radius: 0.35rem;
+      background: rgb(246 239 223 / 11%);
+      overflow: hidden;
+    }
+    .held {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      min-width: 2px;
+      border-radius: 0.35rem;
+      background: #b78f42;
+      transform-origin: left;
+      animation: unroll 0.9s calc(0.25s + var(--i) * 220ms) cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+    }
+    .lead .held {
+      background: #ffd98a;
+      box-shadow: 0 0 10px rgb(255 217 138 / 70%);
+    }
+    .axis {
+      position: relative;
+      height: 1.1rem;
+      margin: 0.2rem 4rem 0 4.8rem;
+      color: #a9a290;
+      font-size: 0.7rem;
+    }
+    .axis span {
+      position: absolute;
+      transform: translateX(-50%);
+    }
+    @keyframes unroll {
+      from {
+        transform: scaleX(0);
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .held,
+      .band,
+      .marker {
+        animation: none;
+      }
+    }
+  `,
+})
+export class ChronicleReignComponent {
+  public readonly reign = input.required<ReignTrack>();
+  public readonly year = input.required<number>();
+  public readonly label = input('');
+
+  public readonly rows = computed(() => {
+    const { start, rows } = this.reign();
+    const span = this.span();
+    return rows.map((row) => ({
+      tier: row.tier,
+      name: row.tier === 1 ? '#1' : (this.translate.instant('chronicle.ladderTop', { count: row.tier }) as string),
+      days: this.translate.instant('chronicle.daysShort', { count: grouped(row.days) }) as string,
+      parts: row.segments.map(([from, to]) => ({
+        left: (100 * (from - start)) / span,
+        width: (100 * (to - from + 1)) / span,
+      })),
+    }));
+  });
+  public readonly months = computed(() => {
+    const { start, end } = this.reign();
+    const span = this.span();
+    const year = this.year();
+    return Array.from({ length: 12 }, (_, index) => {
+      const first = Math.round((Date.UTC(year, index, 1) - Date.UTC(year, 0, 1)) / 86_400_000);
+      const middle = first + 15;
+      return { key: index, first, left: (100 * (middle - start)) / span, label: monthInitial(year * 100 + index + 1) };
+    }).filter((month) => month.first + 15 >= start && month.first + 15 < end);
+  });
+
+  public readonly standing = computed(() => {
+    const { rows, places } = this.reign();
+    const ceiling = Math.max(rows.at(-1)?.tier ?? 10, 10);
+    const left = (rank: number): number => (100 * (Math.log10(ceiling) - Math.log10(rank))) / Math.log10(ceiling);
+    const caption =
+      places.best === places.worst
+        ? this.translate.instant('chronicle.reignEveryDay', { rank: grouped(places.best) })
+        : this.translate.instant('chronicle.reignUsual', { usual: grouped(places.usual), best: grouped(places.best) });
+    return {
+      from: left(places.worst),
+      width: left(places.best) - left(places.worst),
+      usual: left(places.usual),
+      usualRank: grouped(places.usual),
+      ticks: STANDING_TICKS.filter((rank) => rank <= ceiling).map((rank) => ({ rank, left: left(rank) })),
+      caption: caption as string,
+    };
+  });
+
+  private readonly translate = inject(TranslateService);
+  private readonly span = computed(() => Math.max(this.reign().end - this.reign().start, 1));
+}
+
 @Component({
   selector: 'app-chronicle-day',
   standalone: true,
@@ -1029,7 +1297,7 @@ const WORLD_BLUE = '#7fb4ff';
         <circle class="dot" [attr.cx]="point.x" [attr.cy]="point.y" r="3" fill="#e6bd6c" />
       }
       @if (best(); as point) {
-        <circle class="best" [attr.cx]="point.x" [attr.cy]="point.y" r="5.5" />
+        <circle class="best" [class.horizon]="point.horizon" [attr.cx]="point.x" [attr.cy]="point.y" r="5.5" />
         <text class="label" [attr.x]="point.x" [attr.y]="point.y - 11" text-anchor="middle">
           #{{ short(point.rank) }}
         </text>
@@ -1071,6 +1339,10 @@ const WORLD_BLUE = '#7fb4ff';
     }
     .dot {
       animation: fade 0.4s 1.2s both;
+    }
+    .best.horizon {
+      fill: #7fb4ff;
+      stroke: #e6f0ff;
     }
     .best {
       fill: #ffd98a;
@@ -1118,7 +1390,10 @@ export class ChronicleWorldComponent {
   public readonly outerPath = computed(() => smoothPath(this.outerPoints()));
   public readonly horizonPath = computed(() => smoothPath(this.horizonPoints()));
   public readonly best = computed(() => {
-    const points = [...this.outerPoints(), ...this.horizonPoints()];
+    const points = [
+      ...this.outerPoints().map((point) => ({ ...point, horizon: false })),
+      ...this.horizonPoints().map((point) => ({ ...point, horizon: true })),
+    ];
     if (points.length === 0) return null;
     return points.reduce((top, point) => (point.rank < top.rank ? point : top));
   });
@@ -1145,6 +1420,146 @@ export class ChronicleWorldComponent {
       const y = 8 + ((Math.log10(Math.max(rank, 1)) - best) / span) * 92;
       return [{ x: index * step, y, value: rank, index, rank }];
     });
+  }
+}
+
+@Component({
+  selector: 'app-chronicle-rank',
+  standalone: true,
+  imports: [TranslatePipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <svg class="rank" direction="ltr" viewBox="-40 -30 400 170" role="img" [attr.aria-label]="label()">
+      <line class="base" x1="0" x2="320" y1="112" y2="112" />
+      <text class="better" x="-36" y="-14">{{ 'chronicle.worldBetter' | translate }}</text>
+      <path class="arrow" d="M-26 -6 V40 M-30 -1 L-26 -7 L-22 -1" />
+      <path class="area" [attr.d]="area()" />
+      <path class="line" pathLength="1" [attr.d]="path()" />
+      @if (first(); as point) {
+        <circle class="dot" [attr.cx]="point.x" [attr.cy]="point.y" r="3.4" />
+        <text class="value" [attr.x]="point.x + 4" [attr.y]="point.y - 10">#{{ short(point.rank) }}</text>
+      }
+      @if (last(); as point) {
+        <circle class="dot end" [attr.cx]="point.x" [attr.cy]="point.y" r="5.5" />
+        <text class="value strong" [attr.x]="point.x" [attr.y]="point.y - 12" text-anchor="end">
+          #{{ short(point.rank) }}
+        </text>
+      }
+      @for (item of monthLabels(); track item.key) {
+        <text class="month" [attr.x]="item.x" y="132" text-anchor="middle">{{ item.label }}</text>
+      }
+    </svg>
+  `,
+  styles: `
+    .rank {
+      display: block;
+      width: 100%;
+      height: auto;
+      margin-top: 0.6rem;
+      overflow: visible;
+    }
+    .base {
+      stroke: rgb(246 239 223 / 22%);
+    }
+    .better {
+      fill: #bdb6a4;
+      font-size: 10px;
+    }
+    .arrow {
+      fill: none;
+      stroke: rgb(246 239 223 / 40%);
+    }
+    .area {
+      fill: rgb(230 189 108 / 16%);
+      animation: fade 1.2s 0.7s both;
+    }
+    .line {
+      fill: none;
+      stroke: #e6bd6c;
+      stroke-width: 3.2;
+      stroke-linecap: round;
+      stroke-dasharray: 1;
+      stroke-dashoffset: 1;
+      animation: draw 1.5s 0.25s cubic-bezier(0.65, 0, 0.2, 1) forwards;
+    }
+    .dot {
+      fill: #e6bd6c;
+      animation: fade 0.4s 1.5s both;
+    }
+    .dot.end {
+      fill: #ffd98a;
+      stroke: #fff4d6;
+      stroke-width: 2;
+    }
+    .value {
+      fill: #e8e1cf;
+      font-size: 13px;
+      font-weight: 600;
+      paint-order: stroke;
+      stroke: rgb(8 10 19 / 85%);
+      stroke-width: 4px;
+      stroke-linejoin: round;
+      animation: fade 0.5s 1.5s both;
+    }
+    .value.strong {
+      fill: #fff;
+      font-size: 15px;
+      font-weight: 800;
+    }
+    .month {
+      fill: #bdb6a4;
+      font-size: 12px;
+    }
+    @keyframes draw {
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+    @keyframes fade {
+      from {
+        opacity: 0;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .line {
+        animation: none;
+        stroke-dashoffset: 0;
+      }
+    }
+  `,
+})
+export class ChronicleRankComponent {
+  public readonly ranks = input.required<(number | null)[]>();
+  public readonly months = input.required<number[]>();
+  public readonly label = input('');
+
+  public readonly points = computed(() => {
+    const ranks = this.ranks().filter((rank): rank is number => rank !== null);
+    const worst = Math.log10(Math.max(...ranks, 2));
+    const best = Math.log10(Math.max(Math.min(...ranks), 1));
+    const span = Math.max(worst - best, 0.0001);
+    const step = this.ranks().length > 1 ? 320 / (this.ranks().length - 1) : 0;
+    return this.ranks().flatMap((rank, index) => {
+      if (rank === null) return [];
+      const y = 8 + ((Math.log10(Math.max(rank, 1)) - best) / span) * 92;
+      return [{ x: index * step, y, value: rank, index, rank }];
+    });
+  });
+  public readonly path = computed(() => smoothPath(this.points()));
+  public readonly area = computed(() => {
+    const points = this.points();
+    if (points.length === 0) return '';
+    return `${smoothPath(points)} L${points.at(-1)!.x} 112 L${points[0].x} 112 Z`;
+  });
+  public readonly first = computed(() => this.points()[0] ?? null);
+  public readonly last = computed(() => this.points().at(-1) ?? null);
+  public readonly monthLabels = computed(() => {
+    const step = this.months().length > 1 ? 320 / (this.months().length - 1) : 0;
+    return this.months().map((month, index) => ({ key: month, x: index * step, label: monthInitial(month) }));
+  });
+
+  public short(value: number): string {
+    return grouped(value);
   }
 }
 

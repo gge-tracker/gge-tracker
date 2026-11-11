@@ -64,6 +64,30 @@ export function monthlyMightQuery(database: string, window: ChronicleWindow, tim
     GROUP BY player_id, month`;
 }
 
+export function serverDaysQuery(database: string, window: ChronicleWindow, timezone: string): string {
+  return `
+    SELECT DISTINCT toString(toDate(created_at, '${timezone}')) AS day
+    FROM \`${database}\`.player_might_history
+    WHERE ${inWindow(window)}
+    ORDER BY day`;
+}
+
+export function dailyRanksQuery(
+  database: string,
+  window: ChronicleWindow,
+  timezone: string,
+  maxPosition: number,
+): string {
+  return `
+    SELECT player_id, arrayMap(t -> (toString(t.1), t.2), groupArray((day, position))) AS top_days
+    FROM (
+      SELECT player_id, day, rank() OVER (PARTITION BY day ORDER BY day_value DESC) AS position
+      FROM (${dailyMight(database, window, timezone)})
+    )
+    WHERE position <= ${maxPosition}
+    GROUP BY player_id`;
+}
+
 export function lootWeekStarts(window: ChronicleWindow, reset: LootReset): number[] {
   const starts: number[] = [];
   for (let start = lootWeekStart(window.fromMs, reset); start < window.untilMs; start = lootWeekEnd(start, reset)) {

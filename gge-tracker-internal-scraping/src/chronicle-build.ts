@@ -23,6 +23,7 @@ import {
   chronicleWindow,
   fullStoryHours,
   longestRun,
+  REIGN_TIERS,
   pickRivals,
   playerTier,
   rankWorldEvent,
@@ -35,6 +36,7 @@ import {
   PLAYERS_SQL,
   activeDaysQuery,
   activeHoursQuery,
+  dailyRanksQuery,
   eventDatesQuery,
   eventResultsQuery,
   eventRunStarts,
@@ -44,6 +46,7 @@ import {
   worldEventSql,
   mightQuery,
   monthlyMightQuery,
+  serverDaysQuery,
 } from './chronicle-queries';
 import { appendFileSync } from 'node:fs';
 import { ScrapingServer, readScrapingServers } from './servers-file';
@@ -190,6 +193,7 @@ function blankFeatures(id: number): PlayerFeatures {
     world: {},
     firstDay: null,
     events: {},
+    topDays: [],
   };
 }
 
@@ -259,6 +263,16 @@ async function readHistories(table: FeatureTable, server: ScrapingServer, window
     const hourly = table.at(row.player_id).hourly;
     hours.forEach((hour, index) => (hourly[hour] = Number(counts[index])));
   }
+}
+
+async function readDailyRanks(table: FeatureTable, server: ScrapingServer, window: ChronicleWindow): Promise<string[]> {
+  const timezone = server.lootReset?.timezone ?? 'UTC';
+  const query = dailyRanksQuery(server.olap, window, timezone, REIGN_TIERS.at(-1)!);
+  for (const row of await clickhouse(query)) {
+    const features = table.at(row.player_id);
+    features.topDays = (row.top_days as [string, number | string][]).map(([day, position]) => [day, Number(position)]);
+  }
+  return (await clickhouse(serverDaysQuery(server.olap, window, timezone))).map((row) => String(row.day));
 }
 
 async function readEvents(table: FeatureTable, server: ScrapingServer, window: ChronicleWindow): Promise<void> {
@@ -494,6 +508,7 @@ async function runServer(
 
   const table = new FeatureTable();
   await readHistories(table, server, window);
+  const serverDays = await readDailyRanks(table, server, window);
   await readEvents(table, server, window);
   await readIdentities(table, server, window);
   const players = table.tracked();
@@ -501,7 +516,14 @@ async function runServer(
   const months = await readMonthly(players, server, window);
   const full = players.filter((player) => playerTier(player, fullStoryHours(days)) === 'full');
   const rivals = tier === 'full' ? pickRivals(full, monthlySnapshots(full, months)) : new Map<number, RivalPick>();
-  const entries = buildEntries(players, { window, months, rivals, worldServers: world.servers, trackedDays: days });
+  const entries = buildEntries(players, {
+    window,
+    months,
+    rivals,
+    worldServers: world.servers,
+    trackedDays: days,
+    serverDays,
+  });
 
   await sink.players(entries.map((entry) => toPlayerRow(entry, window.year, server.server, builtAt)));
   await sink.server(serverRow(entries.length, entries.filter((entry) => entry.tier === 'full').length));

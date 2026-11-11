@@ -20,6 +20,15 @@ export const SUMMIT_MIN_DROP = 1.1;
 export const SUMMIT_MIN_MIGHT = 5000;
 export const RIVAL_MIN_ACTIVE_DAYS = 7;
 export const RIVAL_MIN_EVENTS = 3;
+export const REIGN_TIERS = [1, 10, 100];
+export const REIGN_MIN_DAYS = 7;
+export const REIGN_MERGED_GAP_DAYS = 3;
+export const REIGN_STEADY_SHARE = 0.9;
+export const RANK_MILESTONES = [100, 500, 1000, 5000, 10_000];
+export const CLIMB_MIN_PLACES = 25;
+export const CLIMB_MIN_SHARE = 0.1;
+// Glory below the first title of the game names no rank worth a page
+export const GLORY_FIRST_TITLE_POINTS = 4444;
 
 const DAY_MS = 86_400_000;
 const SERVED_KINDS = new Set(['ep', 'e4k', 'partner']);
@@ -33,6 +42,7 @@ export type SlideId =
   | 'cover'
   | 'climb'
   | 'summit'
+  | 'ranking'
   | 'great-day'
   | 'plunder'
   | 'battlefield'
@@ -134,6 +144,43 @@ export interface PlayerFeatures {
   world: WorldEvents;
   firstDay: string | null;
   events: Partial<Record<EventKey, EventResult>>;
+  topDays: [string, number][];
+}
+
+export interface ReignRow {
+  tier: number;
+  days: number;
+  segments: [number, number][];
+}
+
+export interface ChronicleReign {
+  tier: number;
+  days: number;
+  longest: number;
+  comebacks: number;
+  trackedDays: number;
+  start: number;
+  end: number;
+  rows: ReignRow[];
+  steady: boolean;
+  places: { best: number; usual: number; worst: number };
+}
+
+export interface RankMilestone {
+  top: number;
+  month: number;
+}
+
+export interface ChronicleRanking {
+  monthly: (number | null)[];
+  first: number;
+  firstMonth: number;
+  last: number;
+  lastMonth: number;
+  best: number;
+  bestMonth: number;
+  places: number;
+  milestone: RankMilestone | null;
 }
 
 export interface ServerStanding {
@@ -149,6 +196,7 @@ export interface ChronicleRival {
   loot: number;
   events: number;
   activeDays: number;
+  allianceName: string | null;
   monthly: (number | null)[];
   monthsAhead: number;
   monthsCompared: number;
@@ -186,6 +234,8 @@ export interface ChronicleEntry {
     rankBest: number | null;
     rankBestMonth: number | null;
     rankedPlayers: number;
+    reign: ChronicleReign | null;
+    ranking: ChronicleRanking | null;
   };
   loot: ServerStanding & {
     total: number;
@@ -226,6 +276,7 @@ export interface BuildOptions {
   rivals?: Map<number, RivalPick>;
   worldServers?: number;
   trackedDays?: number;
+  serverDays?: string[];
 }
 
 export function chronicleWindow(year: number, untilMs?: number): ChronicleWindow {
@@ -344,6 +395,103 @@ export function longestRun(calendar: string): number {
   return Math.max(0, ...calendar.split('0').map((run) => run.length));
 }
 
+function consecutiveRuns(ordinals: number[]): [number, number][] {
+  const runs: [number, number][] = [];
+  for (const ordinal of ordinals) {
+    const last = runs.at(-1);
+    if (last && ordinal === last[1] + 1) last[1] = ordinal;
+    else runs.push([ordinal, ordinal]);
+  }
+  return runs;
+}
+
+function mergeShortGaps(runs: [number, number][]): [number, number][] {
+  return runs.reduce<[number, number][]>((merged, run) => {
+    const last = merged.at(-1);
+    if (last && run[0] - last[1] - 1 <= REIGN_MERGED_GAP_DAYS) last[1] = run[1];
+    else merged.push([run[0], run[1]]);
+    return merged;
+  }, []);
+}
+
+function firstOrdinal(serverDays: string[], firstDay: string | null): number {
+  if (!firstDay) return 0;
+  const index = serverDays.findIndex((day) => day >= firstDay);
+  return index < 0 ? serverDays.length : index;
+}
+
+export function buildReign(
+  topDays: [string, number][],
+  serverDays: string[],
+  firstDay: string | null,
+  year: number,
+): ChronicleReign | null {
+  if (topDays.length === 0 || serverDays.length === 0) return null;
+  const ordinals = new Map(serverDays.map((day, index) => [day, index]));
+  const held = (tier: number): number[] =>
+    topDays
+      .flatMap(([day, position]) => (position <= tier && ordinals.has(day) ? [ordinals.get(day)!] : []))
+      .sort((a, b) => a - b);
+  const headline = REIGN_TIERS.findIndex((tier) => held(tier).length >= REIGN_MIN_DAYS);
+  if (headline < 0) return null;
+  const toCalendar = ([start, end]: [number, number]): [number, number] => [
+    dayIndex(serverDays[start], year),
+    dayIndex(serverDays[end], year),
+  ];
+  const rows = REIGN_TIERS.flatMap((tier, index) => {
+    const days = held(tier);
+    if (index < headline && days.length === 0) return [];
+    return [{ tier, days: days.length, segments: mergeShortGaps(consecutiveRuns(days)).map(toCalendar) }];
+  });
+  const headlineRow = rows.find((row) => row.tier === REIGN_TIERS[headline])!;
+  const from = Math.min(firstOrdinal(serverDays, firstDay), serverDays.length - 1);
+  const trackedDays = serverDays.length - from;
+  const positions = topDays
+    .filter(([day]) => ordinals.has(day))
+    .map(([, position]) => position)
+    .sort((a, b) => a - b);
+  return {
+    tier: REIGN_TIERS[headline],
+    days: headlineRow.days,
+    longest: Math.max(...consecutiveRuns(held(REIGN_TIERS[headline])).map(([start, end]) => end - start + 1)),
+    comebacks: headlineRow.segments.length - 1,
+    trackedDays,
+    start: dayIndex(serverDays[from], year),
+    end: dayIndex(serverDays.at(-1)!, year) + 1,
+    rows,
+    steady: rows.every((row) => row.segments.length <= 1 && row.days >= trackedDays * REIGN_STEADY_SHARE),
+    places: {
+      best: positions[0],
+      usual: positions[Math.floor(positions.length / 2)],
+      worst: positions.at(-1)!,
+    },
+  };
+}
+
+export function buildRanking(monthlyRanks: (number | null)[], months: number[]): ChronicleRanking | null {
+  const known = monthlyRanks.flatMap((rank, index) => (rank === null ? [] : [{ rank, month: months[index] }]));
+  if (known.length < 2) return null;
+  const first = known[0];
+  const last = known.at(-1)!;
+  const best = known.reduce((top, entry) => (entry.rank < top.rank ? entry : top));
+  const top = RANK_MILESTONES.find((milestone) => best.rank <= milestone && first.rank > milestone);
+  return {
+    monthly: monthlyRanks,
+    first: first.rank,
+    firstMonth: first.month,
+    last: last.rank,
+    lastMonth: last.month,
+    best: best.rank,
+    bestMonth: best.month,
+    places: first.rank - last.rank,
+    milestone: top === undefined ? null : { top, month: known.find((entry) => entry.rank <= top)!.month },
+  };
+}
+
+export function isNotableClimb(ranking: ChronicleRanking | null): boolean {
+  return !!ranking && ranking.places >= Math.max(CLIMB_MIN_PLACES, ranking.first * CLIMB_MIN_SHARE);
+}
+
 function isoDay(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10);
 }
@@ -446,7 +594,7 @@ const PERSONA_RULES: PersonaRule[] = [
   },
   { id: 'veteran', isEligible: (p) => p.longestStreak >= 30, metric: (p) => p.longestStreak },
   { id: 'hermit-king', isEligible: (p) => p.allianceId === null && p.lootTotal > 0, metric: (p) => p.lootTotal },
-  { id: 'glorious', isEligible: (p) => p.gloryHighest > 0, metric: (p) => p.gloryHighest },
+  { id: 'glorious', isEligible: (p) => p.gloryHighest >= GLORY_FIRST_TITLE_POINTS, metric: (p) => p.gloryHighest },
 ];
 
 export function assignPersonas(players: PlayerFeatures[]): Map<number, PersonaId> {
@@ -474,17 +622,18 @@ export function assignPersonas(players: PlayerFeatures[]): Map<number, PersonaId
   return assigned;
 }
 
-function contentSlides(player: PlayerFeatures, rhythmMinDays: number): SlideId[] {
+function contentSlides(player: PlayerFeatures, rhythmMinDays: number, hasRanking: boolean): SlideId[] {
   const gain = player.mightEnd - player.mightStart;
   const slides: SlideId[] = [];
   if (gain > 0) slides.push('climb');
   else if (player.mightPeak >= player.mightEnd * SUMMIT_MIN_DROP && player.mightPeak >= SUMMIT_MIN_MIGHT)
     slides.push('summit');
+  if (hasRanking) slides.push('ranking');
   if (gain > 0 && player.bestDay !== null && player.bestDayGain >= gain * NOTABLE_DAY_SHARE) slides.push('great-day');
   if (player.lootTotal > 0) slides.push('plunder');
   if (totalEventRuns(player.events) > 0) slides.push('battlefield');
   if (player.world.outerRealms || player.world.horizon) slides.push('beyond');
-  if (player.gloryHighest > 0) slides.push('glory');
+  if (player.gloryHighest >= GLORY_FIRST_TITLE_POINTS) slides.push('glory');
   if (player.activeDays >= rhythmMinDays) slides.push('rhythm', 'hours');
   if (player.allianceId !== null) slides.push('banner');
   return slides;
@@ -495,8 +644,9 @@ export function selectSlides(
   tier: PlayerTier,
   hasRival = false,
   rhythmMinDays = RHYTHM_MIN_ACTIVE_DAYS,
+  hasRanking = false,
 ): SlideId[] {
-  const content = contentSlides(player, rhythmMinDays);
+  const content = contentSlides(player, rhythmMinDays, hasRanking);
   if (tier === 'short') return ['cover', ...content.slice(0, 1), 'wall'];
   return ['cover', ...content, ...(hasRival ? (['rival'] as const) : []), 'persona', 'wall'];
 }
@@ -575,6 +725,7 @@ function buildRival(player: PlayerFeatures, rival: PlayerFeatures, monthsNear: n
     loot: rival.lootTotal,
     events: totalEventRuns(rival.events),
     activeDays: rival.activeDays,
+    allianceName: rival.allianceName,
     monthly: rival.monthly,
     monthsAhead: compared.filter(([mine, theirs]) => mine > theirs).length,
     monthsCompared: compared.length,
@@ -595,19 +746,26 @@ export function buildEntries(players: PlayerFeatures[], options: BuildOptions): 
   const days = sortedPositive(players.map((player) => player.activeDays));
   const glories = sortedPositive(players.map((player) => player.gloryCurrent));
   const bestGlories = sortedPositive(players.map((player) => player.gloryHighest));
-  const startRanks = rankPositions(players, 0);
-  const endRanks = rankPositions(players, options.months.length - 1);
+  const monthlyRanks = options.months.map((_, column) => rankPositions(players, column));
+  const startRanks = monthlyRanks[0] ?? new Map<number, number>();
+  const endRanks = monthlyRanks.at(-1) ?? new Map<number, number>();
   const bestRanks = new Map<number, { rank: number; month: number }>();
   options.months.forEach((month, column) => {
-    for (const [id, rank] of rankPositions(players, column)) {
+    for (const [id, rank] of monthlyRanks[column]) {
       const known = bestRanks.get(id);
       if (!known || rank < known.rank) bestRanks.set(id, { rank, month });
     }
   });
   const windowDays = Math.ceil((window.untilMs - window.fromMs) / DAY_MS);
+  const serverDays = options.serverDays ?? [];
 
   return players.map((player) => {
     const tier = playerTier(player, minHours);
+    const reign = buildReign(player.topDays, serverDays, player.firstDay, window.year);
+    const ranking = buildRanking(
+      monthlyRanks.map((ranks) => ranks.get(player.id) ?? null),
+      options.months,
+    );
     const gain = player.mightEnd - player.mightStart;
     const eventRuns = totalEventRuns(player.events);
     const rivalPick = tier === 'full' ? rivals.get(player.id) : undefined;
@@ -626,7 +784,13 @@ export function buildEntries(players: PlayerFeatures[], options: BuildOptions): 
       tier,
       hours: player.hours,
       firstDay: player.firstDay,
-      slides: selectSlides(player, tier, rivalFeatures !== undefined, rhythmMinDays),
+      slides: selectSlides(
+        player,
+        tier,
+        rivalFeatures !== undefined,
+        rhythmMinDays,
+        reign !== null || isNotableClimb(ranking),
+      ),
       rival: rivalFeatures ? buildRival(player, rivalFeatures, rivalPick!.months) : null,
       alliance: {
         id: player.allianceId,
@@ -652,6 +816,8 @@ export function buildEntries(players: PlayerFeatures[], options: BuildOptions): 
         rankBest: bestRanks.get(player.id)?.rank ?? null,
         rankBestMonth: bestRanks.get(player.id)?.month ?? null,
         rankedPlayers: endRanks.size,
+        reign,
+        ranking,
       },
       loot: {
         ...lootStanding,

@@ -29,13 +29,21 @@ interface ChroniclePlayer {
   id: number | string;
   name: string;
   tier: string;
+  slides?: string[];
   rival: { id: number | string; name: string } | null;
   alliance: { name: string | null };
   persona: string | null;
-  might: { gain: number; higherThanPct: number; monthly: (number | null)[] };
+  might: {
+    gain: number;
+    higherThanPct: number;
+    monthly: (number | null)[];
+    reign?: { tier: number; days: number; longest: number } | null;
+    ranking?: { first: number; last: number; places: number } | null;
+  };
   loot: { total: number; higherThanPct: number };
   events: { runs: number };
   rhythm: { activeDays: number };
+  profile?: ChronicleCardData['profile'];
 }
 
 interface ChronicleAnswer {
@@ -255,13 +263,22 @@ export abstract class ApiChronicle implements ApiHelper {
       persona: player.persona,
       mightGain: player.might.gain,
       mightHigherThanPct: player.might.higherThanPct,
+      reign: player.might.reign ?? null,
+      climb: this.climbOf(player),
       lootTotal: player.loot.total,
       lootHigherThanPct: player.loot.higherThanPct,
       eventRuns: player.events.runs,
       activeDays: player.rhythm.activeDays,
       monthly: player.might.monthly,
+      profile: player.profile ?? null,
       dataRange: this.dataRange(answer, copy),
     };
+  }
+
+  private static climbOf(player: ChroniclePlayer): ChronicleCardData['climb'] {
+    const ranking = player.might.ranking;
+    if (!ranking || player.might.reign || !player.slides?.includes('ranking')) return null;
+    return { first: ranking.first, last: ranking.last, places: ranking.places };
   }
 
   private static dataRange(answer: ChronicleAnswer, copy: ChronicleCardCopy): string {

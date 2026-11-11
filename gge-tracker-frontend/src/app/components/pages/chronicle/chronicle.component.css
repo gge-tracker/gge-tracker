@@ -321,6 +321,18 @@
   text-underline-offset: 0.2em;
 }
 
+.rival-alliance {
+  margin: 0.25rem 0 0;
+  color: #e6bd6c;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.rival-alliance i {
+  margin-inline-end: 0.35rem;
+  font-size: 0.85em;
+}
+
 .rival-link:hover,
 .rival-link:focus-visible {
   color: #ffd98a;

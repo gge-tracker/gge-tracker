@@ -114,13 +114,7 @@
                     [months]="hero.might.months"
                     [label]="t('mightChart')"
                   />
-                  @if (rankGain() > 0) {
-                    <p class="pill">
-                      <i class="fas fa-arrow-trend-up"></i>
-                      {{ t('rankMove', { server: server(), from: grouped(hero.might.rankStart!), to: grouped(hero.might.rankEnd!) }) }}
-                    </p>
-                  }
-                  @if (showsBestRank()) {
+                  @if (showsBestPlace()) {
                     <p class="pill">
                       <i class="fas fa-mountain-sun"></i> {{ t('bestRank', { rank: grouped(hero.might.rankBest!), month: bestRankMonth() }) }}
                     </p>
@@ -131,6 +125,7 @@
                       [rank]="hero.might.rank"
                       [of]="hero.might.of"
                       [server]="server()"
+                      [detailText]="meterDetail('meterMight', hero.might)"
                     />
                   }
                 }
@@ -143,10 +138,41 @@
                     [months]="hero.might.months"
                     [label]="t('peakLead')"
                   />
-                  @if (hero.might.rankBest) {
+                  @if (hero.might.rankBest && !hero.slides.includes('ranking')) {
                     <p class="pill">
                       <i class="fas fa-mountain-sun"></i> {{ t('bestRank', { rank: grouped(hero.might.rankBest), month: bestRankMonth() }) }}
                     </p>
+                  }
+                }
+                @case ('ranking') {
+                  @if (hero.might.reign; as reign) {
+                    <p class="eyebrow">{{ t('reignEye') }}</p>
+                    <p class="hero" [appCountUp]="reign.days" countStyle="grouped"></p>
+                    <p class="lead">{{ reignLead() }}</p>
+                    <app-chronicle-reign
+                      [reign]="reign"
+                      [year]="year()"
+                      [label]="t(reign.steady ? 'reignStoodChart' : 'reignChart', { server: server() })"
+                    />
+                    <p class="caption">{{ t('reignTracked', { total: grouped(reign.trackedDays) }) }}</p>
+                    @if (reign.longest < reign.days) {
+                      <p class="pill"><i class="fas fa-crown"></i> {{ reignLongest() }}</p>
+                    }
+                    @if (reignComebacks()) {
+                      <p class="pill"><i class="fas fa-rotate-left"></i> {{ reignComebacks() }}</p>
+                    }
+                  } @else if (hero.might.ranking; as ranking) {
+                    <p class="eyebrow">{{ t('rankEye') }}</p>
+                    <p class="hero" [appCountUp]="ranking.places" countStyle="grouped" countPrefix="+"></p>
+                    <p class="lead">{{ t('rankLead', { server: server() }) }}</p>
+                    <app-chronicle-rank [ranks]="ranking.monthly" [months]="hero.might.months" [label]="t('rankChart', { server: server() })" />
+                    <p class="caption">{{ rankFrom() }}</p>
+                    @if (rankMilestone()) {
+                      <p class="pill"><i class="fas fa-flag"></i> {{ rankMilestone() }}</p>
+                    }
+                    @if (rankBest()) {
+                      <p class="pill"><i class="fas fa-mountain-sun"></i> {{ rankBest() }}</p>
+                    }
                   }
                 }
                 @case ('great-day') {
@@ -182,6 +208,7 @@
                       [rank]="hero.loot.rank"
                       [of]="hero.loot.of"
                       [server]="server()"
+                      [detailText]="meterDetail('meterLoot', hero.loot)"
                     />
                   }
                 }
@@ -221,6 +248,7 @@
                       [rank]="hero.events.rank"
                       [of]="hero.events.of"
                       [server]="server()"
+                      [detailText]="meterDetail('meterEvents', hero.events)"
                     />
                   }
                 }
@@ -257,26 +285,20 @@
                   }
                 }
                 @case ('glory') {
-                  <p class="eyebrow">{{ t('gloryEye') }}</p>
+                  <p class="eyebrow">{{ t('gloryPeakEye') }}</p>
                   <h2 class="heading">{{ gloryTitleName() }}</h2>
-                  <p class="hero small" [appCountUp]="hero.glory.current" countStyle="grouped"></p>
-                  <p class="lead">{{ root('Points de gloire') }}</p>
-                  @if (gloryRungs().length > 0) {
+                  <p class="hero small" [appCountUp]="hero.glory.highest" countStyle="grouped"></p>
+                  <p class="lead">{{ t('gloryPeakLead') }}</p>
+                  @if (gloryRungs().length > 0 && !reachedTopGloryTitle()) {
                     <app-chronicle-ladder [rungs]="gloryRungs()" />
                   }
-                  @if (nextGloryStep()) {
-                    <p class="pill"><i class="fas fa-angles-up"></i> {{ nextGloryStep() }}</p>
-                  } @else {
-                    <p class="pill"><i class="fas fa-crown"></i> {{ t('topTitle') }}</p>
-                  }
-                  @if (hero.glory.highest > hero.glory.current) {
-                    <p class="note">
-                      {{ t('gloryBest', { points: grouped(hero.glory.highest) }) }}
-                      @if (hero.glory.rank > 0) {
-                        {{ t('gloryToday', { rank: grouped(hero.glory.rank) }) }}
-                      }
-                    </p>
-                  }
+                  <p class="note">
+                    @if (hero.glory.current >= hero.glory.highest) {
+                      {{ t('gloryAtPeak') }}
+                    } @else {
+                      {{ t('gloryNow', { points: grouped(hero.glory.current) }) }}
+                    }
+                  </p>
                   @if (showsMeter(hero.glory.best.higherThanPct)) {
                     <app-chronicle-meter
                       [higherThanPct]="hero.glory.best.higherThanPct"
@@ -312,6 +334,7 @@
                       [rank]="hero.rhythm.rank"
                       [of]="hero.rhythm.of"
                       [server]="server()"
+                      [detailText]="meterDetail('meterDays', hero.rhythm)"
                     />
                   }
                 }
@@ -355,6 +378,9 @@
                   <a class="heading rival-link" dir="auto" [routerLink]="['/chronicle', year(), hero.rival?.id]">{{
                     hero.rival?.name
                   }}</a>
+                  @if (hero.rival?.allianceName) {
+                    <p class="rival-alliance" dir="auto"><i class="fas fa-shield-halved"></i> {{ hero.rival?.allianceName }}</p>
+                  }
                   <p class="lead">{{ t('rivalLead') }}</p>
                   <p class="note">
                     {{ t('rivalMonths', { near: hero.rival?.monthsNear, ahead: hero.rival?.monthsAhead, total: hero.rival?.monthsCompared }) }}

@@ -1,4 +1,4 @@
-import { ApiChroniclePlayer } from '@ggetracker-interfaces/empire-ranking';
+import { ApiChroniclePlayer, ApiChronicleRanking, ApiChronicleReign } from '@ggetracker-interfaces/empire-ranking';
 import { ChronicleSlide } from './chronicle.copy';
 
 export interface ChronicleNote {
@@ -51,11 +51,32 @@ function worldNote(hero: ApiChroniclePlayer): ChronicleNote {
 }
 
 function gloryNote(hero: ApiChroniclePlayer): ChronicleNote {
-  const { glory } = hero;
-  if (glory.rank > 0 && glory.rank <= 10) return { key: 'n_gloryTop' };
-  if (glory.best.higherThanPct - glory.higherThanPct >= 15) return { key: 'n_gloryFaded' };
-  if (glory.higherThanPct >= 90) return { key: 'n_gloryHigh' };
+  const { best, higherThanPct } = hero.glory;
+  if (best.rank > 0 && best.rank <= 10) return { key: 'n_gloryTop' };
+  if (best.higherThanPct - higherThanPct >= 15) return { key: 'n_gloryFaded' };
+  if (best.higherThanPct >= 90) return { key: 'n_gloryHigh' };
   return { key: 'n_glory' };
+}
+
+function reignNote(reign: ApiChronicleReign, server: string): ChronicleNote {
+  if (reign.days >= reign.trackedDays) return { key: 'n_reignAll' };
+  if (reign.tier === 1 && reign.days * 2 >= reign.trackedDays) return { key: 'n_reign1', params: { server } };
+  if (reign.comebacks > 0) return { key: 'n_reignBack' };
+  return { key: 'n_reign' };
+}
+
+function journeyNote(ranking: ApiChronicleRanking): ChronicleNote {
+  if (ranking.milestone && ranking.milestone.top <= 500) return { key: 'n_rankElite' };
+  if (ranking.places >= 5000) return { key: 'n_rankHuge' };
+  if (ranking.places >= 1000) return { key: 'n_rankBig' };
+  if (ranking.last * 2 <= ranking.first) return { key: 'n_rankHalf' };
+  return { key: 'n_rankUp' };
+}
+
+function rankingNote(hero: ApiChroniclePlayer, server: string): ChronicleNote | null {
+  const { reign, ranking } = hero.might;
+  if (reign) return reignNote(reign, server);
+  return ranking ? journeyNote(ranking) : null;
 }
 
 function rhythmNote(hero: ApiChroniclePlayer, ownDays: number): ChronicleNote {
@@ -91,6 +112,7 @@ function summitNote(hero: ApiChroniclePlayer): ChronicleNote {
 function coverNote(hero: ApiChroniclePlayer): ChronicleNote | null {
   if (hero.tier === 'short') return { key: 'n_coverShort' };
   if (hero.might.rankEnd !== null && hero.might.rankEnd <= 10) return { key: 'n_coverTop' };
+  if (hero.slides.includes('ranking') && (hero.might.ranking?.places ?? 0) >= 1000) return { key: 'n_coverClimb' };
   return null;
 }
 
@@ -110,6 +132,9 @@ export function scribeNote(
     }
     case 'summit': {
       return summitNote(hero);
+    }
+    case 'ranking': {
+      return rankingNote(hero, server);
     }
     case 'great-day': {
       return hero.might.bestDay ? { key: `n_week${new Date(`${hero.might.bestDay}T12:00:00Z`).getUTCDay()}` } : null;

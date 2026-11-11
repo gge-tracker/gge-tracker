@@ -2,6 +2,7 @@ export type ChronicleSlide =
   | 'cover'
   | 'climb'
   | 'summit'
+  | 'ranking'
   | 'great-day'
   | 'plunder'
   | 'battlefield'
@@ -26,6 +27,7 @@ export const SLIDE_SCENES: Record<ChronicleSlide, string> = {
   cover: 'tavern',
   climb: 'climb',
   summit: 'climb',
+  ranking: 'council',
   'great-day': 'keeps',
   plunder: 'realms',
   battlefield: 'tournament',

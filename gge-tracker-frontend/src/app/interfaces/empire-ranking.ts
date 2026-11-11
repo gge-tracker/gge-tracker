@@ -360,10 +360,36 @@ export interface ApiChronicleRival {
   loot: number;
   events: number;
   activeDays: number;
+  allianceName?: string | null;
   monthly: (number | null)[];
   monthsAhead: number;
   monthsCompared: number;
   monthsNear: number;
+}
+
+export interface ApiChronicleReign {
+  tier: number;
+  days: number;
+  longest: number;
+  comebacks: number;
+  trackedDays: number;
+  start: number;
+  end: number;
+  rows: { tier: number; days: number; segments: [number, number][] }[];
+  steady: boolean;
+  places: { best: number; usual: number; worst: number };
+}
+
+export interface ApiChronicleRanking {
+  monthly: (number | null)[];
+  first: number;
+  firstMonth: number;
+  last: number;
+  lastMonth: number;
+  best: number;
+  bestMonth: number;
+  places: number;
+  milestone: { top: number; month: number } | null;
 }
 
 export interface ApiChroniclePlayer {
@@ -397,6 +423,8 @@ export interface ApiChroniclePlayer {
     rankBest: number | null;
     rankBestMonth: number | null;
     rankedPlayers: number;
+    reign?: ApiChronicleReign | null;
+    ranking?: ApiChronicleRanking | null;
   };
   loot: ApiChronicleStanding & {
     total: number;
