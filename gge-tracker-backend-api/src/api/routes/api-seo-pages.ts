@@ -77,6 +77,11 @@ export abstract class ApiSeoPages implements ApiHelper {
       title: 'Aquamarine ranking',
       description: 'The Storm Islands aquamarine leaderboard of Goodgame Empire',
     },
+    '/kingdoms-league': {
+      title: "Kingdom's League",
+      description:
+        "The Goodgame Empire Kingdom's League season ranking, titles and medals of every player, night by night",
+    },
     '/rift-raid': {
       title: 'Rift Tournament',
       description: 'The Rift Tournament of the Goodgame Empire Rift Raid, alliance by alliance and hour by hour',

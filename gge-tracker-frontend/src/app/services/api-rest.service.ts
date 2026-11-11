@@ -57,6 +57,10 @@ import {
   ApiRiftRaidAlliancesResponse,
   ApiRiftRaidDatesResponse,
   ApiRiftRaidSearchResponse,
+  ApiKingdomsLeagueAlliancesResponse,
+  ApiKingdomsLeaguePlayerHistoryResponse,
+  ApiKingdomsLeaguePlayersResponse,
+  ApiKingdomsLeagueSeasonsResponse,
   ApiLiveRankingResponse,
   LiveRankingExportFormat,
   LiveRankingFilters,
@@ -971,6 +975,43 @@ export class ApiRestService {
   ): Promise<ApiResponse<ApiRiftRaidAllianceAnalysisResponse>> {
     return this.apiFetch<ApiRiftRaidAllianceAnalysisResponse>(
       `${ApiRestService.apiUrl}rift-raid/alliance/${allianceId}/${eventId}`,
+    );
+  }
+
+  public async getKingdomsLeagueSeasons(): Promise<ApiResponse<ApiKingdomsLeagueSeasonsResponse>> {
+    return this.apiFetch<ApiKingdomsLeagueSeasonsResponse>(`${ApiRestService.apiUrl}kingdoms-league/seasons`);
+  }
+
+  public async getKingdomsLeaguePlayers(
+    day: string,
+    page: number,
+    playerName?: string,
+  ): Promise<ApiResponse<ApiKingdomsLeaguePlayersResponse>> {
+    const parameters = new URLSearchParams({ day, page: String(page) });
+    if (playerName) parameters.set('player_name', playerName);
+    return this.apiFetch<ApiKingdomsLeaguePlayersResponse>(
+      `${ApiRestService.apiUrl}kingdoms-league/players?${parameters}`,
+    );
+  }
+
+  public async getKingdomsLeagueAlliances(
+    day: string,
+    page: number,
+    allianceName?: string,
+  ): Promise<ApiResponse<ApiKingdomsLeagueAlliancesResponse>> {
+    const parameters = new URLSearchParams({ day, page: String(page) });
+    if (allianceName) parameters.set('alliance_name', allianceName);
+    return this.apiFetch<ApiKingdomsLeagueAlliancesResponse>(
+      `${ApiRestService.apiUrl}kingdoms-league/alliances?${parameters}`,
+    );
+  }
+
+  public async getKingdomsLeaguePlayerHistory(
+    playerId: number,
+    seasonId: number,
+  ): Promise<ApiResponse<ApiKingdomsLeaguePlayerHistoryResponse>> {
+    return this.apiFetch<ApiKingdomsLeaguePlayerHistoryResponse>(
+      `${ApiRestService.apiUrl}kingdoms-league/player/${playerId}?season_id=${seasonId}`,
     );
   }
 

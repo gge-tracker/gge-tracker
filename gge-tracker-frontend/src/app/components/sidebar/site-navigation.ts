@@ -13,7 +13,7 @@ export interface SiteNavigationItem {
   iconUrl?: string;
   iconClass?: string;
   tag?: SiteNavigationTag;
-  frequency?: 'Temps réel' | 'Par heure';
+  frequency?: 'Temps réel' | 'Par heure' | 'Par jour';
 }
 
 export interface SiteNavigationSection {
@@ -60,6 +60,7 @@ export const SITE_NAVIGATION: readonly SiteNavigationSection[] = [
       },
       { label: 'Le Grand Tournoi', id: 'grand-tournament', iconUrl: '/assets/tools/gt.webp', frequency: 'Par heure' },
       { label: 'Tournoi de la Faille', id: 'rift-raid', iconUrl: '/assets/tools/rift.webp', frequency: 'Par heure' },
+      { label: 'Ligue du royaume', id: 'kingdoms-league', iconClass: 'fas fa-medal', frequency: 'Par jour' },
       { label: 'Scores finaux', id: 'events', iconUrl: '/assets/tools/events.webp' },
       {
         label: 'Seuils des événements',

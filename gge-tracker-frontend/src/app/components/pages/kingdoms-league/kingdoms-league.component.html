@@ -1,0 +1,164 @@
+<div class="container league">
+  @if (progress; as playerProgress) {
+    <app-kingdoms-league-progress [progress]="playerProgress" (exit)="progress = null" />
+  } @else {
+    <header class="league-hero">
+      <span class="league-eyebrow">
+        <i class="fas fa-medal" aria-hidden="true"></i>{{ 'Par jour' | translate }}
+      </span>
+      <h1>{{ 'Ligue du royaume' | translate }}</h1>
+      <p>{{ 'kingdoms-league-intro' | translate }}</p>
+    </header>
+
+    <div class="league-panel p-3 rounded-4">
+      @if (isLeagueMissing && !isInLoading) {
+        <p class="empty-state text-center my-5">{{ 'kingdoms-league-empty' | translate }}</p>
+      } @else {
+        <div class="league-controls">
+          <div class="league-pickers">
+            <label class="league-picker">
+              <span>{{ 'Saison' | translate }}</span>
+              <select class="form-select" [ngModel]="seasonId" (ngModelChange)="changeSeason($event)"
+                [disabled]="isDataLoading">
+                @for (option of seasonsNewestFirst; track option.season_id) {
+                  <option [ngValue]="option.season_id">
+                    {{ 'kingdoms-league-season' | translate: { season: option.season_id } }}
+                    · {{ option.first_day | date: 'd MMM' }} – {{ option.last_day | date: 'd MMM y' }}
+                  </option>
+                }
+              </select>
+            </label>
+            <label class="league-picker">
+              <span>{{ 'Date' | translate }}</span>
+              <select class="form-select" [ngModel]="day" (ngModelChange)="changeDay($event)" [disabled]="isDataLoading">
+                @for (option of daysNewestFirst; track option) {
+                  <option [ngValue]="option">{{ option | date: 'EEEE d MMMM y' }}</option>
+                }
+              </select>
+            </label>
+          </div>
+          <div class="league-tabs" role="tablist">
+            <button type="button" role="tab" class="btn btn-ghost" [class.active]="tab === 'players'"
+              [attr.aria-selected]="tab === 'players'" (click)="changeTab('players')">
+              {{ 'Classement des joueurs' | translate }}
+            </button>
+            <button type="button" role="tab" class="btn btn-ghost" [class.active]="tab === 'alliances'"
+              [attr.aria-selected]="tab === 'alliances'" (click)="changeTab('alliances')">
+              {{ 'Classement des alliances' | translate }}
+            </button>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <app-search-form [formFilters]="null" [isInLoading]="isInLoading"
+            [inputTip]="(tab === 'players' ? 'Rechercher un joueur' : 'Rechercher une alliance') | translate"
+            [defaultSearch]="search" [searchTypes]="{ player: true, alliance: true }"
+            (searchPlayer)="searchPlayer($event)" (searchAlliance)="searchAlliance($event)">
+          </app-search-form>
+        </div>
+
+        <p class="league-status">
+          @if (isFinalRanking) {
+            <span class="final-badge"><i class="fas fa-flag-checkered" aria-hidden="true"></i>{{ 'Classement final' | translate }}</span>
+          }
+          @if (tab === 'players') {
+            {{ 'kingdoms-league-ranked-players' | translate: { count: (rankedCount | number) } }}
+          } @else {
+            {{ 'kingdoms-league-ranked-alliances' | translate: { count: (rankedCount | number) } }}
+          }
+        </p>
+
+        @if (tab === 'players') {
+          <app-table [sort]="''" [reverse]="false" [isInLoading]="isDataLoading" [maxPage]="pagination.total_pages"
+            [page]="pagination.current_page" [search]="search" [headers]="[
+              ['playerName', 'Joueur' | translate, '', true],
+              ['allianceName', 'Alliance' | translate, '', true],
+              ['title', 'Titre de royaume' | translate, '', true],
+              ['medals', 'Médailles' | translate, '', true],
+              ['actions', 'Actions' | translate, '', true]
+            ]" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
+            @if (players.length === 0 && !isDataLoading) {
+              <tr>
+                <td colspan="6">{{ 'Aucun joueur trouvé' | translate }}</td>
+              </tr>
+            }
+            @for (player of players; track player.player_id) {
+              <tr>
+                <td class="col-rank">
+                  <span class="rank">#{{ player.rank | number }}</span>
+                  <ng-container [ngTemplateOutlet]="movement" [ngTemplateOutletContext]="{ $implicit: player }" />
+                </td>
+                <td class="fw-semibold col-name">
+                  <a [routerLink]="['/player', player.player_id]">{{ player.player_name }}</a>
+                </td>
+                <td>
+                  @if (player.alliance_id) {
+                    <a [routerLink]="['/alliance', player.alliance_id]">{{ player.alliance_name }}</a>
+                  } @else {
+                    <span class="text-muted">-</span>
+                  }
+                </td>
+                <td><app-league-title [title]="player.title" /></td>
+                <td><app-league-medals [medals]="player" /></td>
+                <td class="col-actions">
+                  <button type="button" class="btn btn-ghost btn-sm progress-button"
+                    [disabled]="loadingProgressFor !== null" [attr.aria-busy]="loadingProgressFor === player.player_id"
+                    (click)="showProgress(player)" [title]="'Progression de la saison' | translate">
+                    <i class="fas" [class.fa-chart-line]="loadingProgressFor !== player.player_id"
+                      [class.fa-spinner]="loadingProgressFor === player.player_id"
+                      [class.fa-spin]="loadingProgressFor === player.player_id" aria-hidden="true"></i>
+                  </button>
+                </td>
+              </tr>
+            }
+          </app-table>
+        } @else {
+          <app-table [sort]="''" [reverse]="false" [isInLoading]="isDataLoading" [maxPage]="pagination.total_pages"
+            [page]="pagination.current_page" [search]="search" [headers]="[
+              ['allianceName', 'Alliance' | translate, '', true],
+              ['medals', 'Médailles' | translate, '', true]
+            ]" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
+            @if (alliances.length === 0 && !isDataLoading) {
+              <tr>
+                <td colspan="3">{{ 'Aucune alliance trouvée' | translate }}</td>
+              </tr>
+            }
+            @for (alliance of alliances; track alliance.alliance_id) {
+              <tr>
+                <td class="col-rank">
+                  <span class="rank">#{{ alliance.rank | number }}</span>
+                  <ng-container [ngTemplateOutlet]="movement" [ngTemplateOutletContext]="{ $implicit: alliance }" />
+                </td>
+                <td class="fw-semibold col-name">
+                  <a [routerLink]="['/alliance', alliance.alliance_id]">{{ alliance.alliance_name }}</a>
+                </td>
+                <td><app-league-medals [medals]="alliance" /></td>
+              </tr>
+            }
+          </app-table>
+        }
+      }
+    </div>
+  }
+</div>
+
+<ng-template #movement let-row>
+  @switch (movementOf(row)) {
+    @case ('up') {
+      <span class="movement up" [title]="'kingdoms-league-previous-rank' | translate: { rank: row.previous_rank }">
+        <i class="fas fa-caret-up" aria-hidden="true"></i>{{ movementSize(row) | number }}
+      </span>
+    }
+    @case ('down') {
+      <span class="movement down" [title]="'kingdoms-league-previous-rank' | translate: { rank: row.previous_rank }">
+        <i class="fas fa-caret-down" aria-hidden="true"></i>{{ movementSize(row) | number }}
+      </span>
+    }
+    @case ('steady') {
+      <span class="movement steady" [title]="'kingdoms-league-previous-rank' | translate: { rank: row.previous_rank }">=</span>
+    }
+    @case ('new') {
+      <span class="movement new">{{ 'Nouveau' | translate }}</span>
+    }
+  }
+</ng-template>

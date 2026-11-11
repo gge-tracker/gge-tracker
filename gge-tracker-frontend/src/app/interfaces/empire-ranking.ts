@@ -1409,6 +1409,70 @@ export interface ApiRiftRaidSearchResponse {
   pagination: ApiPagination;
 }
 
+export interface ApiKingdomsLeagueMedals {
+  gold: number;
+  silver: number;
+  bronze: number;
+}
+
+export interface ApiKingdomsLeagueSeason {
+  season_id: number;
+  first_day: string | null;
+  last_day: string | null;
+  days: string[];
+  ranked_players: number;
+  ranked_alliances: number;
+}
+
+export interface ApiKingdomsLeagueSeasonsResponse {
+  seasons: ApiKingdomsLeagueSeason[];
+}
+
+interface ApiKingdomsLeagueNight {
+  day: string | null;
+  season_id: number | null;
+  previous_day: string | null;
+  pagination: ApiPagination;
+}
+
+export interface ApiKingdomsLeaguePlayer extends ApiKingdomsLeagueMedals {
+  rank: number;
+  previous_rank: number | null;
+  player_id: number;
+  player_name: string;
+  alliance_id: number | null;
+  alliance_name: string | null;
+  title: number;
+}
+
+export interface ApiKingdomsLeagueAlliance extends ApiKingdomsLeagueMedals {
+  rank: number;
+  previous_rank: number | null;
+  alliance_id: number;
+  alliance_name: string;
+}
+
+export interface ApiKingdomsLeaguePlayersResponse extends ApiKingdomsLeagueNight {
+  players: ApiKingdomsLeaguePlayer[];
+}
+
+export interface ApiKingdomsLeagueAlliancesResponse extends ApiKingdomsLeagueNight {
+  alliances: ApiKingdomsLeagueAlliance[];
+}
+
+export interface ApiKingdomsLeagueHistoryNight extends ApiKingdomsLeagueMedals {
+  day: string;
+  rank: number;
+  title: number;
+}
+
+export interface ApiKingdomsLeaguePlayerHistoryResponse {
+  season_id: number | null;
+  player_id: number;
+  player_name: string | null;
+  history: ApiKingdomsLeagueHistoryNight[];
+}
+
 export interface ApiRiftRaidAllianceAnalysisResponse {
   meta: {
     alliance_id: number;

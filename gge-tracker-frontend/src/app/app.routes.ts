@@ -258,6 +258,16 @@ export const routes: Routes = [
         },
       },
       {
+        path: 'kingdoms-league',
+        loadComponent: () =>
+          import('@ggetracker-pages/kingdoms-league/kingdoms-league.component').then((m) => m.KingdomsLeagueComponent),
+        resolve: { titleResolver },
+        data: {
+          description: 'The Goodgame Empire Kingdoms League season ranking of your server, titles and medals',
+          titleKey: 'Ligue du royaume',
+        },
+      },
+      {
         path: 'stormy-isles',
         loadComponent: () =>
           import('@ggetracker-pages/stormy-isles/stormy-isles.component').then((m) => m.StormyIslesComponent),

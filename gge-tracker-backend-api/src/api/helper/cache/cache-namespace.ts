@@ -6,6 +6,7 @@ const SHARED_KEY_PREFIXES = [
   'global-ranking:version',
   'grand-tournament:event-dates:version',
   'rift-raid:event-dates:version',
+  'kingdoms-league-version:',
   'temporaryServerData',
   'outerRealms',
   'temp-server-settings',

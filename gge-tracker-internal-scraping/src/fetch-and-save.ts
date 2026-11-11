@@ -5,9 +5,10 @@
 //  \___  /\___  / \___  >          |__|  |__|  (____  /\___  >__|_ \\___  >__|
 // /_____//_____/      \/                            \/     \/     \/    \/
 //
-//  Copyrights (c) 2025 - gge-tracker.com & gge-tracker contributors
+//  Copyrights (c) 2025 - 2026, gge-tracker.com & gge-tracker contributors
 //
 import { GenericFetchAndSaveBackend } from './main';
+import { findScrapingServer } from './servers-file';
 
 const ID_SERVER = process.env.ID_SERVER;
 const PG_DB = process.env.PG_DB;
@@ -47,6 +48,17 @@ const genericPostgresConfig = {
   max: 5,
 };
 const globalClickhouseConfig = { ...CLICKHOUSE_CONFIG, database: 'ggetracker_global' };
+const KINGDOMS_LEAGUE_KINDS = new Set(['ep', 'e4k', 'partner']);
+
+function kingdomsLeagueServer(section: string): string | null {
+  try {
+    const server = findScrapingServer(section);
+    return server && KINGDOMS_LEAGUE_KINDS.has(server.kind) ? server.server : null;
+  } catch (error) {
+    console.error('Kingdoms League skipped, servers.xml is unreadable:', error);
+    return null;
+  }
+}
 
 async function executeFillInOrder(): Promise<void> {
   const generic = new GenericFetchAndSaveBackend(BASE_API_URL, CLICKHOUSE_CONFIG, postgresConfig, logSuffix);
@@ -66,6 +78,11 @@ async function executeFillInOrder(): Promise<void> {
     await genericE4kGt.fillGrandTournamentResults('e4k');
     const genericE4k = new GenericFetchAndSaveBackend(BASE_API_URL, globalClickhouseConfig, null, 'E4K_RIFT_RAID');
     await genericE4k.fillRiftRaidResults('e4k');
+  }
+  const leagueServer = bridgeAnswered ? kingdomsLeagueServer(logSuffix as string) : null;
+  if (leagueServer) {
+    const league = new GenericFetchAndSaveBackend(BASE_API_URL, globalClickhouseConfig, null, logSuffix);
+    await league.fillKingdomsLeague(leagueServer);
   }
   setTimeout(() => {
     console.log('Timeout reached, forcing exit.');

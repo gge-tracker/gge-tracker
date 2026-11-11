@@ -1,0 +1,67 @@
+<section class="progress-panel rounded-4 p-3 p-md-4">
+  <header class="progress-header">
+    <button type="button" class="btn btn-ghost progress-back" (click)="exit.emit()">
+      <i class="fa-solid fa-arrow-left me-2" aria-hidden="true"></i>{{ 'Retour' | translate }}
+    </button>
+    <div class="progress-identity">
+      <h2 class="progress-name">
+        <a [routerLink]="['/player', progress().player_id]">{{ progress().player_name ?? '?' }}</a>
+      </h2>
+      @if (progress().season_id; as season) {
+        <span class="progress-season">{{ 'kingdoms-league-season' | translate: { season: season } }}</span>
+      }
+    </div>
+    @if (latest(); as night) {
+      <div class="progress-standing">
+        <span class="progress-rank">#{{ night.rank | number }}</span>
+        <app-league-title [title]="night.title" />
+        <app-league-medals [medals]="night" />
+      </div>
+    }
+  </header>
+
+  @if (progress().history.length === 0) {
+    <p class="progress-empty text-center my-5">
+      {{ 'kingdoms-league-no-history' | translate }}
+    </p>
+  } @else {
+    <h3 class="progress-subtitle">{{ 'Progression de la saison' | translate }}</h3>
+    @if (progress().history.length > 1) {
+      <app-charts-wrapper
+        [series]="chart().series!"
+        [chart]="chart().chart!"
+        [xaxis]="chart().xaxis"
+        [yaxis]="chart().yaxis"
+        [dataLabels]="chart().dataLabels"
+        [grid]="chart().grid"
+        [colors]="chart().colors!"
+        [markers]="chart().markers!"
+        [stroke]="chart().stroke"
+        [tooltip]="chart().tooltip"
+        [legend]="chart().legend"
+      ></app-charts-wrapper>
+    }
+    <div class="progress-table-scroll">
+      <table class="progress-table">
+        <thead>
+          <tr>
+            <th>{{ 'Date' | translate }}</th>
+            <th>{{ 'Rang' | translate }}</th>
+            <th>{{ 'Titre de royaume' | translate }}</th>
+            <th>{{ 'Médailles' | translate }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (night of nightsNewestFirst(); track night.day) {
+            <tr>
+              <td>{{ night.day | date: 'd MMM y' }}</td>
+              <td class="fw-bold">#{{ night.rank | number }}</td>
+              <td><app-league-title [title]="night.title" /></td>
+              <td><app-league-medals [medals]="night" /></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>

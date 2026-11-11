@@ -28,6 +28,7 @@ import { ApiEventPodium } from '../routes/api-event-podium';
 import { ApiEventThresholds } from '../routes/api-event-thresholds';
 import { ApiGlobalRanking } from '../routes/api-global-ranking';
 import { ApiGrandTournament } from '../routes/api-grand-tournament';
+import { ApiKingdomsLeague } from '../routes/api-kingdoms-league';
 import { ApiRiftRaid } from '../routes/api-rift-raid';
 import { ApiServer } from '../routes/api-server';
 import { ApiStatistics } from '../routes/api-statistics';
@@ -200,6 +201,22 @@ export class ApiRoutingController {
 
   public getRiftRaidAllianceAnalysis(request: express.Request, response: express.Response): void {
     void ApiRiftRaid.getAllianceAnalysis(request, response);
+  }
+
+  public getKingdomsLeagueSeasons(request: express.Request, response: express.Response): void {
+    void ApiKingdomsLeague.getSeasons(request, response);
+  }
+
+  public getKingdomsLeaguePlayers(request: express.Request, response: express.Response): void {
+    void ApiKingdomsLeague.getPlayers(request, response);
+  }
+
+  public getKingdomsLeagueAlliances(request: express.Request, response: express.Response): void {
+    void ApiKingdomsLeague.getAlliances(request, response);
+  }
+
+  public getKingdomsLeaguePlayerHistory(request: express.Request, response: express.Response): void {
+    void ApiKingdomsLeague.getPlayerHistory(request, response);
   }
 
   public getAllianceTournamentStandings(request: express.Request, response: express.Response): void {

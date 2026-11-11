@@ -1,0 +1,8 @@
+<span class="league-title" [class]="'tier-' + tier" [title]="'Titre de royaume' | translate">
+  <span class="league-title-pips" aria-hidden="true">
+    @for (pip of [1, 2, 3, 4, 5, 6]; track pip) {
+      <span class="pip" [class.lit]="pip <= tier"></span>
+    }
+  </span>
+  <span class="league-title-name">{{ nameKey | translate }}</span>
+</span>

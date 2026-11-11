@@ -1,0 +1,11 @@
+<span class="league-medals">
+  <span class="medal gold" [class.none]="medals().gold === 0" [title]="'Médaille d\'or' | translate">
+    <span class="disc" aria-hidden="true"></span>{{ medals().gold | number }}
+  </span>
+  <span class="medal silver" [class.none]="medals().silver === 0" [title]="'Médaille d\'argent' | translate">
+    <span class="disc" aria-hidden="true"></span>{{ medals().silver | number }}
+  </span>
+  <span class="medal bronze" [class.none]="medals().bronze === 0" [title]="'Médaille de bronze' | translate">
+    <span class="disc" aria-hidden="true"></span>{{ medals().bronze | number }}
+  </span>
+</span>

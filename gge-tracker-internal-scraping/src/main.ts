@@ -36,6 +36,25 @@ import Utils from './utils';
 import { isSocketDown, readBridgeStatus, reportDisconnectedAccount, zoneOf } from './bridge-status';
 import { LootReading, LootReadingKind, lootCounterValue, unwrapLootRun } from './loot-counter';
 import { LootReset, lootWeekStart } from './loot-reset';
+import {
+  KINGDOMS_LEAGUE_ALLIANCE_LT,
+  KINGDOMS_LEAGUE_PLAYER_LT,
+  KINGDOMS_LEAGUE_VERSION_KEY,
+  LeagueAlliance,
+  LeagueClock,
+  LeagueHead,
+  LeaguePlayer,
+  StoredLeagueDay,
+  decideLeagueDay,
+  hasPackedScore,
+  headOf,
+  isInCollectionWindow,
+  isLastCollectionHour,
+  leagueClock,
+  pageValues,
+  parseAllianceEntry,
+  parsePlayerEntry,
+} from './kingdoms-league';
 import { findScrapingServer, readPublicPlayerIdCodes } from './servers-file';
 import { findTempServerSetting } from './temp-server-settings';
 
@@ -97,6 +116,29 @@ interface RiftRaidReport {
   partialSubdivisions: number;
   missingEntries: number;
   unreadableDivisions: number;
+}
+
+type KingdomsLeagueOutcome = 'collected' | 'unchanged' | 'empty' | 'failed' | 'missed';
+
+interface KingdomsLeagueReport {
+  server: string;
+  day: string;
+  outcome: KingdomsLeagueOutcome;
+  seasonId: number | null;
+  newSeason: boolean;
+  rankedPlayers: number;
+  rankedAlliances: number;
+  playersStored: number;
+  alliancesStored: number;
+  missingRanks: number;
+  scoreMismatches: number;
+  requests: number;
+  failureReason?: string;
+}
+
+interface LeaguePage {
+  total: number;
+  entries: unknown[];
 }
 
 interface RiftRaidRow extends Record<string, unknown> {
@@ -339,6 +381,11 @@ export class GenericFetchAndSaveBackend {
   private readonly RIFT_RAID_FETCH_ATTEMPTS = 3;
   private readonly RIFT_RAID_RETRY_DELAY_MS = 2000;
   private readonly RIFT_RAID_NEW_EVENT_AFTER_HOURS = 24;
+  private readonly KINGDOMS_LEAGUE_PAGE_SIZE = 8;
+  private readonly KINGDOMS_LEAGUE_FETCH_ATTEMPTS = 3;
+  private readonly KINGDOMS_LEAGUE_RETRY_DELAY_MS = 2000;
+  private readonly KINGDOMS_LEAGUE_PAUSE_EVERY_PAGES = 50;
+  private kingdomsLeagueRequests = 0;
   private readonly BASE_API_URL: string;
   private readonly CLICKHOUSE_CONFIG: { [key: string]: string | number | undefined } | undefined;
   private readonly PGSQL_CONFIG: pg.PoolConfig | undefined;
@@ -769,6 +816,48 @@ export class GenericFetchAndSaveBackend {
         durationMs: Date.now() - start.getTime(),
         ...this.jobFailure,
       },
+    });
+  }
+
+  /**
+   * Stores the Kingdoms League season ranking once per night, between the medal payout and the end of the league event
+   *
+   * @param server The servers.xml name of the server
+   */
+  public async fillKingdomsLeague(server: string): Promise<void> {
+    const clock = leagueClock(new Date());
+    if (!isInCollectionWindow(clock)) return;
+    if (!/^\w+$/.test(server)) throw new Error(`Invalid server name for the Kingdoms League: ${server}`);
+    const start = Date.now();
+    this.kingdomsLeagueRequests = 0;
+    const report: KingdomsLeagueReport = {
+      server,
+      day: clock.day,
+      outcome: 'failed',
+      seasonId: null,
+      newSeason: false,
+      rankedPlayers: 0,
+      rankedAlliances: 0,
+      playersStored: 0,
+      alliancesStored: 0,
+      missingRanks: 0,
+      scoreMismatches: 0,
+      requests: 0,
+    };
+    try {
+      const previous = await this.readLastLeagueDay(server);
+      if (previous?.day === clock.day) return;
+      report.outcome = await this.collectKingdomsLeague(clock, previous, report);
+    } catch (error) {
+      report.outcome = isLastCollectionHour(clock) ? 'missed' : 'failed';
+      report.failureReason = Utils.describeError(error).slice(0, 300) || 'no reason reported';
+      Utils.logTolerated('413', error, `Kingdoms League collection ${report.outcome} on ${server}`);
+    }
+    report.requests = this.kingdomsLeagueRequests;
+    await this.logToLoki({
+      job: 'kingdoms-league',
+      level: report.outcome === 'missed' ? 'error' : report.outcome === 'failed' ? 'warn' : 'info',
+      data: { ...report, durationMs: Date.now() - start },
     });
   }
 
@@ -1642,6 +1731,141 @@ export class GenericFetchAndSaveBackend {
         Utils.logMessage('Values:', values);
         this.DB_UPDATES.criticalErrors++;
       }
+    }
+  }
+
+  private async readLastLeagueDay(server: string): Promise<StoredLeagueDay | null> {
+    const rows = await this.selectRowsClickHouse<StoredLeagueDay>(
+      `SELECT season_id, toString(day) AS day, ranked_players, top_gold, top_signature FROM kingdoms_league_days
+        WHERE server = '${server}' ORDER BY day DESC LIMIT 1`,
+    );
+    return rows.at(0) ?? null;
+  }
+
+  private async collectKingdomsLeague(
+    clock: LeagueClock,
+    previous: StoredLeagueDay | null,
+    report: KingdomsLeagueReport,
+  ): Promise<KingdomsLeagueOutcome> {
+    const firstPage = await this.fetchLeaguePage(KINGDOMS_LEAGUE_PLAYER_LT, 1);
+    const leaders = this.parseLeagueEntries(firstPage.entries, parsePlayerEntry);
+    const head = headOf(firstPage.total, leaders);
+    report.rankedPlayers = firstPage.total;
+    const decision = decideLeagueDay(previous, head);
+    if (decision.kind !== 'collect') return decision.kind;
+    report.seasonId = decision.seasonId;
+    report.newSeason = decision.newSeason;
+
+    const players = await this.readLeagueRanking(KINGDOMS_LEAGUE_PLAYER_LT, firstPage.total, parsePlayerEntry);
+    const firstAlliancePage = await this.fetchLeaguePage(KINGDOMS_LEAGUE_ALLIANCE_LT, 1);
+    report.rankedAlliances = firstAlliancePage.total;
+    const alliances = await this.readLeagueRanking(
+      KINGDOMS_LEAGUE_ALLIANCE_LT,
+      firstAlliancePage.total,
+      parseAllianceEntry,
+    );
+    report.missingRanks = firstPage.total - players.length + (firstAlliancePage.total - alliances.length);
+    report.scoreMismatches = players.filter((player) => !hasPackedScore(player)).length;
+
+    await this.storeKingdomsLeagueDay(report.server, clock.day, decision.seasonId, {
+      players,
+      alliances,
+      head,
+      rankedAlliances: firstAlliancePage.total,
+    });
+    report.playersStored = players.length;
+    report.alliancesStored = alliances.length;
+    return 'collected';
+  }
+
+  private async storeKingdomsLeagueDay(
+    server: string,
+    day: string,
+    seasonId: number,
+    snapshot: { players: LeaguePlayer[]; alliances: LeagueAlliance[]; head: LeagueHead; rankedAlliances: number },
+  ): Promise<void> {
+    const collectedAt = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
+    const key = { server, season_id: seasonId, day };
+    await this.insertRowsClickHouse(
+      'kingdoms_league_players',
+      snapshot.players.map((player) => ({
+        ...key,
+        rank: player.rank,
+        player_id: player.playerId,
+        player_name: player.playerName,
+        alliance_id: player.allianceId,
+        alliance_name: player.allianceName,
+        title: player.title,
+        gold: player.gold,
+        silver: player.silver,
+        bronze: player.bronze,
+        collected_at: collectedAt,
+      })),
+    );
+    await this.insertRowsClickHouse(
+      'kingdoms_league_alliances',
+      snapshot.alliances.map((alliance) => ({
+        ...key,
+        rank: alliance.rank,
+        alliance_id: alliance.allianceId,
+        alliance_name: alliance.allianceName,
+        gold: alliance.gold,
+        silver: alliance.silver,
+        bronze: alliance.bronze,
+        collected_at: collectedAt,
+      })),
+    );
+    await this.insertRowsClickHouse('kingdoms_league_days', [
+      {
+        ...key,
+        ranked_players: snapshot.head.rankedPlayers,
+        ranked_alliances: snapshot.rankedAlliances,
+        top_gold: snapshot.head.topGold,
+        top_signature: snapshot.head.signature,
+        collected_at: collectedAt,
+      },
+    ]);
+    await this.bumpScanVersion(KINGDOMS_LEAGUE_VERSION_KEY + server);
+  }
+
+  private async readLeagueRanking<T extends { rank: number }>(
+    lt: number,
+    total: number,
+    parse: (entry: unknown) => T | null,
+  ): Promise<T[]> {
+    const byRank = new Map<number, T>();
+    const values = pageValues(total, this.KINGDOMS_LEAGUE_PAGE_SIZE);
+    for (const [index, value] of values.entries()) {
+      const page = await this.fetchLeaguePage(lt, value);
+      for (const row of this.parseLeagueEntries(page.entries, parse)) byRank.set(row.rank, row);
+      if ((index + 1) % this.KINGDOMS_LEAGUE_PAUSE_EVERY_PAGES === 0) await this.sleep(150);
+    }
+    return [...byRank.values()].sort((a, b) => a.rank - b.rank);
+  }
+
+  private parseLeagueEntries<T>(entries: unknown[], parse: (entry: unknown) => T | null): T[] {
+    return entries.map((entry) => parse(entry)).filter((row): row is T => row !== null);
+  }
+
+  private async fetchLeaguePage(lt: number, value: number): Promise<LeaguePage> {
+    for (let attempt = 1; attempt <= this.KINGDOMS_LEAGUE_FETCH_ATTEMPTS; attempt++) {
+      this.kingdomsLeagueRequests++;
+      const page = await this.readLeaguePage(lt, value);
+      if (page) return page;
+      if (attempt < this.KINGDOMS_LEAGUE_FETCH_ATTEMPTS) await this.sleep(this.KINGDOMS_LEAGUE_RETRY_DELAY_MS);
+    }
+    throw new Error(`hgh LT ${lt} SV ${value} did not answer after ${this.KINGDOMS_LEAGUE_FETCH_ATTEMPTS} attempts`);
+  }
+
+  private async readLeaguePage(lt: number, value: number): Promise<LeaguePage | null> {
+    try {
+      const response = await this.genericFetchData('hgh', { LT: lt, SV: String(value) });
+      if (String(response.data?.return_code) !== '0') return null;
+      const content = response.data?.content ?? {};
+      const entries = Array.isArray(content.L) ? content.L : [];
+      return { total: Math.max(Number(content.LR) || 0, 0), entries };
+    } catch {
+      return null;
     }
   }
 

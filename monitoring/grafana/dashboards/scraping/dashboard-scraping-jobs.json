@@ -194,7 +194,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum by (job) (count_over_time({job=~\"update-storm-map|update-dungeons-list|discover-new-dungeons|wheel-of-affluence|grand-tournament|global-rankings-refresh|outer-realms-data-fetch|outer-realms-and-beyond-the-horizon-event-history\"}[$__range]))",
+          "expr": "sum by (job) (count_over_time({job=~\"update-storm-map|update-dungeons-list|discover-new-dungeons|wheel-of-affluence|grand-tournament|global-rankings-refresh|outer-realms-data-fetch|outer-realms-and-beyond-the-horizon-event-history|kingdoms-league\"}[$__range]))",
           "queryType": "instant",
           "refId": "A"
         },
@@ -204,7 +204,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum by (job) (count_over_time({job=~\"update-storm-map|update-dungeons-list|discover-new-dungeons|wheel-of-affluence|grand-tournament|global-rankings-refresh|outer-realms-data-fetch|outer-realms-and-beyond-the-horizon-event-history\", level=\"error\"}[$__range])) or (sum by (job) (count_over_time({job=~\"update-storm-map|update-dungeons-list|discover-new-dungeons|wheel-of-affluence|grand-tournament|global-rankings-refresh|outer-realms-data-fetch|outer-realms-and-beyond-the-horizon-event-history\"}[$__range])) * 0)",
+          "expr": "sum by (job) (count_over_time({job=~\"update-storm-map|update-dungeons-list|discover-new-dungeons|wheel-of-affluence|grand-tournament|global-rankings-refresh|outer-realms-data-fetch|outer-realms-and-beyond-the-horizon-event-history|kingdoms-league\", level=\"error\"}[$__range])) or (sum by (job) (count_over_time({job=~\"update-storm-map|update-dungeons-list|discover-new-dungeons|wheel-of-affluence|grand-tournament|global-rankings-refresh|outer-realms-data-fetch|outer-realms-and-beyond-the-horizon-event-history|kingdoms-league\"}[$__range])) * 0)",
           "queryType": "instant",
           "refId": "B"
         },
@@ -214,7 +214,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum by (job) (sum_over_time({job=~\"update-storm-map|update-dungeons-list|discover-new-dungeons|wheel-of-affluence|grand-tournament|global-rankings-refresh|outer-realms-data-fetch|outer-realms-and-beyond-the-horizon-event-history\"} | json criticalErrors=\"criticalErrors\" | unwrap criticalErrors [$__range]))",
+          "expr": "sum by (job) (sum_over_time({job=~\"update-storm-map|update-dungeons-list|discover-new-dungeons|wheel-of-affluence|grand-tournament|global-rankings-refresh|outer-realms-data-fetch|outer-realms-and-beyond-the-horizon-event-history|kingdoms-league\"} | json criticalErrors=\"criticalErrors\" | unwrap criticalErrors [$__range]))",
           "queryType": "instant",
           "refId": "C"
         },
@@ -224,7 +224,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "avg by (job) (avg_over_time({job=~\"update-storm-map|update-dungeons-list|discover-new-dungeons|wheel-of-affluence|grand-tournament|global-rankings-refresh|outer-realms-data-fetch|outer-realms-and-beyond-the-horizon-event-history\"} | json durationMs=\"durationMs\" | unwrap durationMs [$__range]))",
+          "expr": "avg by (job) (avg_over_time({job=~\"update-storm-map|update-dungeons-list|discover-new-dungeons|wheel-of-affluence|grand-tournament|global-rankings-refresh|outer-realms-data-fetch|outer-realms-and-beyond-the-horizon-event-history|kingdoms-league\"} | json durationMs=\"durationMs\" | unwrap durationMs [$__range]))",
           "queryType": "instant",
           "refId": "D"
         },
@@ -234,7 +234,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "max by (job) (max_over_time({job=~\"update-storm-map|update-dungeons-list|discover-new-dungeons|wheel-of-affluence|grand-tournament|global-rankings-refresh|outer-realms-data-fetch|outer-realms-and-beyond-the-horizon-event-history\"} | json durationMs=\"durationMs\" | unwrap durationMs [$__range]))",
+          "expr": "max by (job) (max_over_time({job=~\"update-storm-map|update-dungeons-list|discover-new-dungeons|wheel-of-affluence|grand-tournament|global-rankings-refresh|outer-realms-data-fetch|outer-realms-and-beyond-the-horizon-event-history|kingdoms-league\"} | json durationMs=\"durationMs\" | unwrap durationMs [$__range]))",
           "queryType": "instant",
           "refId": "E"
         }
@@ -363,7 +363,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum by (job) (count_over_time({job=~\"update-storm-map|update-dungeons-list|discover-new-dungeons|wheel-of-affluence|grand-tournament|global-rankings-refresh|outer-realms-data-fetch|outer-realms-and-beyond-the-horizon-event-history\"}[$__auto]))",
+          "expr": "sum by (job) (count_over_time({job=~\"update-storm-map|update-dungeons-list|discover-new-dungeons|wheel-of-affluence|grand-tournament|global-rankings-refresh|outer-realms-data-fetch|outer-realms-and-beyond-the-horizon-event-history|kingdoms-league\"}[$__auto]))",
           "queryType": "range",
           "refId": "A",
           "legendFormat": "{{job}}"
@@ -404,7 +404,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "{job=~\"update-storm-map|update-dungeons-list|discover-new-dungeons|wheel-of-affluence|grand-tournament|global-rankings-refresh|outer-realms-data-fetch|outer-realms-and-beyond-the-horizon-event-history\", level=\"error\"} | json | line_format \"{{ .job }} [{{ .server }}] {{ if .failureStep }}{{ .failureStep }} failed: {{ .failureReason }}{{ else }}{{ .criticalErrors }} critical error(s), reason not recorded{{ end }} (after {{ .durationMs }}ms)\"",
+          "expr": "{job=~\"update-storm-map|update-dungeons-list|discover-new-dungeons|wheel-of-affluence|grand-tournament|global-rankings-refresh|outer-realms-data-fetch|outer-realms-and-beyond-the-horizon-event-history|kingdoms-league\", level=\"error\"} | json | line_format \"{{ .job }} [{{ .server }}] {{ if .failureStep }}{{ .failureStep }} failed: {{ .failureReason }}{{ else }}{{ .criticalErrors }} critical error(s), reason not recorded{{ end }} (after {{ .durationMs }}ms)\"",
           "queryType": "range",
           "refId": "A"
         }
@@ -3617,6 +3617,688 @@
       ],
       "title": "Global rankings and outer realms",
       "type": "row"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 114
+      },
+      "id": 220,
+      "panels": [],
+      "title": "Kingdoms League",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "Servers whose season ranking was stored at least once in range. Collection runs once a night, 02:00-08:00 Paris",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "green",
+                "value": 20
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.2.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "count(count by (server) (count_over_time({job=\"kingdoms-league\", level=\"info\"} | json server=\"server\", outcome=\"outcome\" | outcome=\"collected\" [$__range]))) or vector(0)",
+          "queryType": "instant",
+          "refId": "A"
+        }
+      ],
+      "title": "Servers collected",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 115
+      },
+      "id": 221
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "Season ranking rows written in range, all servers",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.2.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(sum_over_time({job=\"kingdoms-league\"} | json playersStored=\"playersStored\" | unwrap playersStored [$__range])) or vector(0)",
+          "queryType": "instant",
+          "refId": "A"
+        }
+      ],
+      "title": "Players stored",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 115
+      },
+      "id": 222
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "Fills whose collection failed while a later fill of the night could still retry it",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.2.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({job=\"kingdoms-league\", level=\"warn\"}[$__range])) or vector(0)",
+          "queryType": "instant",
+          "refId": "A"
+        }
+      ],
+      "title": "Failed attempts",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 115
+      },
+      "id": 223
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "Nights whose last fill of the window failed too: that night is lost, and the final ranking with it on the last night of a season",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.2.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({job=\"kingdoms-league\", level=\"error\"}[$__range])) or vector(0)",
+          "queryType": "instant",
+          "refId": "A"
+        }
+      ],
+      "title": "Missed nights",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 115
+      },
+      "id": 224
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "Servers where the medals dropped since the last stored night, so a new season was opened",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.2.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({job=\"kingdoms-league\"} | json newSeason=\"newSeason\" | newSeason=\"true\" [$__range])) or vector(0)",
+          "queryType": "instant",
+          "refId": "A"
+        }
+      ],
+      "title": "New seasons",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 115
+      },
+      "id": 225
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "Rows whose score no longer equals title*401^3 + gold*401^2 + silver*401 + bronze: the game changed the ranking format",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.2.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(sum_over_time({job=\"kingdoms-league\"} | json scoreMismatches=\"scoreMismatches\" | unwrap scoreMismatches [$__range])) or vector(0)",
+          "queryType": "instant",
+          "refId": "A"
+        }
+      ],
+      "title": "Score mismatches",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 115
+      },
+      "id": 226
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "The last stored night of each server. Missing ranks are rows the game left out of pages that did answer",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true,
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Duration"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "cellHeight": "sm",
+        "enablePagination": true,
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Players stored"
+          }
+        ]
+      },
+      "pluginVersion": "12.2.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum by (server) (last_over_time({job=\"kingdoms-league\", level=\"info\"} | json server=\"server\", outcome=\"outcome\", playersStored=\"playersStored\" | outcome=\"collected\" | unwrap playersStored [$__range]))",
+          "queryType": "instant",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum by (server) (last_over_time({job=\"kingdoms-league\", level=\"info\"} | json server=\"server\", outcome=\"outcome\", alliancesStored=\"alliancesStored\" | outcome=\"collected\" | unwrap alliancesStored [$__range]))",
+          "queryType": "instant",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum by (server) (last_over_time({job=\"kingdoms-league\", level=\"info\"} | json server=\"server\", outcome=\"outcome\", seasonId=\"seasonId\" | outcome=\"collected\" | unwrap seasonId [$__range]))",
+          "queryType": "instant",
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum by (server) (last_over_time({job=\"kingdoms-league\", level=\"info\"} | json server=\"server\", outcome=\"outcome\", missingRanks=\"missingRanks\" | outcome=\"collected\" | unwrap missingRanks [$__range]))",
+          "queryType": "instant",
+          "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum by (server) (last_over_time({job=\"kingdoms-league\", level=\"info\"} | json server=\"server\", outcome=\"outcome\", requests=\"requests\" | outcome=\"collected\" | unwrap requests [$__range]))",
+          "queryType": "instant",
+          "refId": "E"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum by (server) (last_over_time({job=\"kingdoms-league\", level=\"info\"} | json server=\"server\", outcome=\"outcome\", durationMs=\"durationMs\" | outcome=\"collected\" | unwrap durationMs [$__range]))",
+          "queryType": "instant",
+          "refId": "F"
+        }
+      ],
+      "title": "Last stored night by server",
+      "type": "table",
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 119
+      },
+      "id": 227,
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "server",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Time 1": true,
+              "Time 2": true,
+              "Time 3": true,
+              "Time 4": true,
+              "Time 5": true,
+              "Time 6": true
+            },
+            "indexByName": {},
+            "renameByName": {
+              "server": "Server",
+              "Value #A": "Players stored",
+              "Value #B": "Alliances stored",
+              "Value #C": "Season",
+              "Value #D": "Missing ranks",
+              "Value #E": "Requests",
+              "Value #F": "Duration"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "What each fill of the window concluded: collected, unchanged (no payout that night), empty (season not ranked yet), failed or missed",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "lineWidth": 1,
+            "showPoints": "never"
+          },
+          "mappings": [],
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "12.2.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum by (outcome) (count_over_time({job=\"kingdoms-league\"} | json outcome=\"outcome\" [$__auto]))",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Outcomes per fill",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 119
+      },
+      "id": 228
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "Every collection that failed, with the server, the hour and what did not answer",
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 129
+      },
+      "id": 229,
+      "options": {
+        "dedupStrategy": "none",
+        "enableInfiniteScrolling": true,
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "pluginVersion": "12.2.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "{job=\"kingdoms-league\", level=~\"warn|error\"} | json server=\"server\", outcome=\"outcome\", failureReason=\"failureReason\", requests=\"requests\", durationMs=\"durationMs\" | line_format \"[{{ .server }}] {{ .outcome }}: {{ .failureReason }} (after {{ .requests }} requests, {{ .durationMs }}ms)\"",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Failed collections: when, which server, why",
+      "type": "logs"
     }
   ],
   "preload": false,

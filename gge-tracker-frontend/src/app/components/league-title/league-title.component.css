@@ -1,0 +1,60 @@
+:host {
+  display: inline-flex;
+}
+
+.league-title {
+  --tier-color: #9aa3ad;
+  align-items: center;
+  background: color-mix(in srgb, var(--tier-color) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tier-color) 45%, transparent);
+  border-radius: 999px;
+  color: var(--tier-color);
+  display: inline-flex;
+  font-size: 0.8rem;
+  font-weight: 700;
+  gap: 0.45rem;
+  line-height: 1;
+  padding: 0.3rem 0.65rem 0.3rem 0.5rem;
+  white-space: nowrap;
+}
+
+.league-title-pips {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.pip {
+  background: color-mix(in srgb, var(--tier-color) 22%, transparent);
+  border-radius: 1px;
+  height: 8px;
+  transform: skewX(-12deg);
+  width: 3px;
+}
+
+.pip.lit {
+  background: var(--tier-color);
+}
+
+.tier-1 {
+  --tier-color: #a8a29e;
+}
+
+.tier-2 {
+  --tier-color: #84cc16;
+}
+
+.tier-3 {
+  --tier-color: #38bdf8;
+}
+
+.tier-4 {
+  --tier-color: #a78bfa;
+}
+
+.tier-5 {
+  --tier-color: #f59e0b;
+}
+
+.tier-6 {
+  --tier-color: #f43f5e;
+}

@@ -1572,6 +1572,284 @@ protectedRoutes.get(
 
 /**
  * @swagger
+ * /kingdoms-league/seasons:
+ *   get:
+ *     summary: Retrieve the recorded Kingdoms League seasons of a server and their nights
+ *     description: |
+ *       The season ranking is read once a night, after the medals are paid at midnight (Paris time).
+ *       A night is only stored when the ranking moved, so a season lists the nights a league event paid medals.
+ *       The season ID is an internal GGE Tracker identifier, counted per server. The last night of a season
+ *       other than the latest one is its final ranking
+ *     tags:
+ *       - Events
+ *       - Kingdoms League
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *     responses:
+ *       200:
+ *         description: The seasons, oldest first, each with its nights in order
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 seasons:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       season_id:
+ *                         type: integer
+ *                         example: 2
+ *                       first_day:
+ *                         type: string
+ *                         example: "2026-11-01"
+ *                       last_day:
+ *                         type: string
+ *                         example: "2026-11-11"
+ *                       days:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                           example: "2026-11-11"
+ *                       ranked_players:
+ *                         type: integer
+ *                         description: Players ranked on the last night of the season
+ *                       ranked_alliances:
+ *                         type: integer
+ *       400:
+ *         description: Missing or invalid gge-server header
+ */
+protectedRoutes.get('/kingdoms-league/seasons', routingInstance.getKingdomsLeagueSeasons.bind(routingInstance));
+
+/**
+ * @swagger
+ * /kingdoms-league/players:
+ *   get:
+ *     summary: Retrieve the Kingdoms League season ranking of the players on one night
+ *     description: |
+ *       Players are sorted as the game sorts them: by kingdom title, then gold, silver and bronze medals.
+ *       Only players with at least one gold medal are ranked. previous_rank is the player's rank on the previous
+ *       stored night of the same season, null when they were not ranked then
+ *     tags:
+ *       - Events
+ *       - Kingdoms League
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - name: day
+ *         in: query
+ *         description: Night to read, as listed by /kingdoms-league/seasons. The latest night when omitted
+ *         schema:
+ *           type: string
+ *           example: "2026-11-11"
+ *       - name: player_name
+ *         in: query
+ *         description: Keeps the players whose name contains this text, case ignored
+ *         schema:
+ *           type: string
+ *           maxLength: 40
+ *       - name: alliance_id
+ *         in: query
+ *         description: Keeps the members of this alliance, as the alliance id with its server code
+ *         schema:
+ *           type: integer
+ *       - name: page
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *     responses:
+ *       200:
+ *         description: One page of 15 players. day and season_id are null when the server has no stored night
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 day:
+ *                   type: string
+ *                   nullable: true
+ *                 season_id:
+ *                   type: integer
+ *                   nullable: true
+ *                 previous_day:
+ *                   type: string
+ *                   nullable: true
+ *                 players:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       rank:
+ *                         type: integer
+ *                       previous_rank:
+ *                         type: integer
+ *                         nullable: true
+ *                       player_id:
+ *                         type: integer
+ *                       player_name:
+ *                         type: string
+ *                       alliance_id:
+ *                         type: integer
+ *                         nullable: true
+ *                       alliance_name:
+ *                         type: string
+ *                         nullable: true
+ *                       title:
+ *                         type: integer
+ *                         description: Kingdom title, from 1 to 21 (seasonLeague_rank_N in the game texts)
+ *                       gold:
+ *                         type: integer
+ *                       silver:
+ *                         type: integer
+ *                       bronze:
+ *                         type: integer
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ *       400:
+ *         description: Invalid day, player name or alliance id, or missing gge-server header
+ */
+protectedRoutes.get('/kingdoms-league/players', routingInstance.getKingdomsLeaguePlayers.bind(routingInstance));
+
+/**
+ * @swagger
+ * /kingdoms-league/alliances:
+ *   get:
+ *     summary: Retrieve the Kingdoms League season ranking of the alliances on one night
+ *     description: |
+ *       Alliances are sorted by gold medals, then silver and bronze. Only alliances with at least one gold medal
+ *       are ranked. previous_rank is the alliance's rank on the previous stored night of the same season
+ *     tags:
+ *       - Events
+ *       - Kingdoms League
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - name: day
+ *         in: query
+ *         description: Night to read, as listed by /kingdoms-league/seasons. The latest night when omitted
+ *         schema:
+ *           type: string
+ *           example: "2026-11-11"
+ *       - name: alliance_name
+ *         in: query
+ *         description: Keeps the alliances whose name contains this text, case ignored
+ *         schema:
+ *           type: string
+ *           maxLength: 40
+ *       - name: page
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *     responses:
+ *       200:
+ *         description: One page of 15 alliances. day and season_id are null when the server has no stored night
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 day:
+ *                   type: string
+ *                   nullable: true
+ *                 season_id:
+ *                   type: integer
+ *                   nullable: true
+ *                 previous_day:
+ *                   type: string
+ *                   nullable: true
+ *                 alliances:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       rank:
+ *                         type: integer
+ *                       previous_rank:
+ *                         type: integer
+ *                         nullable: true
+ *                       alliance_id:
+ *                         type: integer
+ *                       alliance_name:
+ *                         type: string
+ *                       gold:
+ *                         type: integer
+ *                       silver:
+ *                         type: integer
+ *                       bronze:
+ *                         type: integer
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ *       400:
+ *         description: Invalid day or alliance name, or missing gge-server header
+ */
+protectedRoutes.get('/kingdoms-league/alliances', routingInstance.getKingdomsLeagueAlliances.bind(routingInstance));
+
+/**
+ * @swagger
+ * /kingdoms-league/player/{playerId}:
+ *   get:
+ *     summary: Retrieve one player's Kingdoms League progress, night by night, over a season
+ *     description: |
+ *       The player id must carry the code of the server the gge-server header names
+ *     tags:
+ *       - Events
+ *       - Kingdoms League
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - $ref: '#/components/parameters/PlayerId'
+ *       - name: season_id
+ *         in: query
+ *         description: Season to read, as listed by /kingdoms-league/seasons. The latest season when omitted
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *     responses:
+ *       200:
+ *         description: The player's stored nights, oldest first; empty when they were never ranked in that season
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 season_id:
+ *                   type: integer
+ *                   nullable: true
+ *                 player_id:
+ *                   type: integer
+ *                 player_name:
+ *                   type: string
+ *                   nullable: true
+ *                 history:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       day:
+ *                         type: string
+ *                         example: "2026-11-11"
+ *                       rank:
+ *                         type: integer
+ *                       title:
+ *                         type: integer
+ *                       gold:
+ *                         type: integer
+ *                       silver:
+ *                         type: integer
+ *                       bronze:
+ *                         type: integer
+ *       400:
+ *         description: Invalid player id or season id, or missing gge-server header
+ */
+protectedRoutes.get(
+  '/kingdoms-league/player/:playerId',
+  routingInstance.getKingdomsLeaguePlayerHistory.bind(routingInstance),
+);
+
+/**
+ * @swagger
  * /alliances/{allianceId}/tournaments:
  *   get:
  *     summary: Retrieve an alliance's latest Grand Tournament and Rift Tournament standing

@@ -426,6 +426,42 @@ groups:
           action: 'Restart the {{ $labels.bridge }} bridge container. The socket status cannot see this: on 2026-10-26 jca failed for 2.5 days with every socket connected.'
           dashboard: '/d/empire-api-bridge?var-bridge={{ $labels.bridge }}'
           dashboard_title: Empire-API bridge
+      - uid: kingdoms-league-missed
+        title: Kingdoms League night missed
+        condition: B
+        for: 0m
+        noDataState: OK
+        execErrState: OK
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: loki
+            model:
+              refId: A
+              editorMode: code
+              queryType: instant
+              expr: 'sum by (server, failureReason) (count_over_time({job="kingdoms-league", level="error"} | json server="server", failureReason="failureReason" [5m]))'
+          - refId: B
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+                  operator: { type: and }
+                  query: { params: [B] }
+                  reducer: { type: last, params: [] }
+                  type: threshold
+        labels:
+          severity: warning
+          notify: discord
+        annotations:
+          summary: 'The last fill of the night could not read the Kingdoms League ranking: {{ $labels.failureReason }}'
+          action: 'Read it by hand before 09:00 Paris'
+          dashboard: /d/scraping-jobs
+          dashboard_title: Scraping jobs
   - orgId: 1
     name: platform
     folder: Platform
