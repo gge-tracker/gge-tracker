@@ -3,11 +3,7 @@
     <app-kingdoms-league-progress [progress]="playerProgress" (exit)="progress = null" />
   } @else {
     <header class="league-hero">
-      <span class="league-eyebrow">
-        <i class="fas fa-medal" aria-hidden="true"></i>{{ 'Par jour' | translate }}
-      </span>
       <h1>{{ 'Ligue du royaume' | translate }}</h1>
-      <p>{{ 'kingdoms-league-intro' | translate }}</p>
     </header>
 
     <div class="league-panel p-3 rounded-4">
