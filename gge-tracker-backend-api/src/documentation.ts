@@ -38,6 +38,10 @@ export const options = {
                 \`DAILY_QUOTA_EXCEEDED\` or \`GAME_COMMAND_QUOTA_EXCEEDED\` for the two quotas. Wait as long as it says
                 before calling again.
 
+                **Mirroring or archiving.** \`/datasets\` lists one compressed file per server and UTC day: every
+                player, every alliance, and each player's 24 hourly readings of might, loot and glory. A file is one
+                request, never changes once written and is kept few days, so a daily download replaces every per-player call.
+
                 **Reading a whole server.** Do not request players one at a time. \`/export/players\`,
                 \`/export/alliances\` and \`/export/castles\` serve up to 5,000 rows a page, \`/changes\` lists what moved
                 since your last read, and \`/bulk/players\` and \`/bulk/alliances\` read up to 500 ids in one call. Export,

@@ -150,6 +150,7 @@ services:
     restart: always
     volumes:
       - backend-assets:/app/dist/assets
+      - backend-datasets:/app/datasets
       - ./../gge-tracker-backend-api/config:/app/config:ro
     environment:
       - MYSQL_HOST=${MARIADB_HOST}
@@ -193,6 +194,9 @@ services:
       - STORE_EGRESS_USER=${STORE_EGRESS_USER}
       - STORE_EGRESS_PASSWORD=${STORE_EGRESS_PASSWORD}
       - OFFERS_SNAPSHOT=${OFFERS_SNAPSHOT:-}
+      - DAILY_DATASETS=${DAILY_DATASETS:-}
+      - DATASETS_DIR=/app/datasets
+      - DATASETS_RETENTION_DAYS=${DATASETS_RETENTION_DAYS:-14}
     depends_on:
       redis-server:
         condition: service_healthy

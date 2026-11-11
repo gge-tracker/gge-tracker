@@ -31,6 +31,8 @@ type PlayersScope = 'server' | 'global';
 
 type FilterField = 'honor' | 'loot' | 'level' | 'might' | 'mightAllTime' | 'fame' | 'castleCount' | 'allianceMight';
 
+type PlayersPreset = 'recruits' | 'inactiveTargets';
+
 interface FormFilters {
   minHonor: string;
   maxHonor: string;
@@ -472,6 +474,25 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     this.popupIsInLoading = false;
   }
 
+  public get activePreset(): PlayersPreset | null {
+    const current = JSON.stringify({ ...this.formFilters, isFiltered: false });
+    const presets: PlayersPreset[] = ['recruits', 'inactiveTargets'];
+    return presets.find((preset) => JSON.stringify(this.presetState(preset)) === current) ?? null;
+  }
+
+  public get mePlayerName(): string | null {
+    return this.followService.me()?.playerName ?? null;
+  }
+
+  public togglePreset(preset: PlayersPreset): void {
+    const wasActive = this.activePreset === preset;
+    Object.assign(this.formFilters, wasActive ? this.presetBase() : this.presetState(preset));
+    this.updateDisplayFormValues();
+    const nearMe = !wasActive && preset === 'inactiveTargets' && this.formFilters.playerCastleDistance !== '';
+    this.sort = nearMe ? 'distance' : 'might_current';
+    this.reverse = !nearMe;
+  }
+
   public async saveFilters(): Promise<void> {
     this.validateFilters('saveFilters');
     const filtersToSave = {
@@ -671,6 +692,26 @@ export class PlayersComponent extends GenericComponent implements OnInit {
       rows,
       `players_${this.apiRestService.serverService.currentServer?.name || 'server'}_page_${this.page}_${new Date().toISOString()}.xlsx`,
     );
+  }
+
+  private presetBase(): typeof this.formFilters {
+    const base = structuredClone(this.formFilters);
+    for (const key of PlayersComponent.RANGE_FILTER_KEYS) base[key] = '';
+    for (const key of PlayersComponent.TRISTATE_FILTER_KEYS) base[key] = '-1';
+    base.inactiveFilter = '1';
+    base.playerCastleDistance = '';
+    base.allianceRankFilter = base.allianceRankFilter.map(() => '0');
+    base.kingdomFilter = ['999'];
+    base.isFiltered = false;
+    return base;
+  }
+
+  private presetState(preset: PlayersPreset): typeof this.formFilters {
+    const filters =
+      preset === 'recruits'
+        ? { allianceFilter: '0', banFilter: '0' }
+        : { inactiveFilter: '0', protectionFilter: '0', banFilter: '0', playerCastleDistance: this.mePlayerName ?? '' };
+    return { ...this.presetBase(), ...filters };
   }
 
   private applyPageSize(): void {

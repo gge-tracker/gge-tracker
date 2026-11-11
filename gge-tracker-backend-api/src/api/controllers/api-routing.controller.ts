@@ -36,6 +36,7 @@ import { ApiStorms } from '../routes/api-storms';
 import { ApiSuggestions } from '../routes/api-suggestions';
 import { ApiUpdates } from '../routes/api-updates';
 import { QueueService } from '../services/queue-service';
+import { ApiDatasets } from '../routes/api-datasets';
 import { ApiMiniGame } from '../routes/api-mini-game';
 
 /**
@@ -476,6 +477,14 @@ export class ApiRoutingController {
 
   public getChronicleSeoHead(request: express.Request, response: express.Response): void {
     void ApiChronicle.getHead(request, response);
+  }
+
+  public getDatasetsIndex(request: express.Request, response: express.Response): void {
+    void ApiDatasets.getIndex(request, response);
+  }
+
+  public getDatasetFile(request: express.Request, response: express.Response): void {
+    void ApiDatasets.getFile(request, response);
   }
 
   public getReleaseNotes(request: express.Request, response: express.Response): void {

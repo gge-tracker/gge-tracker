@@ -23,7 +23,7 @@ interface ExportRequest {
   onlyPopulated: boolean;
 }
 
-interface ExportPage {
+export interface ExportPage {
   rows: Record<string, unknown>[];
   hasMore: boolean;
   nextCursor: string | null;
@@ -101,56 +101,28 @@ export abstract class ApiExport implements ApiHelper {
   private static readonly ID_FIELDS = new Set(['player_id', 'alliance_id']);
 
   public static async getPlayersExport(request: express.Request, response: express.Response): Promise<void> {
-    await this.serve(request, response, 'players', async (parameters, pool) => {
-      const columns = this.project(parameters.fields, this.PLAYER_COLUMNS);
-      const values: unknown[] = [parameters.cursor];
-      const conditions = ['P.id > $1'];
-      if (parameters.updatedSince) {
-        values.push(parameters.updatedSince);
-        conditions.push(`P.updated_at >= $${values.length}`);
-      }
-      if (parameters.allianceId !== null) {
-        values.push(parameters.allianceId);
-        conditions.push(`P.alliance_id = $${values.length}`);
-      }
-      if (parameters.active === 1) {
-        conditions.push('(P.castles IS NOT NULL AND jsonb_array_length(P.castles) > 0)');
-      } else if (parameters.active === 0) {
-        conditions.push('(P.castles IS NULL OR jsonb_array_length(P.castles) = 0)');
-      }
-      const join = columns.some((column) => this.PLAYER_COLUMNS[column].join === 'alliances')
-        ? 'LEFT JOIN alliances A ON P.alliance_id = A.id'
-        : '';
-      values.push(parameters.limit + 1);
-      const query = `
-        SELECT ${columns.map((column) => `${this.PLAYER_COLUMNS[column].sql} AS ${column}`).join(', ')}, P.id AS _cursor
-        FROM players P
-        ${join}
-        WHERE ${conditions.join(' AND ')}
-        ORDER BY P.id ASC
-        LIMIT $${values.length}`;
-      return this.readPage(pool, query, values, parameters, columns, this.PLAYER_COLUMNS, request['code']);
-    });
+    await this.serve(request, response, 'players', (parameters, pool) =>
+      this.readPlayers(parameters, pool, request['code']),
+    );
   }
 
   public static async getAlliancesExport(request: express.Request, response: express.Response): Promise<void> {
-    await this.serve(request, response, 'alliances', async (parameters, pool) => {
-      const columns = this.project(parameters.fields, this.ALLIANCE_COLUMNS);
-      const aggregated = columns.some((column) => this.ALLIANCE_COLUMNS[column].join === 'players');
-      const values: unknown[] = [parameters.cursor, parameters.limit + 1];
-      const join = aggregated || parameters.onlyPopulated ? 'LEFT JOIN players P ON A.id = P.alliance_id' : '';
-      const selected = columns.map((column) => `${this.ALLIANCE_COLUMNS[column].sql} AS ${column}`).join(', ');
-      const query = `
-        SELECT ${selected}, A.id AS _cursor
-        FROM alliances A
-        ${join}
-        WHERE A.id > $1
-        ${join ? 'GROUP BY A.id' : ''}
-        ${parameters.onlyPopulated ? 'HAVING COUNT(P.id) > 0' : ''}
-        ORDER BY A.id ASC
-        LIMIT $2`;
-      return this.readPage(pool, query, values, parameters, columns, this.ALLIANCE_COLUMNS, request['code']);
-    });
+    await this.serve(request, response, 'alliances', (parameters, pool) =>
+      this.readAlliances(parameters, pool, request['code']),
+    );
+  }
+
+  public static async readEveryPlayer(pool: pg.Pool, code: string, cursor: number, limit: number): Promise<ExportPage> {
+    return this.readPlayers(this.fullCollection(cursor, limit, this.PLAYER_COLUMNS), pool, code);
+  }
+
+  public static async readEveryAlliance(
+    pool: pg.Pool,
+    code: string,
+    cursor: number,
+    limit: number,
+  ): Promise<ExportPage> {
+    return this.readAlliances(this.fullCollection(cursor, limit, this.ALLIANCE_COLUMNS), pool, code);
   }
 
   /**
@@ -200,6 +172,72 @@ export abstract class ApiExport implements ApiHelper {
         nextCursor: hasMore && lastPlayerId !== null ? encodeIdCursor(Number(lastPlayerId)) : null,
       };
     });
+  }
+
+  private static fullCollection(
+    cursor: number,
+    limit: number,
+    definitions: Record<string, ProjectionColumn>,
+  ): ExportRequest {
+    return {
+      cursor,
+      limit,
+      fields: Object.keys(definitions),
+      ndjson: true,
+      updatedSince: null,
+      allianceId: null,
+      active: null,
+      onlyPopulated: false,
+    };
+  }
+
+  private static async readPlayers(parameters: ExportRequest, pool: pg.Pool, code: string): Promise<ExportPage> {
+    const columns = this.project(parameters.fields, this.PLAYER_COLUMNS);
+    const values: unknown[] = [parameters.cursor];
+    const conditions = ['P.id > $1'];
+    if (parameters.updatedSince) {
+      values.push(parameters.updatedSince);
+      conditions.push(`P.updated_at >= $${values.length}`);
+    }
+    if (parameters.allianceId !== null) {
+      values.push(parameters.allianceId);
+      conditions.push(`P.alliance_id = $${values.length}`);
+    }
+    if (parameters.active === 1) {
+      conditions.push('(P.castles IS NOT NULL AND jsonb_array_length(P.castles) > 0)');
+    } else if (parameters.active === 0) {
+      conditions.push('(P.castles IS NULL OR jsonb_array_length(P.castles) = 0)');
+    }
+    const join = columns.some((column) => this.PLAYER_COLUMNS[column].join === 'alliances')
+      ? 'LEFT JOIN alliances A ON P.alliance_id = A.id'
+      : '';
+    values.push(parameters.limit + 1);
+    const query = `
+        SELECT ${columns.map((column) => `${this.PLAYER_COLUMNS[column].sql} AS ${column}`).join(', ')}, P.id AS _cursor
+        FROM players P
+        ${join}
+        WHERE ${conditions.join(' AND ')}
+        ORDER BY P.id ASC
+        LIMIT $${values.length}`;
+    return this.readPage(pool, query, values, parameters, columns, this.PLAYER_COLUMNS, code);
+  }
+
+  private static async readAlliances(parameters: ExportRequest, pool: pg.Pool, code: string): Promise<ExportPage> {
+    const columns = this.project(parameters.fields, this.ALLIANCE_COLUMNS);
+    const aggregated = columns.some((column) => this.ALLIANCE_COLUMNS[column].join === 'players');
+    const values: unknown[] = [parameters.cursor, parameters.limit + 1];
+    const join = aggregated || parameters.onlyPopulated ? 'LEFT JOIN players P ON A.id = P.alliance_id' : '';
+    const selected = columns.map((column) => `${this.ALLIANCE_COLUMNS[column].sql} AS ${column}`).join(', ');
+    const query = `
+        SELECT ${selected}, A.id AS _cursor
+        FROM alliances A
+        ${join}
+        WHERE A.id > $1
+        ${join ? 'GROUP BY A.id' : ''}
+        ${parameters.onlyPopulated ? 'HAVING COUNT(P.id) > 0' : ''}
+        ORDER BY A.id ASC
+        LIMIT $2`;
+    return this.readPage(pool, query, values, parameters, columns, this.ALLIANCE_COLUMNS, code);
   }
 
   private static async serve(
@@ -362,7 +400,9 @@ export abstract class ApiExport implements ApiHelper {
         // The allowed columns, not the rejected ones, which would reflect caller input
         if (requested.some((field) => !(field in definitions))) {
           const allowed = Object.keys(definitions).join(', ');
-          return { error: `${RouteErrorMessagesEnum.InvalidExportFields}. Allowed: ${allowed}` };
+          return {
+            error: `${RouteErrorMessagesEnum.InvalidExportFields}. Allowed: ${allowed}`,
+          };
         }
         fields = [...new Set([defaults[0], ...requested])];
       }

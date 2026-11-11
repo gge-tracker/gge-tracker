@@ -52,6 +52,27 @@
         <div class="modal-body">
           @defer (when filtersOpened; prefetch on idle) {
           <section class="filter-section">
+            <h6 class="filter-section-title">{{ 'Filtres rapides' | translate }}</h6>
+            <div class="filter-preset-grid">
+              <button type="button" class="filter-preset" [class.filter-preset--on]="activePreset === 'recruits'"
+                [attr.aria-pressed]="activePreset === 'recruits'" (click)="togglePreset('recruits')">
+                <i class="fa-solid fa-user-plus filter-preset-icon" aria-hidden="true"></i>
+                <span class="filter-preset-text">
+                  <span class="filter-preset-name">{{ 'Recrues' | translate }}</span>
+                  <span class="filter-preset-hint">{{ 'Joueurs actifs sans alliance' | translate }}</span>
+                </span>
+              </button>
+              <button type="button" class="filter-preset" [class.filter-preset--on]="activePreset === 'inactiveTargets'"
+                [attr.aria-pressed]="activePreset === 'inactiveTargets'" (click)="togglePreset('inactiveTargets')">
+                <i class="fa-solid fa-crosshairs filter-preset-icon" aria-hidden="true"></i>
+                <span class="filter-preset-text">
+                  <span class="filter-preset-name">{{ 'Cibles inactives' | translate }}</span>
+                  <span class="filter-preset-hint">{{ (mePlayerName ? 'Joueurs inactifs et sans protection, les plus proches de votre château' : 'Joueurs inactifs et sans protection. Choisissez votre joueur sur l\'accueil pour les trier par distance') | translate }}</span>
+                </span>
+              </button>
+            </div>
+          </section>
+          <section class="filter-section">
             <h6 class="filter-section-title">{{ 'Statistiques' | translate }}</h6>
             <div class="filter-range-grid">
               <app-modal-form-group class="compact">
@@ -287,6 +308,9 @@
                 <select field [(ngModel)]="sort" [attr.aria-label]="'Trier les résultats' | translate">
                   @for (option of sortByOptions; track option) {
                   <option [value]="option.value">{{ option.label | translate }}</option>
+                  }
+                  @if (formFilters.playerCastleDistance) {
+                  <option value="distance">{{ 'Distance (m)' | translate }}</option>
                   }
                 </select>
                 <button action reset (click)="sort = sort; reverse = !reverse">

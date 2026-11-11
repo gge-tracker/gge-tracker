@@ -23,3 +23,4 @@ pnpm-debug.log*
 
 config/servers.xml
 config/servers.xml.bak-*
+datasets/

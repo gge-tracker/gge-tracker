@@ -166,6 +166,7 @@ volumes:
   clickhouse_data:
   pg_data:
   backend-assets:
+  backend-datasets:
 
 networks:
   backend:

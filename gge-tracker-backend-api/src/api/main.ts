@@ -43,6 +43,7 @@ import { ApiHelper } from './helper/api-helper';
 import { withCacheNamespace } from './helper/cache/cache-namespace';
 import { OfferPriceTables } from './services/offer-price-tables';
 import { OfferSnapshot } from './services/offer-snapshot';
+import { DailyDatasets } from './services/daily-datasets';
 import { TemporaryServerSettings } from './helper/temporary-server-settings';
 
 /* ------------------------------------------------
@@ -849,6 +850,129 @@ publicRoutes.get('/servers/catalog', routingInstance.getServersCatalog.bind(rout
  *         $ref: '#/components/responses/InternalServerError'
  */
 publicRoutes.get('/release-notes', routingInstance.getReleaseNotes.bind(routingInstance));
+
+/**
+ * @openapi
+ * /datasets:
+ *   get:
+ *     summary: List the daily dataset files of every server
+ *     description: >
+ *       Once a day, after 00:45 UTC, the API writes a compressed copy of every server for the UTC day that just
+ *       closed. This lists every day still kept (retention_days), per server, with each file's size, row count and
+ *       SHA-256. Reading a whole server or its history through these files costs one request per file instead of
+ *       one per player, and is the expected way to mirror the data
+ *     tags:
+ *       - Export
+ *     parameters:
+ *       - $ref: '#/components/parameters/IfNoneMatch'
+ *     responses:
+ *       '200':
+ *         description: Every dataset day kept, newest first within each server
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 retention_days:
+ *                   type: integer
+ *                 servers:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       server:
+ *                         type: string
+ *                       server_code:
+ *                         type: string
+ *                       days:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             date:
+ *                               type: string
+ *                               format: date
+ *                             generated_at:
+ *                               type: string
+ *                               format: date-time
+ *                             files:
+ *                               type: array
+ *                               items:
+ *                                 type: object
+ *                                 properties:
+ *                                   name:
+ *                                     type: string
+ *                                   rows:
+ *                                     type: integer
+ *                                   bytes:
+ *                                     type: integer
+ *                                   sha256:
+ *                                     type: string
+ *                                   url:
+ *                                     type: string
+ *       '304':
+ *         description: The If-None-Match ETag still matches, so the list has not changed
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+publicRoutes.get('/datasets', routingInstance.getDatasetsIndex.bind(routingInstance));
+
+/**
+ * @openapi
+ * /datasets/{server}/{date}/{file}:
+ *   get:
+ *     summary: Download one daily dataset file
+ *     description: >
+ *       A gzip file of newline-delimited JSON. players.ndjson.gz and alliances.ndjson.gz hold every row with every
+ *       column /export/players and /export/alliances serve with fields=all, read after the day closed.
+ *       history.ndjson.gz holds one line per player with the 24 hourly readings of that day for might, loot and
+ *       glory (null for an hour with no reading). A file never changes once written, so it is cached for a year
+ *     tags:
+ *       - Export
+ *     parameters:
+ *       - name: server
+ *         in: path
+ *         required: true
+ *         description: Server name as GET /datasets lists it, e.g. FR1
+ *         schema:
+ *           type: string
+ *       - name: date
+ *         in: path
+ *         required: true
+ *         description: The UTC day, YYYY-MM-DD
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - name: file
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [players.ndjson.gz, alliances.ndjson.gz, history.ndjson.gz]
+ *       - $ref: '#/components/parameters/IfNoneMatch'
+ *     responses:
+ *       '200':
+ *         description: The file, gzip-compressed
+ *         headers:
+ *           ETag:
+ *             description: The file's SHA-256, as GET /datasets lists it
+ *             schema:
+ *               type: string
+ *         content:
+ *           application/gzip:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       '304':
+ *         description: The If-None-Match ETag still matches
+ *       '400':
+ *         $ref: '#/components/responses/BadRequest'
+ *       '404':
+ *         $ref: '#/components/responses/NotFound'
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+publicRoutes.get('/datasets/:server/:date/:file', routingInstance.getDatasetFile.bind(routingInstance));
 
 /**
  * @swagger
@@ -8053,6 +8177,7 @@ async function main(): Promise<void> {
     .listen(APPLICATION_PORT, () => {
       void printHeader();
       OfferSnapshot.start();
+      DailyDatasets.start();
       OfferPriceTables.start();
       TemporaryServerSettings.start();
     })
