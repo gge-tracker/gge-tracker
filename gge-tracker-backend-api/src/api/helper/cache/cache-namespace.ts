@@ -27,6 +27,7 @@ const KEYED_COMMANDS = new Set([
   'hGet',
   'hSet',
   'hmGet',
+  'mGet',
   'hGetAll',
   'sAdd',
   'sMembers',

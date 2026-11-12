@@ -3636,7 +3636,7 @@
         "type": "loki",
         "uid": "loki"
       },
-      "description": "Servers whose season ranking was stored at least once in range. Collection runs once a night, 02:00-08:00 Paris",
+      "description": "Servers whose season ranking was stored at least once in range. Collection runs once a day, 02:00-08:00 Paris",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -3770,7 +3770,7 @@
         "type": "loki",
         "uid": "loki"
       },
-      "description": "Fills whose collection failed while a later fill of the night could still retry it",
+      "description": "Fills whose collection failed while a later fill of the window could still retry it",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -3837,7 +3837,7 @@
         "type": "loki",
         "uid": "loki"
       },
-      "description": "Nights whose last fill of the window failed too: that night is lost, and the final ranking with it on the last night of a season",
+      "description": "Days whose last fill of the window failed too: that day is lost, and the final ranking with it on the last day of a season",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -3889,7 +3889,7 @@
           "refId": "A"
         }
       ],
-      "title": "Missed nights",
+      "title": "Missed days",
       "type": "stat",
       "gridPos": {
         "h": 4,
@@ -3904,7 +3904,7 @@
         "type": "loki",
         "uid": "loki"
       },
-      "description": "Servers where the medals dropped since the last stored night, so a new season was opened",
+      "description": "Servers where the medals dropped since the last stored day, so a new season was opened",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -4034,7 +4034,7 @@
         "type": "loki",
         "uid": "loki"
       },
-      "description": "The last stored night of each server. Missing ranks are rows the game left out of pages that did answer",
+      "description": "The last stored day of each server. Missing ranks are rows the game left out of pages that did answer",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -4157,7 +4157,7 @@
           "refId": "F"
         }
       ],
-      "title": "Last stored night by server",
+      "title": "Last stored day by server",
       "type": "table",
       "gridPos": {
         "h": 10,
@@ -4205,7 +4205,7 @@
         "type": "loki",
         "uid": "loki"
       },
-      "description": "What each fill of the window concluded: collected, unchanged (no payout that night), empty (season not ranked yet), failed or missed",
+      "description": "What each fill of the window concluded: collected, unchanged (no payout that day), empty (season not ranked yet), failed or missed",
       "fieldConfig": {
         "defaults": {
           "color": {

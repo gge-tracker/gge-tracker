@@ -1574,11 +1574,11 @@ protectedRoutes.get(
  * @swagger
  * /kingdoms-league/seasons:
  *   get:
- *     summary: Retrieve the recorded Kingdoms League seasons of a server and their nights
+ *     summary: Retrieve the recorded Kingdoms League seasons of a server and their days
  *     description: |
- *       The season ranking is read once a night, after the medals are paid at midnight (Paris time).
- *       A night is only stored when the ranking moved, so a season lists the nights a league event paid medals.
- *       The season ID is an internal GGE Tracker identifier, counted per server. The last night of a season
+ *       The season ranking is read once a day, after the medals are paid.
+ *       A day is only stored when the ranking moved, so a season lists the days a league event paid medals.
+ *       The season ID is an internal GGE Tracker identifier, counted per server. The last day of a season
  *       other than the latest one is its final ranking
  *     tags:
  *       - Events
@@ -1587,7 +1587,7 @@ protectedRoutes.get(
  *       - $ref: '#/components/parameters/GgeServerHeader'
  *     responses:
  *       200:
- *         description: The seasons, oldest first, each with its nights in order
+ *         description: The seasons, oldest first, each with its days in order
  *         content:
  *           application/json:
  *             schema:
@@ -1614,7 +1614,7 @@ protectedRoutes.get(
  *                           example: "2026-11-11"
  *                       ranked_players:
  *                         type: integer
- *                         description: Players ranked on the last night of the season
+ *                         description: Players ranked on the last day of the season
  *                       ranked_alliances:
  *                         type: integer
  *       400:
@@ -1626,11 +1626,11 @@ protectedRoutes.get('/kingdoms-league/seasons', routingInstance.getKingdomsLeagu
  * @swagger
  * /kingdoms-league/players:
  *   get:
- *     summary: Retrieve the Kingdoms League season ranking of the players on one night
+ *     summary: Retrieve the Kingdoms League season ranking of the players on one day
  *     description: |
  *       Players are sorted as the game sorts them: by kingdom title, then gold, silver and bronze medals.
  *       Only players with at least one gold medal are ranked. previous_rank is the player's rank on the previous
- *       stored night of the same season, null when they were not ranked then
+ *       stored day of the same season, null when they were not ranked then
  *     tags:
  *       - Events
  *       - Kingdoms League
@@ -1638,7 +1638,7 @@ protectedRoutes.get('/kingdoms-league/seasons', routingInstance.getKingdomsLeagu
  *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - name: day
  *         in: query
- *         description: Night to read, as listed by /kingdoms-league/seasons. The latest night when omitted
+ *         description: Day to read, as listed by /kingdoms-league/seasons. The latest day when omitted
  *         schema:
  *           type: string
  *           example: "2026-11-11"
@@ -1653,15 +1653,85 @@ protectedRoutes.get('/kingdoms-league/seasons', routingInstance.getKingdomsLeagu
  *         description: Keeps the members of this alliance, as the alliance id with its server code
  *         schema:
  *           type: integer
+ *       - name: alliance_name
+ *         in: query
+ *         description: Keeps the members of the alliances whose name contains this text, case ignored
+ *         schema:
+ *           type: string
+ *           maxLength: 40
+ *       - name: min_title
+ *         in: query
+ *         description: Keeps the players holding at least this kingdom title (1 to 21)
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 21
+ *       - name: max_title
+ *         in: query
+ *         description: Keeps the players holding at most this kingdom title (1 to 21)
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 21
+ *       - name: min_gold
+ *         in: query
+ *         description: Keeps the rows with at least this many gold medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: max_gold
+ *         in: query
+ *         description: Keeps the rows with at most this many gold medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: min_silver
+ *         in: query
+ *         description: Keeps the rows with at least this many silver medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: max_silver
+ *         in: query
+ *         description: Keeps the rows with at most this many silver medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: min_bronze
+ *         in: query
+ *         description: Keeps the rows with at least this many bronze medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: max_bronze
+ *         in: query
+ *         description: Keeps the rows with at most this many bronze medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
  *       - name: page
  *         in: query
  *         schema:
  *           type: integer
  *           minimum: 1
  *           default: 1
+ *       - name: size
+ *         in: query
+ *         description: Rows per page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 15
  *     responses:
  *       200:
- *         description: One page of 15 players. day and season_id are null when the server has no stored night
+ *         description: One page of players. day and season_id are null when the server has no stored day
  *         content:
  *           application/json:
  *             schema:
@@ -1708,7 +1778,7 @@ protectedRoutes.get('/kingdoms-league/seasons', routingInstance.getKingdomsLeagu
  *                 pagination:
  *                   $ref: '#/components/schemas/Pagination'
  *       400:
- *         description: Invalid day, player name or alliance id, or missing gge-server header
+ *         description: Invalid day, name, alliance id, title or medal count, or missing gge-server header
  */
 protectedRoutes.get('/kingdoms-league/players', routingInstance.getKingdomsLeaguePlayers.bind(routingInstance));
 
@@ -1716,10 +1786,10 @@ protectedRoutes.get('/kingdoms-league/players', routingInstance.getKingdomsLeagu
  * @swagger
  * /kingdoms-league/alliances:
  *   get:
- *     summary: Retrieve the Kingdoms League season ranking of the alliances on one night
+ *     summary: Retrieve the Kingdoms League season ranking of the alliances on one day
  *     description: |
  *       Alliances are sorted by gold medals, then silver and bronze. Only alliances with at least one gold medal
- *       are ranked. previous_rank is the alliance's rank on the previous stored night of the same season
+ *       are ranked. previous_rank is the alliance's rank on the previous stored day of the same season
  *     tags:
  *       - Events
  *       - Kingdoms League
@@ -1727,7 +1797,7 @@ protectedRoutes.get('/kingdoms-league/players', routingInstance.getKingdomsLeagu
  *       - $ref: '#/components/parameters/GgeServerHeader'
  *       - name: day
  *         in: query
- *         description: Night to read, as listed by /kingdoms-league/seasons. The latest night when omitted
+ *         description: Day to read, as listed by /kingdoms-league/seasons. The latest day when omitted
  *         schema:
  *           type: string
  *           example: "2026-11-11"
@@ -1737,15 +1807,65 @@ protectedRoutes.get('/kingdoms-league/players', routingInstance.getKingdomsLeagu
  *         schema:
  *           type: string
  *           maxLength: 40
+ *       - name: min_gold
+ *         in: query
+ *         description: Keeps the rows with at least this many gold medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: max_gold
+ *         in: query
+ *         description: Keeps the rows with at most this many gold medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: min_silver
+ *         in: query
+ *         description: Keeps the rows with at least this many silver medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: max_silver
+ *         in: query
+ *         description: Keeps the rows with at most this many silver medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: min_bronze
+ *         in: query
+ *         description: Keeps the rows with at least this many bronze medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: max_bronze
+ *         in: query
+ *         description: Keeps the rows with at most this many bronze medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
  *       - name: page
  *         in: query
  *         schema:
  *           type: integer
  *           minimum: 1
  *           default: 1
+ *       - name: size
+ *         in: query
+ *         description: Rows per page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 15
  *     responses:
  *       200:
- *         description: One page of 15 alliances. day and season_id are null when the server has no stored night
+ *         description: One page of alliances. day and season_id are null when the server has no stored day
  *         content:
  *           application/json:
  *             schema:
@@ -1783,15 +1903,597 @@ protectedRoutes.get('/kingdoms-league/players', routingInstance.getKingdomsLeagu
  *                 pagination:
  *                   $ref: '#/components/schemas/Pagination'
  *       400:
- *         description: Invalid day or alliance name, or missing gge-server header
+ *         description: Invalid day, alliance name or medal count, or missing gge-server header
  */
 protectedRoutes.get('/kingdoms-league/alliances', routingInstance.getKingdomsLeagueAlliances.bind(routingInstance));
 
 /**
  * @swagger
+ * /kingdoms-league/global/days:
+ *   get:
+ *     summary: List the days a Kingdoms League ranking was stored on at least one server
+ *     description: Newest first. These are the days /kingdoms-league/global/players and /alliances can read
+ *     tags:
+ *       - Events
+ *       - Kingdoms League
+ *     parameters:
+ *       - name: game
+ *         in: query
+ *         description: Which universe to rank. Empire includes its partner servers
+ *         schema:
+ *           type: string
+ *           enum: [all, ep, e4k]
+ *           default: all
+ *     responses:
+ *       200:
+ *         description: The stored days
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 days:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                     example: "2026-11-12"
+ *       400:
+ *         description: Invalid game
+ */
+publicRoutes.get('/kingdoms-league/global/days', routingInstance.getKingdomsLeagueGlobalDays.bind(routingInstance));
+
+/**
+ * @swagger
+ * /kingdoms-league/global/players:
+ *   get:
+ *     summary: Retrieve the Kingdoms League player ranking of every server on one day
+ *     description: |
+ *       Every server's season ranking of that day, merged and sorted by kingdom title, then gold, silver and bronze medals.
+ *       rank is the place across all servers, before filters; server_rank the place on the row's own server.
+ *       No gge-server header is needed: the server of each row is part of the answer
+ *     tags:
+ *       - Events
+ *       - Kingdoms League
+ *     parameters:
+ *       - name: game
+ *         in: query
+ *         description: Which universe to rank. Empire includes its partner servers
+ *         schema:
+ *           type: string
+ *           enum: [all, ep, e4k]
+ *           default: all
+ *       - name: day
+ *         in: query
+ *         description: Day to read, as listed by /kingdoms-league/global/days. The latest day when omitted
+ *         schema:
+ *           type: string
+ *           example: "2026-11-12"
+ *       - name: player_name
+ *         in: query
+ *         description: Keeps the players whose name contains this text, case ignored
+ *         schema:
+ *           type: string
+ *           maxLength: 40
+ *       - name: alliance_name
+ *         in: query
+ *         description: Keeps the members of the alliances whose name contains this text, case ignored
+ *         schema:
+ *           type: string
+ *           maxLength: 40
+ *       - name: min_title
+ *         in: query
+ *         description: Keeps the players holding at least this kingdom title (1 to 21)
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 21
+ *       - name: max_title
+ *         in: query
+ *         description: Keeps the players holding at most this kingdom title (1 to 21)
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 21
+ *       - name: min_gold
+ *         in: query
+ *         description: Keeps the rows with at least this many gold medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: max_gold
+ *         in: query
+ *         description: Keeps the rows with at most this many gold medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: min_silver
+ *         in: query
+ *         description: Keeps the rows with at least this many silver medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: max_silver
+ *         in: query
+ *         description: Keeps the rows with at most this many silver medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: min_bronze
+ *         in: query
+ *         description: Keeps the rows with at least this many bronze medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: max_bronze
+ *         in: query
+ *         description: Keeps the rows with at most this many bronze medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: page
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *       - name: size
+ *         in: query
+ *         description: Rows per page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 15
+ *     responses:
+ *       200:
+ *         description: One page of the merged ranking. day is null when nothing is stored yet
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 day:
+ *                   type: string
+ *                   nullable: true
+ *                 players:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       rank:
+ *                         type: integer
+ *                       server:
+ *                         type: string
+ *                       server_rank:
+ *                         type: integer
+ *                       season_id:
+ *                         type: integer
+ *                       player_id:
+ *                         type: integer
+ *                       player_name:
+ *                         type: string
+ *                       alliance_id:
+ *                         type: integer
+ *                         nullable: true
+ *                       alliance_name:
+ *                         type: string
+ *                         nullable: true
+ *                       title:
+ *                         type: integer
+ *                       gold:
+ *                         type: integer
+ *                       silver:
+ *                         type: integer
+ *                       bronze:
+ *                         type: integer
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ *       400:
+ *         description: Invalid game, day, name, title or medal count
+ */
+publicRoutes.get(
+  '/kingdoms-league/global/players',
+  routingInstance.getKingdomsLeagueGlobalPlayers.bind(routingInstance),
+);
+
+/**
+ * @swagger
+ * /kingdoms-league/global/alliances:
+ *   get:
+ *     summary: Retrieve the Kingdoms League alliance ranking of every server on one day
+ *     description: |
+ *       Every server's season ranking of that day, merged and sorted by gold, then silver and bronze medals.
+ *       rank is the place across all servers, before filters; server_rank the place on the row's own server.
+ *       No gge-server header is needed: the server of each row is part of the answer
+ *     tags:
+ *       - Events
+ *       - Kingdoms League
+ *     parameters:
+ *       - name: game
+ *         in: query
+ *         description: Which universe to rank. Empire includes its partner servers
+ *         schema:
+ *           type: string
+ *           enum: [all, ep, e4k]
+ *           default: all
+ *       - name: day
+ *         in: query
+ *         description: Day to read, as listed by /kingdoms-league/global/days. The latest day when omitted
+ *         schema:
+ *           type: string
+ *           example: "2026-11-12"
+ *       - name: alliance_name
+ *         in: query
+ *         description: Keeps the alliances whose name contains this text, case ignored
+ *         schema:
+ *           type: string
+ *           maxLength: 40
+ *       - name: min_gold
+ *         in: query
+ *         description: Keeps the rows with at least this many gold medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: max_gold
+ *         in: query
+ *         description: Keeps the rows with at most this many gold medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: min_silver
+ *         in: query
+ *         description: Keeps the rows with at least this many silver medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: max_silver
+ *         in: query
+ *         description: Keeps the rows with at most this many silver medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: min_bronze
+ *         in: query
+ *         description: Keeps the rows with at least this many bronze medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: max_bronze
+ *         in: query
+ *         description: Keeps the rows with at most this many bronze medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: page
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *       - name: size
+ *         in: query
+ *         description: Rows per page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 15
+ *     responses:
+ *       200:
+ *         description: One page of the merged ranking. day is null when nothing is stored yet
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 day:
+ *                   type: string
+ *                   nullable: true
+ *                 alliances:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       rank:
+ *                         type: integer
+ *                       server:
+ *                         type: string
+ *                       server_rank:
+ *                         type: integer
+ *                       season_id:
+ *                         type: integer
+ *                       alliance_id:
+ *                         type: integer
+ *                       alliance_name:
+ *                         type: string
+ *                       gold:
+ *                         type: integer
+ *                       silver:
+ *                         type: integer
+ *                       bronze:
+ *                         type: integer
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ *       400:
+ *         description: Invalid game, day, name, title or medal count
+ */
+publicRoutes.get(
+  '/kingdoms-league/global/alliances',
+  routingInstance.getKingdomsLeagueGlobalAlliances.bind(routingInstance),
+);
+
+/**
+ * @swagger
+ * /kingdoms-league/players/export:
+ *   get:
+ *     summary: Download the whole Kingdoms League player ranking of one day
+ *     description: |
+ *       Takes the same filters as /kingdoms-league/players, without paging: every matching row, in rank order,
+ *       as JSON, NDJSON (one row per line) or CSV. The rows have the same fields as the paged route
+ *     tags:
+ *       - Events
+ *       - Kingdoms League
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - name: format
+ *         in: query
+ *         schema:
+ *           type: string
+ *           enum: [json, ndjson, csv]
+ *           default: json
+ *       - name: day
+ *         in: query
+ *         description: Day to read, as listed by /kingdoms-league/seasons. The latest day when omitted
+ *         schema:
+ *           type: string
+ *           example: "2026-11-11"
+ *       - name: player_name
+ *         in: query
+ *         description: Keeps the players whose name contains this text, case ignored
+ *         schema:
+ *           type: string
+ *           maxLength: 40
+ *       - name: alliance_id
+ *         in: query
+ *         description: Keeps the members of this alliance, as the alliance id with its server code
+ *         schema:
+ *           type: integer
+ *       - name: alliance_name
+ *         in: query
+ *         description: Keeps the members of the alliances whose name contains this text, case ignored
+ *         schema:
+ *           type: string
+ *           maxLength: 40
+ *       - name: min_title
+ *         in: query
+ *         description: Keeps the players holding at least this kingdom title (1 to 21)
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 21
+ *       - name: max_title
+ *         in: query
+ *         description: Keeps the players holding at most this kingdom title (1 to 21)
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 21
+ *       - name: min_gold
+ *         in: query
+ *         description: Keeps the rows with at least this many gold medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: max_gold
+ *         in: query
+ *         description: Keeps the rows with at most this many gold medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: min_silver
+ *         in: query
+ *         description: Keeps the rows with at least this many silver medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: max_silver
+ *         in: query
+ *         description: Keeps the rows with at most this many silver medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: min_bronze
+ *         in: query
+ *         description: Keeps the rows with at least this many bronze medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: max_bronze
+ *         in: query
+ *         description: Keeps the rows with at most this many bronze medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *     responses:
+ *       200:
+ *         description: The matching rows. The JSON form wraps them with day, season_id, previous_day and count
+ *         headers:
+ *           X-Item-Count:
+ *             description: Number of rows in the file
+ *             schema:
+ *               type: integer
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 day:
+ *                   type: string
+ *                   nullable: true
+ *                 season_id:
+ *                   type: integer
+ *                   nullable: true
+ *                 previous_day:
+ *                   type: string
+ *                   nullable: true
+ *                 count:
+ *                   type: integer
+ *                 players:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *           application/x-ndjson:
+ *             schema:
+ *               type: string
+ *           text/csv:
+ *             schema:
+ *               type: string
+ *       400:
+ *         description: Invalid format, day, name, alliance id, title or medal count, or missing gge-server header
+ */
+protectedRoutes.get(
+  '/kingdoms-league/players/export',
+  routingInstance.getKingdomsLeaguePlayersExport.bind(routingInstance),
+);
+
+/**
+ * @swagger
+ * /kingdoms-league/alliances/export:
+ *   get:
+ *     summary: Download the whole Kingdoms League alliance ranking of one day
+ *     description: |
+ *       Takes the same filters as /kingdoms-league/alliances, without paging: every matching row, in rank order,
+ *       as JSON, NDJSON (one row per line) or CSV. The rows have the same fields as the paged route
+ *     tags:
+ *       - Events
+ *       - Kingdoms League
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - name: format
+ *         in: query
+ *         schema:
+ *           type: string
+ *           enum: [json, ndjson, csv]
+ *           default: json
+ *       - name: day
+ *         in: query
+ *         description: Day to read, as listed by /kingdoms-league/seasons. The latest day when omitted
+ *         schema:
+ *           type: string
+ *           example: "2026-11-11"
+ *       - name: alliance_name
+ *         in: query
+ *         description: Keeps the alliances whose name contains this text, case ignored
+ *         schema:
+ *           type: string
+ *           maxLength: 40
+ *       - name: min_gold
+ *         in: query
+ *         description: Keeps the rows with at least this many gold medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: max_gold
+ *         in: query
+ *         description: Keeps the rows with at most this many gold medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: min_silver
+ *         in: query
+ *         description: Keeps the rows with at least this many silver medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: max_silver
+ *         in: query
+ *         description: Keeps the rows with at most this many silver medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: min_bronze
+ *         in: query
+ *         description: Keeps the rows with at least this many bronze medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *       - name: max_bronze
+ *         in: query
+ *         description: Keeps the rows with at most this many bronze medals
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 65535
+ *     responses:
+ *       200:
+ *         description: The matching rows. The JSON form wraps them with day, season_id, previous_day and count
+ *         headers:
+ *           X-Item-Count:
+ *             description: Number of rows in the file
+ *             schema:
+ *               type: integer
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 day:
+ *                   type: string
+ *                   nullable: true
+ *                 season_id:
+ *                   type: integer
+ *                   nullable: true
+ *                 previous_day:
+ *                   type: string
+ *                   nullable: true
+ *                 count:
+ *                   type: integer
+ *                 alliances:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *           application/x-ndjson:
+ *             schema:
+ *               type: string
+ *           text/csv:
+ *             schema:
+ *               type: string
+ *       400:
+ *         description: Invalid format, day, name, alliance id, title or medal count, or missing gge-server header
+ */
+protectedRoutes.get(
+  '/kingdoms-league/alliances/export',
+  routingInstance.getKingdomsLeagueAlliancesExport.bind(routingInstance),
+);
+
+/**
+ * @swagger
  * /kingdoms-league/player/{playerId}:
  *   get:
- *     summary: Retrieve one player's Kingdoms League progress, night by night, over a season
+ *     summary: Retrieve one player's Kingdoms League progress, day by day, over a season
  *     description: |
  *       The player id must carry the code of the server the gge-server header names
  *     tags:
@@ -1808,7 +2510,7 @@ protectedRoutes.get('/kingdoms-league/alliances', routingInstance.getKingdomsLea
  *           minimum: 1
  *     responses:
  *       200:
- *         description: The player's stored nights, oldest first; empty when they were never ranked in that season
+ *         description: The player's stored days, oldest first; empty when they were never ranked in that season
  *         content:
  *           application/json:
  *             schema:

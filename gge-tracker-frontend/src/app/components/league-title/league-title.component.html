@@ -1,8 +1,13 @@
-<span class="league-title" [class]="'tier-' + tier" [title]="'Titre de royaume' | translate">
-  <span class="league-title-pips" aria-hidden="true">
-    @for (pip of [1, 2, 3, 4, 5, 6]; track pip) {
-      <span class="pip" [class.lit]="pip <= tier"></span>
+<span class="league-title" [class.compact]="compact()" [class]="'family-' + art.family" [title]="nameKey | translate">
+  <span class="league-title-art">
+    <img class="league-title-emblem" [src]="'/assets/kleague/' + art.family + '.webp'" alt="" width="40" height="40"
+      loading="lazy" decoding="async">
+    @if (art.level > 0) {
+      <img class="league-title-level" [src]="'/assets/kleague/level' + art.level + '.webp'"
+        [alt]="'Niveau' | translate" width="20" height="20" loading="lazy" decoding="async">
     }
   </span>
-  <span class="league-title-name">{{ nameKey | translate }}</span>
+  @if (!compact()) {
+    <span class="league-title-name">{{ nameKey | translate }}</span>
+  }
 </span>

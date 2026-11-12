@@ -32,7 +32,7 @@ export class KingdomsLeagueProgressComponent {
   public readonly progress = input.required<ApiKingdomsLeaguePlayerHistoryResponse>();
   public readonly exit = output<void>();
 
-  public readonly nightsNewestFirst = computed(() => [...this.progress().history].reverse());
+  public readonly daysNewestFirst = computed(() => [...this.progress().history].reverse());
   public readonly latest = computed(() => this.progress().history.at(-1) ?? null);
   public readonly chart = computed<ApexOptions>(() => this.buildChart());
 
@@ -42,14 +42,14 @@ export class KingdomsLeagueProgressComponent {
 
   private buildChart(): ApexOptions {
     const history = this.progress().history;
-    const days = history.map((night) => night.day);
-    const lowestRank = Math.max(...history.map((night) => night.rank));
+    const days = history.map((entry) => entry.day);
+    const lowestRank = Math.max(...history.map((entry) => entry.rank));
     const rankLabel = this.translateService.instant('Rang');
     const goldLabel = this.translateService.instant("Médaille d'or");
     return {
       series: [
-        { name: rankLabel, type: 'line', data: history.map((night) => night.rank) },
-        { name: goldLabel, type: 'column', data: history.map((night) => night.gold) },
+        { name: rankLabel, type: 'line', data: history.map((entry) => entry.rank) },
+        { name: goldLabel, type: 'column', data: history.map((entry) => entry.gold) },
       ],
       chart: {
         type: 'line',

@@ -3,58 +3,73 @@
 }
 
 .league-title {
-  --tier-color: #9aa3ad;
+  --family-color: #c9b98f;
   align-items: center;
-  background: color-mix(in srgb, var(--tier-color) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--tier-color) 45%, transparent);
-  border-radius: 999px;
-  color: var(--tier-color);
+  color: var(--family-color);
   display: inline-flex;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 700;
-  gap: 0.45rem;
-  line-height: 1;
-  padding: 0.3rem 0.65rem 0.3rem 0.5rem;
-  white-space: nowrap;
+  gap: 0.5rem;
+  line-height: 1.15;
+  text-align: left;
 }
 
-.league-title-pips {
+.league-title-art {
+  align-items: center;
   display: inline-flex;
-  gap: 2px;
+  flex-shrink: 0;
+  gap: 0.1rem;
+  width: 3.8rem;
 }
 
-.pip {
-  background: color-mix(in srgb, var(--tier-color) 22%, transparent);
-  border-radius: 1px;
-  height: 8px;
-  transform: skewX(-12deg);
-  width: 3px;
+.league-title-emblem {
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.5));
+  height: 40px;
+  object-fit: contain;
+  width: 40px;
 }
 
-.pip.lit {
-  background: var(--tier-color);
+.league-title-level {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+  height: 20px;
+  object-fit: contain;
+  width: 20px;
 }
 
-.tier-1 {
-  --tier-color: #a8a29e;
+.compact .league-title-art {
+  width: auto;
 }
 
-.tier-2 {
-  --tier-color: #84cc16;
+.compact .league-title-emblem {
+  height: 32px;
+  width: 32px;
 }
 
-.tier-3 {
-  --tier-color: #38bdf8;
+.compact .league-title-level {
+  height: 16px;
+  width: 16px;
 }
 
-.tier-4 {
-  --tier-color: #a78bfa;
+.family-brawler {
+  --family-color: #c7b299;
 }
 
-.tier-5 {
-  --tier-color: #f59e0b;
+.family-hunter {
+  --family-color: #a3c47a;
 }
 
-.tier-6 {
-  --tier-color: #f43f5e;
+.family-guardian {
+  --family-color: #8fb8d8;
+}
+
+.family-warrior {
+  --family-color: #d8a25e;
+}
+
+.family-warlord {
+  --family-color: #e0b84a;
+}
+
+.family-annihilator {
+  --family-color: #f07a6a;
 }

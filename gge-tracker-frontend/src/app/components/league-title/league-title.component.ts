@@ -1,12 +1,37 @@
 import { Component, input } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
 
-const TITLES_PER_TIER = 4;
-const HIGHEST_TITLE = 21;
+const TITLES_PER_FAMILY = 4;
+const FAMILIES = ['brawler', 'hunter', 'guardian', 'warrior', 'warlord', 'annihilator'] as const;
 
-export function leagueTier(title: number): number {
-  if (title >= HIGHEST_TITLE) return 6;
-  return Math.max(1, Math.ceil(title / TITLES_PER_TIER));
+export const HIGHEST_LEAGUE_TITLE = 21;
+
+export type LeagueTitleFamily = (typeof FAMILIES)[number];
+
+export interface LeagueTitleArt {
+  family: LeagueTitleFamily;
+  level: number;
+}
+
+export function leagueTitleArt(title: number): LeagueTitleArt {
+  const clamped = Math.min(HIGHEST_LEAGUE_TITLE, Math.max(1, title));
+  const familyIndex = Math.floor((clamped - 1) / TITLES_PER_FAMILY);
+  return {
+    family: FAMILIES[familyIndex],
+    level: (clamped - 1) % TITLES_PER_FAMILY,
+  };
+}
+
+export function leagueTitleFamilies(): {
+  family: LeagueTitleFamily;
+  firstTitle: number;
+  lastTitle: number;
+}[] {
+  return FAMILIES.map((family, index) => ({
+    family,
+    firstTitle: index * TITLES_PER_FAMILY + 1,
+    lastTitle: Math.min(HIGHEST_LEAGUE_TITLE, (index + 1) * TITLES_PER_FAMILY),
+  }));
 }
 
 @Component({
@@ -18,9 +43,10 @@ export function leagueTier(title: number): number {
 })
 export class LeagueTitleComponent {
   public readonly title = input.required<number>();
+  public readonly compact = input<boolean>(false);
 
-  public get tier(): number {
-    return leagueTier(this.title());
+  public get art(): LeagueTitleArt {
+    return leagueTitleArt(this.title());
   }
 
   public get nameKey(): string {

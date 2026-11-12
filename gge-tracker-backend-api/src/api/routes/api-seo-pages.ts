@@ -79,8 +79,7 @@ export abstract class ApiSeoPages implements ApiHelper {
     },
     '/kingdoms-league': {
       title: "Kingdom's League",
-      description:
-        "The Goodgame Empire Kingdom's League season ranking, titles and medals of every player, night by night",
+      description: "The Goodgame Empire Kingdom's League season ranking, titles and medals of every player, day by day",
     },
     '/rift-raid': {
       title: 'Rift Tournament',

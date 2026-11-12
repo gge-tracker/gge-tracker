@@ -1,11 +1,11 @@
 <span class="league-medals">
-  <span class="medal gold" [class.none]="medals().gold === 0" [title]="'Médaille d\'or' | translate">
-    <span class="disc" aria-hidden="true"></span>{{ medals().gold | number }}
+  <span class="medal" [class.none]="medals().gold === 0" [title]="'Médaille d\'or' | translate">
+    <img src="/assets/kleague/gold_medal.webp" [alt]="'Médaille d\'or' | translate" width="22" height="22" loading="lazy" decoding="async">{{ medals().gold | number }}
   </span>
-  <span class="medal silver" [class.none]="medals().silver === 0" [title]="'Médaille d\'argent' | translate">
-    <span class="disc" aria-hidden="true"></span>{{ medals().silver | number }}
+  <span class="medal" [class.none]="medals().silver === 0" [title]="'Médaille d\'argent' | translate">
+    <img src="/assets/kleague/silver_medal.webp" [alt]="'Médaille d\'argent' | translate" width="22" height="22" loading="lazy" decoding="async">{{ medals().silver | number }}
   </span>
-  <span class="medal bronze" [class.none]="medals().bronze === 0" [title]="'Médaille de bronze' | translate">
-    <span class="disc" aria-hidden="true"></span>{{ medals().bronze | number }}
+  <span class="medal" [class.none]="medals().bronze === 0" [title]="'Médaille de bronze' | translate">
+    <img src="/assets/kleague/bronze_medal.webp" [alt]="'Médaille de bronze' | translate" width="22" height="22" loading="lazy" decoding="async">{{ medals().bronze | number }}
   </span>
 </span>

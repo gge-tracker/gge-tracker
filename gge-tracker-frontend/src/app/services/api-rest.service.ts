@@ -61,6 +61,11 @@ import {
   ApiKingdomsLeaguePlayerHistoryResponse,
   ApiKingdomsLeaguePlayersResponse,
   ApiKingdomsLeagueSeasonsResponse,
+  ApiKingdomsLeagueGlobalAlliancesResponse,
+  ApiKingdomsLeagueGlobalPlayersResponse,
+  KingdomsLeagueGame,
+  KingdomsLeagueQuery,
+  KingdomsLeagueSubject,
   ApiLiveRankingResponse,
   LiveRankingExportFormat,
   LiveRankingFilters,
@@ -983,35 +988,92 @@ export class ApiRestService {
   }
 
   public async getKingdomsLeaguePlayers(
-    day: string,
+    query: KingdomsLeagueQuery,
     page: number,
-    playerName?: string,
+    size: number,
   ): Promise<ApiResponse<ApiKingdomsLeaguePlayersResponse>> {
-    const parameters = new URLSearchParams({ day, page: String(page) });
-    if (playerName) parameters.set('player_name', playerName);
     return this.apiFetch<ApiKingdomsLeaguePlayersResponse>(
-      `${ApiRestService.apiUrl}kingdoms-league/players?${parameters}`,
+      this.kingdomsLeagueUrl('players', 'players', query, { page: String(page), size: String(size) }),
     );
   }
 
   public async getKingdomsLeagueAlliances(
-    day: string,
+    query: KingdomsLeagueQuery,
     page: number,
-    allianceName?: string,
+    size: number,
   ): Promise<ApiResponse<ApiKingdomsLeagueAlliancesResponse>> {
-    const parameters = new URLSearchParams({ day, page: String(page) });
-    if (allianceName) parameters.set('alliance_name', allianceName);
     return this.apiFetch<ApiKingdomsLeagueAlliancesResponse>(
-      `${ApiRestService.apiUrl}kingdoms-league/alliances?${parameters}`,
+      this.kingdomsLeagueUrl('alliances', 'alliances', query, { page: String(page), size: String(size) }),
     );
+  }
+
+  public async getKingdomsLeagueGlobalDays(game: KingdomsLeagueGame): Promise<ApiResponse<{ days: string[] }>> {
+    return this.apiFetch<{ days: string[] }>(`${ApiRestService.apiUrl}kingdoms-league/global/days?game=${game}`);
+  }
+
+  public async getKingdomsLeagueGlobalPlayers(
+    query: KingdomsLeagueQuery,
+    game: KingdomsLeagueGame,
+    page: number,
+    size: number,
+  ): Promise<ApiResponse<ApiKingdomsLeagueGlobalPlayersResponse>> {
+    return this.apiFetch<ApiKingdomsLeagueGlobalPlayersResponse>(
+      this.kingdomsLeagueUrl('global/players', 'players', query, { game, page: String(page), size: String(size) }),
+    );
+  }
+
+  public async getKingdomsLeagueGlobalAlliances(
+    query: KingdomsLeagueQuery,
+    game: KingdomsLeagueGame,
+    page: number,
+    size: number,
+  ): Promise<ApiResponse<ApiKingdomsLeagueGlobalAlliancesResponse>> {
+    return this.apiFetch<ApiKingdomsLeagueGlobalAlliancesResponse>(
+      this.kingdomsLeagueUrl('global/alliances', 'alliances', query, { game, page: String(page), size: String(size) }),
+    );
+  }
+
+  public kingdomsLeagueUrl(
+    path: string,
+    subject: KingdomsLeagueSubject,
+    query: KingdomsLeagueQuery,
+    extra: Record<string, string>,
+  ): string {
+    const parameters = new URLSearchParams();
+    const values: Record<string, string | number | undefined> = {
+      day: query.day,
+      [subject === 'players' ? 'player_name' : 'alliance_name']: query.name,
+      ...(subject === 'players'
+        ? {
+            alliance_name: query.allianceName,
+            alliance_id: query.allianceId,
+            min_title: query.minTitle,
+            max_title: query.maxTitle,
+          }
+        : {}),
+      min_gold: query.minGold,
+      max_gold: query.maxGold,
+      min_silver: query.minSilver,
+      max_silver: query.maxSilver,
+      min_bronze: query.minBronze,
+      max_bronze: query.maxBronze,
+      ...extra,
+    };
+    for (const [key, value] of Object.entries(values)) {
+      if (value !== undefined && value !== '') parameters.set(key, String(value));
+    }
+    return `${ApiRestService.apiUrl}kingdoms-league/${path}?${parameters}`;
   }
 
   public async getKingdomsLeaguePlayerHistory(
     playerId: number,
     seasonId: number,
+    server?: string,
   ): Promise<ApiResponse<ApiKingdomsLeaguePlayerHistoryResponse>> {
     return this.apiFetch<ApiKingdomsLeaguePlayerHistoryResponse>(
       `${ApiRestService.apiUrl}kingdoms-league/player/${playerId}?season_id=${seasonId}`,
+      true,
+      server ? { headers: { 'gge-server': server } } : undefined,
     );
   }
 

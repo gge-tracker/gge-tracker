@@ -820,7 +820,7 @@ export class GenericFetchAndSaveBackend {
   }
 
   /**
-   * Stores the Kingdoms League season ranking once per night, between the medal payout and the end of the league event
+   * Stores the Kingdoms League season ranking once a day, between the medal payout and the end of the league event
    *
    * @param server The servers.xml name of the server
    */

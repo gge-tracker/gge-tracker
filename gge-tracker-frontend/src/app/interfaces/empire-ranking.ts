@@ -1428,7 +1428,7 @@ export interface ApiKingdomsLeagueSeasonsResponse {
   seasons: ApiKingdomsLeagueSeason[];
 }
 
-interface ApiKingdomsLeagueNight {
+interface ApiKingdomsLeagueDay {
   day: string | null;
   season_id: number | null;
   previous_day: string | null;
@@ -1437,7 +1437,7 @@ interface ApiKingdomsLeagueNight {
 
 export interface ApiKingdomsLeaguePlayer extends ApiKingdomsLeagueMedals {
   rank: number;
-  previous_rank: number | null;
+  previous_rank?: number | null;
   player_id: number;
   player_name: string;
   alliance_id: number | null;
@@ -1447,20 +1447,59 @@ export interface ApiKingdomsLeaguePlayer extends ApiKingdomsLeagueMedals {
 
 export interface ApiKingdomsLeagueAlliance extends ApiKingdomsLeagueMedals {
   rank: number;
-  previous_rank: number | null;
+  previous_rank?: number | null;
   alliance_id: number;
   alliance_name: string;
 }
 
-export interface ApiKingdomsLeaguePlayersResponse extends ApiKingdomsLeagueNight {
+export interface ApiKingdomsLeagueGlobalRow {
+  server: string;
+  server_rank: number;
+  season_id: number;
+}
+
+export interface ApiKingdomsLeagueGlobalPlayersResponse {
+  day: string | null;
+  players: (ApiKingdomsLeaguePlayer & ApiKingdomsLeagueGlobalRow)[];
+  pagination: ApiPagination;
+}
+
+export interface ApiKingdomsLeagueGlobalAlliancesResponse {
+  day: string | null;
+  alliances: (ApiKingdomsLeagueAlliance & ApiKingdomsLeagueGlobalRow)[];
+  pagination: ApiPagination;
+}
+
+export interface ApiKingdomsLeaguePlayersResponse extends ApiKingdomsLeagueDay {
   players: ApiKingdomsLeaguePlayer[];
 }
 
-export interface ApiKingdomsLeagueAlliancesResponse extends ApiKingdomsLeagueNight {
+export interface ApiKingdomsLeagueAlliancesResponse extends ApiKingdomsLeagueDay {
   alliances: ApiKingdomsLeagueAlliance[];
 }
 
-export interface ApiKingdomsLeagueHistoryNight extends ApiKingdomsLeagueMedals {
+export type KingdomsLeagueSubject = 'players' | 'alliances';
+
+export type KingdomsLeagueScope = 'server' | 'global';
+
+export type KingdomsLeagueGame = 'all' | 'ep' | 'e4k';
+
+export interface KingdomsLeagueQuery {
+  day?: string;
+  name?: string;
+  allianceName?: string;
+  allianceId?: number;
+  minTitle?: number;
+  maxTitle?: number;
+  minGold?: number;
+  maxGold?: number;
+  minSilver?: number;
+  maxSilver?: number;
+  minBronze?: number;
+  maxBronze?: number;
+}
+
+export interface ApiKingdomsLeagueHistoryDay extends ApiKingdomsLeagueMedals {
   day: string;
   rank: number;
   title: number;
@@ -1470,7 +1509,7 @@ export interface ApiKingdomsLeaguePlayerHistoryResponse {
   season_id: number | null;
   player_id: number;
   player_name: string | null;
-  history: ApiKingdomsLeagueHistoryNight[];
+  history: ApiKingdomsLeagueHistoryDay[];
 }
 
 export interface ApiRiftRaidAllianceAnalysisResponse {

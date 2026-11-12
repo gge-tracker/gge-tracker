@@ -6,12 +6,28 @@
       <h1>{{ 'Ligue du royaume' | translate }}</h1>
     </header>
 
+    <nav class="scope-switch mb-3" role="tablist">
+      <button type="button" class="scope-tab" role="tab" [attr.aria-selected]="scope === 'server'"
+        [class.scope-tab--on]="scope === 'server'" [disabled]="isDataLoading" (click)="switchScope('server')">
+        @if (serverService.currentServer; as server) {
+          <img [src]="serverService.getFlagUrl(server.name)" alt="" height="18">
+          <span>{{ server.name }}</span>
+        }
+      </button>
+      <button type="button" class="scope-tab" role="tab" [attr.aria-selected]="scope === 'global'"
+        [class.scope-tab--on]="scope === 'global'" [disabled]="isDataLoading" (click)="switchScope('global')">
+        <img src="/assets/map.webp" alt="" height="22">
+        <span>{{ 'Classement mondial' | translate }}</span>
+      </button>
+    </nav>
+
     <div class="league-panel p-3 rounded-4">
       @if (isLeagueMissing && !isInLoading) {
         <p class="empty-state text-center my-5">{{ 'kingdoms-league-empty' | translate }}</p>
       } @else {
         <div class="league-controls">
           <div class="league-pickers">
+            @if (!isGlobal) {
             <label class="league-picker">
               <span>{{ 'Saison' | translate }}</span>
               <select class="form-select" [ngModel]="seasonId" (ngModelChange)="changeSeason($event)"
@@ -24,6 +40,7 @@
                 }
               </select>
             </label>
+            }
             <label class="league-picker">
               <span>{{ 'Date' | translate }}</span>
               <select class="form-select" [ngModel]="day" (ngModelChange)="changeDay($event)" [disabled]="isDataLoading">
@@ -46,7 +63,7 @@
         </div>
 
         <div class="mb-3">
-          <app-search-form [formFilters]="null" [isInLoading]="isInLoading"
+          <app-search-form [formFilters]="searchFormFilters" [filtersModalId]="filtersModalId" [isInLoading]="isInLoading"
             [inputTip]="(tab === 'players' ? 'Rechercher un joueur' : 'Rechercher une alliance') | translate"
             [defaultSearch]="search" [searchTypes]="{ player: true, alliance: true }"
             (searchPlayer)="searchPlayer($event)" (searchAlliance)="searchAlliance($event)">
@@ -54,8 +71,27 @@
         </div>
 
         <p class="league-status">
-          @if (isFinalRanking) {
+          @if (isGlobal) {
+            <span class="game-filter" role="group">
+              @for (option of games; track option.value) {
+                <button type="button" class="game-chip" [class.game-chip--on]="game === option.value"
+                  [attr.aria-pressed]="game === option.value" [disabled]="isDataLoading" (click)="selectGame(option.value)">
+                  @if (option.icon) {
+                    <i [class]="option.icon" aria-hidden="true"></i>
+                  }
+                  {{ option.label | translate }}
+                </button>
+              }
+            </span>
+          }
+          @if (isFinalRanking && !isGlobal) {
             <span class="final-badge"><i class="fas fa-flag-checkered" aria-hidden="true"></i>{{ 'Classement final' | translate }}</span>
+          }
+          @if (memberOf; as alliance) {
+            <button type="button" class="member-chip" (click)="clearMembers()" [title]="'Réinitialiser' | translate">
+              <img src="/assets/icon_alliance.png" alt="" width="18" height="18">{{ alliance.name || ('Alliance' | translate) }}
+              <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            </button>
           }
           @if (tab === 'players') {
             {{ 'kingdoms-league-ranked-players' | translate: { count: (rankedCount | number) } }}
@@ -66,16 +102,10 @@
 
         @if (tab === 'players') {
           <app-table [sort]="''" [reverse]="false" [isInLoading]="isDataLoading" [maxPage]="pagination.total_pages"
-            [page]="pagination.current_page" [search]="search" [headers]="[
-              ['playerName', 'Joueur' | translate, '', true],
-              ['allianceName', 'Alliance' | translate, '', true],
-              ['title', 'Titre de royaume' | translate, '', true],
-              ['medals', 'Médailles' | translate, '', true],
-              ['actions', 'Actions' | translate, '', true]
-            ]" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
+            [page]="pagination.current_page" [search]="search" [headers]="playerHeaders" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
             @if (players.length === 0 && !isDataLoading) {
               <tr>
-                <td colspan="6">{{ 'Aucun joueur trouvé' | translate }}</td>
+                <td [attr.colspan]="playerHeaders.length + 1">{{ 'Aucun joueur trouvé' | translate }}</td>
               </tr>
             }
             @for (player of players; track player.player_id) {
@@ -87,6 +117,12 @@
                 <td class="fw-semibold col-name">
                   <a [routerLink]="['/player', player.player_id]">{{ player.player_name }}</a>
                 </td>
+                @if (isGlobal) {
+                  <td class="col-server">
+                    <span class="server-name"><img [src]="serverService.getFlagUrl(player.server ?? '')" alt="" height="18">{{ player.server }}</span>
+                    <span class="server-rank">#{{ player.server_rank | number }}</span>
+                  </td>
+                }
                 <td>
                   @if (player.alliance_id) {
                     <a [routerLink]="['/alliance', player.alliance_id]">{{ player.alliance_name }}</a>
@@ -94,29 +130,32 @@
                     <span class="text-muted">-</span>
                   }
                 </td>
-                <td><app-league-title [title]="player.title" /></td>
+                <td class="col-title"><app-league-title [title]="player.title" /></td>
                 <td><app-league-medals [medals]="player" /></td>
                 <td class="col-actions">
-                  <button type="button" class="btn btn-ghost btn-sm progress-button"
-                    [disabled]="loadingProgressFor !== null" [attr.aria-busy]="loadingProgressFor === player.player_id"
-                    (click)="showProgress(player)" [title]="'Progression de la saison' | translate">
-                    <i class="fas" [class.fa-chart-line]="loadingProgressFor !== player.player_id"
-                      [class.fa-spinner]="loadingProgressFor === player.player_id"
-                      [class.fa-spin]="loadingProgressFor === player.player_id" aria-hidden="true"></i>
-                  </button>
+                  <div class="action-buttons d-flex justify-content-center">
+                    <a [routerLink]="['/player', player.player_id]" class="action-button"
+                      [attr.aria-label]="'Analyser le joueur' | translate" [attr.data-tooltip]="'Analyser le joueur' | translate">
+                      <img src="/assets/icon_analyze.png" class="btn-icon" alt="">
+                    </a>
+                    <button type="button" class="button-reset d-inline-flex action-button"
+                      [class.is-busy]="loadingProgressFor === player.player_id" [disabled]="loadingProgressFor !== null"
+                      [attr.aria-busy]="loadingProgressFor === player.player_id" (click)="showProgress(player)"
+                      [attr.aria-label]="'Progression de la saison' | translate"
+                      [attr.data-tooltip]="'Progression de la saison' | translate">
+                      <img src="/assets/icon_points.png" class="btn-icon" alt="">
+                    </button>
+                  </div>
                 </td>
               </tr>
             }
           </app-table>
         } @else {
           <app-table [sort]="''" [reverse]="false" [isInLoading]="isDataLoading" [maxPage]="pagination.total_pages"
-            [page]="pagination.current_page" [search]="search" [headers]="[
-              ['allianceName', 'Alliance' | translate, '', true],
-              ['medals', 'Médailles' | translate, '', true]
-            ]" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
+            [page]="pagination.current_page" [search]="search" [headers]="allianceHeaders" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
             @if (alliances.length === 0 && !isDataLoading) {
               <tr>
-                <td colspan="3">{{ 'Aucune alliance trouvée' | translate }}</td>
+                <td [attr.colspan]="allianceHeaders.length + 1">{{ 'Aucune alliance trouvée' | translate }}</td>
               </tr>
             }
             @for (alliance of alliances; track alliance.alliance_id) {
@@ -128,7 +167,27 @@
                 <td class="fw-semibold col-name">
                   <a [routerLink]="['/alliance', alliance.alliance_id]">{{ alliance.alliance_name }}</a>
                 </td>
+                @if (isGlobal) {
+                  <td class="col-server">
+                    <span class="server-name"><img [src]="serverService.getFlagUrl(alliance.server ?? '')" alt="" height="18">{{ alliance.server }}</span>
+                    <span class="server-rank">#{{ alliance.server_rank | number }}</span>
+                  </td>
+                }
                 <td><app-league-medals [medals]="alliance" /></td>
+                <td class="col-actions">
+                  <div class="action-buttons d-flex justify-content-center">
+                    <a [routerLink]="['/alliance', alliance.alliance_id]" class="action-button"
+                      [attr.aria-label]="'Analyser l\'alliance' | translate" [attr.data-tooltip]="'Analyser l\'alliance' | translate">
+                      <img src="/assets/icon_analyze.png" class="btn-icon" alt="">
+                    </a>
+                    @if (!isGlobal) {
+                      <button type="button" class="button-reset d-inline-flex action-button" (click)="showMembers(alliance)"
+                        [attr.aria-label]="'Voir les membres' | translate" [attr.data-tooltip]="'Voir les membres' | translate">
+                        <img src="/assets/icon_alliance.png" class="btn-icon" alt="">
+                      </button>
+                    }
+                  </div>
+                </td>
               </tr>
             }
           </app-table>
@@ -136,6 +195,104 @@
       }
     </div>
   }
+</div>
+
+<div class="modal fade league-modal" [id]="filtersModalId" tabindex="-1" aria-labelledby="kingdomsLeagueFiltersLabel"
+  aria-hidden="true" (show.bs.modal)="onFiltersShown()">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="kingdomsLeagueFiltersLabel">
+          <i class="fa-solid fa-filter" aria-hidden="true"></i>&nbsp;{{ 'Filtrer les résultats' | translate }}
+          <span class="modal-scope">· {{ (tab === 'players' ? 'Classement des joueurs' : 'Classement des alliances') | translate }}</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" [attr.aria-label]="'Fermer' | translate"></button>
+      </div>
+      <div class="modal-body">
+        @defer (when filtersOpened) {
+          @if (tab === 'players') {
+            <section class="filter-section">
+              <h6 class="filter-section-title">{{ 'Titre de royaume' | translate }}</h6>
+              <div class="family-grid">
+                @for (family of titleFamilies; track family.family) {
+                  <button type="button" class="family-option" [class.family-option--on]="isFamilySelected(family)"
+                    [attr.aria-pressed]="isFamilySelected(family)" (click)="toggleFamily(family)">
+                    <img [src]="'/assets/kleague/' + family.family + '.webp'" alt="" width="48" height="48">
+                    <span>{{ 'seasonLeague_rank_' + family.firstTitle | translate }}</span>
+                  </button>
+                }
+              </div>
+              <div class="filter-pair-grid mt-3">
+                <app-modal-form-group [label]="'kingdoms-league-min-title' | translate">
+                  <select field [(ngModel)]="draft.minTitle" [attr.aria-label]="'kingdoms-league-min-title' | translate">
+                    <option value="">{{ 'Tous' | translate }}</option>
+                    @for (title of titleOptions; track title) {
+                      <option [value]="'' + title">{{ title }} · {{ 'seasonLeague_rank_' + title | translate }}</option>
+                    }
+                  </select>
+                </app-modal-form-group>
+                <app-modal-form-group [label]="'kingdoms-league-max-title' | translate">
+                  <select field [(ngModel)]="draft.maxTitle" [attr.aria-label]="'kingdoms-league-max-title' | translate">
+                    <option value="">{{ 'Tous' | translate }}</option>
+                    @for (title of titleOptions; track title) {
+                      <option [value]="'' + title">{{ title }} · {{ 'seasonLeague_rank_' + title | translate }}</option>
+                    }
+                  </select>
+                </app-modal-form-group>
+              </div>
+            </section>
+          }
+          <section class="filter-section">
+            <h6 class="filter-section-title">{{ 'Médailles' | translate }}</h6>
+            <div class="filter-range-grid medal-grid">
+              @for (kind of medalKinds; track kind) {
+                <app-modal-form-group class="compact">
+                  <span field prefix>
+                    <img [src]="'/assets/kleague/' + kind + '_medal.webp'" [attr.alt]="medalLabel(kind) | translate"
+                      [title]="medalLabel(kind) | translate" width="24" height="24">
+                  </span>
+                  <input field type="text" inputmode="numeric" [value]="draft[medalKey(kind, 'min')]"
+                    (input)="onDraftNumber(medalKey(kind, 'min'), $event)" [placeholder]="'Minimum' | translate"
+                    [attr.aria-label]="(medalLabel(kind) | translate) + ' (' + ('Minimum' | translate) + ')'">
+                  <input field type="text" inputmode="numeric" [value]="draft[medalKey(kind, 'max')]"
+                    (input)="onDraftNumber(medalKey(kind, 'max'), $event)" [placeholder]="'Maximum' | translate"
+                    [attr.aria-label]="(medalLabel(kind) | translate) + ' (' + ('Maximum' | translate) + ')'">
+                </app-modal-form-group>
+              }
+            </div>
+          </section>
+          <section class="filter-section">
+            <div class="filter-pair-grid">
+              @if (tab === 'players') {
+                <app-modal-form-group [label]="'Alliance' | translate">
+                  <span field prefix>
+                    <img src="/assets/icon_alliance.png" alt="" width="22" height="22">
+                  </span>
+                  <input field type="text" maxlength="40" [(ngModel)]="draft.allianceName"
+                    [placeholder]="'kingdoms-league-alliance-name' | translate"
+                    [attr.aria-label]="'kingdoms-league-alliance-name' | translate">
+                </app-modal-form-group>
+              }
+              <app-modal-form-group [label]="'Nombre de résultats par page' | translate">
+                <input field type="number" min="1" [max]="maxPageSize" step="1" [(ngModel)]="pageSizeInput"
+                  [placeholder]="'Nombre de résultats' | translate" [attr.aria-label]="'Nombre de résultats' | translate">
+              </app-modal-form-group>
+            </div>
+          </section>
+        }
+      </div>
+      <div class="modal-footer modal-actions">
+        <div class="modal-actions-group">
+          <button type="button" class="modal-action quiet" [disabled]="!draftChanged" (click)="resetDraft()">
+            <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>{{ 'Réinitialiser' | translate }}
+          </button>
+        </div>
+        <button type="button" class="modal-action primary" (click)="applyFilters()" data-bs-dismiss="modal">
+          <i class="fa-solid fa-check" aria-hidden="true"></i>{{ 'Appliquer les filtres' | translate }}
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <ng-template #movement let-row>

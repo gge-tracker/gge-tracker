@@ -4,7 +4,7 @@
 
 .league-medals {
   display: inline-flex;
-  gap: 0.75rem;
+  gap: 0.85rem;
 }
 
 .medal {
@@ -12,30 +12,17 @@
   display: inline-flex;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
-  gap: 0.35rem;
-  min-width: 2.6rem;
+  gap: 0.3rem;
+  min-width: 2.8rem;
+}
+
+.medal img {
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+  height: 22px;
+  object-fit: contain;
+  width: 22px;
 }
 
 .medal.none {
   opacity: 0.35;
-}
-
-.disc {
-  border-radius: 50%;
-  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(0, 0, 0, 0.35);
-  display: inline-block;
-  height: 14px;
-  width: 14px;
-}
-
-.gold .disc {
-  background: radial-gradient(circle at 35% 30%, #fff3b0, #f5c518 45%, #b8860b);
-}
-
-.silver .disc {
-  background: radial-gradient(circle at 35% 30%, #ffffff, #c9d1d9 45%, #7d8590);
-}
-
-.bronze .disc {
-  background: radial-gradient(circle at 35% 30%, #ffd2a6, #cd7f32 45%, #7c4a1e);
 }

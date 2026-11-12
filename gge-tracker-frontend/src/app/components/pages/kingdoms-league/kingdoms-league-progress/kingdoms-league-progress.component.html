@@ -11,11 +11,11 @@
         <span class="progress-season">{{ 'kingdoms-league-season' | translate: { season: season } }}</span>
       }
     </div>
-    @if (latest(); as night) {
+    @if (latest(); as entry) {
       <div class="progress-standing">
-        <span class="progress-rank">#{{ night.rank | number }}</span>
-        <app-league-title [title]="night.title" />
-        <app-league-medals [medals]="night" />
+        <span class="progress-rank">#{{ entry.rank | number }}</span>
+        <app-league-title [title]="entry.title" />
+        <app-league-medals [medals]="entry" />
       </div>
     }
   </header>
@@ -52,12 +52,12 @@
           </tr>
         </thead>
         <tbody>
-          @for (night of nightsNewestFirst(); track night.day) {
+          @for (entry of daysNewestFirst(); track entry.day) {
             <tr>
-              <td>{{ night.day | date: 'd MMM y' }}</td>
-              <td class="fw-bold">#{{ night.rank | number }}</td>
-              <td><app-league-title [title]="night.title" /></td>
-              <td><app-league-medals [medals]="night" /></td>
+              <td>{{ entry.day | date: 'd MMM y' }}</td>
+              <td class="fw-bold">#{{ entry.rank | number }}</td>
+              <td><app-league-title [title]="entry.title" /></td>
+              <td><app-league-medals [medals]="entry" /></td>
             </tr>
           }
         </tbody>

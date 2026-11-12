@@ -51,7 +51,7 @@ export abstract class OuterRealmsExport {
     return lines.join('\r\n') + '\r\n';
   }
 
-  private static csvCell(value: string | number | null | undefined): string {
+  public static csvCell(value: string | number | null | undefined): string {
     if (value === null || value === undefined) return '';
     if (typeof value === 'number') return String(value);
     // A leading formula character makes spreadsheets evaluate a player name

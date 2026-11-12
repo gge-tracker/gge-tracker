@@ -3,6 +3,9 @@ import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { CacheKeyBuilder } from '../helper/cache/cache-key-builder';
 import { CachedResponse } from '../helper/cache/cached-response';
+import { HttpCache } from '../helper/http-cache';
+import { KingdomsLeagueFilter, LeagueFilter, LeagueSubject } from '../helper/kingdoms-league-filter';
+import { OuterRealmsExport, OuterRealmsExportFormat } from '../helper/outer-realms-export';
 
 interface LeagueSeasonRow {
   season_id: number;
@@ -11,35 +14,30 @@ interface LeagueSeasonRow {
   ranked_alliances: number;
 }
 
-interface LeagueNight {
+interface LeagueDay {
   day: string;
   season_id: number;
   previous_day: string | null;
 }
 
-interface LeaguePlayerRow {
+interface LeagueRow {
   rank: number;
-  player_id: number;
-  player_name: string;
+  player_id?: number;
+  player_name?: string;
   alliance_id: number;
   alliance_name: string;
-  title: number;
+  title?: number;
   gold: number;
   silver: number;
   bronze: number;
 }
 
-interface LeagueAllianceRow {
-  rank: number;
-  alliance_id: number;
-  alliance_name: string;
-  gold: number;
-  silver: number;
-  bronze: number;
-}
+type LeagueEntry = Record<string, string | number | null>;
+
+type ExportFormat = OuterRealmsExportFormat;
 
 interface LeagueHistoryRow {
-  night: string;
+  day_text: string;
   rank: number;
   player_name: string;
   title: number;
@@ -48,15 +46,7 @@ interface LeagueHistoryRow {
   bronze: number;
 }
 
-interface RankingQuery {
-  table: string;
-  idColumn: string;
-  columns: string;
-  filters: string[];
-  parameters: QueryParameters;
-}
-
-type QueryParameters = Record<string, string | number | number[]>;
+type QueryParameters = Record<string, string | number | number[] | string[]>;
 
 interface Pagination {
   current_page: number;
@@ -65,13 +55,23 @@ interface Pagination {
   total_items_count: number;
 }
 
+const SUBJECTS: Record<LeagueSubject, { table: string; idColumn: 'player_id' | 'alliance_id'; columns: string }> = {
+  players: {
+    table: 'ggetracker_global.kingdoms_league_players',
+    idColumn: 'player_id',
+    columns: 'rank, player_id, player_name, alliance_id, alliance_name, title, gold, silver, bronze',
+  },
+  alliances: {
+    table: 'ggetracker_global.kingdoms_league_alliances',
+    idColumn: 'alliance_id',
+    columns: 'rank, alliance_id, alliance_name, gold, silver, bronze',
+  },
+};
+
 export abstract class ApiKingdomsLeague implements ApiHelper {
   private static readonly DAYS_TABLE = 'ggetracker_global.kingdoms_league_days';
-  private static readonly PLAYERS_TABLE = 'ggetracker_global.kingdoms_league_players';
-  private static readonly ALLIANCES_TABLE = 'ggetracker_global.kingdoms_league_alliances';
   private static readonly CACHE_VERSION_PREFIX = 'kingdoms-league-version:';
   private static readonly CACHE_TTL_SECONDS = 12 * 60 * 60;
-  private static readonly ROWS_PER_PAGE = 15;
   private static readonly MAX_SEASON_ID = 65_535;
   private static readonly MISSING_SCHEMA_ERRORS = new Set(['UNKNOWN_TABLE', 'UNKNOWN_DATABASE']);
   private static readonly EMPTY_PAGINATION: Pagination = {
@@ -115,127 +115,19 @@ export abstract class ApiKingdomsLeague implements ApiHelper {
   }
 
   public static async getPlayers(request: express.Request, response: express.Response): Promise<void> {
-    try {
-      const server = String(request['language']);
-      const code = String(request['code']);
-      const query = ApiKingdomsLeague.parsePlayersQuery(request.query, code);
-      if (typeof query === 'string') {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: query });
-        return;
-      }
-      const { day, playerName, allianceId } = query;
-      const page = ApiHelper.validatePageNumber(request.query.page);
-      const cacheKey = await ApiKingdomsLeague.cacheKey(server, 'players', {
-        day,
-        name: playerName,
-        alliance: allianceId,
-        page,
-      });
-      if (await CachedResponse.serveCached(response, cacheKey)) return;
-
-      const night = await ApiKingdomsLeague.resolveNight(server, day);
-      if (!night) {
-        await CachedResponse.serve(
-          response,
-          cacheKey,
-          {
-            day: day ?? null,
-            season_id: null,
-            previous_day: null,
-            players: [],
-            pagination: { ...ApiKingdomsLeague.EMPTY_PAGINATION },
-          },
-          ApiKingdomsLeague.CACHE_TTL_SECONDS,
-        );
-        return;
-      }
-      const filters: string[] = [];
-      if (playerName) filters.push('positionCaseInsensitiveUTF8(player_name, {name:String}) > 0');
-      if (allianceId !== undefined) filters.push('alliance_id = {alliance:Int32}');
-      const { rows, previousRanks, totalItems } = await ApiKingdomsLeague.readRanking<LeaguePlayerRow>(night, page, {
-        table: ApiKingdomsLeague.PLAYERS_TABLE,
-        idColumn: 'player_id',
-        columns: 'rank, player_id, player_name, alliance_id, alliance_name, title, gold, silver, bronze',
-        filters,
-        parameters: { server, name: playerName ?? '', alliance: allianceId ?? 0 },
-      });
-      const players = rows.map((row) => ({
-        rank: row.rank,
-        previous_rank: previousRanks.get(row.player_id) ?? null,
-        player_id: ApiKingdomsLeague.withCode(row.player_id, code),
-        player_name: row.player_name,
-        alliance_id: row.alliance_id > 0 ? ApiKingdomsLeague.withCode(row.alliance_id, code) : null,
-        alliance_name: row.alliance_id > 0 ? row.alliance_name : null,
-        title: row.title,
-        gold: row.gold,
-        silver: row.silver,
-        bronze: row.bronze,
-      }));
-      const body = { ...night, players, pagination: ApiKingdomsLeague.pagination(page, players.length, totalItems) };
-      await CachedResponse.serve(response, cacheKey, body, ApiKingdomsLeague.CACHE_TTL_SECONDS);
-    } catch (error) {
-      ApiKingdomsLeague.fail(request, response, error, 'getKingdomsLeaguePlayers');
-    }
+    await ApiKingdomsLeague.serveRanking(request, response, 'players');
   }
 
   public static async getAlliances(request: express.Request, response: express.Response): Promise<void> {
-    try {
-      const server = String(request['language']);
-      const code = String(request['code']);
-      const day = ApiKingdomsLeague.parseDay(request.query.day);
-      const allianceName = ApiKingdomsLeague.parseSearch(request.query.alliance_name);
-      if (day === false) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidDay });
-        return;
-      } else if (allianceName === false) {
-        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidAllianceName });
-        return;
-      }
-      const page = ApiHelper.validatePageNumber(request.query.page);
-      const cacheKey = await ApiKingdomsLeague.cacheKey(server, 'alliances', { day, name: allianceName, page });
-      if (await CachedResponse.serveCached(response, cacheKey)) return;
+    await ApiKingdomsLeague.serveRanking(request, response, 'alliances');
+  }
 
-      const night = await ApiKingdomsLeague.resolveNight(server, day);
-      if (!night) {
-        await CachedResponse.serve(
-          response,
-          cacheKey,
-          {
-            day: day ?? null,
-            season_id: null,
-            previous_day: null,
-            alliances: [],
-            pagination: { ...ApiKingdomsLeague.EMPTY_PAGINATION },
-          },
-          ApiKingdomsLeague.CACHE_TTL_SECONDS,
-        );
-        return;
-      }
-      const { rows, previousRanks, totalItems } = await ApiKingdomsLeague.readRanking<LeagueAllianceRow>(night, page, {
-        table: ApiKingdomsLeague.ALLIANCES_TABLE,
-        idColumn: 'alliance_id',
-        columns: 'rank, alliance_id, alliance_name, gold, silver, bronze',
-        filters: allianceName ? ['positionCaseInsensitiveUTF8(alliance_name, {name:String}) > 0'] : [],
-        parameters: { server, name: allianceName ?? '' },
-      });
-      const alliances = rows.map((row) => ({
-        rank: row.rank,
-        previous_rank: previousRanks.get(row.alliance_id) ?? null,
-        alliance_id: ApiKingdomsLeague.withCode(row.alliance_id, code),
-        alliance_name: row.alliance_name,
-        gold: row.gold,
-        silver: row.silver,
-        bronze: row.bronze,
-      }));
-      const body = {
-        ...night,
-        alliances,
-        pagination: ApiKingdomsLeague.pagination(page, alliances.length, totalItems),
-      };
-      await CachedResponse.serve(response, cacheKey, body, ApiKingdomsLeague.CACHE_TTL_SECONDS);
-    } catch (error) {
-      ApiKingdomsLeague.fail(request, response, error, 'getKingdomsLeagueAlliances');
-    }
+  public static async getPlayersExport(request: express.Request, response: express.Response): Promise<void> {
+    await ApiKingdomsLeague.serveExport(request, response, 'players');
+  }
+
+  public static async getAlliancesExport(request: express.Request, response: express.Response): Promise<void> {
+    await ApiKingdomsLeague.serveExport(request, response, 'alliances');
   }
 
   public static async getPlayerHistory(request: express.Request, response: express.Response): Promise<void> {
@@ -259,8 +151,8 @@ export abstract class ApiKingdomsLeague implements ApiHelper {
         season === null
           ? []
           : await ApiKingdomsLeague.select<LeagueHistoryRow>(
-              `SELECT toString(day) AS night, rank, player_name, title, gold, silver, bronze
-                FROM ${ApiKingdomsLeague.PLAYERS_TABLE} FINAL
+              `SELECT toString(day) AS day_text, rank, player_name, title, gold, silver, bronze
+                FROM ${SUBJECTS.players.table} FINAL
                 WHERE server = {server:String} AND season_id = {season:UInt16} AND player_id = {player:UInt32}
                 ORDER BY day`,
               { server, season, player: Number(ApiHelper.removeCountryCode(playerId)) },
@@ -270,7 +162,7 @@ export abstract class ApiKingdomsLeague implements ApiHelper {
         player_id: playerId,
         player_name: rows.at(-1)?.player_name ?? null,
         history: rows.map((row) => ({
-          day: row.night,
+          day: row.day_text,
           rank: row.rank,
           title: row.title,
           gold: row.gold,
@@ -284,72 +176,262 @@ export abstract class ApiKingdomsLeague implements ApiHelper {
     }
   }
 
-  private static async readRanking<T extends { rank: number }>(
-    night: LeagueNight,
+  // Answers no rows until the migration has run, so the API can ship before it
+  public static async select<T>(query: string, parameters: QueryParameters): Promise<T[]> {
+    const clickhouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
+    try {
+      const result = await clickhouseClient.query({ query, query_params: parameters, format: 'JSONEachRow' });
+      return await result.json<T>();
+    } catch (error) {
+      if (ApiKingdomsLeague.MISSING_SCHEMA_ERRORS.has((error as { type?: string }).type ?? '')) return [];
+      throw error;
+    }
+  }
+
+  private static async serveRanking(
+    request: express.Request,
+    response: express.Response,
+    subject: LeagueSubject,
+  ): Promise<void> {
+    try {
+      const server = String(request['language']);
+      const code = String(request['code']);
+      const filter = KingdomsLeagueFilter.parse(request.query, subject, code);
+      if (typeof filter === 'string') {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: filter });
+        return;
+      }
+      const page = ApiHelper.validatePageNumber(request.query.page);
+      const size = ApiHelper.parsePageSize(request.query.size);
+      const cacheKey = await ApiKingdomsLeague.cacheKey(server, subject, {
+        day: filter.day,
+        ...KingdomsLeagueFilter.describe(filter),
+        page,
+        size,
+      });
+      if (await CachedResponse.serveCached(response, cacheKey)) return;
+
+      const leagueDay = await ApiKingdomsLeague.resolveDay(server, filter.day);
+      if (!leagueDay) {
+        const body = {
+          day: filter.day ?? null,
+          season_id: null,
+          previous_day: null,
+          [subject]: [],
+          pagination: { ...ApiKingdomsLeague.EMPTY_PAGINATION },
+        };
+        await CachedResponse.serve(response, cacheKey, body, ApiKingdomsLeague.CACHE_TTL_SECONDS);
+        return;
+      }
+      const { rows, totalItems } = await ApiKingdomsLeague.readPage(server, leagueDay, subject, filter, page, size);
+      const previousRanks = await ApiKingdomsLeague.readPreviousRanks(server, leagueDay, subject, rows);
+      const idColumn = SUBJECTS[subject].idColumn;
+      const items = rows.map((row) =>
+        ApiKingdomsLeague.present(row, subject, code, previousRanks.get(Number(row[idColumn])) ?? null),
+      );
+      const body = {
+        ...leagueDay,
+        [subject]: items,
+        pagination: ApiKingdomsLeague.pagination(page, size, items.length, totalItems),
+      };
+      await CachedResponse.serve(response, cacheKey, body, ApiKingdomsLeague.CACHE_TTL_SECONDS);
+    } catch (error) {
+      ApiKingdomsLeague.fail(request, response, error, `getKingdomsLeague:${subject}`);
+    }
+  }
+
+  private static async serveExport(
+    request: express.Request,
+    response: express.Response,
+    subject: LeagueSubject,
+  ): Promise<void> {
+    try {
+      const server = String(request['language']);
+      const code = String(request['code']);
+      const format = ApiKingdomsLeague.parseFormat(request.query.format);
+      if (!format) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidLiveExportFormat });
+        return;
+      }
+      const filter = KingdomsLeagueFilter.parse(request.query, subject, code);
+      if (typeof filter === 'string') {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: filter });
+        return;
+      }
+      const leagueDay = await ApiKingdomsLeague.resolveDay(server, filter.day);
+      const cacheKey = await ApiKingdomsLeague.cacheKey(server, `${subject}-export`, {
+        day: leagueDay?.day ?? 'none',
+        ...KingdomsLeagueFilter.describe(filter),
+        format,
+      });
+      const etag = HttpCache.etagFromCacheKey(cacheKey);
+      if (HttpCache.handleConditional(request, response, { etag, maxAgeSeconds: 0 })) return;
+
+      const rows = leagueDay ? await ApiKingdomsLeague.readAll(server, leagueDay, subject, filter) : [];
+      const items = rows.map((row) => ApiKingdomsLeague.present(row, subject, code, row.previous_rank));
+      response.setHeader('Content-Type', OuterRealmsExport.CONTENT_TYPES[format]);
+      response.setHeader(
+        'Content-Disposition',
+        `attachment; filename="kingdoms-league-${subject}-${server}-${leagueDay?.day ?? 'empty'}.${format}"`,
+      );
+      response.setHeader('X-Item-Count', String(items.length));
+      if (format === 'ndjson') {
+        response.status(ApiHelper.HTTP_OK).send(items.map((item) => JSON.stringify(item) + '\n').join(''));
+      } else if (format === 'csv') {
+        response.status(ApiHelper.HTTP_OK).send(ApiKingdomsLeague.toCsv(items));
+      } else {
+        const header = leagueDay ?? { day: filter.day ?? null, season_id: null, previous_day: null };
+        response.status(ApiHelper.HTTP_OK).send({ ...header, count: items.length, [subject]: items });
+      }
+    } catch (error) {
+      ApiKingdomsLeague.fail(request, response, error, `getKingdomsLeagueExport:${subject}`);
+    }
+  }
+
+  private static async readPage(
+    server: string,
+    leagueDay: LeagueDay,
+    subject: LeagueSubject,
+    filter: LeagueFilter,
     page: number,
-    query: RankingQuery,
-  ): Promise<{ rows: T[]; previousRanks: Map<number, number>; totalItems: number }> {
-    const where = [
-      'server = {server:String}',
-      'season_id = {season:UInt16}',
-      'day = {day:Date}',
-      ...query.filters,
-    ].join(' AND ');
-    const parameters = {
-      ...query.parameters,
-      season: night.season_id,
-      day: night.day,
-      limit: ApiKingdomsLeague.ROWS_PER_PAGE,
-      offset: (page - 1) * ApiKingdomsLeague.ROWS_PER_PAGE,
-    };
+    size: number,
+  ): Promise<{ rows: LeagueRow[]; totalItems: number }> {
+    const { where, parameters } = ApiKingdomsLeague.dayWhere(server, leagueDay, subject, filter);
+    const table = SUBJECTS[subject].table;
     const [rows, stats] = await Promise.all([
-      ApiKingdomsLeague.select<T>(
-        `SELECT ${query.columns} FROM ${query.table} FINAL WHERE ${where}
+      ApiKingdomsLeague.select<LeagueRow>(
+        `SELECT ${SUBJECTS[subject].columns} FROM ${table} FINAL WHERE ${where}
           ORDER BY rank LIMIT {limit:UInt32} OFFSET {offset:UInt32}`,
-        parameters,
+        { ...parameters, limit: size, offset: (page - 1) * size },
       ),
       ApiKingdomsLeague.select<{ total_items: string }>(
-        `SELECT count() AS total_items FROM ${query.table} FINAL WHERE ${where}`,
+        `SELECT count() AS total_items FROM ${table} FINAL WHERE ${where}`,
         parameters,
       ),
     ]);
-    const ids = rows.map((row) => Number(row[query.idColumn]));
-    const previousRanks = await ApiKingdomsLeague.readPreviousRanks(night, query, ids);
-    return { rows, previousRanks, totalItems: Number(stats[0]?.total_items ?? 0) };
+    return { rows, totalItems: Number(stats[0]?.total_items ?? 0) };
+  }
+
+  // A rank starts at 1, so the 0 a missed LEFT JOIN fills in means "not ranked the previous day"
+  private static async readAll(
+    server: string,
+    leagueDay: LeagueDay,
+    subject: LeagueSubject,
+    filter: LeagueFilter,
+  ): Promise<(LeagueRow & { previous_rank: number | null })[]> {
+    const { where, parameters } = ApiKingdomsLeague.dayWhere(server, leagueDay, subject, filter);
+    const { table, idColumn, columns } = SUBJECTS[subject];
+    if (!leagueDay.previous_day) {
+      const rows = await ApiKingdomsLeague.select<LeagueRow>(
+        `SELECT ${columns} FROM ${table} FINAL WHERE ${where} ORDER BY rank`,
+        parameters,
+      );
+      return rows.map((row) => ({ ...row, previous_rank: null }));
+    }
+    const rows = await ApiKingdomsLeague.select<LeagueRow & { previous_rank: number }>(
+      `SELECT current.*, previous.previous_rank AS previous_rank
+        FROM (SELECT ${columns} FROM ${table} FINAL WHERE ${where}) AS current
+        LEFT JOIN (
+          SELECT ${idColumn}, rank AS previous_rank FROM ${table} FINAL
+          WHERE server = {server:String} AND season_id = {season:UInt16} AND day = {previous_day:Date}
+        ) AS previous USING ${idColumn}
+        ORDER BY rank`,
+      { ...parameters, previous_day: leagueDay.previous_day },
+    );
+    return rows.map((row) => ({ ...row, previous_rank: row.previous_rank > 0 ? row.previous_rank : null }));
+  }
+
+  private static dayWhere(
+    server: string,
+    leagueDay: LeagueDay,
+    subject: LeagueSubject,
+    filter: LeagueFilter,
+  ): { where: string; parameters: QueryParameters } {
+    const { conditions, parameters } = KingdomsLeagueFilter.toSql(filter, subject);
+    const where = ['server = {server:String}', 'season_id = {season:UInt16}', 'day = {day:Date}', ...conditions];
+    return {
+      where: where.join(' AND '),
+      parameters: { ...parameters, server, season: leagueDay.season_id, day: leagueDay.day },
+    };
   }
 
   private static async readPreviousRanks(
-    night: LeagueNight,
-    query: RankingQuery,
-    ids: number[],
+    server: string,
+    leagueDay: LeagueDay,
+    subject: LeagueSubject,
+    rows: LeagueRow[],
   ): Promise<Map<number, number>> {
-    if (!night.previous_day || ids.length === 0) return new Map();
-    const rows = await ApiKingdomsLeague.select<{ id: number; rank: number }>(
-      `SELECT ${query.idColumn} AS id, rank FROM ${query.table} FINAL
+    const { table, idColumn } = SUBJECTS[subject];
+    const ids = rows.map((row) => Number(row[idColumn]));
+    if (!leagueDay.previous_day || ids.length === 0) return new Map();
+    const previous = await ApiKingdomsLeague.select<{ id: number; rank: number }>(
+      `SELECT ${idColumn} AS id, rank FROM ${table} FINAL
         WHERE server = {server:String} AND season_id = {season:UInt16} AND day = {day:Date}
-          AND ${query.idColumn} IN {ids:Array(Int64)}`,
-      { server: String(query.parameters.server), season: night.season_id, day: night.previous_day, ids },
+          AND ${idColumn} IN {ids:Array(Int64)}`,
+      { server, season: leagueDay.season_id, day: leagueDay.previous_day, ids },
     );
-    return new Map(rows.map((row) => [Number(row.id), row.rank]));
+    return new Map(previous.map((row) => [Number(row.id), row.rank]));
   }
 
-  private static async resolveNight(server: string, day: string | undefined): Promise<LeagueNight | null> {
+  private static present(
+    row: LeagueRow,
+    subject: LeagueSubject,
+    code: string,
+    previousRank: number | null,
+  ): LeagueEntry {
+    const medals = { gold: row.gold, silver: row.silver, bronze: row.bronze };
+    if (subject === 'alliances') {
+      return {
+        rank: row.rank,
+        previous_rank: previousRank,
+        alliance_id: ApiKingdomsLeague.withCode(row.alliance_id, code),
+        alliance_name: row.alliance_name,
+        ...medals,
+      };
+    }
+    return {
+      rank: row.rank,
+      previous_rank: previousRank,
+      player_id: ApiKingdomsLeague.withCode(Number(row.player_id), code),
+      player_name: row.player_name ?? '',
+      alliance_id: row.alliance_id > 0 ? ApiKingdomsLeague.withCode(row.alliance_id, code) : null,
+      alliance_name: row.alliance_id > 0 ? row.alliance_name : null,
+      title: row.title ?? 0,
+      ...medals,
+    };
+  }
+
+  private static toCsv(items: LeagueEntry[]): string {
+    const columns = Object.keys(items[0] ?? {});
+    const lines = [columns.join(',')];
+    for (const item of items) {
+      lines.push(columns.map((column) => OuterRealmsExport.csvCell(item[column] as string | number | null)).join(','));
+    }
+    return lines.join('\r\n') + '\r\n';
+  }
+
+  private static parseFormat(value: unknown): ExportFormat | null {
+    if (value === undefined || value === '') return 'json';
+    return OuterRealmsExport.FORMATS.includes(value as ExportFormat) ? (value as ExportFormat) : null;
+  }
+
+  private static async resolveDay(server: string, day: string | undefined): Promise<LeagueDay | null> {
     const dayFilter = day ? 'AND day = {day:Date}' : '';
-    const nights = await ApiKingdomsLeague.select<{ night: string; season_id: number }>(
-      `SELECT toString(day) AS night, season_id FROM ${ApiKingdomsLeague.DAYS_TABLE} FINAL
+    const days = await ApiKingdomsLeague.select<{ day_text: string; season_id: number }>(
+      `SELECT toString(day) AS day_text, season_id FROM ${ApiKingdomsLeague.DAYS_TABLE} FINAL
         WHERE server = {server:String} ${dayFilter}
         ORDER BY day DESC LIMIT 1`,
       day ? { server, day } : { server },
     );
-    const found = nights.at(0);
+    const found = days.at(0);
     if (!found) return null;
-    const previous = await ApiKingdomsLeague.select<{ night: string }>(
-      `SELECT toString(day) AS night FROM ${ApiKingdomsLeague.DAYS_TABLE} FINAL
+    const previous = await ApiKingdomsLeague.select<{ day_text: string }>(
+      `SELECT toString(day) AS day_text FROM ${ApiKingdomsLeague.DAYS_TABLE} FINAL
         WHERE server = {server:String} AND season_id = {season:UInt16} AND day < {day:Date}
         ORDER BY day DESC LIMIT 1`,
-      { server, season: found.season_id, day: found.night },
+      { server, season: found.season_id, day: found.day_text },
     );
-    return { day: found.night, season_id: found.season_id, previous_day: previous.at(0)?.night ?? null };
+    return { day: found.day_text, season_id: found.season_id, previous_day: previous.at(0)?.day_text ?? null };
   }
 
   private static async latestSeason(server: string): Promise<number | null> {
@@ -361,27 +443,6 @@ export abstract class ApiKingdomsLeague implements ApiHelper {
     return rows.at(0)?.season_id ?? null;
   }
 
-  private static parsePlayersQuery(
-    query: express.Request['query'],
-    code: string,
-  ): { day?: string; playerName?: string; allianceId?: number } | RouteErrorMessagesEnum {
-    const day = ApiKingdomsLeague.parseDay(query.day);
-    if (day === false) return RouteErrorMessagesEnum.InvalidDay;
-    const playerName = ApiKingdomsLeague.parseSearch(query.player_name);
-    if (playerName === false) return RouteErrorMessagesEnum.InvalidPlayerName;
-    const allianceId = ApiKingdomsLeague.parseAllianceFilter(query.alliance_id, code);
-    if (allianceId === false) return RouteErrorMessagesEnum.InvalidAllianceId;
-    return { day, playerName, allianceId };
-  }
-
-  // undefined when absent, false when present but not a calendar day
-  private static parseDay(value: unknown): string | undefined | false {
-    if (value === undefined || value === '') return undefined;
-    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-    const parsed = new Date(`${value}T00:00:00.000Z`);
-    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(value) ? value : false;
-  }
-
   private static parseSeason(value: unknown): number | undefined | false {
     if (value === undefined || value === '') return undefined;
     if (typeof value !== 'string' || !/^\d{1,5}$/.test(value)) return false;
@@ -389,27 +450,14 @@ export abstract class ApiKingdomsLeague implements ApiHelper {
     return season > 0 && season <= ApiKingdomsLeague.MAX_SEASON_ID ? season : false;
   }
 
-  private static parseSearch(value: unknown): string | undefined | false {
-    if (value === undefined || value === '') return undefined;
-    const search = ApiHelper.validateSearchAndSanitize(value, { toLowerCase: false });
-    return ApiHelper.isInvalidInput(search) || search === '' ? false : search;
-  }
-
-  private static parseAllianceFilter(value: unknown, code: string): number | undefined | false {
-    if (value === undefined || value === '') return undefined;
-    const allianceId = ApiHelper.verifyIdWithCountryCode(value);
-    if (!allianceId || ApiHelper.getCountryCode(String(allianceId)) !== code) return false;
-    return Number(ApiHelper.removeCountryCode(allianceId));
-  }
-
   private static withCode(id: number, code: string): number {
     return Number(`${id}${code}`);
   }
 
-  private static pagination(page: number, currentItems: number, totalItems: number): Pagination {
+  private static pagination(page: number, size: number, currentItems: number, totalItems: number): Pagination {
     return {
       current_page: page,
-      total_pages: Math.ceil(totalItems / ApiKingdomsLeague.ROWS_PER_PAGE),
+      total_pages: Math.ceil(totalItems / size),
       current_items_count: currentItems,
       total_items_count: totalItems,
     };
@@ -428,18 +476,6 @@ export abstract class ApiKingdomsLeague implements ApiHelper {
       .withParams(parameters)
       .with(`v${version}`)
       .build();
-  }
-
-  // Answers no rows until the migration has run, so the API can ship before it
-  private static async select<T>(query: string, parameters: QueryParameters): Promise<T[]> {
-    const clickhouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
-    try {
-      const result = await clickhouseClient.query({ query, query_params: parameters, format: 'JSONEachRow' });
-      return await result.json<T>();
-    } catch (error) {
-      if (ApiKingdomsLeague.MISSING_SCHEMA_ERRORS.has((error as { type?: string }).type ?? '')) return [];
-      throw error;
-    }
   }
 
   private static fail(request: express.Request, response: express.Response, error: unknown, origin: string): void {

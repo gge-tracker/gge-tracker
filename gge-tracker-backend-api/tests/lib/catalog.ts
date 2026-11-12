@@ -86,6 +86,17 @@ const OUTER_REALMS_FILTER_PARAMS = [
   'min_rank', 'max_rank', 'active', 'movement', 'near', 'radius', 'order_by', 'order_dir',
 ];
 
+const KINGDOMS_LEAGUE_MEDAL_PARAMS = ['min_gold', 'max_gold', 'min_silver', 'max_silver', 'min_bronze', 'max_bronze'];
+const KINGDOMS_LEAGUE_ALLIANCE_PARAMS = ['day', 'alliance_name', ...KINGDOMS_LEAGUE_MEDAL_PARAMS];
+const KINGDOMS_LEAGUE_PLAYER_PARAMS = [
+  ...KINGDOMS_LEAGUE_ALLIANCE_PARAMS, 'player_name', 'alliance_id', 'min_title', 'max_title',
+];
+
+const KINGDOMS_LEAGUE_GLOBAL_ALLIANCE_PARAMS = KINGDOMS_LEAGUE_ALLIANCE_PARAMS.concat('game', 'size');
+const KINGDOMS_LEAGUE_GLOBAL_PLAYER_PARAMS = KINGDOMS_LEAGUE_GLOBAL_ALLIANCE_PARAMS.concat(
+  'player_name', 'min_title', 'max_title',
+);
+
 /** Rejected by the storms routes: bad coordinates, out-of-range filters and malformed isle lists */
 const stormRejectedCases = (base: '/storms/forts' | '/storms/isles'): EndpointCase[] => [
   { label: 'positionX out of map', path: () => base + q({ page: 1, positionX: 99_999, positionY: 640 }), expect: [400] },
@@ -226,17 +237,26 @@ export const CATALOG: Endpoint[] = [
     id: 'kingdoms-league-players',
     method: 'GET',
     scope: 'protected',
-    path: () => '/kingdoms-league/players' + q({ page: 1 }),
+    path: () => '/kingdoms-league/players' + q({ page: 1, size: 12 }),
     okStatuses: [200, 400],
     needs: ['server'],
-    fuzzQuery: ['day', 'player_name', 'alliance_id'],
+    fuzzQuery: KINGDOMS_LEAGUE_PLAYER_PARAMS.concat('size'),
     semantic: {
       collection: 'players',
       idField: 'player_id',
       paginated: true,
       filters: [
         { param: 'player_name', field: 'player_name', kind: 'contains' },
+        { param: 'alliance_name', field: 'alliance_name', kind: 'contains' },
         { param: 'alliance_id', field: 'alliance_id', kind: 'eq', probeValue: (row) => row.alliance_id ?? undefined },
+        { param: 'min_title', field: 'title', kind: 'min', noUnmatchableValue: true },
+        { param: 'max_title', field: 'title', kind: 'max', noUnmatchableValue: true },
+        { param: 'min_gold', field: 'gold', kind: 'min', impossible: 65_535 },
+        { param: 'max_gold', field: 'gold', kind: 'max', impossible: 0 },
+        { param: 'min_silver', field: 'silver', kind: 'min', impossible: 65_535 },
+        { param: 'max_silver', field: 'silver', kind: 'max', noUnmatchableValue: true },
+        { param: 'min_bronze', field: 'bronze', kind: 'min', impossible: 65_535 },
+        { param: 'max_bronze', field: 'bronze', kind: 'max', noUnmatchableValue: true },
       ],
       filtersCompose: true,
     },
@@ -245,15 +265,113 @@ export const CATALOG: Endpoint[] = [
     id: 'kingdoms-league-alliances',
     method: 'GET',
     scope: 'protected',
-    path: () => '/kingdoms-league/alliances' + q({ page: 1 }),
+    path: () => '/kingdoms-league/alliances' + q({ page: 1, size: 12 }),
     okStatuses: [200, 400],
     needs: ['server'],
-    fuzzQuery: ['day', 'alliance_name'],
+    fuzzQuery: KINGDOMS_LEAGUE_ALLIANCE_PARAMS.concat('size'),
     semantic: {
       collection: 'alliances',
       idField: 'alliance_id',
       paginated: true,
-      filters: [{ param: 'alliance_name', field: 'alliance_name', kind: 'contains' }],
+      filters: [
+        { param: 'alliance_name', field: 'alliance_name', kind: 'contains' },
+        { param: 'min_gold', field: 'gold', kind: 'min', impossible: 65_535 },
+        { param: 'max_gold', field: 'gold', kind: 'max', impossible: 0 },
+        { param: 'min_silver', field: 'silver', kind: 'min', impossible: 65_535 },
+        { param: 'max_silver', field: 'silver', kind: 'max', noUnmatchableValue: true },
+        { param: 'min_bronze', field: 'bronze', kind: 'min', impossible: 65_535 },
+        { param: 'max_bronze', field: 'bronze', kind: 'max', noUnmatchableValue: true },
+      ],
+    },
+  },
+  {
+    id: 'kingdoms-league-players-export',
+    method: 'GET',
+    scope: 'protected',
+    path: () => '/kingdoms-league/players/export',
+    okStatuses: [200, 400],
+    needs: ['server'],
+    fuzzQuery: KINGDOMS_LEAGUE_PLAYER_PARAMS.concat('format'),
+    cases: [
+      { label: 'ndjson is served', path: () => '/kingdoms-league/players/export' + q({ format: 'ndjson' }), expect: [200] },
+      { label: 'csv is served', path: () => '/kingdoms-league/players/export' + q({ format: 'csv' }), expect: [200] },
+      { label: 'filters apply', path: () => '/kingdoms-league/players/export' + q({ min_title: 5, min_gold: 2 }), expect: [200] },
+      { label: 'an unknown format is refused', path: () => '/kingdoms-league/players/export' + q({ format: 'xml' }), expect: [400] },
+      { label: 'a title out of range is refused', path: () => '/kingdoms-league/players/export' + q({ min_title: 22 }), expect: [400] },
+    ],
+  },
+  {
+    id: 'kingdoms-league-alliances-export',
+    method: 'GET',
+    scope: 'protected',
+    path: () => '/kingdoms-league/alliances/export',
+    okStatuses: [200, 400],
+    needs: ['server'],
+    fuzzQuery: KINGDOMS_LEAGUE_ALLIANCE_PARAMS.concat('format'),
+    cases: [
+      { label: 'csv is served', path: () => '/kingdoms-league/alliances/export' + q({ format: 'csv' }), expect: [200] },
+      { label: 'a negative medal count is refused', path: () => '/kingdoms-league/alliances/export' + q({ min_gold: -1 }), expect: [400] },
+    ],
+  },
+  {
+    id: 'kingdoms-league-global-days',
+    method: 'GET',
+    scope: 'public',
+    path: () => '/kingdoms-league/global/days',
+    okStatuses: [200, 400],
+    fuzzQuery: ['game'],
+    cases: [{ label: 'an unknown game is refused', path: () => '/kingdoms-league/global/days' + q({ game: 'gge' }), expect: [400] }],
+  },
+  {
+    id: 'kingdoms-league-global-players',
+    method: 'GET',
+    scope: 'public',
+    path: () => '/kingdoms-league/global/players' + q({ page: 1, size: 12 }),
+    okStatuses: [200, 400],
+    fuzzQuery: KINGDOMS_LEAGUE_GLOBAL_PLAYER_PARAMS,
+    cases: [
+      { label: 'one universe is served', path: () => '/kingdoms-league/global/players' + q({ game: 'ep' }), expect: [200] },
+      { label: 'an unknown game is refused', path: () => '/kingdoms-league/global/players' + q({ game: 'gge' }), expect: [400] },
+    ],
+    semantic: {
+      collection: 'players',
+      idField: 'player_id',
+      paginated: true,
+      filters: [
+        { param: 'player_name', field: 'player_name', kind: 'contains' },
+        { param: 'alliance_name', field: 'alliance_name', kind: 'contains' },
+        { param: 'min_title', field: 'title', kind: 'min', noUnmatchableValue: true },
+        { param: 'max_title', field: 'title', kind: 'max', noUnmatchableValue: true },
+        { param: 'min_gold', field: 'gold', kind: 'min', impossible: 65_535 },
+        { param: 'max_gold', field: 'gold', kind: 'max', impossible: 0 },
+        { param: 'min_silver', field: 'silver', kind: 'min', impossible: 65_535 },
+        { param: 'max_silver', field: 'silver', kind: 'max', noUnmatchableValue: true },
+        { param: 'min_bronze', field: 'bronze', kind: 'min', impossible: 65_535 },
+        { param: 'max_bronze', field: 'bronze', kind: 'max', noUnmatchableValue: true },
+      ],
+      filtersCompose: true,
+    },
+  },
+  {
+    id: 'kingdoms-league-global-alliances',
+    method: 'GET',
+    scope: 'public',
+    path: () => '/kingdoms-league/global/alliances' + q({ page: 1, size: 12 }),
+    okStatuses: [200, 400],
+    fuzzQuery: KINGDOMS_LEAGUE_GLOBAL_ALLIANCE_PARAMS,
+    semantic: {
+      collection: 'alliances',
+      idField: 'alliance_id',
+      paginated: true,
+      filters: [
+        { param: 'alliance_name', field: 'alliance_name', kind: 'contains' },
+        { param: 'min_gold', field: 'gold', kind: 'min', impossible: 65_535 },
+        { param: 'max_gold', field: 'gold', kind: 'max', impossible: 0 },
+        { param: 'min_silver', field: 'silver', kind: 'min', impossible: 65_535 },
+        { param: 'max_silver', field: 'silver', kind: 'max', noUnmatchableValue: true },
+        { param: 'min_bronze', field: 'bronze', kind: 'min', impossible: 65_535 },
+        { param: 'max_bronze', field: 'bronze', kind: 'max', noUnmatchableValue: true },
+      ],
     },
   },
   { id: 'kingdoms-league-player', method: 'GET', scope: 'protected', path: (s) => `/kingdoms-league/player/${s.playerId ?? '1'}`, okStatuses: [200, 400], needs: ['server', 'player'], fuzzQuery: ['season_id'] },

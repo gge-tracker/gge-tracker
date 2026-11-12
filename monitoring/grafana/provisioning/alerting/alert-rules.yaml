@@ -427,7 +427,7 @@ groups:
           dashboard: '/d/empire-api-bridge?var-bridge={{ $labels.bridge }}'
           dashboard_title: Empire-API bridge
       - uid: kingdoms-league-missed
-        title: Kingdoms League night missed
+        title: Kingdoms League day missed
         condition: B
         for: 0m
         noDataState: OK
@@ -458,7 +458,7 @@ groups:
           severity: warning
           notify: discord
         annotations:
-          summary: 'The last fill of the night could not read the Kingdoms League ranking: {{ $labels.failureReason }}'
+          summary: 'The last fill of the window could not read the Kingdoms League ranking: {{ $labels.failureReason }}'
           action: 'Read it by hand before 09:00 Paris'
           dashboard: /d/scraping-jobs
           dashboard_title: Scraping jobs
