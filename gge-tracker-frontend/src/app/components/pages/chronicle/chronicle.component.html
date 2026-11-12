@@ -116,7 +116,7 @@
                   />
                   @if (showsBestPlace()) {
                     <p class="pill">
-                      <i class="fas fa-mountain-sun"></i> {{ t('bestRank', { rank: grouped(hero.might.rankBest!), month: bestRankMonth() }) }}
+                      <img src="/assets/pp1.png" width="18" height="18" alt=""> {{ t('bestRank', { rank: grouped(hero.might.rankBest!), month: bestRankMonth() }) }}
                     </p>
                   }
                   @if (showsMeter(hero.might.higherThanPct)) {
@@ -156,7 +156,7 @@
                     />
                     <p class="caption">{{ t('reignTracked', { total: grouped(reign.trackedDays) }) }}</p>
                     @if (reign.longest < reign.days) {
-                      <p class="pill"><i class="fas fa-crown"></i> {{ reignLongest() }}</p>
+                      <p class="pill">{{ reignLongest() }}</p>
                     }
                     @if (reignComebacks()) {
                       <p class="pill"><i class="fas fa-rotate-left"></i> {{ reignComebacks() }}</p>
@@ -200,7 +200,7 @@
                     [label]="bestWeekText()"
                   />
                   <p class="pill">
-                    <i class="fas fa-crown"></i> {{ bestWeekText() }}
+                    <img src="/assets/loot.png" width="18" height="18" alt=""> {{ bestWeekText() }}
                   </p>
                   @if (showsMeter(hero.loot.higherThanPct)) {
                     <app-chronicle-meter
@@ -239,7 +239,7 @@
                     </p>
                   } @else if (hero.events.bestRank && hero.events.runs >= 3) {
                     <p class="pill">
-                      <i class="fas fa-medal"></i> {{ t('bestFinish', { rank: grouped(hero.events.bestRank), event: bestEventName() }) }}
+                      <img src="/assets/podium.png" width="18" height="18" alt=""> {{ t('bestFinish', { rank: grouped(hero.events.bestRank), event: bestEventName() }) }}
                     </p>
                   }
                   @if (showsMeter(hero.events.higherThanPct)) {
@@ -288,11 +288,14 @@
                   <p class="eyebrow">{{ t('gloryPeakEye') }}</p>
                   <h2 class="heading">{{ gloryTitleName() }}</h2>
                   <p class="hero small" [appCountUp]="hero.glory.highest" countStyle="grouped"></p>
-                  <p class="lead">{{ t('gloryPeakLead') }}</p>
+                  <p class="lead">
+                    {{ t('gloryPeakLead') }}
+                  </p>
                   @if (gloryRungs().length > 0 && !reachedTopGloryTitle()) {
                     <app-chronicle-ladder [rungs]="gloryRungs()" />
                   }
-                  <p class="note">
+                  <p class="note with-icon">
+                    <img src="/assets/glory.png" width="18" alt="">
                     @if (hero.glory.current >= hero.glory.highest) {
                       {{ t('gloryAtPeak') }}
                     } @else {
@@ -369,7 +372,7 @@
                   }
                   <app-chronicle-ribbon [segments]="hero.alliance.timeline" />
                   <p class="pill">
-                    <i class="fas fa-shield-halved"></i>
+                    <img src="/assets/alliance.png" width="24" alt="">
                     {{ t('allyDays', { count: grouped(hero.alliance.daysUnderCurrent) }) }}
                   </p>
                 }

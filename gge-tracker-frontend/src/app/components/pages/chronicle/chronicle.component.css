@@ -376,6 +376,9 @@
 }
 
 .pill {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   width: fit-content;
   margin: 0.8rem 0 0;
   padding: 0.4rem 0.75rem;
@@ -387,8 +390,19 @@
 }
 
 .pill i {
-  margin-right: 0.4rem;
   color: #e6bd6c;
+}
+
+.note.with-icon {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pill img,
+.note img {
+  flex: none;
+  height: auto;
 }
 
 .pill b,
@@ -859,7 +873,8 @@ app-chronicle-curve {
   .body app-chronicle-meter,
   .quip,
   .caption,
-  .note {
+  .note,
+  .note.with-icon {
     display: none;
   }
 
