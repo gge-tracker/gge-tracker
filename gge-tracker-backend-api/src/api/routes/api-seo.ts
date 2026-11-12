@@ -8,7 +8,12 @@ import { HttpCache } from '../helper/http-cache';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiProfiles, ProfileContext } from './api-profiles';
 import { SeoHead } from '../helper/seo-head';
-import { ShareCard, ShareCardRenderer, ShareCardStat } from '../services/share-card-renderer';
+import {
+  SHARE_CARD_TEMPLATE_VERSION,
+  ShareCard,
+  ShareCardRenderer,
+  ShareCardStat,
+} from '../services/share-card-renderer';
 
 type ShareSubject = 'player' | 'alliance';
 
@@ -169,7 +174,11 @@ export abstract class ApiSeo implements ApiHelper {
   }
 
   private static cardDigest(card: ShareCard): string {
-    return crypto.createHash('sha1').update(JSON.stringify(card)).digest('hex').slice(0, 20);
+    return crypto
+      .createHash('sha1')
+      .update(`${SHARE_CARD_TEMPLATE_VERSION}:${JSON.stringify(card)}`)
+      .digest('hex')
+      .slice(0, 20);
   }
 
   private static async preview(subject: ShareSubject, rawId: unknown): Promise<SharePreview> {
@@ -232,9 +241,7 @@ export abstract class ApiSeo implements ApiHelper {
         value: `#${ShareCardRenderer.grouped(mightRank)}`,
         detail: `of ${ShareCardRenderer.grouped(rankedPlayers)} players`,
       },
-      legendaryLevel > 0
-        ? { label: 'Level', value: String(legendaryLevel), detail: 'Legendary' }
-        : { label: 'Level', value: String(level) },
+      { label: 'Weekly loot', value: ShareCardRenderer.compact(Number(identity.loot_current)) },
     ];
     return {
       found: true,
@@ -246,6 +253,8 @@ export abstract class ApiSeo implements ApiHelper {
         kind: 'Player',
         title: name,
         subtitle: allianceName ?? 'No alliance',
+        subtitleMuted: allianceName === null,
+        level: { level, legendary: legendaryLevel },
         server,
         stats,
         footer: this.displayUrl(path),
