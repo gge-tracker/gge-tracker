@@ -6,6 +6,7 @@ import { SearchbarComponent } from '@ggetracker-components/searchbar/searchbar.c
 import { SelectComponent } from '@ggetracker-components/select/select.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
 import { RealmMapLocateRequest } from '@ggetracker-components/realm-map/realm-map.models';
+import { ServerUnavailableNoticeComponent } from '@ggetracker-components/server-unavailable-notice/server-unavailable-notice.component';
 import { TrackerView, ViewSwitchComponent } from '@ggetracker-components/view-switch/view-switch.component';
 import { ModalFormGroupComponent } from '@ggetracker-components/modal-form-group/modal-form-group.component';
 import { ModalTableColumn, ModalTableComponent } from '@ggetracker-components/modal-table/modal-table.component';
@@ -37,6 +38,7 @@ interface DungeonAttackHistory extends ApiDungeonsAttackHistory {
 @Component({
   selector: 'app-tracker',
   imports: [
+    ServerUnavailableNoticeComponent,
     PunctuationPipe,
     NgClass,
     TableComponent,

@@ -1,0 +1,8 @@
+<div class="server-unavailable-notice" role="status">
+  <i class="fa-solid fa-circle-info server-unavailable-notice__icon" aria-hidden="true"></i>
+  <em class="server-unavailable-notice__text">{{ 'server-not-available' | translate: { server: server() } }}</em>
+  <a class="server-unavailable-notice__link" [href]="discordUrl" target="_blank" rel="noopener">
+    <i class="fa-brands fa-discord" aria-hidden="true"></i>
+    <span>{{ 'Discord' | translate }}</span>
+  </a>
+</div>

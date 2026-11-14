@@ -95,10 +95,7 @@
           }
 
           @if (serverService.currentServer && !allowedServers.includes(serverService.currentServer.name)) {
-          <div class="storm-notice">
-            <i class="fa-solid fa-circle-info"></i>
-            <em>{{ 'server-not-available' | translate: { server: (serverService.currentServer.name) } }}</em>
-          </div>
+          <app-server-unavailable-notice [server]="serverService.currentServer.name" />
           }
 
           @if (view === 'list' && isServerAllowed) {

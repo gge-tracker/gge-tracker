@@ -7,6 +7,7 @@ import { SearchbarComponent } from '@ggetracker-components/searchbar/searchbar.c
 import { SelectComponent } from '@ggetracker-components/select/select.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
 import { RealmMapLocateRequest } from '@ggetracker-components/realm-map/realm-map.models';
+import { ServerUnavailableNoticeComponent } from '@ggetracker-components/server-unavailable-notice/server-unavailable-notice.component';
 import { TrackerView, ViewSwitchComponent } from '@ggetracker-components/view-switch/view-switch.component';
 import {
   ApiStormFort,
@@ -57,6 +58,7 @@ interface StormIsleRow extends StormIsle {
 @Component({
   selector: 'app-storm-tracker',
   imports: [
+    ServerUnavailableNoticeComponent,
     PunctuationPipe,
     NgClass,
     TableComponent,

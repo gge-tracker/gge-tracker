@@ -74,14 +74,7 @@
         </div>
         }
         @if (serverService.currentServer && !allowedServers.includes(serverService.currentServer.name)) {
-        <div class="row my-2 special-bg">
-          <div class="col-12">
-            <i class="fa-solid fa-info-circle text-muted me-1"></i>
-            <span class="text-black">
-              <em>{{ 'server-not-available' | translate: { server: (serverService.currentServer.name) } }}</em>
-            </span>
-          </div>
-        </div>
+        <app-server-unavailable-notice class="my-2" [server]="serverService.currentServer.name" />
         }
         @if (view === 'list' && dungeonsMeta && dungeonsMeta.last_scan_at) {
         <div class="dungeons-status">

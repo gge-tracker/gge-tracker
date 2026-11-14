@@ -340,18 +340,6 @@
 }
 
 
-.storm-notice {
-  align-items: center;
-  background: rgba(255, 133, 0, 0.16);
-  border-radius: var(--storm-radius-sm);
-  border: 1px solid rgba(255, 133, 0, 0.4);
-  color: #ffd9ab;
-  display: flex;
-  font-size: 0.88rem;
-  gap: 0.5rem;
-  padding: 0.6rem 0.85rem;
-}
-
 .storm-status {
   align-items: center;
   border-top: 1px solid var(--storm-border);
