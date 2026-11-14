@@ -23,6 +23,7 @@ const STATIC_PAGES = [
   ["/players", "hourly", "0.9"],
   ["/alliances", "hourly", "0.9"],
   ["/event-thresholds", "daily", "0.9"],
+  ["/kingdoms-league", "daily", "0.8"],
   ["/statistics", "daily", "0.8"],
   ["/map", "daily", "0.7"],
   ["/castles", "daily", "0.6"],

@@ -543,6 +543,23 @@ function chooseSink(): ChronicleSink {
   return out ? fileSink(out) : dryRun;
 }
 
+async function publishedServers(year: number): Promise<Set<string>> {
+  const rows = await clickhouse(`SELECT DISTINCT server FROM ${SERVERS_TABLE} WHERE year = ${year}`);
+  return new Set(rows.map((row) => String(row.server)));
+}
+
+async function refuseUnsafeApply(window: ChronicleWindow, servers: ScrapingServer[]): Promise<void> {
+  if (window.untilMs > Date.now()) {
+    throw new Error(`the cut-off ${new Date(window.untilMs).toISOString()} is not reached yet`);
+  }
+  if (process.argv.includes('--replace')) return;
+  const published = await publishedServers(window.year);
+  const already = servers.filter((server) => published.has(server.server)).map((server) => server.server);
+  if (already.length > 0) {
+    throw new Error(`${window.year} is already published on ${already.join(', ')}: pass --replace to rebuild them`);
+  }
+}
+
 async function main(): Promise<void> {
   const until = argument('until');
   const window = chronicleWindow(Number(argument('year') ?? 2026), until ? Date.parse(until) : undefined);
@@ -551,6 +568,7 @@ async function main(): Promise<void> {
   const sink = chooseSink();
   const allServers = chronicleServers(readScrapingServers());
   const servers = allServers.filter((server) => !wanted || wanted.includes(server.server));
+  if (sink === clickhouseSink) await refuseUnsafeApply(window, servers);
   const world = await readWorldEvents(allServers, window);
   const failed: string[] = [];
   for (const server of servers) {

@@ -13,6 +13,9 @@ BASE_SCRIPT_DIR="$(cd "$(dirname "$0")/.."; pwd)"
 SERVER="$1"
 
 . "$BASE_SCRIPT_DIR/scripts/lib/servers.sh"
+. "$BASE_SCRIPT_DIR/scripts/lib/fill-pause.sh"
+
+fill_pause_active && exit 0
 
 load_server_config "$SERVER"
 LOG_SUFFIX=$SERVER
