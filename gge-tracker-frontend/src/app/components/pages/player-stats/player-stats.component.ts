@@ -63,7 +63,7 @@ import {
 } from '@ggetracker-services/loot-reset.utilities';
 import { TranslateModule } from '@ngx-translate/core';
 import Gradient from 'javascript-color-gradient';
-import { ApexAxisChartSeries } from 'ng-apexcharts';
+import { ApexAxisChartSeries, XAxisAnnotations } from 'ng-apexcharts';
 import { ModalTableColumn, ModalTableComponent } from '@ggetracker-components/modal-table/modal-table.component';
 import { PlayerStatsCardComponent } from './player-stats-card/player-stats-card.component';
 import { StatsPanelComponent } from './stats-panel/stats-panel.component';
@@ -276,6 +276,10 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   private readonly CONTINUOUS_CHARTS = new Set(['might', 'loot', 'glory']);
   private readonly WEEKLY_RESET_CHARTS = new Set(['loot']);
   private readonly FULL_HISTORY_DAYS = 1825;
+  private readonly GLORY_EVENT_PERIODS = [
+    { chart: 'warRealms', label: 'Guerre des royaumes', colour: '#8e5bd6' },
+    { chart: 'bloodcrow', label: 'Corbeaux de sang', colour: '#c0392b' },
+  ];
   private seriesWindow: Partial<Record<ApiPlayerStatsType, number>> = {};
 
   public get aquamarineSnapshotsForMonth(): ApiAquamarineSnapshot[] {
@@ -405,6 +409,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       needsOccurrences
         ? this.apiRestService.getPlayerEventOccurrencesByPlayerId(this.playerId, source.table)
         : Promise.resolve(null),
+      chartName === 'glory' ? this.loadGloryEventOccurrences(this.playerId) : Promise.resolve(),
     ]);
     if (!response.success) {
       this.seriesState[chartName] = 'error';
@@ -872,7 +877,9 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
           'glory',
           this.translateService.instant('Points de gloire'),
           this.data[ApiPlayerStatsType.glory],
+          '#0F5784',
         );
+        this.charts['glory'].annotations = { xaxis: this.gloryEventPeriods(this.data[ApiPlayerStatsType.glory]) };
         break;
       }
       default: {
@@ -1700,9 +1707,14 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     });
   }
 
-  private initContinuousAreaChart(name: string, seriesName: string, rows: EventGenericVariation[]): void {
+  private initContinuousAreaChart(
+    name: string,
+    seriesName: string,
+    rows: EventGenericVariation[],
+    color: string = '#b08417',
+  ): void {
     const { dates, points } = this.getPointsAndDates(rows);
-    this.initChartOption(name, [{ name: seriesName, data: points }], ['#b08417']);
+    this.initChartOption(name, [{ name: seriesName, data: points }], [color]);
     const chart = this.charts[name];
     chart.fill = {
       type: 'gradient',
@@ -1715,6 +1727,50 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     chart.chart.animations = {
       enabled: false,
     };
+  }
+
+  private async loadGloryEventOccurrences(playerId: number): Promise<void> {
+    const missing = this.GLORY_EVENT_PERIODS.filter(({ chart }) => !this.eventOccurrences[chart]);
+    const responses = await Promise.all(
+      missing.map(({ chart }) =>
+        this.apiRestService.getPlayerEventOccurrencesByPlayerId(playerId, this.CHART_SOURCES[chart].table),
+      ),
+    );
+    responses.forEach((response, index) => {
+      if (response.success) this.eventOccurrences[missing[index].chart] = response.data.occurrences;
+    });
+  }
+
+  private gloryEventPeriods(rows: EventGenericVariation[]): XAxisAnnotations[] {
+    const timestamps = rows.map((row) => Date.parse(row.utcDate ?? row.date));
+    if (timestamps.length === 0) return [];
+    const first = timestamps.reduce((min, time) => Math.min(min, time));
+    const last = timestamps.reduce((max, time) => Math.max(max, time));
+    const fillIntervalMs = 60 * 60 * 1000;
+    return this.GLORY_EVENT_PERIODS.flatMap(({ chart, label, colour }) => {
+      const text = this.translateService.instant(label);
+      return (this.eventOccurrences[chart] ?? [])
+        .map((occurrence) => ({
+          start: Date.parse(occurrence.started_at) - fillIntervalMs,
+          end: Date.parse(occurrence.ended_at),
+        }))
+        .filter(({ start, end }) => end >= first && start <= last)
+        .sort((a, b) => a.start - b.start)
+        .map(({ start, end }) => ({
+          x: Math.max(start, first),
+          x2: Math.min(end, last),
+          fillColor: colour,
+          opacity: 0.16,
+          borderColor: colour,
+          label: {
+            text,
+            orientation: 'vertical',
+            position: 'top',
+            borderColor: 'transparent',
+            style: { background: 'transparent', color: colour, fontSize: '10px', fontWeight: 600 },
+          },
+        }));
+    });
   }
 
   private styleOverlaidPeriods(chart: ChartOptions, weekCount: number): void {

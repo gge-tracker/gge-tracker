@@ -71,7 +71,7 @@ const SUBJECTS: Record<LeagueSubject, { table: string; idColumn: 'player_id' | '
 export abstract class ApiKingdomsLeague implements ApiHelper {
   private static readonly DAYS_TABLE = 'ggetracker_global.kingdoms_league_days';
   private static readonly CACHE_VERSION_PREFIX = 'kingdoms-league-version:';
-  private static readonly CACHE_TTL_SECONDS = 12 * 60 * 60;
+  private static readonly CACHE_TTL_SECONDS = 24 * 60 * 60;
   private static readonly MAX_SEASON_ID = 65_535;
   private static readonly MISSING_SCHEMA_ERRORS = new Set(['UNKNOWN_TABLE', 'UNKNOWN_DATABASE']);
   private static readonly EMPTY_PAGINATION: Pagination = {

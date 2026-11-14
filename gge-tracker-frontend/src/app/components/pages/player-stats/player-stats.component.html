@@ -281,6 +281,44 @@
           </div>
         </div>
         <div class="row mt-3">
+          <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="glory">
+            @if (charts['glory'] && chartVisibles.glory) {
+            <app-player-stats-card [charts]="{ 'Graphique': charts['glory'] }" [data]="[]"
+              [title]="'Points de gloire' | translate" [dataName]="'Points de gloire' | translate"
+              [playerId]="playerId" [eventName]="'player_glory_history'"
+              [backgroundIconImage]="'/assets/site/header-glory.webp'"
+              [backgroundColour]="'#0F5784'"></app-player-stats-card>
+            } @else {
+            <ng-container *ngTemplateOutlet="chartPlaceholder; context: {
+              chart: 'glory',
+              title: 'Points de gloire' | translate,
+              colour: '#0F5784',
+              banner: '/assets/site/header-glory.webp'
+            }"></ng-container>
+            }
+          </div>
+          <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="nomad">
+            @if (eventCharts['nomad'] && chartVisibles.nomad) {
+            <app-player-stats-card [charts]="eventCharts['nomad']" [data]="[]"
+              [title]="'Nomades' | translate" [dataName]="'Points de nomades' | translate" [playerId]="playerId"
+              [eventName]="'player_event_nomad_history'" (fullHistoryRequested)="loadFullHistory('nomad')"
+              [scopeShown]="drawnSeriesCount('nomad')" [scopeTotal]="totalOccurrences('nomad')"
+              [isLoadingHistory]="seriesState['nomad'] === 'loading'"
+              [backgroundIconImage]="'/assets/banner-nomad.png'"
+              [backgroundColour]="'rgb(255 130 54)'"
+              [stats]="eventStats['nomad']">
+            </app-player-stats-card>
+            } @else {
+            <ng-container *ngTemplateOutlet="chartPlaceholder; context: {
+              chart: 'nomad',
+              title: 'Nomades' | translate,
+              colour: 'rgb(255 130 54)',
+              banner: '/assets/banner-nomad.png'
+            }"></ng-container>
+            }
+          </div>
+        </div>
+        <div class="row mt-3">
           <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="warRealms">
             @if (eventCharts['warRealms'] && chartVisibles.warRealms) {
             <app-player-stats-card [charts]="eventCharts['warRealms']" [data]="[]"
@@ -345,28 +383,6 @@
             }"></ng-container>
             }
           </div>
-          <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="nomad">
-            @if (eventCharts['nomad'] && chartVisibles.nomad) {
-            <app-player-stats-card [charts]="eventCharts['nomad']" [data]="[]"
-              [title]="'Nomades' | translate" [dataName]="'Points de nomades' | translate" [playerId]="playerId"
-              [eventName]="'player_event_nomad_history'" (fullHistoryRequested)="loadFullHistory('nomad')"
-              [scopeShown]="drawnSeriesCount('nomad')" [scopeTotal]="totalOccurrences('nomad')"
-              [isLoadingHistory]="seriesState['nomad'] === 'loading'"
-              [backgroundIconImage]="'/assets/banner-nomad.png'"
-              [backgroundColour]="'rgb(255 130 54)'"
-              [stats]="eventStats['nomad']">
-            </app-player-stats-card>
-            } @else {
-            <ng-container *ngTemplateOutlet="chartPlaceholder; context: {
-              chart: 'nomad',
-              title: 'Nomades' | translate,
-              colour: 'rgb(255 130 54)',
-              banner: '/assets/banner-nomad.png'
-            }"></ng-container>
-            }
-          </div>
-        </div>
-        <div class="row mt-3">
           <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="samurai">
             @if (eventCharts['samurai'] && chartVisibles.samurai) {
             <app-player-stats-card [charts]="eventCharts['samurai']" [data]="[]"
@@ -387,24 +403,6 @@
             }"></ng-container>
             }
           </div>
-          @if (summaryFor('glory')?.row_count !== 0) {
-          <div class="col-12 col-lg-6 mb-2" #chartContainer data-chart="glory">
-            @if (charts['glory'] && chartVisibles.glory) {
-            <app-player-stats-card [charts]="{ 'Graphique': charts['glory'] }" [data]="[]"
-              [title]="'Points de gloire' | translate" [dataName]="'Points de gloire' | translate"
-              [playerId]="playerId" [eventName]="'player_glory_history'"
-              [backgroundIconImage]="'/assets/site/header-glory.webp'"
-              [backgroundColour]="'#b08417'"></app-player-stats-card>
-            } @else {
-            <ng-container *ngTemplateOutlet="chartPlaceholder; context: {
-              chart: 'glory',
-              title: 'Points de gloire' | translate,
-              colour: '#b08417',
-              banner: '/assets/site/header-glory.webp'
-            }"></ng-container>
-            }
-          </div>
-          }
         </div>
       </div>
       }
@@ -532,7 +530,7 @@
         @if (gloryLoadState === 'loaded' && currentPlayerTitle) {
         <app-stats-panel class="ps-painted" [title]="'Points de gloire' | translate"
           [subtitle]="(currentTopXFameTitle ? (currentI18nTitleKey + currentTopXFameTitle.titleID) : (currentI18nTitleKey + currentPlayerTitle.titleID)) | translate"
-          [accent]="'#b08417'" [bannerImage]="'/assets/site/header-glory.webp'" [style.--ps-head-position]="'center 58%'">
+          [accent]="'#0F5784'" [bannerImage]="'/assets/site/header-glory.webp'" [style.--ps-head-position]="'center 58%'">
           <div class="ps-body ps-glory">
             <div class="ps-box ps-glory-hero">
               <div class="ps-glory-emblem">
@@ -645,7 +643,7 @@
               [title]="'Points de gloire' | translate" [dataName]="'Points de gloire' | translate"
               [playerId]="playerId" [eventName]="'player_glory_history'"
               [backgroundIconImage]="'/assets/site/header-glory.webp'"
-              [backgroundColour]="'#b08417'"></app-player-stats-card>
+              [backgroundColour]="'#0F5784'"></app-player-stats-card>
           </div>
         </div>
         }
