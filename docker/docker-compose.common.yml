@@ -211,7 +211,7 @@ services:
   redis-server:
     image: redis:8.2
     container_name: redis-container
-    command: redis-server --maxmemory 5120mb --maxmemory-policy allkeys-lru --lazyfree-lazy-eviction yes --lazyfree-lazy-expire yes --lazyfree-lazy-server-del yes --maxclients 1000
+    command: redis-server --maxmemory 8192mb --maxmemory-policy allkeys-lru --lazyfree-lazy-eviction yes --lazyfree-lazy-expire yes --lazyfree-lazy-server-del yes --maxclients 1000
     networks:
       - backend
     healthcheck:

@@ -81,9 +81,12 @@ export abstract class ApiAssets implements ApiHelper {
       /* ---------------------------------
        * Update cache version and drop the previous build's cached files
        * --------------------------------- */
-      const version = Date.now().toString();
-      await ApiHelper.setGgeBuildVersion(version);
-      await AssetFileCache.pruneOtherVersions(version);
+      const version = await this.contentVersion();
+      const changed = version !== (await ApiHelper.getGgeBuildVersion());
+      if (changed) {
+        await ApiHelper.setGgeBuildVersion(version);
+        await AssetFileCache.pruneOtherVersions(version);
+      }
       /* ---------------------------------
        * Re-render the image corpus in the background
        * --------------------------------- */
@@ -92,7 +95,9 @@ export abstract class ApiAssets implements ApiHelper {
       /* ---------------------------------
        * Send success response
        * --------------------------------- */
-      response.status(ApiHelper.HTTP_OK).json({ message: 'Assets updated successfully', success: true, warming });
+      response
+        .status(ApiHelper.HTTP_OK)
+        .json({ message: 'Assets updated successfully', success: true, changed, warming });
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
@@ -410,7 +415,7 @@ export abstract class ApiAssets implements ApiHelper {
       try {
         await this.updateGameAssets();
         await this.updateItems();
-        await ApiHelper.setGgeBuildVersion(Date.now().toString());
+        await ApiHelper.setGgeBuildVersion(await this.contentVersion());
         const refreshed = await ApiHelper.getAssets();
         return JSON.parse(refreshed.toString());
       } catch {
@@ -657,6 +662,19 @@ export abstract class ApiAssets implements ApiHelper {
    * @throws {Error} If fetching the version or items JSON files fails
    * @returns {Promise<void>} A promise that resolves when the update is complete
    */
+  private static async contentVersion(): Promise<string> {
+    const assetsDirectory = path.join(__dirname, './../assets/');
+    const languages = await axios
+      .get(`${ApiHelper.CONFIG_BASE_URL}/languages/version.json`, { responseType: 'text' })
+      .then(({ data }) => String(data))
+      .catch(() => String(Date.now()));
+    const hash = crypto.createHash('sha256');
+    hash.update(await fs.promises.readFile(path.join(assetsDirectory, 'assets.json')));
+    hash.update(await fs.promises.readFile(path.join(assetsDirectory, 'items.json')));
+    hash.update(languages);
+    return hash.digest('hex').slice(0, 16);
+  }
+
   private static async updateItems(): Promise<void> {
     const itemsVersionUri = `${ApiHelper.ASSETS_BASE_URL}/items/ItemsVersion.properties`;
     const itemsVersionResource = await ApiHelper.fetchWithFallback(itemsVersionUri);

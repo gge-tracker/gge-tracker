@@ -268,57 +268,6 @@ groups:
           action: 'Install its daily cron on the host: gge-tracker-internal-scraping/scripts/run-docker-loot-reset-check.sh.'
           dashboard: /d/loot-counters
           dashboard_title: Loot counters
-      - uid: loot-hourly-jump
-        title: Loot jump over 3.5 billion
-        condition: C
-        for: 0m
-        noDataState: OK
-        execErrState: OK
-        data:
-          - refId: A
-            relativeTimeRange: { from: 10800, to: 0 }
-            datasourceUid: clickhouse
-            model:
-              refId: A
-              editorType: sql
-              format: 1
-              queryType: table
-              rawSql: |-
-                SELECT replaceRegexpOne(_db, '^(empire_ranking_|ggetracker_)', '') AS server, toFloat64(count()) AS jumps
-                FROM (
-                  SELECT _database AS _db, point - lagInFrame(point) OVER w AS gain, dateDiff('minute', lagInFrame(created_at) OVER w, created_at) AS minutes
-                  FROM merge(REGEXP('^(empire_ranking|ggetracker_)'), '^player_loot_history$')
-                  WHERE created_at >= now() - INTERVAL 3 HOUR
-                  WINDOW w AS (PARTITION BY _database, player_id ORDER BY created_at ROWS BETWEEN 1 PRECEDING AND CURRENT ROW))
-                WHERE minutes BETWEEN 1 AND 70 AND gain > 3500000000
-                GROUP BY server
-          - refId: B
-            datasourceUid: __expr__
-            model:
-              refId: B
-              type: reduce
-              expression: A
-              reducer: last
-          - refId: C
-            datasourceUid: __expr__
-            model:
-              refId: C
-              type: threshold
-              expression: B
-              conditions:
-                - evaluator: { type: gt, params: [0] }
-                  operator: { type: and }
-                  query: { params: [C] }
-                  reducer: { type: last, params: [] }
-                  type: threshold
-        labels:
-          severity: critical
-          notify: discord
-        annotations:
-          summary: 'A stored loot score rose by more than 3.5 billion in one hour'
-          action: The tracker probably added 2^32 by mistake, see the loot_counters records of this server.
-          dashboard: '/d/loot-counters?var-server={{ $labels.server }}'
-          dashboard_title: Loot counters
       - uid: account-disconnected-realtime
         title: Game account disconnected (realtime)
         condition: B
@@ -462,6 +411,62 @@ groups:
           action: 'Read it by hand before 09:00 Paris'
           dashboard: /d/scraping-jobs
           dashboard_title: Scraping jobs
+  - orgId: 1
+    name: loot-history
+    folder: Scraping
+    interval: 10m
+    rules:
+      - uid: loot-hourly-jump
+        title: Loot jump over 3.5 billion
+        condition: C
+        for: 0m
+        noDataState: OK
+        execErrState: OK
+        data:
+          - refId: A
+            relativeTimeRange: { from: 10800, to: 0 }
+            datasourceUid: clickhouse
+            model:
+              refId: A
+              editorType: sql
+              format: 1
+              queryType: table
+              rawSql: |-
+                SELECT replaceRegexpOne(_db, '^(empire_ranking_|ggetracker_)', '') AS server, toFloat64(count()) AS jumps
+                FROM (
+                  SELECT _database AS _db, point - lagInFrame(point) OVER w AS gain, dateDiff('minute', lagInFrame(created_at) OVER w, created_at) AS minutes
+                  FROM merge(REGEXP('^(empire_ranking|ggetracker_)'), '^player_loot_history$')
+                  WHERE created_at >= now() - INTERVAL 3 HOUR
+                  WINDOW w AS (PARTITION BY _database, player_id ORDER BY created_at ROWS BETWEEN 1 PRECEDING AND CURRENT ROW))
+                WHERE minutes BETWEEN 1 AND 70 AND gain > 3500000000
+                GROUP BY server
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last, params: [] }
+                  type: threshold
+        labels:
+          severity: critical
+          notify: discord
+        annotations:
+          summary: 'A stored loot score rose by more than 3.5 billion in one hour'
+          action: The tracker probably added 2^32 by mistake, see the loot_counters records of this server.
+          dashboard: '/d/loot-counters?var-server={{ $labels.server }}'
+          dashboard_title: Loot counters
   - orgId: 1
     name: platform
     folder: Platform
