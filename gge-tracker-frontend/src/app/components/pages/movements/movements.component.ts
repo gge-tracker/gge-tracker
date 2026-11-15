@@ -182,6 +182,8 @@ export class MovementsComponent extends GenericComponent implements OnInit {
       'Date',
       'Old Position',
       'New Position',
+      'Previous Owner',
+      'Previous Owner Alliance',
     ];
     const rows: any[][] = [];
     this.movements.forEach((movement) => {
@@ -198,6 +200,8 @@ export class MovementsComponent extends GenericComponent implements OnInit {
         this.utilitiesService.escapeCsv(new Date(movement.date).toLocaleString()),
         movement.positionOld[0] === null ? '' : `x=${movement.positionOld[0]} y=${movement.positionOld[1]}`,
         movement.positionNew[0] === null ? '' : `x=${movement.positionNew[0]} y=${movement.positionNew[1]}`,
+        this.utilitiesService.escapeCsv(movement.previousOwner ?? ''),
+        this.utilitiesService.escapeCsv(movement.previousOwnerAlliance ?? ''),
       ];
       rows.push(row);
     });
@@ -357,6 +361,10 @@ export class MovementsComponent extends GenericComponent implements OnInit {
         date: movement.created_at,
         positionOld: [movement.position_x_old, movement.position_y_old],
         positionNew: [movement.position_x_new, movement.position_y_new],
+        previousOwner: movement.previous_owner_name ?? null,
+        previousOwnerId: movement.previous_owner_id ?? null,
+        previousOwnerAlliance: movement.previous_owner_alliance_name ?? null,
+        previousOwnerAllianceId: movement.previous_owner_alliance_id ?? null,
       };
     });
   }

@@ -21,6 +21,7 @@ import {
   ApiOfferHistory,
   ApiOfferReward,
   ApiOffersCatalogResponse,
+  ApiPastOffer,
   ErrorType,
 } from '@ggetracker-interfaces/empire-ranking';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
@@ -56,7 +57,7 @@ interface OfferReward {
 }
 
 interface OfferAvailabilityBadge {
-  kind: OfferAvailabilityKind;
+  kind: OfferAvailabilityKind | 'past';
   isUrgent: boolean;
   label: string;
   detail: string | null;
@@ -156,6 +157,7 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
   public updatedAgo: string | null = null;
   public updatedAt: string | null = null;
   public pricedIn: string | null = null;
+  public showPast = false;
 
   public sorts: { label: string; value: string }[] = [];
   public currencyOptions: OfferCurrencyOption[] = [];
@@ -185,6 +187,8 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
   @ViewChildren('cardFlow') private readonly cardFlows!: QueryList<ElementRef<HTMLElement>>;
 
   private allOffers: OfferCard[] = [];
+  private liveCategories: OfferCategory[] = [];
+  private pastCategories: OfferCategory[] | null = null;
   private tabStrip?: HTMLElement;
   private tabsObserver?: ResizeObserver;
 
@@ -263,27 +267,27 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
     this.isInLoading = false;
     this.isRefreshing = false;
     this.refreshDataAnimationSpinner = false;
+    this.pastCategories = null;
     if (!response.success) {
-      this.categories = [];
-      this.allOffers = [];
-      this.tabs = [];
-      this.selectedCategory = this.allCategoryKey;
+      this.liveCategories = [];
+      this.showCategories();
       this.toastService.add(response.error || ErrorType.ERROR_OCCURRED, 5000);
       return;
     }
     const { catalog, fetchedAt, pricedIn } = response.data;
     this.setFreshness(fetchedAt);
     this.pricedIn = pricedIn && pricedIn !== this.currency ? pricedIn : null;
-    this.categories = this.buildCategories(catalog, history);
-    this.allOffers = this.buildAllOffers(this.categories);
-    this.tabs = this.buildTabs(this.categories);
+    this.liveCategories = this.buildCategories(catalog, history);
     this.failedCategories = Object.keys(catalog._failed ?? {});
-    this.expandedOffers.clear();
-    if (!this.tabs.some((tab) => tab.key === this.selectedCategory)) {
-      this.selectedCategory = this.allCategoryKey;
-    }
-    this.applyFilters();
-    this.scheduleTabsOverflowUpdate();
+    if (this.showPast) await this.loadPastOffers();
+    this.showCategories();
+  }
+
+  public async setPastMode(showPast: boolean): Promise<void> {
+    if (showPast === this.showPast || this.isBusy) return;
+    this.showPast = showPast;
+    if (showPast && this.pastCategories === null) await this.loadPastOffers();
+    this.showCategories();
   }
 
   public applyFilters(): void {
@@ -410,6 +414,62 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
       .then((response) => (response.success ? response.data : null));
     const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), this.offerHistoryTimeoutMs));
     return Promise.race([request, timeout]);
+  }
+
+  private showCategories(): void {
+    this.categories = this.showPast ? (this.pastCategories ?? []) : this.liveCategories;
+    this.allOffers = this.buildAllOffers(this.categories);
+    this.tabs = this.buildTabs(this.categories);
+    this.expandedOffers.clear();
+    if (!this.tabs.some((tab) => tab.key === this.selectedCategory)) {
+      this.selectedCategory = this.allCategoryKey;
+    }
+    this.applyFilters();
+    this.scheduleTabsOverflowUpdate();
+  }
+
+  private async loadPastOffers(): Promise<void> {
+    this.buildSkeletons();
+    this.isRefreshing = true;
+    const response = await this.apiRestService.getPastOffers(this.level, this.legendaryLevel);
+    this.isRefreshing = false;
+    if (!response.success) {
+      this.pastCategories = [];
+      this.toastService.add(response.error || ErrorType.ERROR_OCCURRED, 5000);
+      return;
+    }
+    this.pastCategories = this.buildPastCategories(response.data.offers);
+  }
+
+  private buildPastCategories(pastOffers: ApiPastOffer[]): OfferCategory[] {
+    const liveIds = new Set(this.liveCategories.flatMap((category) => category.offers.map((offer) => offer.id)));
+    const categories = new Map<string, OfferCard[]>();
+    for (const past of pastOffers) {
+      if (liveIds.has(past.id)) continue;
+      const card = {
+        ...this.buildOffer(past.offer, null),
+        isPurchased: false,
+        availability: this.buildPastBadge(past),
+      };
+      const offers = categories.get(past.category) ?? [];
+      offers.push(card);
+      categories.set(past.category, offers);
+    }
+    return [...categories].map(([key, offers]) => ({ key, label: this.categoryLabel(key), offers }));
+  }
+
+  private buildPastBadge(past: ApiPastOffer): OfferAvailabilityBadge {
+    const lastSeen = Date.parse(past.last_seen_at);
+    const locale = this.langageService.getCurrentLocale();
+    return {
+      kind: 'past',
+      isUrgent: false,
+      label: this.translateService.instant('offers-availability-past', {
+        time: this.formatElapsed(Date.now() - lastSeen, locale),
+      }),
+      detail: new Date(lastSeen).toLocaleString(locale),
+      previousRun: null,
+    };
   }
 
   private buildSkeletons(): void {

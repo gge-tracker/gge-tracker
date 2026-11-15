@@ -319,6 +319,10 @@ export class ApiRoutingController {
     void ApiOfferHistory.getOfferHistory(request, response);
   }
 
+  public getPastOffers(request: express.Request, response: express.Response): void {
+    void ApiOfferHistory.getPastOffers(request, response);
+  }
+
   public getPlayersUpdatesByAlliance(request: express.Request, response: express.Response): void {
     void ApiUpdates.getPlayersUpdatesByAlliance(request, response);
   }

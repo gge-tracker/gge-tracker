@@ -36,6 +36,7 @@ import Utils from './utils';
 import { isSocketDown, readBridgeStatus, reportDisconnectedAccount, zoneOf } from './bridge-status';
 import { LootReading, LootReadingKind, lootCounterValue, unwrapLootRun } from './loot-counter';
 import { LootReset, lootWeekStart } from './loot-reset';
+import { isInMonthlyReset, UNCAPTURABLE_CASTLE_TYPES } from './monthly-resets';
 import {
   KINGDOMS_LEAGUE_ALLIANCE_LT,
   KINGDOMS_LEAGUE_PLAYER_LT,
@@ -396,6 +397,9 @@ export class GenericFetchAndSaveBackend {
   private playerEventPointHistoryList: { [key: string]: { [key: string]: number | null } } = {};
   private customPlayersAttributesList: { [key: string]: any } = {};
   private currentPlayers: PlayerDatabase[] = [];
+  private castleOwners = new Map<string, number>();
+  private castleOwnersSource: PlayerDatabase[] | null = null;
+  private movementsHavePreviousOwner = true;
   private currentAlliances: AllianceDatabase[] = [];
   private readonly isE4KServer: boolean = false;
   private readonly ENV_LT = {
@@ -5623,10 +5627,29 @@ export class GenericFetchAndSaveBackend {
         movement_type: 'add',
         position_x_new: xNew,
         position_y_new: yNew,
+        previous_owner_id: this.isCapture(type) ? this.previousCastleOwner(key, playerId) : null,
       });
     }
 
     return [...(mainCastleMove ? [mainCastleMove] : []), ...removals, ...additions];
+  }
+
+  private isCapture(castleType: number): boolean {
+    if (UNCAPTURABLE_CASTLE_TYPES.has(castleType)) return false;
+    return !isInMonthlyReset(castleType, Date.now(), this.resolveLootReset()?.timezone ?? null);
+  }
+
+  private previousCastleOwner(castleKey: string, playerId: number): number | null {
+    if (this.castleOwnersSource !== this.currentPlayers) {
+      this.castleOwners = new Map();
+      for (const player of this.currentPlayers) {
+        if (!Array.isArray(player.castles)) continue;
+        for (const [x, y, type] of player.castles) this.castleOwners.set(`${x},${y},${type}`, player.playerId);
+      }
+      this.castleOwnersSource = this.currentPlayers;
+    }
+    const owner = this.castleOwners.get(castleKey);
+    return owner !== undefined && owner !== playerId ? owner : null;
   }
 
   private detectMainCastleMove(
@@ -5664,27 +5687,43 @@ export class GenericFetchAndSaveBackend {
   }
 
   private async insertMovements(movements: CastleMovement[]): Promise<void> {
-    const pgQuery = `
-      INSERT INTO player_castle_movements_history (player_id, castle_type, movement_type, position_x_old, position_y_old, position_x_new, position_y_new)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `;
-
     try {
-      for (const move of movements) {
-        await this.pgSqlQuery(pgQuery, [
-          move.player_id,
-          move.castle_type,
-          move.movement_type,
-          move.position_x_old || null,
-          move.position_y_old || null,
-          move.position_x_new || null,
-          move.position_y_new || null,
-        ]);
-      }
+      for (const move of movements) await this.insertMovement(move);
     } catch (error) {
       Utils.logCritical('104', error, 'Error inserting castle movements');
       this.DB_UPDATES.criticalErrors++;
     }
+  }
+
+  private async insertMovement(move: CastleMovement): Promise<void> {
+    const values = [
+      move.player_id,
+      move.castle_type,
+      move.movement_type,
+      move.position_x_old || null,
+      move.position_y_old || null,
+      move.position_x_new || null,
+      move.position_y_new || null,
+    ];
+    if (this.movementsHavePreviousOwner) {
+      try {
+        await this.pgSqlQuery(
+          `INSERT INTO player_castle_movements_history (player_id, castle_type, movement_type, position_x_old, position_y_old, position_x_new, position_y_new, previous_owner_id)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [...values, move.previous_owner_id ?? null],
+        );
+        return;
+      } catch (error: any) {
+        if (error?.code !== '42703') throw error;
+        this.movementsHavePreviousOwner = false;
+        Utils.logMessage('[warn] player_castle_movements_history has no previous_owner_id column, writing without it');
+      }
+    }
+    await this.pgSqlQuery(
+      `INSERT INTO player_castle_movements_history (player_id, castle_type, movement_type, position_x_old, position_y_old, position_x_new, position_y_new)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      values,
+    );
   }
 
   private async getDatabasePlayers(): Promise<{ players: PlayerDatabase[]; alliances: AllianceDatabase[] }> {

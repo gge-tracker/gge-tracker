@@ -19,6 +19,7 @@
           ['level', 'Niveau' | translate, '/assets/lvl.png', true],
           ['pp', 'Points de puissance' | translate, '/assets/pp1.png', true],
           ['positionOld', 'Description' | translate, '', true],
+          ['previousOwner', 'Ancien propriétaire' | translate, '', true],
           ['date', 'Date' | translate, '', true],
           ['actions', '', '', true]
         ]" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
@@ -73,6 +74,23 @@
                   <span>{{ ((getDescription(movement.type, movement.positionOld, movement.positionNew).keyword) | translate) + ' '
                     + getDescription(movement.type, movement.positionOld, movement.positionNew).description }}</span>
                 </div>
+              </td>
+              <td class="text-center movement-previous-owner">
+                <span class="cell-label">{{ 'Ancien propriétaire' | translate }}</span>
+                @if (movement.previousOwner) {
+                  <span class="movement-previous-owner__names">
+                    @if (movement.previousOwnerId) {
+                      <a [routerLink]="['/', 'player', movement.previousOwnerId]" class="name-link">{{ movement.previousOwner }}</a>
+                    } @else {
+                      <span>{{ movement.previousOwner }}</span>
+                    }
+                    @if (movement.previousOwnerAllianceId && movement.previousOwnerAlliance) {
+                      <a [routerLink]="['/', 'alliance', movement.previousOwnerAllianceId]" class="name-link movement-previous-owner__alliance">{{ movement.previousOwnerAlliance }}</a>
+                    }
+                  </span>
+                } @else {
+                  -
+                }
               </td>
               <td class="col-footer text-center" [title]="movement.date | date">{{ movement.date | date: ('Date_1' | translate)}}</td>
               <td class="col-actions">

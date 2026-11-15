@@ -79,6 +79,7 @@ import {
   ApiAquamarinePlayerResponse,
   ApiStormyIslesLeaderboardResponse,
   ApiOfferHistory,
+  ApiPastOffers,
   ApiOffersCatalog,
   ApiOffersCatalogResponse,
   ApiReleaseNotesResponse,
@@ -241,6 +242,12 @@ export class ApiRestService {
   public async getOfferHistory(level: number, legendaryLevel: number): Promise<ApiResponse<ApiOfferHistory>> {
     return this.apiFetch<ApiOfferHistory>(
       `${ApiRestService.apiUrl}offers/history?level=${level}&legendaryLevel=${legendaryLevel}`,
+    );
+  }
+
+  public async getPastOffers(level: number, legendaryLevel: number): Promise<ApiResponse<ApiPastOffers>> {
+    return this.apiFetch<ApiPastOffers>(
+      `${ApiRestService.apiUrl}offers/past?level=${level}&legendaryLevel=${legendaryLevel}`,
     );
   }
 

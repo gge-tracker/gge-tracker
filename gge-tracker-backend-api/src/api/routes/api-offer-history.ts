@@ -12,6 +12,19 @@ interface OfferSlotsRow {
   slots: number[];
 }
 
+interface PastOfferRow {
+  offer_id: string;
+  category: string;
+  offer: string;
+  name: string;
+  price: number;
+  price_currency: string;
+  bonus: number;
+  rewards: string;
+  first_seen_at: string;
+  last_seen_at: string;
+}
+
 interface OfferRun {
   startIndex: number;
   endIndex: number;
@@ -27,6 +40,7 @@ export abstract class ApiOfferHistory implements ApiHelper {
   private static readonly CACHE_TTL_SECONDS = 3600;
   private static readonly MISSING_SCHEMA_ERRORS = new Set(['UNKNOWN_TABLE', 'UNKNOWN_IDENTIFIER']);
   private static readonly EMPTY_HISTORY = { first_snapshot_at: null, last_snapshot_at: null, offers: [] };
+  private static readonly PAST_OFFERS_LIMIT = 300;
 
   public static async getOfferHistory(request: express.Request, response: express.Response): Promise<void> {
     try {
@@ -52,6 +66,30 @@ export abstract class ApiOfferHistory implements ApiHelper {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getOfferHistory', request);
+    }
+  }
+
+  public static async getPastOffers(request: express.Request, response: express.Response): Promise<void> {
+    try {
+      const level = Number.parseInt(String(request.query.level ?? ApiOffers.MAX_LEVEL));
+      const legendaryLevel = Number.parseInt(String(request.query.legendaryLevel ?? 0));
+      const invalidLevel = ApiOffers.findLevelError(level, legendaryLevel);
+      if (invalidLevel) {
+        response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: invalidLevel });
+        return;
+      }
+      const game = RankingUniverse.gameOfServerName(String(request['language']));
+      const profile = this.collectedProfile(level, legendaryLevel);
+      const cacheKey = new CacheKeyBuilder('offer-past').withParams({ game, ...profile }).build();
+      if (await CachedResponse.serveCached(response, cacheKey)) return;
+
+      const rows = await this.readPastOffers(game, profile);
+      const offers = (rows ?? []).map((row) => this.toPastOffer(row)).filter((offer) => offer !== null);
+      await CachedResponse.serve(response, cacheKey, { offers }, this.CACHE_TTL_SECONDS);
+    } catch (error) {
+      const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
+      response.status(code).send({ error: message });
+      ApiHelper.logError(error, 'getPastOffers', request);
     }
   }
 
@@ -86,6 +124,79 @@ export abstract class ApiOfferHistory implements ApiHelper {
     } catch (error) {
       if (this.MISSING_SCHEMA_ERRORS.has((error as { type?: string }).type ?? '')) return null;
       throw error;
+    }
+  }
+
+  private static async readPastOffers(game: RankingGame, profile: CollectedProfile): Promise<PastOfferRow[] | null> {
+    const clickhouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
+    const profileFilter = `game = {game:String}
+      AND currency = {currency:String}
+      AND level = {level:UInt8}
+      AND legendary_level = {legendaryLevel:UInt16}`;
+    try {
+      const result = await clickhouseClient.query({
+        query: `SELECT offer_id,
+            argMax(category, snapshot_at) AS category,
+            argMax(offer, snapshot_at) AS offer,
+            argMax(name, snapshot_at) AS name,
+            argMax(price, snapshot_at) AS price,
+            argMax(price_currency, snapshot_at) AS price_currency,
+            argMax(bonus, snapshot_at) AS bonus,
+            argMax(rewards, snapshot_at) AS rewards,
+            formatDateTime(min(snapshot_at), '%Y-%m-%dT%H:%i:%SZ', 'UTC') AS first_seen_at,
+            formatDateTime(max(snapshot_at), '%Y-%m-%dT%H:%i:%SZ', 'UTC') AS last_seen_at
+          FROM ${this.TABLE}
+          WHERE ${profileFilter}
+          GROUP BY offer_id
+          HAVING max(snapshot_at) < (SELECT max(snapshot_at) FROM ${this.TABLE} WHERE ${profileFilter})
+          ORDER BY max(snapshot_at) DESC, offer_id
+          LIMIT {limit:UInt32}`,
+        query_params: {
+          game,
+          currency: StoreCatalogClient.REFERENCE_CURRENCY,
+          ...profile,
+          limit: this.PAST_OFFERS_LIMIT,
+        },
+        format: 'JSONEachRow',
+      });
+      return await result.json<PastOfferRow>();
+    } catch (error) {
+      if (this.MISSING_SCHEMA_ERRORS.has((error as { type?: string }).type ?? '')) return null;
+      throw error;
+    }
+  }
+
+  private static toPastOffer(row: PastOfferRow): object | null {
+    const offer = this.parseJson(row.offer) ?? this.offerFromColumns(row);
+    if (!offer) return null;
+    return {
+      id: row.offer_id,
+      category: row.category,
+      first_seen_at: row.first_seen_at,
+      last_seen_at: row.last_seen_at,
+      offer,
+    };
+  }
+
+  private static offerFromColumns(row: PastOfferRow): object | null {
+    if (!row.name) return null;
+    const rewards = this.parseJson(row.rewards);
+    return {
+      id: row.offer_id,
+      name: row.name,
+      price: Number(row.price),
+      currencyCode: row.price_currency,
+      bonus: Number(row.bonus),
+      rewards: Array.isArray(rewards) ? rewards : [],
+    };
+  }
+
+  private static parseJson(text: string): object | null {
+    try {
+      const value: unknown = JSON.parse(text);
+      return value && typeof value === 'object' ? value : null;
+    } catch {
+      return null;
     }
   }
 

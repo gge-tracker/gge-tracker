@@ -27,3 +27,15 @@
   right: -4px;
   width: 26px;
 }
+
+.movement-previous-owner__names {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.2;
+}
+
+.movement-previous-owner__alliance {
+  font-size: 0.8em;
+  opacity: 0.75;
+}

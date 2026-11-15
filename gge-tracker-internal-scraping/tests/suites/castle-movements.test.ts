@@ -90,6 +90,7 @@ describe('getCastleMovements', () => {
           movement_type: 'add',
           position_x_new: 300,
           position_y_new: 400,
+          previous_owner_id: null,
         },
       ]);
     });

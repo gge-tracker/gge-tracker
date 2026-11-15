@@ -166,6 +166,10 @@ export interface Movement {
   date: string;
   positionOld: (number | null)[];
   positionNew: (number | null)[];
+  previousOwner: string | null;
+  previousOwnerId: string | null;
+  previousOwnerAlliance: string | null;
+  previousOwnerAllianceId: string | null;
 }
 
 export interface Player {
@@ -985,6 +989,10 @@ export interface ApiMovement {
   position_y_new: number | null;
   position_y_old: number | null;
   castle_type: number;
+  previous_owner_id?: string | null;
+  previous_owner_name?: string | null;
+  previous_owner_alliance_id?: string | null;
+  previous_owner_alliance_name?: string | null;
 }
 
 export interface ApiRenames {
@@ -1168,6 +1176,18 @@ export interface ApiOfferHistory {
   first_snapshot_at: string | null;
   last_snapshot_at: string | null;
   offers: ApiOfferHistoryEntry[];
+}
+
+export interface ApiPastOffer {
+  id: string;
+  category: string;
+  first_seen_at: string;
+  last_seen_at: string;
+  offer: ApiOffer;
+}
+
+export interface ApiPastOffers {
+  offers: ApiPastOffer[];
 }
 
 export interface ApiOfferCategory {

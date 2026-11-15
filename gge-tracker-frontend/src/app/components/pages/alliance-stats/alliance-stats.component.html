@@ -168,6 +168,7 @@
           ['castleType', 'Type' | translate, '', true],
           ['castleType', 'Action' | translate, '', true],
           ['positionOld', 'Description' | translate, '', true],
+          ['previousOwner', 'Ancien propriétaire' | translate, '', true],
           ['date', 'Date' | translate, '', true],
         ]" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
             @if (isInMovementLoading) {
@@ -197,6 +198,20 @@
                 <td [innerHTML]="getDescription(movement.type, movement.positionOld, movement.positionNew).image"></td>
                 <td>{{ getDescription(movement.type, movement.positionOld, movement.positionNew).keyword | translate }} {{
                 getDescription(movement.type, movement.positionOld, movement.positionNew).description }}</td>
+                <td>
+                  @if (movement.previousOwner) {
+                    @if (movement.previousOwnerId) {
+                      <a [routerLink]="['/', 'player', movement.previousOwnerId]">{{ movement.previousOwner }}</a>
+                    } @else {
+                      {{ movement.previousOwner }}
+                    }
+                    @if (movement.previousOwnerAlliance) {
+                      <small class="d-block text-muted">{{ movement.previousOwnerAlliance }}</small>
+                    }
+                  } @else {
+                    -
+                  }
+                </td>
                 <td>{{ movement.date | date: ('Date_1' | translate) }}</td>
               </tr>
             }

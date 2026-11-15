@@ -68,21 +68,7 @@
           </p>
           }
 
-          @if (hasEstimatedDurations) {
-          <div class="offers-notice">
-            <i class="fa-solid fa-circle-info"></i>
-            <em>{{ 'offers-availability-notice' | translate }}</em>
-          </div>
-          }
-
-          @if (hasEstimatedPrices) {
-          <div class="offers-notice">
-            <i class="fa-solid fa-circle-info"></i>
-            <em>{{ 'offers-prices-estimated' | translate }}</em>
-          </div>
-          }
-
-          @if (pricedIn) {
+          @if (pricedIn && !showPast) {
           <div class="offers-notice">
             <i class="fa-solid fa-circle-info"></i>
             <em>{{ 'offers-currency-pending' | translate: { currency: currency, fallback: pricedIn } }}</em>
@@ -97,6 +83,23 @@
           </div>
           }
         </header>
+
+        <div class="offers-mode-row">
+        <div class="offers-mode" role="group" [attr.aria-label]="'Boutique' | translate">
+          <button type="button" class="offers-mode__option" [class.offers-mode__option--on]="!showPast"
+            [attr.aria-pressed]="!showPast" [disabled]="isBusy" (click)="setPastMode(false)">
+            {{ 'offers-mode-live' | translate }}
+          </button>
+          <button type="button" class="offers-mode__option" [class.offers-mode__option--on]="showPast"
+            [attr.aria-pressed]="showPast" [disabled]="isBusy" (click)="setPastMode(true)">
+            <lucide-icon class="lucide" [img]="Clock" [size]="14"></lucide-icon>
+            {{ 'offers-mode-past' | translate }}
+          </button>
+        </div>
+        @if (showPast && currentLang !== 'en') {
+        <span class="offers-mode-note">{{ 'offers-past-english' | translate }}</span>
+        }
+        </div>
 
         @if (tabs.length > 0) {
         <div class="offers-tabs" [class.offers-tabs--overflow-start]="canScrollTabsBack"

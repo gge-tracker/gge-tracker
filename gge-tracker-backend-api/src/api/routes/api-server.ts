@@ -197,6 +197,7 @@ export abstract class ApiServer implements ApiHelper {
        * --------------------------------- */
       let query = `
         SELECT
+          M.id,
           M.player_id,
           P.alliance_id,
           P.name AS player_name,
@@ -227,7 +228,8 @@ export abstract class ApiServer implements ApiHelper {
       /* ---------------------------------
        * Execute main query
        * --------------------------------- */
-      (request['pg_pool'] as pg.Pool).query(query, values, (error, results) => {
+      const pool = request['pg_pool'] as pg.Pool;
+      pool.query(query, values, async (error, results) => {
         if (error) {
           response
             .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
@@ -236,7 +238,12 @@ export abstract class ApiServer implements ApiHelper {
           /* ---------------------------------
            * Process results
            * --------------------------------- */
+          const previousOwners = await this.readPreviousOwners(
+            pool,
+            results.rows.map((result: any) => result.id),
+          );
           const movements = results.rows.map((result: any) => {
+            const previousOwner = previousOwners.get(String(result.id));
             return {
               player_id: ApiHelper.addCountryCode(result.player_id, request['code']),
               player_name: result.player_name,
@@ -251,6 +258,14 @@ export abstract class ApiServer implements ApiHelper {
               position_y_old: result.position_y_old,
               position_x_new: result.position_x_new,
               position_y_new: result.position_y_new,
+              previous_owner_id: previousOwner
+                ? ApiHelper.addCountryCode(String(previousOwner.player_id), request['code'])
+                : null,
+              previous_owner_name: previousOwner?.player_name ?? null,
+              previous_owner_alliance_id: previousOwner?.alliance_id
+                ? ApiHelper.addCountryCode(String(previousOwner.alliance_id), request['code'])
+                : null,
+              previous_owner_alliance_name: previousOwner?.alliance_name ?? null,
               created_at: new Date(result.created_at).toISOString(),
             };
           });
@@ -647,5 +662,29 @@ export abstract class ApiServer implements ApiHelper {
         }
       });
     });
+  }
+
+  private static async readPreviousOwners(
+    pool: pg.Pool,
+    movementIds: string[],
+  ): Promise<
+    Map<string, { player_id: number; player_name: string; alliance_id: number | null; alliance_name: string | null }>
+  > {
+    const owners = new Map();
+    if (movementIds.length === 0) return owners;
+    try {
+      const { rows } = await pool.query(
+        `SELECT M.id, PP.id AS player_id, PP.name AS player_name, PA.id AS alliance_id, PA.name AS alliance_name
+        FROM player_castle_movements_history M
+        JOIN players PP ON PP.id = M.previous_owner_id
+        LEFT JOIN alliances PA ON PA.id = PP.alliance_id
+        WHERE M.id = ANY($1::bigint[])`,
+        [movementIds],
+      );
+      for (const row of rows) owners.set(String(row.id), row);
+    } catch (error) {
+      if ((error as { code?: string }).code !== '42703') throw error;
+    }
+    return owners;
   }
 }

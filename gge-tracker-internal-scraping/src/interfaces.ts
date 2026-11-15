@@ -56,6 +56,7 @@ export interface CastleMovement {
   position_y_old?: number;
   position_x_new?: number;
   position_y_new?: number;
+  previous_owner_id?: number | null;
 }
 
 export interface DungeonMap {

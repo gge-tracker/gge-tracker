@@ -3651,6 +3651,23 @@ protectedRoutes.get('/storms/meta', routingInstance.getStormMeta.bind(routingIns
  *                       position_y_new:
  *                         type: integer
  *                         description: The new Y position of the castle
+ *                       previous_owner_id:
+ *                         type: integer
+ *                         nullable: true
+ *                         description: >
+ *                           Player who held this castle before it was added to this player, when known. Recorded
+ *                           at capture time; older captures are inferred from the previous addition at the same
+ *                           position. Never set for main castles, nor for monuments and laboratories claimed after
+ *                           their monthly reset
+ *                       previous_owner_name:
+ *                         type: string
+ *                         nullable: true
+ *                       previous_owner_alliance_id:
+ *                         type: integer
+ *                         nullable: true
+ *                       previous_owner_alliance_name:
+ *                         type: string
+ *                         nullable: true
  *                       created_at:
  *                         type: string
  *                         description: The timestamp when the movement occurred
@@ -8033,6 +8050,70 @@ protectedRoutes.get('/offers', routingInstance.getOffers.bind(routingInstance));
  *         $ref: '#/components/responses/InternalServerError'
  */
 protectedRoutes.get('/offers/history', routingInstance.getOfferHistory.bind(routingInstance));
+
+/**
+ * @openapi
+ * /offers/past:
+ *   get:
+ *     summary: Retrieve the cash offers that left the store
+ *     description: >
+ *       Returns, for the game of the requested server and the given player profile, every offer the six-hourly
+ *       store snapshots saw but the latest snapshot no longer holds, most recently seen first, with the offer as
+ *       it was last stored (English, EUR). Empty while no snapshot exists for that game
+ *     tags:
+ *       - Offers
+ *     parameters:
+ *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - in: query
+ *         name: level
+ *         required: false
+ *         description: The level of the player (1-70). Defaults to 70
+ *         example: 70
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: legendaryLevel
+ *         required: false
+ *         description: The legendary level of the player. Ignored below level 70. Defaults to 0
+ *         example: 950
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved the past offers
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [offers]
+ *               properties:
+ *                 offers:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     required: [id, category, first_seen_at, last_seen_at, offer]
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       category:
+ *                         type: string
+ *                         description: Store category the offer was last listed in
+ *                       first_seen_at:
+ *                         type: string
+ *                         format: date-time
+ *                       last_seen_at:
+ *                         type: string
+ *                         format: date-time
+ *                         description: Last snapshot that held the offer
+ *                       offer:
+ *                         type: object
+ *                         description: The offer as the store served it in that snapshot
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+protectedRoutes.get('/offers/past', routingInstance.getPastOffers.bind(routingInstance));
 
 /**
  * @openapi
