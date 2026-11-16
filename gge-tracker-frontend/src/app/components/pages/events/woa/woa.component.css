@@ -32,10 +32,129 @@ img.points-icon::selection {
   text-align: left;
 }
 
-.woa-tickets {
-  color: white;
+.woa-competition {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
 }
 
-.woa-tickets img {
-  width: 32px;
+.woa-threshold {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.woa-threshold-label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.woa-threshold-value {
+  align-items: center;
+  color: #fff;
+  display: inline-flex;
+  font-size: 1.6rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  gap: 0.3rem;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+
+.woa-threshold-icon {
+  height: 28px;
+  width: 28px;
+}
+
+.woa-floor {
+  color: rgba(255, 215, 0, 0.85);
+  font-size: 0.78rem;
+}
+
+.woa-difficulty {
+  --difficulty-color: #8fd18f;
+  align-items: center;
+  backdrop-filter: blur(2px);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid color-mix(in srgb, var(--difficulty-color) 45%, transparent);
+  border-radius: 999px;
+  color: var(--difficulty-color);
+  display: inline-flex;
+  font-size: 0.8rem;
+  font-weight: 600;
+  gap: 0.45rem;
+  margin-bottom: 0.15rem;
+  padding: 0.2rem 0.65rem;
+}
+
+.woa-difficulty[data-difficulty='normal'] {
+  --difficulty-color: #e6d36a;
+}
+
+.woa-difficulty[data-difficulty='contested'] {
+  --difficulty-color: #f0a04b;
+}
+
+.woa-difficulty[data-difficulty='fierce'] {
+  --difficulty-color: #f26b5b;
+}
+
+.woa-meter {
+  align-items: flex-end;
+  display: inline-flex;
+  gap: 2px;
+  height: 12px;
+}
+
+.woa-meter-step {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 1px;
+  width: 4px;
+}
+
+.woa-meter-step:nth-child(1) {
+  height: 40%;
+}
+
+.woa-meter-step:nth-child(2) {
+  height: 60%;
+}
+
+.woa-meter-step:nth-child(3) {
+  height: 80%;
+}
+
+.woa-meter-step:nth-child(4) {
+  height: 100%;
+}
+
+.woa-meter-step.lit {
+  background: var(--difficulty-color);
+}
+
+.woa-facts {
+  backdrop-filter: blur(2px);
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.85);
+  display: flex;
+  padding: 0.2rem 0.7rem;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.woa-fact {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.3rem;
+}
+
+.woa-fact-icon {
+  height: 18px;
+  width: 18px;
 }

@@ -7091,7 +7091,9 @@ publicRoutes.get(
  *     summary: Retrieve list of Wheel of Affluence events
  *     description: |
  *       Returns a paginated list of all Wheel of Unimaginable Affluence (WOA) events,
- *       including participant count and total tickets spent per event.
+ *       including participant count, total tickets spent, the scores of the 1st and 10th players
+ *       and how many players reached the last prize floor. `stats` describes every event of the
+ *       server, not only the page: the prize floors and the quartiles of the 10th player's score.
  *     tags:
  *       - Wheel of Affluence
  *     parameters:
@@ -7130,6 +7132,34 @@ publicRoutes.get(
  *                       total_tickets:
  *                         type: integer
  *                         example: 25000
+ *                       top1_score:
+ *                         type: integer
+ *                         description: Tickets spent by the 1st player
+ *                         example: 1250
+ *                       top10_score:
+ *                         type: integer
+ *                         description: Tickets spent by the 10th player, the lowest score that won a top 10 prize
+ *                         example: 290
+ *                       top_floor_players:
+ *                         type: integer
+ *                         description: Players who reached the last prize floor
+ *                         example: 4
+ *                 stats:
+ *                   type: object
+ *                   properties:
+ *                     prize_floors:
+ *                       type: array
+ *                       description: Tickets a player must spend to reach prize level 2, 3, and so on
+ *                       items:
+ *                         type: integer
+ *                       example: [10, 30, 60, 100, 150, 210, 290, 390]
+ *                     top10_score_quartiles:
+ *                       type: array
+ *                       nullable: true
+ *                       description: First quartile, median and third quartile of top10_score across every event of the server
+ *                       items:
+ *                         type: integer
+ *                       example: [62, 170, 257]
  *                 pagination:
  *                   $ref: '#/components/schemas/Pagination'
  *       304:

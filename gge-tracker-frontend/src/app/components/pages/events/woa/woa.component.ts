@@ -14,6 +14,7 @@ import { RouterModule } from '@angular/router';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
+import { WOA_DIFFICULTY_LABELS, WOA_DIFFICULTY_LEVELS, WoaCompetition } from './woa-competition';
 
 interface WoaEventData {
   rank: number;
@@ -60,6 +61,8 @@ export class WoaComponent extends GenericComponent implements OnInit {
   public tableLoading = false;
   public woaCardInLoading = false;
   public cdr = inject(ChangeDetectorRef);
+  public readonly difficultyLevels = WOA_DIFFICULTY_LEVELS;
+  public readonly difficultyLabels = WOA_DIFFICULTY_LABELS;
 
   public async ngOnInit(): Promise<void> {
     this.isInLoading = true;
@@ -224,6 +227,7 @@ export class WoaComponent extends GenericComponent implements OnInit {
       date: event.date,
       playerCount: event.participants,
       totalTickets: Number.parseInt(event.total_tickets, 10) || 0,
+      competition: WoaCompetition.of(event, events.stats),
       type: 'woa',
       id: event.id,
       to: this.utilitiesService.calculateWoaEventEndTime(new Date(event.date)),

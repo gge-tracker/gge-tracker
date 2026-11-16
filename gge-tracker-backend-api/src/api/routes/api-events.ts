@@ -1113,6 +1113,7 @@ export abstract class ApiEvents implements ApiHelper {
       if (total === 0) {
         response.status(ApiHelper.HTTP_OK).send({
           events: [],
+          stats: WoaEventsCatalogCache.stats(snapshots),
           pagination: { current_page: page, total_pages: 1, current_items_count: 0, total_items_count: 0 },
         });
         return;
@@ -1133,7 +1134,7 @@ export abstract class ApiEvents implements ApiHelper {
       /* ---------------------------------
        * Send response
        * --------------------------------- */
-      const body = { events, pagination };
+      const body = { events, stats: WoaEventsCatalogCache.stats(snapshots), pagination };
       if (
         HttpCache.handleConditional(request, response, {
           etag: HttpCache.etagFromPayload(body),

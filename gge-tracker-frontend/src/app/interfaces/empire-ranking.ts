@@ -592,10 +592,17 @@ export interface LiveRankingFilters {
 
 export interface ApiWoaEventListResponse {
   pagination: ApiPagination;
+  stats?: {
+    prize_floors: number[];
+    top10_score_quartiles: [number, number, number] | null;
+  };
   events: {
     date: string;
     participants: number;
     total_tickets: string;
+    top1_score?: number;
+    top10_score?: number;
+    top_floor_players?: number;
     id: string;
   }[];
 }
@@ -1579,9 +1586,21 @@ export interface OuterEventData extends ApiSpecificEventByPlayerIdResponse {
   to: Date;
 }
 
+export type WoaDifficulty = 'calm' | 'normal' | 'contested' | 'fierce';
+
+export interface WoaEventCompetition {
+  top1Score: number;
+  top10Score: number;
+  top10Floor: number;
+  floorCount: number;
+  topFloorPlayers: number;
+  difficulty: WoaDifficulty | null;
+}
+
 export interface WoaEvent {
   playerCount: number;
   totalTickets: number;
+  competition?: WoaEventCompetition;
   id: string;
   type: string;
   from: Date;

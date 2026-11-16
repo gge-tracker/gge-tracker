@@ -11,12 +11,43 @@
                 [options]="{ displayMode: 'player-count', dateFormat: 'Date_1' }"
                 (eventClick)="onEventClick($event)"
               >
-              <div event-footer class="col-auto">
-                <div class="event-badge-header woa-tickets ms-1">
-                  <img src="/assets/woa_points.png" class="woa-icon" alt="WOA Icon">
-                  &nbsp;
-                  {{ event.totalTickets | formatNumber }}
+              @if (event.competition; as competition) {
+                <div event-body class="woa-competition">
+                  <div class="woa-threshold">
+                    <span class="woa-threshold-label">{{ 'Seuil du top 10' | translate }}</span>
+                    <span class="woa-threshold-value">
+                      {{ competition.top10Score | formatNumber }}
+                      <img src="/assets/woa_points.png" class="woa-threshold-icon" alt="">
+                    </span>
+                  </div>
+                  @if (competition.difficulty; as difficulty) {
+                    <div class="woa-difficulty" [attr.data-difficulty]="difficulty"
+                      [title]="'Comparé aux autres roues de ce serveur' | translate">
+                      <span class="woa-meter" aria-hidden="true">
+                        @for (level of difficultyLevels; track level; let index = $index) {
+                          <span class="woa-meter-step" [class.lit]="index <= difficultyLevels.indexOf(difficulty)"></span>
+                        }
+                      </span>
+                      {{ difficultyLabels[difficulty] | translate }}
+                    </div>
+                  }
                 </div>
+              }
+              <div event-footer class="woa-facts">
+                <span class="woa-fact" [title]="'Tickets dépensés' | translate">
+                  <img src="/assets/woa_points.png" class="woa-fact-icon" alt="">
+                  {{ event.totalTickets | formatNumber }}
+                </span>
+                @if (event.competition; as competition) {
+                  <span class="woa-fact" [title]="'Score du 1er' | translate">
+                    <i class="fa-solid fa-crown" aria-hidden="true"></i>
+                    {{ competition.top1Score | formatNumber }}
+                  </span>
+                  <span class="woa-fact" [title]="'Joueurs au dernier palier' | translate">
+                    <i class="fa-solid fa-stairs" aria-hidden="true"></i>
+                    {{ competition.topFloorPlayers | formatNumber }}
+                  </span>
+                }
               </div>
             </app-event-card>
             </div>
