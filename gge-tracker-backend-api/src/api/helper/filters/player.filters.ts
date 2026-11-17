@@ -29,6 +29,19 @@ export class PlayerFilters extends AbstractFilterBuilder<PlayerFilters> {
     return this.self();
   }
 
+  public leftAllianceWithin(days?: number): PlayerFilters {
+    if (days === undefined) return this.self();
+    this.add({
+      sql: `P.alliance_id IS NULL AND EXISTS (
+        SELECT 1 FROM player_alliance_update U
+        WHERE U.player_id = P.id AND U.old_alliance_id IS NOT NULL AND U.new_alliance_id IS NULL
+          AND U.created_at >= NOW() - make_interval(days => ?)
+      )`,
+      value: days,
+    });
+    return this.self();
+  }
+
   public fame(min?: number, max?: number): PlayerFilters {
     this.addMany([this.min('P.current_fame', min), this.max('P.current_fame', max)]);
     return this.self();

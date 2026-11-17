@@ -12,13 +12,17 @@ import {
   ApiPagination,
   ApiRiftRaidAlliance,
   ApiRiftRaidAllianceAnalysisResponse,
+  ApiTournamentStanding,
   ErrorType,
 } from '@ggetracker-interfaces/empire-ranking';
+import { FollowService } from '@ggetracker-services/follow.service';
 import { ServerService } from '@ggetracker-services/server.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { GrandTournamentAnalyzeComponent } from '@ggetracker-pages/grand-tournament/grand-tournament-analyze/grand-tournament-analyze.component';
 
 const RIFT_RAID_DIVISIONS = [1, 2, 3, 4, 5, 6];
+
+const MY_ALLIANCE_GRACE_MS = 800;
 
 const RIFT_RAID_DIVISION_NAMES = RIFT_RAID_DIVISIONS.map((division) => `arme_division_name_${division}`);
 
@@ -29,6 +33,12 @@ interface RiftRaidEvent {
 
 interface RiftRaidRow extends ApiRiftRaidAlliance {
   disabled: boolean;
+}
+
+interface MyAllianceStanding {
+  allianceId: number;
+  allianceName: string;
+  standing: ApiTournamentStanding;
 }
 
 @Component({
@@ -69,6 +79,8 @@ export class RiftRaidComponent extends GenericComponent implements OnInit {
   public isEventMissing = false;
   public selectedAllianceInAnalyzer: ApiRiftRaidAllianceAnalysisResponse | null = null;
   public analyzingAllianceId: number | null = null;
+  public myAlliance: MyAllianceStanding | null = null;
+  private readonly follow = inject(FollowService);
 
   constructor() {
     super();
@@ -84,7 +96,9 @@ export class RiftRaidComponent extends GenericComponent implements OnInit {
     this.division = this.parseDivision(parameters['division']);
     this.subdivision = Number(parameters['subdivision']) || 0;
     this.search = parameters['search'] ?? '';
+    const myAlliance = this.loadMyAlliance();
     await this.loadEvents(parameters['date']);
+    await Promise.race([myAlliance, new Promise((resolve) => setTimeout(resolve, MY_ALLIANCE_GRACE_MS))]);
     await this.refresh(Number(parameters['page']) || 1);
     this.isInLoading = false;
   }
@@ -106,6 +120,28 @@ export class RiftRaidComponent extends GenericComponent implements OnInit {
   public async clearSubdivisionFilter(): Promise<void> {
     this.subdivision = 0;
     await this.refresh(1);
+  }
+
+  public async showMyAllianceSubdivision(mine: MyAllianceStanding): Promise<void> {
+    this.currentDate = mine.standing.date;
+    this.division = mine.standing.division;
+    this.subdivision = mine.standing.subdivision;
+    this.search = '';
+    await this.refresh(1);
+  }
+
+  public async analyzeMyAlliance(mine: MyAllianceStanding): Promise<void> {
+    this.currentDate = mine.standing.date;
+    await this.analyzeAlliance({
+      alliance_id: mine.allianceId,
+      alliance_name: mine.allianceName,
+      server: '',
+      score: mine.standing.score,
+      division: mine.standing.division,
+      subdivision: mine.standing.subdivision,
+      rank: mine.standing.rank,
+      disabled: false,
+    });
   }
 
   public async searchAlliance(name: string): Promise<void> {
@@ -155,6 +191,21 @@ export class RiftRaidComponent extends GenericComponent implements OnInit {
     server: string;
   } {
     return { ...analysis.meta, alliance_name: analysis.meta.alliance_name ?? '' };
+  }
+
+  private async loadMyAlliance(): Promise<void> {
+    const me = this.follow.me();
+    if (!me || this.serverService.isE4kServer(me.server) !== this.serverService.isE4kServer()) return;
+    const profile = await this.apiRestService.getPlayerProfile(me.playerId, 'rank');
+    const player = profile.success ? profile.data.player : null;
+    if (!player?.alliance_id) return;
+    const standings = await this.apiRestService.getAllianceTournamentStandings(Number(player.alliance_id));
+    if (!standings.success || !standings.data.rift_raid) return;
+    this.myAlliance = {
+      allianceId: Number(player.alliance_id),
+      allianceName: player.alliance_name ?? '',
+      standing: standings.data.rift_raid,
+    };
   }
 
   private parseDivision(value: unknown): number {

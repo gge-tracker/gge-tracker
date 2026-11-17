@@ -5085,6 +5085,16 @@ publicRoutes.get('/top-players/:playerId', routingInstance.getTopPlayersByPlayer
  *             - -1
  *             - 0
  *             - 1
+ *       - name: leftAllianceDays
+ *         in: query
+ *         description: |
+ *           Only players with no alliance who left one within this many days
+ *           A value outside 1-30 is ignored
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 30
  *       - name: protectionFilter
  *         in: query
  *         description: |

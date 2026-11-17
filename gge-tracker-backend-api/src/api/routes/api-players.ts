@@ -74,6 +74,7 @@ export abstract class ApiPlayers implements ApiHelper {
         allianceRankFilter,
         kingdomFilter,
         playerNameForDistance,
+        leftAllianceDays,
         orderBy,
         orderType,
       } = parsedQuery;
@@ -179,6 +180,7 @@ export abstract class ApiPlayers implements ApiHelper {
         .legendaryLevel(minLevel[1], maxLevel[1])
         .fame(minFame, maxFame)
         .allianceStatus(allianceFilter)
+        .leftAllianceWithin(leftAllianceDays)
         .stormyIslandsFilter(stormyIslandsFilter)
         .kingdom(kingdomFilter)
         .activity(inactiveFilter)
@@ -829,6 +831,7 @@ export abstract class ApiPlayers implements ApiHelper {
       inactiveFilter: query.inactiveFilter,
       ruinFilter: query.ruinFilter,
       kingdomFilter: Array.isArray(query.kingdomFilter) ? query.kingdomFilter.join('-') : undefined,
+      leftAllianceDays: query.leftAllianceDays,
       playerNameForDistance: query.playerNameForDistance,
       allianceRankFilter: Array.isArray(query.allianceRankFilter) ? query.allianceRankFilter.join('-') : undefined,
     };

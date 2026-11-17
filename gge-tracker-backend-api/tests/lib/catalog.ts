@@ -567,7 +567,11 @@ export const CATALOG: Endpoint[] = [
     path: () => '/players' + q({ page: 1 }),
     okStatuses: [200],
     needs: ['server'],
-    fuzzQuery: ['orderBy', 'orderType', 'alliance', 'playerNameForDistance', 'allianceRankFilter'],
+    fuzzQuery: ['orderBy', 'orderType', 'alliance', 'playerNameForDistance', 'allianceRankFilter', 'leftAllianceDays'],
+    cases: [
+      { label: 'a recent alliance departure filter answers', path: () => '/players' + q({ page: 1, leftAllianceDays: 7 }), expect: [200] },
+      { label: 'a departure window past 30 days is ignored', path: () => '/players' + q({ page: 1, leftAllianceDays: 365 }), expect: [200] },
+    ],
     semantic: {
       collection: 'players',
       idField: 'player_id',

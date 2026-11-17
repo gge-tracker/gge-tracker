@@ -62,6 +62,14 @@
                   <span class="filter-preset-hint">{{ 'Joueurs actifs sans alliance' | translate }}</span>
                 </span>
               </button>
+              <button type="button" class="filter-preset" [class.filter-preset--on]="activePreset === 'recentlyLeft'"
+                [attr.aria-pressed]="activePreset === 'recentlyLeft'" (click)="togglePreset('recentlyLeft')">
+                <i class="fa-solid fa-person-walking-arrow-right filter-preset-icon" aria-hidden="true"></i>
+                <span class="filter-preset-text">
+                  <span class="filter-preset-name">{{ 'Départs récents' | translate }}</span>
+                  <span class="filter-preset-hint">{{ 'recently-left-hint' | translate: { days: recentlyLeftDays } }}</span>
+                </span>
+              </button>
               <button type="button" class="filter-preset" [class.filter-preset--on]="activePreset === 'inactiveTargets'"
                 [attr.aria-pressed]="activePreset === 'inactiveTargets'" (click)="togglePreset('inactiveTargets')">
                 <i class="fa-solid fa-crosshairs filter-preset-icon" aria-hidden="true"></i>
@@ -232,14 +240,27 @@
               <div class="filter-switch">
                 <span class="filter-switch-label"><img src="/assets/min-alliance.png" alt="" [title]="'Filtrer par alliance' | translate">{{ 'Alliance' | translate }}</span>
                 <div class="filter-switch-options" role="radiogroup" [attr.aria-label]="'Alliance' | translate">
-                  <input type="radio" class="filter-switch-input" id="noAlliance" name="alliance" value="-1" [(ngModel)]="formFilters.allianceFilter">
+                  <input type="radio" class="filter-switch-input" id="noAlliance" name="alliance" value="-1" [(ngModel)]="formFilters.allianceFilter" (ngModelChange)="onAllianceFilterChanged($event)">
                   <label class="filter-switch-option" for="noAlliance">{{ 'Pas de filtre' | translate }}</label>
-                  <input type="radio" class="filter-switch-input" id="alliance1" value="1" name="alliance" [(ngModel)]="formFilters.allianceFilter">
+                  <input type="radio" class="filter-switch-input" id="alliance1" value="1" name="alliance" [(ngModel)]="formFilters.allianceFilter" (ngModelChange)="onAllianceFilterChanged($event)">
                   <label class="filter-switch-option is-filter" for="alliance1">{{ 'Avec alliance' | translate }}</label>
-                  <input type="radio" class="filter-switch-input" id="alliance0" name="alliance" value="0" [(ngModel)]="formFilters.allianceFilter">
+                  <input type="radio" class="filter-switch-input" id="alliance0" name="alliance" value="0" [(ngModel)]="formFilters.allianceFilter" (ngModelChange)="onAllianceFilterChanged($event)">
                   <label class="filter-switch-option is-filter" for="alliance0">{{ 'Sans alliance' | translate }}</label>
                 </div>
               </div>
+              @if (formFilters.allianceFilter === '0') {
+              <div class="filter-switch">
+                <span class="filter-switch-label"><img src="/assets/min-alliance.png" alt="">{{ 'A quitté son alliance' | translate }}</span>
+                <div class="filter-switch-options" role="radiogroup" [attr.aria-label]="'A quitté son alliance' | translate">
+                  <input type="radio" class="filter-switch-input" id="leftAllianceAny" name="leftAlliance" value="" [(ngModel)]="formFilters.leftAllianceDays">
+                  <label class="filter-switch-option" for="leftAllianceAny">{{ 'Pas de filtre' | translate }}</label>
+                  <input type="radio" class="filter-switch-input" id="leftAlliance7" name="leftAlliance" value="7" [(ngModel)]="formFilters.leftAllianceDays">
+                  <label class="filter-switch-option is-filter" for="leftAlliance7">{{ 'Derniers 7 jours' | translate }}</label>
+                  <input type="radio" class="filter-switch-input" id="leftAlliance30" name="leftAlliance" value="30" [(ngModel)]="formFilters.leftAllianceDays">
+                  <label class="filter-switch-option is-filter" for="leftAlliance30">{{ 'Derniers 30 jours' | translate }}</label>
+                </div>
+              </div>
+              }
               @if (formFilters.allianceFilter !== '0') {
               <div class="filter-switch">
                 <span class="filter-switch-label">

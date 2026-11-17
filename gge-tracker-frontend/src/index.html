@@ -50,6 +50,29 @@
       }
     })();
   </script>
+  <script>
+    (function () {
+      var scenes = { '/': 'tavern', '/event-thresholds': 'climb', '/rift-raid': 'rift' };
+      var scene = scenes[location.pathname.replace(/(.)\/$/, '$1')];
+      if (!scene) return;
+      var root = '/assets/scenes/' + scene + '/';
+      var phone = document.createElement('link');
+      phone.rel = 'preload';
+      phone.as = 'image';
+      phone.href = root + 'poster-960.webp';
+      phone.media = '(max-width: 767.98px)';
+      phone.setAttribute('fetchpriority', 'high');
+      var wide = document.createElement('link');
+      wide.rel = 'preload';
+      wide.as = 'image';
+      wide.setAttribute('imagesrcset', root + 'poster-960.webp 960w, ' + root + 'poster.webp 1920w');
+      wide.setAttribute('imagesizes', '100vw');
+      wide.media = '(min-width: 768px)';
+      wide.setAttribute('fetchpriority', 'high');
+      document.head.appendChild(phone);
+      document.head.appendChild(wide);
+    })();
+  </script>
 </head>
 
 <body>

@@ -31,7 +31,9 @@ type PlayersScope = 'server' | 'global';
 
 type FilterField = 'honor' | 'loot' | 'level' | 'might' | 'mightAllTime' | 'fame' | 'castleCount' | 'allianceMight';
 
-type PlayersPreset = 'recruits' | 'inactiveTargets';
+type PlayersPreset = 'recruits' | 'recentlyLeft' | 'inactiveTargets';
+
+const RECENTLY_LEFT_DAYS = '7';
 
 interface FormFilters {
   minHonor: string;
@@ -56,6 +58,7 @@ interface FormFilters {
   isFiltered: boolean;
   inactiveFilter: string;
   ruinFilter: string;
+  leftAllianceDays: string;
   playerCastleDistance: string;
   allianceRankFilter: string[];
 }
@@ -184,6 +187,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     isFiltered: false,
     inactiveFilter: '1',
     ruinFilter: '-1',
+    leftAllianceDays: '',
     playerCastleDistance: '',
     allianceRankFilter: ['0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'],
     kingdomFilter: ['999'],
@@ -192,6 +196,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
   public defaultFormFilters!: FormFilters;
   public readonly ArrowBigRightDash = ArrowBigRightDash;
   public readonly serverService = inject(ServerService);
+  public readonly recentlyLeftDays = RECENTLY_LEFT_DAYS;
   public displayFormValues = {
     might: { min: '', max: '' },
     mightAllTime: { min: '', max: '' },
@@ -476,12 +481,16 @@ export class PlayersComponent extends GenericComponent implements OnInit {
 
   public get activePreset(): PlayersPreset | null {
     const current = JSON.stringify({ ...this.formFilters, isFiltered: false });
-    const presets: PlayersPreset[] = ['recruits', 'inactiveTargets'];
+    const presets: PlayersPreset[] = ['recruits', 'recentlyLeft', 'inactiveTargets'];
     return presets.find((preset) => JSON.stringify(this.presetState(preset)) === current) ?? null;
   }
 
   public get mePlayerName(): string | null {
     return this.followService.me()?.playerName ?? null;
+  }
+
+  public onAllianceFilterChanged(value: string): void {
+    if (value !== '0') this.formFilters.leftAllianceDays = '';
   }
 
   public togglePreset(preset: PlayersPreset): void {
@@ -700,6 +709,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
     for (const key of PlayersComponent.TRISTATE_FILTER_KEYS) base[key] = '-1';
     base.inactiveFilter = '1';
     base.playerCastleDistance = '';
+    base.leftAllianceDays = '';
     base.allianceRankFilter = base.allianceRankFilter.map(() => '0');
     base.kingdomFilter = ['999'];
     base.isFiltered = false;
@@ -707,10 +717,16 @@ export class PlayersComponent extends GenericComponent implements OnInit {
   }
 
   private presetState(preset: PlayersPreset): typeof this.formFilters {
-    const filters =
-      preset === 'recruits'
-        ? { allianceFilter: '0', banFilter: '0' }
-        : { inactiveFilter: '0', protectionFilter: '0', banFilter: '0', playerCastleDistance: this.mePlayerName ?? '' };
+    const filters = {
+      recruits: { allianceFilter: '0', banFilter: '0' },
+      recentlyLeft: { allianceFilter: '0', banFilter: '0', leftAllianceDays: RECENTLY_LEFT_DAYS },
+      inactiveTargets: {
+        inactiveFilter: '0',
+        protectionFilter: '0',
+        banFilter: '0',
+        playerCastleDistance: this.mePlayerName ?? '',
+      },
+    }[preset];
     return { ...this.presetBase(), ...filters };
   }
 
@@ -801,6 +817,7 @@ export class PlayersComponent extends GenericComponent implements OnInit {
       if (this.formFilters[key] !== '-1') filters[key] = this.formFilters[key];
     }
     if (this.formFilters.playerCastleDistance) filters['playerNameForDistance'] = this.formFilters.playerCastleDistance;
+    if (this.formFilters.leftAllianceDays) filters['leftAllianceDays'] = this.formFilters.leftAllianceDays;
     if (this.formFilters.allianceRankFilter.includes('1')) {
       filters['allianceRankFilter'] = this.formFilters.allianceRankFilter
         .map((value, index) => (value === '1' ? index : null))

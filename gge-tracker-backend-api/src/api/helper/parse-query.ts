@@ -168,6 +168,7 @@ export interface QuerySchema {
   maxActivePlayerCount: QueryField<number | undefined>;
   kingdomFilter: QueryField<number[] | undefined>;
   stormyIslandsFilter: QueryField<number | undefined>;
+  leftAllianceDays: QueryField<number | undefined>;
 }
 
 export const querySchema = (limits: {
@@ -213,6 +214,7 @@ export const querySchema = (limits: {
   minActivePlayerCount: qNumber({ min: 0, max: 65 }),
   maxActivePlayerCount: qNumber({ min: 0, max: 65 }),
   search: qString({ max: 40 }),
+  leftAllianceDays: qNumber({ min: 1, max: 30 }),
 });
 
 type InferSchema<T> = {
