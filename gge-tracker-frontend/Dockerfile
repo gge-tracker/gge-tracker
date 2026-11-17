@@ -26,6 +26,9 @@ RUN if [ "$BUILD_ENV" = "beta" ]; then \
     sed -i "3s/\"version\": \".*\"/\"version\": \"${NEW_VERSION}\"/" package.json; \
     cp src/environments/environment.production-beta.ts src/environments/environment.production.ts; \
     fi
+RUN if [ "$BUILD_ENV" = "local" ]; then \
+    cp src/environments/environment.production-local.ts src/environments/environment.production.ts; \
+    fi
 RUN npm run build --output-path=dist --configuration=production
 RUN node scripts/inject-resource-hints.mjs \
     && npx ngsw-config dist/gge-tracker-frontend/browser ngsw-config.json \
