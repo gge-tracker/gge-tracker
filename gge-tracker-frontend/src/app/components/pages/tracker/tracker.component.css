@@ -19,11 +19,6 @@
   margin-right: 0.3rem;
 }
 
-:host ::ng-deep .modal-body .table-wrapper img {
-  width: 32px;
-  height: 32px;
-}
-
 td, th {
   text-align: center;
 }
@@ -79,30 +74,6 @@ td, th {
 @keyframes dungeon-avail-grow {
   from { width: 0%; }
   to { width: 100%; }
-}
-
-.attack-stat-card {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 9px;
-  padding: 14px 10px;
-  text-align: center;
-}
-
-.attack-stat-value {
-  color: #0891b2;
-  font-size: 1.6rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.attack-stat-label {
-  color: #64748b;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  margin-top: 5px;
-  text-transform: uppercase;
 }
 
 .dungeon-header-row {

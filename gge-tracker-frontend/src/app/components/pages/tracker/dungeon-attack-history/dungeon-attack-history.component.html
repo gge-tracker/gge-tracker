@@ -1,0 +1,157 @@
+<div class="dah" [class.is-loading]="loading()" [attr.aria-busy]="loading()">
+  <div class="dah-bar">
+    <div class="dah-periods" role="radiogroup" [attr.aria-label]="'Période' | translate">
+      @for (days of periods; track days) {
+      <button type="button" class="dah-period" role="radio" [attr.aria-checked]="days === period()"
+        [class.is-on]="days === period()" (click)="period.set(days)">
+        {{ days }} {{ 'jours_j' | translate }}
+      </button>
+      }
+    </div>
+    @if (playerId() !== null) {
+    <a class="dah-profile" [href]="'/player/' + playerId()" (click)="openProfile($event)">
+      <i class="fa-solid fa-user" aria-hidden="true"></i>
+      <span>{{ 'Voir le profil du joueur' | translate }}</span>
+    </a>
+    }
+  </div>
+
+  @if (failed()) {
+  <p class="dah-empty">{{ 'Une erreur est survenue' | translate }}</p>
+  } @else if (summary().total === 0 && !loading()) {
+  <p class="dah-empty">
+    <i class="fa-solid fa-dungeon" aria-hidden="true"></i>
+    {{ 'Aucune attaque sur cette période' | translate }}
+  </p>
+  } @else {
+  <div class="dah-kpis">
+    <div class="dah-kpi">
+      <span class="dah-kpi__label">{{ 'Attaques' | translate }}</span>
+      <span class="dah-kpi__value">{{ formatNumber(summary().total) }}</span>
+    </div>
+    <div class="dah-kpi">
+      <span class="dah-kpi__label">{{ 'Moyenne par jour' | translate }}</span>
+      <span class="dah-kpi__value">{{ formatNumber(summary().averagePerDay, 1) }}</span>
+    </div>
+    <div class="dah-kpi">
+      <span class="dah-kpi__label">{{ 'Jours actifs' | translate }}</span>
+      <span class="dah-kpi__value">
+        {{ summary().activeDays }}<small>/ {{ summary().coveredDays }}</small>
+      </span>
+    </div>
+    <div class="dah-kpi">
+      <span class="dah-kpi__label">{{ 'Dernière attaque' | translate }}</span>
+      @if (summary().lastAttackAt; as lastAttackAt) {
+      <span class="dah-kpi__value dah-kpi__value--text" [title]="formatDate(lastAttackAt)">
+        {{ formatRelative(lastAttackAt) }}
+      </span>
+      <span class="dah-kpi__hint">{{ formatDate(lastAttackAt) }}</span>
+      } @else {
+      <span class="dah-kpi__value">-</span>
+      }
+    </div>
+  </div>
+
+  <section class="dah-card">
+    <header class="dah-card__head">
+      <h6 class="dah-card__title">
+        {{ (summary().bucket === 'day' ? 'Attaques par jour' : 'Attaques par semaine') | translate }}
+      </h6>
+      <ul class="dah-legend">
+        @for (realm of realmLegend(); track realm.id) {
+        <li>
+          <span class="dah-legend__swatch" [style.background]="realm.color"></span>
+          {{ realm.name | translate }}
+          <strong>{{ formatNumber(realm.count) }}</strong>
+        </li>
+        }
+      </ul>
+    </header>
+    <div class="dah-chart">
+      @if (isBrowser && chart().series!.length > 0) {
+      <app-charts-wrapper [series]="chart().series!" [chart]="chart().chart" [xaxis]="chart().xaxis!"
+        [yaxis]="chart().yaxis!" [plotOptions]="chart().plotOptions!" [dataLabels]="chart().dataLabels!"
+        [legend]="chart().legend!" [tooltip]="chart().tooltip!" [grid]="chart().grid!" />
+      }
+    </div>
+  </section>
+
+  <div class="dah-split">
+    <section class="dah-card dah-card--heat">
+      <header class="dah-card__head">
+        <h6 class="dah-card__title">{{ "Heures d'activité" | translate }}</h6>
+        <span class="dah-card__note">{{ 'Heure locale' | translate }}</span>
+      </header>
+      <div class="dah-heat" role="img" [attr.aria-label]="'Heures d\'activité' | translate">
+        @for (row of heatmap(); track $index; let day = $index) {
+        <span class="dah-heat__day">{{ weekdays()[day] }}</span>
+        @for (cell of row; track $index) {
+        <span class="dah-heat__cell" [class.is-empty]="cell.level === 0" [style.--level]="cell.level"
+          [title]="cell.label"></span>
+        }
+        }
+        <span></span>
+        @for (hour of hours; track hour) {
+        <span class="dah-heat__hour">{{ hourTicks.has(hour) ? hour : '' }}</span>
+        }
+      </div>
+    </section>
+
+    <section class="dah-card">
+      <header class="dah-card__head">
+        <h6 class="dah-card__title">{{ 'Forteresses les plus attaquées' | translate }}</h6>
+      </header>
+      <ol class="dah-targets">
+        @for (target of topTargets(); track target.kid + ':' + target.x + ':' + target.y) {
+        <li class="dah-target">
+          <img [src]="realmIcon(target.kid)" [alt]="realmName(target.kid)" width="28" height="28">
+          <span class="dah-target__place">
+            <span class="dah-target__position">{{ target.x }}:{{ target.y }}</span>
+            <span class="dah-target__when" [title]="formatDate(target.lastAttackAt)">
+              {{ formatRelative(target.lastAttackAt) }}
+            </span>
+          </span>
+          <span class="dah-target__count">{{ formatNumber(target.count) }}&times;</span>
+          <button type="button" class="dah-locate" [title]="'Voir sur la carte' | translate"
+            [attr.aria-label]="'Voir sur la carte' | translate" (click)="showOnMap(target)">
+            <i class="fa-solid fa-map-location-dot" aria-hidden="true"></i>
+          </button>
+        </li>
+        }
+      </ol>
+    </section>
+  </div>
+
+  <section class="dah-card dah-card--table">
+    <header class="dah-card__head">
+      <h6 class="dah-card__title">{{ 'Toutes les attaques' | translate }}</h6>
+    </header>
+    <app-modal-table [items]="attacks()" [columns]="columns" [rowTemplate]="attackRow" [searchFilter]="searchFilter"
+      [resetKey]="playerId() + ':' + period()" defaultSortColumn="attackedAt" [defaultSortAscending]="false" />
+  </section>
+  }
+</div>
+
+<ng-template #attackRow let-attack>
+  <tr>
+    <td>
+      <span class="dah-realm">
+        <img [src]="realmIcon(attack.kid)" alt="" width="24" height="24">
+        <span class="dah-realm__name dungeon-{{ attack.kid }}">{{ realmName(attack.kid) }}</span>
+      </span>
+    </td>
+    <td class="dah-mono">
+      <span class="dah-position">
+        {{ attack.x }}:{{ attack.y }}
+        <button type="button" class="dah-locate" [title]="'Voir sur la carte' | translate"
+          [attr.aria-label]="'Voir sur la carte' | translate" (click)="showOnMap(attack)">
+          <i class="fa-solid fa-map-location-dot" aria-hidden="true"></i>
+        </button>
+      </span>
+    </td>
+    <td>
+      <span class="dah-date">{{ formatDate(attack.attackedAt) }}</span>
+      <span class="dah-date__ago">{{ formatRelative(attack.attackedAt) }}</span>
+    </td>
+  </tr>
+</ng-template>

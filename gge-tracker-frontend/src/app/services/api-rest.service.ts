@@ -251,9 +251,13 @@ export class ApiRestService {
     );
   }
 
-  public async getDungeonsByPlayerId(playerId: number): Promise<ApiResponse<ApiDungeonsByPlayerIdResponse>> {
+  public async getDungeonsByPlayerId(
+    playerId: number,
+    lastDays?: number,
+  ): Promise<ApiResponse<ApiDungeonsByPlayerIdResponse>> {
+    const query = lastDays === undefined ? '' : `?lastDays=${lastDays}`;
     const response = await this.apiFetch<ApiDungeonsByPlayerIdResponse>(
-      `${ApiRestService.apiUrl}dungeons/player/${playerId}`,
+      `${ApiRestService.apiUrl}dungeons/player/${playerId}${query}`,
     );
     if (!response.success) return response;
     return { success: true, data: response.data };

@@ -1,0 +1,449 @@
+:host {
+  color: var(--modal-ink);
+  display: block;
+}
+
+.dah {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  transition: opacity 0.2s ease;
+}
+
+.dah.is-loading {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.dah-bar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: space-between;
+}
+
+.dah-periods {
+  background: var(--modal-surface-sunken);
+  border: 1px solid var(--modal-line);
+  border-radius: 10px;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+}
+
+.dah-period {
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  color: var(--modal-ink-soft);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 550;
+  min-width: 3.25rem;
+  padding: 0.3rem 0.7rem;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.dah-period:hover:not(.is-on) {
+  background: var(--modal-field);
+  color: var(--modal-ink);
+}
+
+.dah-period.is-on {
+  background: var(--modal-accent);
+  color: #fff;
+}
+
+.dah-period:focus-visible,
+.dah-profile:focus-visible,
+.dah-locate:focus-visible {
+  box-shadow: 0 0 0 3px var(--modal-focus);
+  outline: none;
+}
+
+.dah-profile {
+  align-items: center;
+  background: var(--modal-accent-soft);
+  border: 1px solid rgba(130, 150, 255, 0.3);
+  border-radius: 10px;
+  color: var(--modal-accent-ink);
+  display: inline-flex;
+  font-size: 0.85rem;
+  font-weight: 600;
+  gap: 0.45rem;
+  padding: 0.38rem 0.8rem;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.dah-profile:hover {
+  background: rgba(93, 117, 255, 0.26);
+  color: #c7d1ff;
+}
+
+.dah-empty {
+  align-items: center;
+  background: var(--modal-surface-sunken);
+  border: 1px dashed var(--modal-line-strong);
+  border-radius: 12px;
+  color: var(--modal-ink-soft);
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+  margin: 0;
+  padding: 2.5rem 1rem;
+}
+
+.dah-kpis {
+  display: grid;
+  gap: 0.625rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.dah-kpi {
+  background: var(--modal-surface-raised);
+  border: 1px solid var(--modal-line);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+  padding: 0.75rem 0.9rem;
+}
+
+.dah-kpi__label {
+  color: var(--modal-ink-faint);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dah-kpi__value {
+  color: var(--modal-ink);
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.dah-kpi__value small {
+  color: var(--modal-ink-faint);
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-left: 0.25rem;
+}
+
+.dah-kpi__value--text {
+  font-size: 1.15rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dah-kpi__hint {
+  color: var(--modal-ink-soft);
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dah-card {
+  background: var(--modal-surface-raised);
+  border: 1px solid var(--modal-line);
+  border-radius: 12px;
+  min-width: 0;
+  padding: 0.85rem 1rem 0.9rem;
+}
+
+.dah-card__head {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+
+.dah-card__title {
+  color: var(--modal-ink);
+  font-size: 0.9rem;
+  font-weight: 650;
+  margin: 0;
+}
+
+.dah-card__note {
+  color: var(--modal-ink-faint);
+  font-size: 0.75rem;
+}
+
+.dah-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.9rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dah-legend li {
+  align-items: center;
+  color: var(--modal-ink-soft);
+  display: inline-flex;
+  font-size: 0.78rem;
+  gap: 0.4rem;
+}
+
+.dah-legend strong {
+  color: var(--modal-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.dah-legend__swatch {
+  border-radius: 3px;
+  height: 10px;
+  width: 10px;
+}
+
+.dah-chart {
+  min-height: 240px;
+}
+
+.dah-chart ::ng-deep .apexcharts-tooltip.apexcharts-theme-dark {
+  background: var(--modal-surface-sunken);
+  border: 1px solid var(--modal-line-strong);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.dah-chart ::ng-deep .apexcharts-tooltip.apexcharts-theme-dark .apexcharts-tooltip-title {
+  background: var(--modal-surface);
+  border-bottom-color: var(--modal-line);
+  font-weight: 600;
+}
+
+.dah-split {
+  display: grid;
+  gap: 0.875rem;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+}
+
+.dah-card--heat {
+  display: flex;
+  flex-direction: column;
+}
+
+.dah-heat {
+  align-items: stretch;
+  display: grid;
+  flex: 1;
+  gap: 3px;
+  grid-template-columns: auto repeat(24, minmax(0, 1fr));
+  grid-template-rows: repeat(7, minmax(16px, 1fr)) auto;
+}
+
+.dah-heat__day {
+  align-self: center;
+  color: var(--modal-ink-soft);
+  font-size: 0.72rem;
+  padding-right: 0.4rem;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.dah-heat__cell {
+  background: color-mix(in srgb, var(--modal-accent-hover) calc(18% + var(--level) * 82%), var(--modal-surface-sunken));
+  border-radius: 3px;
+}
+
+.dah-heat__cell.is-empty {
+  background: var(--modal-surface-sunken);
+}
+
+.dah-heat__cell:hover {
+  outline: 1px solid var(--modal-ink);
+  outline-offset: 1px;
+}
+
+.dah-heat__hour {
+  color: var(--modal-ink-faint);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.dah-targets {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dah-target {
+  align-items: center;
+  background: var(--modal-surface-sunken);
+  border: 1px solid var(--modal-line);
+  border-radius: 10px;
+  display: flex;
+  gap: 0.65rem;
+  padding: 0.35rem 0.4rem 0.35rem 0.55rem;
+}
+
+.dah-target img {
+  flex-shrink: 0;
+}
+
+.dah-target__place {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.dah-target__position {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.dah-target__when {
+  color: var(--modal-ink-faint);
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dah-target__count {
+  color: var(--modal-accent-ink);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.dah-locate {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--modal-ink-soft);
+  display: inline-flex;
+  flex-shrink: 0;
+  height: 32px;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+  width: 32px;
+}
+
+.dah-locate:hover {
+  background: var(--modal-field);
+  color: #38bdf8;
+}
+
+.dah-card--table {
+  padding-bottom: 0.5rem;
+}
+
+.dah-realm {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.5rem;
+}
+
+.dah-realm__name {
+  font-weight: 600;
+}
+
+.dungeon-1 {
+  color: #d57026;
+}
+
+.dungeon-2 {
+  color: #6aa6d6;
+}
+
+.dungeon-3 {
+  color: #cbb674;
+}
+
+.dah-mono {
+  font-variant-numeric: tabular-nums;
+}
+
+.dah-date {
+  display: block;
+  font-variant-numeric: tabular-nums;
+}
+
+.dah-date__ago {
+  color: var(--modal-ink-faint);
+  display: block;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 991.98px) {
+  .dah-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 767.98px) {
+  .dah-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dah-profile span {
+    display: none;
+  }
+
+  .dah-heat {
+    gap: 2px;
+  }
+
+  .dah-heat__hour {
+    font-size: 0.6rem;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .dah-realm__name {
+    display: none;
+  }
+
+  .dah-card {
+    padding-left: 0.6rem;
+    padding-right: 0.6rem;
+  }
+
+  .dah-card--table ::ng-deep .modern-table th,
+  .dah-card--table ::ng-deep .modern-table td {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+}
+
+@media (pointer: coarse) {
+  .dah-locate {
+    height: 40px;
+    width: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dah,
+  .dah-period,
+  .dah-profile,
+  .dah-locate {
+    transition: none;
+  }
+}
+
+.dah-position {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.15rem;
+  white-space: nowrap;
+}

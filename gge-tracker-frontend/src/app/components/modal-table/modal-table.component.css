@@ -148,13 +148,12 @@
 .pagination-modern {
   border-top: 1px solid var(--border);
   padding: 9px 14px;
-  background: #f9f9f9;
-
+  background: var(--gge-parchment-deep);
 }
 
 .pagination-modern .btn {
   align-items: center;
-  background: #f8fafc;
+  background: var(--gge-parchment-light);
   border-radius: 999px;
   border: 1px solid var(--border);
   color: var(--text-secondary);
@@ -178,9 +177,9 @@
 }
 
 .pagination-modern .btn:disabled {
-  color: #cbd5e1;
+  color: var(--muted);
   cursor: not-allowed;
-  opacity: 1;
+  opacity: 0.4;
   pointer-events: none;
 }
 

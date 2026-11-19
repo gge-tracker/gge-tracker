@@ -151,7 +151,7 @@
                   {{ dungeon.playerName }}
                   <button type="button" class="pointer modal-info button-reset"
                     [title]="'Cliquez pour plus d\'informations' | translate"
-                    (click)="getDungeonsByPlayerId(dungeon)"
+                    (click)="selectAttackHistoryPlayer(dungeon.playerId, dungeon.playerName)"
                     data-bs-toggle="modal"
                     data-bs-target="#dungeonHistoryModal">
                     <i class="fa-solid fa-history ms-1" aria-hidden="true"></i>
@@ -283,108 +283,20 @@
 
   <div class="modal fade" id="dungeonHistoryModal" tabindex="-1" aria-labelledby="dungeonHistoryModalLabel"
     aria-hidden="true">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="dungeonHistoryModalLabel">
-            <i class="fa-solid fa-clock-rotate-left"></i>&nbsp;{{ 'Historique des attaques' | translate }}
-            ({{ selectedPlayerName }})
-            - {{ 'Forteresses' | translate }}
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <span class="text-truncate">{{ 'Historique des attaques' | translate }} - {{ selectedPlayerName }}</span>
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"
             [attr.aria-label]="'Fermer' | translate"></button>
         </div>
         <div class="modal-body">
-          <ul class="nav nav-tabs mb-3">
-            <li class="nav-item">
-              <button class="nav-link" [class.active]="activeTab === 'list'" (click)="activeTab = 'list'">
-                <i class="fa-solid fa-list me-1"></i>{{ 'Données' | translate }}
-              </button>
-            </li>
-            <li class="nav-item">
-              <button class="nav-link" [class.active]="activeTab === 'graph'" (click)="activeTab = 'graph'">
-                <i class="fa-solid fa-chart-line me-1"></i>{{ 'Graphique' | translate }}
-              </button>
-            </li>
-          </ul>
-          @if (activeTab === 'list') {
-            <app-modal-table
-              [items]="playerDungeonAttackHistory"
-              [columns]="dungeonHistoryColumns"
-              [rowTemplate]="dungeonHistoryRow"
-              [searchFilter]="dungeonHistorySearchFilter"
-              [resetKey]="selectedPlayerName"
-              defaultSortColumn="attacked_at"
-            />
-          }
-          @if (activeTab === 'graph') {
-            <div class="row g-3 mb-4">
-              <div class="col-4">
-                <div class="attack-stat-card">
-                  <div class="attack-stat-value">{{ attackStats.last24h }}</div>
-                  <div class="attack-stat-label">{{ 'Dernières 24h' | translate }}</div>
-                </div>
-              </div>
-              <div class="col-4">
-                <div class="attack-stat-card">
-                  <div class="attack-stat-value">{{ attackStats.last7d }}</div>
-                  <div class="attack-stat-label">{{ 'Derniers 7 jours' | translate }}</div>
-                </div>
-              </div>
-              <div class="col-4">
-                <div class="attack-stat-card">
-                  <div class="attack-stat-value">{{ attackStats.last30d }}</div>
-                  <div class="attack-stat-label">{{ 'Derniers 30 jours' | translate }}</div>
-                </div>
-              </div>
-            </div>
-            @if (attackChart && isBrowser) {
-              <div class="mb-3">
-                <app-charts-wrapper
-                  [series]="attackChart.series!"
-                  [chart]="attackChart.chart"
-                  [xaxis]="attackChart.xaxis!"
-                  [yaxis]="attackChart.yaxis!"
-                  [stroke]="attackChart.stroke!"
-                  [colors]="attackChart.colors!"
-                  [markers]="attackChart.markers!"
-                  [tooltip]="attackChart.tooltip!"
-                  [grid]="attackChart.grid!"
-                />
-              </div>
-            }
-            @if (attacksPerDayChart && isBrowser) {
-              <app-charts-wrapper
-                [series]="attacksPerDayChart.series!"
-                [chart]="attacksPerDayChart.chart"
-                [xaxis]="attacksPerDayChart.xaxis!"
-                [yaxis]="attacksPerDayChart.yaxis!"
-                [plotOptions]="attacksPerDayChart.plotOptions!"
-                [colors]="attacksPerDayChart.colors!"
-                [dataLabels]="attacksPerDayChart.dataLabels!"
-                [tooltip]="attacksPerDayChart.tooltip!"
-                [grid]="attacksPerDayChart.grid!"
-              />
-            }
-            @if (!attackChart && !isInLoading) {
-              <p class="text-muted text-center py-4">{{ 'Aucune cible à attaquer n\'a été trouvée' | translate }}</p>
-            }
-          }
+          <app-dungeon-attack-history [playerId]="historyPlayerId" (locate)="locateOnMap($event)" />
         </div>
       </div>
     </div>
   </div>
 </div>
-
-<ng-template #dungeonHistoryRow let-attack>
-  <tr>
-    <td>
-      <div class="d-flex justify-content-center">
-        <img [src]="attack.image" alt="{{ attack.kid }}" class="img-fluid" width="30" />
-        <span class="ms-2 dungeon-{{ attack.kid }}">{{ getRealmName(attack.kid) | translate }}</span>
-      </div>
-    </td>
-    <td>{{ attack.position_x }}:{{ attack.position_y }}</td>
-    <td>{{ attack.attacked_at | date:'short' }}</td>
-  </tr>
-</ng-template>

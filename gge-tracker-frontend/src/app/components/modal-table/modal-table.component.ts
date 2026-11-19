@@ -28,6 +28,7 @@ export class ModalTableComponent<T> {
   public readonly rowTemplate = input.required<TemplateRef<{ $implicit: T }>>();
 
   public readonly defaultSortColumn = input<string>();
+  public readonly defaultSortAscending = input(true);
   public readonly pageSize = input<number>(10);
 
   /**
@@ -65,7 +66,7 @@ export class ModalTableComponent<T> {
       this.resetKey();
       this.searchTerm = '';
       this.currentPage = 1;
-      this.sortAsc = true;
+      this.sortAsc = untracked(() => this.defaultSortAscending());
       this.sortColumn = untracked(() => this.defaultSortColumn());
     });
   }

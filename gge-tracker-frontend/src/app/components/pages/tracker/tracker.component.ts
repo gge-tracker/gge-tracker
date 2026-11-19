@@ -9,13 +9,9 @@ import { RealmMapLocateRequest } from '@ggetracker-components/realm-map/realm-ma
 import { ServerUnavailableNoticeComponent } from '@ggetracker-components/server-unavailable-notice/server-unavailable-notice.component';
 import { TrackerView, ViewSwitchComponent } from '@ggetracker-components/view-switch/view-switch.component';
 import { ModalFormGroupComponent } from '@ggetracker-components/modal-form-group/modal-form-group.component';
-import { ModalTableColumn, ModalTableComponent } from '@ggetracker-components/modal-table/modal-table.component';
-import { ChartsWrapperComponent } from '@ggetracker-modules/charts-client/charts-wrapper.component';
 import {
-  ApiDungeonsAttackHistory,
   ApiDungeonsMetaResponse,
   ApiDungeonsResponse,
-  ChartAdvancedOptions,
   Dungeon,
   ErrorType,
   KingdomRealm,
@@ -27,13 +23,12 @@ import { ServerService } from '@ggetracker-services/server.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { LucideAngularModule, MessageCircleQuestion, Search, X } from 'lucide-angular';
 import { DUNGEON_REALMS, DungeonMapComponent, DungeonMapFocus } from './dungeon-map/dungeon-map.component';
+import {
+  DungeonAttackHistoryComponent,
+  DungeonLocation,
+} from './dungeon-attack-history/dungeon-attack-history.component';
 import Modal from 'bootstrap/js/dist/modal';
 import { PunctuationPipe } from '@ggetracker-pipes/punctuation.pipe';
-
-interface DungeonAttackHistory extends ApiDungeonsAttackHistory {
-  image: string;
-  id: string;
-}
 
 @Component({
   selector: 'app-tracker',
@@ -50,10 +45,9 @@ interface DungeonAttackHistory extends ApiDungeonsAttackHistory {
     DurationPipe,
     FormsModule,
     DatePipe,
-    ModalTableComponent,
     ModalFormGroupComponent,
-    ChartsWrapperComponent,
     DungeonMapComponent,
+    DungeonAttackHistoryComponent,
     ViewSwitchComponent,
   ],
   standalone: true,
@@ -71,20 +65,11 @@ export class TrackerComponent extends GenericComponent {
   public view: TrackerView = 'list';
   public mapRealmId = DUNGEON_REALMS[0].id;
   public mapFocus: DungeonMapFocus | null = null;
-  public playerDungeonAttackHistory: DungeonAttackHistory[] = [];
+  public historyPlayerId: number | null = null;
   public selectedPlayerName: string | null = null;
-  public activeTab: 'list' | 'graph' = 'list';
-  public attackChart: ChartAdvancedOptions | null = null;
-  public attacksPerDayChart: ChartAdvancedOptions | null = null;
-  public attackStats: { last24h: number; last7d: number; last30d: number } = { last24h: 0, last7d: 0, last30d: 0 };
   public readonly Search = Search;
   public readonly X = X;
   public readonly MessageCircleQuestionMark = MessageCircleQuestion;
-  public readonly dungeonHistoryColumns: ModalTableColumn[] = [
-    { label: 'Royaume', sortKey: 'kid' },
-    { label: 'Position' },
-    { label: "Date de l'attaque", sortKey: 'attacked_at' },
-  ];
 
   public pageSize = 15;
   public refreshDataAnimationSpinner = false;
@@ -148,12 +133,16 @@ export class TrackerComponent extends GenericComponent {
   }
 
   public showOnMap(dungeon: Dungeon): void {
-    this.mapRealmId = dungeon.kid;
+    this.locateOnMap({ kid: dungeon.kid, x: dungeon.positionX, y: dungeon.positionY });
+  }
+
+  public locateOnMap(location: DungeonLocation): void {
+    this.mapRealmId = location.kid;
     this.mapFocus = {
-      id: `${dungeon.kid}:${dungeon.positionX}:${dungeon.positionY}`,
-      kingdomId: dungeon.kid,
-      x: dungeon.positionX,
-      y: dungeon.positionY,
+      id: `${location.kid}:${location.x}:${location.y}`,
+      kingdomId: location.kid,
+      x: location.x,
+      y: location.y,
     };
     this.setView('map');
   }
@@ -169,41 +158,15 @@ export class TrackerComponent extends GenericComponent {
   }
 
   public openAttackHistory(attacker: { playerId: string; playerName: string }): void {
-    void this.loadAttackHistory(Number(attacker.playerId), attacker.playerName);
+    this.selectAttackHistoryPlayer(Number(attacker.playerId), attacker.playerName);
     const modal = document.querySelector('#dungeonHistoryModal');
     if (modal) Modal.getOrCreateInstance(modal).show();
   }
 
-  public async getDungeonsByPlayerId(dungeon: Dungeon): Promise<void> {
-    if (dungeon.playerId === undefined) return;
-    await this.loadAttackHistory(dungeon.playerId, dungeon.playerName ?? '?');
-  }
-
-  public async loadAttackHistory(playerId: number, playerName: string): Promise<void> {
-    this.isInLoading = true;
-    this.activeTab = 'list';
-    this.selectedPlayerName = playerName;
-    await this.apiRestService.getDungeonsByPlayerId(playerId).then((response) => {
-      if (!response.success) {
-        this.isInLoading = false;
-        this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
-        return;
-      }
-      this.playerDungeonAttackHistory = response.data.dungeons.map((dungeon) => ({
-        ...dungeon,
-        image: this.getDungeonImage(dungeon.kid),
-        id:
-          dungeon.kid.toString() +
-          '_' +
-          dungeon.position_x.toString() +
-          '_' +
-          dungeon.position_y.toString() +
-          '_' +
-          dungeon.attacked_at,
-      }));
-      this.buildAttackChart(this.playerDungeonAttackHistory);
-      this.isInLoading = false;
-    });
+  public selectAttackHistoryPlayer(playerId: number | undefined, playerName: string | undefined): void {
+    if (playerId === undefined) return;
+    this.historyPlayerId = playerId;
+    this.selectedPlayerName = playerName ?? '?';
   }
 
   public get allowedServers(): string[] {
@@ -370,14 +333,6 @@ export class TrackerComponent extends GenericComponent {
     const availableAt = new Date(dungeon.effectiveCooldownUntil);
     return availableAt > now;
   }
-
-  public readonly dungeonHistorySearchFilter = (item: DungeonAttackHistory, term: string): boolean => {
-    return (
-      this.translateService.instant(this.getRealmName(item.kid)).toLowerCase().includes(term) ||
-      `${item.position_x}:${item.position_y}`.includes(term) ||
-      item.attacked_at.toLowerCase().includes(term)
-    );
-  };
 
   public onStateChange(state: keyof typeof this.states): void {
     this.selectedState = state;
@@ -572,73 +527,6 @@ export class TrackerComponent extends GenericComponent {
         availabilityExceeded,
       };
     });
-  }
-
-  private buildAttackChart(history: DungeonAttackHistory[]): void {
-    if (history.length === 0) {
-      this.attackChart = null;
-      this.attacksPerDayChart = null;
-      this.attackStats = { last24h: 0, last7d: 0, last30d: 0 };
-      return;
-    }
-
-    const now = Date.now();
-    const MS_24H = 24 * 3600 * 1000;
-    const MS_7D = 7 * 24 * 3600 * 1000;
-    const MS_30D = 30 * 24 * 3600 * 1000;
-    this.attackStats = {
-      last24h: history.filter((a) => now - new Date(a.attacked_at).getTime() <= MS_24H).length,
-      last7d: history.filter((a) => now - new Date(a.attacked_at).getTime() <= MS_7D).length,
-      last30d: history.filter((a) => now - new Date(a.attacked_at).getTime() <= MS_30D).length,
-    };
-
-    const sorted = [...history].sort((a, b) => new Date(a.attacked_at).getTime() - new Date(b.attacked_at).getTime());
-    this.attackChart = {
-      series: [
-        {
-          name: this.translateService.instant('Attaques cumulées'),
-          data: sorted.map((attack, index) => ({ x: new Date(attack.attacked_at).getTime(), y: index + 1 })),
-        },
-      ],
-      chart: {
-        type: 'line',
-        height: 260,
-        animations: { enabled: false },
-        toolbar: { show: false },
-        zoom: { type: 'x', enabled: true },
-      },
-      stroke: { curve: 'stepline', width: 2 },
-      xaxis: { type: 'datetime' },
-      yaxis: { min: 0, forceNiceScale: true, labels: { formatter: (v: number): string => Math.round(v).toString() } },
-      colors: ['#0891b2'],
-      markers: { size: 4 },
-      tooltip: { x: { format: 'dd/MM/yy HH:mm:ss' } },
-      grid: { borderColor: '#e2e8f0' },
-    };
-
-    const dayMap = new Map<string, number>();
-    for (const attack of history) {
-      const d = new Date(attack.attacked_at);
-      const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      dayMap.set(day, (dayMap.get(day) ?? 0) + 1);
-    }
-    const days = [...dayMap.entries()].sort(([a], [b]) => a.localeCompare(b));
-    this.attacksPerDayChart = {
-      series: [
-        {
-          name: this.translateService.instant('Attaques par jour'),
-          data: days.map(([day, count]) => ({ x: new Date(`${day}T12:00:00`).getTime(), y: count })),
-        },
-      ],
-      chart: { type: 'bar', height: 220, animations: { enabled: false }, toolbar: { show: false } },
-      xaxis: { type: 'datetime', labels: { format: 'dd/MM' } },
-      yaxis: { min: 0, forceNiceScale: true, labels: { formatter: (v: number): string => Math.round(v).toString() } },
-      plotOptions: { bar: { columnWidth: '60%', borderRadius: 3 } },
-      colors: ['#059669'],
-      dataLabels: { enabled: false },
-      tooltip: { x: { format: 'dd/MM/yyyy' } },
-      grid: { borderColor: '#e2e8f0' },
-    };
   }
 
   private getDungeonImage(kid: number): string {
