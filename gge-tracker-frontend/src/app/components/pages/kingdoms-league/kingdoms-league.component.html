@@ -63,7 +63,7 @@
         </div>
 
         <div class="mb-3">
-          <app-search-form [formFilters]="searchFormFilters" [filtersModalId]="filtersModalId" [isInLoading]="isInLoading"
+          <app-search-form [suggestionsEnabled]="scope === 'server'" [formFilters]="searchFormFilters" [filtersModalId]="filtersModalId" [isInLoading]="isInLoading"
             [inputTip]="(tab === 'players' ? 'Rechercher un joueur' : 'Rechercher une alliance') | translate"
             [defaultSearch]="search" [searchTypes]="{ player: true, alliance: true }"
             (searchPlayer)="searchPlayer($event)" (searchAlliance)="searchAlliance($event)">

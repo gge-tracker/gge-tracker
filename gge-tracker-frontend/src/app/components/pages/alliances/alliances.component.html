@@ -20,6 +20,7 @@
   <div class="row">
     <div class="col-12" [ngClass]="{'loading': isInLoading}">
       <app-search-form
+        [suggestionsEnabled]="true"
         [isInLoading]="isInLoading"
         [formFilters]="formFilters"
         [inputTip]="'Rechercher une alliance' | translate"

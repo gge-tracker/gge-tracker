@@ -3,6 +3,7 @@ import {
   ChangeDetectorRef,
   Component,
   computed,
+  DestroyRef,
   inject,
   input,
   OnChanges,
@@ -10,17 +11,21 @@ import {
   output,
   SimpleChanges,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { SearchType } from '@ggetracker-interfaces/empire-ranking';
+import { ApiRestService } from '@ggetracker-services/api-rest.service';
+import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { UtilitiesService } from '@ggetracker-services/utilities.service';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { Download, Eraser, Filter, HardDrive, LucideAngularModule, Search } from 'lucide-angular';
 import { FilterComponent } from '../filter/filter.component';
+import { SearchSuggestion, SearchSuggestions } from './search-suggestions';
 
 @Component({
   selector: 'app-search-form',
   standalone: true,
-  imports: [FormsModule, TranslateModule, LucideAngularModule, FilterComponent],
+  imports: [FormsModule, TranslateModule, LucideAngularModule, FilterComponent, FormatNumberPipe],
   templateUrl: './search-form.component.html',
   styleUrl: './search-form.component.css',
 })
@@ -47,6 +52,8 @@ export class SearchFormComponent implements OnChanges, OnInit {
   public alliancePlaceholder = input<string>();
   public countFilterActivated = 0;
   public translateService = inject(TranslateService);
+  public suggestionsEnabled = input<boolean>(false);
+  public readonly suggestions = new SearchSuggestions(inject(ApiRestService), () => this.suggestedTypes());
 
   public searchType = computed(() => {
     const types = this.searchTypes();
@@ -69,6 +76,55 @@ export class SearchFormComponent implements OnChanges, OnInit {
   });
 
   private readonly cdr = inject(ChangeDetectorRef);
+
+  constructor() {
+    this.suggestions
+      .results()
+      .pipe(takeUntilDestroyed(inject(DestroyRef)))
+      .subscribe((items) => this.suggestions.show(items));
+  }
+
+  public onSearchChange(term: string): void {
+    if (this.suggestionsEnabled()) this.suggestions.type(term);
+  }
+
+  public onKeydown(event: KeyboardEvent): void {
+    if (!this.suggestionsEnabled()) {
+      if (event.key === 'Enter') this.onEnterSearch();
+      return;
+    }
+    switch (event.key) {
+      case 'Enter': {
+        const active = this.suggestions.active();
+        if (active) this.pickSuggestion(active);
+        else this.closeAndSearch();
+        break;
+      }
+      case 'Escape': {
+        this.suggestions.close();
+        break;
+      }
+      case 'ArrowDown':
+      case 'ArrowUp': {
+        if (this.suggestions.items().length === 0) return;
+        event.preventDefault();
+        this.suggestions.move(event.key === 'ArrowDown' ? 1 : -1);
+        break;
+      }
+    }
+  }
+
+  public pickSuggestion(suggestion: SearchSuggestion): void {
+    this.suggestions.close();
+    this.search = suggestion.name;
+    if (suggestion.type === 'player') this.onPlayerSearch();
+    else this.onAllianceSearch();
+  }
+
+  public isFirstOfType(index: number): boolean {
+    const items = this.suggestions.items();
+    return this.suggestedTypes().length > 1 && (index === 0 || items[index - 1].type !== items[index].type);
+  }
 
   public ngOnInit(): void {
     this.updateNbFilterActivated();
@@ -97,18 +153,21 @@ export class SearchFormComponent implements OnChanges, OnInit {
   }
 
   public onPlayerSearch(): void {
+    this.suggestions.close();
     this.searchFixed = this.search;
     this.searchPlayer.emit(this.searchFixed);
     this.saveResultForHistory('player', this.searchFixed);
   }
 
   public onAllianceSearch(): void {
+    this.suggestions.close();
     this.searchFixed = this.search;
     this.searchAlliance.emit(this.searchFixed);
     this.saveResultForHistory('alliance', this.searchFixed);
   }
 
   public onReset(): void {
+    this.suggestions.close();
     this.search = '';
     this.searchFixed = '';
     this.searchPlayer.emit('');
@@ -179,5 +238,15 @@ export class SearchFormComponent implements OnChanges, OnInit {
     }
     this.countFilterActivated = nb;
     this.cdr.detectChanges();
+  }
+
+  private closeAndSearch(): void {
+    this.suggestions.close();
+    this.onEnterSearch();
+  }
+
+  private suggestedTypes(): SearchType[] {
+    const types = this.searchTypes();
+    return (Object.keys(types) as SearchType[]).filter((key) => types[key]);
   }
 }

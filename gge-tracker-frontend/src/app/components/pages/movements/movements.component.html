@@ -1,7 +1,7 @@
 <div class="container my-3 movements">
   <div class="row">
     <div class="col-12" [ngClass]="{'loading': isInLoading}">
-      <app-search-form #searchForm [isInLoading]="isInLoading" [formFilters]="formFilters"
+      <app-search-form #searchForm [isInLoading]="isInLoading" [formFilters]="formFilters" [suggestionsEnabled]="true"
         [inputTip]="'Rechercher un joueur ou une alliance' | translate" [searchTypes]="{
           player: true,
           alliance: true

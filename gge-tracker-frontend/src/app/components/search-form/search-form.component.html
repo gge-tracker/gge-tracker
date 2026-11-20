@@ -2,14 +2,47 @@
   <div class="search-container row">
     <div class="search-input-wrapper col-12 col-lg">
       <input
-        [attr.list]="listId()"
+        [attr.list]="suggestionsEnabled() ? null : listId()"
         [placeholder]="inputTip()"
         [title]="title()"
-        (keydown.enter)="onEnterSearch()"
+        (keydown)="onKeydown($event)"
+        (ngModelChange)="onSearchChange($event)"
+        (blur)="suggestions.close()"
         type="text"
         class="search-input"
+        autocomplete="off"
+        [attr.role]="suggestionsEnabled() ? 'combobox' : null"
+        [attr.aria-autocomplete]="suggestionsEnabled() ? 'list' : null"
+        [attr.aria-expanded]="suggestionsEnabled() ? suggestions.items().length > 0 : null"
+        [attr.aria-controls]="suggestionsEnabled() ? 'search-suggestions' : null"
+        [attr.aria-activedescendant]="suggestions.activeIndex() >= 0 ? 'search-suggestion-' + suggestions.activeIndex() : null"
         [(ngModel)]="search"
-         [attr.aria-label]="inputTip()"/>
+        [attr.aria-label]="inputTip()"/>
+      @if (suggestions.items().length > 0) {
+        <ul class="search-suggestions" role="listbox" id="search-suggestions">
+          @for (suggestion of suggestions.items(); track suggestion.type + suggestion.id; let index = $index) {
+            @if (isFirstOfType(index)) {
+              <li class="search-suggestions-group" role="presentation">
+                {{ (suggestion.type === 'player' ? 'Joueurs' : 'Alliances') | translate }}
+              </li>
+            }
+            <li role="option" [id]="'search-suggestion-' + index" [attr.aria-selected]="index === suggestions.activeIndex()">
+              <button type="button" tabindex="-1" class="search-suggestion" [class.active]="index === suggestions.activeIndex()"
+                [class.search-suggestion-alliance]="suggestion.type === 'alliance'"
+                (mousedown)="$event.preventDefault(); pickSuggestion(suggestion)"
+                (mouseenter)="suggestions.activeIndex.set(index)">
+                <span class="search-suggestion-name">{{ suggestion.name }}</span>
+                <span class="search-suggestion-meta">
+                  <span>{{ suggestion.might | formatNumber }}</span>
+                  @if (suggestion.detail !== null) {
+                    <span class="search-suggestion-detail">{{ suggestion.detail }}</span>
+                  }
+                </span>
+              </button>
+            </li>
+          }
+        </ul>
+      }
       <datalist id="search-list">
         @for (search of getSearchHistory('all'); track search) {
           <option [value]="search"></option>

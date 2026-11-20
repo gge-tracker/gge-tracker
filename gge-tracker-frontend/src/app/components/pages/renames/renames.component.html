@@ -2,6 +2,7 @@
   <div class="row">
     <div class="col-12" [ngClass]="{'loading': isInLoading}">
       <app-search-form
+        [suggestionsEnabled]="true"
         [formFilters]="null"
         [isInLoading]="isInLoading"
         [inputTip]="currentViewType === 'players' ? ('Rechercher un joueur ou une alliance' | translate) : ('Rechercher une alliance' | translate)"
