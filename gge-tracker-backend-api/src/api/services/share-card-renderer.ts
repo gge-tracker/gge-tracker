@@ -90,7 +90,7 @@ export abstract class ShareCardRenderer {
       await page.setContent(html, { waitUntil: 'load' });
       const image = await page.screenshot({ type: 'jpeg', quality: 85 });
       return Buffer.from(image);
-    });
+    }, 'low');
   }
 
   private static titleSize(title: string): number {

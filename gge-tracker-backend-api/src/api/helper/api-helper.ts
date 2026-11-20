@@ -37,6 +37,7 @@ export abstract class ApiHelper {
   public static readonly BULK_REQUEST_MAX_IDS = 100;
   public static readonly HTTP_OK = Status.OK;
   public static readonly HTTP_CREATED = Status.CREATED;
+  public static readonly HTTP_FOUND = Status.FOUND;
   public static readonly HTTP_BAD_REQUEST = Status.BAD_REQUEST;
   public static readonly HTTP_UNAUTHORIZED = Status.UNAUTHORIZED;
   public static readonly HTTP_FORBIDDEN = Status.FORBIDDEN;

@@ -6,7 +6,9 @@ import { ApiHelper } from '../helper/api-helper';
 import { ClientIp } from '../helper/client-ip';
 import { HttpCache } from '../helper/http-cache';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
+import { RenderBusyError } from '../managers/puperteer.manager';
 import { ApiProfiles, ProfileContext } from './api-profiles';
+import { SearchCrawler } from '../helper/search-crawler';
 import { SeoHead } from '../helper/seo-head';
 import {
   SHARE_CARD_TEMPLATE_VERSION,
@@ -68,7 +70,22 @@ export abstract class ApiSeo implements ApiHelper {
     key: string,
     render: () => Promise<Buffer>,
   ): Promise<void> {
-    const image = await this.cachedCard(request, key, render);
+    const image = await this.cachedCard(request, key, render).catch((error: unknown) => {
+      if (error instanceof RenderBusyError) return 'busy' as const;
+      throw error;
+    });
+    if (image === 'search-crawler') {
+      response.setHeader('Cache-Control', 'no-store');
+      response.redirect(ApiHelper.HTTP_FOUND, SeoHead.genericImage());
+      return;
+    }
+    if (image === 'busy') {
+      response.setHeader('Retry-After', '120');
+      response
+        .status(ApiHelper.HTTP_SERVICE_UNAVAILABLE)
+        .send({ error: RouteErrorMessagesEnum.GenericServiceUnavailable });
+      return;
+    }
     if (!image) {
       response.setHeader('Retry-After', '60');
       response.status(ApiHelper.HTTP_TOO_MANY_REQUESTS).send({ error: RouteErrorMessagesEnum.RateLimited });
@@ -91,7 +108,10 @@ export abstract class ApiSeo implements ApiHelper {
   ): Promise<void> {
     try {
       const preview = await this.preview(subject, rawId);
-      const etag = HttpCache.etagFromCacheKey(`seo-head:${preview.cacheKey}:${SeoHead.siteUrl()}:${SeoHead.apiUrl()}`);
+      const forSearch = SearchCrawler.matches(request);
+      const etag = HttpCache.etagFromCacheKey(
+        `seo-head:${preview.cacheKey}:${forSearch ? 'search' : 'unfurl'}:${SeoHead.siteUrl()}:${SeoHead.apiUrl()}`,
+      );
       if (
         HttpCache.handleConditional(request, response, {
           etag,
@@ -102,7 +122,7 @@ export abstract class ApiSeo implements ApiHelper {
         return;
       }
       response.setHeader('Content-Type', 'text/html; charset=utf-8');
-      response.status(ApiHelper.HTTP_OK).send(this.toHeadDocument(preview));
+      response.status(ApiHelper.HTTP_OK).send(this.toHeadDocument(preview, forSearch));
     } catch (error) {
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
@@ -136,16 +156,17 @@ export abstract class ApiSeo implements ApiHelper {
     }
   }
 
-  /** Null when the image must be rendered and the caller spent its render budget */
+  /** Null when the image must be rendered and the caller spent its render budget; search crawlers never start one */
   private static async cachedCard(
     request: express.Request,
     key: string,
     render: () => Promise<Buffer>,
-  ): Promise<Buffer | null> {
+  ): Promise<Buffer | 'search-crawler' | null> {
     const cached = await ApiHelper.redisClient
       .get(commandOptions({ returnBuffers: true }), key)
       .catch((): null => null);
     if (cached) return cached;
+    if (SearchCrawler.matches(request) && key !== this.genericCardKey()) return 'search-crawler';
     if (!(await this.withinRenderBudget(request))) return null;
     const image = await render();
     void ApiHelper.redisClient.setEx(key, this.CARD_TTL_SECONDS, image).catch((): null => null);
@@ -167,6 +188,10 @@ export abstract class ApiSeo implements ApiHelper {
       if (error instanceof RateLimiterRes) return false;
       throw error;
     }
+  }
+
+  private static genericCardKey(): string {
+    return this.cardKey(this.genericPreview().card);
   }
 
   private static cardKey(card: ShareCard): string {
@@ -380,15 +405,17 @@ export abstract class ApiSeo implements ApiHelper {
     };
   }
 
-  private static toHeadDocument(preview: SharePreview): string {
+  // Search engines fetched ~64k distinct cards in two weeks for a thumbnail nobody sees, against ~500 real unfurls
+  private static toHeadDocument(preview: SharePreview, forSearch: boolean): string {
     return SeoHead.render({
       path: preview.path,
       title: preview.title,
       description: preview.description,
       heading: preview.card.title,
-      image: preview.found
-        ? `${SeoHead.apiUrl()}/assets/og${preview.path}.jpg?v=${this.cardDigest(preview.card)}`
-        : SeoHead.genericImage(),
+      image:
+        preview.found && !forSearch
+          ? `${SeoHead.apiUrl()}/assets/og${preview.path}.jpg?v=${this.cardDigest(preview.card)}`
+          : SeoHead.genericImage(),
       imageAlt: preview.imageAlt,
       indexable: preview.found,
       type: preview.found ? 'profile' : 'website',

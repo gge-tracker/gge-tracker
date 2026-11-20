@@ -5,6 +5,7 @@ import * as fs from 'node:fs';
 import path from 'node:path';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
+import { RenderBusyError } from '../managers/puperteer.manager';
 import { PrecompressedJson } from '../helper/cache/precompressed-json';
 import { HttpCache } from '../helper/http-cache';
 import { TemporaryServerSettings } from '../helper/temporary-server-settings';
@@ -327,6 +328,13 @@ export abstract class ApiAssets implements ApiHelper {
       response.setHeader('Vary', 'Accept');
       response.status(ApiHelper.HTTP_OK).send(useWebp ? rendered.webp : rendered.png);
     } catch (error) {
+      if (error instanceof RenderBusyError) {
+        response.setHeader('Retry-After', '30');
+        response
+          .status(ApiHelper.HTTP_SERVICE_UNAVAILABLE)
+          .send({ error: RouteErrorMessagesEnum.GenericServiceUnavailable });
+        return;
+      }
       const { code, message } = ApiHelper.getHttpMessageResponse(ApiHelper.HTTP_INTERNAL_SERVER_ERROR);
       response.status(code).send({ error: message });
       ApiHelper.logError(error, 'getGeneratedImage', request);
@@ -502,6 +510,7 @@ export abstract class ApiAssets implements ApiHelper {
     const failedKey = `assets_render_failed_${version}_${this.symbolCacheName(asset, symbol)}`;
     if (await ApiHelper.redisClient.get(failedKey)) return null;
     const rendered = await this.renderAndCache(version, asset, symbol).catch((error: unknown) => {
+      if (error instanceof RenderBusyError) throw error;
       ApiHelper.logError(error, 'renderAndCache');
       return null;
     });
