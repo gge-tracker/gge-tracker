@@ -20,6 +20,7 @@
 	<xs:element name="root">
 		<xs:complexType>
 			<xs:sequence>
+				<xs:element name="subset" type="xs:boolean" minOccurs="0" />
 				<xs:element name="servers">
 					<xs:complexType>
 						<xs:sequence>

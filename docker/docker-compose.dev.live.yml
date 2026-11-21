@@ -1,0 +1,34 @@
+##########################################################################################
+#                     This file is part of the gge-tracker project.                      #
+#        Copyrights (c) 2026 - gge-tracker.com & gge-tracker contributors                #
+##########################################################################################
+
+services:
+  empire-api:
+    extends:
+      service: empire-api
+      file: docker/docker-compose.common.yml
+    image: empire-api:local
+    container_name: empire-api-container
+    command: !reset null
+    volumes: !override
+      - ./empire-api/src/data:/app/data
+      - ./empire-api/src/config:/app/config:ro
+      - ./gge-tracker-backend-api/config:/app/servers:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('node:http').get('http://127.0.0.1:3000/status', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+
+  empire-api-realtime:
+    extends:
+      service: empire-api-realtime
+      file: docker/docker-compose.common.yml
+    image: empire-api:local
+    container_name: empire-api-container-realtime
+    command: !reset null
+    volumes: !override
+      - ./empire-api/src/data:/app/data
+      - ./empire-api/src/config:/app/config:ro
+      - ./gge-tracker-backend-api/config:/app/servers:ro

@@ -1,0 +1,9 @@
+{
+ "server": "EmpireEx_3",
+ "command": "gbl",
+ "return_code": 0,
+ "content": {
+  "BL": [],
+  "ABL": []
+ }
+}

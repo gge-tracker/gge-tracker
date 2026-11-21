@@ -23,6 +23,7 @@ export interface Seeds {
   woaEventId?: string;
   woaEventDate?: string;
   woaPlayerId?: string;
+  miniGameId?: number;
   movementPlayerName?: string;
   renamePlayerName?: string;
   stormOccupierName?: string;
@@ -95,9 +96,17 @@ export async function bootstrap(): Promise<Seeds> {
       if (found.status === 200) {
         seeds.castlePlayerName = name;
         if (id) seeds.castlePlayerId = String(id);
+        // /castle/random picks another castle every run, which a snapshot of its analysis cannot follow
+        const castles = Array.isArray(found.body) ? found.body : [];
+        const main = castles.find((candidate: any) => candidate?.type === 1 && candidate?.kingdomId === 0) ?? castles[0];
+        if (main?.id) seeds.castleId = String(main.id);
         break;
       }
     }
+
+    const dailyGame = await request({ path: '/mini-games/daily', headers: header });
+    const miniGameId = Number(dailyGame.body?.id);
+    if (Number.isInteger(miniGameId) && miniGameId > 0) seeds.miniGameId = miniGameId;
 
     const woaRes = await request({ path: '/woa/events?page=1', headers: header });
     const woaEvent = woaRes.body?.events?.[0];

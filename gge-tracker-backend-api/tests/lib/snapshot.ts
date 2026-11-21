@@ -27,7 +27,7 @@ export interface Baseline {
 }
 
 const TESTS_ROOT = resolve(__dirname, '..');
-const FIXTURE_DIR = resolve(TESTS_ROOT, '../../database/fixtures/data');
+const FIXTURE_DIR = resolve(TESTS_ROOT, '../../database/fixtures/generated/fixture');
 
 function normalise(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(normalise);

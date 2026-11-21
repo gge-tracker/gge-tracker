@@ -74,3 +74,61 @@ jobs:
         run: npm run build -- --output-path=dist --configuration=production
       - name: Docker Build
         run: docker build --target build -t frontend-check .
+  # ---------------------------
+  # Fresh clone: the README installation, then the API harness against the fixture
+  # ---------------------------
+  gge_tracker_fresh_clone:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Detect stack changes
+        id: changes
+        uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
+        with:
+          filters: |
+            stack:
+              - '.env.example'
+              - 'database/**'
+              - 'docker/**'
+              - 'docker-compose.yaml'
+              - 'gge-tracker-backend-api/**'
+              - 'gge-tracker-tools/dev-setup.sh'
+      - name: Setup Node.js
+        if: steps.changes.outputs.stack == 'true'
+        uses: actions/setup-node@v3
+        with:
+          node-version: 24
+      - name: Prepare the clone
+        if: steps.changes.outputs.stack == 'true'
+        run: ./gge-tracker-tools/dev-setup.sh
+      - name: Let the backend container write to the checkout
+        if: steps.changes.outputs.stack == 'true'
+        run: chmod -R a+rwX gge-tracker-backend-api
+      - name: Start the databases and the bridge mocks
+        if: steps.changes.outputs.stack == 'true'
+        run: docker compose up -d --wait postgres clickhouse redis-server empire-api empire-api-realtime loki
+      - name: Load the fixture
+        if: steps.changes.outputs.stack == 'true'
+        run: ./database/fixtures/load-fixtures.sh
+      - name: Start the mocked backend
+        if: steps.changes.outputs.stack == 'true'
+        run: |
+          docker compose up -d --build backend-express-rest-api-mocked
+          for attempt in $(seq 1 90); do
+            [ "$(curl -s -o /dev/null -w '%{http_code}' -H 'gge-server: FR1' http://localhost:3002/api/v1/players)" = 200 ] && exit 0
+            sleep 2
+          done
+          docker logs backend-container-mocked
+          exit 1
+      - name: API harness
+        if: steps.changes.outputs.stack == 'true'
+        working-directory: gge-tracker-backend-api
+        env:
+          TEST_API_BASE_URL: http://localhost:3002/api/v1
+          TEST_TRACE_FAILURES: '1'
+        run: |
+          npm ci --ignore-scripts
+          npx ts-node --project tests/tsconfig.json tests/run.ts openapi coverage functional semantic oracle dungeons snapshot
+      - name: Backend logs on failure
+        if: failure() && steps.changes.outputs.stack == 'true'
+        run: docker logs backend-container-mocked 2>&1 | tail -200

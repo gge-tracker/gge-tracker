@@ -2,5 +2,5 @@
   "verbose": true,
   "ignore": ["dist", "node_modules", "src/assets", "tests", "src/api/assets/cache", "src/api/assets"],
   "ext": "ts",
-  "exec": "ts-node ./src/api/main.ts"
+  "exec": "[ -f dist/documentation.json ] || ts-node ./src/documentation.ts ./src/api/main.ts; ts-node ./src/api/main.ts"
 }

@@ -43,15 +43,82 @@ A comprehensive tracking tool for the game "<a href="https://empire.goodgamestud
 
 ## Installation
 
+Docker with the compose v2 plugin, `git` and `python3` are all a fresh clone needs.
+
 ```bash
-# Clone the repository
 git clone https://github.com/gge-tracker/gge-tracker.git && cd gge-tracker
-# Create a .env file in the root directory with necessary environment variables (see .env.example for reference)
-cp .env.example .env && nano .env
-# Start the application using Docker Compose (Install Docker and Docker Compose if not already installed)
-docker network create backend
-docker-compose up --build
+# .env, servers.xml and the empire-api config from their examples, the `backend` network,
+# and the translations cloned next to the repository (../i18n). Never overwrites a file.
+./gge-tracker-tools/dev-setup.sh
+
+docker compose up -d postgres clickhouse redis-server empire-api empire-api-realtime loki
+./database/fixtures/load-fixtures.sh
+docker compose up -d backend-express-rest-api-dev backend-express-rest-api-mocked frontend-angular-node
 ```
+
+The site is then on `http://localhost:4200`, served from the test fixture: two servers of generated data, every
+name and number invented, built from a fixed seed so every machine gets the same rows. `servers.example.xml`
+describes only its two servers, FR1 and INT1 (plus GLOBAL, the shared database). Nothing reaches production or the game:
+the game bridge is replaced by a mock that replays recorded answers. The first start of a backend
+downloads the game's public asset files once.
+
+### Generating a server
+
+The test fixture ends on a fixed date, so the tests never move. To work on any server of
+`servers.xml` with data that ends now instead:
+
+```bash
+./database/fixtures/generate.sh FR1 --players 2000 --days 14 --seed 1
+```
+
+It invents the players and alliances (names included), places their castles on the map around
+their alliance, and writes everything the site shows for a server: hourly might, loot and glory
+history ending now (weekly loot resets at the server's declared reset), the renames, alliance moves
+and castle movements that lead to the current state, hourly statistics, the ranked events, the
+Wheel of Affluence, dungeons around the realm castles, the storm map and its aquamarine standings
+on storm servers, and the server's rows of the global ranking and the daily game. With FR1 among
+the servers it also writes the Outer Realms and Beyond the Horizon rankings, which the API reads
+from FR1's database. The mock game bridge answers castle searches and analyses from the same
+players. The same seed gives the same data; it runs in a Node container, so it needs nothing on
+the host but Docker.
+
+Generating FR1 or INT1 replaces the fixture the API tests run against;
+`./database/fixtures/load-fixtures.sh` puts it back.
+
+### Collecting your own data
+
+Generated data looks right but is invented. To fill the site with real data from your own game account instead, start from a stack where the fixture was never loaded:
+
+```bash
+# 1. Your accounts: one per zone, in credentials.json (hourly fill) and credentials_gbl.json
+#    (storms, dungeons, outer realms); the zones they may open in instances.json / instances_gbl.json
+nano empire-api/src/config/credentials.json
+
+# 2. An empty, current schema for every server of servers.xml (database/schema/ + database/migrations/)
+docker compose up -d postgres clickhouse redis-server loki
+./database/init-empty.sh
+
+# 3. The real bridge in place of the recorded mock, on the same address
+docker compose -f docker-compose.yaml -f docker/docker-compose.dev.live.yml up -d --build empire-api empire-api-realtime
+
+# 4. One hourly fill of FR1, then the site
+./gge-tracker-internal-scraping/scripts/build-docker-image.sh
+./gge-tracker-internal-scraping/scripts/run-docker-fetch.sh FR1
+docker compose up -d backend-express-rest-api-dev frontend-angular-node
+```
+
+`scripts/` holds the other collectors (dungeons, storms, outer realms...); a cron line per job
+is how the site runs them. To collect a server the example does not describe, add it to
+`gge-tracker-backend-api/config/servers.xml` on the model of FR1 (`config/servers.xsd` is the schema),
+run `init-empty.sh` again, and enable it in `<api><beta|public><enabled>`. Once the file describes
+every server of `GgeTrackerServersEnum`, remove `<subset>true</subset>`: the API then refuses a file
+that drops one.
+
+### Schema changes
+
+`database/schema/` is the schema the migrations start from, and `database/migrations/` every change made since. Each
+file is rerunnable and skips the databases it does not belong to, so the loaders apply them all,
+every time. Add one there for any schema change; `apply-migrations.sh` routes the ClickHouse ones.
 
 Node 24 (`.nvmrc`) is expected for running any of the projects outside Docker.
 
@@ -97,7 +164,7 @@ The backend and the scraper each ship a test harness that prints the same report
 writes a per-run trace under `tests/.trace/`.
 
 ```bash
-# Backend API - runs against the committed fixture in database/fixtures/
+# Backend API - runs against the generated test fixture (FR1 + INT1, seed 1, ending 2026-11-15)
 docker compose up -d postgres clickhouse redis-server empire-api empire-api-realtime loki
 ./database/fixtures/load-fixtures.sh
 docker compose up -d backend-express-rest-api-mocked
@@ -128,14 +195,17 @@ Contributions are welcome!
 ```Shell
 ├── database
 │   ├── conf # ClickHouse and MariaDB configuration files
-│   ├── fixtures # Committed test fixture (PostgreSQL + ClickHouse dumps, empire-api mock)
+│   ├── fixtures # Test fixture loader, empire-api mock, generated sets (git-ignored)
+│   │   └── generator # Random but coherent data for any server of servers.xml (generate.sh)
 │   ├── internal # Operational dump scripts
-│   └── db_migrate.sh # Database migration script
+│   ├── schema # The database schema the migrations start from
+│   ├── migrations # Every schema change since, applied by both loaders
+│   └── init-empty.sh # Empty schema for every server of servers.xml, to collect your own data
 ├── docker
 │   ├── docker-compose.common.yml # Service definitions shared by every environment
 │   ├── docker-compose.dev.yml # Development stack with the monitoring services
 │   ├── docker-compose.dev.override.yml # Default dev stack (three backends + fixture mocks)
-│   └── docker-compose.prod.yml # Production stack
+│   └── docker-compose.dev.live.yml # The real game bridge in place of the mock, for your own data
 ├── empire-api # REST ⇄ WebSocket bridge (custom fork of danadum/empire-api)
 │   ├── src/config # Instance and credential files, bind-mounted read-only at runtime
 │   └── tests # Memory, reconnect and live suites

@@ -70,7 +70,7 @@ if [ "$EARLY_SECONDS" -gt "$MAX_EARLY_SECONDS" ]; then
 fi
 
 echo "This writes the Chronicle with data up to $UNTIL ($(date -u -d "@$UNTIL_EPOCH" '+%F %T') UTC) and holds the fills back while it runs."
-read -r -p "Type APPLY to write it to production: " answer
+read -r -p "Type APPLY to write it to the databases of .env: " answer
 if [ "$answer" != "APPLY" ]; then
     echo "Nothing written."
     exit 1

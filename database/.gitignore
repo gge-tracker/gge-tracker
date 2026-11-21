@@ -1,5 +1,7 @@
 internal/
-logs/*
-**/seed.sql
-fixtures
 backup/pull*
+fixtures/dump-fixtures.sh
+fixtures/remote-dump.sh
+fixtures/capture-empire-api.sh
+fixtures/generated/*
+!fixtures/generated/.gitkeep

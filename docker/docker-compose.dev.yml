@@ -86,8 +86,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      # database-migrate:
-      #   condition: service_completed_successfully
 
   # Redis server for caching and session management, used by backend services
   redis-server:
@@ -155,11 +153,6 @@ services:
     depends_on:
       grafana:
         condition: service_healthy
-
-  # database-migrate:
-  #   extends:
-  #     service: database-migrate
-  #     file: docker/docker-compose.common.yml
 
 volumes:
   db_data:

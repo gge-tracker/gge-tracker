@@ -80,54 +80,54 @@ describe('unwrapLoot', () => {
     const readings = replay('twoWrapsInOneWeek');
     assert.deepEqual(
       readings.filter((reading) => reading.kind === 'wrapped').map((reading) => reading.at),
-      ['2026-10-01T20:37:10Z', '2026-10-03T20:37:10Z'],
+      ['2026-10-01T05:37:11Z', '2026-10-04T14:37:10Z'],
     );
-    assert.equal(at(readings, '2026-10-01T20:37:10Z').point, R + 114_387_403);
-    assert.equal(at(readings, '2026-10-04T21:37:10Z').point, 2 * R + 368_248_298, 'the real peak of the week');
+    assert.equal(at(readings, '2026-10-01T05:37:11Z').point, R + 3_122_151);
+    assert.equal(at(readings, '2026-10-04T21:37:11Z').point, 2 * R + 393_039_735, 'the real peak of the week');
     assertNeverDecreasesWithinAWeek(readings);
   });
 
   it('starts the next week from the counter, never from the previous week', () => {
     const readings = replay('twoWrapsInOneWeek');
-    assert.deepEqual(at(readings, '2026-09-27T22:37:10Z'), {
-      at: '2026-09-27T22:37:10Z',
-      raw: 9_082_637,
-      point: 9_082_637,
+    assert.deepEqual(at(readings, '2026-09-27T22:37:12Z'), {
+      at: '2026-09-27T22:37:12Z',
+      raw: 7_164_219,
+      point: 7_164_219,
       kind: 'fresh',
     });
-    assert.equal(at(readings, '2026-10-04T22:37:11Z').point, 4_306_544);
+    assert.equal(at(readings, '2026-10-04T22:37:11Z').point, 3_918_406);
   });
 
   it('follows a player gaining over a billion an hour through three wraps in one day', () => {
     const readings = replay('threeWrapsInOneDay');
     assert.equal(readings.filter((reading) => reading.kind === 'wrapped').length, 3);
-    assert.equal(readings.at(-1)!.point, 3 * R + 3_623_475_249);
+    assert.equal(readings.at(-1)!.point, 3 * R + 2_655_490_171);
     assertNeverDecreasesWithinAWeek(readings);
   });
 
-  it('accepts the fastest wrap measured in production, about 2 billion in one hour', () => {
+  it('accepts a wrap at about 2 billion in one hour, the fastest gain production has measured', () => {
     const wrap = at(replay('wrapAtTwoBillionPerHour'), '2026-07-25T13:32:08Z');
-    assert.deepEqual([wrap.kind, wrap.point], ['wrapped', R + 1_915_034_107]);
+    assert.deepEqual([wrap.kind, wrap.point], ['wrapped', R + 1_674_913_511]);
   });
 
   it('keeps a wrap that lands in the last hour before the reset, when the gain matches the last hour', () => {
     const readings = replay('wrapRightBeforeReset');
-    const wrap = at(readings, '2026-06-28T21:33:11Z');
-    assert.deepEqual([wrap.kind, wrap.point], ['wrapped', R + 6_493_854]);
+    const wrap = at(readings, '2026-06-28T21:33:09Z');
+    assert.deepEqual([wrap.kind, wrap.point], ['wrapped', R + 6_487_331]);
     assert.equal(at(readings, '2026-06-28T23:33:07Z').kind, 'fresh', 'and the reset still starts a new week');
   });
 
   it('reads an early reset on a WORLD server as a reset, not as 4 billion points', () => {
     const reading = at(replay('earlyResetOnWorld'), '2026-09-13T22:05:07Z');
-    assert.deepEqual([reading.kind, reading.point], ['early-reset', 103_561]);
+    assert.deepEqual([reading.kind, reading.point], ['early-reset', 98_204]);
   });
 
   it('starts the AU1 week an hour earlier once Sydney is on summer time', () => {
     const readings = replay('sydneySummerTime');
     assert.deepEqual(at(readings, '2026-10-04T13:19:08Z'), {
       at: '2026-10-04T13:19:08Z',
-      raw: 106_513,
-      point: 106_513,
+      raw: 101_877,
+      point: 101_877,
       kind: 'fresh',
     });
     assert.equal(at(readings, '2026-10-04T14:19:07Z').kind, 'counted');
@@ -135,7 +135,7 @@ describe('unwrapLoot', () => {
 
   it('stores a small mid-week decrease as it is', () => {
     const reading = at(replay('smallDecrease'), '2026-09-09T15:42:07Z');
-    assert.deepEqual([reading.kind, reading.point], ['decreased', 5_515_149]);
+    assert.deepEqual([reading.kind, reading.point], ['decreased', 5_333_588]);
   });
 
   it('keeps the wraps already counted this week through a decrease', () => {

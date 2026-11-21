@@ -292,7 +292,7 @@ export abstract class ApiMiniGame implements ApiHelper {
     serverName: string,
   ): Promise<void> {
     const table = 'mini_games';
-    const apiSearchCastleUrl = 'https://api.gge-tracker.com/api/v1/castle/search';
+    const apiSearchCastleUrl = `${(process.env.BACKEND_API_URI || 'https://api.gge-tracker.com').replace(/\/+$/, '')}/api/v1/castle/search`;
 
     // Step 1 : Select a random player from the database
     const playerQuery = `

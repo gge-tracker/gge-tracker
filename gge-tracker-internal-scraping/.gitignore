@@ -6,3 +6,4 @@ logs/*.sh
 tests/fixtures/identity-map.json
 tests/.trace/
 backups/
+tests/capture/

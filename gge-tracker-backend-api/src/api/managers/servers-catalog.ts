@@ -67,7 +67,7 @@ export class ServersCatalog {
    * The enum is what the code names a server by, so a key the file no longer describes is fatal;
    * the other way round only means the file knows a server the code has no constant for yet
    */
-  private static enumDrift(definitions: IServerDefinition[]): string[] {
+  private static enumDrift(definitions: IServerDefinition[], subset: boolean): string[] {
     const names = new Set(definitions.map((definition) => definition.name));
     const missing = Object.keys(GgeTrackerServersEnum).filter((key) => !names.has(key));
     const unknown = definitions
@@ -81,7 +81,12 @@ export class ServersCatalog {
         `[SERVERS] not in GgeTrackerServersEnum, usable but not addressable by constant: ${unknown.join(', ')}`,
       );
     }
-    return missing.length > 0 ? [`GgeTrackerServersEnum declares ${missing.join(', ')}, the file does not`] : [];
+    if (missing.length === 0) return [];
+    if (subset) {
+      console.warn(`[SERVERS] subset file, ${missing.length} GgeTrackerServersEnum servers are not described`);
+      return [];
+    }
+    return [`GgeTrackerServersEnum declares ${missing.join(', ')}, the file does not`];
   }
 
   private static isCalendarDate(value: string): boolean {
@@ -164,6 +169,7 @@ export class ServersCatalog {
     if (!rows) throw new Error(`No root > servers > server element in ${this.file}`);
     const problems: string[] = [];
     const definitions = (Array.isArray(rows) ? rows : [rows]).map((row) => this.toDefinition(row, problems));
+    problems.push(...ServersCatalog.enumDrift(definitions, this.flag(document.root.subset)));
     return { definitions, problems };
   }
 
@@ -270,7 +276,6 @@ export class ServersCatalog {
         problems.push(`${definition.name} needs a tracked-since as YYYY-MM-DD, got "${definition.trackedSince}"`);
       }
     }
-    problems.push(...ServersCatalog.enumDrift(definitions));
     return problems;
   }
 }

@@ -430,5 +430,10 @@ export function buildOpenApiSpecification(apis: string[] = options.apis): Record
 }
 
 if (require.main === module) {
-  fs.writeFileSync('./dist/documentation.json', JSON.stringify(buildOpenApiSpecification(), null, 2));
+  const sources = process.argv.slice(2);
+  fs.mkdirSync('./dist', { recursive: true });
+  fs.writeFileSync(
+    './dist/documentation.json',
+    JSON.stringify(buildOpenApiSpecification(sources.length > 0 ? sources : options.apis), null, 2),
+  );
 }

@@ -263,20 +263,14 @@ describe('fillLootHistory past 2^32', () => {
         decreased: 0,
         refused: 0,
         earlyReset: 0,
-        moves: [
-          {
-            player: Number(first[2].OID),
+        moves: [first, second]
+          .map(([, score, player]) => ({
+            player: Number(player.OID),
             kind: 'wrapped',
             before: OVERFLOW_OFFSET - 1,
-            after: OVERFLOW_OFFSET + first[1],
-          },
-          {
-            player: Number(second[2].OID),
-            kind: 'wrapped',
-            before: OVERFLOW_OFFSET - 1,
-            after: OVERFLOW_OFFSET + second[1],
-          },
-        ],
+            after: OVERFLOW_OFFSET + score,
+          }))
+          .sort((a, b) => a.player - b.player),
       });
     });
   });

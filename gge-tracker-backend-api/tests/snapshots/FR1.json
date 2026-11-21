@@ -1,12 +1,12 @@
 {
-  "fixture": "b003f474f3c5d4df",
+  "fixture": "761a77f3f1b69f59",
   "server": "FR1",
-  "recordedAt": "2026-10-29T08:53:38.711Z",
+  "recordedAt": "2026-11-20T22:37:44.997Z",
   "entries": {
     "GET alliance-by-id": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 760,
+      "bytes": 744,
       "kind": "object",
       "count": 0,
       "keys": [
@@ -24,12 +24,12 @@
         "language",
         "players"
       ],
-      "hash": "abb2fc877c352e8d"
+      "hash": "b5bfc4358e1049e4"
     },
     "GET alliance-by-id-distance": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 760,
+      "bytes": 743,
       "kind": "object",
       "count": 0,
       "keys": [
@@ -47,12 +47,12 @@
         "language",
         "players"
       ],
-      "hash": "abb2fc877c352e8d"
+      "hash": "74d4415f98db8a7a"
     },
     "GET alliance-by-name": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 357,
+      "bytes": 341,
       "kind": "object",
       "keys": [
         "alliance_id",
@@ -70,14 +70,14 @@
         "might_current",
         "player_count"
       ],
-      "hash": "530b5cff86a11aad"
+      "hash": "83d6a32a21bd7085"
     },
     "GET alliance-profile": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 1814,
+      "bytes": 1617,
       "kind": "object",
-      "count": 5,
+      "count": 2,
       "keys": [
         "alliance",
         "castles",
@@ -104,25 +104,25 @@
         "position_x",
         "position_y"
       ],
-      "hash": "56acf5dce6ee2c09"
+      "hash": "4be775487b731848"
     },
     "GET alliance-tournaments": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 42,
+      "bytes": 236,
       "kind": "object",
       "keys": [
         "grand_tournament",
         "rift_raid"
       ],
-      "hash": "4995eeca8ffbedc0"
+      "hash": "199b6d2b5ea4f7ed"
     },
     "GET alliances-list": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 12476,
+      "bytes": 5958,
       "kind": "paginated",
-      "total": 512,
+      "total": 188,
       "count": 15,
       "keys": [
         "alliances",
@@ -146,14 +146,14 @@
         "might_current",
         "player_count"
       ],
-      "hash": "bc7c5c648838a46a"
+      "hash": "f9c31474dd84e31c"
     },
     "GET alliances-ordered": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 13801,
+      "bytes": 6316,
       "kind": "paginated",
-      "total": 512,
+      "total": 188,
       "count": 15,
       "keys": [
         "alliances",
@@ -177,14 +177,14 @@
         "might_current",
         "player_count"
       ],
-      "hash": "4bd0d6bae92dd7dc"
+      "hash": "ea34d7916b510b7b"
     },
     "GET alliances-page-size": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 11267,
+      "bytes": 5033,
       "kind": "paginated",
-      "total": 512,
+      "total": 188,
       "count": 12,
       "keys": [
         "alliances",
@@ -208,14 +208,14 @@
         "might_current",
         "player_count"
       ],
-      "hash": "eba57d13b81cd171"
+      "hash": "44b65af0522a0dd0"
     },
     "GET alliances-search": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 468,
+      "bytes": 861,
       "kind": "object",
-      "count": 6,
+      "count": 10,
       "keys": [
         "suggestions"
       ],
@@ -225,14 +225,14 @@
         "name",
         "player_count"
       ],
-      "hash": "91acf8f2e5e2ecf4"
+      "hash": "c2f8734b079a3880"
     },
     "GET aquamarine": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 4077,
+      "bytes": 4026,
       "kind": "paginated",
-      "total": 2583,
+      "total": 78,
       "count": 15,
       "keys": [
         "pagination",
@@ -246,14 +246,14 @@
         "player_id",
         "player_name"
       ],
-      "hash": "8febddf8c7fe219e"
+      "hash": "3bda9c295c7f2c3a"
     },
     "GET aquamarine-ordered": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 3846,
+      "bytes": 3900,
       "kind": "paginated",
-      "total": 2583,
+      "total": 78,
       "count": 15,
       "keys": [
         "pagination",
@@ -267,7 +267,7 @@
         "player_id",
         "player_name"
       ],
-      "hash": "240531f5e3717772"
+      "hash": "4a851802638f1951"
     },
     "GET aquamarine-player": {
       "status": 200,
@@ -359,7 +359,7 @@
     "GET cartography-id": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 201,
+      "bytes": 166,
       "kind": "array",
       "count": 1,
       "rowKeys": [
@@ -370,12 +370,12 @@
         "might_current",
         "name"
       ],
-      "hash": "a74da1df61aed39b"
+      "hash": "57988d6edc4da954"
     },
     "GET cartography-name": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 201,
+      "bytes": 166,
       "kind": "array",
       "count": 1,
       "rowKeys": [
@@ -386,14 +386,14 @@
         "might_current",
         "name"
       ],
-      "hash": "a74da1df61aed39b"
+      "hash": "57988d6edc4da954"
     },
     "GET cartography-size": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 718645,
+      "bytes": 176156,
       "kind": "array",
-      "count": 3046,
+      "count": 1041,
       "rowKeys": [
         "alliance_id",
         "alliance_name",
@@ -402,12 +402,12 @@
         "might_current",
         "name"
       ],
-      "hash": "fe7e4caa5cc193ec"
+      "hash": "e784405ee8c1525d"
     },
     "GET castle-analysis": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 41743,
+      "bytes": 41730,
       "kind": "object",
       "keys": [
         "castleName",
@@ -420,12 +420,12 @@
         "positionX",
         "positionY"
       ],
-      "hash": "fab195a967c0e7ff"
+      "hash": "f2ec7dec429fd3e8"
     },
     "GET castle-analysis-kingdom": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 41743,
+      "bytes": 41730,
       "kind": "object",
       "keys": [
         "castleName",
@@ -438,14 +438,14 @@
         "positionX",
         "positionY"
       ],
-      "hash": "fab195a967c0e7ff"
+      "hash": "f2ec7dec429fd3e8"
     },
     "GET castle-player": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 1490,
+      "bytes": 634,
       "kind": "array",
-      "count": 7,
+      "count": 3,
       "rowKeys": [
         "equipmentUniqueIdSkin",
         "gateLevel",
@@ -461,14 +461,14 @@
         "type",
         "wallLevel"
       ],
-      "hash": "de61ae60c11e4a82"
+      "hash": "f4102171c815cd35"
     },
     "GET castle-search": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 1490,
+      "bytes": 634,
       "kind": "array",
-      "count": 7,
+      "count": 3,
       "rowKeys": [
         "equipmentUniqueIdSkin",
         "gateLevel",
@@ -484,7 +484,7 @@
         "type",
         "wallLevel"
       ],
-      "hash": "de61ae60c11e4a82"
+      "hash": "f4102171c815cd35"
     },
     "GET changes": {
       "status": 200,
@@ -510,10 +510,21 @@
         "type"
       ]
     },
+    "GET datasets": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 34,
+      "kind": "object",
+      "count": 0,
+      "keys": [
+        "retention_days",
+        "servers"
+      ]
+    },
     "GET docs": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 312769,
+      "bytes": 470956,
       "kind": "object",
       "count": 1,
       "keys": [
@@ -528,14 +539,14 @@
         "description",
         "url"
       ],
-      "hash": "8386e3da8aa07d8e"
+      "hash": "8147c1d06176299b"
     },
     "GET dungeons": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 5947,
+      "bytes": 5931,
       "kind": "paginated",
-      "total": 1521,
+      "total": 85,
       "count": 15,
       "keys": [
         "dungeons",
@@ -557,14 +568,14 @@
         "position_y",
         "total_attack_count"
       ],
-      "hash": "207eedce391264eb"
+      "hash": "d8a08a40fa49bac8"
     },
     "GET dungeons-at-position": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 5951,
+      "bytes": 5947,
       "kind": "paginated",
-      "total": 1521,
+      "total": 85,
       "count": 15,
       "keys": [
         "dungeons",
@@ -586,20 +597,18 @@
         "position_y",
         "total_attack_count"
       ],
-      "hash": "dd97036f8afb11a9"
+      "hash": "c5708314f1597f6b"
     },
     "GET dungeons-filtered": {
-      "status": 200,
+      "status": 400,
       "contentType": "application/json",
-      "bytes": 109,
-      "kind": "paginated",
-      "total": 0,
-      "count": 0,
+      "bytes": 54,
+      "kind": "object",
       "keys": [
-        "dungeons",
-        "pagination"
+        "code",
+        "error"
       ],
-      "hash": "8e019bc47e15c21e"
+      "hash": "f81650950f07b9ae"
     },
     "GET dungeons-meta": {
       "status": 200,
@@ -635,10 +644,11 @@
     "GET event-thresholds": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 4859,
+      "bytes": 475,
       "kind": "object",
       "count": 0,
       "keys": [
+        "comparable_since",
         "current",
         "event",
         "live_events",
@@ -664,9 +674,9 @@
     "GET events-list": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 944,
+      "bytes": 1693,
       "kind": "paginated",
-      "total": 98,
+      "total": 64,
       "count": 8,
       "keys": [
         "events",
@@ -676,16 +686,17 @@
         "collect_date",
         "event_num",
         "player_count",
-        "type"
+        "type",
+        "winner"
       ],
-      "hash": "bfa6d8bc130fdd8d"
+      "hash": "6e3664221829c477"
     },
     "GET events-list-typed": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 931,
+      "bytes": 1678,
       "kind": "paginated",
-      "total": 72,
+      "total": 51,
       "count": 8,
       "keys": [
         "events",
@@ -695,27 +706,36 @@
         "collect_date",
         "event_num",
         "player_count",
-        "type"
+        "type",
+        "winner"
       ],
-      "hash": "fadc49a7a3ff90a7"
+      "hash": "3e844d5dd68e4ee5"
     },
     "GET events-player": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 13,
+      "bytes": 2490,
       "kind": "object",
-      "count": 0,
+      "count": 20,
       "keys": [
         "events"
       ],
-      "hash": "24de1c4a19c43ad4"
+      "rowKeys": [
+        "collect_date",
+        "event_num",
+        "point",
+        "rank",
+        "server",
+        "type"
+      ],
+      "hash": "6f4f9717950ae41d"
     },
     "GET events-type-data": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 12369,
+      "bytes": 2481,
       "kind": "object",
-      "count": 59,
+      "count": 24,
       "keys": [
         "collect_date",
         "event_id",
@@ -735,14 +755,14 @@
         "level",
         "nb_players"
       ],
-      "hash": "e6fab8dafdcb5bfb"
+      "hash": "4e6a102b9ff0358d"
     },
     "GET events-type-players": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 1782,
+      "bytes": 1967,
       "kind": "paginated",
-      "total": 2000,
+      "total": 609,
       "count": 15,
       "keys": [
         "pagination",
@@ -756,7 +776,7 @@
         "rank",
         "server"
       ],
-      "hash": "5457e7a4169ea368"
+      "hash": "a57289fe5fdedace"
     },
     "GET events-type-players-filtered": {
       "status": 200,
@@ -777,12 +797,12 @@
         "rank",
         "server"
       ],
-      "hash": "7195554b8ec7f012"
+      "hash": "30a9ce94063607ed"
     },
     "GET export-alliances": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 3081,
+      "bytes": 3316,
       "kind": "object",
       "count": 50,
       "keys": [
@@ -798,14 +818,14 @@
         "alliance_id",
         "alliance_name"
       ],
-      "hash": "1db9c5fb6e0d73d1"
+      "hash": "797f9bc954cb26ef"
     },
     "GET export-castles": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 61251,
+      "bytes": 18380,
       "kind": "object",
-      "count": 387,
+      "count": 116,
       "keys": [
         "castles",
         "data_version",
@@ -825,12 +845,12 @@
         "position_x",
         "position_y"
       ],
-      "hash": "b5dc86425530b630"
+      "hash": "901d6121e29ecfab"
     },
     "GET export-players": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 4004,
+      "bytes": 3951,
       "kind": "object",
       "count": 3,
       "keys": [
@@ -842,14 +862,14 @@
         "server",
         "server_code"
       ],
-      "hash": "65896ad2aca8f920"
+      "hash": "90fcf579c343c39d"
     },
     "GET global-ranking-alliances": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 4281,
+      "bytes": 4186,
       "kind": "paginated",
-      "total": 547,
+      "total": 220,
       "count": 15,
       "keys": [
         "alliances",
@@ -868,15 +888,15 @@
         "player_count",
         "server"
       ],
-      "hash": "d345d662eb7a2415"
+      "hash": "53cc6269c363307d"
     },
     "GET global-ranking-alliances-filtered": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 619,
+      "bytes": 2940,
       "kind": "paginated",
-      "total": 2,
-      "count": 2,
+      "total": 11,
+      "count": 11,
       "keys": [
         "alliances",
         "pagination"
@@ -894,14 +914,14 @@
         "player_count",
         "server"
       ],
-      "hash": "081263639603f352"
+      "hash": "e0bc65dbac201780"
     },
     "GET global-ranking-alliances-page-size": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 3425,
+      "bytes": 3363,
       "kind": "paginated",
-      "total": 547,
+      "total": 220,
       "count": 12,
       "keys": [
         "alliances",
@@ -920,14 +940,14 @@
         "player_count",
         "server"
       ],
-      "hash": "e88236392fb4bcb0"
+      "hash": "126b7a57fcb37295"
     },
     "GET global-ranking-players": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 6030,
+      "bytes": 5915,
       "kind": "paginated",
-      "total": 4686,
+      "total": 1748,
       "count": 15,
       "keys": [
         "pagination",
@@ -952,14 +972,14 @@
         "player_name",
         "server"
       ],
-      "hash": "a40bb6851b0583de"
+      "hash": "7b885698ad492f8d"
     },
     "GET global-ranking-players-filtered": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 5833,
+      "bytes": 5597,
       "kind": "paginated",
-      "total": 18,
+      "total": 41,
       "count": 15,
       "keys": [
         "pagination",
@@ -984,14 +1004,14 @@
         "player_name",
         "server"
       ],
-      "hash": "11c5abb68ea0ba31"
+      "hash": "ba5149de0ed80500"
     },
     "GET global-ranking-players-page-size": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 2877,
+      "bytes": 2826,
       "kind": "paginated",
-      "total": 4686,
+      "total": 1748,
       "count": 7,
       "keys": [
         "pagination",
@@ -1016,19 +1036,26 @@
         "player_name",
         "server"
       ],
-      "hash": "54f83702fb911e75"
+      "hash": "a9118a5076fc9054"
     },
     "GET gt-alliance-analysis": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 96,
+      "bytes": 4307,
       "kind": "object",
-      "count": 0,
+      "count": 48,
       "keys": [
         "analysis",
         "meta"
       ],
-      "hash": "13b9eebfed76d728"
+      "rowKeys": [
+        "date",
+        "division",
+        "rank",
+        "score",
+        "subdivision"
+      ],
+      "hash": "dece1951334575cf"
     },
     "GET gt-alliances": {
       "status": 200,
@@ -1057,7 +1084,7 @@
     "GET gt-dates": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 1334,
+      "bytes": 1333,
       "kind": "object",
       "count": 1,
       "keys": [
@@ -1067,7 +1094,7 @@
         "dates",
         "event_id"
       ],
-      "hash": "7edbecc8929523b1"
+      "hash": "4c5af4bc031fa5f2"
     },
     "GET gt-search": {
       "status": 200,
@@ -1082,10 +1109,136 @@
       ],
       "hash": "bcfbea8fa2a20f9f"
     },
+    "GET kingdoms-league-alliances": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 158,
+      "kind": "paginated",
+      "total": 0,
+      "count": 0,
+      "keys": [
+        "alliances",
+        "day",
+        "pagination",
+        "previous_day",
+        "season_id"
+      ],
+      "hash": "312db28041b96e5f"
+    },
+    "GET kingdoms-league-alliances-export": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 74,
+      "kind": "object",
+      "count": 0,
+      "keys": [
+        "alliances",
+        "count",
+        "day",
+        "previous_day",
+        "season_id"
+      ],
+      "hash": "b11f3a5133da7eb0"
+    },
+    "GET kingdoms-league-global-alliances": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 121,
+      "kind": "paginated",
+      "total": 0,
+      "count": 0,
+      "keys": [
+        "alliances",
+        "day",
+        "pagination"
+      ],
+      "hash": "f98449eb55388c04"
+    },
+    "GET kingdoms-league-global-days": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 11,
+      "kind": "object",
+      "count": 0,
+      "keys": [
+        "days"
+      ],
+      "hash": "807e0a1905a035a4"
+    },
+    "GET kingdoms-league-global-players": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 119,
+      "kind": "paginated",
+      "total": 0,
+      "count": 0,
+      "keys": [
+        "day",
+        "pagination",
+        "players"
+      ],
+      "hash": "2c85f895ad1486d5"
+    },
+    "GET kingdoms-league-player": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 73,
+      "kind": "object",
+      "count": 0,
+      "keys": [
+        "history",
+        "player_id",
+        "player_name",
+        "season_id"
+      ],
+      "hash": "21d5c7c279800de9"
+    },
+    "GET kingdoms-league-players": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 156,
+      "kind": "paginated",
+      "total": 0,
+      "count": 0,
+      "keys": [
+        "day",
+        "pagination",
+        "players",
+        "previous_day",
+        "season_id"
+      ],
+      "hash": "d80cdf02f0df666e"
+    },
+    "GET kingdoms-league-players-export": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 72,
+      "kind": "object",
+      "count": 0,
+      "keys": [
+        "count",
+        "day",
+        "players",
+        "previous_day",
+        "season_id"
+      ],
+      "hash": "ccdb2badd1d6b4e1"
+    },
+    "GET kingdoms-league-seasons": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 14,
+      "kind": "object",
+      "count": 0,
+      "keys": [
+        "seasons"
+      ],
+      "hash": "ec24067685a6da72"
+    },
     "GET languages": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 3169731,
+      "bytes": 3254933,
       "kind": "object",
       "keys": [
         "@metadata",
@@ -1347,6 +1500,20 @@
         "Bookmarks_worldmap_alliance_supportTarget_tooltip",
         "Bookmarks_worldmap_player_enemy_tooltip",
         "Bookmarks_worldmap_player_friend_tooltip",
+        "BtHGatherer_name",
+        "BtHGatherer_short_info",
+        "BthMeleeAttacker_name",
+        "BthMeleeAttacker_short_info",
+        "BthMeleeDefender_name",
+        "BthMeleeDefender_short_info",
+        "BthNPCMeleeDefender_name",
+        "BthNPCMeleeDefender_short_info",
+        "BthNPCRangeDefender_name",
+        "BthNPCRangeDefender_short_info",
+        "BthRangeAttacker_name",
+        "BthRangeAttacker_short_info",
+        "BthRangeDefender_name",
+        "BthRangeDefender_short_info",
         "Btn_island_travel",
         "Button_faction_ranking",
         "CaskMarksmann_desc",
@@ -1487,6 +1654,36 @@
         "InnerDistrict_name",
         "InnerDistrict_short_info",
         "InnerDistrict_upgrade_info",
+        "JadeIdol1_name",
+        "JadeIdol1_short_info",
+        "JadeIdol2_name",
+        "JadeIdol2_short_info",
+        "JadeIdol3_name",
+        "JadeIdol3_short_info",
+        "JadeLadder1_name",
+        "JadeLadder1_short_info",
+        "JadeLadder2_name",
+        "JadeLadder2_short_info",
+        "JadeLadder3_name",
+        "JadeLadder3_short_info",
+        "JadeRam1_name",
+        "JadeRam1_short_info",
+        "JadeRam2_name",
+        "JadeRam2_short_info",
+        "JadeRam3_name",
+        "JadeRam3_short_info",
+        "JadeShield1_name",
+        "JadeShield1_short_info",
+        "JadeShield2_name",
+        "JadeShield2_short_info",
+        "JadeShield3_name",
+        "JadeShield3_short_info",
+        "JadeWarBanner1_name",
+        "JadeWarBanner1_short_info",
+        "JadeWarBanner2_name",
+        "JadeWarBanner2_short_info",
+        "JadeWarBanner3_name",
+        "JadeWarBanner3_short_info",
         "LocalBuildingIndicatorBubble_tooltip",
         "MayaArrow_name",
         "MayaArrow_short_info",
@@ -2423,15 +2620,6 @@
         "alreadyConquerCapitalMovement",
         "alreadyConquerMetropolMovement",
         "alreadyConquerMetropolMovement_Maya",
-        "ame_demotion_popup_new_title",
-        "ame_demotion_popup_text",
-        "ame_demotion_popup_title",
-        "ame_maintain_popup_new_title",
-        "ame_maintain_popup_text",
-        "ame_maintain_popup_title",
-        "ame_promotion_popup_new_title",
-        "ame_promotion_popup_text",
-        "ame_promotion_popup_title",
         "ame_rewardFromAlliance_subTitle",
         "ame_title",
         "amount",
@@ -2461,18 +2649,6 @@
         "are_EventCurrencyBoostNormal",
         "are_EventCurrencyBoostPremium",
         "are_EventCurrencyBoostWeak",
-        "are_FungalNormalMelee_name",
-        "are_FungalNormalMelee_short_info",
-        "are_FungalNormalRanged_name",
-        "are_FungalNormalRanged_short_info",
-        "are_FungalSporeMelee_name",
-        "are_FungalSporeMelee_short_info",
-        "are_FungalSporeRanged_name",
-        "are_FungalSporeRanged_short_info",
-        "are_FungalStrongMelee_name",
-        "are_FungalStrongMelee_short_info",
-        "are_FungalStrongRanged_name",
-        "are_FungalStrongRanged_short_info",
         "are_GateDebuffCurrencyBoostNormal",
         "are_GateDebuffCurrencyBoostPremium",
         "are_GateDebuffNormal",
@@ -2544,6 +2720,8 @@
         "bam_award_final_title",
         "bam_award_teasertext",
         "bam_award_title",
+        "banner_betaTest_subtitle",
+        "banner_betaTest_title",
         "banner_name",
         "banner_short_info",
         "bannerusa_name",
@@ -2605,8 +2783,21 @@
         "beyondTheHorizon_cityStates_countdown",
         "beyondTheHorizon_cityStates_occupationTime",
         "beyondTheHorizon_eventName_short_title_AllianceJade",
+        "beyondTheHorizon_eventName_short_title_AllianceJade_beta",
+        "beyondTheHorizon_oasis_name",
         "beyondTheHorizon_oasis_radial_citadelLevel",
+        "beyondTheHorizon_oasis_radial_outOfReach",
+        "beyondTheHorizon_oasis_radial_trade",
         "beyondTheHorizon_oasis_units",
+        "beyondTheHorizon_palaceFortress_loot",
+        "beyondTheHorizon_palaceFortress_name",
+        "beyondTheHorizon_statuetteStock",
+        "beyondTheHorizon_statuetteStock_tier_0",
+        "beyondTheHorizon_statuetteStock_tier_1",
+        "beyondTheHorizon_statuetteStock_tier_2",
+        "beyondTheHorizon_statuetteStock_tier_3",
+        "beyondTheHorizon_statuetteStock_tier_4",
+        "beyondTheHorizon_statuetteStock_tier_5",
         "blue_faction",
         "bluemelee_name",
         "bluemelee_short_info",
@@ -2650,6 +2841,7 @@
         "btn_autoSellEquip_on_tt",
         "btn_burnCastle",
         "btn_centersOfPowerOverview",
+        "btn_convertStatuettes",
         "btn_divination_disabled",
         "btn_divination_enabled",
         "btn_ignoredPlayers",
@@ -3218,6 +3410,8 @@
         "ci_appearance_estateAlien_flavor",
         "ci_appearance_estateOfCowardlySpirits",
         "ci_appearance_estateOfCowardlySpirits_flavour",
+        "ci_appearance_fortressRaider",
+        "ci_appearance_fortressRaider_flavor",
         "ci_appearance_giantsForestWoodcutter",
         "ci_appearance_giantsForestWoodcutter_flavour",
         "ci_appearance_giantsForestlumbermill",
@@ -3234,6 +3428,12 @@
         "ci_appearance_holGranary_flavour",
         "ci_appearance_holToolsmith",
         "ci_appearance_holToolsmith_flavour",
+        "ci_appearance_jadeDrillmaster",
+        "ci_appearance_jadeDrillmaster_flavor",
+        "ci_appearance_jadeEmperorHall",
+        "ci_appearance_jadeEmperorHall_flavor",
+        "ci_appearance_jadeGranary",
+        "ci_appearance_jadeGranary_flavor",
         "ci_appearance_mistwoodBarracks",
         "ci_appearance_mistwoodBarracks_flavor",
         "ci_appearance_natureDefensiveWorkshop",
@@ -3300,6 +3500,8 @@
         "ci_appearance_samuraiTavern_flavor",
         "ci_appearance_spiderStorage",
         "ci_appearance_spiderStorage_flavor",
+        "ci_appearance_statuetteWarden",
+        "ci_appearance_statuetteWarden_flavor",
         "ci_appearance_theBrokenEggDefWorkshop",
         "ci_appearance_theBrokenEggDefWorkshop_flavour",
         "ci_appearance_theBrokenEggDefenseWorkshop",
@@ -3388,8 +3590,20 @@
         "ci_appearance_wofBakery_flavour",
         "ci_appearance_xmasBakery",
         "ci_appearance_xmasBakery_flavor",
+        "ci_appearance_xmasBrewery",
+        "ci_appearance_xmasBrewery_flavor",
         "ci_appearance_xmasDefensiveWorkshop",
         "ci_appearance_xmasDefensiveWorkshop_flavor",
+        "ci_appearance_xmasGuardhouse",
+        "ci_appearance_xmasGuardhouse_flavor",
+        "ci_appearance_xmasKeep",
+        "ci_appearance_xmasKeep_flavor",
+        "ci_appearance_xmasMill",
+        "ci_appearance_xmasMill_flavor",
+        "ci_appearance_xmasQuarry",
+        "ci_appearance_xmasQuarry_flavor",
+        "ci_appearance_xmasStonemason",
+        "ci_appearance_xmasStonemason_flavor",
         "ci_appearance_xmasStronghold",
         "ci_appearance_xmasStronghold_flavor",
         "ci_appearance_xmasWorkshop",
@@ -3480,7 +3694,15 @@
         "ci_blueprint_unboostedWoodProduction",
         "ci_blueprint_woodProduction",
         "ci_blueprint_xpBoostBuildBuildings",
+        "ci_effect_AttackBoostFlank",
+        "ci_effect_AttackBoostFlank_tt",
+        "ci_effect_AttackBoostFront",
+        "ci_effect_AttackBoostFront_tt",
         "ci_effect_AttackBoostYardCapped",
+        "ci_effect_AttackSupportUnits",
+        "ci_effect_AttackSupportUnitsStrong",
+        "ci_effect_AttackSupportUnitsStrong_tt",
+        "ci_effect_AttackSupportUnits_tt",
         "ci_effect_BeefProductionIncrease",
         "ci_effect_BeefProductionIncrease_blueprint",
         "ci_effect_BeefProductionIncrease_tt",
@@ -3512,6 +3734,7 @@
         "ci_effect_WoodProduction",
         "ci_effect_WoodProduction_tt",
         "ci_effect_additionalWaves",
+        "ci_effect_additionalWaves_tt",
         "ci_effect_attackBoostUnitAliens",
         "ci_effect_attackBoostUnitAliens_tt",
         "ci_effect_attackBoostUnitBerimond",
@@ -3532,6 +3755,7 @@
         "ci_effect_attackUnitAmountFrontTCI",
         "ci_effect_attackUnitAmountFront_tt",
         "ci_effect_attackUnitAmountReinforcementBonus",
+        "ci_effect_attackUnitAmountReinforcementBonus_tt",
         "ci_effect_attackUnitAmountReinforcementBoost",
         "ci_effect_auxiliaryCapacityBoost",
         "ci_effect_beefCapacityBonus",
@@ -3644,6 +3868,8 @@
         "ci_effect_reduceResearchResourceCosts_tt",
         "ci_effect_refinedResourceQueueBoost",
         "ci_effect_refinedResourceQueueBoost_tt",
+        "ci_effect_speedBonus",
+        "ci_effect_speedBonus_tt",
         "ci_effect_stackSize",
         "ci_effect_stackSize_tt",
         "ci_effect_stationingTravelCostReduction",
@@ -4063,6 +4289,8 @@
         "currency_description_InfluenceBooster",
         "currency_description_JadeArrowheads",
         "currency_description_JadeBlades",
+        "currency_description_JadeGachaToken",
+        "currency_description_JadeStones",
         "currency_description_KaelrithToken",
         "currency_description_KhanMedal",
         "currency_description_KhanTablet",
@@ -4281,6 +4509,8 @@
         "currency_name_InfluenceBooster",
         "currency_name_JadeArrowheads",
         "currency_name_JadeBlades",
+        "currency_name_JadeGachaToken",
+        "currency_name_JadeStones",
         "currency_name_KaelrithToken",
         "currency_name_KhanMedal",
         "currency_name_KhanTablet",
@@ -4551,6 +4781,7 @@
         "deco_ExaltedGreenEasterRuins_name",
         "deco_ExaltedGreenEggTree_name",
         "deco_ExaltedGreenFallenColossus_name",
+        "deco_ExaltedGreenFestiveYeti_name",
         "deco_ExaltedGreenFireworksSpire_name",
         "deco_ExaltedGreenFrostFountain_name",
         "deco_ExaltedGreenFrozentarantulaspring_name",
@@ -4559,6 +4790,7 @@
         "deco_ExaltedGreenGuardianOfNurture_name",
         "deco_ExaltedGreenGuardianOfPlenty_name",
         "deco_ExaltedGreenGuardianOfRenewal_name",
+        "deco_ExaltedGreenGuardianYeti_name",
         "deco_ExaltedGreenHalloweenCauldron_name",
         "deco_ExaltedGreenHalloweenCemetery_name",
         "deco_ExaltedGreenHalloweenMausoleum_name",
@@ -4566,6 +4798,9 @@
         "deco_ExaltedGreenHalloweenScarecrowShrine_name",
         "deco_ExaltedGreenHalloweenScarecrowVigil_name",
         "deco_ExaltedGreenHutOfTheInfernalShaman_name",
+        "deco_ExaltedGreenImperialJadePagoda_name",
+        "deco_ExaltedGreenJadeCaravanserai_name",
+        "deco_ExaltedGreenJadeShrine_name",
         "deco_ExaltedGreenJestersMask_name",
         "deco_ExaltedGreenKiwiRollercoaster_name",
         "deco_ExaltedGreenKnightlyFeastCourt_name",
@@ -4590,6 +4825,9 @@
         "deco_ExaltedGreenSpookyCrypt_name",
         "deco_ExaltedGreenSpringofelation_name",
         "deco_ExaltedGreenStarfruitRotatingSwing_name",
+        "deco_ExaltedGreenStoneBull_name",
+        "deco_ExaltedGreenStoneOwls_name",
+        "deco_ExaltedGreenStoneWolf_name",
         "deco_ExaltedGreenSweetSurpriseCake_name",
         "deco_ExaltedGreenSwordKnight_name",
         "deco_ExaltedGreenTamingofthewild_name",
@@ -4623,15 +4861,20 @@
         "deco_ExaltedPurpleEasterRuins_name",
         "deco_ExaltedPurpleEggTree_name",
         "deco_ExaltedPurpleFallenColossus_name",
+        "deco_ExaltedPurpleFestiveYeti_name",
         "deco_ExaltedPurpleFireworksSpire_name",
         "deco_ExaltedPurpleFrostFountain_name",
         "deco_ExaltedPurpleGardenSpire_name",
         "deco_ExaltedPurpleGuardianOfNature_name",
         "deco_ExaltedPurpleGuardianOfPlenty_name",
         "deco_ExaltedPurpleGuardianOfRenewal_name",
+        "deco_ExaltedPurpleGuardianYeti_name",
         "deco_ExaltedPurpleHalloweenCauldron_name",
         "deco_ExaltedPurpleHalloweenCemetery_name",
         "deco_ExaltedPurpleHalloweenScarecrowShrine_name",
+        "deco_ExaltedPurpleImperialJadePagoda_name",
+        "deco_ExaltedPurpleJadeCaravanserai_name",
+        "deco_ExaltedPurpleJadeShrine_name",
         "deco_ExaltedPurpleKiwiRollercoaster_name",
         "deco_ExaltedPurpleLavaMountainOfWrath_name",
         "deco_ExaltedPurpleLavaShrineofDuality_name",
@@ -4650,6 +4893,8 @@
         "deco_ExaltedPurpleSpookyCrypt_name",
         "deco_ExaltedPurpleSpringofelation_name",
         "deco_ExaltedPurpleStarfruitRotatingSwing_name",
+        "deco_ExaltedPurpleStoneBull_name",
+        "deco_ExaltedPurpleStoneWolf_name",
         "deco_ExaltedPurpleSweetSurpriseCake_name",
         "deco_ExaltedPurpleSwordKnight_name",
         "deco_ExaltedPurpleTamingofthewild_name",
@@ -4676,17 +4921,22 @@
         "deco_ExaltedRedEasterRuins_name",
         "deco_ExaltedRedEggTree_name",
         "deco_ExaltedRedFallenColossus_name",
+        "deco_ExaltedRedFestiveYeti_name",
         "deco_ExaltedRedFireworksSpire_name",
         "deco_ExaltedRedFrostFountain_name",
         "deco_ExaltedRedGardenSpire_name",
         "deco_ExaltedRedGuardianOfNature_name",
         "deco_ExaltedRedGuardianOfPlenty_name",
         "deco_ExaltedRedGuardianOfRenewal_name",
+        "deco_ExaltedRedGuardianYeti_name",
         "deco_ExaltedRedHalloweenCauldron_name",
         "deco_ExaltedRedHalloweenCemetery_name",
         "deco_ExaltedRedHalloweenMausoleum_name",
         "deco_ExaltedRedHalloweenScarecrowShrine_name",
         "deco_ExaltedRedHutOfTheInfernalShaman_name",
+        "deco_ExaltedRedImperialJadePagoda_name",
+        "deco_ExaltedRedJadeCaravanserai_name",
+        "deco_ExaltedRedJadeShrine_name",
         "deco_ExaltedRedKiwiRollercoaster_name",
         "deco_ExaltedRedLavaMountainOfWrath_name",
         "deco_ExaltedRedLavaShrineofDuality_name",
@@ -4705,6 +4955,8 @@
         "deco_ExaltedRedSpookyCrypt_name",
         "deco_ExaltedRedSpringofelation_name",
         "deco_ExaltedRedStarfruitRotatingSwing_name",
+        "deco_ExaltedRedStoneBull_name",
+        "deco_ExaltedRedStoneWolf_name",
         "deco_ExaltedRedSweetSurpriseCake_name",
         "deco_ExaltedRedSwordKnight_name",
         "deco_ExaltedRedTamingofthewild_name",
@@ -5539,6 +5791,20 @@
         "dialog_allianceDiplomacy_status1",
         "dialog_allianceDiplomacy_status2",
         "dialog_allianceDiplomacy_status3",
+        "dialog_allianceEffect_BtHBuffGateBonus",
+        "dialog_allianceEffect_BtHBuffGateBonus_short",
+        "dialog_allianceEffect_BtHBuffHideoutCapacity",
+        "dialog_allianceEffect_BtHBuffHideoutCapacity_short",
+        "dialog_allianceEffect_BtHBuffMoatBonus",
+        "dialog_allianceEffect_BtHBuffMoatBonus_short",
+        "dialog_allianceEffect_BtHBuffWallBonus",
+        "dialog_allianceEffect_BtHBuffWallBonus_short",
+        "dialog_allianceEffect_BtHStatuetteFortressLootBoost",
+        "dialog_allianceEffect_BtHStatuetteFortressLootBoost_short",
+        "dialog_allianceEffect_BtHTradeRestoredStatuettesBoost",
+        "dialog_allianceEffect_BtHTradeRestoredStatuettesBoost_short",
+        "dialog_allianceEffect_BtHTradeUnitsBoost",
+        "dialog_allianceEffect_BtHTradeUnitsBoost_short",
         "dialog_allianceEffect_ReturnTravelBoost",
         "dialog_allianceEffect_ReturnTravelBoost_short",
         "dialog_allianceEffect_allianceFameBoost",
@@ -5750,17 +6016,29 @@
         "dialog_alliance_chronic44_19",
         "dialog_alliance_chronic44_20",
         "dialog_alliance_chronic44_21",
+        "dialog_alliance_chronic44_29",
+        "dialog_alliance_chronic44_30",
+        "dialog_alliance_chronic44_35",
+        "dialog_alliance_chronic44_36",
+        "dialog_alliance_chronic44_37",
         "dialog_alliance_chronic44_7",
         "dialog_alliance_chronic44_8",
         "dialog_alliance_chronic44_9",
+        "dialog_alliance_chronic44_generic",
         "dialog_alliance_chronic45_10",
         "dialog_alliance_chronic45_12",
         "dialog_alliance_chronic45_13",
         "dialog_alliance_chronic45_14",
         "dialog_alliance_chronic45_16",
+        "dialog_alliance_chronic45_29",
+        "dialog_alliance_chronic45_30",
+        "dialog_alliance_chronic45_35",
+        "dialog_alliance_chronic45_36",
+        "dialog_alliance_chronic45_37",
         "dialog_alliance_chronic45_7",
         "dialog_alliance_chronic45_8",
         "dialog_alliance_chronic45_9",
+        "dialog_alliance_chronic45_generic",
         "dialog_alliance_chronic46",
         "dialog_alliance_chronic47",
         "dialog_alliance_chronic47_Maya",
@@ -5939,6 +6217,20 @@
         "dialog_alliance_overview",
         "dialog_alliance_pactList",
         "dialog_alliance_pact_noWarAgainstPact",
+        "dialog_alliance_permanentBoost_BtHBuffGateBonus",
+        "dialog_alliance_permanentBoost_BtHBuffGateBonus_desc",
+        "dialog_alliance_permanentBoost_BtHBuffHideoutCapacity",
+        "dialog_alliance_permanentBoost_BtHBuffHideoutCapacity_desc",
+        "dialog_alliance_permanentBoost_BtHBuffMoatBonus",
+        "dialog_alliance_permanentBoost_BtHBuffMoatBonus_desc",
+        "dialog_alliance_permanentBoost_BtHBuffWallBonus",
+        "dialog_alliance_permanentBoost_BtHBuffWallBonus_desc",
+        "dialog_alliance_permanentBoost_BtHStatuetteFortressLootBoost",
+        "dialog_alliance_permanentBoost_BtHStatuetteFortressLootBoost_desc",
+        "dialog_alliance_permanentBoost_BtHTradeRestoredStatuettesBoost",
+        "dialog_alliance_permanentBoost_BtHTradeRestoredStatuettesBoost_desc",
+        "dialog_alliance_permanentBoost_BtHTradeUnitsBoost",
+        "dialog_alliance_permanentBoost_BtHTradeUnitsBoost_desc",
         "dialog_alliance_permanentBoost_lootCapacity",
         "dialog_alliance_permanentBoost_supportTravel_beta",
         "dialog_alliance_prolongEffect",
@@ -5985,6 +6277,13 @@
         "dialog_alliance_stageBonusAmount",
         "dialog_alliance_stageBonusMinus",
         "dialog_alliance_stageBonusPlus",
+        "dialog_alliance_stageBonus_next_BtHBuffGateBonus",
+        "dialog_alliance_stageBonus_next_BtHBuffHideoutCapacity",
+        "dialog_alliance_stageBonus_next_BtHBuffMoatBonus",
+        "dialog_alliance_stageBonus_next_BtHBuffWallBonus",
+        "dialog_alliance_stageBonus_next_BtHStatuetteFortressLootBoost",
+        "dialog_alliance_stageBonus_next_BtHTradeRestoredStatuettesBoost",
+        "dialog_alliance_stageBonus_next_BtHTradeUnitsBoost",
         "dialog_alliance_stageBonus_next_ReturnTravelBoost",
         "dialog_alliance_stageBonus_next_allianceFameBoost",
         "dialog_alliance_stageBonus_next_allianceTravelMarketBoost",
@@ -6017,6 +6316,21 @@
         "dialog_alliance_teaser_joinAlliance",
         "dialog_alliance_temporaryBoost_BGCollectorBoost",
         "dialog_alliance_temporaryBoost_BGCollectorBoost_desc",
+        "dialog_alliance_temporaryBoost_BtHBuffDefenceCourtyardBoost",
+        "dialog_alliance_temporaryBoost_BtHBuffDefenceCourtyardBoost_desc",
+        "dialog_alliance_temporaryBoost_BtHBuffDefenceCourtyardBoost_percentage",
+        "dialog_alliance_temporaryBoost_BtHBuffUnitsWallBonus",
+        "dialog_alliance_temporaryBoost_BtHBuffUnitsWallBonus_desc",
+        "dialog_alliance_temporaryBoost_BtHBuffUnitsWallBonus_percentage",
+        "dialog_alliance_temporaryBoost_BtHRawJadeiteFortressLootBoost",
+        "dialog_alliance_temporaryBoost_BtHRawJadeiteFortressLootBoost_desc",
+        "dialog_alliance_temporaryBoost_BtHRawJadeiteFortressLootBoost_percentage",
+        "dialog_alliance_temporaryBoost_BtHRawSilkFortressLootBoost",
+        "dialog_alliance_temporaryBoost_BtHRawSilkFortressLootBoost_desc",
+        "dialog_alliance_temporaryBoost_BtHRawSilkFortressLootBoost_percentage",
+        "dialog_alliance_temporaryBoost_BtHRawVarnishFortressLootBoost",
+        "dialog_alliance_temporaryBoost_BtHRawVarnishFortressLootBoost_desc",
+        "dialog_alliance_temporaryBoost_BtHRawVarnishFortressLootBoost_percentage",
         "dialog_alliance_temporaryBoost_TemporaryCommonAttackBonus",
         "dialog_alliance_temporaryBoost_TemporaryCommonAttackBonus_desc",
         "dialog_alliance_temporaryBoost_TemporaryCommonAttackBonus_percentage",
@@ -6171,14 +6485,12 @@
         "dialog_are_gates_status_title",
         "dialog_are_highlightedeffect_desc1",
         "dialog_are_highlightedeffect_desc2",
-        "dialog_are_highlightedeffect_description_AREspawnReserveUnit",
         "dialog_are_highlightedeffect_description_infectionRateBaseBonus",
         "dialog_are_highlightedeffect_description_mutateReserveUnit",
         "dialog_are_highlightedeffect_description_mutateReserveUnitLegendaryDragon",
         "dialog_are_highlightedeffect_description_raidBossWallRegeneration",
         "dialog_are_highlightedeffect_description_spawnReserveUnit",
         "dialog_are_highlightedeffect_description_spawnReserveUnitLegendaryDragon",
-        "dialog_are_highlightedeffect_name_AREspawnReserveUnit",
         "dialog_are_highlightedeffect_name_infectionRateBaseBonus",
         "dialog_are_highlightedeffect_name_mutateReserveUnit",
         "dialog_are_highlightedeffect_name_mutateReserveUnitLegendaryDragon",
@@ -6565,6 +6877,8 @@
         "dialog_battleLog_capitalDefeatDefenceText",
         "dialog_battleLog_capitalVictoryAttackText",
         "dialog_battleLog_capitalVictoryDefenceText",
+        "dialog_battleLog_citadelDowngraded_tooltip_desc",
+        "dialog_battleLog_citadelLevel",
         "dialog_battleLog_conquerCampDefeatAttackText",
         "dialog_battleLog_conquerCampDefeatDefenceText",
         "dialog_battleLog_conquerCampVictoryAttackText",
@@ -6658,6 +6972,8 @@
         "dialog_battleLog_result",
         "dialog_battleLog_statuettesDistributed",
         "dialog_battleLog_statuettesLost",
+        "dialog_battleLog_statuettesShare_title",
+        "dialog_battleLog_statuettesShare_tooltip_desc",
         "dialog_battleLog_tokenLost",
         "dialog_battleLog_victory",
         "dialog_battleLog_victoryAttackText",
@@ -6835,6 +7151,7 @@
         "dialog_beyondTheHorizon_AllianceTower_tower_troopsStationed_tooltip",
         "dialog_beyondTheHorizon_AllianceTower_wallBonusTower_desc",
         "dialog_beyondTheHorizon_AllianceTower_wallBonusTower_name",
+        "dialog_beyondTheHorizon_Oasis_DungeonOwner",
         "dialog_beyondTheHorizon_allianceLimit_reached_desc_AllianceJade",
         "dialog_beyondTheHorizon_castleTransport_desc_AllianceJade",
         "dialog_beyondTheHorizon_castleTransport_help_AllianceJade",
@@ -6842,21 +7159,39 @@
         "dialog_beyondTheHorizon_castleTransport_subtitle_AllianceJade",
         "dialog_beyondTheHorizon_castleTransport_title_AllianceJade",
         "dialog_beyondTheHorizon_citadel_conversionConfirm_desc",
+        "dialog_beyondTheHorizon_citadel_conversionConfirm_title",
         "dialog_beyondTheHorizon_citadel_earlyConversion_rate",
+        "dialog_beyondTheHorizon_citadel_eventEndCountdown",
         "dialog_beyondTheHorizon_citadel_info_desc",
+        "dialog_beyondTheHorizon_citadel_info_title",
+        "dialog_beyondTheHorizon_citadel_noRights_desc",
+        "dialog_beyondTheHorizon_citadel_noRights_info",
+        "dialog_beyondTheHorizon_citadel_phase2Countdown",
+        "dialog_beyondTheHorizon_citadel_phase2Rules_info",
         "dialog_beyondTheHorizon_citadel_phase2Trigger_info",
+        "dialog_beyondTheHorizon_citadel_phaseSwitch_started_banner_desc",
+        "dialog_beyondTheHorizon_citadel_phaseSwitch_started_banner_title",
+        "dialog_beyondTheHorizon_citadel_phaseSwitch_warning_banner_title",
+        "dialog_beyondTheHorizon_citadel_protection_timer",
         "dialog_beyondTheHorizon_citadel_upgradeWarning_desc",
+        "dialog_beyondTheHorizon_citadel_upgraded_desc",
+        "dialog_beyondTheHorizon_citadel_upgraded_title",
+        "dialog_beyondTheHorizon_citadel_waitingForPlayers_info",
         "dialog_beyondTheHorizon_end_allianceContest",
         "dialog_beyondTheHorizon_end_desc",
+        "dialog_beyondTheHorizon_end_desc_AllianceJade",
         "dialog_beyondTheHorizon_end_individualContest",
         "dialog_beyondTheHorizon_end_title",
+        "dialog_beyondTheHorizon_end_title_AllianceJade",
         "dialog_beyondTheHorizon_eventParticipationBlocker_infoDialog_desc",
         "dialog_beyondTheHorizon_eventParticipationBlocker_infoDialog_header",
         "dialog_beyondTheHorizon_eventParticipationBlocker_infoDialog_timer",
+        "dialog_beyondTheHorizon_event_remainingTime_AllianceJade",
         "dialog_beyondTheHorizon_gainInfluence_desc",
         "dialog_beyondTheHorizon_gainInfluence_title",
         "dialog_beyondTheHorizon_inboxMessage_desc",
         "dialog_beyondTheHorizon_inboxMessage_desc_AllianceCollector",
+        "dialog_beyondTheHorizon_inboxMessage_desc_AllianceJade",
         "dialog_beyondTheHorizon_inboxMessage_desc_AllianceTower",
         "dialog_beyondTheHorizon_introduction_line",
         "dialog_beyondTheHorizon_introduction_section1_desc",
@@ -6887,6 +7222,9 @@
         "dialog_beyondTheHorizon_main_AllianceTower_overview_title",
         "dialog_beyondTheHorizon_main_allianceLimit_subtitle_AllianceJade",
         "dialog_beyondTheHorizon_main_allianceRankings_title",
+        "dialog_beyondTheHorizon_main_betaTest",
+        "dialog_beyondTheHorizon_main_betaTest_tooltip",
+        "dialog_beyondTheHorizon_main_citadel_title",
         "dialog_beyondTheHorizon_main_eventParticipationBlocker_blocked",
         "dialog_beyondTheHorizon_main_eventParticipationBlocker_blocked_tooltip",
         "dialog_beyondTheHorizon_main_eventParticipationBlocker_join",
@@ -6896,8 +7234,11 @@
         "dialog_beyondTheHorizon_main_journey_AllianceCollector_title",
         "dialog_beyondTheHorizon_main_journey_desc_AllianceCollector",
         "dialog_beyondTheHorizon_main_journey_desc_AllianceJade",
+        "dialog_beyondTheHorizon_main_journey_desc_AllianceJade_beta",
         "dialog_beyondTheHorizon_main_journey_desc_AllianceTower",
         "dialog_beyondTheHorizon_main_journey_hiddenProgress_AllianceJade",
+        "dialog_beyondTheHorizon_main_journey_playerAncientStatuettes_AllianceJade",
+        "dialog_beyondTheHorizon_main_journey_playerRestoredStatuettes_AllianceJade",
         "dialog_beyondTheHorizon_main_journey_subtitle_AllianceCollector",
         "dialog_beyondTheHorizon_main_journey_subtitle_AllianceJade",
         "dialog_beyondTheHorizon_main_journey_subtitle_AllianceTower",
@@ -6905,20 +7246,55 @@
         "dialog_beyondTheHorizon_main_journey_title_AllianceJade",
         "dialog_beyondTheHorizon_main_journey_title_AllianceTower",
         "dialog_beyondTheHorizon_main_missingConditions_info_AllianceJade",
+        "dialog_beyondTheHorizon_main_notEnoughMembers_tooltip_AllianceJade",
         "dialog_beyondTheHorizon_main_overview_desc",
         "dialog_beyondTheHorizon_main_overview_desc_AllianceCollector",
         "dialog_beyondTheHorizon_main_overview_desc_AllianceJade",
         "dialog_beyondTheHorizon_main_overview_desc_AllianceTower",
+        "dialog_beyondTheHorizon_main_overview_desc_joined_AllianceJade",
         "dialog_beyondTheHorizon_main_overview_title",
         "dialog_beyondTheHorizon_main_overview_title_AllianceJade",
         "dialog_beyondTheHorizon_main_performance_title",
         "dialog_beyondTheHorizon_main_rankings_title",
+        "dialog_beyondTheHorizon_main_rankings_totalPoints_tooltip_desc_AllianceJade",
+        "dialog_beyondTheHorizon_main_rankings_totalPoints_tooltip_header_AllianceJade",
+        "dialog_beyondTheHorizon_oasisCooldown_desc",
+        "dialog_beyondTheHorizon_oasisCooldown_timer",
+        "dialog_beyondTheHorizon_oasisTradeReport_commander",
+        "dialog_beyondTheHorizon_oasisTradeReport_completed",
+        "dialog_beyondTheHorizon_oasisTradeReport_failed",
+        "dialog_beyondTheHorizon_oasisTradeReport_failed_desc",
+        "dialog_beyondTheHorizon_oasisTradeReport_materials",
+        "dialog_beyondTheHorizon_oasisTradeReport_title",
+        "dialog_beyondTheHorizon_oasisTradeReport_totalReceived",
         "dialog_beyondTheHorizon_oasisTradeReport_unitReceived",
+        "dialog_beyondTheHorizon_oasisTradeReport_unitsSent",
         "dialog_beyondTheHorizon_oasisTradeReport_unitsTotal_plural",
+        "dialog_beyondTheHorizon_oasisTradeReport_unitsTotal_singular",
+        "dialog_beyondTheHorizon_oasisTraderInfo_desc",
+        "dialog_beyondTheHorizon_oasisTraderInfo_title",
+        "dialog_beyondTheHorizon_oasisTrader_additionalLoot",
+        "dialog_beyondTheHorizon_oasisTrader_btn_trade",
+        "dialog_beyondTheHorizon_oasisTrader_lootCapacityReduced_desc",
+        "dialog_beyondTheHorizon_oasisTrader_noTroopsSelected",
+        "dialog_beyondTheHorizon_oasisTrader_nothingToTrade",
+        "dialog_beyondTheHorizon_oasisTrader_title",
+        "dialog_beyondTheHorizon_oasisTrader_tradeDetails_meleeAttacker",
+        "dialog_beyondTheHorizon_oasisTrader_tradeDetails_meleeDefender",
+        "dialog_beyondTheHorizon_oasisTrader_tradeDetails_rangedAttacker",
+        "dialog_beyondTheHorizon_oasisTrader_tradeDetails_rangedDefender",
         "dialog_beyondTheHorizon_oasisTrader_tradeDetails_rateCombined_plural",
         "dialog_beyondTheHorizon_oasisTrader_tradeDetails_rateCombined_singular",
         "dialog_beyondTheHorizon_oasisTrader_tradeDetails_rate_plural",
         "dialog_beyondTheHorizon_oasisTrader_tradeDetails_rate_singular",
+        "dialog_beyondTheHorizon_oasisTrader_tradeResult",
+        "dialog_beyondTheHorizon_oasisTrader_tradingMaterials",
+        "dialog_beyondTheHorizon_oasisTrader_troopsRemaining",
+        "dialog_beyondTheHorizon_oasisTrader_troopsToSend",
+        "dialog_beyondTheHorizon_oasisTroops_title",
+        "dialog_beyondTheHorizon_palaceFortressCooldown_desc",
+        "dialog_beyondTheHorizon_palaceFortressCooldown_timer",
+        "dialog_beyondTheHorizon_palaceFortress_DungeonOwner",
         "dialog_beyondTheHorizon_phaseSwitch_started_desc_progression_AllianceJade",
         "dialog_beyondTheHorizon_phaseSwitch_started_desc_timer_AllianceJade",
         "dialog_beyondTheHorizon_phaseSwitch_started_title_AllianceJade",
@@ -6930,6 +7306,7 @@
         "dialog_beyondTheHorizon_preEnter_desc_AllianceJade",
         "dialog_beyondTheHorizon_preEnter_desc_AllianceTower",
         "dialog_beyondTheHorizon_start_header_AllianceJade",
+        "dialog_beyondTheHorizon_start_header_AllianceJade_beta",
         "dialog_beyondTheHorizon_start_openHelpInfo_AllianceJade",
         "dialog_bonus",
         "dialog_bonus_02",
@@ -7060,11 +7437,13 @@
         "dialog_chestOffer_desc_christmas",
         "dialog_chestOffer_desc_conversion",
         "dialog_chestOffer_desc_halloween",
+        "dialog_chestOffer_desc_jadegacha",
         "dialog_chestOffer_desc_oktoberfest",
         "dialog_chestOffer_title_advent",
         "dialog_chestOffer_title_carnival",
         "dialog_chestOffer_title_christmas",
         "dialog_chestOffer_title_halloween",
+        "dialog_chestOffer_title_jadegacha",
         "dialog_chestOffer_title_oktoberfest",
         "dialog_chooseCastleConfirm_desc",
         "dialog_chooseCastle_island_desc",
@@ -8066,6 +8445,7 @@
         "dialog_event_announcement_description_132",
         "dialog_event_announcement_description_134",
         "dialog_event_announcement_description_135",
+        "dialog_event_announcement_description_139",
         "dialog_event_announcement_header_123",
         "dialog_event_announcement_header_126",
         "dialog_event_announcement_header_127",
@@ -8075,6 +8455,7 @@
         "dialog_event_announcement_header_132",
         "dialog_event_announcement_header_134",
         "dialog_event_announcement_header_135",
+        "dialog_event_announcement_header_139",
         "dialog_facebookPlayerAccountAlreadyLinked_desc",
         "dialog_factionAuxiliaries_slotCapacity_tooltip",
         "dialog_factionAuxiliaries_tentCapacity_tooltip",
@@ -10591,6 +10972,8 @@
         "dialog_npcName_2",
         "dialog_npcName_20",
         "dialog_npcName_21",
+        "dialog_npcName_217",
+        "dialog_npcName_218",
         "dialog_npcName_22",
         "dialog_npcName_23",
         "dialog_npcName_24",
@@ -11304,6 +11687,7 @@
         "dialog_questbook_help_epic",
         "dialog_questbook_help_events",
         "dialog_questbook_help_ice",
+        "dialog_questbook_help_jade",
         "dialog_questbook_help_maya",
         "dialog_questbook_help_volcano",
         "dialog_questbook_questActiveInfo",
@@ -14140,8 +14524,6 @@
         "equip_effect_description_ARELootSamuraiOffensiveRangeBonus",
         "equip_effect_description_ARELootSamuraiWallReduction",
         "equip_effect_description_ARELootSpeedBonus",
-        "equip_effect_description_AREreserveUnitKill",
-        "equip_effect_description_AREspawnReserveUnit",
         "equip_effect_description_AREunboostedBeefProductionCapped",
         "equip_effect_description_AREunboostedFoodProductionCapped",
         "equip_effect_description_AREunboostedMeadProductionCapped",
@@ -14152,6 +14534,67 @@
         "equip_effect_description_AttackBoostYard",
         "equip_effect_description_AttackBoostYardDecoCapped",
         "equip_effect_description_AttackUnitAmountFront",
+        "equip_effect_description_BtHAttackUnitAmountCourtyardBoost",
+        "equip_effect_description_BtHAttackUnitAmountFlankBoost",
+        "equip_effect_description_BtHAttackUnitAmountFrontBoost",
+        "equip_effect_description_BtHBuffDefenceCourtyardBoost",
+        "equip_effect_description_BtHBuffGateBonus",
+        "equip_effect_description_BtHBuffHideoutCapacity",
+        "equip_effect_description_BtHBuffMoatBonus",
+        "equip_effect_description_BtHBuffUnitsWallBonus",
+        "equip_effect_description_BtHBuffWallBonus",
+        "equip_effect_description_BtHCollectorBoost",
+        "equip_effect_description_BtHCurrencyLootMalus",
+        "equip_effect_description_BtHDefenceBonus",
+        "equip_effect_description_BtHDefenceFlankBoost",
+        "equip_effect_description_BtHDefenceFrontBoost",
+        "equip_effect_description_BtHDefenceUnitAmountWall",
+        "equip_effect_description_BtHHideoutCapacity",
+        "equip_effect_description_BtHLootCapacity",
+        "equip_effect_description_BtHLootCapacityBoost",
+        "equip_effect_description_BtHPerceptionBonus",
+        "equip_effect_description_BtHPvEAdditionalWaves",
+        "equip_effect_description_BtHPvEAttackBonus",
+        "equip_effect_description_BtHPvEAttackCourtyardBonus",
+        "equip_effect_description_BtHPvEAttackFlankBonus",
+        "equip_effect_description_BtHPvEAttackFrontBonus",
+        "equip_effect_description_BtHPvECurrencyLootBoost",
+        "equip_effect_description_BtHPvEGateReduction",
+        "equip_effect_description_BtHPvEMeleeAttackBoost",
+        "equip_effect_description_BtHPvERangeAttackBoost",
+        "equip_effect_description_BtHPvEReturnSpeedBonus",
+        "equip_effect_description_BtHPvESpeedBonus",
+        "equip_effect_description_BtHPvEUnitAmountFlankBoost",
+        "equip_effect_description_BtHPvEUnitAmountFrontBoost",
+        "equip_effect_description_BtHPvEWallReduction",
+        "equip_effect_description_BtHPvPAdditionalWaves",
+        "equip_effect_description_BtHPvPAttackBonus",
+        "equip_effect_description_BtHPvPAttackBoostYard",
+        "equip_effect_description_BtHPvPGateBonus",
+        "equip_effect_description_BtHPvPGateReduction",
+        "equip_effect_description_BtHPvPMeleeAttackBoost",
+        "equip_effect_description_BtHPvPMeleeBonus",
+        "equip_effect_description_BtHPvPMoatBonus",
+        "equip_effect_description_BtHPvPMoatReduction",
+        "equip_effect_description_BtHPvPRangeAttackBoost",
+        "equip_effect_description_BtHPvPRangedBonus",
+        "equip_effect_description_BtHPvPWallBonus",
+        "equip_effect_description_BtHPvPWallReduction",
+        "equip_effect_description_BtHRawJadeiteFortressLootBoost",
+        "equip_effect_description_BtHRawSilkFortressLootBoost",
+        "equip_effect_description_BtHRawVarnishFortressLootBoost",
+        "equip_effect_description_BtHRecruitmentTimeBoost",
+        "equip_effect_description_BtHRefineOutput",
+        "equip_effect_description_BtHSpeedBonus",
+        "equip_effect_description_BtHSpeedBonusTrading",
+        "equip_effect_description_BtHStatuetteCastleLootBoost",
+        "equip_effect_description_BtHStatuetteFortressLootBoost",
+        "equip_effect_description_BtHStealthBonus",
+        "equip_effect_description_BtHSurvivalBoost",
+        "equip_effect_description_BtHToolProductionSpeedBoostAll",
+        "equip_effect_description_BtHTradeArmySizeBoost",
+        "equip_effect_description_BtHTradeRestoredStatuettesBoost",
+        "equip_effect_description_BtHTradeUnitsBoost",
         "equip_effect_description_CollectorBoostPartyAnimal",
         "equip_effect_description_DefenseBoostFlank",
         "equip_effect_description_DefenseBoostFront",
@@ -14464,6 +14907,7 @@
         "equip_effect_description_newPVPAdditionalWaves",
         "equip_effect_description_newPVPAttackBonus",
         "equip_effect_description_newPVPAttackBonusUnitBeef",
+        "equip_effect_description_newPVPAttackBonusUnitBtH",
         "equip_effect_description_newPVPAttackBonusUnitMead",
         "equip_effect_description_newPVPAttackBoostFlank",
         "equip_effect_description_newPVPAttackBoostFront",
@@ -14472,8 +14916,10 @@
         "equip_effect_description_newPVPAttackUnitAmountFlank",
         "equip_effect_description_newPVPAttackUnitAmountFront",
         "equip_effect_description_newPVPAttackUnitAmountReinforcementBonus",
+        "equip_effect_description_newPVPAttackUnitAmountReinforcementCapacity",
         "equip_effect_description_newPVPGateReduction",
         "equip_effect_description_newPVPLootBonus",
+        "equip_effect_description_newPVPLootCapacityBoost",
         "equip_effect_description_newPVPMoatReduction",
         "equip_effect_description_newPVPOffensiveMeleeBonus",
         "equip_effect_description_newPVPOffensiveRangeBonus",
@@ -14563,6 +15009,55 @@
         "equip_effect_description_samuraiTokenBoost",
         "equip_effect_description_sell",
         "equip_effect_description_short_AttackBoostYard",
+        "equip_effect_description_short_BtHAttackUnitAmountCourtyardBoost",
+        "equip_effect_description_short_BtHAttackUnitAmountFlankBoost",
+        "equip_effect_description_short_BtHAttackUnitAmountFrontBoost",
+        "equip_effect_description_short_BtHCollectorBoost",
+        "equip_effect_description_short_BtHCurrencyLootMalus",
+        "equip_effect_description_short_BtHDefenceBonus",
+        "equip_effect_description_short_BtHDefenceFlankBoost",
+        "equip_effect_description_short_BtHDefenceFrontBoost",
+        "equip_effect_description_short_BtHDefenceUnitAmountWall",
+        "equip_effect_description_short_BtHHideoutCapacity",
+        "equip_effect_description_short_BtHLootCapacity",
+        "equip_effect_description_short_BtHLootCapacityBoost",
+        "equip_effect_description_short_BtHPerceptionBonus",
+        "equip_effect_description_short_BtHPvEAdditionalWaves",
+        "equip_effect_description_short_BtHPvEAttackBonus",
+        "equip_effect_description_short_BtHPvEAttackCourtyardBonus",
+        "equip_effect_description_short_BtHPvEAttackFlankBonus",
+        "equip_effect_description_short_BtHPvEAttackFrontBonus",
+        "equip_effect_description_short_BtHPvECurrencyLootBoost",
+        "equip_effect_description_short_BtHPvEGateReduction",
+        "equip_effect_description_short_BtHPvEMeleeAttackBoost",
+        "equip_effect_description_short_BtHPvERangeAttackBoost",
+        "equip_effect_description_short_BtHPvEReturnSpeedBonus",
+        "equip_effect_description_short_BtHPvESpeedBonus",
+        "equip_effect_description_short_BtHPvEUnitAmountFlankBoost",
+        "equip_effect_description_short_BtHPvEUnitAmountFrontBoost",
+        "equip_effect_description_short_BtHPvEWallReduction",
+        "equip_effect_description_short_BtHPvPAdditionalWaves",
+        "equip_effect_description_short_BtHPvPAttackBonus",
+        "equip_effect_description_short_BtHPvPAttackBoostYard",
+        "equip_effect_description_short_BtHPvPGateBonus",
+        "equip_effect_description_short_BtHPvPGateReduction",
+        "equip_effect_description_short_BtHPvPMeleeAttackBoost",
+        "equip_effect_description_short_BtHPvPMeleeBonus",
+        "equip_effect_description_short_BtHPvPMoatBonus",
+        "equip_effect_description_short_BtHPvPMoatReduction",
+        "equip_effect_description_short_BtHPvPRangeAttackBoost",
+        "equip_effect_description_short_BtHPvPRangedBonus",
+        "equip_effect_description_short_BtHPvPWallBonus",
+        "equip_effect_description_short_BtHPvPWallReduction",
+        "equip_effect_description_short_BtHRecruitmentTimeBoost",
+        "equip_effect_description_short_BtHRefineOutput",
+        "equip_effect_description_short_BtHSpeedBonus",
+        "equip_effect_description_short_BtHSpeedBonusTrading",
+        "equip_effect_description_short_BtHStatuetteCastleLootBoost",
+        "equip_effect_description_short_BtHStealthBonus",
+        "equip_effect_description_short_BtHSurvivalBoost",
+        "equip_effect_description_short_BtHToolProductionSpeedBoostAll",
+        "equip_effect_description_short_BtHTradeArmySizeBoost",
         "equip_effect_description_short_MeadProductionIncrease",
         "equip_effect_description_short_attackBonusMainCastle",
         "equip_effect_description_short_attackBonusNotMainCastle",
@@ -16427,6 +16922,24 @@
         "equipment_set_1100",
         "equipment_set_1101",
         "equipment_set_1102",
+        "equipment_set_1103",
+        "equipment_set_1104",
+        "equipment_set_1105",
+        "equipment_set_1106",
+        "equipment_set_1107",
+        "equipment_set_1108",
+        "equipment_set_1109",
+        "equipment_set_1110",
+        "equipment_set_1111",
+        "equipment_set_1112",
+        "equipment_set_1113",
+        "equipment_set_1114",
+        "equipment_set_1115",
+        "equipment_set_1116",
+        "equipment_set_1117",
+        "equipment_set_1118",
+        "equipment_set_1119",
+        "equipment_set_1120",
         "equipment_set_12",
         "equipment_set_13",
         "equipment_set_14",
@@ -17694,10 +18207,240 @@
         "equipment_unique_1591_desc",
         "equipment_unique_1592",
         "equipment_unique_1592_desc",
+        "equipment_unique_1593",
+        "equipment_unique_1593_desc",
+        "equipment_unique_1594",
+        "equipment_unique_1594_desc",
+        "equipment_unique_1595",
+        "equipment_unique_1595_desc",
+        "equipment_unique_1596",
+        "equipment_unique_1596_desc",
+        "equipment_unique_1597",
+        "equipment_unique_1597_desc",
+        "equipment_unique_1598",
+        "equipment_unique_1598_desc",
+        "equipment_unique_1599",
+        "equipment_unique_1599_desc",
         "equipment_unique_15_desc",
         "equipment_unique_16",
+        "equipment_unique_1600",
+        "equipment_unique_1600_desc",
+        "equipment_unique_1601",
+        "equipment_unique_1601_desc",
+        "equipment_unique_1602",
+        "equipment_unique_1602_desc",
+        "equipment_unique_1603",
+        "equipment_unique_1603_desc",
+        "equipment_unique_1604",
+        "equipment_unique_1604_desc",
+        "equipment_unique_1605",
+        "equipment_unique_1605_desc",
+        "equipment_unique_1606",
+        "equipment_unique_1606_desc",
+        "equipment_unique_1607",
+        "equipment_unique_1607_desc",
+        "equipment_unique_1608",
+        "equipment_unique_1608_desc",
+        "equipment_unique_1609",
+        "equipment_unique_1609_desc",
+        "equipment_unique_1610",
+        "equipment_unique_1610_desc",
+        "equipment_unique_1611",
+        "equipment_unique_1611_desc",
+        "equipment_unique_1612",
+        "equipment_unique_1612_desc",
+        "equipment_unique_1613",
+        "equipment_unique_1613_desc",
+        "equipment_unique_1614",
+        "equipment_unique_1614_desc",
+        "equipment_unique_1615",
+        "equipment_unique_1615_desc",
+        "equipment_unique_1616",
+        "equipment_unique_1616_desc",
+        "equipment_unique_1617",
+        "equipment_unique_1617_desc",
+        "equipment_unique_1618",
+        "equipment_unique_1618_desc",
+        "equipment_unique_1619",
+        "equipment_unique_1619_desc",
+        "equipment_unique_1620",
+        "equipment_unique_1620_desc",
+        "equipment_unique_1621",
+        "equipment_unique_1621_desc",
+        "equipment_unique_1622",
+        "equipment_unique_1622_desc",
+        "equipment_unique_1623",
+        "equipment_unique_1623_desc",
+        "equipment_unique_1624",
+        "equipment_unique_1624_desc",
+        "equipment_unique_1625",
+        "equipment_unique_1625_desc",
+        "equipment_unique_1626",
+        "equipment_unique_1626_desc",
+        "equipment_unique_1627",
+        "equipment_unique_1627_desc",
+        "equipment_unique_1628",
+        "equipment_unique_1628_desc",
+        "equipment_unique_1629",
+        "equipment_unique_1629_desc",
+        "equipment_unique_1630",
+        "equipment_unique_1630_desc",
+        "equipment_unique_1631",
+        "equipment_unique_1631_desc",
+        "equipment_unique_1632",
+        "equipment_unique_1632_desc",
+        "equipment_unique_1633",
+        "equipment_unique_1633_desc",
+        "equipment_unique_1634",
+        "equipment_unique_1634_desc",
+        "equipment_unique_1635",
+        "equipment_unique_1635_desc",
+        "equipment_unique_1636",
+        "equipment_unique_1636_desc",
+        "equipment_unique_1637",
+        "equipment_unique_1637_desc",
+        "equipment_unique_1638",
+        "equipment_unique_1638_desc",
+        "equipment_unique_1639",
+        "equipment_unique_1639_desc",
+        "equipment_unique_1640",
+        "equipment_unique_1640_desc",
+        "equipment_unique_1641",
+        "equipment_unique_1641_desc",
+        "equipment_unique_1642",
+        "equipment_unique_1642_desc",
+        "equipment_unique_1643",
+        "equipment_unique_1643_desc",
+        "equipment_unique_1644",
+        "equipment_unique_1644_desc",
+        "equipment_unique_1645",
+        "equipment_unique_1645_desc",
+        "equipment_unique_1646",
+        "equipment_unique_1646_desc",
+        "equipment_unique_1647",
+        "equipment_unique_1647_desc",
+        "equipment_unique_1648",
+        "equipment_unique_1648_desc",
+        "equipment_unique_1649",
+        "equipment_unique_1649_desc",
+        "equipment_unique_1650",
+        "equipment_unique_1650_desc",
+        "equipment_unique_1651",
+        "equipment_unique_1651_desc",
+        "equipment_unique_1652",
+        "equipment_unique_1652_desc",
+        "equipment_unique_1653",
+        "equipment_unique_1653_desc",
+        "equipment_unique_1654",
+        "equipment_unique_1654_desc",
+        "equipment_unique_1655",
+        "equipment_unique_1655_desc",
+        "equipment_unique_1656",
+        "equipment_unique_1656_desc",
+        "equipment_unique_1657",
+        "equipment_unique_1657_desc",
+        "equipment_unique_1658",
+        "equipment_unique_1658_desc",
+        "equipment_unique_1659",
+        "equipment_unique_1659_desc",
+        "equipment_unique_1660",
+        "equipment_unique_1660_desc",
+        "equipment_unique_1661",
+        "equipment_unique_1661_desc",
+        "equipment_unique_1662",
+        "equipment_unique_1662_desc",
+        "equipment_unique_1663",
+        "equipment_unique_1663_desc",
+        "equipment_unique_1664",
+        "equipment_unique_1664_desc",
+        "equipment_unique_1665",
+        "equipment_unique_1665_desc",
+        "equipment_unique_1666",
+        "equipment_unique_1666_desc",
+        "equipment_unique_1667",
+        "equipment_unique_1667_desc",
+        "equipment_unique_1668",
+        "equipment_unique_1668_desc",
+        "equipment_unique_1669",
+        "equipment_unique_1669_desc",
+        "equipment_unique_1670",
+        "equipment_unique_1670_desc",
+        "equipment_unique_1671",
+        "equipment_unique_1671_desc",
+        "equipment_unique_1672",
+        "equipment_unique_1672_desc",
+        "equipment_unique_1673",
+        "equipment_unique_1673_desc",
+        "equipment_unique_1674",
+        "equipment_unique_1674_desc",
+        "equipment_unique_1675",
+        "equipment_unique_1675_desc",
+        "equipment_unique_1676",
+        "equipment_unique_1676_desc",
+        "equipment_unique_1677",
+        "equipment_unique_1677_desc",
+        "equipment_unique_1678",
+        "equipment_unique_1678_desc",
+        "equipment_unique_1679",
+        "equipment_unique_1679_desc",
+        "equipment_unique_1680",
+        "equipment_unique_1680_desc",
+        "equipment_unique_1681",
+        "equipment_unique_1681_desc",
+        "equipment_unique_1682",
+        "equipment_unique_1682_desc",
+        "equipment_unique_1683",
+        "equipment_unique_1683_desc",
+        "equipment_unique_1684",
+        "equipment_unique_1684_desc",
+        "equipment_unique_1685",
+        "equipment_unique_1685_desc",
+        "equipment_unique_1686",
+        "equipment_unique_1686_desc",
+        "equipment_unique_1687",
+        "equipment_unique_1687_desc",
+        "equipment_unique_1688",
+        "equipment_unique_1688_desc",
+        "equipment_unique_1689",
+        "equipment_unique_1689_desc",
+        "equipment_unique_1690",
+        "equipment_unique_1690_desc",
+        "equipment_unique_1691",
+        "equipment_unique_1691_desc",
+        "equipment_unique_1692",
+        "equipment_unique_1692_desc",
+        "equipment_unique_1693",
+        "equipment_unique_1693_desc",
+        "equipment_unique_1694",
+        "equipment_unique_1694_desc",
+        "equipment_unique_1695",
+        "equipment_unique_1695_desc",
+        "equipment_unique_1696",
+        "equipment_unique_1696_desc",
+        "equipment_unique_1697",
+        "equipment_unique_1697_desc",
+        "equipment_unique_1698",
+        "equipment_unique_1698_desc",
+        "equipment_unique_1699",
+        "equipment_unique_1699_desc",
         "equipment_unique_16_desc",
         "equipment_unique_17",
+        "equipment_unique_1700",
+        "equipment_unique_1700_desc",
+        "equipment_unique_1701",
+        "equipment_unique_1701_desc",
+        "equipment_unique_1702",
+        "equipment_unique_1702_desc",
+        "equipment_unique_1703",
+        "equipment_unique_1703_desc",
+        "equipment_unique_1704",
+        "equipment_unique_1704_desc",
+        "equipment_unique_1705",
+        "equipment_unique_1705_desc",
+        "equipment_unique_1706",
+        "equipment_unique_1706_desc",
+        "equipment_unique_1707",
+        "equipment_unique_1707_desc",
         "equipment_unique_17_desc",
         "equipment_unique_18",
         "equipment_unique_18_desc",
@@ -19432,6 +20175,7 @@
         "event_end_description_EasterGacha",
         "event_end_description_GachaDeco2x2",
         "event_end_description_HalloweenGacha",
+        "event_end_description_JadeGacha",
         "event_end_description_SummerGacha",
         "event_end_header_AnniversaryGacha",
         "event_end_header_BlackFridayGacha",
@@ -19440,6 +20184,7 @@
         "event_end_header_EasterGacha",
         "event_end_header_GachaDeco2x2",
         "event_end_header_HalloweenGacha",
+        "event_end_header_JadeGacha",
         "event_end_header_SummerGacha",
         "event_kingdom_berimond",
         "event_kingdom_bladeCoast",
@@ -19467,6 +20212,7 @@
         "event_title_134",
         "event_title_135",
         "event_title_137",
+        "event_title_139",
         "event_title_14",
         "event_title_15",
         "event_title_16",
@@ -19851,6 +20597,7 @@
         "gachaPull_button_EasterGacha",
         "gachaPull_button_GachaDeco2x2",
         "gachaPull_button_HalloweenGacha",
+        "gachaPull_button_JadeGacha",
         "gachaPull_button_SummerGacha",
         "gachaPull_milestone_AnniversaryGacha",
         "gachaPull_milestone_BlackFridayGacha",
@@ -19859,8 +20606,8 @@
         "gachaPull_milestone_EasterGacha",
         "gachaPull_milestone_GachaDeco2x2",
         "gachaPull_milestone_HalloweenGacha",
+        "gachaPull_milestone_JadeGacha",
         "gachaPull_milestone_SummerGacha",
-        "gachaPull_milestone_tooltip_amountCarnivalMask",
         "gachaPull_milestone_tooltip_amountLeft_AnniversaryGacha",
         "gachaPull_milestone_tooltip_amountLeft_BlackFridayGacha",
         "gachaPull_milestone_tooltip_amountLeft_CarnivalGacha",
@@ -19868,6 +20615,7 @@
         "gachaPull_milestone_tooltip_amountLeft_EasterGacha",
         "gachaPull_milestone_tooltip_amountLeft_GachaDeco2x2",
         "gachaPull_milestone_tooltip_amountLeft_HalloweenGacha",
+        "gachaPull_milestone_tooltip_amountLeft_JadeGacha",
         "gachaPull_milestone_tooltip_amountLeft_SummerGacha",
         "gachaPull_milestone_tooltip_amount_AnniversaryGacha",
         "gachaPull_milestone_tooltip_amount_BlackFridayGacha",
@@ -19876,6 +20624,7 @@
         "gachaPull_milestone_tooltip_amount_EasterGacha",
         "gachaPull_milestone_tooltip_amount_GachaDeco2x2",
         "gachaPull_milestone_tooltip_amount_HalloweenGacha",
+        "gachaPull_milestone_tooltip_amount_JadeGacha",
         "gachaPull_milestone_tooltip_amount_SummerGacha",
         "gachapull_button_carnivalgacha",
         "gainedGallantryPoints",
@@ -20483,7 +21232,129 @@
         "gem_unique_524_desc",
         "gem_unique_525",
         "gem_unique_525_desc",
+        "gem_unique_526",
+        "gem_unique_526_desc",
+        "gem_unique_527",
+        "gem_unique_527_desc",
+        "gem_unique_528",
+        "gem_unique_528_desc",
+        "gem_unique_529",
+        "gem_unique_529_desc",
         "gem_unique_52_desc",
+        "gem_unique_530",
+        "gem_unique_530_desc",
+        "gem_unique_531",
+        "gem_unique_531_desc",
+        "gem_unique_532",
+        "gem_unique_532_desc",
+        "gem_unique_533",
+        "gem_unique_533_desc",
+        "gem_unique_534",
+        "gem_unique_534_desc",
+        "gem_unique_535",
+        "gem_unique_535_desc",
+        "gem_unique_536",
+        "gem_unique_536_desc",
+        "gem_unique_537",
+        "gem_unique_537_desc",
+        "gem_unique_538",
+        "gem_unique_538_desc",
+        "gem_unique_539",
+        "gem_unique_539_desc",
+        "gem_unique_540",
+        "gem_unique_540_desc",
+        "gem_unique_541",
+        "gem_unique_541_desc",
+        "gem_unique_542",
+        "gem_unique_542_desc",
+        "gem_unique_543",
+        "gem_unique_543_desc",
+        "gem_unique_544",
+        "gem_unique_544_desc",
+        "gem_unique_545",
+        "gem_unique_545_desc",
+        "gem_unique_546",
+        "gem_unique_546_desc",
+        "gem_unique_547",
+        "gem_unique_547_desc",
+        "gem_unique_548",
+        "gem_unique_548_desc",
+        "gem_unique_549",
+        "gem_unique_549_desc",
+        "gem_unique_550",
+        "gem_unique_550_desc",
+        "gem_unique_551",
+        "gem_unique_551_desc",
+        "gem_unique_552",
+        "gem_unique_552_desc",
+        "gem_unique_553",
+        "gem_unique_553_desc",
+        "gem_unique_554",
+        "gem_unique_554_desc",
+        "gem_unique_555",
+        "gem_unique_555_desc",
+        "gem_unique_556",
+        "gem_unique_556_desc",
+        "gem_unique_557",
+        "gem_unique_557_desc",
+        "gem_unique_558",
+        "gem_unique_558_desc",
+        "gem_unique_559",
+        "gem_unique_559_desc",
+        "gem_unique_560",
+        "gem_unique_560_desc",
+        "gem_unique_561",
+        "gem_unique_561_desc",
+        "gem_unique_562",
+        "gem_unique_562_desc",
+        "gem_unique_563",
+        "gem_unique_563_desc",
+        "gem_unique_564",
+        "gem_unique_564_desc",
+        "gem_unique_565",
+        "gem_unique_565_desc",
+        "gem_unique_566",
+        "gem_unique_566_desc",
+        "gem_unique_567",
+        "gem_unique_567_desc",
+        "gem_unique_568",
+        "gem_unique_568_desc",
+        "gem_unique_569",
+        "gem_unique_569_desc",
+        "gem_unique_570",
+        "gem_unique_570_desc",
+        "gem_unique_571",
+        "gem_unique_571_desc",
+        "gem_unique_572",
+        "gem_unique_572_desc",
+        "gem_unique_573",
+        "gem_unique_573_desc",
+        "gem_unique_574",
+        "gem_unique_574_desc",
+        "gem_unique_575",
+        "gem_unique_575_desc",
+        "gem_unique_576",
+        "gem_unique_576_desc",
+        "gem_unique_577",
+        "gem_unique_577_desc",
+        "gem_unique_578",
+        "gem_unique_578_desc",
+        "gem_unique_579",
+        "gem_unique_579_desc",
+        "gem_unique_580",
+        "gem_unique_580_desc",
+        "gem_unique_581",
+        "gem_unique_581_desc",
+        "gem_unique_582",
+        "gem_unique_582_desc",
+        "gem_unique_583",
+        "gem_unique_583_desc",
+        "gem_unique_584",
+        "gem_unique_584_desc",
+        "gem_unique_585",
+        "gem_unique_585_desc",
+        "gem_unique_586",
+        "gem_unique_586_desc",
         "gem_unique_60",
         "gem_unique_60_desc",
         "gem_unique_61",
@@ -21150,6 +22021,9 @@
         "generals_characters_137_name",
         "generals_characters_137_narrative",
         "generals_characters_137_summary",
+        "generals_characters_138_name",
+        "generals_characters_138_narrative",
+        "generals_characters_138_summary",
         "generals_characters_Wolfgard_name",
         "generals_introduction_cinematic01_desc",
         "generals_introduction_cinematic01_name",
@@ -21566,7 +22440,10 @@
         "generic_login_banned_4_headline",
         "generic_login_banned_4_text",
         "generic_login_banned_4_time",
+        "generic_login_banned_other",
+        "generic_login_banned_other_date",
         "generic_login_banned_permanent",
+        "generic_login_banned_server",
         "generic_login_characterLimit",
         "generic_login_deleted",
         "generic_login_discordButton_header",
@@ -22051,6 +22928,7 @@
         "helpPopup_EasterGacha",
         "helpPopup_GachaDeco2x2",
         "helpPopup_HalloweenGacha",
+        "helpPopup_JadeGacha",
         "helpPopup_SummerGacha",
         "help_2d_liste",
         "help_2d_map_UNUSED",
@@ -22116,8 +22994,13 @@
         "help_berimond_pointsEvent",
         "help_berimond_titles",
         "help_beyondTheHorizon",
+        "help_beyondTheHorizon_AllianceJade",
         "help_beyondTheHorizon_AllianceTower_defense",
         "help_beyondTheHorizon_AllianceTower_supportOverview",
+        "help_beyondTheHorizon_citadel",
+        "help_beyondTheHorizon_oasisTradeReport",
+        "help_beyondTheHorizon_oasisTrader",
+        "help_beyondTheHorizon_rankings_AllianceJade",
         "help_bookmarks_alliance_addBookmark",
         "help_bookmarks_alliance_setParticipant",
         "help_bookmarks_alliance_setTime",
@@ -22390,6 +23273,54 @@
         "hero_unique_1537_desc",
         "hero_unique_1542",
         "hero_unique_1542_desc",
+        "hero_unique_1599",
+        "hero_unique_1599_desc",
+        "hero_unique_1604",
+        "hero_unique_1604_desc",
+        "hero_unique_1609",
+        "hero_unique_1609_desc",
+        "hero_unique_1620",
+        "hero_unique_1620_desc",
+        "hero_unique_1625",
+        "hero_unique_1625_desc",
+        "hero_unique_1630",
+        "hero_unique_1630_desc",
+        "hero_unique_1658",
+        "hero_unique_1658_desc",
+        "hero_unique_1663",
+        "hero_unique_1663_desc",
+        "hero_unique_1668",
+        "hero_unique_1668_desc",
+        "hero_unique_1673",
+        "hero_unique_1673_desc",
+        "hero_unique_1678",
+        "hero_unique_1678_desc",
+        "hero_unique_1683",
+        "hero_unique_1683_desc",
+        "hero_unique_1684",
+        "hero_unique_1684_desc",
+        "hero_unique_1685",
+        "hero_unique_1685_desc",
+        "hero_unique_1686",
+        "hero_unique_1686_desc",
+        "hero_unique_1687",
+        "hero_unique_1687_desc",
+        "hero_unique_1688",
+        "hero_unique_1688_desc",
+        "hero_unique_1689",
+        "hero_unique_1689_desc",
+        "hero_unique_1690",
+        "hero_unique_1690_desc",
+        "hero_unique_1691",
+        "hero_unique_1691_desc",
+        "hero_unique_1692",
+        "hero_unique_1692_desc",
+        "hero_unique_1697",
+        "hero_unique_1697_desc",
+        "hero_unique_1702",
+        "hero_unique_1702_desc",
+        "hero_unique_1707",
+        "hero_unique_1707_desc",
         "hero_unique_227",
         "hero_unique_227_desc",
         "hero_unique_228",
@@ -23406,6 +24337,7 @@
         "message_autoWar_ownAlliance_sabotage",
         "message_autoWar_subject",
         "message_berimondInvasion_desc",
+        "message_beyondTheHorizon_header",
         "message_compensationNotification_buttonForum",
         "message_compensationNotification_copy",
         "message_compensationNotification_header",
@@ -24794,6 +25726,7 @@
         "questCondition_changeCrest",
         "questCondition_changeName",
         "questCondition_coal",
+        "questCondition_collectCurrency",
         "questCondition_collectFame",
         "questCondition_collectGallantryPoints",
         "questCondition_collectKhanMedals",
@@ -24801,6 +25734,7 @@
         "questCondition_collectRage",
         "questCondition_collectSamuraiTokens",
         "questCondition_collectTax",
+        "questCondition_collectTools",
         "questCondition_connectToFacebook",
         "questCondition_conquerFactionCamp",
         "questCondition_conquerFactionVillage",
@@ -24812,6 +25746,7 @@
         "questCondition_countPopulation",
         "questCondition_count_castleName_2",
         "questCondition_defeatAliensWithMinFame",
+        "questCondition_defeatAllianceCitadel",
         "questCondition_defeatFactionCamp",
         "questCondition_defeatInvaders",
         "questCondition_defeatKhanCamps",
@@ -24862,6 +25797,7 @@
         "questCondition_recruitedAttackUnitsWithMinStrength",
         "questCondition_recruitedDefenderUnitsWithMinStrength",
         "questCondition_researchTech",
+        "questCondition_spendCurrency",
         "questCondition_spendKhanMedals",
         "questCondition_spendKhanTablets",
         "questCondition_spendSamuraiTokens",
@@ -24870,6 +25806,7 @@
         "questCondition_startKingdom",
         "questCondition_startRecruit",
         "questCondition_startTreasureMap",
+        "questCondition_supportAllianceCitadel",
         "questCondition_tauntWolfFortress",
         "questCondition_treasureDungeons_2",
         "questCondition_treasureDungeons_4",
@@ -26834,6 +27771,75 @@
         "questID_60140_info",
         "questID_60141_finish",
         "questID_60141_info",
+        "questID_60142_finish",
+        "questID_60142_info",
+        "questID_60143_finish",
+        "questID_60143_info",
+        "questID_60144_finish",
+        "questID_60144_info",
+        "questID_60145_finish",
+        "questID_60145_info",
+        "questID_60146_finish",
+        "questID_60146_info",
+        "questID_60147_finish",
+        "questID_60147_info",
+        "questID_60148_finish",
+        "questID_60148_info",
+        "questID_60149_finish",
+        "questID_60149_info",
+        "questID_60150_finish",
+        "questID_60150_info",
+        "questID_60151_finish",
+        "questID_60151_info",
+        "questID_60152_finish",
+        "questID_60152_info",
+        "questID_60153_finish",
+        "questID_60153_info",
+        "questID_60154_finish",
+        "questID_60154_info",
+        "questID_60155_finish",
+        "questID_60155_info",
+        "questID_60156_finish",
+        "questID_60156_info",
+        "questID_60157_finish",
+        "questID_60157_info",
+        "questID_60158_finish",
+        "questID_60158_info",
+        "questID_60159_finish",
+        "questID_60159_info",
+        "questID_60160_finish",
+        "questID_60160_info",
+        "questID_60161_finish",
+        "questID_60161_info",
+        "questID_60162_finish",
+        "questID_60162_info",
+        "questID_60163_finish",
+        "questID_60163_info",
+        "questID_60164_finish",
+        "questID_60164_info",
+        "questID_60165_finish",
+        "questID_60165_info",
+        "questID_60166_finish",
+        "questID_60166_info",
+        "questID_60167_finish",
+        "questID_60167_info",
+        "questID_60168_finish",
+        "questID_60168_info",
+        "questID_60169_finish",
+        "questID_60169_info",
+        "questID_60170_finish",
+        "questID_60170_info",
+        "questID_60171_finish",
+        "questID_60171_info",
+        "questID_60172_finish",
+        "questID_60172_info",
+        "questID_60173_finish",
+        "questID_60173_info",
+        "questID_60174_finish",
+        "questID_60174_info",
+        "questID_60175_finish",
+        "questID_60175_info",
+        "questID_60176_info",
         "questID_60201_finish",
         "questID_60201_info",
         "questID_60202_finish",
@@ -27550,6 +28556,26 @@
         "questSeriesID_60",
         "questSeriesID_6000",
         "questSeriesID_6001",
+        "questSeriesID_6002",
+        "questSeriesID_6003",
+        "questSeriesID_6004",
+        "questSeriesID_6005",
+        "questSeriesID_6006",
+        "questSeriesID_6007",
+        "questSeriesID_6008",
+        "questSeriesID_6009",
+        "questSeriesID_6010",
+        "questSeriesID_6011",
+        "questSeriesID_6012",
+        "questSeriesID_6013",
+        "questSeriesID_6014",
+        "questSeriesID_6015",
+        "questSeriesID_6016",
+        "questSeriesID_6017",
+        "questSeriesID_6018",
+        "questSeriesID_6019",
+        "questSeriesID_6020",
+        "questSeriesID_6021",
         "questSeriesID_61",
         "questSeriesID_62",
         "questSeriesID_63",
@@ -27635,6 +28661,7 @@
         "ranking_description_EasterGacha",
         "ranking_description_GachaDeco2x2",
         "ranking_description_HalloweenGacha",
+        "ranking_description_JadeGacha",
         "ranking_description_LTPE",
         "ranking_description_SummerGacha",
         "ranking_server",
@@ -29778,6 +30805,7 @@
         "title_BlackFridayGacha",
         "title_CarnivalGacha",
         "title_HalloweenGacha",
+        "title_JadeGacha",
         "title_SummerGacha",
         "title_advisorInformation",
         "title_advisor_AttackCancel",
@@ -29816,6 +30844,7 @@
         "toolsmith_short_info",
         "toolsmith_upgrade_info",
         "tooltip_defence_gotoEquipment",
+        "tooltip_disableIGS",
         "tooltip_gachaName_GachaDeco2x2",
         "tooltip_kraken",
         "tooltip_laboratory_boost",
@@ -30477,6 +31506,10 @@
         "webshop_blackFriday_large_name",
         "webshop_blackFriday_medium_name",
         "webshop_blackFriday_small_name",
+        "webshop_blackfriday2026_bundle_def_giant_name",
+        "webshop_blackfriday2026_bundle_def_huge_name",
+        "webshop_blackfriday2026_bundle_off_giant_name",
+        "webshop_blackfriday2026_bundle_off_huge_name",
         "webshop_blackfriday_VIP_name",
         "webshop_blackfriday_combat_name",
         "webshop_blackfriday_economy_name",
@@ -31136,10 +32169,12 @@
         "webshop_payment_additional",
         "webshop_permCIbase_fooddistrict_POFoodProd_desc",
         "webshop_permCIbase_innerdistrict_POFoodProd_desc",
+        "webshop_permCIbase_meaddistrict_POFoodProd_desc",
         "webshop_permCIbase_militarydistrict_POFoodProd_desc",
         "webshop_permCIbase_tradedistrict_POFoodProd_desc",
         "webshop_permCIrelic_fooddistrict_POMeadProd_desc",
         "webshop_permCIrelic_innerdistrict_POMeadProd_desc",
+        "webshop_permCIrelic_meaddistrict_POMeadProd_desc",
         "webshop_permCIrelic_militarydistrict_POMeadProd_desc",
         "webshop_permCIrelic_tradedistrict_POMeadProd_desc",
         "webshop_permCIspring_stronghold_POUnitLimitWall_desc",
@@ -31422,7 +32457,7 @@
         "zombiemarksman_name",
         "zombiemarksman_short_info"
       ],
-      "hash": "fbb2e57bfb45fb13"
+      "hash": "72973dbae822f9de"
     },
     "GET live-outer-realms": {
       "status": 403,
@@ -31459,7 +32494,7 @@
     "GET live-outer-realms-search": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 498,
+      "bytes": 266,
       "kind": "paginated",
       "total": 0,
       "count": 0,
@@ -31472,15 +32507,15 @@
         "previous_collected_at",
         "servers"
       ],
-      "hash": "84c454cd8c0cb5ef"
+      "hash": "ec99f3c2d122976e"
     },
     "GET minigame-autocomplete": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 113,
+      "bytes": 130,
       "kind": "array",
       "count": 10,
-      "hash": "e7efc6b0ff12f11c"
+      "hash": "8a5b18aa9e68b566"
     },
     "GET minigame-daily": {
       "status": 200,
@@ -31512,12 +32547,18 @@
       "bytes": 41881,
       "kind": "binary"
     },
+    "GET og-release-notes-card": {
+      "status": 200,
+      "contentType": "image/jpeg",
+      "bytes": 68885,
+      "kind": "binary"
+    },
     "GET player-profile": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 951,
+      "bytes": 1070,
       "kind": "object",
-      "count": 1,
+      "count": 0,
       "keys": [
         "alliance_history",
         "castle_movements",
@@ -31533,21 +32574,14 @@
         "weekly_reset_offset_hours",
         "zone"
       ],
-      "rowKeys": [
-        "new_alliance_id",
-        "new_alliance_name",
-        "occurred_at",
-        "old_alliance_id",
-        "old_alliance_name"
-      ],
-      "hash": "012916e0554d87b6"
+      "hash": "25c02b4f39edd6e8"
     },
     "GET players-by-distance": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 8249,
+      "bytes": 8166,
       "kind": "paginated",
-      "total": 690,
+      "total": 1866,
       "count": 15,
       "keys": [
         "duration",
@@ -31578,14 +32612,14 @@
         "remaining_relocation_time",
         "updated_at"
       ],
-      "hash": "227a793b85316be7"
+      "hash": "23e9b1a6ce01f6ec"
     },
     "GET players-by-name": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 486,
+      "bytes": 422,
       "kind": "object",
-      "count": 1,
+      "count": 0,
       "keys": [
         "alliance_history",
         "alliance_id",
@@ -31606,57 +32640,14 @@
         "player_name",
         "updated_at"
       ],
-      "rowKeys": [
-        "date",
-        "new_alliance_id",
-        "old_alliance_id"
-      ],
-      "hash": "a62b8d80f987aae1"
+      "hash": "381f15fc09841ac7"
     },
     "GET players-filtered": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 2856,
+      "bytes": 8294,
       "kind": "paginated",
-      "total": 1,
-      "count": 1,
-      "keys": [
-        "duration",
-        "pagination",
-        "players"
-      ],
-      "rowKeys": [
-        "alliance_history",
-        "alliance_id",
-        "alliance_name",
-        "alliance_rank",
-        "calculated_distance",
-        "castles",
-        "current_fame",
-        "highest_fame",
-        "honor",
-        "is_ruin",
-        "legendary_level",
-        "level",
-        "loot_all_time",
-        "loot_current",
-        "max_honor",
-        "might_all_time",
-        "might_current",
-        "peace_disabled_at",
-        "player_id",
-        "player_name",
-        "remaining_relocation_time",
-        "updated_at"
-      ],
-      "hash": "1d25e3be71a65542"
-    },
-    "GET players-list": {
-      "status": 200,
-      "contentType": "application/json",
-      "bytes": 10373,
-      "kind": "paginated",
-      "total": 690,
+      "total": 15,
       "count": 15,
       "keys": [
         "duration",
@@ -31687,14 +32678,52 @@
         "remaining_relocation_time",
         "updated_at"
       ],
-      "hash": "60f3dc7cd386321d"
+      "hash": "7b6bbc8eeec6b420"
+    },
+    "GET players-list": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 8710,
+      "kind": "paginated",
+      "total": 1866,
+      "count": 15,
+      "keys": [
+        "duration",
+        "pagination",
+        "players"
+      ],
+      "rowKeys": [
+        "alliance_history",
+        "alliance_id",
+        "alliance_name",
+        "alliance_rank",
+        "calculated_distance",
+        "castles",
+        "current_fame",
+        "highest_fame",
+        "honor",
+        "is_ruin",
+        "legendary_level",
+        "level",
+        "loot_all_time",
+        "loot_current",
+        "max_honor",
+        "might_all_time",
+        "might_current",
+        "peace_disabled_at",
+        "player_id",
+        "player_name",
+        "remaining_relocation_time",
+        "updated_at"
+      ],
+      "hash": "9497252c08756ad8"
     },
     "GET players-page-size": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 12265,
+      "bytes": 3913,
       "kind": "paginated",
-      "total": 690,
+      "total": 1866,
       "count": 7,
       "keys": [
         "duration",
@@ -31725,12 +32754,12 @@
         "remaining_relocation_time",
         "updated_at"
       ],
-      "hash": "8a3d14e1f77a8626"
+      "hash": "796ed2c75cca6796"
     },
     "GET players-search": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 1319,
+      "bytes": 1221,
       "kind": "object",
       "count": 10,
       "keys": [
@@ -31744,48 +32773,73 @@
         "might_current",
         "name"
       ],
-      "hash": "225baa609334598d"
+      "hash": "960a13bd2067b3d5"
+    },
+    "GET release-notes": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 28153,
+      "kind": "object",
+      "count": 17,
+      "keys": [
+        "releases"
+      ],
+      "rowKeys": [
+        "api_changes",
+        "date",
+        "items",
+        "type",
+        "version"
+      ],
+      "hash": "48d4059235d2e8fa"
     },
     "GET rift-raid-alliance-analysis": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 96,
+      "bytes": 469,
       "kind": "object",
-      "count": 0,
+      "count": 4,
       "keys": [
         "analysis",
         "meta"
       ],
-      "hash": "13b9eebfed76d728"
+      "rowKeys": [
+        "date",
+        "division",
+        "rank",
+        "score",
+        "subdivision"
+      ],
+      "hash": "80a6b26919dd2626"
     },
     "GET rift-raid-alliances": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 893,
+      "bytes": 271,
       "kind": "paginated",
-      "total": 5,
+      "total": 0,
       "keys": [
         "event",
         "pagination"
       ],
-      "hash": "9abb23f1e6ef5875"
+      "hash": "d6a20847204f8ba5"
     },
     "GET rift-raid-alliances-subdivision": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 1473,
+      "bytes": 268,
       "kind": "paginated",
-      "total": 12,
+      "total": 0,
       "keys": [
         "event",
         "pagination"
       ],
-      "hash": "c5ad33ff6443b4d4"
+      "hash": "70dfb7a957f33691"
     },
     "GET rift-raid-dates": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 91,
+      "bytes": 145,
       "kind": "object",
       "count": 1,
       "keys": [
@@ -31795,29 +32849,20 @@
         "dates",
         "event_id"
       ],
-      "hash": "3fe0f2dd2f049166"
+      "hash": "5aabdff9ba9af01e"
     },
     "GET rift-raid-search": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 1363,
+      "bytes": 110,
       "kind": "paginated",
-      "total": 26,
-      "count": 10,
+      "total": 0,
+      "count": 0,
       "keys": [
         "alliances",
         "pagination"
       ],
-      "rowKeys": [
-        "alliance_id",
-        "alliance_name",
-        "division",
-        "rank",
-        "score",
-        "server",
-        "subdivision"
-      ],
-      "hash": "3c039eb04034efe0"
+      "hash": "bcfbea8fa2a20f9f"
     },
     "GET seo-alliance-head": {
       "status": 200,
@@ -31841,19 +32886,21 @@
     "GET server-movements": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 3034,
+      "bytes": 4742,
       "kind": "paginated",
-      "total": 2983,
+      "total": 412,
       "count": 10,
       "keys": [
         "movements",
         "pagination"
       ],
       "rowKeys": [
+        "alliance_id",
         "alliance_name",
         "castle_type",
         "created_at",
         "movement_type",
+        "player_id",
         "player_legendary_level",
         "player_level",
         "player_might",
@@ -31861,26 +32908,32 @@
         "position_x_new",
         "position_x_old",
         "position_y_new",
-        "position_y_old"
+        "position_y_old",
+        "previous_owner_alliance_id",
+        "previous_owner_alliance_name",
+        "previous_owner_id",
+        "previous_owner_name"
       ],
-      "hash": "929994f26a22edad"
+      "hash": "88adc5945a87c217"
     },
     "GET server-movements-filtered": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 2441,
+      "bytes": 581,
       "kind": "paginated",
-      "total": 8,
-      "count": 8,
+      "total": 1,
+      "count": 1,
       "keys": [
         "movements",
         "pagination"
       ],
       "rowKeys": [
+        "alliance_id",
         "alliance_name",
         "castle_type",
         "created_at",
         "movement_type",
+        "player_id",
         "player_legendary_level",
         "player_level",
         "player_might",
@@ -31888,9 +32941,13 @@
         "position_x_new",
         "position_x_old",
         "position_y_new",
-        "position_y_old"
+        "position_y_old",
+        "previous_owner_alliance_id",
+        "previous_owner_alliance_name",
+        "previous_owner_id",
+        "previous_owner_name"
       ],
-      "hash": "c4c7ef87b6e569f8"
+      "hash": "43bd3b07d0ea1c6d"
     },
     "GET server-renames": {
       "status": 200,
@@ -31902,10 +32959,12 @@
         "renames"
       ],
       "rowKeys": [
+        "alliance_id",
         "alliance_name",
         "date",
         "new_player_name",
         "old_player_name",
+        "player_id",
         "player_might",
         "player_name"
       ]
@@ -31924,27 +32983,66 @@
       "status": 200,
       "contentType": "application/json",
       "bytes": 0,
-      "kind": "array"
+      "kind": "array",
+      "rowKeys": [
+        "alliance_count",
+        "alliances_changed_name",
+        "avg_honor",
+        "avg_level",
+        "avg_loot",
+        "avg_might",
+        "created_at",
+        "event_berimond_invasion_players",
+        "event_berimond_invasion_points",
+        "event_berimond_kingdom_players",
+        "event_berimond_kingdom_points",
+        "event_bloodcrow_players",
+        "event_bloodcrow_points",
+        "event_nomad_players",
+        "event_nomad_points",
+        "event_samurai_players",
+        "event_samurai_points",
+        "event_war_realms_players",
+        "event_war_realms_points",
+        "events_count",
+        "events_participation_rate",
+        "events_top_3_names",
+        "id",
+        "max_loot",
+        "max_loot_player_id",
+        "max_might",
+        "max_might_player_id",
+        "players_count",
+        "players_in_peace",
+        "players_who_changed_alliance",
+        "players_who_changed_name",
+        "total_honor",
+        "total_loot",
+        "total_might",
+        "variation_honor",
+        "variation_loot",
+        "variation_might"
+      ]
     },
     "GET servers": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 517,
+      "bytes": 14,
       "kind": "array",
-      "count": 62,
-      "hash": "f521ca184d723657"
+      "count": 2,
+      "hash": "ed781eaa68ceaec3"
     },
     "GET servers-catalog": {
       "status": 200,
       "contentType": "application/xml",
-      "bytes": 19091,
+      "bytes": 472,
       "kind": "binary",
-      "hash": "12e3a00094047aac"
+      "hash": "e9371406b8ccd8fa"
     },
     "GET stats-alliance": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 684,
+      "bytes": 56700,
       "kind": "object",
       "keys": [
         "diffs",
@@ -31952,14 +33050,14 @@
         "points",
         "timezoneOffset"
       ],
-      "hash": "7246b5b5c7e5c2f6"
+      "hash": "aa5976e755d2c50c"
     },
     "GET stats-alliance-pulse": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 170,
+      "bytes": 2370,
       "kind": "object",
-      "count": 0,
+      "count": 3,
       "keys": [
         "daily_avg_might_change",
         "might_intra_variation",
@@ -31969,7 +33067,11 @@
         "top_might_loss_24h",
         "top_might_loss_7d"
       ],
-      "hash": "5b9d3740e2ebf8c7"
+      "rowKeys": [
+        "avg_diff",
+        "date"
+      ],
+      "hash": "4f07fd2624e6579f"
     },
     "GET stats-alliance-trimmed": {
       "status": 200,
@@ -31986,7 +33088,7 @@
     "GET stats-player": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 39243,
+      "bytes": 62309,
       "kind": "object",
       "count": 4,
       "keys": [
@@ -32003,7 +33105,7 @@
         "point",
         "top"
       ],
-      "hash": "cae0949036c24085"
+      "hash": "40dd275e183f76cb"
     },
     "GET stats-player-event-duration": {
       "status": 200,
@@ -32021,9 +33123,9 @@
     "GET stats-player-event-occurrences": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 504,
+      "bytes": 234,
       "kind": "object",
-      "count": 5,
+      "count": 2,
       "keys": [
         "event",
         "occurrences"
@@ -32033,7 +33135,7 @@
         "point",
         "started_at"
       ],
-      "hash": "7e8702c1151ee731"
+      "hash": "cc3dfed288d36b0d"
     },
     "GET stats-player-summary": {
       "status": 200,
@@ -32078,8 +33180,9 @@
     "GET stats-ranking-player": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 464,
+      "bytes": 519,
       "kind": "object",
+      "count": 3,
       "keys": [
         "alliance_name",
         "castles",
@@ -32103,7 +33206,12 @@
         "server_rank",
         "updated_at"
       ],
-      "hash": "ddcaf7f622fc9920"
+      "rowKeys": [
+        "0",
+        "1",
+        "2"
+      ],
+      "hash": "a005dcf6d23cb944"
     },
     "GET status-root": {
       "status": 200,
@@ -32135,9 +33243,9 @@
     "GET storms-forts": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 3230,
+      "bytes": 4173,
       "kind": "paginated",
-      "total": 2651,
+      "total": 600,
       "count": 15,
       "keys": [
         "forts",
@@ -32146,16 +33254,18 @@
       "rowKeys": [
         "attacks_left",
         "available_at",
+        "available_since_observed",
         "distance",
         "is_visible",
         "isle_id",
         "kid",
+        "last_available_seconds",
         "position_x",
         "position_y",
         "updated_at",
         "victory_count"
       ],
-      "hash": "a95ab335c0495461"
+      "hash": "0f617cda6c49f8aa"
     },
     "GET storms-forts-filtered": {
       "status": 200,
@@ -32171,36 +33281,22 @@
       "hash": "897c45d7e0977be8"
     },
     "GET storms-forts-near-player": {
-      "status": 200,
+      "status": 400,
       "contentType": "application/json",
-      "bytes": 3257,
-      "kind": "paginated",
-      "total": 2651,
-      "count": 15,
+      "bytes": 54,
+      "kind": "object",
       "keys": [
-        "forts",
-        "pagination"
+        "code",
+        "error"
       ],
-      "rowKeys": [
-        "attacks_left",
-        "available_at",
-        "distance",
-        "is_visible",
-        "isle_id",
-        "kid",
-        "position_x",
-        "position_y",
-        "updated_at",
-        "victory_count"
-      ],
-      "hash": "25797cefcf96cb73"
+      "hash": "f81650950f07b9ae"
     },
     "GET storms-isles": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 5003,
+      "bytes": 5988,
       "kind": "paginated",
-      "total": 2655,
+      "total": 600,
       "count": 15,
       "keys": [
         "isles",
@@ -32208,9 +33304,11 @@
       ],
       "rowKeys": [
         "available_at",
+        "available_since_observed",
         "distance",
         "isle_id",
         "kid",
+        "last_available_seconds",
         "object_id",
         "occupier_alliance_name",
         "occupier_id",
@@ -32223,7 +33321,7 @@
         "state",
         "updated_at"
       ],
-      "hash": "e978d0c1ef01a869"
+      "hash": "966d1f2f23fd420a"
     },
     "GET storms-isles-filtered": {
       "status": 200,
@@ -32239,39 +33337,20 @@
       "hash": "2d2ee8bd61b2a8fa"
     },
     "GET storms-isles-near-player": {
-      "status": 200,
+      "status": 400,
       "contentType": "application/json",
-      "bytes": 5087,
-      "kind": "paginated",
-      "total": 2655,
-      "count": 15,
+      "bytes": 54,
+      "kind": "object",
       "keys": [
-        "isles",
-        "pagination"
+        "code",
+        "error"
       ],
-      "rowKeys": [
-        "available_at",
-        "distance",
-        "isle_id",
-        "kid",
-        "object_id",
-        "occupier_alliance_name",
-        "occupier_id",
-        "occupier_legendary_level",
-        "occupier_level",
-        "occupier_might",
-        "occupier_name",
-        "position_x",
-        "position_y",
-        "state",
-        "updated_at"
-      ],
-      "hash": "99e9d2aad2e9bd90"
+      "hash": "f81650950f07b9ae"
     },
     "GET storms-isles-occupier": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 456,
+      "bytes": 523,
       "kind": "paginated",
       "total": 1,
       "count": 1,
@@ -32281,9 +33360,11 @@
       ],
       "rowKeys": [
         "available_at",
+        "available_since_observed",
         "distance",
         "isle_id",
         "kid",
+        "last_available_seconds",
         "object_id",
         "occupier_alliance_name",
         "occupier_id",
@@ -32296,12 +33377,12 @@
         "state",
         "updated_at"
       ],
-      "hash": "7b572ad133df0f09"
+      "hash": "6464351c294ab57b"
     },
     "GET storms-meta": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 146,
+      "bytes": 144,
       "kind": "object",
       "keys": [
         "forts_count",
@@ -32310,14 +33391,14 @@
         "scan_radius",
         "season_started_at"
       ],
-      "hash": "8e5441865068e6f6"
+      "hash": "1e1cca1c8660bf86"
     },
     "GET stormy-isles": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 6201,
+      "bytes": 6141,
       "kind": "paginated",
-      "total": 2583,
+      "total": 78,
       "count": 15,
       "keys": [
         "pagination",
@@ -32339,14 +33420,14 @@
         "player_name",
         "rank"
       ],
-      "hash": "5160bef4e5293a61"
+      "hash": "149a9b0b5465a85e"
     },
     "GET stormy-isles-filtered": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 6025,
+      "bytes": 6166,
       "kind": "paginated",
-      "total": 2030,
+      "total": 63,
       "count": 15,
       "keys": [
         "pagination",
@@ -32368,14 +33449,14 @@
         "player_name",
         "rank"
       ],
-      "hash": "334bbfb226e23188"
+      "hash": "9d96b2488f7d2c14"
     },
     "GET stormy-isles-metric-filters": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 6201,
+      "bytes": 6141,
       "kind": "paginated",
-      "total": 2583,
+      "total": 78,
       "count": 15,
       "keys": [
         "pagination",
@@ -32397,14 +33478,14 @@
         "player_name",
         "rank"
       ],
-      "hash": "5160bef4e5293a61"
+      "hash": "149a9b0b5465a85e"
     },
     "GET stormy-isles-player-filters": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 7941,
+      "bytes": 8049,
       "kind": "paginated",
-      "total": 25,
+      "total": 37,
       "count": 20,
       "keys": [
         "pagination",
@@ -32426,7 +33507,7 @@
         "player_name",
         "rank"
       ],
-      "hash": "53634b465917aed3"
+      "hash": "7e05e0ff7717fd35"
     },
     "GET top-players": {
       "status": 404,
@@ -32442,6 +33523,30 @@
     "GET updates-alliance-players": {
       "status": 200,
       "contentType": "application/json",
+      "bytes": 299,
+      "kind": "object",
+      "count": 1,
+      "keys": [
+        "updates"
+      ],
+      "rowKeys": [
+        "created_at",
+        "legendary_level",
+        "level",
+        "loot_current",
+        "might_current",
+        "new_alliance_id",
+        "new_alliance_name",
+        "old_alliance_id",
+        "old_alliance_name",
+        "player_id",
+        "player_name"
+      ],
+      "hash": "ffd6fcc03ac2f59d"
+    },
+    "GET updates-player-alliances": {
+      "status": 200,
+      "contentType": "application/json",
       "bytes": 14,
       "kind": "object",
       "count": 0,
@@ -32449,26 +33554,6 @@
         "updates"
       ],
       "hash": "7ba5c52c249dc28c"
-    },
-    "GET updates-player-alliances": {
-      "status": 200,
-      "contentType": "application/json",
-      "bytes": 234,
-      "kind": "object",
-      "count": 1,
-      "keys": [
-        "updates"
-      ],
-      "rowKeys": [
-        "date",
-        "new_alliance_id",
-        "new_alliance_name",
-        "old_alliance_id",
-        "old_alliance_name",
-        "original_new_alliance_name",
-        "original_old_alliance_name"
-      ],
-      "hash": "339f09c6f4c880e1"
     },
     "GET updates-player-names": {
       "status": 200,
@@ -32484,21 +33569,25 @@
     "GET woa-events": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 953,
+      "bytes": 1489,
       "kind": "paginated",
-      "total": 59,
+      "total": 168,
       "count": 8,
       "keys": [
         "events",
-        "pagination"
+        "pagination",
+        "stats"
       ],
       "rowKeys": [
         "date",
         "id",
         "participants",
+        "top10_score",
+        "top1_score",
+        "top_floor_players",
         "total_tickets"
       ],
-      "hash": "6f339ab28b9a004d"
+      "hash": "cfa5a03d5b42d0ea"
     },
     "GET woa-events-by-date": {
       "status": 200,
@@ -32517,9 +33606,9 @@
     "GET woa-events-by-id": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 3926,
+      "bytes": 3910,
       "kind": "paginated",
-      "total": 85,
+      "total": 15,
       "count": 15,
       "keys": [
         "event_date",
@@ -32538,14 +33627,14 @@
         "player_name",
         "point"
       ],
-      "hash": "7a194d52025a0067"
+      "hash": "e549441d0b75ba09"
     },
     "GET woa-events-player": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 1763,
+      "bytes": 400,
       "kind": "object",
-      "count": 24,
+      "count": 1,
       "keys": [
         "coverage",
         "events",
@@ -32556,12 +33645,12 @@
         "point",
         "rank"
       ],
-      "hash": "ec9d44507f2e3edf"
+      "hash": "2594d25fd7b0db4f"
     },
     "POST bulk-alliances": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 634,
+      "bytes": 624,
       "kind": "object",
       "count": 1,
       "keys": [
@@ -32587,12 +33676,12 @@
         "might_current",
         "player_count"
       ],
-      "hash": "50fb8c8cdd833801"
+      "hash": "46569de3e817488d"
     },
     "POST bulk-players": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 721,
+      "bytes": 779,
       "kind": "object",
       "count": 0,
       "keys": [
@@ -32604,7 +33693,7 @@
         "resolved",
         "servers"
       ],
-      "hash": "afcc747e127bb786"
+      "hash": "04fe3fcc610fbefa"
     },
     "POST minigame-guess": {
       "status": 200,
@@ -32620,7 +33709,7 @@
     "POST players-bulk": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 371,
+      "bytes": 396,
       "kind": "object",
       "count": 1,
       "keys": [
@@ -32644,7 +33733,7 @@
         "player_name",
         "updated_at"
       ],
-      "hash": "f504656090928c70"
+      "hash": "b64af6e2fe118bbf"
     },
     "PUT assets-update": {
       "status": 403,

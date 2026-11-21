@@ -171,7 +171,9 @@ describe('addPlayerInDatabase', () => {
       const player = fixtures.lootHead().rows[0][2];
       const before = mainRealmCastles(player);
       assert.ok(before.length > 1, 'the captured player holds several castles');
-      const after = before.map((castle, index) => (index === 0 ? [castle[0] + 5, castle[1], castle[2]] : castle));
+      const moved = before.findIndex((castle) => castle[2] !== 1);
+      assert.ok(moved >= 0, 'the captured player holds a castle other than the main one');
+      const after = before.map((castle, index) => (index === moved ? [castle[0] + 5, castle[1], castle[2]] : castle));
       sandbox.setState('currentPlayers', [existing({ castles: before as any })]);
       await upsert(sandbox, { castles: after });
       const movements = sandbox.db.matching(/INSERT INTO player_castle_movements_history/);
@@ -184,12 +186,12 @@ describe('addPlayerInDatabase', () => {
       );
       assert.deepEqual(movements[0].params, [
         900001,
-        before[0][2],
+        before[moved][2],
         'add',
         null,
         null,
-        before[0][0] + 5,
-        before[0][1],
+        before[moved][0] + 5,
+        before[moved][1],
         null,
       ]);
     });

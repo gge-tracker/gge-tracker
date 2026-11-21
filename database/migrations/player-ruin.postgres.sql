@@ -1,0 +1,7 @@
+DO $$
+BEGIN
+  IF to_regclass('public.players') IS NOT NULL THEN
+    ALTER TABLE players ADD COLUMN IF NOT EXISTS is_ruin BOOLEAN NOT NULL DEFAULT FALSE;
+  END IF;
+END
+$$;

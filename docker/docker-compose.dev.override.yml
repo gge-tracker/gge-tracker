@@ -1,0 +1,252 @@
+##########################################################################################
+#                                     __                        __                       #
+#      ____   ____   ____           _/  |_____________    ____ |  | __ ___________       #
+#     / ___\ / ___\_/ __ \   ______ \   __\_  __ \__  \ _/ ___\|  |/ // __ \_  __ \      #
+#    / /_/  > /_/  >  ___/  /_____/  |  |  |  | \// __ \\  \___|    <\  ___/|  | \/      #
+#    \___  /\___  / \___  >          |__|  |__|  (____  /\___  >__|_ \\___  >__|         #
+#   /_____//_____/      \/                            \/     \/     \/    \/             #
+#                                                                                        #
+#                     This file is part of the gge-tracker project.                      #
+#        Copyrights (c) 2025 - gge-tracker.com & gge-tracker contributors                #
+#                                                                                        #
+##########################################################################################
+
+# File: docker-compose.dev.override.yml
+# Use this file for development environment setup
+name: gge-tracker-dev
+
+services:
+  # Web application running Angular with Angular CLI (development server, hot-reload)
+  frontend-angular-node:
+    extends:
+      service: frontend-angular-node
+      file: docker/docker-compose.common.yml
+    ports:
+      - "4200:4200"
+    volumes:
+      - ../i18n:/app/i18n-local:ro
+
+  # Web application running Angular with Nginx (similar to production)
+  frontend-angular-prod:
+    extends:
+      service: frontend-angular-nginx
+      file: docker/docker-compose.common.yml
+    build:
+      args:
+        BUILD_ENV: ${FRONTEND_BUILD_ENV:-local}
+    image: frontend-angular:local
+    ports:
+      - "4201:80"
+    environment:
+      - SEO_BACKEND=http://backend-container-dev:3000
+    volumes:
+      - ../i18n:/usr/share/nginx/html/gge-tracker-frontend/browser/i18n-local:ro
+
+  promtail:
+    extends:
+      service: promtail
+      file: docker/docker-compose.common.yml
+
+  # Local PostgreSQL holding the generated fixture: database/fixtures/load-fixtures.sh
+  postgres:
+    extends:
+      service: postgres
+      file: docker/docker-compose.common.yml
+    ports:
+      - "5432:5432"
+
+  # Offline stand-in for the empire-api bridge: answers castle commands from the generated
+  # players (database/fixtures/generated). Without it the castle routes hang on a dead fetch.
+  empire-api:
+    image: node:22-alpine
+    container_name: empire-api-mock
+    command: ["node", "/mock/server.js"]
+    environment:
+      - PORT=3000
+    volumes:
+      - ./database/fixtures/empire-api-mock:/mock:ro
+      - ./database/fixtures/generated:/generated:ro
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('node:http').get('http://127.0.0.1:3000/EmpireEx_3/gbl/null', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: always
+
+  # The realtime bridge is a second instance, same recorded answers
+  empire-api-realtime:
+    image: node:22-alpine
+    container_name: empire-api-realtime-mock
+    command: ["node", "/mock/server.js"]
+    environment:
+      - PORT=3000
+    volumes:
+      - ./database/fixtures/empire-api-mock:/mock:ro
+      - ./database/fixtures/generated:/generated:ro
+    networks:
+      - backend
+    restart: always
+
+  # Local ClickHouse for the same fixture: the time-series side of the API
+  clickhouse:
+    extends:
+      service: clickhouse
+      file: docker/docker-compose.common.yml
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+
+  # Nightly Postgres + ClickHouse archives, only started with --profile backup
+  db-backup:
+    extends:
+      service: db-backup
+      file: docker/docker-compose.common.yml
+    profiles: ["backup"]
+
+  # Prometheus for metrics collection and monitoring
+  prometheus:
+    extends:
+      service: prometheus
+      file: docker/docker-compose.common.yml
+    ports:
+      - "9090:9090"
+
+  # Both Cloudflare exporters talk to the real Cloudflare API - there is no
+  # fixture for them, so they are the one part of this stack that still needs
+  # network access. Start them explicitly: docker compose up -d cloudflare-exporter
+  # cloudflare-exporter:
+  #   extends:
+  #     service: cloudflare-exporter
+  #     file: docker/docker-compose.common.yml
+  #   ports:
+  #     - "8082:8080"
+
+  # cloudflare-zone-exporter:
+  #   extends:
+  #     service: cloudflare-zone-exporter
+  #     file: docker/docker-compose.common.yml
+  #   ports:
+  #     - "8081:8081"
+
+  backend-express-rest-api-mocked:
+    extends:
+      service: backend-express-rest-api
+      file: docker/docker-compose.common.yml
+    build:
+      context: ./gge-tracker-backend-api
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3002:3000"
+    environment:
+      - API_CHANNEL=beta
+      - I18N_BASE_URL=${I18N_BASE_URL:-}
+      - I18N_LOCAL_DIR=/i18n-local
+      - POSTGRES_HOST=postgres
+      - CLICKHOUSE_HOST=clickhouse
+      - GGE_API_URL=http://empire-api:3000
+      - GGE_API_URL_REALTIME=http://empire-api-realtime:3000
+      # Its own Redis database. The dev and prod backends read the databases .env names and
+      # cache under the exact same keys, so on a shared database whichever one answers first
+      # is served to the other for the next hour - the fixture would be judged against them.
+      - REDIS_URL=redis://redis-server:6379/1
+      # The fixture's servers only, so what the harness judges never moves with the live server list
+      - SERVERS_FILE=/app/config/servers.example.xml
+    image: backend-express-rest-api:mocked
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      redis-server:
+        condition: service_healthy
+      empire-api:
+        condition: service_healthy
+      loki:
+        condition: service_started
+    container_name: backend-container-mocked
+    volumes:
+      - ./gge-tracker-backend-api:/app
+      - /app/node_modules
+      - ../i18n:/i18n-local:ro
+
+  backend-express-rest-api-dev:
+    extends:
+      service: backend-express-rest-api
+      file: docker/docker-compose.common.yml
+    build:
+      context: ./gge-tracker-backend-api
+      dockerfile: Dockerfile.dev
+    # Without this the service inherits backend-express-rest-api:latest from the
+    # common file - the same tag docker-compose.prod.yml deploys - and a dev build
+    # would silently overwrite the production image.
+    image: backend-express-rest-api:dev
+    ports:
+      - "3000:3000"
+    container_name: backend-container-dev
+    environment:
+      - API_CHANNEL=beta
+      - REDIS_CACHE_PREFIX=beta
+    volumes:
+      - ./gge-tracker-backend-api:/app
+      - /app/node_modules
+
+  backend-express-rest-api-prod:
+    extends:
+      service: backend-express-rest-api
+      file: docker/docker-compose.common.yml
+    build:
+      context: ./gge-tracker-backend-api
+      dockerfile: Dockerfile.prod
+    image: backend-express-rest-api-prod:latest
+    container_name: backend-container-prod
+    environment:
+      - API_CHANNEL=public
+    ports:
+      - "3001:3000"
+
+  # Redis server for caching and session management, used by backend services
+  redis-server:
+    extends:
+      service: redis-server
+      file: docker/docker-compose.common.yml
+    ports:
+      - "6379:6379"
+
+  # Loki for log aggregation and monitoring
+  loki:
+    extends:
+      service: loki
+      file: docker/docker-compose.common.yml
+    ports:
+      - "3100:3100"
+
+  # Cadvisor for monitoring container resource usage
+  # cadvisor:
+  #   extends:
+  #     service: cadvisor
+  #     file: docker/docker-compose.common.yml
+  #   ports:
+  #     - "8080:8080"
+
+  # Grafana for data visualization and dashboarding
+  # grafana:
+  #   image: bash:latest
+  #   command: ["sh", "-c", "while true; do sleep 3600; done"]
+  #   healthcheck:
+  #     test: ["CMD", "true"]
+  #     interval: 5s
+  #     timeout: 2s
+  #     retries: 3
+
+
+volumes:
+  backend-assets:
+  backend-datasets:
+  pg_data:
+  clickhouse_data:
+
+networks:
+  backend:
+    external: true

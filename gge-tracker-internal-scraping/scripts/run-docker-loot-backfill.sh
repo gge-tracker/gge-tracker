@@ -49,7 +49,7 @@ run_backfill "${ARGS[@]}"
 
 echo
 echo "The dry run above is what --apply writes. Backups go to $BACKUP_DIR."
-read -r -p "Type APPLY to write it to production: " answer
+read -r -p "Type APPLY to write it to the databases of .env: " answer
 if [ "$answer" != "APPLY" ]; then
     echo "Nothing written."
     exit 1

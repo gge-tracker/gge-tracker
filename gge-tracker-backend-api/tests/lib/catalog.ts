@@ -168,7 +168,7 @@ export const CATALOG: Endpoint[] = [
   // Mini-games (protected)
   { id: 'minigame-daily', snapshot: 'shape', method: 'GET', scope: 'protected', path: () => '/mini-games/daily', okStatuses: [200, 404], needs: ['server'] },
   { id: 'minigame-autocomplete', method: 'GET', scope: 'protected', path: () => '/mini-games/guesses/autocomplete' + q({ query: 'a' }), okStatuses: [200, 400], needs: ['server'], fuzzQuery: ['query'] },
-  { id: 'minigame-guess', method: 'POST', scope: 'protected', path: () => '/mini-games/guess', body: () => ({ guess: 'SomePlayer', requestGameId: 1 }), okStatuses: [200, 400, 404], needs: ['server'] },
+  { id: 'minigame-guess', method: 'POST', scope: 'protected', path: () => '/mini-games/guess', body: (s) => ({ guess: 'SomePlayer', requestGameId: s.miniGameId ?? 1 }), okStatuses: [200, 400, 404], needs: ['server'] },
 
   // Events (public)
   {
@@ -1103,7 +1103,7 @@ export const CATALOG: Endpoint[] = [
         { param: 'min_alliance_might', field: 'alliance_might', kind: 'min', impossible: 999_999_999_999 },
         { param: 'max_alliance_might', field: 'alliance_might', kind: 'max', noUnmatchableValue: true },
         { param: 'min_alliance_players', field: 'alliance_player_count', kind: 'min', impossible: 10_000 },
-        { param: 'max_alliance_players', field: 'alliance_player_count', kind: 'max', impossible: 0 },
+        { param: 'max_alliance_players', field: 'alliance_player_count', kind: 'max', noUnmatchableValue: true },
       ],
       sorts: [
         { param: 'order_by', value: 'might_current', field: 'might_current', directionParam: 'order_dir', ascending: 'ASC', descending: 'DESC' },

@@ -1,0 +1,4 @@
+ALTER TABLE logs.logs MODIFY COLUMN ip String TTL timestamp + INTERVAL 90 DAY;
+
+ALTER TABLE logs.logs MODIFY TTL timestamp + INTERVAL 12 MONTH;
+

@@ -66,9 +66,9 @@ services:
     environment:
       - CLICKHOUSE_USER=${CLICKHOUSE_USER}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
-      - CLICKHOUSE_S3_ENDPOINT=${CLICKHOUSE_S3_ENDPOINT}
-      - CLICKHOUSE_S3_ACCESS_KEY=${CLICKHOUSE_S3_ACCESS_KEY}
-      - CLICKHOUSE_S3_SECRET_KEY=${CLICKHOUSE_S3_SECRET_KEY}
+      - CLICKHOUSE_S3_ENDPOINT=${CLICKHOUSE_S3_ENDPOINT:-}
+      - CLICKHOUSE_S3_ACCESS_KEY=${CLICKHOUSE_S3_ACCESS_KEY:-}
+      - CLICKHOUSE_S3_SECRET_KEY=${CLICKHOUSE_S3_SECRET_KEY:-}
       - CLICKHOUSE_STORAGE=${CLICKHOUSE_STORAGE}
     volumes:
       - clickhouse_data:/var/lib/clickhouse
@@ -170,20 +170,20 @@ services:
       - INTERNAL_SECRET=${INTERNAL_SECRET}
       - GGE_API_URL=${GGE_API_URL}:${GGE_API_PORT}
       - GGE_API_URL_REALTIME=${GGE_API_URL_REALTIME}:${GGE_API_PORT_REALTIME}
-      - BACKEND_API_URI=${BACKEND_API_URI}
+      - BACKEND_API_URI=${BACKEND_API_URI:-}
       - SITE_URL=${SITE_URL:-}
       - ADMIN_API_TOKEN=${ADMIN_API_TOKEN:-}
-      - LOG_MAX_ENTRIES=${LOG_MAX_ENTRIES}
-      - LOG_MAX_BYTES=${LOG_MAX_BYTES}
-      - LOG_FLUSH_INTERVAL_MS=${LOG_FLUSH_INTERVAL_MS}
-      - LOKI_MAX_RETRIES=${LOKI_MAX_RETRIES}
-      - LOKI_RETRY_BASE_MS=${LOKI_RETRY_BASE_MS}
-      - IP_WINDOW_MS=${IP_WINDOW_MS}
-      - IP_THRESHOLD=${IP_THRESHOLD}
-      - DECAY_INTERVAL_MS=${DECAY_INTERVAL_MS}
-      - DECAY_FACTOR=${DECAY_FACTOR}
-      - RATE_LIMIT_POINTS=${RATE_LIMIT_POINTS}
-      - RATE_LIMIT_DURATION=${RATE_LIMIT_DURATION}
+      - LOG_MAX_ENTRIES=${LOG_MAX_ENTRIES:-}
+      - LOG_MAX_BYTES=${LOG_MAX_BYTES:-}
+      - LOG_FLUSH_INTERVAL_MS=${LOG_FLUSH_INTERVAL_MS:-}
+      - LOKI_MAX_RETRIES=${LOKI_MAX_RETRIES:-}
+      - LOKI_RETRY_BASE_MS=${LOKI_RETRY_BASE_MS:-}
+      - IP_WINDOW_MS=${IP_WINDOW_MS:-}
+      - IP_THRESHOLD=${IP_THRESHOLD:-}
+      - DECAY_INTERVAL_MS=${DECAY_INTERVAL_MS:-}
+      - DECAY_FACTOR=${DECAY_FACTOR:-}
+      - RATE_LIMIT_POINTS=${RATE_LIMIT_POINTS:-}
+      - RATE_LIMIT_DURATION=${RATE_LIMIT_DURATION:-}
       - POSTGRES_POOL_IDLE_SECONDS=${POSTGRES_POOL_IDLE_SECONDS:-300}
       - ANONYMOUS_DAILY_REQUESTS=${ANONYMOUS_DAILY_REQUESTS:-25000}
       - GAME_COMMANDS_PER_MINUTE=${GAME_COMMANDS_PER_MINUTE:-60}
@@ -576,37 +576,6 @@ services:
     networks:
       - backend
     restart: unless-stopped
-
-  database-migrate:
-    container_name: database-migrate
-    hostname: database-migrate
-    image: database-migrate:latest
-    build:
-      context: ./../database
-      dockerfile: Dockerfile
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /etc/localtime:/etc/localtime:ro
-    working_dir: /scripts
-    command: ["bash", "./db_migrate.sh"]
-    environment:
-      - SQL_USER=${SQL_USER}
-      - SQL_PASSWORD=${SQL_PASSWORD}
-      - SQL_ROOT_PASSWORD=${SQL_ROOT_PASSWORD}
-      - SQL_DATABASE=${SQL_DATABASE}
-      - PG_HOST=${PG_HOST}
-      - MARIADB_HOST=${MARIADB_HOST}
-      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST}
-      - CLICKHOUSE_USER=${CLICKHOUSE_USER}
-      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      clickhouse:
-        condition: service_healthy
-    networks:
-      - backend
-    restart: "no"
 
   loki:
     image: grafana/loki:2.9.2
