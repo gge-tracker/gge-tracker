@@ -13,6 +13,7 @@ import { describe, it } from 'node:test';
 import { ranking } from '../harness/fixtures';
 import { RankingFixture, RankingRow } from '../harness/fixture-types';
 import { Sandbox, withSandbox } from '../harness/sandbox';
+import { flushDiscordPosts } from '../../src/discord-schedule';
 
 const OUTER_REALMS_LT = 76;
 const EVENT_TABLE = 'outer_realms_event';
@@ -200,6 +201,7 @@ describe('executeCustomEventHistory', () => {
       const fixture = crossServer(['FR1']);
       sandbox.api.serveRanking(fixture);
       await run(sandbox);
+      await flushDiscordPosts();
       const discord = sandbox.outbound.find((call) => call.url.includes('discord'));
       assert.ok(discord, 'a notification was sent');
       const body = discord!.body as any;

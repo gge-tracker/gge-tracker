@@ -9,6 +9,7 @@
 //
 import { GenericFetchAndSaveBackend } from './main';
 import { findScrapingServer } from './servers-file';
+import { flushDiscordPosts } from './discord-schedule';
 
 const ID_SERVER = process.env.ID_SERVER;
 const PG_DB = process.env.PG_DB;
@@ -84,6 +85,7 @@ async function executeFillInOrder(): Promise<void> {
     const league = new GenericFetchAndSaveBackend(BASE_API_URL, globalClickhouseConfig, null, logSuffix);
     await league.fillKingdomsLeague(leagueServer);
   }
+  await flushDiscordPosts();
   setTimeout(() => {
     console.log('Timeout reached, forcing exit.');
     process.exit(1);

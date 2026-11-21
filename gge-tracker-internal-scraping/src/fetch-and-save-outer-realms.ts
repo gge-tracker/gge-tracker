@@ -8,6 +8,7 @@
 //  Copyrights (c) 2025 - gge-tracker.com & gge-tracker contributors
 //
 import { GenericFetchAndSaveBackend } from './main';
+import { flushDiscordPosts } from './discord-schedule';
 
 const ID_SERVER = process.env.ID_SERVER;
 const PG_DB = process.env.PG_DB;
@@ -41,6 +42,7 @@ const postgresConfig = {
 async function executeFillInOrder(): Promise<void> {
   const generic = new GenericFetchAndSaveBackend(BASE_API_URL, CLICKHOUSE_CONFIG, postgresConfig, logSuffix);
   await generic.fillGenericEventHistory();
+  await flushDiscordPosts();
   setTimeout(() => {
     console.log('Timeout reached, forcing exit.');
     process.exit(1);

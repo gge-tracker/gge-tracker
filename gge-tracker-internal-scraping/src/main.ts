@@ -58,6 +58,19 @@ import {
 } from './kingdoms-league';
 import { findScrapingServer, readPublicPlayerIdCodes } from './servers-file';
 import { findTempServerSetting } from './temp-server-settings';
+import { scheduleDiscordPost } from './discord-schedule';
+import {
+  announceTournamentResults,
+  announceTournamentStart,
+  endedJustNow,
+  resultsChannel,
+  tournamentAlertsEnabled,
+  TournamentEventSpan,
+  TournamentKind,
+  TournamentResults,
+  TournamentStanding,
+} from './tournament-alerts';
+import { readUniverseServerNames } from './servers-file';
 
 interface LootMove {
   player: number;
@@ -100,6 +113,11 @@ interface OuterRealmsSweep {
 
 type GameUniverse = 'ep' | 'e4k';
 
+interface ResolvedEvent {
+  eventId: number;
+  opened: boolean;
+}
+
 interface GrandTournamentSnapshot {
   game: GameUniverse;
   currentEventId: number;
@@ -110,6 +128,20 @@ interface RiftRaidSnapshot {
   game: GameUniverse;
   eventId: number;
   createdAt: string;
+}
+
+interface StandingRow {
+  division_id: number;
+  alliance_name: string;
+  server_id: number;
+  score: number | string;
+  read_at: string | Date;
+}
+
+interface RiftRaidHoursRow {
+  event_id: number;
+  last_seen: number;
+  last_hour: string;
 }
 
 interface RiftRaidReport {
@@ -327,7 +359,9 @@ export class GenericFetchAndSaveBackend {
   private pgSqlPoolEnded: boolean = false;
   private readonly WEBHOOK_URL: string = process.env.WEBHOOK_URL || '';
   private readonly CURRENT_ENV: string = process.env.ENVIRONMENT || 'development';
-  private readonly DISCORD_OR_CHANNEL_ID: string = process.env.DISCORD_OR_CHANNEL_ID || '';
+  // DISCORD_OR_CHANNEL_ID is the name this key had before the per-game channels; drop it once .env is renamed.
+  private readonly DISCORD_OR_CHANNEL_ID: string =
+    process.env.DISCORD_EP_OR_BTH_RESULTS_CHANNEL_ID || process.env.DISCORD_OR_CHANNEL_ID || '';
   private readonly DISCORD_OR_API_URL: string = process.env.DISCORD_OR_API_URL || '';
   private readonly SITE_URL: string = 'https://gge-tracker.com';
   private readonly EVENT_THUMBNAILS: Record<'Beyond the Horizon' | 'Outer Realms', string> = {
@@ -687,28 +721,30 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('=====================================');
       Utils.logMessage('Refreshing Grand Tournament results...');
 
-      const currentEventId = await this.resolveGrandTournamentEventId(game);
+      const { eventId: currentEventId, opened } = await this.resolveGrandTournamentEventId(game);
+      let answeredEmpty = true;
       eventId = currentEventId;
       Utils.logMessage('Current eventId: ', currentEventId);
       const maxLevelCategory = 5;
       const alliances: { [key: string]: any } = {};
-      const dateStr = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
+      const runAt = new Date();
+      const dateStr = format(runAt, 'yyyy-MM-dd HH:mm:ss');
       for (let lc = 1; lc <= maxLevelCategory; lc++) {
         Utils.logMessage(' Processing level category:', lc);
-        const subDivisionCount = await this.collectGrandTournamentDivision(
-          lc,
-          { game, currentEventId, dateStr },
-          alliances,
-        );
+        const division = await this.collectGrandTournamentDivision(lc, { game, currentEventId, dateStr }, alliances);
+        const subDivisionCount = division.subdivisions;
+        answeredEmpty = answeredEmpty && division.answeredEmpty;
         subdivisions += subDivisionCount;
         Utils.logMessage(' Total subdivisions processed for level category', lc + ':', subDivisionCount);
       }
       const insertValues: any[] = Object.values(alliances);
       recordsInserted = insertValues.length;
       Utils.logMessage('Inserting ', insertValues.length, 'records into the database...');
+      const errorsBeforeInsert = this.DB_UPDATES.criticalErrors;
       if (insertValues.length > 0) {
         await this.insertGrandTournamentRows(insertValues);
       }
+      const stored = insertValues.length > 0 && this.DB_UPDATES.criticalErrors === errorsBeforeInsert;
       Utils.logMessage('Grand Tournament results updated successfully');
       // If there is more that 1 record inserted, we increment the redis-fill version
       if (insertValues.length > 1) {
@@ -719,6 +755,12 @@ export class GenericFetchAndSaveBackend {
         await redisClient.incr(`grand-tournament:event-dates:version`);
         const refreshQuery = 'REFRESH MATERIALIZED VIEW CONCURRENTLY grand_tournament_hours_mv';
         await this.pgSqlQuery(refreshQuery);
+      }
+      if (tournamentAlertsEnabled(game)) {
+        const runHour = this.hourOf(runAt);
+        if (stored) await this.alertTournamentStart('grand-tournament', game, { eventId, opened });
+        else if (insertValues.length === 0 && answeredEmpty)
+          await this.alertTournamentEnd('grand-tournament', game, runHour);
       }
       const end = new Date();
       const duration = end.getTime() - start.getTime();
@@ -768,7 +810,8 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage(' Current environment:', this.CURRENT_ENV);
       Utils.logMessage('=====================================');
 
-      eventId = await this.resolveRiftRaidEventId(game);
+      const resolved = await this.resolveRiftRaidEventId(game);
+      eventId = resolved.eventId;
       Utils.logMessage('Current eventId: ', eventId);
       const runAt = new Date();
       const createdAt = format(runAt, 'yyyy-MM-dd HH:mm:ss');
@@ -789,8 +832,14 @@ export class GenericFetchAndSaveBackend {
         ]);
         await this.bumpScanVersion('rift-raid:event-dates:version');
         Utils.logMessage('Rift Raid results updated successfully');
+        if (tournamentAlertsEnabled(game)) {
+          await this.alertTournamentStart('rift-raid', game, { eventId, opened: resolved.opened });
+        }
       } else {
         Utils.logMessage('Rift Raid is not running, nothing was stored');
+        if (tournamentAlertsEnabled(game) && report.unreadableDivisions === 0) {
+          await this.alertTournamentEnd('rift-raid', game, this.hourOf(runAt));
+        }
       }
 
       const durationInSeconds = Math.floor((Date.now() - start.getTime()) / 1000);
@@ -1452,12 +1501,7 @@ export class GenericFetchAndSaveBackend {
       console.error('Missing Discord API URL or Channel ID environment variables');
       throw new Error('Missing Discord API URL or Channel ID environment variables');
     }
-    try {
-      await this.fetchUrl(this.DISCORD_OR_API_URL, 'POST', messageBody);
-      Utils.logMessage(' [info] Discord notification sent successfully');
-    } catch (error) {
-      Utils.logMessage(error);
-    }
+    void scheduleDiscordPost(this.DISCORD_OR_API_URL, messageBody, 'Event ranking');
   }
 
   public getDiscordApiMessageBody(
@@ -1584,7 +1628,7 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
-  private async resolveGrandTournamentEventId(game: GameUniverse): Promise<number> {
+  private async resolveGrandTournamentEventId(game: GameUniverse): Promise<ResolvedEvent> {
     const getLastEventQuery = `
         SELECT event_id, created_at
         FROM grand_tournament
@@ -1594,21 +1638,23 @@ export class GenericFetchAndSaveBackend {
       `;
     const result = await this.pgSqlQuery(getLastEventQuery, [game]);
     const lastEvent = result.rows[0];
-    if (!lastEvent) return 1;
+    if (!lastEvent) return { eventId: 1, opened: false };
 
     const lastDate = new Date(lastEvent.created_at);
     const now = new Date();
     const diffHours = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60);
-    return diffHours > 24 ? lastEvent.event_id + 1 : lastEvent.event_id;
+    const opened = diffHours > 24;
+    return { eventId: opened ? lastEvent.event_id + 1 : lastEvent.event_id, opened };
   }
 
   private async collectGrandTournamentDivision(
     lc: number,
     snapshot: GrandTournamentSnapshot,
     alliances: { [key: string]: any },
-  ): Promise<number> {
+  ): Promise<{ subdivisions: number; answeredEmpty: boolean }> {
     const key = 'llsp';
     const lt = 84;
+    let answeredEmpty = false;
     const maxResult = 1000;
     let subdivisionId = 1;
     let hasMore = true;
@@ -1623,6 +1669,7 @@ export class GenericFetchAndSaveBackend {
         if (data.content?.L) {
           this.collectSubdivisionAlliances(data.content.L || [], { ...snapshot, lc, subdivisionId, alliances });
         } else {
+          answeredEmpty = subdivisionId === 1 && data.content !== undefined && data.error === undefined;
           hasMore = false;
         }
         subdivisionId++;
@@ -1634,7 +1681,7 @@ export class GenericFetchAndSaveBackend {
         hasMore = false;
       }
     }
-    return subDivisionCount;
+    return { subdivisions: subDivisionCount, answeredEmpty };
   }
 
   private async fetchGrandTournamentSubdivision(url: string): Promise<AxiosResponse<any> | undefined> {
@@ -1873,16 +1920,127 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
-  private async resolveRiftRaidEventId(game: GameUniverse): Promise<number> {
-    const rows = await this.selectRowsClickHouse<{ event_id: number; last_seen: number }>(
-      `SELECT event_id, toUnixTimestamp(max(hour)) AS last_seen FROM rift_raid_hours
-       WHERE game = '${game}' GROUP BY event_id ORDER BY last_seen DESC LIMIT 1`,
+  private riftRaidLastEventQuery(game: GameUniverse): string {
+    return `SELECT event_id, toUnixTimestamp(max(hour)) AS last_seen, toString(max(hour)) AS last_hour FROM rift_raid_hours
+       WHERE game = '${game}' GROUP BY event_id ORDER BY last_seen DESC LIMIT 1`;
+  }
+
+  private riftRaidSpan(row: RiftRaidHoursRow): TournamentEventSpan {
+    return {
+      eventId: Number(row.event_id),
+      lastHour: this.localHour(row.last_hour),
+    };
+  }
+
+  // The stored hour is the local wall-clock text format() wrote, so it is read back the same way.
+  private localHour(text: string | undefined): Date {
+    return new Date(String(text ?? '').replace(' ', 'T'));
+  }
+
+  private hourOf(date: Date): Date {
+    const hour = new Date(date.getTime());
+    hour.setMinutes(0, 0, 0);
+    return hour;
+  }
+
+  private async readTournamentLastEvent(kind: TournamentKind, game: GameUniverse): Promise<TournamentEventSpan | null> {
+    if (kind === 'rift-raid') {
+      const rows = await this.selectRowsClickHouse<RiftRaidHoursRow>(this.riftRaidLastEventQuery(game));
+      return rows.length > 0 ? this.riftRaidSpan(rows[0]) : null;
+    }
+    const result = await this.pgSqlQuery(
+      `SELECT event_id, max(hour) AS last_hour
+       FROM grand_tournament_hours_mv WHERE game = $1 GROUP BY event_id ORDER BY max(hour) DESC LIMIT 1`,
+      [game],
     );
+    const row = result.rows[0];
+    if (!row) return null;
+    return {
+      eventId: Number(row.event_id),
+      lastHour: new Date(row.last_hour),
+    };
+  }
+
+  private async alertTournamentStart(
+    kind: TournamentKind,
+    game: GameUniverse,
+    run: { eventId: number; opened: boolean },
+  ): Promise<void> {
+    if (run.opened) await announceTournamentStart(kind, game, run.eventId);
+  }
+
+  private async alertTournamentEnd(kind: TournamentKind, game: GameUniverse, runHour: Date): Promise<void> {
+    if (!resultsChannel(game)) return;
+    try {
+      const last = await this.readTournamentLastEvent(kind, game);
+      if (!last || !endedJustNow(last, runHour)) return;
+      const rows = await this.readTournamentStandings(kind, game, last.eventId);
+      if (rows.length > 0) await announceTournamentResults(this.toTournamentResults(kind, game, last.eventId, rows));
+    } catch (error) {
+      Utils.logWarning(`Unable to post the ${kind} results`, error);
+    }
+  }
+
+  private async readTournamentStandings(
+    kind: TournamentKind,
+    game: GameUniverse,
+    eventId: number,
+  ): Promise<StandingRow[]> {
+    if (kind === 'rift-raid') {
+      return this.selectRowsClickHouse<StandingRow>(
+        `SELECT division_id, alliance_name, server_id, score, toString(created_at) AS read_at FROM rift_raid_ranking
+         WHERE game = '${game}' AND event_id = ${eventId} AND created_at = (
+           SELECT max(created_at) FROM rift_raid_ranking WHERE game = '${game}' AND event_id = ${eventId})
+         ORDER BY score DESC LIMIT 3 BY division_id
+         SETTINGS query_plan_optimize_lazy_materialization = 0`,
+      );
+    }
+    const result = await this.pgSqlQuery(
+      `SELECT division_id, alliance_name, server_id, score, created_at AS read_at FROM (
+         SELECT division_id, alliance_name, server_id, score, created_at,
+           ROW_NUMBER() OVER (PARTITION BY division_id ORDER BY score DESC) AS place
+         FROM grand_tournament WHERE game = $1 AND event_id = $2 AND created_at = (
+           SELECT max(created_at) FROM grand_tournament WHERE game = $1 AND event_id = $2)
+       ) ranked WHERE place <= 3`,
+      [game, eventId],
+    );
+    return result.rows;
+  }
+
+  private toTournamentResults(
+    kind: TournamentKind,
+    game: GameUniverse,
+    eventId: number,
+    rows: StandingRow[],
+  ): TournamentResults {
+    const names = this.readUniverseNames(game);
+    const standings: TournamentStanding[] = rows.map((row) => ({
+      divisionId: Number(row.division_id),
+      allianceName: String(row.alliance_name),
+      server: names.get(Number(row.server_id)) ?? null,
+      score: Number(row.score),
+    }));
+    const readAt = typeof rows[0].read_at === 'string' ? this.localHour(rows[0].read_at) : new Date(rows[0].read_at);
+    return { kind, game, eventId, readAt, standings };
+  }
+
+  private readUniverseNames(game: GameUniverse): Map<number, string> {
+    try {
+      return readUniverseServerNames(game);
+    } catch (error) {
+      Utils.logMessage(' [WARN] Servers file unreadable, the results will carry no server names:', error);
+      return new Map();
+    }
+  }
+
+  private async resolveRiftRaidEventId(game: GameUniverse): Promise<ResolvedEvent> {
+    const rows = await this.selectRowsClickHouse<RiftRaidHoursRow>(this.riftRaidLastEventQuery(game));
     const lastEvent = rows.at(0);
-    if (!lastEvent) return 1;
+    if (!lastEvent) return { eventId: 1, opened: false };
     const elapsedHours = (Date.now() - Number(lastEvent.last_seen) * 1000) / (1000 * 60 * 60);
     const eventId = Number(lastEvent.event_id);
-    return elapsedHours > this.RIFT_RAID_NEW_EVENT_AFTER_HOURS ? eventId + 1 : eventId;
+    const opened = elapsedHours > this.RIFT_RAID_NEW_EVENT_AFTER_HOURS;
+    return { eventId: opened ? eventId + 1 : eventId, opened };
   }
 
   private async collectRiftRaidDivision(

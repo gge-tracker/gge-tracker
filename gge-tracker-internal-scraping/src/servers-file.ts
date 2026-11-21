@@ -102,3 +102,23 @@ export function readPublicPlayerIdCodes(file: string = SERVERS_FILE): Map<string
   }
   return codes;
 }
+
+export function readUniverseServerNames(
+  game: 'ep' | 'e4k',
+  file: string = process.env.SERVERS_FILE || SERVERS_FILE,
+): Map<number, string> {
+  const servers = readServerRows(file)
+    .filter((row) => text(row.kind) === game)
+    .map((row) => ({ name: text(row.name).replace(/^E4K_/, ''), ...splitZone(text(row.zone)) }));
+  const family = servers.find((server) => server.serverId === 1)?.family;
+  const names = new Map<number, string>();
+  for (const server of servers) {
+    if (server.family === family) names.set(server.serverId, server.name);
+  }
+  return names;
+}
+
+function splitZone(zone: string): { family: string; serverId: number } {
+  const match = /^(.*?)(?:_(\d+))?$/.exec(zone);
+  return { family: match?.[1] ?? zone, serverId: match?.[2] ? Number(match[2]) : 1 };
+}
