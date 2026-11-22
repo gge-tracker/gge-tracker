@@ -1,16 +1,26 @@
 /* eslint-disable unicorn/consistent-function-scoping */
 import { DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ApiVicinity, ApiVicinityNeighbour, ApiVicinityOrigin } from '@ggetracker-interfaces/empire-ranking';
 import { ApiRestService } from '@ggetracker-services/api-rest.service';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { formatCompact, formatSigned } from '../pages/home/home-dashboard';
-import { FeedCategory, FeedEntry, VicinityWindow, WINDOW_MS, buildFeed, honorOf, mightChangeOf } from './vicinity-feed';
+import { FeedEntry, VicinityWindow, WINDOW_MS, buildFeed, honorOf, mightChangeOf } from './vicinity-feed';
 
-type VicinityTab = 'feed' | 'neighbours';
-type NeighbourSort = 'distance' | 'might' | 'change' | 'honor';
+type TallyFilter = 'all' | 'watch' | 'opportunity' | 'fresh';
 
 interface Preferences {
   radius: number;
@@ -23,6 +33,7 @@ interface FeedRow {
   params: Record<string, string | number>;
   where: string;
   when: string;
+  fresh: boolean;
 }
 
 interface RadarDot {
@@ -34,7 +45,9 @@ interface RadarDot {
   side: 'ally' | 'rival' | 'free';
   main: boolean;
   active: boolean;
+  fresh: boolean;
   focused: boolean;
+  size: number;
 }
 
 interface RadarOrigin {
@@ -46,11 +59,16 @@ interface RadarOrigin {
 }
 
 const PREFERENCES_KEY = 'vicinity-watch';
+const LAST_VISIT_KEY = 'vicinity-watch-seen';
+const FEED_PREVIEW = 6;
 const RADII = [15, 30, 50];
 const DEFAULT_PREFERENCES: Preferences = { radius: 30, window: '24h', hideAllies: true };
 const MAP_WIDTH = 1287;
 const RADAR_MARGIN = 4;
 const MAIN_CASTLE = 1;
+// Below this card width the map is folded behind its button, matching the stylesheet
+const WIDE_CARD_PX = 640;
+const DOT_SIZE = 1.7;
 const CASTLE_TYPES = new Set([1, 3, 4, 22]);
 
 @Component({
@@ -66,79 +84,79 @@ export class VicinityWatchComponent {
   public readonly language = input<string>('en');
 
   public readonly radii = RADII;
-  public readonly categories: FeedCategory[] = ['castles', 'alliances', 'activity'];
+  public readonly feedPreview = FEED_PREVIEW;
 
   public readonly vicinity = signal<ApiVicinity | null>(null);
   public readonly loading = signal(true);
   public readonly failed = signal(false);
   public readonly preferences = signal<Preferences>(DEFAULT_PREFERENCES);
-  public readonly tab = signal<VicinityTab>('feed');
   public readonly origin = signal<number | null>(null);
-  public readonly category = signal<FeedCategory | null>(null);
+  public readonly settingsOpen = signal(false);
+  public readonly mapOpen = signal(false);
+  public readonly feedExpanded = signal(false);
+  public readonly tallyFilter = signal<TallyFilter>('all');
   public readonly focusedPlayer = signal<string | null>(null);
-  public readonly neighbourSort = signal<NeighbourSort>('distance');
   public readonly radius = computed(() => this.preferences().radius);
+  public readonly wide = signal(true);
+  public readonly mapVisible = computed(() => this.wide() || this.mapOpen());
 
-  public readonly entries = computed(() => {
-    const vicinity = this.vicinity();
-    if (!vicinity) return [];
-    const preferences = this.preferences();
-    return buildFeed(vicinity, {
-      window: preferences.window,
-      now: Date.now(),
-      hideAllies: preferences.hideAllies,
-      origin: this.origin(),
-    });
+  public readonly entries = computed(() => this.entriesFor(this.preferences().window));
+
+  public readonly weekEntryCount = computed(() =>
+    this.preferences().window === '24h' && this.entries().length === 0 ? this.entriesFor('7d').length : 0,
+  );
+
+  public readonly activeTally = computed<TallyFilter>(() => {
+    const filter = this.tallyFilter();
+    return filter !== 'all' && this.overview()[filter] === 0 ? 'all' : filter;
   });
 
-  public readonly feed = computed<FeedRow[]>(() => {
-    const category = this.category();
+  public readonly filteredEntries = computed(() => {
+    const filter = this.activeTally();
+    return this.entries().filter((entry) => this.matchesTally(entry, filter));
+  });
+
+  public readonly allFeed = computed<FeedRow[]>(() => {
     const focused = this.focusedPlayer();
-    return this.entries()
-      .filter((entry) => category === null || entry.category === category)
+    const lastVisit = this.lastVisit;
+    return this.filteredEntries()
       .filter((entry) => focused === null || entry.playerId === focused)
       .map((entry) => ({
         entry,
         params: this.paramsOf(entry),
         where: this.whereOf(entry),
         when: this.relative(entry.at),
+        fresh: lastVisit !== null && entry.at > lastVisit,
       }));
   });
 
-  public readonly categoryCounts = computed(() => {
-    const counts: Record<FeedCategory, number> = { castles: 0, alliances: 0, activity: 0 };
-    for (const entry of this.entries()) counts[entry.category]++;
-    return counts;
+  public readonly feed = computed(() => (this.feedExpanded() ? this.allFeed() : this.allFeed().slice(0, FEED_PREVIEW)));
+
+  public readonly hiddenFeedCount = computed(() => this.allFeed().length - this.feed().length);
+
+  public readonly customised = computed(() => {
+    const { radius, hideAllies } = this.preferences();
+    return (
+      radius !== DEFAULT_PREFERENCES.radius || hideAllies !== DEFAULT_PREFERENCES.hideAllies || this.origin() !== null
+    );
   });
 
-  public readonly neighbours = computed(() => {
-    const vicinity = this.vicinity();
-    if (!vicinity) return [];
-    const { hideAllies, window } = this.preferences();
+  public readonly selectedOrigin = computed(() => {
     const origin = this.origin();
-    const focused = this.focusedPlayer();
-    const rows = vicinity.neighbours
-      .filter((neighbour) => !hideAllies || !neighbour.is_ally)
-      .filter((neighbour) => origin === null || neighbour.castles.some((castle) => castle.origin === origin))
-      .filter((neighbour) => focused === null || neighbour.player_id === focused);
-    const sortKey = this.neighbourSort();
-    const value = (neighbour: ApiVicinityNeighbour): number => {
-      if (sortKey === 'might') return -neighbour.might_current;
-      if (sortKey === 'change') return -(mightChangeOf(neighbour, window) ?? Number.NEGATIVE_INFINITY);
-      if (sortKey === 'honor') return -honorOf(neighbour, window).changes;
-      return this.distanceFromOrigin(neighbour, origin);
-    };
-    return [...rows].sort((a, b) => value(a) - value(b));
+    return origin === null ? null : (this.vicinity()?.origins[origin] ?? null);
   });
 
-  public readonly summary = computed(() => {
-    const vicinity = this.vicinity();
-    const all = vicinity?.neighbours ?? [];
+  public readonly overview = computed(() => {
+    const hideAllies = this.preferences().hideAllies;
+    const shown = (this.vicinity()?.neighbours ?? []).filter((neighbour) => !hideAllies || !neighbour.is_ally);
+    const entries = this.entries();
     return {
-      neighbours: all.length,
-      rivals: all.filter((neighbour) => !neighbour.is_ally).length,
-      protected: all.filter((neighbour) => neighbour.in_protection).length,
-      alerts: this.entries().filter((entry) => entry.tone === 'threat').length,
+      changes: entries.length,
+      watch: entries.filter((entry) => this.matchesTally(entry, 'watch')).length,
+      opportunity: entries.filter((entry) => this.matchesTally(entry, 'opportunity')).length,
+      fresh: entries.filter((entry) => this.matchesTally(entry, 'fresh')).length,
+      neighbours: shown.length,
+      protected: shown.filter((neighbour) => neighbour.in_protection).length,
     };
   });
 
@@ -167,7 +185,13 @@ export class VicinityWatchComponent {
     const center = this.radarCenter();
     const vicinity = this.vicinity();
     if (!center || !vicinity) return [];
-    const active = new Set(this.entries().map((entry) => entry.playerId));
+    const shown = this.filteredEntries();
+    const active = new Set(shown.map((entry) => entry.playerId));
+    const lastVisit = this.lastVisit;
+    const fresh = new Set(
+      shown.filter((entry) => lastVisit !== null && entry.at > lastVisit).map((entry) => entry.playerId),
+    );
+    const size = DOT_SIZE * Math.min(1.4, 30 / this.radius());
     const hideAllies = this.preferences().hideAllies;
     const focused = this.focusedPlayer();
     const dots: RadarDot[] = [];
@@ -185,25 +209,37 @@ export class VicinityWatchComponent {
           side: neighbour.is_ally ? 'ally' : neighbour.alliance_id ? 'rival' : 'free',
           main: castle.castle_type === MAIN_CASTLE,
           active: active.has(neighbour.player_id),
+          fresh: fresh.has(neighbour.player_id),
           focused: neighbour.player_id === focused,
+          size,
         });
       }
     }
     return dots.sort((a, b) => Number(a.active) - Number(b.active));
   });
 
-  public readonly focusedName = computed(() => {
+  public readonly focusedNeighbour = computed<ApiVicinityNeighbour | null>(() => {
     const focused = this.focusedPlayer();
-    return this.vicinity()?.neighbours.find((neighbour) => neighbour.player_id === focused)?.player_name ?? null;
+    return this.vicinity()?.neighbours.find((neighbour) => neighbour.player_id === focused) ?? null;
+  });
+
+  public readonly focusedName = computed(() => this.focusedNeighbour()?.player_name ?? null);
+
+  public readonly focusedChanges = computed(() => {
+    const focused = this.focusedPlayer();
+    return this.entries().filter((entry) => entry.playerId === focused).length;
   });
 
   private readonly api = inject(ApiRestService);
   private readonly storage = inject(LocalStorageService);
   private readonly translate = inject(TranslateService);
+  private readonly lastVisit = this.readLastVisit();
+  private readonly host = inject(ElementRef<HTMLElement>);
   private request = 0;
 
   constructor() {
     this.preferences.set(this.readPreferences());
+    this.watchWidth();
     effect(() => {
       const playerId = this.playerId();
       const radius = this.radius();
@@ -217,6 +253,8 @@ export class VicinityWatchComponent {
   }
 
   public setWindow(window: VicinityWindow): void {
+    this.feedExpanded.set(false);
+    this.tallyFilter.set('all');
     this.updatePreferences({ window });
   }
 
@@ -225,15 +263,25 @@ export class VicinityWatchComponent {
   }
 
   public setOrigin(origin: number | null): void {
+    this.feedExpanded.set(false);
+    this.tallyFilter.set('all');
     this.origin.set(origin);
   }
 
-  public setCategory(category: FeedCategory | null): void {
-    this.category.set(this.category() === category ? null : category);
+  public setTally(filter: TallyFilter): void {
+    this.tallyFilter.set(this.activeTally() === filter ? 'all' : filter);
+    this.feedExpanded.set(false);
+  }
+
+  public selectOrigin(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    this.setOrigin(value === '' ? null : Number(value));
   }
 
   public focus(playerId: string | null): void {
-    this.focusedPlayer.set(this.focusedPlayer() === playerId ? null : playerId);
+    const next = this.focusedPlayer() === playerId ? null : playerId;
+    this.focusedPlayer.set(next);
+    this.feedExpanded.set(false);
   }
 
   public castleLabel(castleType: number | null | undefined): string {
@@ -242,6 +290,10 @@ export class VicinityWatchComponent {
 
   public originLabel(origin: ApiVicinityOrigin): string {
     return `${this.translate.instant(this.castleLabel(origin.castle_type))} ${origin.x}:${origin.y}`;
+  }
+
+  public levelLabel(level: number, legendaryLevel: number): string {
+    return legendaryLevel > 0 ? `${level}/${legendaryLevel}` : String(level);
   }
 
   public compact(value: number): string {
@@ -294,11 +346,37 @@ export class VicinityWatchComponent {
     if (request !== this.request) return;
     if (response.success) {
       this.vicinity.set(response.data);
+      this.storage.setItem(LAST_VISIT_KEY, String(Date.now()));
       if ((this.origin() ?? 0) >= response.data.origins.length) this.origin.set(null);
     } else {
       this.failed.set(true);
     }
     this.loading.set(false);
+  }
+
+  private watchWidth(): void {
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(([entry]) => this.wide.set(entry.contentRect.width >= WIDE_CARD_PX));
+    observer.observe(this.host.nativeElement);
+    inject(DestroyRef).onDestroy(() => observer.disconnect());
+  }
+
+  private matchesTally(entry: FeedEntry, filter: TallyFilter): boolean {
+    if (filter === 'watch') return entry.tone === 'threat';
+    if (filter === 'opportunity') return entry.tone === 'opportunity';
+    if (filter === 'fresh') return this.lastVisit !== null && entry.at > this.lastVisit;
+    return true;
+  }
+
+  private entriesFor(window: VicinityWindow): FeedEntry[] {
+    const vicinity = this.vicinity();
+    if (!vicinity) return [];
+    return buildFeed(vicinity, {
+      window,
+      now: Date.now(),
+      hideAllies: this.preferences().hideAllies,
+      origin: this.origin(),
+    });
   }
 
   private distanceFromOrigin(neighbour: ApiVicinityNeighbour, origin: number | null): number {
@@ -339,10 +417,15 @@ export class VicinityWatchComponent {
 
   private relative(instant: number): string {
     const seconds = Math.round((instant - Date.now()) / 1000);
-    const format = new Intl.RelativeTimeFormat(this.language(), { numeric: 'auto' });
+    const format = new Intl.RelativeTimeFormat(this.language(), { numeric: 'auto', style: 'short' });
     if (Math.abs(seconds) < 3600) return format.format(Math.round(seconds / 60), 'minute');
     if (Math.abs(seconds) < 86_400) return format.format(Math.round(seconds / 3600), 'hour');
     return format.format(Math.round(seconds / 86_400), 'day');
+  }
+
+  private readLastVisit(): number | null {
+    const stored = Number(this.storage.getItem(LAST_VISIT_KEY));
+    return Number.isFinite(stored) && stored > 0 ? stored : null;
   }
 
   private readPreferences(): Preferences {

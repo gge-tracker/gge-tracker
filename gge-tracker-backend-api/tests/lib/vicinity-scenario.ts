@@ -40,12 +40,20 @@ export interface ScenarioPlayer {
   isRuin?: boolean;
   firstSeenMinutesAgo?: number;
   might: number;
+  level: number;
+  legendaryLevel: number;
 }
 
-const player = (offset: number, rest: Omit<ScenarioPlayer, 'id' | 'name' | 'might'> & { might?: number }): ScenarioPlayer => ({
+const player = (
+  offset: number,
+  rest: Omit<ScenarioPlayer, 'id' | 'name' | 'might' | 'level' | 'legendaryLevel'> &
+    Partial<Pick<ScenarioPlayer, 'might' | 'level' | 'legendaryLevel'>>,
+): ScenarioPlayer => ({
   id: SCENARIO_FIRST_ID + offset,
   name: `Vicinity_${offset}`,
   might: 1_000_000 + offset,
+  level: 70,
+  legendaryLevel: 100 + offset,
   ...rest,
 });
 
@@ -55,8 +63,8 @@ export const PLAYERS: Record<ScenarioName, ScenarioPlayer> = {
   foe: player(2, { allianceId: ALLIANCES.rival, castles: [[1280, 1452, 1]], honor: 1030 }),
   raider: player(3, { allianceId: ALLIANCES.rival, castles: [[600, 1450, 1], [12, 1500, 4]], honor: 900 }),
   mover: player(4, { allianceId: null, castles: [[30, 1460, 1]], honor: 10 }),
-  leaver: player(5, { allianceId: null, castles: [[700, 1450, 1]], honor: 10 }),
-  newbie: player(6, { allianceId: null, castles: [[10, 1425, 1]], honor: 0, peaceSeconds: 3 * 86_400, peaceEndsInMinutes: 3 * DAY, firstSeenMinutesAgo: 4 * HOUR }),
+  leaver: player(5, { allianceId: null, castles: [[700, 1450, 1]], honor: 10, level: 34, legendaryLevel: 0 }),
+  newbie: player(6, { allianceId: null, castles: [[10, 1425, 1]], honor: 0, peaceSeconds: 3 * 86_400, peaceEndsInMinutes: 3 * DAY, firstSeenMinutesAgo: 4 * HOUR, level: 12, legendaryLevel: 0 }),
   far: player(7, { allianceId: ALLIANCES.rival, castles: [[55, 1450, 1]], honor: 50 }),
   old: player(8, { allianceId: ALLIANCES.rival, castles: [[15, 1455, 1]], honor: 50, firstSeenMinutesAgo: 9 * DAY }),
   monument: player(9, { allianceId: ALLIANCES.rival, castles: [[13, 1452, 26], [11, 1451, 23], [9, 1449, 28]], honor: 50 }),
@@ -115,10 +123,10 @@ export const STATE_CHANGES: ScenarioStateChange[] = [
   { by: 'old', minutesAgo: 20 * HOUR, peace: [true, false], peaceUntilOffsetMinutes: [-30, null] },
 ];
 
-// Hourly readings, 35 days back: a steady 10k an hour, then +6M three hours ago and -4M two hours ago
 export const MIGHT_HOURS = 35 * 24;
 export function mightAt(hoursAgo: number): number {
   let point = 50_000_000 + 10_000 * (MIGHT_HOURS - hoursAgo);
+  if (hoursAgo <= 72 && hoursAgo > 70) point += 7_000_000;
   if (hoursAgo <= 3) point += 6_000_000;
   if (hoursAgo <= 2) point -= 4_000_000;
   return point;
@@ -147,7 +155,7 @@ export async function seedScenario(db: FixtureDatabase): Promise<void> {
     await db.query(
       `INSERT INTO players (id, name, alliance_id, might_current, might_all_time, loot_current, loot_all_time, level, legendary_level,
          castles, castles_realm, honor, max_honor, remaining_peace_time, peace_disabled_at, is_ruin, first_seen_at)
-       VALUES ($2, $3, $4, $5, $5, 0, 0, 70, 100, $6::jsonb, '[]'::jsonb, $7, $7, $8,
+       VALUES ($2, $3, $4, $5, $5, 0, 0, $12, $13, $6::jsonb, '[]'::jsonb, $7, $7, $8,
          CASE WHEN $9::float8 IS NULL THEN NULL ELSE ($1::timestamp + $9::float8 * interval '1 minute') AT TIME ZONE 'UTC' END,
          $10, CASE WHEN $11::float8 IS NULL THEN NULL ELSE ${ago(11)} END)`,
       [
@@ -162,6 +170,8 @@ export async function seedScenario(db: FixtureDatabase): Promise<void> {
         seeded.peaceEndsInMinutes ?? null,
         seeded.isRuin === true,
         seeded.firstSeenMinutesAgo ?? null,
+        seeded.level,
+        seeded.legendaryLevel,
       ],
       `vicinity-player ${seeded.name}`,
     );

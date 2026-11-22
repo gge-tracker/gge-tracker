@@ -264,14 +264,14 @@
 }
 
 .home-kpis,
-.home-vicinity-placeholder {
-  min-height: 520px;
-}
-
 .home-panels {
   display: grid;
   gap: 20px;
   grid-template-columns: minmax(0, 1fr);
+}
+
+.home-vicinity-placeholder {
+  min-height: 420px;
 }
 
 .home-kpi-body {

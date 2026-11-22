@@ -804,6 +804,9 @@ export interface ApiVicinityEvent {
   alliance_id: string | null;
   alliance_name: string | null;
   is_ally: boolean;
+  level?: number | null;
+  legendary_level?: number | null;
+  might?: number | null;
   castle_type?: number;
   position?: ApiVicinityPoint | null;
   distance: number | null;
@@ -836,7 +839,14 @@ export interface ApiVicinity {
   since: string;
   radius: number;
   might_available: boolean;
-  player: { player_id: string; player_name: string; alliance_id: string | null; alliance_name: string | null };
+  player: {
+    player_id: string;
+    player_name: string;
+    alliance_id: string | null;
+    alliance_name: string | null;
+    level?: number;
+    legendary_level?: number;
+  };
   origins: ApiVicinityOrigin[];
   neighbours: ApiVicinityNeighbour[];
   events: ApiVicinityEvent[];

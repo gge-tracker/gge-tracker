@@ -4,10 +4,18 @@ import {
   ApiVicinityEvent,
   ApiVicinityNeighbour,
 } from '@ggetracker-interfaces/empire-ranking';
+import { OutdatedEvents, OutdatedNote } from './vicinity-outdated';
 
 export type VicinityWindow = '24h' | '7d';
 export type FeedCategory = 'castles' | 'alliances' | 'activity';
 export type FeedTone = 'threat' | 'opportunity' | 'info';
+export type FeedTrend = 'up' | 'down' | null;
+
+export interface PlayerStanding {
+  level: number;
+  legendaryLevel: number;
+  might: number | null;
+}
 
 export interface FeedEntry {
   key: string;
@@ -16,6 +24,10 @@ export interface FeedEntry {
   category: FeedCategory;
   tone: FeedTone;
   icon: string;
+  trend: FeedTrend;
+  minor: boolean;
+  outdated: OutdatedNote | null;
+  standing: PlayerStanding | null;
   at: number;
   playerId: string | null;
   playerName: string | null;
@@ -35,26 +47,66 @@ export interface FeedOptions {
 
 export const WINDOW_MS: Record<VicinityWindow, number> = { '24h': 86_400_000, '7d': 7 * 86_400_000 };
 
+const ICONS = {
+  captured: '/assets/troop.png',
+  capturedFromMe: '/assets/fire2.png',
+  founded: '/assets/new-castle.png',
+  relocated: '/assets/moving.png',
+  vanished: '/assets/tools/movements.webp',
+  appeared: '/assets/tools/players.webp',
+  joined: '/assets/icon_alliance.png',
+  switched: '/assets/tools/alliances.webp',
+  left: '/assets/alliance.png',
+  renamed: '/assets/tools/renames.webp',
+  protectionStarted: '/assets/peace.png',
+  protectionEnded: '/assets/icon_peace.png',
+  ruin: '/assets/ruins.png',
+  rebuilt: '/assets/construction.webp',
+  might: '/assets/might.png',
+  honor: '/assets/honor2.png',
+} as const;
+
 // Consecutive hourly readings, w a little slack for a late fill
 const SPIKE_JOIN_MS = 70 * 60_000;
 
 export function buildFeed(vicinity: ApiVicinity, options: FeedOptions): FeedEntry[] {
   const since = options.now - WINDOW_MS[options.window];
+  const me = myStanding(vicinity);
+  const outdated = new OutdatedEvents(vicinity.events);
   const entries = [
     ...vicinity.events
       .filter((event) => event.type !== 'might_spike')
-      .map((event) => entryOf(event, vicinity.radius))
+      .map((event) => withOutdated(entryOf(event, vicinity.radius, me), outdated.noteFor(event)))
       .filter((entry): entry is FeedEntry => entry !== null),
     ...mightEntries(
       vicinity.events.filter((event) => event.type === 'might_spike' && Date.parse(event.occurred_at) >= since),
+      me,
     ),
-    ...honorEntries(vicinity.neighbours, options.window),
+    ...honorEntries(vicinity.neighbours, options.window, me),
   ];
   return entries
     .filter((entry) => entry.at >= since)
     .filter((entry) => options.origin === null || entry.origin === options.origin)
     .filter((entry) => !options.hideAllies || !entry.isAlly || concernsMe(entry))
     .sort((a, b) => b.at - a.at);
+}
+
+export function isMinor(standing: PlayerStanding | null, me: PlayerStanding | null): boolean {
+  if (standing === null || me === null) return false;
+  return standing.level + standing.legendaryLevel < me.level + me.legendaryLevel;
+}
+
+export function myStanding(vicinity: ApiVicinity): PlayerStanding | null {
+  return standingOf(vicinity.player.level, vicinity.player.legendary_level, null);
+}
+
+export function standingOf(
+  level: number | null | undefined,
+  legendaryLevel: number | null | undefined,
+  might: number | null | undefined,
+): PlayerStanding | null {
+  if (level === null || level === undefined) return null;
+  return { level, legendaryLevel: legendaryLevel ?? 0, might: might ?? null };
 }
 
 export function honorOf(neighbour: ApiVicinityNeighbour, window: VicinityWindow): ApiHonorActivity {
@@ -65,14 +117,32 @@ export function mightChangeOf(neighbour: ApiVicinityNeighbour, window: VicinityW
   return window === '24h' ? neighbour.might_change_24h : neighbour.might_change_7d;
 }
 
-function concernsMe(entry: FeedEntry): boolean {
-  return ['left-my-alliance', 'joined-my-alliance', 'captured-from-me'].some((message) =>
-    entry.message.includes(message),
-  );
+const ABOUT_ME = ['left-my-alliance', 'joined-my-alliance', 'captured-from-me'];
+const LEVEL_BLIND = [...ABOUT_ME, 'vanished'];
+
+function withOutdated(entry: FeedEntry | null, note: OutdatedNote | null): FeedEntry | null {
+  if (!entry || !note) return entry;
+  return { ...entry, outdated: note, tone: 'info' };
 }
 
-function base(event: ApiVicinityEvent): Omit<FeedEntry, 'key' | 'message' | 'params' | 'category' | 'tone' | 'icon'> {
+function weaknessTone(rising: boolean, ignored: boolean): FeedTone {
+  if (ignored) return 'info';
+  return rising ? 'threat' : 'opportunity';
+}
+
+function concernsMessage(message: string): boolean {
+  return ABOUT_ME.some((about) => message.startsWith(about));
+}
+
+function concernsMe(entry: FeedEntry): boolean {
+  return concernsMessage(entry.message.replace('vicinity.event.', ''));
+}
+
+function base(
+  event: ApiVicinityEvent,
+): Omit<FeedEntry, 'key' | 'message' | 'params' | 'category' | 'tone' | 'icon' | 'trend' | 'minor' | 'outdated'> {
   return {
+    standing: standingOf(event.level, event.legendary_level, event.might),
     at: Date.parse(event.occurred_at),
     playerId: event.player_id,
     playerName: event.player_name,
@@ -84,63 +154,74 @@ function base(event: ApiVicinityEvent): Omit<FeedEntry, 'key' | 'message' | 'par
   };
 }
 
-function entryOf(event: ApiVicinityEvent, radius: number): FeedEntry | null {
+function entryOf(event: ApiVicinityEvent, radius: number, me: PlayerStanding | null): FeedEntry | null {
   const shared = base(event);
-  const make = (message: string, category: FeedCategory, tone: FeedTone, icon: string, parameters = {}): FeedEntry => ({
-    ...shared,
-    key: `${event.type}:${event.player_id}:${event.occurred_at}`,
-    message: `vicinity.event.${message}`,
-    params: parameters,
-    category,
-    tone,
-    icon,
-  });
+  const minor = isMinor(shared.standing, me);
+  const make = (message: string, category: FeedCategory, tone: FeedTone, icon: string, parameters = {}): FeedEntry => {
+    const dimmed = minor && !LEVEL_BLIND.some((kind) => message.startsWith(kind));
+    return {
+      ...shared,
+      key: `${event.type}:${event.player_id}:${event.occurred_at}`,
+      message: `vicinity.event.${message}`,
+      params: parameters,
+      category,
+      tone: dimmed ? 'info' : tone,
+      icon,
+      trend: null,
+      minor: dimmed,
+      outdated: null,
+    };
+  };
   const hostile = (tone: FeedTone): FeedTone => (event.is_ally ? 'info' : tone);
   switch (event.type) {
     case 'castle_captured': {
       const owner = event.previous_owner;
-      if (owner?.is_me) return make('captured-from-me', 'castles', 'threat', 'fa-solid fa-flag');
+      if (owner?.is_me) return make('captured-from-me', 'castles', 'threat', ICONS.capturedFromMe);
       return make(
         owner?.is_ally ? 'captured-from-ally' : 'captured',
         'castles',
         owner?.is_ally ? 'threat' : hostile('threat'),
-        'fa-solid fa-flag',
+        ICONS.captured,
         {
           previous: owner?.player_name ?? '?',
         },
       );
     }
     case 'castle_founded': {
-      return make('founded', 'castles', hostile('threat'), 'fa-solid fa-chess-rook');
+      return make('founded', 'castles', hostile('threat'), ICONS.founded);
     }
     case 'castle_relocated': {
       return relocationEntry(event, radius, make, hostile);
     }
     case 'castle_vanished': {
-      return { ...make('vanished', 'castles', 'opportunity', 'fa-solid fa-ghost'), distance: event.distance };
+      const spot = event.position;
+      const vanished = spot
+        ? make('vanished-at', 'castles', 'opportunity', ICONS.vanished, { x: spot.x, y: spot.y })
+        : make('vanished', 'castles', 'opportunity', ICONS.vanished);
+      return { ...vanished, distance: event.distance };
     }
     case 'player_appeared': {
-      return make(event.new_account ? 'new-player' : 'returned', 'castles', 'info', 'fa-solid fa-user-plus');
+      return make(event.new_account ? 'new-player' : 'returned', 'castles', 'info', ICONS.appeared);
     }
     case 'alliance_changed': {
       return allianceEntry(event, make);
     }
     case 'player_renamed': {
-      return make('renamed', 'alliances', 'info', 'fa-solid fa-signature', { previous: event.old_name ?? '' });
+      return make('renamed', 'alliances', 'info', ICONS.renamed, { previous: event.old_name ?? '' });
     }
     case 'protection_started': {
-      return make('protection-started', 'activity', 'info', 'fa-solid fa-shield-halved');
+      return make('protection-started', 'activity', 'info', ICONS.protectionStarted);
     }
     case 'protection_ended': {
       return event.ended_early
-        ? make('protection-broken', 'activity', hostile('threat'), 'fa-solid fa-shield-virus')
-        : make('protection-expired', 'activity', 'opportunity', 'fa-solid fa-shield');
+        ? make('protection-broken', 'activity', hostile('threat'), ICONS.protectionEnded)
+        : make('protection-expired', 'activity', 'opportunity', ICONS.protectionEnded);
     }
     case 'ruin_started': {
-      return make('ruin-started', 'activity', 'opportunity', 'fa-solid fa-house-crack');
+      return make('ruin-started', 'activity', 'info', ICONS.ruin);
     }
     case 'ruin_ended': {
-      return make('ruin-ended', 'activity', 'info', 'fa-solid fa-house-chimney');
+      return make('ruin-ended', 'activity', 'info', ICONS.rebuilt);
     }
     default: {
       return null;
@@ -156,17 +237,16 @@ function relocationEntry(
 ): FeedEntry | null {
   const now = event.distance ?? Number.POSITIVE_INFINITY;
   const before = event.previous_distance ?? Number.POSITIVE_INFINITY;
-  if (now <= radius && before > radius)
-    return make('relocated-in', 'castles', hostile('threat'), 'fa-solid fa-truck-moving');
+  if (now <= radius && before > radius) return make('relocated-in', 'castles', hostile('threat'), ICONS.relocated);
   if (before <= radius && now > radius) {
     return {
-      ...make('relocated-out', 'castles', 'info', 'fa-solid fa-person-walking-arrow-right'),
+      ...make('relocated-out', 'castles', 'info', ICONS.relocated),
       distance: before,
       origin: event.previous_origin ?? null,
     };
   }
   if (now <= radius) {
-    return make('relocated-within', 'castles', hostile(now < before ? 'threat' : 'info'), 'fa-solid fa-truck-moving', {
+    return make('relocated-within', 'castles', hostile(now < before ? 'threat' : 'info'), ICONS.relocated, {
       before: before,
     });
   }
@@ -180,24 +260,15 @@ function allianceEntry(
   const from = event.old_alliance_name ?? '';
   const to = event.new_alliance_name ?? '';
   if (event.left_my_alliance) {
-    return make(
-      to ? 'left-my-alliance-for' : 'left-my-alliance',
-      'alliances',
-      'threat',
-      'fa-solid fa-person-walking-arrow-right',
-      { to },
-    );
+    return make(to ? 'left-my-alliance-for' : 'left-my-alliance', 'alliances', 'threat', ICONS.left, { to });
   }
-  if (event.joined_my_alliance)
-    return make('joined-my-alliance', 'alliances', 'info', 'fa-solid fa-handshake', { from });
-  if (event.new_alliance_id === null)
-    return make('left-alliance', 'alliances', 'opportunity', 'fa-solid fa-user-minus', { from });
-  if (event.old_alliance_id === null)
-    return make('joined-alliance', 'alliances', 'info', 'fa-solid fa-user-group', { to });
-  return make('switched-alliance', 'alliances', 'info', 'fa-solid fa-right-left', { from, to });
+  if (event.joined_my_alliance) return make('joined-my-alliance', 'alliances', 'info', ICONS.joined, { from });
+  if (event.new_alliance_id === null) return make('left-alliance', 'alliances', 'opportunity', ICONS.left, { from });
+  if (event.old_alliance_id === null) return make('joined-alliance', 'alliances', 'info', ICONS.joined, { to });
+  return make('switched-alliance', 'alliances', 'info', ICONS.switched, { from, to });
 }
 
-function mightEntries(spikes: ApiVicinityEvent[]): FeedEntry[] {
+function mightEntries(spikes: ApiVicinityEvent[], me: PlayerStanding | null): FeedEntry[] {
   const byPlayer = new Map<string, ApiVicinityEvent[]>();
   for (const spike of spikes) {
     const key = String(spike.player_id);
@@ -213,11 +284,17 @@ function mightEntries(spikes: ApiVicinityEvent[]): FeedEntry[] {
       0,
     );
     const rising = change > 0;
+    const common = base(latest);
+    const minor = isMinor(common.standing, me);
     const shared = {
-      ...base(latest),
+      ...common,
       key: `might:${latest.player_id}:${ordered[0].occurred_at}`,
       category: 'activity' as const,
-      tone: (rising && !latest.is_ally ? 'threat' : 'info') as FeedTone,
+      tone: weaknessTone(rising, latest.is_ally || minor),
+      icon: ICONS.might,
+      trend: (rising ? 'up' : 'down') as FeedTrend,
+      minor,
+      outdated: null,
     };
     if (isSingleRun(ordered)) {
       return {
@@ -226,14 +303,12 @@ function mightEntries(spikes: ApiVicinityEvent[]): FeedEntry[] {
           ? `vicinity.event.${rising ? 'might-up' : 'might-down'}`
           : 'vicinity.event.might-change-plain',
         params: { change, hours: ordered.length, typical: latest.typical_hourly_change ?? 0 },
-        icon: rising ? 'fa-solid fa-arrow-trend-up' : 'fa-solid fa-arrow-trend-down',
       };
     }
     return {
       ...shared,
       message: 'vicinity.event.might-swings',
       params: { count: ordered.length, change, peak },
-      icon: 'fa-solid fa-chart-line',
     };
   });
 }
@@ -249,20 +324,30 @@ function isSingleRun(ordered: ApiVicinityEvent[]): boolean {
   });
 }
 
-function honorEntries(neighbours: ApiVicinityNeighbour[], window: VicinityWindow): FeedEntry[] {
+function honorEntries(
+  neighbours: ApiVicinityNeighbour[],
+  window: VicinityWindow,
+  me: PlayerStanding | null,
+): FeedEntry[] {
   return neighbours
     .filter((neighbour) => honorOf(neighbour, window).changes > 0 && neighbour.last_honor_change_at)
     .map((neighbour) => {
       const honor = honorOf(neighbour, window);
       const net = honor.gained - honor.lost;
       const castle = neighbour.castles[0];
+      const standing = standingOf(neighbour.level, neighbour.legendary_level, neighbour.might_current);
+      const minor = isMinor(standing, me);
       return {
         key: `honor:${neighbour.player_id}`,
-        message: 'vicinity.event.honor',
+        message: honor.changes === 1 ? 'vicinity.event.honor-once' : 'vicinity.event.honor',
         params: { net, changes: honor.changes },
         category: 'activity',
-        tone: !neighbour.is_ally && net > 0 ? 'threat' : 'info',
-        icon: 'fa-solid fa-medal',
+        tone: net === 0 ? 'info' : weaknessTone(net > 0, neighbour.is_ally || minor),
+        icon: ICONS.honor,
+        trend: net > 0 ? 'up' : net < 0 ? 'down' : null,
+        minor,
+        outdated: null,
+        standing,
         at: Date.parse(neighbour.last_honor_change_at!),
         playerId: neighbour.player_id,
         playerName: neighbour.player_name,

@@ -186,6 +186,26 @@ function checkNeighbourDetails(ctx: Context, body: any): void {
   judge(ctx.section, 'vicinity: neighbour honor, protection, ruin and might match the seeded history', problems, 'every seeded value read back');
 }
 
+async function checkStanding(ctx: Context): Promise<void> {
+  const result = await vicinity(ctx, 'me', '?radius=50');
+  const byId = new Map(Object.values(PLAYERS).map((seeded) => [`${seeded.id}${ctx.server.code}`, seeded]));
+  const problems: string[] = [];
+  const me = result.body?.player ?? {};
+  const ownStanding = [me.level, me.legendary_level];
+  const seededStanding = [PLAYERS.me.level, PLAYERS.me.legendaryLevel];
+  if (!sameValue(ownStanding, seededStanding)) {
+    problems.push(`player: ${JSON.stringify(ownStanding)}, expected ${JSON.stringify(seededStanding)}`);
+  }
+  for (const event of result.body?.events ?? []) {
+    const seeded = byId.get(event.player_id);
+    if (!seeded) continue;
+    const actual = [event.level, event.legendary_level, event.might];
+    const wanted = [seeded.level, seeded.legendaryLevel, seeded.might];
+    if (!sameValue(actual, wanted)) problems.push(`${event.type} of ${seeded.name}: ${JSON.stringify(actual)}, expected ${JSON.stringify(wanted)}`);
+  }
+  judge(ctx.section, 'vicinity: the player and every event carry their level, legendary level and might', problems, 'the seeded level and might on every event');
+}
+
 async function checkWithin50(ctx: Context): Promise<void> {
   const startedAt = Date.now();
   const result = await vicinity(ctx, 'me', '?radius=50');
@@ -285,6 +305,7 @@ export async function runVicinity(report: Report, seeds: Seeds): Promise<void> {
     const ctx: Context = { section, server, db, mightSeeded };
     await checkWithin30(ctx);
     await checkWithin50(ctx);
+    await checkStanding(ctx);
     await checkRefusals(ctx);
     await checkCaching(ctx);
   } finally {

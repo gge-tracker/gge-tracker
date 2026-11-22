@@ -7,6 +7,8 @@ export const MIGHT_RULE = {
   baselineDays: 28,
   windowDays: 7,
   maxReadingGapSeconds: 4200,
+  boostWindowHours: 48,
+  boostResidualShare: 0.05,
 } as const;
 
 export interface MightSpike {
@@ -40,13 +42,15 @@ export async function readMightSignals(
     readRows(client, trendsQuery(database), playerIds),
   ]);
   return {
-    spikes: spikes.map((row) => ({
-      playerId: Number(row.player_id),
-      occurredAt: new Date(Number(row.at) * 1000).toISOString(),
-      change: Number(row.delta),
-      before: Number(row.previous),
-      typical: Math.round(Number(row.typical)),
-    })),
+    spikes: withoutTemporaryBoosts(
+      spikes.map((row) => ({
+        playerId: Number(row.player_id),
+        occurredAt: new Date(Number(row.at) * 1000).toISOString(),
+        change: Number(row.delta),
+        before: Number(row.previous),
+        typical: Math.round(Number(row.typical)),
+      })),
+    ),
     trends: new Map(
       trends.map((row) => [
         Number(row.player_id),
@@ -54,6 +58,37 @@ export async function readMightSignals(
       ]),
     ),
   };
+}
+
+export function withoutTemporaryBoosts(spikes: MightSpike[]): MightSpike[] {
+  const boosts = new Set<MightSpike>();
+  const byPlayer = Map.groupBy(spikes, (spike) => spike.playerId);
+  for (const own of byPlayer.values()) {
+    const ordered = [...own].sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
+    let start = 0;
+    while (start < ordered.length) {
+      const end = boostEnd(ordered, start);
+      if (end === null) {
+        start++;
+        continue;
+      }
+      for (const spike of ordered.slice(start, end + 1)) boosts.add(spike);
+      start = end + 1;
+    }
+  }
+  return spikes.filter((spike) => !boosts.has(spike));
+}
+
+function boostEnd(ordered: MightSpike[], start: number): number | null {
+  const limit = Date.parse(ordered[start].occurredAt) + MIGHT_RULE.boostWindowHours * 3_600_000;
+  let net = 0;
+  let peak = 0;
+  for (let index = start; index < ordered.length && Date.parse(ordered[index].occurredAt) <= limit; index++) {
+    net += ordered[index].change;
+    peak = Math.max(peak, Math.abs(net));
+    if (index > start && Math.abs(net) <= peak * MIGHT_RULE.boostResidualShare) return index;
+  }
+  return null;
 }
 
 async function readRows(client: NodeClickHouseClient, query: string, playerIds: number[]): Promise<any[]> {

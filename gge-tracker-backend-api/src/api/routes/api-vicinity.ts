@@ -21,6 +21,8 @@ interface Subject {
   name: string;
   allianceId: number | null;
   allianceName: string | null;
+  level: number;
+  legendaryLevel: number;
   origins: VicinityCastle[];
 }
 
@@ -49,6 +51,10 @@ function nearAnyOrigin(x: string, y: string): string {
     SELECT 1 FROM unnest($2::int[], $3::int[]) AS O(x, y)
     WHERE ABS(${y} - O.y) <= $4 AND LEAST(ABS(${x} - O.x), ${KINGDOM_MAP_WIDTH} - ABS(${x} - O.x)) <= $4
   )`;
+}
+
+function numberOrNull(value: unknown): number | null {
+  return value === null || value === undefined ? null : Number(value);
 }
 
 function neighbourRowsQuery(firstSeen: string): string {
@@ -158,6 +164,8 @@ export abstract class ApiVicinity implements ApiHelper {
         player_name: subject.name,
         alliance_id: ApiHelper.addCountryCode(subject.allianceId as any, context.code),
         alliance_name: subject.allianceName,
+        level: subject.level,
+        legendary_level: subject.legendaryLevel,
       },
       origins: origins.map((origin, index) => ({
         origin: index,
@@ -174,7 +182,7 @@ export abstract class ApiVicinity implements ApiHelper {
 
   private static async readSubject(context: ProfileContext): Promise<Subject | null> {
     const results = await context.pool.query(
-      `SELECT P.id, P.name, P.alliance_id, A.name AS alliance_name, P.castles
+      `SELECT P.id, P.name, P.alliance_id, A.name AS alliance_name, P.level, P.legendary_level, P.castles
         FROM players P LEFT JOIN alliances A ON A.id = P.alliance_id
         WHERE P.id = $1`,
       [context.localId],
@@ -186,6 +194,8 @@ export abstract class ApiVicinity implements ApiHelper {
       name: row.name,
       allianceId: row.alliance_id === null ? null : Number(row.alliance_id),
       allianceName: row.alliance_name ?? null,
+      level: Number(row.level ?? 0),
+      legendaryLevel: Number(row.legendary_level ?? 0),
       origins: vicinityCastlesOf(row.castles),
     };
   }
@@ -225,7 +235,7 @@ export abstract class ApiVicinity implements ApiHelper {
     const results = await context.pool.query(
       `SELECT M.castle_type, M.movement_type, M.position_x_old, M.position_y_old, M.position_x_new, M.position_y_new,
           M.previous_owner_id, M.created_at, M.player_id,
-          P.name AS player_name, P.alliance_id, A.name AS alliance_name,
+          P.name AS player_name, P.alliance_id, A.name AS alliance_name, P.level, P.legendary_level, P.might_current,
           O.name AS previous_owner_name, O.alliance_id AS previous_owner_alliance_id, OA.name AS previous_owner_alliance_name
         FROM player_castle_movements_history M
         LEFT JOIN players P ON P.id = M.player_id
@@ -300,6 +310,7 @@ export abstract class ApiVicinity implements ApiHelper {
         type,
         occurred_at: new Date(row.created_at).toISOString(),
         ...this.who(context, subject, row.player_id, row.player_name, row.alliance_id, row.alliance_name),
+        ...this.standing(row),
         castle_type: Number(row.castle_type),
       };
       if (type === 'castle_relocated') {
@@ -530,6 +541,7 @@ export abstract class ApiVicinity implements ApiHelper {
       alliance_id: ApiHelper.addCountryCode(row.alliance_id, context.code),
       alliance_name: row.alliance_name ?? null,
       is_ally: this.isAlly(subject, row.alliance_id),
+      ...this.standing(row),
       castle_type: neighbour.nearest.castle_type,
       position: { x: neighbour.nearest.x, y: neighbour.nearest.y },
       distance: neighbour.nearest.distance,
@@ -551,6 +563,14 @@ export abstract class ApiVicinity implements ApiHelper {
       alliance_id: ApiHelper.addCountryCode(allianceId as any, context.code),
       alliance_name: allianceName ?? null,
       is_ally: this.isAlly(subject, allianceId),
+    };
+  }
+
+  private static standing(row: any): { level: number | null; legendary_level: number | null; might: number | null } {
+    return {
+      level: numberOrNull(row.level),
+      legendary_level: numberOrNull(row.legendary_level),
+      might: numberOrNull(row.might_current),
     };
   }
 
