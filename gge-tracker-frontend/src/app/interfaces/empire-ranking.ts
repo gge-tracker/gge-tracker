@@ -727,6 +727,121 @@ export interface ApiBulkAlliancesResponse {
   alliances: ApiBulkAlliance[];
 }
 
+export type ApiVicinityEventType =
+  | 'castle_founded'
+  | 'castle_captured'
+  | 'castle_relocated'
+  | 'castle_vanished'
+  | 'player_appeared'
+  | 'alliance_changed'
+  | 'player_renamed'
+  | 'protection_started'
+  | 'protection_ended'
+  | 'ruin_started'
+  | 'ruin_ended'
+  | 'might_spike';
+
+export interface ApiVicinityPoint {
+  x: number;
+  y: number;
+}
+
+export interface ApiVicinityOrigin extends ApiVicinityPoint {
+  origin: number;
+  castle_type: number;
+}
+
+export interface ApiVicinityCastle extends ApiVicinityPoint {
+  castle_type: number;
+  distance: number;
+  origin: number;
+}
+
+export interface ApiHonorActivity {
+  gained: number;
+  lost: number;
+  changes: number;
+}
+
+export interface ApiVicinityNeighbour {
+  player_id: string;
+  player_name: string;
+  alliance_id: string | null;
+  alliance_name: string | null;
+  is_ally: boolean;
+  level: number;
+  legendary_level: number;
+  might_current: number;
+  might_change_24h: number | null;
+  might_change_7d: number | null;
+  honor: number;
+  honor_24h: ApiHonorActivity;
+  honor_7d: ApiHonorActivity;
+  last_honor_change_at: string | null;
+  in_protection: boolean;
+  protected_until: string | null;
+  is_ruin: boolean;
+  first_seen_at: string | null;
+  distance: number;
+  origin: number;
+  castles: ApiVicinityCastle[];
+}
+
+export interface ApiVicinityPreviousOwner {
+  player_id: string | null;
+  player_name: string | null;
+  alliance_id: string | null;
+  alliance_name: string | null;
+  is_me: boolean;
+  is_ally: boolean;
+}
+
+export interface ApiVicinityEvent {
+  type: ApiVicinityEventType;
+  occurred_at: string;
+  player_id: string | null;
+  player_name: string | null;
+  alliance_id: string | null;
+  alliance_name: string | null;
+  is_ally: boolean;
+  castle_type?: number;
+  position?: ApiVicinityPoint | null;
+  distance: number | null;
+  origin: number | null;
+  previous_position?: ApiVicinityPoint | null;
+  previous_distance?: number | null;
+  previous_origin?: number | null;
+  previous_owner?: ApiVicinityPreviousOwner;
+  new_account?: boolean;
+  old_alliance_id?: string | null;
+  old_alliance_name?: string | null;
+  new_alliance_id?: string | null;
+  new_alliance_name?: string | null;
+  joined_my_alliance?: boolean;
+  left_my_alliance?: boolean;
+  old_name?: string;
+  new_name?: string;
+  protected_until?: string | null;
+  scheduled_end?: string | null;
+  ended_early?: boolean;
+  change?: number;
+  before?: number;
+  typical_hourly_change?: number;
+}
+
+export interface ApiVicinity {
+  server: string;
+  server_code: string;
+  generated_at: string;
+  since: string;
+  radius: number;
+  might_available: boolean;
+  player: { player_id: string; player_name: string; alliance_id: string | null; alliance_name: string | null };
+  origins: ApiVicinityOrigin[];
+  neighbours: ApiVicinityNeighbour[];
+  events: ApiVicinityEvent[];
+}
+
 export interface ApiPlayerProfileIdentity {
   player_id: string;
   player_name: string;

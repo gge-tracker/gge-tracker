@@ -43,6 +43,7 @@ import {
   ApiBulkPlayersResponse,
   ApiAllianceSuggestion,
   ApiPlayerProfile,
+  ApiVicinity,
   ApiPlayerSuggestion,
   ApiSuggestionsResponse,
   ApiRankingStatsPlayer,
@@ -1253,6 +1254,10 @@ export class ApiRestService {
 
   public async getPlayerProfile(playerId: string, include: string): Promise<ApiResponse<ApiPlayerProfile>> {
     return this.apiFetch<ApiPlayerProfile>(`${ApiRestService.apiUrl}players/${playerId}/profile?include=${include}`);
+  }
+
+  public async getPlayerVicinity(playerId: string, radius: number): Promise<ApiResponse<ApiVicinity>> {
+    return this.apiFetch<ApiVicinity>(`${ApiRestService.apiUrl}players/${playerId}/vicinity?radius=${radius}`);
   }
 
   public async getAllianceProfile(allianceId: string, include = 'none'): Promise<ApiResponse<ApiAllianceProfile>> {

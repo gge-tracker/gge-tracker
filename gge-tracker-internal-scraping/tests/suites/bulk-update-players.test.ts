@@ -10,7 +10,7 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { collapse } from '../harness/fake-postgres';
+import { collapse, pgError } from '../harness/fake-postgres';
 import { fixtures, mainRealmCastles, otherRealmCastles } from '../harness/fixtures';
 import { Sandbox, withSandbox } from '../harness/sandbox';
 
@@ -220,6 +220,59 @@ describe('bulkUpdatePlayers', () => {
         `),
       );
       assert.deepEqual(update.params, []);
+    });
+  });
+
+  it('records honor, protection and ruin transitions from the previous row before the fold overwrites it', async () => {
+    await withSandbox({}, async (sandbox) => {
+      await runBulk(sandbox, { 900001: slots() });
+
+      const statements = sandbox.db.queries.map((query) => query.sql);
+      const record = statements.findIndex((sql) => sql.startsWith('INSERT INTO player_state_history'));
+      const lastChunk = statements.map((sql) => sql.startsWith('INSERT INTO tmp_players_update')).lastIndexOf(true);
+      const fold = statements.findIndex((sql) => sql.startsWith('UPDATE players p'));
+      assert.ok(lastChunk < record && record < fold, 'read after the temp table is full, before players moves');
+
+      const sql = statements[record];
+      assert.ok(sql.includes('FROM tmp_players_update tmp JOIN players p ON p.id = tmp.id'));
+      assert.ok(sql.includes('WHERE p.honor IS NOT NULL'), 'a player inserted this run has no previous state');
+      assert.ok(
+        sql.includes("jsonb_typeof(p.castles) = 'array' THEN jsonb_array_length(p.castles) > 0"),
+        'a wiped player coming back is not a change',
+      );
+      for (const change of [
+        'p.honor IS DISTINCT FROM tmp.honor',
+        '(COALESCE(p.remaining_peace_time, 0) > 0) <> (COALESCE(tmp.remaining_peace_time, 0) > 0)',
+        'COALESCE(p.is_ruin, FALSE) <> tmp.is_ruin',
+      ]) {
+        assert.ok(sql.includes(change), `records a row when ${change}`);
+      }
+      assert.deepEqual(sandbox.db.one(/INSERT INTO player_state_history/).params, []);
+    });
+  });
+
+  it('keeps 35 days of state history', async () => {
+    await withSandbox({}, async (sandbox) => {
+      await runBulk(sandbox, { 900001: slots() });
+
+      assert.equal(
+        sandbox.db.one(/DELETE FROM player_state_history/).sql,
+        "DELETE FROM player_state_history WHERE created_at < NOW() - INTERVAL '35 days'",
+      );
+    });
+  });
+
+  it('still folds the players when the state history cannot be written', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.db.when(/INSERT INTO player_state_history/, {
+        error: pgError('42P01', 'relation "player_state_history" does not exist'),
+      });
+
+      await runBulk(sandbox, { 900001: slots() });
+
+      assert.equal(sandbox.db.matching(/UPDATE players p/).length, 1);
+      assert.equal(sandbox.db.matching(/DELETE FROM player_state_history/).length, 0);
+      assert.equal(sandbox.state('DB_UPDATES').criticalErrors, 0, 'a missing history is not a failed fill');
     });
   });
 

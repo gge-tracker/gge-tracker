@@ -1,7 +1,7 @@
 {
-  "fixture": "761a77f3f1b69f59",
+  "fixture": "f1398fb6a0354e1f",
   "server": "FR1",
-  "recordedAt": "2026-11-20T22:37:44.997Z",
+  "recordedAt": "2026-11-21T23:38:32.830Z",
   "entries": {
     "GET alliance-by-id": {
       "status": 200,
@@ -524,7 +524,7 @@
     "GET docs": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 470956,
+      "bytes": 470702,
       "kind": "object",
       "count": 1,
       "keys": [
@@ -539,7 +539,7 @@
         "description",
         "url"
       ],
-      "hash": "8147c1d06176299b"
+      "hash": "70621297f951c6a4"
     },
     "GET dungeons": {
       "status": 200,
@@ -32576,6 +32576,24 @@
       ],
       "hash": "25c02b4f39edd6e8"
     },
+    "GET player-vicinity": {
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 0,
+      "kind": "object",
+      "keys": [
+        "events",
+        "generated_at",
+        "might_available",
+        "neighbours",
+        "origins",
+        "player",
+        "radius",
+        "server",
+        "server_code",
+        "since"
+      ]
+    },
     "GET players-by-distance": {
       "status": 200,
       "contentType": "application/json",
@@ -32778,7 +32796,7 @@
     "GET release-notes": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 28153,
+      "bytes": 29472,
       "kind": "object",
       "count": 17,
       "keys": [
@@ -32791,7 +32809,7 @@
         "type",
         "version"
       ],
-      "hash": "48d4059235d2e8fa"
+      "hash": "273e2a576465e1dc"
     },
     "GET rift-raid-alliance-analysis": {
       "status": 200,
@@ -33042,7 +33060,7 @@
     "GET stats-alliance": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 56700,
+      "bytes": 54775,
       "kind": "object",
       "keys": [
         "diffs",
@@ -33050,14 +33068,14 @@
         "points",
         "timezoneOffset"
       ],
-      "hash": "aa5976e755d2c50c"
+      "hash": "4af3d6d9531e2bb8"
     },
     "GET stats-alliance-pulse": {
       "status": 200,
       "contentType": "application/json",
-      "bytes": 2370,
+      "bytes": 993,
       "kind": "object",
-      "count": 3,
+      "count": 2,
       "keys": [
         "daily_avg_might_change",
         "might_intra_variation",
@@ -33071,7 +33089,7 @@
         "avg_diff",
         "date"
       ],
-      "hash": "4f07fd2624e6579f"
+      "hash": "e3cbe524ea6a0db5"
     },
     "GET stats-alliance-trimmed": {
       "status": 200,

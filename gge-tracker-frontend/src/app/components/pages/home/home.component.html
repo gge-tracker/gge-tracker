@@ -378,6 +378,12 @@
         }
       </section>
     </div>
+
+    @defer (on viewport) {
+      <app-vicinity-watch [playerId]="me.profile.player.player_id" [language]="language" />
+    } @placeholder {
+      <div class="home-card home-vicinity-placeholder" aria-hidden="true"></div>
+    }
   } @else if (loading() && follow.me()) {
     <div class="home-skeleton" aria-busy="true" [attr.aria-label]="'home.loading' | translate">
       <div class="home-kpis" aria-hidden="true">

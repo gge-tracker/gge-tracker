@@ -8573,6 +8573,109 @@ protectedRoutes.get('/changes', routingInstance.getChanges.bind(routingInstance)
 publicRoutes.get('/players/:playerId/profile', routingInstance.getPlayerProfile.bind(routingInstance));
 
 /**
+ * @swagger
+ * /players/{playerId}/vicinity:
+ *   get:
+ *     summary: What happened around a player's castles
+ *     description: >
+ *       Everything that moved in the last 7 days within a radius of the player's main kingdom castles
+ *       (main castle, outposts, capitals and trade metropolises; royal towers, monuments and laboratories
+ *       are ignored, and so are the other kingdoms). Events: castle_founded, castle_captured,
+ *       castle_relocated, castle_vanished, player_appeared, alliance_changed, player_renamed,
+ *       protection_started, protection_ended, ruin_started, ruin_ended and might_spike, newest first.
+ *       A might_spike is one hourly change of at least the largest of 2M, 3% of the player's might and
+ *       five times their own 99th percentile hourly change over the four weeks before. neighbours lists
+ *       every player with such a castle inside the radius, nearest first, with their might and honor
+ *       activity over the last 24 hours and 7 days.
+ *     tags:
+ *       - Players
+ *     parameters:
+ *       - $ref: '#/components/parameters/PlayerId'
+ *       - $ref: '#/components/parameters/IfNoneMatch'
+ *       - name: radius
+ *         in: query
+ *         required: false
+ *         description: Radius in tiles around each castle, from 5 to 50
+ *         schema:
+ *           type: integer
+ *           minimum: 5
+ *           maximum: 50
+ *           default: 30
+ *     responses:
+ *       '200':
+ *         description: The player's vicinity
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 server:
+ *                   type: string
+ *                 server_code:
+ *                   type: string
+ *                 generated_at:
+ *                   type: string
+ *                   format: date-time
+ *                 since:
+ *                   type: string
+ *                   format: date-time
+ *                   description: Start of the 7-day window the events cover
+ *                 radius:
+ *                   type: integer
+ *                 might_available:
+ *                   type: boolean
+ *                   description: False when the might history could not be read; might fields are then null and no might_spike is listed
+ *                 player:
+ *                   type: object
+ *                   additionalProperties: true
+ *                 origins:
+ *                   type: array
+ *                   description: The castles the radius is measured from; origin fields elsewhere index this list
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       origin:
+ *                         type: integer
+ *                       castle_type:
+ *                         type: integer
+ *                       x:
+ *                         type: integer
+ *                       y:
+ *                         type: integer
+ *                 neighbours:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     additionalProperties: true
+ *                 events:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       type:
+ *                         type: string
+ *                       occurred_at:
+ *                         type: string
+ *                         format: date-time
+ *                       player_id:
+ *                         type: string
+ *                         nullable: true
+ *                       distance:
+ *                         type: number
+ *                         nullable: true
+ *                     additionalProperties: true
+ *       '304':
+ *         description: The If-None-Match ETag still matches, so nothing changed since the last refresh
+ *       '400':
+ *         $ref: '#/components/responses/BadRequest'
+ *       '404':
+ *         $ref: '#/components/responses/NotFound'
+ *       '500':
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+publicRoutes.get('/players/:playerId/vicinity', routingInstance.getPlayerVicinity.bind(routingInstance));
+
+/**
  * @openapi
  * /alliances/{allianceId}/profile:
  *   get:

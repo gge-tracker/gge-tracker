@@ -19,6 +19,7 @@ import { ApiOfferHistory } from '../routes/api-offer-history';
 import { ApiOffers } from '../routes/api-offers';
 import { ApiPlayers } from '../routes/api-players';
 import { ApiProfiles } from '../routes/api-profiles';
+import { ApiVicinity } from '../routes/api-vicinity';
 import { ApiSeo } from '../routes/api-seo';
 import { ApiChronicle } from '../routes/api-chronicle';
 import { ApiSeoPages } from '../routes/api-seo-pages';
@@ -483,6 +484,10 @@ export class ApiRoutingController {
 
   public getPlayerProfile(request: express.Request, response: express.Response): void {
     void ApiProfiles.getPlayerProfile(request, response);
+  }
+
+  public getPlayerVicinity(request: express.Request, response: express.Response): void {
+    void ApiVicinity.getPlayerVicinity(request, response);
   }
 
   public getAllianceProfile(request: express.Request, response: express.Response): void {

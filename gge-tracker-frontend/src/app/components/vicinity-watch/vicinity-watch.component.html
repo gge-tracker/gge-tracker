@@ -1,0 +1,245 @@
+<section class="vw" aria-labelledby="vw-title">
+  <header class="vw-header">
+    <div class="vw-heading">
+      <img class="vw-icon" src="/assets/castle4.png" alt="" width="30" height="30" />
+      <div>
+        <h2 id="vw-title" class="vw-title">{{ 'vicinity.title' | translate }}</h2>
+        <p class="vw-subtitle">{{ 'vicinity.subtitle' | translate }}</p>
+      </div>
+    </div>
+    <div class="vw-controls">
+      <div class="vw-segmented" role="group" [attr.aria-label]="'vicinity.period' | translate">
+        <button type="button" class="vw-segment" [class.is-active]="preferences().window === '24h'"
+          [attr.aria-pressed]="preferences().window === '24h'" (click)="setWindow('24h')">
+          {{ 'vicinity.window-24h' | translate }}
+        </button>
+        <button type="button" class="vw-segment" [class.is-active]="preferences().window === '7d'"
+          [attr.aria-pressed]="preferences().window === '7d'" (click)="setWindow('7d')">
+          {{ 'vicinity.window-7d' | translate }}
+        </button>
+      </div>
+      <div class="vw-segmented" role="group" [attr.aria-label]="'vicinity.radius' | translate">
+        @for (option of radii; track option) {
+          <button type="button" class="vw-segment" [class.is-active]="radius() === option"
+            [attr.aria-pressed]="radius() === option" (click)="setRadius(option)">
+            {{ 'vicinity.tiles' | translate: { count: option } }}
+          </button>
+        }
+      </div>
+      <label class="vw-toggle">
+        <input type="checkbox" [checked]="preferences().hideAllies" (change)="toggleAllies()" />
+        <span class="vw-toggle-track" aria-hidden="true"></span>
+        <span>{{ 'vicinity.hide-allies' | translate }}</span>
+      </label>
+    </div>
+  </header>
+
+  @if (vicinity(); as data) {
+    @if (data.origins.length === 0) {
+      <p class="vw-empty">{{ 'vicinity.no-castle' | translate }}</p>
+    } @else {
+      <div class="vw-origins" role="group" [attr.aria-label]="'vicinity.around' | translate">
+        <button type="button" class="vw-chip" [class.is-active]="origin() === null" (click)="setOrigin(null)">
+          {{ 'vicinity.all-castles' | translate }}
+        </button>
+        @for (castle of data.origins; track castle.origin) {
+          <button type="button" class="vw-chip" [class.is-active]="origin() === castle.origin" (click)="setOrigin(castle.origin)">
+            <img [src]="'/assets/castle' + castle.castle_type + '.png'" alt="" width="18" height="18" />
+            {{ originLabel(castle) }}
+          </button>
+        }
+      </div>
+
+      <dl class="vw-summary">
+        <div class="vw-stat">
+          <dt>{{ 'vicinity.summary-neighbours' | translate }}</dt>
+          <dd>{{ summary().neighbours | number }}</dd>
+        </div>
+        <div class="vw-stat">
+          <dt>{{ 'vicinity.summary-rivals' | translate }}</dt>
+          <dd>{{ summary().rivals | number }}</dd>
+        </div>
+        <div class="vw-stat">
+          <dt>{{ 'vicinity.summary-protected' | translate }}</dt>
+          <dd>{{ summary().protected | number }}</dd>
+        </div>
+        <div class="vw-stat" [class.vw-stat--alert]="summary().alerts > 0">
+          <dt>{{ 'vicinity.summary-alerts' | translate }}</dt>
+          <dd>{{ summary().alerts | number }}</dd>
+        </div>
+      </dl>
+
+      <div class="vw-body" [class.is-loading]="loading()">
+        <figure class="vw-radar">
+          <svg viewBox="0 0 100 100" role="img" [attr.aria-label]="'vicinity.radar-label' | translate">
+            <circle class="vw-ring" cx="50" cy="50" [attr.r]="50 * radius() / (radius() + 4)" />
+            <circle class="vw-ring vw-ring--inner" cx="50" cy="50" [attr.r]="25 * radius() / (radius() + 4)" />
+            <line class="vw-axis" x1="50" y1="2" x2="50" y2="98" />
+            <line class="vw-axis" x1="2" y1="50" x2="98" y2="50" />
+            @for (dot of radarDots(); track dot.key) {
+              <g class="vw-dot" [attr.data-side]="dot.side" [class.is-active]="dot.active" [class.is-focused]="dot.focused"
+                (click)="focus(dot.playerId)">
+                @if (dot.active) {
+                  <circle class="vw-dot-pulse" [attr.cx]="dot.x" [attr.cy]="dot.y" r="3.2" />
+                }
+                @if (dot.main) {
+                  <circle class="vw-dot-mark" [attr.cx]="dot.x" [attr.cy]="dot.y" r="1.7" />
+                } @else {
+                  <rect class="vw-dot-mark" [attr.x]="dot.x - 1.2" [attr.y]="dot.y - 1.2" width="2.4" height="2.4" />
+                }
+                <title>{{ dot.playerName }}</title>
+              </g>
+            }
+            @for (castle of radarOrigins(); track castle.key) {
+              <rect class="vw-home" [class.is-selected]="castle.selected" [attr.x]="castle.x - 2" [attr.y]="castle.y - 2"
+                width="4" height="4" [attr.transform]="'rotate(45 ' + castle.x + ' ' + castle.y + ')'" />
+            }
+          </svg>
+          <figcaption class="vw-legend">
+            <span class="vw-key" data-side="rival">{{ 'vicinity.legend-rival' | translate }}</span>
+            <span class="vw-key" data-side="free">{{ 'vicinity.legend-free' | translate }}</span>
+            @if (!preferences().hideAllies) {
+              <span class="vw-key" data-side="ally">{{ 'vicinity.legend-ally' | translate }}</span>
+            }
+            <span class="vw-key vw-key--active">{{ 'vicinity.legend-active' | translate }}</span>
+          </figcaption>
+        </figure>
+
+        <div class="vw-panel">
+          <div class="vw-tabs" role="tablist">
+            <button type="button" role="tab" class="vw-tab" [class.is-active]="tab() === 'feed'"
+              [attr.aria-selected]="tab() === 'feed'" (click)="tab.set('feed')">
+              {{ 'vicinity.tab-feed' | translate }}
+              <span class="vw-count">{{ entries().length }}</span>
+            </button>
+            <button type="button" role="tab" class="vw-tab" [class.is-active]="tab() === 'neighbours'"
+              [attr.aria-selected]="tab() === 'neighbours'" (click)="tab.set('neighbours')">
+              {{ 'vicinity.tab-neighbours' | translate }}
+              <span class="vw-count">{{ neighbours().length }}</span>
+            </button>
+          </div>
+
+          @if (focusedName(); as name) {
+            <p class="vw-focus">
+              {{ 'vicinity.focus' | translate: { player: name } }}
+              <button type="button" class="vw-focus-clear" (click)="focus(null)">{{ 'vicinity.focus-clear' | translate }}</button>
+            </p>
+          }
+
+          @if (tab() === 'feed') {
+            <div class="vw-filters" role="group" [attr.aria-label]="'vicinity.categories' | translate">
+              <button type="button" class="vw-chip vw-chip--small" [class.is-active]="category() === null" (click)="setCategory(null)">
+                {{ 'vicinity.category-all' | translate }}
+              </button>
+              @for (option of categories; track option) {
+                <button type="button" class="vw-chip vw-chip--small" [class.is-active]="category() === option"
+                  [disabled]="categoryCounts()[option] === 0" (click)="setCategory(option)">
+                  {{ 'vicinity.category-' + option | translate }} · {{ categoryCounts()[option] }}
+                </button>
+              }
+            </div>
+            @if (!data.might_available) {
+              <p class="vw-note">{{ 'vicinity.might-unavailable' | translate }}</p>
+            }
+            <ol class="vw-feed">
+              @for (row of feed(); track row.entry.key) {
+                <li class="vw-entry" [attr.data-tone]="row.entry.tone">
+                  <span class="vw-entry-icon" aria-hidden="true"><i [class]="row.entry.icon"></i></span>
+                  <div class="vw-entry-body">
+                    <p class="vw-entry-text">
+                      @if (row.entry.playerId) {
+                        <a class="vw-player" [routerLink]="['/', 'player', row.entry.playerId]">{{ row.entry.playerName }}</a>
+                      }
+                      {{ row.entry.message | translate: row.params }}
+                    </p>
+                    <p class="vw-entry-meta">
+                      <span>{{ row.entry.allianceName ?? ('vicinity.no-alliance' | translate) }}</span>
+                      @if (row.entry.isAlly) {
+                        <span class="vw-badge vw-badge--ally">{{ 'vicinity.badge-ally' | translate }}</span>
+                      }
+                      @if (row.where) {
+                        <span>{{ row.where }}</span>
+                      }
+                      <time class="vw-when">{{ row.when }}</time>
+                    </p>
+                  </div>
+                </li>
+              } @empty {
+                <li class="vw-empty">{{ 'vicinity.empty-feed' | translate }}</li>
+              }
+            </ol>
+          } @else {
+            <div class="vw-table" role="table">
+              <div class="vw-row vw-row--head" role="row">
+                <span role="columnheader">{{ 'Joueurs' | translate }}</span>
+                <button type="button" role="columnheader" (click)="neighbourSort.set('might')" [class.is-active]="neighbourSort() === 'might'">
+                  {{ 'Puissance' | translate }}
+                </button>
+                <button type="button" role="columnheader" (click)="neighbourSort.set('change')" [class.is-active]="neighbourSort() === 'change'">
+                  {{ 'home.change' | translate }}
+                </button>
+                <button type="button" role="columnheader" (click)="neighbourSort.set('honor')" [class.is-active]="neighbourSort() === 'honor'">
+                  {{ 'Honneur' | translate }}
+                </button>
+                <button type="button" role="columnheader" (click)="neighbourSort.set('distance')" [class.is-active]="neighbourSort() === 'distance'">
+                  {{ 'Distance' | translate }}
+                </button>
+              </div>
+              @for (neighbour of neighbours(); track neighbour.player_id) {
+                <div class="vw-row" role="row" [class.is-focused]="focusedPlayer() === neighbour.player_id">
+                  <span class="vw-cell vw-who" role="cell">
+                    <a class="vw-player" [routerLink]="['/', 'player', neighbour.player_id]">{{ neighbour.player_name }}</a>
+                    <span class="vw-who-meta">
+                      {{ neighbour.alliance_name ?? ('vicinity.no-alliance' | translate) }}
+                      @if (neighbour.is_ally) {
+                        <span class="vw-badge vw-badge--ally">{{ 'vicinity.badge-ally' | translate }}</span>
+                      }
+                      @if (neighbour.in_protection) {
+                        <span class="vw-badge vw-badge--shield" [attr.title]="protectionEnd(neighbour)">{{ 'vicinity.badge-protected' | translate }}</span>
+                      }
+                      @if (neighbour.is_ruin) {
+                        <span class="vw-badge">{{ 'vicinity.badge-ruin' | translate }}</span>
+                      }
+                      @if (isNew(neighbour)) {
+                        <span class="vw-badge vw-badge--new">{{ 'vicinity.badge-new' | translate }}</span>
+                      }
+                    </span>
+                  </span>
+                  <span class="vw-cell vw-number" role="cell">{{ compact(neighbour.might_current) }}</span>
+                  <span class="vw-cell vw-number" role="cell" [attr.data-trend]="trendOf(mightChange(neighbour))">{{ signed(mightChange(neighbour)) }}</span>
+                  <span class="vw-cell vw-number" role="cell" [attr.data-trend]="trendOf(honorChange(neighbour))">
+                    @if (honorChanges(neighbour) > 0) {
+                      {{ signed(honorChange(neighbour)) }}
+                    } @else {
+                      —
+                    }
+                  </span>
+                  <span class="vw-cell vw-number" role="cell">
+                    <img [src]="'/assets/castle' + neighbour.castles[0].castle_type + '.png'" alt="" width="16" height="16" />
+                    {{ neighbourDistance(neighbour) | number: '1.0-1' }}
+                  </span>
+                </div>
+              } @empty {
+                <p class="vw-empty">{{ 'vicinity.empty-neighbours' | translate }}</p>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+  } @else if (failed()) {
+    <div class="vw-empty">
+      <p>{{ 'home.unavailable' | translate }}</p>
+      <button type="button" class="vw-chip" (click)="retry()">{{ 'vicinity.retry' | translate }}</button>
+    </div>
+  } @else {
+    <div class="vw-skeleton" aria-busy="true">
+      <span class="vw-shimmer vw-shimmer--radar"></span>
+      <span class="vw-shimmer-lines">
+        <span class="vw-shimmer"></span>
+        <span class="vw-shimmer"></span>
+        <span class="vw-shimmer"></span>
+      </span>
+    </div>
+  }
+</section>

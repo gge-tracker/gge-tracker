@@ -91,7 +91,8 @@ CREATE TABLE public.players (
     remaining_peace_time integer,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     peace_disabled_at timestamp with time zone,
-    alliance_rank smallint
+    alliance_rank smallint,
+    first_seen_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 
 
@@ -471,6 +472,25 @@ CREATE SEQUENCE public.player_castle_movements_history_id_seq
 --
 
 ALTER SEQUENCE public.player_castle_movements_history_id_seq OWNED BY public.player_castle_movements_history.id;
+
+
+--
+-- Name: player_state_history; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.player_state_history (
+    id bigserial PRIMARY KEY,
+    player_id integer NOT NULL,
+    honor_old integer,
+    honor_new integer,
+    peace_old boolean NOT NULL,
+    peace_new boolean NOT NULL,
+    peace_until_old timestamp with time zone,
+    peace_until_new timestamp with time zone,
+    ruin_old boolean NOT NULL,
+    ruin_new boolean NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
 
 
 --

@@ -19,6 +19,7 @@ import { Random } from './random.mjs';
 import { readGlobalDefinition, readServerDefinition } from './server-definition.mjs';
 import { RANKED_EVENTS, writeAquamarineMetrics, writeRankedEvents, writeWheelOfAffluence } from './server-events.mjs';
 import { HourlyTotals, buildTimeline, growingSeries, weeklyLootSeries } from './series.mjs';
+import { buildVicinityHistory } from './vicinity-history.mjs';
 import { buildWorld } from './world.mjs';
 
 const EVENT_HOST = 'FR1';
@@ -116,18 +117,20 @@ async function generateServer(server, playerCount) {
   const world = buildWorld(random, names, playerCount);
   assignCastleIds(world);
   const changes = buildChanges(random, names, world, timeline);
+  const vicinity = buildVicinityHistory(new Random(seedFor(`${server.name}:vicinity`)), world, timeline);
   dataset.postgresSchema(server.sql, 'server');
   dataset.clickhouseSchema(server.olap, 'server', 'empire_ranking', GLORY_MIGRATION);
 
   const totals = await writeHistories(random, server, world, reset);
   const eventHours = await writeRankedEvents(random, dataset, server, world, timeline);
   await writeStatistics(server, world, changes, totals, eventHours);
-  await writePlayers(server, world);
+  await writePlayers(server, world, vicinity.firstSeen);
   await writeRows(
     dataset.postgres(server.sql, 'alliances'),
     world.alliances.map((alliance) => [alliance.id, alliance.name, null, null, null, null, alliance.description]),
   );
   await writeChanges(server, changes);
+  await writeStateHistory(server, vicinity.stateChanges);
   await writeServerState(server);
   await writeWheelOfAffluence(random, dataset, server, world, timeline);
   if (server.hasStorms) {
@@ -165,7 +168,7 @@ async function writeHistories(random, server, world, reset) {
   return totals;
 }
 
-async function writePlayers(server, world) {
+async function writePlayers(server, world, firstSeen) {
   const updatedAt = sqlTimestamp(timeline.at(-1) + 150_000);
   await writeRows(
     dataset.postgres(server.sql, 'players'),
@@ -176,6 +179,7 @@ async function writePlayers(server, world) {
       player.honor, player.maxHonor, player.peaceSeconds, updatedAt,
       player.peaceDisabledDaysAgo === null ? null : sqlTimestampTz(now - player.peaceDisabledDaysAgo * 86_400_000),
       player.allianceId === null ? null : player.allianceRank,
+      firstSeen.has(player.id) ? sqlTimestamp(firstSeen.get(player.id)) : null,
     ]),
   );
 }
@@ -194,6 +198,17 @@ async function writeChanges(server, changes) {
   await table('player_castle_movements_history', changes.castleMovements, (event, id) => [
     id, event.playerId, event.castleType, event.movementType, event.oldX, event.oldY, event.newX, event.newY, sqlTimestamp(event.at),
   ]);
+}
+
+async function writeStateHistory(server, stateChanges) {
+  const stampOrNull = (instant) => (instant === null ? null : sqlTimestampTz(instant));
+  await writeRows(
+    dataset.postgres(server.sql, 'player_state_history'),
+    stateChanges.map((row, index) => [
+      index + 1, row.playerId, row.honorOld, row.honorNew, row.peaceOld, row.peaceNew,
+      stampOrNull(row.peaceUntilOld), stampOrNull(row.peaceUntilNew), row.ruinOld, row.ruinNew, sqlTimestamp(row.at),
+    ]),
+  );
 }
 
 async function writeStatistics(server, world, changes, totals, eventHours) {

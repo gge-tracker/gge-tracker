@@ -134,6 +134,7 @@ merge_shared() {
   zcat "$dir/global_players.csv.gz" | psql_as -d "$GLOBAL_DB" -q -v ON_ERROR_STOP=1 -c "\\copy global_players FROM STDIN WITH (FORMAT csv)"
   zcat "$dir/global_ranking.csv.gz" | psql_as -d "$GLOBAL_DB" -q -v ON_ERROR_STOP=1 -c "\\copy global_ranking FROM STDIN WITH (FORMAT csv)"
   zcat "$dir/mini_games.csv.gz" | psql_as -d "$GLOBAL_DB" -q -v ON_ERROR_STOP=1 -c "\\copy mini_games (game_date, server, player_id, castle_id, position_x, position_y, nb_castles, skin_equipment_id, skin_equipment_name, gate_level, wall_level, keep_level, tower_level, castle_name, alliance_rank, honor, player_title_1, player_title_2, is_protection, level, legendary_level, created_at, might, fame, name) FROM STDIN WITH (FORMAT csv)"
+  reset_sequences "$GLOBAL_DB"
 }
 
 load_clickhouse() {

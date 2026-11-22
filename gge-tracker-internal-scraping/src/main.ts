@@ -37,6 +37,7 @@ import { isSocketDown, readBridgeStatus, reportDisconnectedAccount, zoneOf } fro
 import { LootReading, LootReadingKind, lootCounterValue, unwrapLootRun } from './loot-counter';
 import { LootReset, lootWeekStart } from './loot-reset';
 import { isInMonthlyReset, UNCAPTURABLE_CASTLE_TYPES } from './monthly-resets';
+import { PRUNE_PLAYER_STATE_HISTORY, RECORD_PLAYER_STATE_CHANGES } from './player-state-history';
 import {
   KINGDOMS_LEAGUE_ALLIANCE_LT,
   KINGDOMS_LEAGUE_PLAYER_LT,
@@ -5164,6 +5165,7 @@ export class GenericFetchAndSaveBackend {
       Utils.logMessage('Inserting chunk of size', chunk.length);
       await this.pgSqlQuery(query, flatValues);
     }
+    await this.recordPlayerStateChanges();
     Utils.logMessage('Update players table with temporary data');
     await this.pgSqlQuery(`
       UPDATE players p
@@ -5189,6 +5191,16 @@ export class GenericFetchAndSaveBackend {
       FROM tmp_players_update tmp
       WHERE p.id = tmp.id
         `);
+  }
+
+  private async recordPlayerStateChanges(): Promise<void> {
+    try {
+      const recorded = await this.pgSqlQuery(RECORD_PLAYER_STATE_CHANGES);
+      await this.pgSqlQuery(PRUNE_PLAYER_STATE_HISTORY);
+      Utils.logMessage('Player state changes recorded:', recorded?.rowCount ?? 0);
+    } catch (error) {
+      Utils.logWarning('Player state changes not recorded:', Utils.describeError(error));
+    }
   }
 
   private async fillPlayerAquamarineData(): Promise<void> {

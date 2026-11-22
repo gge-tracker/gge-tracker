@@ -15,6 +15,7 @@ import { BrandWordmarkComponent } from '@ggetracker-components/brand-wordmark/br
 import { ChronicleCtaComponent } from '@ggetracker-components/chronicle-discovery/chronicle-cta.component';
 import { ChronicleIntroComponent } from '@ggetracker-components/chronicle-discovery/chronicle-intro.component';
 import { LayeredSceneComponent } from '@ggetracker-components/layered-scene/layered-scene.component';
+import { VicinityWatchComponent } from '@ggetracker-components/vicinity-watch/vicinity-watch.component';
 import { HOME_ROUTE, SITE_NAVIGATION, SiteNavigationSection } from '@ggetracker-components/sidebar/site-navigation';
 import {
   ApiAllianceHealthResponse,
@@ -155,6 +156,7 @@ const EXPLORE_SECTIONS: SiteNavigationSection[] = [
     BrandWordmarkComponent,
     ChronicleCtaComponent,
     ChronicleIntroComponent,
+    VicinityWatchComponent,
   ],
   templateUrl: './home.component.html',
   styleUrl: './home.component.css',

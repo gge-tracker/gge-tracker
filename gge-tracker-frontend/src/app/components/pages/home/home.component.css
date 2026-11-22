@@ -264,6 +264,10 @@
 }
 
 .home-kpis,
+.home-vicinity-placeholder {
+  min-height: 520px;
+}
+
 .home-panels {
   display: grid;
   gap: 20px;

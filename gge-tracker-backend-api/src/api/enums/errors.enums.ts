@@ -64,6 +64,7 @@ export enum RouteErrorMessagesEnum {
   InvalidMovement = 'Invalid movement. Supported values are up, down and steady',
   InvalidPageSize = 'Invalid size. It must be an integer between 1 and 100',
   InvalidPlayerId = 'Invalid player ID',
+  InvalidVicinityRadius = 'Invalid vicinity radius. It must be an integer between 5 and 50',
   InvalidPlayerName = 'Invalid player name',
   InvalidPosition = 'Invalid position',
   InvalidRadius = 'Invalid radius. It must be an integer between 1 and 1500',
