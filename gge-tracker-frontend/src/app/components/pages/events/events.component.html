@@ -8,7 +8,7 @@
             @for (filter of listFilters; track filter.label) {
               <a class="events-filter-chip" [class.events-filter-chip--on]="listType === filter.type"
                 [attr.aria-current]="listType === filter.type ? 'page' : null"
-                [routerLink]="filter.type ? ['/events', filter.type] : ['/events']">{{ filter.label | translate }}</a>
+                [routerLink]="filter.type ? ['/events', filter.type] : ['/events']" [queryParams]="gameQueryParameters">{{ filter.label | translate }}</a>
             }
           </nav>
         </div>
@@ -58,7 +58,7 @@
           [eventType]="eventType!"></app-events-header>
           <div class="row g-2 mb-3" [ngClass]="{'table-loading': tableLoading}">
             <div class="col-auto">
-              <a class="back-btn" [routerLink]="['/events']">
+              <a class="back-btn" [routerLink]="['/events']" [queryParams]="gameQueryParameters">
                 <i class="fa-solid fa-arrow-left"></i>
                 <span class="d-none d-sm-inline-block">{{ 'Retour' | translate }}</span>
               </a>

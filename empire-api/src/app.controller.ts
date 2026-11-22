@@ -5,6 +5,7 @@ import { HeadersUtilities } from './utils/nested-headers.js';
 import { GgeEmpireSocket } from './utils/ws/empire-socket.js';
 import { GgeEmpire4KingdomsSocket } from './utils/ws/empire4kingdoms-socket.js';
 import { GgeLiveTemporaryServerSocket } from './utils/ws/live-temporary-server-socket.js';
+import { GgeE4kLiveTemporaryServerTcp } from './utils/ws/e4k-live-temporary-server-tcp.js';
 import { GgeEmpire4KingdomsTcp } from './utils/ws/empire4kingdoms-tcp.js';
 import { JsonFramePayload } from './utils/ws/json-frame-payload.js';
 import { SocketService } from './utils/ws/sockets.js';
@@ -236,7 +237,8 @@ export default function createApp(sockets: {
         | GgeEmpire4KingdomsSocket
         | GgeEmpireSocket
         | GgeLiveTemporaryServerSocket
-        | GgeEmpire4KingdomsTcp;
+        | GgeEmpire4KingdomsTcp
+        | GgeE4kLiveTemporaryServerTcp;
       let autoReconnectValue = autoReconnect ?? false;
       switch (serverType) {
         case 'ep': {
@@ -251,6 +253,10 @@ export default function createApp(sockets: {
             password,
             autoReconnectValue,
           );
+          break;
+        }
+        case 'e4k-live': {
+          socketServer = new GgeE4kLiveTemporaryServerTcp('tcp://' + socket_url, server, username, password);
           break;
         }
         default: {

@@ -1,7 +1,6 @@
 import { NodeClickHouseClient } from '@clickhouse/client/dist/client';
 import { ApiHelper } from '../api-helper';
-
-const OUTER_REALMS_TABLE = 'ggetracker_global.outer_realms_ranking';
+import { EventGame, EventGames } from '../event-game';
 
 interface OuterRealmsRankingRow {
   player_id: number;
@@ -223,84 +222,94 @@ export class OuterRealmsBoard {
 }
 
 /**
- * Keeps the newest Outer Realms board in the process and replaces it when a new instant lands
+ * Keeps the newest Outer Realms board of each game in the process and replaces it when a new instant lands
  */
-export abstract class OuterRealmsBoardCache {
-  private static readonly SNAPSHOT_DATES_KEY = 'outer-realms:snapshot-dates';
+export class OuterRealmsBoardCache {
   private static readonly SNAPSHOT_DATES_TTL_SECONDS = 10;
   private static readonly IDLE_SNAPSHOT_DATES_TTL_SECONDS = 60;
   private static readonly FRESHNESS_FLOOR_MS = 5 * 1000;
   private static readonly DISCOVERY_WINDOW_MINUTES = [10, 2 * 60, 30 * 24 * 60];
+  private static readonly caches = new Map<EventGame, OuterRealmsBoardCache>();
 
-  private static board: OuterRealmsBoard | null = null;
-  private static checkedAt = 0;
-  private static refreshing: Promise<OuterRealmsBoard | null> | null = null;
+  private board: OuterRealmsBoard | null = null;
+  private checkedAt = 0;
+  private refreshing: Promise<OuterRealmsBoard | null> | null = null;
+  private readonly snapshotDatesKey: string;
+  private readonly table: string;
 
-  public static async current(clickhouseClient: NodeClickHouseClient): Promise<OuterRealmsBoard | null> {
-    const board = OuterRealmsBoardCache.board;
-    if (board && Date.now() - OuterRealmsBoardCache.checkedAt < OuterRealmsBoardCache.FRESHNESS_FLOOR_MS) return board;
+  private constructor(game: EventGame) {
+    this.snapshotDatesKey = `outer-realms:snapshot-dates${EventGames.keySuffix(game)}`;
+    this.table = EventGames.liveRankingTable(game);
+  }
 
-    const refresh = OuterRealmsBoardCache.refresh(clickhouseClient);
+  public static of(game: EventGame): OuterRealmsBoardCache {
+    let cache = OuterRealmsBoardCache.caches.get(game);
+    if (!cache) {
+      cache = new OuterRealmsBoardCache(game);
+      OuterRealmsBoardCache.caches.set(game, cache);
+    }
+    return cache;
+  }
+
+  public async current(clickhouseClient: NodeClickHouseClient): Promise<OuterRealmsBoard | null> {
+    const board = this.board;
+    if (board && Date.now() - this.checkedAt < OuterRealmsBoardCache.FRESHNESS_FLOOR_MS) return board;
+
+    const refresh = this.refresh(clickhouseClient);
     return board ?? refresh;
   }
 
-  private static refresh(clickhouseClient: NodeClickHouseClient): Promise<OuterRealmsBoard | null> {
-    OuterRealmsBoardCache.refreshing ??= OuterRealmsBoardCache.resolve(clickhouseClient)
+  private refresh(clickhouseClient: NodeClickHouseClient): Promise<OuterRealmsBoard | null> {
+    this.refreshing ??= this.resolve(clickhouseClient)
       .catch((error) => {
         ApiHelper.logError(error, 'OuterRealmsBoardCache.refresh', null);
-        return OuterRealmsBoardCache.board;
+        return this.board;
       })
       .finally(() => {
-        OuterRealmsBoardCache.refreshing = null;
+        this.refreshing = null;
       });
-    return OuterRealmsBoardCache.refreshing;
+    return this.refreshing;
   }
 
-  private static async resolve(clickhouseClient: NodeClickHouseClient): Promise<OuterRealmsBoard | null> {
-    const { lastDate, previousDate } = await OuterRealmsBoardCache.readSnapshotDates(clickhouseClient);
-    OuterRealmsBoardCache.checkedAt = Date.now();
+  private async resolve(clickhouseClient: NodeClickHouseClient): Promise<OuterRealmsBoard | null> {
+    const { lastDate, previousDate } = await this.readSnapshotDates(clickhouseClient);
+    this.checkedAt = Date.now();
     if (!lastDate) {
-      OuterRealmsBoardCache.board = null;
+      this.board = null;
       return null;
     }
-    if (OuterRealmsBoardCache.board?.snapshot !== lastDate) {
-      OuterRealmsBoardCache.board = await OuterRealmsBoardCache.build(
-        clickhouseClient,
-        lastDate,
-        previousDate ?? lastDate,
-      );
+    if (this.board?.snapshot !== lastDate) {
+      this.board = await this.build(clickhouseClient, lastDate, previousDate ?? lastDate);
     }
-    return OuterRealmsBoardCache.board;
+    return this.board;
   }
 
-  private static async readSnapshotDates(clickhouseClient: NodeClickHouseClient): Promise<OuterRealmsSnapshotDates> {
-    const cached = await ApiHelper.redisClient.get(OuterRealmsBoardCache.SNAPSHOT_DATES_KEY).catch(() => null);
+  private async readSnapshotDates(clickhouseClient: NodeClickHouseClient): Promise<OuterRealmsSnapshotDates> {
+    const cached = await ApiHelper.redisClient.get(this.snapshotDatesKey).catch(() => null);
     if (cached !== null) return JSON.parse(cached) as OuterRealmsSnapshotDates;
 
-    const dates = await OuterRealmsBoardCache.discoverSnapshotDates(clickhouseClient);
+    const dates = await this.discoverSnapshotDates(clickhouseClient);
     const ttl = dates.lastDate
       ? OuterRealmsBoardCache.SNAPSHOT_DATES_TTL_SECONDS
       : OuterRealmsBoardCache.IDLE_SNAPSHOT_DATES_TTL_SECONDS;
-    void ApiHelper.updateCache(OuterRealmsBoardCache.SNAPSHOT_DATES_KEY, JSON.stringify(dates), ttl, true);
+    void ApiHelper.updateCache(this.snapshotDatesKey, JSON.stringify(dates), ttl, true);
     return dates;
   }
 
-  private static async discoverSnapshotDates(
-    clickhouseClient: NodeClickHouseClient,
-  ): Promise<OuterRealmsSnapshotDates> {
+  private async discoverSnapshotDates(clickhouseClient: NodeClickHouseClient): Promise<OuterRealmsSnapshotDates> {
     for (const minutes of OuterRealmsBoardCache.DISCOVERY_WINDOW_MINUTES) {
-      const dates = await OuterRealmsBoardCache.readFetchDates(
+      const dates = await this.readFetchDates(
         clickhouseClient,
         'WHERE fetch_date >= now() - INTERVAL {minutes:UInt32} MINUTE',
         { minutes },
       );
       if (dates.length > 0) return { lastDate: dates[0], previousDate: dates[1] ?? null };
     }
-    const anyDates = await OuterRealmsBoardCache.readFetchDates(clickhouseClient, '', {});
+    const anyDates = await this.readFetchDates(clickhouseClient, '', {});
     return { lastDate: anyDates[0] ?? null, previousDate: anyDates[1] ?? null };
   }
 
-  private static async readFetchDates(
+  private async readFetchDates(
     clickhouseClient: NodeClickHouseClient,
     whereClause: string,
     queryParameters: Record<string, number>,
@@ -308,7 +317,7 @@ export abstract class OuterRealmsBoardCache {
     const rawDates = await clickhouseClient.query({
       query: `
         SELECT DISTINCT fetch_date
-        FROM ${OUTER_REALMS_TABLE}
+        FROM ${this.table}
         ${whereClause}
         ORDER BY fetch_date DESC
         LIMIT 2
@@ -319,7 +328,7 @@ export abstract class OuterRealmsBoardCache {
     return (parsedDates.data as { fetch_date: string }[]).map((row) => row.fetch_date);
   }
 
-  private static async build(
+  private async build(
     clickhouseClient: NodeClickHouseClient,
     lastDate: string,
     previousDate: string,
@@ -339,11 +348,11 @@ export abstract class OuterRealmsBoardCache {
           now.castle_position_y,
           (now.score - coalesce(before.score, now.score)) AS score_diff,
           (coalesce(before.rank, now.rank) - now.rank) AS rank_diff
-        FROM ${OUTER_REALMS_TABLE} AS now
+        FROM ${this.table} AS now
         LEFT JOIN
         (
           SELECT player_id, score, rank
-          FROM ${OUTER_REALMS_TABLE}
+          FROM ${this.table}
           WHERE fetch_date = {previousDate:DateTime}
         ) AS before
         ON before.player_id = now.player_id

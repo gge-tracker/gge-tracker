@@ -5,7 +5,7 @@ import { ApiHelper } from '../helper/api-helper';
 import { HttpCache } from '../helper/http-cache';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { EventTypes } from '../enums/event-types.enums';
-import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
+import { EventGame, EventGames } from '../helper/event-game';
 import { EventPodium, EventPodiumCard, PodiumEntry, PodiumTrackedStats } from '../services/event-podium-card';
 import { ShareCardRenderer } from '../services/share-card-renderer';
 import { ApiProfiles } from './api-profiles';
@@ -42,12 +42,10 @@ export abstract class ApiEventPodium implements ApiHelper {
     [EventTypes.BEYOND_THE_HORIZON]: { name: 'Beyond the Horizon', tablePrefix: 'beyond_the_horizon' },
   };
 
-  public static async getCard(
-    request: express.Request,
-    response: express.Response,
-    eventPgDbpool: pg.Pool,
-  ): Promise<void> {
+  public static async getCard(request: express.Request, response: express.Response): Promise<void> {
     try {
+      const game = EventGames.fromRequest(request, response);
+      if (game === null) return;
       const eventType = String(request.params.eventType);
       const event = Object.hasOwn(this.EVENTS, eventType) ? this.EVENTS[eventType] : null;
       if (!event) {
@@ -59,7 +57,8 @@ export abstract class ApiEventPodium implements ApiHelper {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventId });
         return;
       }
-      const snapshot = await this.snapshot(eventPgDbpool, eventType, event, eventNumber);
+      const eventPgDbpool = EventGames.pool(game);
+      const snapshot = eventPgDbpool ? await this.snapshot(eventPgDbpool, game, eventType, event, eventNumber) : null;
       if (!snapshot) {
         response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.EventNotFound });
         return;
@@ -85,13 +84,14 @@ export abstract class ApiEventPodium implements ApiHelper {
 
   private static async snapshot(
     pool: pg.Pool,
+    game: EventGame,
     eventType: string,
     event: PodiumEvent,
     eventNumber: number,
   ): Promise<PodiumSnapshot | null> {
     const stored = await this.readFrozen(pool, eventType, eventNumber);
     if (stored) return { podium: stored, frozen: true };
-    const computed = await this.compute(pool, eventType, event, eventNumber);
+    const computed = await this.compute(pool, game, eventType, event, eventNumber);
     if (!computed) return null;
     if (!computed.complete) return { podium: computed.podium, frozen: false };
     const frozen = await this.freeze(pool, eventType, eventNumber, computed.podium);
@@ -132,6 +132,7 @@ export abstract class ApiEventPodium implements ApiHelper {
 
   private static async compute(
     pool: pg.Pool,
+    game: EventGame,
     eventType: string,
     event: PodiumEvent,
     eventNumber: number,
@@ -158,7 +159,7 @@ export abstract class ApiEventPodium implements ApiHelper {
     ]);
     if (top.rows.length === 0) return null;
 
-    const lookups = await Promise.all(top.rows.map((row, index) => this.entry(row, index + 1)));
+    const lookups = await Promise.all(top.rows.map((row, index) => this.entry(row, game, index + 1)));
     const entries = lookups.map((lookup) => lookup.entry);
     const podium: EventPodium = {
       eventName: event.name,
@@ -166,7 +167,7 @@ export abstract class ApiEventPodium implements ApiHelper {
       collectedAt: header.rows[0]?.collect_date?.toISOString() ?? null,
       playerCount: Number(totals.rows[0]?.players ?? 0),
       serverCount: Number(totals.rows[0]?.servers ?? 0),
-      path: `/events/${eventType}/${eventNumber}`,
+      path: `/events/${eventType}/${eventNumber}${game === 'ep' ? '' : `?game=${game}`}`,
       entries,
     };
     const settled = this.collectionSettled(header.rows[0]?.collect_date ?? null);
@@ -178,9 +179,13 @@ export abstract class ApiEventPodium implements ApiHelper {
     return Date.now() - collectDate.getTime() >= this.FREEZE_AFTER_MS;
   }
 
-  private static async entry(row: PodiumRow, rank: number): Promise<{ entry: PodiumEntry; complete: boolean }> {
+  private static async entry(
+    row: PodiumRow,
+    game: EventGame,
+    rank: number,
+  ): Promise<{ entry: PodiumEntry; complete: boolean }> {
     let complete = true;
-    const tracked = await this.tracked(row).catch((error: unknown): null => {
+    const tracked = await this.tracked(row, game).catch((error: unknown): null => {
       complete = false;
       ApiHelper.logError(error, 'getEventPodiumCard');
       return null;
@@ -198,9 +203,9 @@ export abstract class ApiEventPodium implements ApiHelper {
     return { entry, complete };
   }
 
-  private static async tracked(row: PodiumRow): Promise<PodiumTrackedStats | null> {
+  private static async tracked(row: PodiumRow, game: EventGame): Promise<PodiumTrackedStats | null> {
     if (!row.player_id) return null;
-    const code = ApiHelper.ggeTrackerManager.getOuterServer(row.server as GgeTrackerServersEnum)?.code;
+    const code = EventGames.serverOfSuffix(row.server, game)?.code;
     if (!code) return null;
     const context = ApiProfiles.contextFor(Number(`${row.player_id}${code}`), new Set());
     if (!context) return null;

@@ -16,6 +16,7 @@ import { runLiveCastle } from './suites/live-castle.js';
 import { runFrameCost } from './suites/frame-cost.js';
 import { runTcpFraming } from './suites/tcp-framing.js';
 import { runStatusNotifier } from './suites/status-notifier.js';
+import { runE4kLive } from './suites/e4k-live.js';
 
 const SUITES: Record<string, (r: Report) => Promise<void>> = {
   handshake: runHandshake,
@@ -29,11 +30,12 @@ const SUITES: Record<string, (r: Report) => Promise<void>> = {
   'frame-cost': runFrameCost,
   'tcp-framing': runTcpFraming,
   'status-notifier': runStatusNotifier,
+  'e4k-live': runE4kLive,
   live: runLive,
   'live-castle': runLiveCastle,
 };
 
-const DEFAULT_SUITES = ['handshake', 'roundtrip', 'matching', 'latency', 'lifecycle', 'login', 'reconnect', 'memory', 'frame-cost', 'tcp-framing', 'status-notifier', 'live', 'live-castle'];
+const DEFAULT_SUITES = ['handshake', 'roundtrip', 'matching', 'latency', 'lifecycle', 'login', 'reconnect', 'memory', 'frame-cost', 'tcp-framing', 'e4k-live', 'status-notifier', 'live', 'live-castle'];
 
 function parseSuites(argv: string[]): string[] {
   const names = argv.filter((a) => !a.startsWith('--'));

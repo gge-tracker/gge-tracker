@@ -1,3 +1,4 @@
+import { EventGame, eventGameQueryParameters } from '@ggetracker-services/event-game.utilities';
 import { ChronicleCtaComponent } from '@ggetracker-components/chronicle-discovery/chronicle-cta.component';
 import { ChronicleIntroComponent } from '@ggetracker-components/chronicle-discovery/chronicle-intro.component';
 import { DatePipe, NgClass, NgStyle, NgTemplateOutlet } from '@angular/common';
@@ -281,6 +282,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
     { chart: 'bloodcrow', label: 'Corbeaux de sang', colour: '#c0392b' },
   ];
   private seriesWindow: Partial<Record<ApiPlayerStatsType, number>> = {};
+  private outerEventsGame: EventGame = 'ep';
 
   public get aquamarineSnapshotsForMonth(): ApiAquamarineSnapshot[] {
     return this.aquamarineSnapshots.filter((s) => s.collected_at.slice(0, 7) === this.aquamarineMonth);
@@ -457,9 +459,13 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
   public navigateToEvent(event: OuterEventData | WoaEventList): void {
     if ('event_num' in event) {
       if (event.type === EventType.OUTER_REALM) {
-        void this.router.navigate(['/events', 'outer-realms', event.event_num]);
+        void this.router.navigate(['/events', 'outer-realms', event.event_num], {
+          queryParams: eventGameQueryParameters(this.outerEventsGame),
+        });
       } else if (event.type === EventType.BEYOND_THE_HORIZON) {
-        void this.router.navigate(['/events', 'beyond-the-horizon', event.event_num]);
+        void this.router.navigate(['/events', 'beyond-the-horizon', event.event_num], {
+          queryParams: eventGameQueryParameters(this.outerEventsGame),
+        });
       }
     } else {
       const resultByPage = 15;
@@ -2320,6 +2326,7 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
       this.cdr.detectChanges();
       void this.apiRestService.getEventsByPlayerId(this.playerId).then((response) => {
         if (response.success) {
+          this.outerEventsGame = response.data.game ?? 'ep';
           this.outerEvents = response.data.events.map((event) => ({
             ...event,
             from: this.utilitiesService.generateOuterRealmsEventFromDate(event.collect_date),

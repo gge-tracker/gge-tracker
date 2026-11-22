@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import path from 'node:path';
 import { ApiHelper } from './api-helper';
+import { EventGames } from './event-game';
 
 export interface TemporaryServerSetting {
   settingID: string;
@@ -53,8 +54,12 @@ export abstract class TemporaryServerSettings {
       const local = this.catalog ?? (await this.loadLocal());
       const shared = this.parseCatalog(JSON.parse((await ApiHelper.redisClient.get(this.REDIS_KEY)) ?? 'null'));
       let merged = this.merge(local, shared);
-      const currentId = await ApiHelper.redisClient.get('temporaryServerData');
-      if (currentId && !merged?.settings.some((setting) => Number(setting.settingID) === Number(currentId))) {
+      const runningIds = await Promise.all(
+        EventGames.ALL.map((game) => ApiHelper.redisClient.get(EventGames.temporaryServerIdKey(game))),
+      );
+      const isKnown = (id: string): boolean =>
+        merged?.settings.some((setting) => Number(setting.settingID) === Number(id)) ?? false;
+      if (runningIds.some((id) => id && !isKnown(id))) {
         merged = this.merge(merged, await this.fetchNewerFromGame(merged?.itemsVersion ?? null));
       }
       if (!merged) return;

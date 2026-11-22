@@ -20,6 +20,7 @@ import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { formatThousands, stripTrailingDigits } from '@ggetracker-services/text-format.utilities';
 import { LanguageService } from '@ggetracker-services/language.service';
 import { ServerService } from '@ggetracker-services/server.service';
+import { EventGame, eventGameQueryParameters, resolveEventGame } from '@ggetracker-services/event-game.utilities';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Activity, CalendarCheck, LucideAngularModule, SquareUser, Target, TrendingUp, Trophy } from 'lucide-angular';
 import { NgSelectComponent } from '@ng-select/ng-select';
@@ -122,6 +123,8 @@ export class EventsComponent extends GenericComponent {
     isFiltered: false,
   };
   public translations: Record<string, string> = {};
+  public game: EventGame = 'ep';
+  public gameQueryParameters: Record<string, string> = {};
   private eventId: number | null = null;
   private readonly languageService = inject(LanguageService);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -140,9 +143,9 @@ export class EventsComponent extends GenericComponent {
 
   public onEventClick(event: EventList): void {
     if (event.type === EventType.OUTER_REALM) {
-      void this.router.navigate(['/events', 'outer-realms', event.id]);
+      void this.router.navigate(['/events', 'outer-realms', event.id], { queryParams: this.gameQueryParameters });
     } else if (event.type === EventType.BEYOND_THE_HORIZON) {
-      void this.router.navigate(['/events', 'beyond-the-horizon', event.id]);
+      void this.router.navigate(['/events', 'beyond-the-horizon', event.id], { queryParams: this.gameQueryParameters });
     }
   }
 
@@ -300,7 +303,7 @@ export class EventsComponent extends GenericComponent {
     filterByEventType?: string,
   ): Promise<{ data: ApiEventlist; response: number }> {
     return await this.apiRestService.getGenericData(
-      this.apiRestService.getEventList.bind(this.apiRestService, page, filterByEventType),
+      this.apiRestService.getEventList.bind(this.apiRestService, page, filterByEventType, this.game),
     );
   }
 
@@ -314,13 +317,14 @@ export class EventsComponent extends GenericComponent {
       this.page,
       this.playerNameFilter,
       this.formFilters.server,
+      this.game,
     );
   }
 
   private async getEventDataById(): Promise<{ data: ApiOuterRealmEvent; response: number }> {
     if (!this.eventType) throw new Error('Event type is not defined');
     return await this.apiRestService.getGenericData(
-      this.apiRestService.getEventDataById.bind(this.apiRestService, this.eventType, this.eventId ?? 1),
+      this.apiRestService.getEventDataById.bind(this.apiRestService, this.eventType, this.eventId ?? 1, this.game),
     );
   }
 
@@ -342,6 +346,8 @@ export class EventsComponent extends GenericComponent {
   private async init(): Promise<void> {
     try {
       this.route.params.subscribe(async (parameters) => {
+        this.game = resolveEventGame(this.route.snapshot.queryParams['game'], this.serverService.isE4kServer());
+        this.gameQueryParameters = eventGameQueryParameters(this.game);
         if (Object.keys(parameters).length === 0 || Number.isNaN(Number.parseInt(parameters['eventId']))) {
           const targetedEvent = parameters['eventType'];
           const page = this.route.snapshot.queryParams['page'] ? Number(this.route.snapshot.queryParams['page']) : 1;

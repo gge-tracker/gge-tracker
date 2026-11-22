@@ -1,3 +1,4 @@
+import { EventGame } from '@ggetracker-services/event-game.utilities';
 import type { ChronicleSlide } from '@ggetracker-pages/chronicle/chronicle.copy';
 import { ApiLootReset } from '@ggetracker-services/loot-reset.utilities';
 import {
@@ -1689,6 +1690,7 @@ export interface ApiAllianceTournamentStandingsResponse {
 }
 
 export interface ApiEventsByPlayerIdResponse {
+  game?: EventGame;
   events: ApiSpecificEventByPlayerIdResponse[];
 }
 

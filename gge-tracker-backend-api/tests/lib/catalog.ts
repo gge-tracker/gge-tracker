@@ -177,7 +177,11 @@ export const CATALOG: Endpoint[] = [
     scope: 'public',
     path: () => '/events/list' + q({ page: 1 }),
     okStatuses: [200],
-    fuzzQuery: ['type'],
+    fuzzQuery: ['type', 'game'],
+    cases: [
+      { label: 'the E4K list answers on its own', path: () => '/events/list' + q({ page: 1, game: 'e4k' }), expect: [200] },
+      { label: 'an unknown game is refused', path: () => '/events/list' + q({ page: 1, game: 'gge' }), expect: [400] },
+    ],
     semantic: {
       collection: 'events',
       idField: 'event_num',
@@ -202,7 +206,11 @@ export const CATALOG: Endpoint[] = [
     scope: 'public',
     path: () => '/events/outer-realms/1/players' + q({ page: 1 }),
     okStatuses: [200, 400, 404],
-    fuzzQuery: ['player_name', 'server'],
+    fuzzQuery: ['player_name', 'server', 'game'],
+    cases: [
+      { label: 'an E4K event is read from the E4K store', path: () => '/events/outer-realms/1/players' + q({ page: 1, game: 'e4k' }), expect: [200] },
+      { label: 'an unknown game is refused', path: () => '/events/outer-realms/1/players' + q({ page: 1, game: 'gge' }), expect: [400] },
+    ],
     semantic: {
       collection: 'players',
       idField: 'player_id',
@@ -216,7 +224,17 @@ export const CATALOG: Endpoint[] = [
     },
   },
   { id: 'events-type-players-filtered', method: 'GET', scope: 'public', path: (s) => '/events/outer-realms/1/players' + q({ page: 1, player_name: s.eventPlayerName ?? s.playerName ?? 'a', server: s.server }), okStatuses: [200, 400, 404], needs: ['server', 'player'] },
-  { id: 'events-type-data', method: 'GET', scope: 'public', path: () => '/events/outer-realms/1/data', okStatuses: [200, 400, 404] },
+  {
+    id: 'events-type-data',
+    method: 'GET',
+    scope: 'public',
+    path: () => '/events/outer-realms/1/data',
+    okStatuses: [200, 400, 404],
+    cases: [
+      { label: 'an E4K event is read from the E4K store', path: () => '/events/outer-realms/1/data' + q({ game: 'e4k' }), expect: [200, 404] },
+      { label: 'an unknown game is refused', path: () => '/events/outer-realms/1/data' + q({ game: 'gge' }), expect: [400] },
+    ],
+  },
   { id: 'events-player', method: 'GET', scope: 'public', path: (s) => `/events/player/${s.playerId ?? '1'}`, okStatuses: [200, 400, 404], needs: ['player'] },
 
   // Grand Tournament (protected)
@@ -840,6 +858,8 @@ export const CATALOG: Endpoint[] = [
       { label: 'unknown sort field refused', path: () => '/live-ranking/outer-realms' + q({ page: 1, order_by: 'castle_position' }), expect: [400] },
       { label: 'unknown sort direction refused', path: () => '/live-ranking/outer-realms' + q({ page: 1, order_dir: 'up' }), expect: [400] },
       { label: 'page size above the cap refused', path: () => '/live-ranking/outer-realms' + q({ page: 1, size: 101 }), expect: [400] },
+      { label: 'the E4K ranking answers on its own', path: () => '/live-ranking/outer-realms' + q({ page: 1, game: 'e4k' }), expect: [200, 403] },
+      { label: 'an unknown game is refused', path: () => '/live-ranking/outer-realms' + q({ page: 1, game: 'gge' }), expect: [400] },
     ],
   },
   {
@@ -855,10 +875,23 @@ export const CATALOG: Endpoint[] = [
       { label: 'filters and sort apply', path: () => '/live-ranking/outer-realms/export' + q({ server: 'FR1', min_level: 70, order_by: 'score' }), expect: [200, 403] },
       { label: 'an unknown format is refused', path: () => '/live-ranking/outer-realms/export' + q({ format: 'xml' }), expect: [400] },
       { label: 'an invalid filter is refused', path: () => '/live-ranking/outer-realms/export' + q({ movement: 'sideways' }), expect: [400] },
+      { label: 'the E4K ranking is exported on its own', path: () => '/live-ranking/outer-realms/export' + q({ game: 'e4k' }), expect: [200, 403] },
+      { label: 'an unknown game is refused', path: () => '/live-ranking/outer-realms/export' + q({ game: 'gge' }), expect: [400] },
     ],
   },
   { id: 'live-outer-realms-search', method: 'GET', scope: 'public', path: (s) => '/live-ranking/outer-realms' + q({ page: 1, player_name: s.playerName ?? 'a' }), okStatuses: [200, 400, 403], needs: ['player'] },
-  { id: 'live-outer-realms-player', method: 'GET', scope: 'public', path: (s) => `/live-ranking/outer-realms/player/${s.playerId ?? '1'}`, okStatuses: [200, 400, 404], needs: ['player'] },
+  {
+    id: 'live-outer-realms-player',
+    method: 'GET',
+    scope: 'public',
+    path: (s) => `/live-ranking/outer-realms/player/${s.playerId ?? '1'}`,
+    okStatuses: [200, 400, 404],
+    needs: ['player'],
+    cases: [
+      { label: 'an E4K history is read on its own', path: (s) => `/live-ranking/outer-realms/player/${s.playerId ?? '1'}` + q({ game: 'e4k' }), expect: [200, 404] },
+      { label: 'an unknown game is refused', path: (s) => `/live-ranking/outer-realms/player/${s.playerId ?? '1'}` + q({ game: 'gge' }), expect: [400] },
+    ],
+  },
 
   // WoA (protected + public player)
   {
@@ -1440,6 +1473,8 @@ export const CATALOG: Endpoint[] = [
       { label: 'an unknown event type is refused', path: () => '/assets/og/event/grand-tournament/1.jpg', expect: [400] },
       { label: 'a non-numeric event number is refused', path: () => '/assets/og/event/outer-realms/1e3.jpg', expect: [400] },
       { label: 'an event never collected answers 404', path: () => '/assets/og/event/beyond-the-horizon/999999.jpg', expect: [404] },
+      { label: 'an E4K card is read from the E4K store', path: () => '/assets/og/event/outer-realms/1.jpg' + q({ game: 'e4k' }), expect: [200, 404] },
+      { label: 'an unknown game is refused', path: () => '/assets/og/event/outer-realms/1.jpg' + q({ game: 'gge' }), expect: [400] },
       { label: 'If-None-Match * is answered 304', path: (s) => `/assets/og/event/outer-realms/${s.outerRealmsEventNumber ?? 1}.jpg`, expect: [304], headers: () => ({ 'If-None-Match': '*' }) },
     ],
   },

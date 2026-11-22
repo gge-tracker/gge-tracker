@@ -9,7 +9,13 @@
 //
 import { DiscordApiMessageBody } from './interfaces';
 import { GenericFetchAndSaveBackend } from './main';
-import { ANNOUNCED_TSID_KEY, outerRealmsAnnouncement } from './outer-realms-announcement';
+import { outerRealmsAnnouncement } from './outer-realms-announcement';
+import {
+  OuterRealmsUniverse,
+  outerRealmsGameOf,
+  outerRealmsLinkQuery,
+  outerRealmsUniverse,
+} from './outer-realms-universe';
 
 const ID_SERVER = process.env.ID_SERVER;
 const PG_DB = process.env.PG_DB;
@@ -17,7 +23,6 @@ const CLICKHOUSE_DB = process.env.CLICKHOUSE_DB;
 const logSuffix = process.env.LOG_SUFFIX;
 const CONNECTION_LIMIT = process.env.CONNECTION_LIMIT;
 
-const TARGET_ID_SERVER = process.env.TARGET_ID_SERVER;
 const TARGET_PG_DB = process.env.TARGET_PG_DB;
 const TARGET_MYSQL_DB = process.env.TARGET_MYSQL_DB;
 const TARGET_CLICKHOUSE_DB = process.env.TARGET_CLICKHOUSE_DB;
@@ -25,7 +30,7 @@ const TARGET_LOG_SUFFIX = process.env.TARGET_LOG_SUFFIX;
 const TARGET_CONNECTION_LIMIT = process.env.TARGET_CONNECTION_LIMIT;
 
 const DISCORD_OR_API_URL = process.env.DISCORD_OR_API_URL;
-const DISCORD_OR_CHANNEL_ID = process.env.DISCORD_EP_OR_EVENTS_CHANNEL_ID;
+const UNIVERSE = outerRealmsUniverse(outerRealmsGameOf(logSuffix));
 
 if (
   !ID_SERVER ||
@@ -33,7 +38,6 @@ if (
   !CLICKHOUSE_DB ||
   !logSuffix ||
   !CONNECTION_LIMIT ||
-  !TARGET_ID_SERVER ||
   !TARGET_PG_DB ||
   !TARGET_MYSQL_DB ||
   !TARGET_CLICKHOUSE_DB ||
@@ -45,7 +49,6 @@ if (
 }
 const BASE_DOMAIN_URL: string = `http://empire-api-realtime:3000`;
 const BASE_API_URL: string = `${BASE_DOMAIN_URL}/${ID_SERVER}/`;
-const TARGET_BASE_API_URL: string = `${BASE_DOMAIN_URL}/${TARGET_ID_SERVER}/`;
 
 // ClickHouse Configuration
 const CLICKHOUSE_CONFIG = {
@@ -86,25 +89,27 @@ const TARGET_postgresConfig = {
 
 async function ensureOuterRealmsConnected(
   generic: GenericFetchAndSaveBackend,
+  universe: OuterRealmsUniverse,
   statusUrl: string,
   serverUrl: string,
-): Promise<boolean> {
-  console.log('Checking Empire API Realtime status for Outer Realms server...');
+): Promise<string | null> {
+  const knownZone = (await generic.getRedisValue(universe.liveZoneKey)) || universe.defaultLiveZone;
+  console.log('Checking Empire API Realtime status for the', universe.game, 'Outer Realms server', knownZone);
   const statusResponse = await generic.fetchUrl(statusUrl, 'GET', null);
-  const realtimeRedisStatus = await generic.getRedisValue('outerRealmsDataFetchError');
-  if (statusResponse.data?.['EmpireEx_42'] === true && !realtimeRedisStatus) return true;
+  const realtimeRedisStatus = await generic.getRedisValue(universe.fetchErrorKey);
+  if (statusResponse.data?.[knownZone] === true && !realtimeRedisStatus) return knownZone;
 
-  const lastCheckTime = await generic.getRedisValue('outerRealmsLastCheckTime');
+  const lastCheckTime = await generic.getRedisValue(universe.lastCheckTimeKey);
   const now = Date.now();
   if (lastCheckTime && now - Number(lastCheckTime) < 10 * 60 * 1000) {
     console.error('Outer Realms server is not ready yet. Last check was less than 10 minutes ago. Exiting.');
-    return false;
+    return null;
   }
-  await generic.setRedisValue('outerRealmsLastCheckTime', now.toString());
+  await generic.setRedisValue(universe.lastCheckTimeKey, now.toString());
 
   console.log('Deleting existing Outer Realms server configuration if any...');
   try {
-    await generic.fetchUrl(serverUrl + '/' + TARGET_ID_SERVER, 'DELETE', null);
+    await generic.fetchUrl(serverUrl + '/' + knownZone, 'DELETE', null);
   } catch {}
   await new Promise((resolve) => setTimeout(resolve, 5000));
 
@@ -112,7 +117,7 @@ async function ensureOuterRealmsConnected(
   const data = await generic.getOuterRealmsCode();
   if (!data) {
     console.error('Failed to get Outer Realms tokens');
-    return false;
+    return null;
   }
 
   console.log('Outer Realms server is not connected yet. Connecting...');
@@ -122,26 +127,30 @@ async function ensureOuterRealmsConnected(
     socket_url: TSIP,
     username: 'gge-tracker-outer-realms',
     password: TLT,
+    serverType: universe.socketType,
   });
+  await generic.setRedisValue(universe.liveZoneKey, TSZ);
   await new Promise((resolve) => setTimeout(resolve, 5000));
 
   console.log('Outer Realms server might be connected. Verifying...');
   const verifyResponse = await generic.fetchUrl(statusUrl, 'GET', null);
-  if (verifyResponse.data?.['EmpireEx_42'] !== true) {
+  if (verifyResponse.data?.[TSZ] !== true) {
     console.error('Failed to connect Outer Realms server, exiting.');
-    return false;
+    return null;
   }
   console.log('Outer Realms server is successfully connected!');
-  return true;
+  return TSZ;
 }
 
 async function notifyOuterRealmsEvent(
   generic: GenericFetchAndSaveBackend,
   discordApiUrl: string,
+  channelId: string,
+  universe: OuterRealmsUniverse,
   scoringSystemType: 'collector' | 'might' | 'rankSwap',
 ): Promise<boolean> {
   try {
-    await generic.fetchUrl(discordApiUrl, 'POST', getDiscordApiMessageBody(scoringSystemType));
+    await generic.fetchUrl(discordApiUrl, 'POST', getDiscordApiMessageBody(channelId, universe, scoringSystemType));
     return true;
   } catch (error) {
     console.error('Error sending Discord notification:', error);
@@ -151,19 +160,21 @@ async function notifyOuterRealmsEvent(
 
 async function announceNewOuterRealmsEvent(
   generic: GenericFetchAndSaveBackend,
+  universe: OuterRealmsUniverse,
   scoringSystemType: 'collector' | 'might' | 'rankSwap' | null,
 ): Promise<void> {
-  const currentTSIDValue = await generic.getRedisValue('temporaryServerData');
-  const announcedTSIDValue = await generic.getRedisValue(ANNOUNCED_TSID_KEY);
+  const currentTSIDValue = await generic.getRedisValue(universe.temporaryServerIdKey);
+  const announcedTSIDValue = await generic.getRedisValue(universe.announcedTsidKey);
   const decision = outerRealmsAnnouncement(currentTSIDValue, announcedTSIDValue);
   console.log('Current TSID:', currentTSIDValue, '- last announced:', announcedTSIDValue, '- decision:', decision);
   if (decision === 'none' || !currentTSIDValue) return;
-  if (decision === 'announce' && DISCORD_OR_API_URL && DISCORD_OR_CHANNEL_ID) {
+  const channelId = universe.eventsChannelId();
+  if (decision === 'announce' && DISCORD_OR_API_URL && channelId) {
     if (!scoringSystemType) return;
-    const posted = await notifyOuterRealmsEvent(generic, DISCORD_OR_API_URL, scoringSystemType);
+    const posted = await notifyOuterRealmsEvent(generic, DISCORD_OR_API_URL, channelId, universe, scoringSystemType);
     if (!posted) return;
   }
-  await generic.setRedisValue(ANNOUNCED_TSID_KEY, currentTSIDValue);
+  await generic.setRedisValue(universe.announcedTsidKey, currentTSIDValue);
 }
 
 async function createOuterRealmsInstance(): Promise<void> {
@@ -177,18 +188,21 @@ async function createOuterRealmsInstance(): Promise<void> {
       logSuffix || 'Outer Realms Token Scraper',
     );
 
-    if (!(await ensureOuterRealmsConnected(generic, statusUrl, serverUrl))) return;
+    const liveZone = await ensureOuterRealmsConnected(generic, UNIVERSE, statusUrl, serverUrl);
+    if (!liveZone) return;
 
     console.log('Starting Outer Realms data fetch process...');
     const target = new GenericFetchAndSaveBackend(
-      TARGET_BASE_API_URL,
+      `${BASE_DOMAIN_URL}/${liveZone}/`,
       TARGET_CLICKHOUSE_CONFIG,
       TARGET_postgresConfig,
       TARGET_LOG_SUFFIX || 'Outer Realms Token Scraper',
     );
-    const scoringSystemType: 'collector' | 'might' | 'rankSwap' | null = await target.startOuterRealmsDataFetch();
+    const scoringSystemType: 'collector' | 'might' | 'rankSwap' | null = await target.startOuterRealmsDataFetch(
+      UNIVERSE.game,
+    );
     console.log('Scoring system type detected:', scoringSystemType);
-    await announceNewOuterRealmsEvent(generic, scoringSystemType);
+    await announceNewOuterRealmsEvent(generic, UNIVERSE, scoringSystemType);
   } catch (error) {
     console.error('Error fetching Empire API Realtime status:', error);
   }
@@ -215,13 +229,14 @@ const OuterRealmsData = {
   },
 };
 
-function getDiscordApiMessageBody(scoring: 'collector' | 'might' | 'rankSwap'): DiscordApiMessageBody {
-  if (!DISCORD_OR_API_URL || !DISCORD_OR_CHANNEL_ID) {
-    console.error('Missing Discord API URL or Channel ID environment variables');
-    throw new Error('Missing Discord API URL or Channel ID environment variables');
-  }
+function getDiscordApiMessageBody(
+  channelId: string,
+  universe: OuterRealmsUniverse,
+  scoring: 'collector' | 'might' | 'rankSwap',
+): DiscordApiMessageBody {
+  const pageUrl = `https://gge-tracker.com/live/outer-realms${outerRealmsLinkQuery(universe.game)}`;
   return {
-    channelId: DISCORD_OR_CHANNEL_ID,
+    channelId,
     embeds: [
       {
         title: 'Outer Realms Notification',
@@ -229,7 +244,7 @@ function getDiscordApiMessageBody(scoring: 'collector' | 'might' | 'rankSwap'): 
         fields: [
           {
             name: `:fire: A new Outer Realms event is available : ${OuterRealmsData[scoring].name}`,
-            value: `${OuterRealmsData[scoring].description}\n\n :arrow_right: https://gge-tracker.com/live/outer-realms `,
+            value: `${OuterRealmsData[scoring].description}\n\n :arrow_right: ${pageUrl} `,
             inline: false,
           },
         ],

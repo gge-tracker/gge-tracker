@@ -331,3 +331,60 @@ describe('startOuterRealmsDataFetch', () => {
     });
   });
 });
+
+describe('startOuterRealmsDataFetch on E4K', () => {
+  function startE4kEvent(sandbox: Sandbox, settingId: string): void {
+    startEvent(sandbox, settingId);
+    sandbox.redis.store.delete('temporaryServerData');
+    sandbox.redis.store.set('temporaryServerData:e4k', settingId);
+  }
+
+  it('reads the E4K event id and writes its rows to the E4K table only', async () => {
+    await withSandbox({}, async (sandbox) => {
+      startE4kEvent(sandbox, COLLECTOR_SETTING);
+      serveOuterRealms(sandbox, [entrant(1), entrant(2)]);
+      const result = await sandbox.call('startOuterRealmsDataFetch', 'e4k');
+      assert.equal(result, 'collector');
+      assert.equal(sandbox.clickhouse.rows('outer_realms_ranking_e4k').length, 2);
+      assert.equal(sandbox.clickhouse.rows(TABLE).length, 0, 'an API that predates E4K reads this table as EP');
+      assert.equal(sandbox.clickhouse.rows('latest_fetch_date').length, 0);
+    });
+  });
+
+  it('writes EP rows exactly as before E4K was collected', async () => {
+    await withSandbox({}, async (sandbox) => {
+      startEvent(sandbox, COLLECTOR_SETTING);
+      serveOuterRealms(sandbox, [entrant(1)]);
+      await sandbox.call('startOuterRealmsDataFetch');
+      assert.equal('game' in sandbox.clickhouse.rows(TABLE)[0], false);
+      assert.equal(sandbox.clickhouse.rows('outer_realms_ranking_e4k').length, 0);
+      assert.equal(sandbox.clickhouse.rows('latest_fetch_date').length, 1);
+    });
+  });
+
+  it('flags its own error key and never the EP one when no E4K event is named', async () => {
+    await withSandbox({}, async (sandbox) => {
+      startEvent(sandbox, COLLECTOR_SETTING);
+      const result = await sandbox.call('startOuterRealmsDataFetch', 'e4k');
+      assert.equal(result, null);
+      assert.equal(
+        sandbox.redis.store.get('outerRealmsDataFetchError:e4k'),
+        'No active event found with known LT codes',
+      );
+      assert.equal(sandbox.redis.store.has('outerRealmsDataFetchError'), false);
+      assert.deepEqual(sandbox.clickhouse.calls, []);
+    });
+  });
+
+  it('clears only its own stale error', async () => {
+    await withSandbox({}, async (sandbox) => {
+      startE4kEvent(sandbox, COLLECTOR_SETTING);
+      sandbox.redis.store.set('outerRealmsDataFetchError', 'ep is down');
+      sandbox.redis.store.set('outerRealmsDataFetchError:e4k', 'stale');
+      serveOuterRealms(sandbox, [entrant(1)]);
+      await sandbox.call('startOuterRealmsDataFetch', 'e4k');
+      assert.equal(sandbox.redis.store.has('outerRealmsDataFetchError:e4k'), false);
+      assert.equal(sandbox.redis.store.get('outerRealmsDataFetchError'), 'ep is down');
+    });
+  });
+});

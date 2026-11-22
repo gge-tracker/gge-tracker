@@ -21,7 +21,7 @@ load_server_config "$SERVER"
 LOG_SUFFIX=$SERVER
 
 docker run --rm --network backend --env-file=$BASE_SCRIPT_DIR/.env \
-    --name ic-fetch-outer-realms \
+    --name ic-fetch-outer-realms-$SERVER \
     -v "$SERVERS_CONFIG_DIR:/app/config:ro" \
     -e ID_SERVER=$ID_SERVER \
     -e PG_DB=$PG_DB \

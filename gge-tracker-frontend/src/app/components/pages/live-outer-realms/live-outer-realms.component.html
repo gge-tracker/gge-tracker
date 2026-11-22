@@ -63,7 +63,7 @@
                 </span>
               </div>
             }
-            <a class="realms-fact realms-archive" routerLink="/events/outer-realms">
+            <a class="realms-fact realms-archive" routerLink="/events/outer-realms" [queryParams]="gameQueryParameters">
               <i class="fa-solid fa-trophy" aria-hidden="true"></i>
               <span class="realms-fact-text">
                 <small>{{ 'Éditions précédentes' | translate }}</small>
@@ -136,7 +136,7 @@
                         <td class="col-distance">{{ player.distance | number: '1.0-1' }}</td>
                       }
                       <td class="col-actions">
-                        <a class="action-icon" [routerLink]="['/live/outer-realms', player.player_id]"
+                        <a class="action-icon" [routerLink]="['/live/outer-realms', player.player_id]" [queryParams]="gameQueryParameters"
                           title="{{ 'Score' | translate }}">
                           <img src="/assets/icon_points.png" alt="points" height="24" class="ms-1 btn-icon">
                         </a>

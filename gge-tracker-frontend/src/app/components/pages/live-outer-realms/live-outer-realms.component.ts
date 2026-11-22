@@ -20,6 +20,7 @@ import {
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { formatThousands } from '@ggetracker-services/text-format.utilities';
 import { ServerService } from '@ggetracker-services/server.service';
+import { EventGame, eventGameQueryParameters, resolveEventGame } from '@ggetracker-services/event-game.utilities';
 import { NgLabelTemplateDirective, NgOptionTemplateDirective, NgSelectComponent } from '@ng-select/ng-select';
 import { TranslateModule } from '@ngx-translate/core';
 import { ApexAxisChartSeries, ApexChart, ApexNonAxisChartSeries, ApexOptions, ApexPlotOptions } from 'ng-apexcharts';
@@ -124,6 +125,8 @@ export class LiveOuterRealmsComponent extends GenericComponent {
   public previousCollectedAt: string | null = null;
   public participants = 0;
   public serverService = inject(ServerService);
+  public game: EventGame = 'ep';
+  public gameQueryParameters: Record<string, string> = {};
   private filters: LiveRankingFilters = {};
   private refreshTimer: any = null;
 
@@ -131,6 +134,8 @@ export class LiveOuterRealmsComponent extends GenericComponent {
     super();
     this.isInLoading = true;
     this.route.paramMap.subscribe((parameters) => {
+      this.game = resolveEventGame(this.route.snapshot.queryParams['game'], this.serverService.isE4kServer());
+      this.gameQueryParameters = eventGameQueryParameters(this.game);
       const playerId = parameters.get('playerId');
       if (playerId) {
         void this.initSpecificView(playerId);
@@ -171,7 +176,7 @@ export class LiveOuterRealmsComponent extends GenericComponent {
   }
 
   public exportUrl(format: LiveRankingExportFormat): string {
-    return this.apiRestService.getLiveRankingOuterRealmsExportUrl(format, this.requestFilters());
+    return this.apiRestService.getLiveRankingOuterRealmsExportUrl(format, this.requestFilters(), this.game);
   }
 
   public openExportModal(): void {
@@ -263,7 +268,7 @@ export class LiveOuterRealmsComponent extends GenericComponent {
   public async initSpecificView(playerId: string): Promise<void> {
     this.viewType = 'player';
     this.search = playerId;
-    const response = await this.apiRestService.getLiveRankingOuterRealmsSpecificPlayer(Number(this.search));
+    const response = await this.apiRestService.getLiveRankingOuterRealmsSpecificPlayer(Number(this.search), this.game);
     if (!response.success) {
       this.toastService.add('Unable to display outer realms ranking for the specified player');
       this.isInLoading = false;
@@ -335,7 +340,7 @@ export class LiveOuterRealmsComponent extends GenericComponent {
   }
 
   public async goBack(): Promise<void> {
-    await this.router.navigate(['live', 'outer-realms']);
+    await this.router.navigate(['live', 'outer-realms'], { queryParams: this.gameQueryParameters });
   }
 
   public async initDefaultView(): Promise<void> {
@@ -351,7 +356,7 @@ export class LiveOuterRealmsComponent extends GenericComponent {
     this.requestCounter++;
     this.isDataLoading = true;
     const filters = this.requestFilters();
-    const response = await this.apiRestService.getLiveRankingOuterRealms(page, filters);
+    const response = await this.apiRestService.getLiveRankingOuterRealms(page, filters, this.game);
     if (!response.success) {
       this.isInLoading = false;
       this.isDataLoading = false;

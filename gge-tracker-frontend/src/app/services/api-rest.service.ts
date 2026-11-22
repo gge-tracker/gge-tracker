@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 
 import { PageTemplateService } from './page-template.service';
+import { EventGame, eventGameQueryParameters } from './event-game.utilities';
 import { ServerService } from './server.service';
 import { ToastService } from './toast.service';
 import { environment } from '../../environments/environment';
@@ -805,9 +806,15 @@ export class ApiRestService {
    * Get the outer realms list from the API
    * @returns A promise that resolves to the outer realms list data
    */
-  public async getEventList(page: number, filterByEventType?: string): Promise<ApiResponse<ApiEventlist>> {
+  public async getEventList(
+    page: number,
+    filterByEventType?: string,
+    game: EventGame = 'ep',
+  ): Promise<ApiResponse<ApiEventlist>> {
     const typeQuery = filterByEventType ? `&type=${filterByEventType}` : '';
-    const response = await this.apiFetch<ApiEventlist>(`${ApiRestService.apiUrl}events/list?page=${page}${typeQuery}`);
+    const response = await this.apiFetch<ApiEventlist>(
+      `${ApiRestService.apiUrl}events/list?page=${page}${typeQuery}${this.eventGameQuery(game, '&')}`,
+    );
     if (!response.success) return response;
     return { success: true, data: response.data };
   }
@@ -817,8 +824,14 @@ export class ApiRestService {
    * @param id The ID of the outer realm event
    * @returns A promise that resolves to the outer realms data
    */
-  public async getEventDataById(eventName: string, id: number): Promise<ApiResponse<ApiOuterRealmEvent>> {
-    const response = await this.apiFetch<ApiOuterRealmEvent>(`${ApiRestService.apiUrl}events/${eventName}/${id}/data`);
+  public async getEventDataById(
+    eventName: string,
+    id: number,
+    game: EventGame = 'ep',
+  ): Promise<ApiResponse<ApiOuterRealmEvent>> {
+    const response = await this.apiFetch<ApiOuterRealmEvent>(
+      `${ApiRestService.apiUrl}events/${eventName}/${id}/data${this.eventGameQuery(game, '?')}`,
+    );
     if (!response.success) return response;
     return { success: true, data: response.data };
   }
@@ -1127,11 +1140,13 @@ export class ApiRestService {
     page: number,
     playerNameFilter?: string | null,
     serverFilter?: string | null,
+    game: EventGame = 'ep',
   ): Promise<ApiResponse<ApiOuterRealmPlayers>> {
     const response = await this.apiFetch<ApiOuterRealmPlayers>(
       `${ApiRestService.apiUrl}events/${eventName}/${id}/players?page=${page}` +
         (playerNameFilter ? `&player_name=${playerNameFilter}` : '') +
-        (serverFilter ? `&server=${serverFilter}` : ''),
+        (serverFilter ? `&server=${serverFilter}` : '') +
+        this.eventGameQuery(game, '&'),
     );
     if (!response.success) return response;
     return { success: true, data: response.data };
@@ -1139,9 +1154,10 @@ export class ApiRestService {
 
   public async getLiveRankingOuterRealmsSpecificPlayer(
     playerId: number,
+    game: EventGame = 'ep',
   ): Promise<ApiResponse<ApiLiveRankingSpecificPlayerResponse>> {
     const response = await this.apiFetch<ApiLiveRankingSpecificPlayerResponse>(
-      `${ApiRestService.apiUrl}live-ranking/outer-realms/player/${playerId}`,
+      `${ApiRestService.apiUrl}live-ranking/outer-realms/player/${playerId}${this.eventGameQuery(game, '?')}`,
     );
     if (!response.success) return response;
     return { success: true, data: response.data };
@@ -1150,14 +1166,19 @@ export class ApiRestService {
   public async getLiveRankingOuterRealms(
     page: number,
     filters: LiveRankingFilters = {},
+    game: EventGame = 'ep',
   ): Promise<ApiResponse<ApiLiveRankingResponse>> {
-    const parameters = this.liveRankingParameters(filters);
+    const parameters = this.liveRankingParameters(filters, game);
     parameters.set('page', String(page));
     return this.apiFetch<ApiLiveRankingResponse>(`${ApiRestService.apiUrl}live-ranking/outer-realms?${parameters}`);
   }
 
-  public getLiveRankingOuterRealmsExportUrl(format: LiveRankingExportFormat, filters: LiveRankingFilters = {}): string {
-    const parameters = this.liveRankingParameters(filters);
+  public getLiveRankingOuterRealmsExportUrl(
+    format: LiveRankingExportFormat,
+    filters: LiveRankingFilters = {},
+    game: EventGame = 'ep',
+  ): string {
+    const parameters = this.liveRankingParameters(filters, game);
     parameters.set('format', format);
     return `${ApiRestService.apiUrl}live-ranking/outer-realms/export?${parameters}`;
   }
@@ -1308,11 +1329,16 @@ export class ApiRestService {
     this.responseMs = requestEndMs - requestStartMs;
   }
 
-  private liveRankingParameters(filters: LiveRankingFilters): URLSearchParams {
+  private eventGameQuery(game: EventGame, separator: '?' | '&'): string {
+    return game === 'ep' ? '' : `${separator}game=${game}`;
+  }
+
+  private liveRankingParameters(filters: LiveRankingFilters, game: EventGame): URLSearchParams {
     const parameters = new URLSearchParams();
     const set = (name: string, value: string | number | undefined): void => {
       if (value !== undefined && value !== '') parameters.set(name, String(value));
     };
+    set('game', eventGameQueryParameters(game)['game']);
     set('player_name', filters.playerName);
     set('server', filters.servers?.join(','));
     set('min_level', filters.minLevel);

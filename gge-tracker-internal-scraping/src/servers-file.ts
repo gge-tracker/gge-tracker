@@ -103,6 +103,29 @@ export function readPublicPlayerIdCodes(file: string = SERVERS_FILE): Map<string
   return codes;
 }
 
+export interface EventServer {
+  database: string;
+  code: string | null;
+}
+
+export function readE4kEventServers(file: string = process.env.SERVERS_FILE || SERVERS_FILE): Map<string, EventServer> {
+  const rows = readServerRows(file);
+  const epOuterNames = new Map(
+    rows.filter((row) => text(row.kind) === 'ep').map((row) => [text(row.name), text(row['outer-name']).toUpperCase()]),
+  );
+  const servers = new Map<string, EventServer>();
+  for (const row of rows.filter((candidate) => text(candidate.kind) === 'e4k')) {
+    const baseName = text(row.name).replace(/^E4K_/, '');
+    const suffix = epOuterNames.get(baseName) || baseName.toUpperCase();
+    const databases = (row.databases || {}) as Record<string, unknown>;
+    servers.set(suffix, {
+      database: text(databases.sql),
+      code: apiEnabled(row, 'public') ? text(row.code) || null : null,
+    });
+  }
+  return servers;
+}
+
 export function readUniverseServerNames(
   game: 'ep' | 'e4k',
   file: string = process.env.SERVERS_FILE || SERVERS_FILE,

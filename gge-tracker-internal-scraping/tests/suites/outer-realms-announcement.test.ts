@@ -11,6 +11,7 @@ import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
 import { outerRealmsAnnouncement } from '../../src/outer-realms-announcement';
+import { outerRealmsGameOf, outerRealmsUniverse } from '../../src/outer-realms-universe';
 
 describe('outerRealmsAnnouncement', () => {
   it('records the first TSID it ever sees without posting, so a deploy never announces the running event', () => {
@@ -40,5 +41,42 @@ describe('outerRealmsAnnouncement', () => {
       if (decision !== 'none') announced = current;
     }
     assert.deepEqual(posted, ['23', '24', '21', '23', '21']);
+  });
+});
+
+describe('outerRealmsUniverse', () => {
+  it('keeps the EP keys under the names a running deploy already reads', () => {
+    const ep = outerRealmsUniverse('ep');
+    assert.deepEqual(
+      [ep.temporaryServerIdKey, ep.fetchErrorKey, ep.lastCheckTimeKey, ep.announcedTsidKey, ep.defaultLiveZone],
+      [
+        'temporaryServerData',
+        'outerRealmsDataFetchError',
+        'outerRealmsLastCheckTime',
+        'outerRealmsAnnouncedTsid',
+        'EmpireEx_42',
+      ],
+    );
+  });
+
+  it('gives E4K its own key for every piece of state, so the two events never share one', () => {
+    const ep = outerRealmsUniverse('ep');
+    const e4k = outerRealmsUniverse('e4k');
+    const keys = (u: typeof ep): string[] => [
+      u.temporaryServerIdKey,
+      u.fetchErrorKey,
+      u.lastCheckTimeKey,
+      u.announcedTsidKey,
+      u.liveZoneKey,
+    ];
+    for (const key of keys(e4k)) assert.ok(!keys(ep).includes(key), key);
+    assert.equal(e4k.temporaryServerIdKey, 'temporaryServerData:e4k', 'the bridge writes this exact key');
+  });
+
+  it('reads the game off the server a job runs for', () => {
+    assert.equal(outerRealmsGameOf('E4K_FR1'), 'e4k');
+    assert.equal(outerRealmsGameOf('E4KFR1'), 'e4k');
+    assert.equal(outerRealmsGameOf('FR1'), 'ep');
+    assert.equal(outerRealmsGameOf(undefined), 'ep');
   });
 });

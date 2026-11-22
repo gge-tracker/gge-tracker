@@ -985,6 +985,7 @@ publicRoutes.get('/datasets/:server/:date/:file', routingInstance.getDatasetFile
  *     tags:
  *       - Events
  *     parameters:
+ *       - $ref: '#/components/parameters/EventGame'
  *       - name: type
  *         in: query
  *         required: false
@@ -2595,6 +2596,7 @@ publicRoutes.get(
  *     tags:
  *       - Events
  *     parameters:
+ *       - $ref: '#/components/parameters/EventGame'
  *       - name: eventType
  *         in: path
  *         required: true
@@ -2676,6 +2678,7 @@ publicRoutes.get('/events/:eventType/:id/players', routingInstance.getEventPlaye
  *     tags:
  *       - Events
  *     parameters:
+ *       - $ref: '#/components/parameters/EventGame'
  *       - name: eventType
  *         in: path
  *         required: true
@@ -2822,6 +2825,10 @@ publicRoutes.get('/events/:eventType/:id/data', routingInstance.getDataEventType
  *             schema:
  *               type: object
  *               properties:
+ *                 game:
+ *                   type: string
+ *                   enum: [ep, e4k]
+ *                   description: The game of the player's server, which numbers its own events
  *                 events:
  *                   type: array
  *                   items:
@@ -6738,6 +6745,7 @@ publicRoutes.get(
  *     tags:
  *       - Live Ranking
  *     parameters:
+ *       - $ref: '#/components/parameters/EventGame'
  *       - name: page
  *         in: query
  *         required: false
@@ -6888,6 +6896,7 @@ publicRoutes.get('/live-ranking/outer-realms', routingInstance.getLiveOuterRealm
  *     tags:
  *       - Live Ranking
  *     parameters:
+ *       - $ref: '#/components/parameters/EventGame'
  *       - name: format
  *         in: query
  *         required: false
@@ -7016,6 +7025,7 @@ publicRoutes.get('/live-ranking/outer-realms/export', routingInstance.getLiveOut
  *     tags:
  *       - Live Ranking
  *     parameters:
+ *       - $ref: '#/components/parameters/EventGame'
  *       - $ref: '#/components/parameters/PlayerId'
  *     responses:
  *       200:
@@ -9141,6 +9151,7 @@ publicRoutes.get('/assets/og/release-notes.jpg', routingInstance.getReleaseNotes
  *     tags:
  *       - Previews
  *     parameters:
+ *       - $ref: '#/components/parameters/EventGame'
  *       - name: eventType
  *         in: path
  *         required: true

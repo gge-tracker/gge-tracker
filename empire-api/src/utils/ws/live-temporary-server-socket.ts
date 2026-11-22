@@ -1,8 +1,10 @@
 import { BaseSocket, GgeServerType } from './base-socket.js';
 import { GgeEmpireSocketImpl } from './gge-socket-impl.js';
-import { createClient } from 'redis';
+import { findTemporaryServerId, saveTemporaryServerId } from './temporary-server-id.js';
 
 class GgeLiveTemporaryServerSocket extends BaseSocket implements GgeEmpireSocketImpl {
+  protected storeTemporaryServerId = saveTemporaryServerId;
+
   constructor(url: string, serverHeader: string, username: string, password: string) {
     super(url, serverHeader, GgeServerType.LIVE, false);
     this.url = url;
@@ -59,21 +61,10 @@ class GgeLiveTemporaryServerSocket extends BaseSocket implements GgeEmpireSocket
     try {
       if (parsedMessage.type === 'json' && parsedMessage.payload.command === 'gbd') {
         this.log('[INFO] [handleMessage] Received gbd message, checking for temporary server data...');
-        const content = parsedMessage.payload.data;
-        if (content?.sei?.E) {
-          const temporaryServer = content.sei.E.find((event: any) => event.EID === 106);
-          if (temporaryServer?.TSID) {
-            const redisClient = createClient({
-              url: 'redis://redis-server:6379',
-            });
-            await redisClient.connect();
-            await redisClient.set('temporaryServerData', temporaryServer.TSID);
-            await redisClient.quit();
-            this.log('[INFO] [handleMessage] Temporary server TSID saved to Redis:', temporaryServer.TSID);
-          }
-        } else {
-          this.log('[ERR] [handleMessage] gbd message received but no sei.E array found:', parsedMessage.payload.data);
-        }
+        const temporaryServerId = findTemporaryServerId(parsedMessage.payload.data);
+        if (temporaryServerId === null) return;
+        await this.storeTemporaryServerId('ep', temporaryServerId);
+        this.log('[INFO] [handleMessage] Temporary server TSID saved to Redis:', temporaryServerId);
       }
     } catch (error) {
       this.log('[ERR] [handleMessage] Error processing message:', (error as Error)?.message || error);

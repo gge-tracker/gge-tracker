@@ -3,11 +3,11 @@ import * as express from 'express';
 import * as pg from 'pg';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { EventTypes } from '../enums/event-types.enums';
-import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { CacheKeyBuilder } from '../helper/cache/cache-key-builder';
 import { CachedResponse } from '../helper/cache/cached-response';
 import { EventsCatalogCache } from '../helper/cache/events-catalog';
+import { EventGame, EventGames } from '../helper/event-game';
 import { OuterRealmsBoard, OuterRealmsBoardCache } from '../helper/cache/outer-realms-board';
 import { WoaEventsCatalogCache } from '../helper/cache/woa-events-catalog';
 import { HttpCache } from '../helper/http-cache';
@@ -162,15 +162,14 @@ export abstract class ApiEvents implements ApiHelper {
    * @param eventPgDbpool - The PostgreSQL connection pool used for querying event data
    * @returns A Promise that resolves when the response has been sent
    */
-  public static async getEvents(
-    request: express.Request,
-    response: express.Response,
-    eventPgDbpool: pg.Pool,
-  ): Promise<void> {
+  public static async getEvents(request: express.Request, response: express.Response): Promise<void> {
     try {
       /* ---------------------------------
        * Validate request
        * --------------------------------- */
+      const game = EventGames.fromRequest(request, response);
+      if (game === null) return;
+      const eventPgDbpool = EventGames.pool(game);
       const eventType = String(request.query.type || '').toLowerCase();
       if (eventType && !Object.values(EventTypes).includes(eventType as EventTypes)) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventType });
@@ -181,7 +180,11 @@ export abstract class ApiEvents implements ApiHelper {
       /* ---------------------------------
        * Read the catalog, filter it by type
        * --------------------------------- */
-      const catalog = await EventsCatalogCache.current(eventPgDbpool);
+      if (!eventPgDbpool) {
+        response.status(ApiHelper.HTTP_OK).send(ApiEvents.emptyEventList(page));
+        return;
+      }
+      const catalog = await EventsCatalogCache.of(game).current(eventPgDbpool);
       if (catalog === null) {
         response
           .status(ApiHelper.HTTP_INTERNAL_SERVER_ERROR)
@@ -192,10 +195,7 @@ export abstract class ApiEvents implements ApiHelper {
       const selected = requestedType ? catalog.filter((entry) => entry.type === requestedType) : catalog;
       const totalCount = selected.length;
       if (totalCount === 0) {
-        response.status(ApiHelper.HTTP_OK).send({
-          events: [],
-          pagination: { current_page: page, total_pages: 0, current_items_count: 0, total_items_count: 0 },
-        });
+        response.status(ApiHelper.HTTP_OK).send(ApiEvents.emptyEventList(page));
         return;
       } else if (totalCount < (page - 1) * ApiEvents.EVENT_LIST_ITEMS_PER_PAGE) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.PageOutOfRange });
@@ -209,7 +209,7 @@ export abstract class ApiEvents implements ApiHelper {
       const pageEntries = selected
         .filter((entry) => entry.player_count !== '0')
         .slice(offset, offset + ApiEvents.EVENT_LIST_ITEMS_PER_PAGE);
-      const winners = await ApiEvents.readEventWinners(eventPgDbpool, pageEntries);
+      const winners = await ApiEvents.readEventWinners(eventPgDbpool, pageEntries, game);
       const events = pageEntries.map((entry) => ({
         ...entry,
         winner: winners.get(`${entry.type}:${entry.event_num}`) ?? null,
@@ -253,7 +253,12 @@ export abstract class ApiEvents implements ApiHelper {
         return;
       }
       const realPlayerId = ApiHelper.removeCountryCode(playerId);
-      const pgPool = ApiHelper.ggeTrackerManager.getPgSqlPool(GgeTrackerServersEnum.FR1);
+      const game = EventGames.ofPlayerCode(ApiHelper.getCountryCode(String(playerId)));
+      const pgPool = EventGames.pool(game);
+      if (!pgPool) {
+        response.status(ApiHelper.HTTP_OK).send({ game, events: [] });
+        return;
+      }
       let query: string;
       if (eventType === 'all') {
         query = `
@@ -296,7 +301,7 @@ export abstract class ApiEvents implements ApiHelper {
             point: result.point,
             server: result.server,
           }));
-          response.status(ApiHelper.HTTP_OK).send({ events });
+          response.status(ApiHelper.HTTP_OK).send({ game, events });
         }
       });
     } catch (error) {
@@ -322,15 +327,13 @@ export abstract class ApiEvents implements ApiHelper {
    *   - `players`: An array of player objects (with player_id, player_name, rank, point, level, legendary_level, server)
    *   - `pagination`: Pagination metadata (current_page, total_pages, current_items_count, total_items_count)
    */
-  public static async getEventPlayers(
-    request: express.Request,
-    response: express.Response,
-    eventPgDbpool: pg.Pool,
-  ): Promise<void> {
+  public static async getEventPlayers(request: express.Request, response: express.Response): Promise<void> {
     try {
       /* ---------------------------------
        * Validate and parse parameters
        * --------------------------------- */
+      const game = EventGames.fromRequest(request, response);
+      if (game === null) return;
       const PAGINATION_LIMIT = 15;
       const id = ApiHelper.validatePageNumber(request.params.id, null);
       let page = ApiHelper.validatePageNumber(request.query.page);
@@ -354,10 +357,15 @@ export abstract class ApiEvents implements ApiHelper {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidServer });
         return;
       }
-      const cachedKey = `events:${eventType}:${id}:players:${page}:${String(playerNameFilter)}:${String(serverFilter)}`;
+      const cachedKey = `events${EventGames.keySuffix(game)}:${eventType}:${id}:players:${page}:${String(playerNameFilter)}:${String(serverFilter)}`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        return;
+      }
+      const eventPgDbpool = EventGames.pool(game);
+      if (!eventPgDbpool) {
+        response.status(ApiHelper.HTTP_OK).send(ApiEvents.emptyEventPlayers());
         return;
       }
 
@@ -397,15 +405,7 @@ export abstract class ApiEvents implements ApiHelper {
       });
       const total = countResult.total;
       if (total == 0) {
-        response.status(ApiHelper.HTTP_OK).send({
-          players: [],
-          pagination: {
-            current_page: 1,
-            total_pages: 1,
-            current_items_count: 0,
-            total_items_count: 0,
-          },
-        });
+        response.status(ApiHelper.HTTP_OK).send(ApiEvents.emptyEventPlayers());
         return;
       }
 
@@ -442,9 +442,7 @@ export abstract class ApiEvents implements ApiHelper {
        * Format results
        * --------------------------------- */
       const players = results.map((result: any) => ({
-        player_id: result.player_id
-          ? result.player_id + ApiHelper.ggeTrackerManager.getOuterServer(result.server)?.code
-          : null,
+        player_id: result.player_id ? result.player_id + EventGames.serverOfSuffix(result.server, game)?.code : null,
         player_name: result.player_name,
         rank: result.rank,
         point: result.point,
@@ -494,15 +492,13 @@ export abstract class ApiEvents implements ApiHelper {
    * @throws 400 - If the event type or event ID is invalid
    * @throws 500 - If a database or internal error occurs
    */
-  public static async getDataEventType(
-    request: express.Request,
-    response: express.Response,
-    eventPgDbpool: pg.Pool,
-  ): Promise<void> {
+  public static async getDataEventType(request: express.Request, response: express.Response): Promise<void> {
     try {
       /* ---------------------------------
        * Validate and parse parameters
        * --------------------------------- */
+      const game = EventGames.fromRequest(request, response);
+      if (game === null) return;
       let eventType = request.params.eventType;
       if (eventType !== 'outer-realms' && eventType !== 'beyond-the-horizon') {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventType });
@@ -518,10 +514,15 @@ export abstract class ApiEvents implements ApiHelper {
       /* ---------------------------------
        * Cache check
        * --------------------------------- */
-      const cachedKey = `events:${eventType}:${id}:data`;
+      const cachedKey = `events${EventGames.keySuffix(game)}:${eventType}:${id}:data`;
       const cachedData = await ApiHelper.redisClient.get(cachedKey);
       if (cachedData) {
         response.status(ApiHelper.HTTP_OK).send(JSON.parse(cachedData));
+        return;
+      }
+      const eventPgDbpool = EventGames.pool(game);
+      if (!eventPgDbpool) {
+        response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.GenericNotFound });
         return;
       }
 
@@ -727,6 +728,8 @@ export abstract class ApiEvents implements ApiHelper {
       /* ---------------------------------
        * Validate and parse parameters
        * --------------------------------- */
+      const game = EventGames.fromRequest(request, response);
+      if (game === null) return;
       const playerId = ApiHelper.verifyIdWithCountryCode(request.params.playerId);
       if (!playerId) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidPlayerId });
@@ -735,15 +738,18 @@ export abstract class ApiEvents implements ApiHelper {
 
       const clickhouseClient = await ApiHelper.ggeTrackerManager.getClickHouseInstance();
 
-      const cachedKey = new CacheKeyBuilder('outer-realms:live-ranking:player').with(playerId).build();
+      const cachedKey = new CacheKeyBuilder(`outer-realms:live-ranking:player${EventGames.keySuffix(game)}`)
+        .with(playerId)
+        .build();
       if (await CachedResponse.serveCached(response, cachedKey)) return;
 
       /* ---------------------------------
        * Database query for player data
        * --------------------------------- */
-      const board = await OuterRealmsBoardCache.current(clickhouseClient);
+      const board = await OuterRealmsBoardCache.of(game).current(clickhouseClient);
       const json = await ApiEvents.readOuterRealmsPlayerHistory(
         clickhouseClient,
+        game,
         playerId,
         board?.serverOf(playerId) ?? null,
       );
@@ -773,7 +779,7 @@ export abstract class ApiEvents implements ApiHelper {
        * Update cache and send response
        * --------------------------------- */
 
-      const currentOuterRealmsEvent = await this.getCurrentOuterRealmsEvent();
+      const currentOuterRealmsEvent = await this.getCurrentOuterRealmsEvent(game);
       const responseData = { player: finalEntry, current_event: currentOuterRealmsEvent };
       await CachedResponse.serve(response, cachedKey, responseData, ApiEvents.OUTER_REALMS_CACHE_TTL_PLAYER);
     } catch (error) {
@@ -788,6 +794,8 @@ export abstract class ApiEvents implements ApiHelper {
       /* ---------------------------------
        * Validate and parse parameters
        * --------------------------------- */
+      const game = EventGames.fromRequest(request, response);
+      if (game === null) return;
       const page = ApiHelper.validatePageNumber(request.query.page) || 1;
       const sizePerPage = ApiEvents.parseOuterRealmsPageSize(request.query.size);
       if (sizePerPage === null) {
@@ -804,7 +812,9 @@ export abstract class ApiEvents implements ApiHelper {
       /* ---------------------------------
        * Whole ranking of the current collection instant
        * --------------------------------- */
-      const board = await OuterRealmsBoardCache.current(await ApiHelper.ggeTrackerManager.getClickHouseInstance());
+      const board = await OuterRealmsBoardCache.of(game).current(
+        await ApiHelper.ggeTrackerManager.getClickHouseInstance(),
+      );
       if (!board) {
         response.status(ApiHelper.HTTP_FORBIDDEN).send({ error: RouteErrorMessagesEnum.EventNotActive });
         return;
@@ -820,7 +830,7 @@ export abstract class ApiEvents implements ApiHelper {
       }
 
       const etag = HttpCache.etagFromCacheKey(
-        new CacheKeyBuilder('outer-realms:live-ranking')
+        new CacheKeyBuilder(`outer-realms:live-ranking${EventGames.keySuffix(game)}`)
           .with(board.snapshot)
           .with(page)
           .with(sizePerPage)
@@ -833,7 +843,7 @@ export abstract class ApiEvents implements ApiHelper {
 
       response.status(ApiHelper.HTTP_OK).send({
         players,
-        ...(await ApiEvents.describeOuterRealmsBoard(board)),
+        ...(await ApiEvents.describeOuterRealmsBoard(board, game)),
         pagination: {
           current_page: page,
           total_pages: Math.ceil(totalItems / sizePerPage),
@@ -853,6 +863,8 @@ export abstract class ApiEvents implements ApiHelper {
       /* ---------------------------------
        * Validate and parse parameters
        * --------------------------------- */
+      const game = EventGames.fromRequest(request, response);
+      if (game === null) return;
       const format = ApiEvents.parseOuterRealmsExportFormat(request);
       if (format === null) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidLiveExportFormat });
@@ -869,7 +881,9 @@ export abstract class ApiEvents implements ApiHelper {
       /* ---------------------------------
        * Whole ranking of the current collection instant
        * --------------------------------- */
-      const board = await OuterRealmsBoardCache.current(await ApiHelper.ggeTrackerManager.getClickHouseInstance());
+      const board = await OuterRealmsBoardCache.of(game).current(
+        await ApiHelper.ggeTrackerManager.getClickHouseInstance(),
+      );
       if (!board) {
         response.status(ApiHelper.HTTP_FORBIDDEN).send({ error: RouteErrorMessagesEnum.EventNotActive });
         return;
@@ -881,7 +895,7 @@ export abstract class ApiEvents implements ApiHelper {
       }
 
       const etag = HttpCache.etagFromCacheKey(
-        new CacheKeyBuilder('outer-realms:live-export')
+        new CacheKeyBuilder(`outer-realms:live-export${EventGames.keySuffix(game)}`)
           .with(board.snapshot)
           .with(format)
           .with(OuterRealmsQueryParser.describe(query))
@@ -909,7 +923,7 @@ export abstract class ApiEvents implements ApiHelper {
         return;
       }
       response.status(ApiHelper.HTTP_OK).send({
-        ...(await ApiEvents.describeOuterRealmsBoard(board)),
+        ...(await ApiEvents.describeOuterRealmsBoard(board, game)),
         count: players.length,
         players,
       });
@@ -2039,6 +2053,7 @@ export abstract class ApiEvents implements ApiHelper {
    */
   private static async readOuterRealmsPlayerHistory(
     clickhouseClient: NodeClickHouseClient,
+    game: EventGame,
     playerId: number,
     server: string | null,
   ): Promise<{ data: unknown[] }> {
@@ -2056,7 +2071,7 @@ export abstract class ApiEvents implements ApiHelper {
           fetch_date,
           castle_position_x,
           castle_position_y
-        FROM ggetracker_global.outer_realms_ranking
+        FROM ${EventGames.liveRankingTable(game)}
         WHERE ${server === null ? '' : 'server = {server:String} AND '}player_id = {playerId:UInt32}
         ORDER BY fetch_date DESC
       `,
@@ -2080,14 +2095,14 @@ export abstract class ApiEvents implements ApiHelper {
    *
    * @returns The scoring system of the current active Outer Realms event, or null if not found or in case of an error
    */
-  private static async getCurrentOuterRealmsEvent(): Promise<string | null> {
-    const setting = await ApiEvents.getCurrentOuterRealmsSetting();
+  private static async getCurrentOuterRealmsEvent(game: EventGame): Promise<string | null> {
+    const setting = await ApiEvents.getCurrentOuterRealmsSetting(game);
     return setting?.scoringSystem ?? null;
   }
 
-  private static async getCurrentOuterRealmsSetting(): Promise<TemporaryServerSetting | null> {
+  private static async getCurrentOuterRealmsSetting(game: EventGame): Promise<TemporaryServerSetting | null> {
     try {
-      const temporaryServerData = await ApiHelper.redisClient.get('temporaryServerData');
+      const temporaryServerData = await ApiHelper.redisClient.get(EventGames.temporaryServerIdKey(game));
       const temporaryServerSetting = await TemporaryServerSettings.find(temporaryServerData);
       if (temporaryServerSetting) return temporaryServerSetting;
       throw new Error('No temporary server data found in Redis');
@@ -2123,8 +2138,11 @@ export abstract class ApiEvents implements ApiHelper {
     return OuterRealmsExport.FORMATS.find((candidate) => candidate === format) ?? null;
   }
 
-  private static async describeOuterRealmsBoard(board: OuterRealmsBoard): Promise<Record<string, unknown>> {
-    const currentSetting = await ApiEvents.getCurrentOuterRealmsSetting();
+  private static async describeOuterRealmsBoard(
+    board: OuterRealmsBoard,
+    game: EventGame,
+  ): Promise<Record<string, unknown>> {
+    const currentSetting = await ApiEvents.getCurrentOuterRealmsSetting(game);
     return {
       current_event: currentSetting?.scoringSystem ?? null,
       event_rules: currentSetting
@@ -2263,9 +2281,24 @@ export abstract class ApiEvents implements ApiHelper {
     return metricsByPlayerId;
   }
 
+  private static emptyEventList(page: number): Record<string, unknown> {
+    return {
+      events: [],
+      pagination: { current_page: page, total_pages: 0, current_items_count: 0, total_items_count: 0 },
+    };
+  }
+
+  private static emptyEventPlayers(): Record<string, unknown> {
+    return {
+      players: [],
+      pagination: { current_page: 1, total_pages: 1, current_items_count: 0, total_items_count: 0 },
+    };
+  }
+
   private static async readEventWinners(
     eventPgDbpool: pg.Pool,
     entries: { type: string; event_num: number }[],
+    game: EventGame,
   ): Promise<Map<string, EventWinner>> {
     const winners = new Map<string, EventWinner>();
     for (const tablePrefix of Object.values(EVENT_TABLE_PREFIXES)) {
@@ -2279,9 +2312,7 @@ export abstract class ApiEvents implements ApiHelper {
         [eventNumbers],
       );
       for (const row of rows) {
-        const code = row.player_id
-          ? ApiHelper.ggeTrackerManager.getOuterServer(row.server as GgeTrackerServersEnum)?.code
-          : undefined;
+        const code = row.player_id ? EventGames.serverOfSuffix(row.server, game)?.code : undefined;
         winners.set(`${tablePrefix}:${row.event_num}`, {
           player_id: code ? `${row.player_id}${code}` : null,
           player_name: row.player_name,

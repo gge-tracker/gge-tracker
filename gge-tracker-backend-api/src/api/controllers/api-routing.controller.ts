@@ -1,6 +1,5 @@
 import * as express from 'express';
 import { RedisClientType } from 'redis';
-import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { ApiGgeTrackerManager } from '../managers/api.manager';
 import { ApiAdminKeys } from '../routes/api-admin-keys';
@@ -246,8 +245,7 @@ export class ApiRoutingController {
   }
 
   public getEvents(request: express.Request, response: express.Response): void {
-    // Events are stored only on FR1 database (centralized database)
-    void ApiEvents.getEvents(request, response, this.apiGgeTrackerManager.getPgSqlPool(GgeTrackerServersEnum.FR1));
+    void ApiEvents.getEvents(request, response);
   }
 
   public getLiveOuterRealmsRanking(request: express.Request, response: express.Response): void {
@@ -267,12 +265,7 @@ export class ApiRoutingController {
   }
 
   public getEventPlayers(request: express.Request, response: express.Response): void {
-    // Events are stored only on FR1 database (centralized database)
-    void ApiEvents.getEventPlayers(
-      request,
-      response,
-      this.apiGgeTrackerManager.getPgSqlPool(GgeTrackerServersEnum.FR1),
-    );
+    void ApiEvents.getEventPlayers(request, response);
   }
 
   public getWoaEventDataByEvent(request: express.Request, response: express.Response): void {
@@ -304,12 +297,7 @@ export class ApiRoutingController {
   }
 
   public getDataEventType(request: express.Request, response: express.Response): void {
-    // Events are stored only on FR1 database (centralized database)
-    void ApiEvents.getDataEventType(
-      request,
-      response,
-      this.apiGgeTrackerManager.getPgSqlPool(GgeTrackerServersEnum.FR1),
-    );
+    void ApiEvents.getDataEventType(request, response);
   }
 
   public getOffers(request: express.Request, response: express.Response): void {
@@ -547,7 +535,7 @@ export class ApiRoutingController {
   }
 
   public getEventPodiumCard(request: express.Request, response: express.Response): void {
-    void ApiEventPodium.getCard(request, response, this.apiGgeTrackerManager.getPgSqlPool(GgeTrackerServersEnum.FR1));
+    void ApiEventPodium.getCard(request, response);
   }
 
   public getPlayersBulk(request: express.Request, response: express.Response): void {

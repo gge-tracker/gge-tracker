@@ -1,5 +1,6 @@
 import * as pg from 'pg';
 import { ApiHelper } from '../api-helper';
+import { EventGame, EventGames } from '../event-game';
 
 export interface EventCatalogEntry {
   event_num: number;
@@ -25,56 +26,31 @@ const RANKING_TABLES: Record<string, string> = {
   beyond_the_horizon: 'beyond_the_horizon_ranking',
 };
 
-const PLAYER_COUNTS_HASH_KEY = 'events:list:player-counts';
-
 /**
- * Keeps the whole event list in the process
+ * Keeps the whole event list of each game in the process
  */
-export abstract class EventsCatalogCache {
+export class EventsCatalogCache {
   private static readonly FRESHNESS_FLOOR_MS = 60 * 1000;
   private static readonly FILLING_WINDOW_MS = 24 * 60 * 60 * 1000;
+  private static readonly catalogs = new Map<EventGame, EventsCatalogCache>();
 
-  private static entries: EventCatalogEntry[] | null = null;
-  private static checkedAt = 0;
-  private static refreshing: Promise<EventCatalogEntry[] | null> | null = null;
-  private static readonly settledCounts = new Map<string, string>();
+  private entries: EventCatalogEntry[] | null = null;
+  private checkedAt = 0;
+  private refreshing: Promise<EventCatalogEntry[] | null> | null = null;
+  private readonly settledCounts = new Map<string, string>();
+  private readonly playerCountsHashKey: string;
 
-  public static async current(eventPgDbpool: pg.Pool): Promise<EventCatalogEntry[] | null> {
-    const entries = EventsCatalogCache.entries;
-    if (entries && Date.now() - EventsCatalogCache.checkedAt < EventsCatalogCache.FRESHNESS_FLOOR_MS) return entries;
-
-    const refresh = EventsCatalogCache.refresh(eventPgDbpool);
-    return entries ?? refresh;
+  private constructor(game: EventGame) {
+    this.playerCountsHashKey = `events:list:player-counts${EventGames.keySuffix(game)}`;
   }
 
-  private static refresh(eventPgDbpool: pg.Pool): Promise<EventCatalogEntry[] | null> {
-    EventsCatalogCache.refreshing ??= EventsCatalogCache.build(eventPgDbpool)
-      .catch((error) => {
-        ApiHelper.logError(error, 'EventsCatalogCache.refresh', null);
-        return EventsCatalogCache.entries;
-      })
-      .finally(() => {
-        EventsCatalogCache.refreshing = null;
-      });
-    return EventsCatalogCache.refreshing;
-  }
-
-  private static async build(eventPgDbpool: pg.Pool): Promise<EventCatalogEntry[]> {
-    const events = await EventsCatalogCache.readEvents(eventPgDbpool);
-    const playerCounts = await EventsCatalogCache.resolvePlayerCounts(eventPgDbpool, events);
-
-    const entries = events
-      .map((event) => ({
-        event_num: event.event_num,
-        player_count: playerCounts.get(EventsCatalogCache.countKey(event)) ?? '0',
-        type: event.type,
-        collect_date: new Date(event.collect_date).toISOString(),
-      }))
-      .sort(EventsCatalogCache.byCollectDateDesc);
-
-    EventsCatalogCache.entries = entries;
-    EventsCatalogCache.checkedAt = Date.now();
-    return entries;
+  public static of(game: EventGame): EventsCatalogCache {
+    let catalog = EventsCatalogCache.catalogs.get(game);
+    if (!catalog) {
+      catalog = new EventsCatalogCache(game);
+      EventsCatalogCache.catalogs.set(game, catalog);
+    }
+    return catalog;
   }
 
   private static byCollectDateDesc(left: EventCatalogEntry, right: EventCatalogEntry): number {
@@ -92,32 +68,6 @@ export abstract class EventsCatalogCache {
     return results.rows;
   }
 
-  private static async resolvePlayerCounts(eventPgDbpool: pg.Pool, events: EventRow[]): Promise<Map<string, string>> {
-    const stillFilling = EventsCatalogCache.eventsStillFilling(events);
-    const settled = events.filter((event) => !stillFilling.includes(event));
-
-    await EventsCatalogCache.readStoredCounts(
-      settled.filter((event) => !EventsCatalogCache.settledCounts.has(EventsCatalogCache.countKey(event))),
-    );
-    const uncounted = settled.filter(
-      (event) => !EventsCatalogCache.settledCounts.has(EventsCatalogCache.countKey(event)),
-    );
-
-    const counted = await EventsCatalogCache.countPlayers(eventPgDbpool, [...uncounted, ...stillFilling]);
-    uncounted.forEach((event) => {
-      const key = EventsCatalogCache.countKey(event);
-      EventsCatalogCache.settledCounts.set(key, counted.get(key) ?? '0');
-    });
-    await EventsCatalogCache.storeCounts(uncounted);
-
-    const resolved = new Map(EventsCatalogCache.settledCounts);
-    stillFilling.forEach((event) => {
-      const key = EventsCatalogCache.countKey(event);
-      resolved.set(key, counted.get(key) ?? '0');
-    });
-    return resolved;
-  }
-
   private static eventsStillFilling(events: EventRow[]): EventRow[] {
     const newest = new Map<string, EventRow>();
     events.forEach((event) => {
@@ -126,26 +76,6 @@ export abstract class EventsCatalogCache {
     });
     const openedAfter = Date.now() - EventsCatalogCache.FILLING_WINDOW_MS;
     return [...newest.values()].filter((event) => new Date(event.collect_date).getTime() > openedAfter);
-  }
-
-  private static async readStoredCounts(events: EventRow[]): Promise<void> {
-    if (events.length === 0) return;
-    const keys = events.map((event) => EventsCatalogCache.countKey(event));
-    const stored = await ApiHelper.redisClient.hmGet(PLAYER_COUNTS_HASH_KEY, keys).catch(() => [] as (string | null)[]);
-    keys.forEach((key, index) => {
-      const value = stored[index];
-      if (value !== null && value !== undefined) EventsCatalogCache.settledCounts.set(key, value);
-    });
-  }
-
-  private static async storeCounts(events: EventRow[]): Promise<void> {
-    if (events.length === 0) return;
-    const fields: Record<string, string> = {};
-    events.forEach((event) => {
-      const key = EventsCatalogCache.countKey(event);
-      fields[key] = EventsCatalogCache.settledCounts.get(key) ?? '0';
-    });
-    await ApiHelper.redisClient.hSet(PLAYER_COUNTS_HASH_KEY, fields).catch(() => 0);
   }
 
   private static async countPlayers(eventPgDbpool: pg.Pool, events: EventRow[]): Promise<Map<string, string>> {
@@ -170,5 +100,87 @@ export abstract class EventsCatalogCache {
 
   private static countKey(event: EventRow): string {
     return `${event.type}:${event.event_num}`;
+  }
+
+  public async current(eventPgDbpool: pg.Pool): Promise<EventCatalogEntry[] | null> {
+    const entries = this.entries;
+    if (entries && Date.now() - this.checkedAt < EventsCatalogCache.FRESHNESS_FLOOR_MS) return entries;
+
+    const refresh = this.refresh(eventPgDbpool);
+    return entries ?? refresh;
+  }
+
+  private refresh(eventPgDbpool: pg.Pool): Promise<EventCatalogEntry[] | null> {
+    this.refreshing ??= this.build(eventPgDbpool)
+      .catch((error) => {
+        ApiHelper.logError(error, 'EventsCatalogCache.refresh', null);
+        return this.entries;
+      })
+      .finally(() => {
+        this.refreshing = null;
+      });
+    return this.refreshing;
+  }
+
+  private async build(eventPgDbpool: pg.Pool): Promise<EventCatalogEntry[]> {
+    const events = await EventsCatalogCache.readEvents(eventPgDbpool);
+    const playerCounts = await this.resolvePlayerCounts(eventPgDbpool, events);
+
+    const entries = events
+      .map((event) => ({
+        event_num: event.event_num,
+        player_count: playerCounts.get(EventsCatalogCache.countKey(event)) ?? '0',
+        type: event.type,
+        collect_date: new Date(event.collect_date).toISOString(),
+      }))
+      .sort(EventsCatalogCache.byCollectDateDesc);
+
+    this.entries = entries;
+    this.checkedAt = Date.now();
+    return entries;
+  }
+
+  private async resolvePlayerCounts(eventPgDbpool: pg.Pool, events: EventRow[]): Promise<Map<string, string>> {
+    const stillFilling = EventsCatalogCache.eventsStillFilling(events);
+    const settled = events.filter((event) => !stillFilling.includes(event));
+
+    await this.readStoredCounts(settled.filter((event) => !this.settledCounts.has(EventsCatalogCache.countKey(event))));
+    const uncounted = settled.filter((event) => !this.settledCounts.has(EventsCatalogCache.countKey(event)));
+
+    const counted = await EventsCatalogCache.countPlayers(eventPgDbpool, [...uncounted, ...stillFilling]);
+    uncounted.forEach((event) => {
+      const key = EventsCatalogCache.countKey(event);
+      this.settledCounts.set(key, counted.get(key) ?? '0');
+    });
+    await this.storeCounts(uncounted);
+
+    const resolved = new Map(this.settledCounts);
+    stillFilling.forEach((event) => {
+      const key = EventsCatalogCache.countKey(event);
+      resolved.set(key, counted.get(key) ?? '0');
+    });
+    return resolved;
+  }
+
+  private async readStoredCounts(events: EventRow[]): Promise<void> {
+    if (events.length === 0) return;
+    const keys = events.map((event) => EventsCatalogCache.countKey(event));
+    const stored = await ApiHelper.redisClient
+      .hmGet(this.playerCountsHashKey, keys)
+      .catch(() => [] as (string | null)[]);
+    keys.forEach((key, index) => {
+      const value = stored[index];
+      if (value !== null && value !== undefined) this.settledCounts.set(key, value);
+    });
+  }
+
+  private async storeCounts(events: EventRow[]): Promise<void> {
+    if (events.length === 0) return;
+    const fields: Record<string, string> = {};
+    events.forEach((event) => {
+      const key = EventsCatalogCache.countKey(event);
+      fields[key] = this.settledCounts.get(key) ?? '0';
+    });
+    await ApiHelper.redisClient.hSet(this.playerCountsHashKey, fields).catch(() => 0);
   }
 }

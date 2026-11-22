@@ -35,6 +35,7 @@ apply_clickhouse_migrations() {  # <database>
       ch_has_column ggetracker_global store_offer_history game || ch_migration store-offer-history-game.clickhouse.sql
       ch_migration store-offer-snapshots.clickhouse.sql
       ch_migration year-chronicle.clickhouse.sql
+      ch_migration outer-realms-e4k.clickhouse.sql
       ;;
     logs)
       ch_migration api-keys-logs-partner.clickhouse.sql

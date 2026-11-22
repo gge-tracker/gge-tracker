@@ -40,6 +40,7 @@ export enum RouteErrorMessagesEnum {
   InvalidDay = 'Invalid day. Please use YYYY-MM-DD',
   InvalidDivisionId = 'Invalid division ID',
   InvalidDuration = 'Invalid duration',
+  InvalidEventGame = 'Invalid game. Supported values are ep and e4k',
   InvalidEventId = 'Invalid event ID',
   InvalidEventName = 'Invalid event name',
   InvalidEventType = 'Invalid event type',

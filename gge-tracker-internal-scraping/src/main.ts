@@ -57,7 +57,7 @@ import {
   parseAllianceEntry,
   parsePlayerEntry,
 } from './kingdoms-league';
-import { findScrapingServer, readPublicPlayerIdCodes } from './servers-file';
+import { EventServer, findScrapingServer, readE4kEventServers, readPublicPlayerIdCodes } from './servers-file';
 import { findTempServerSetting } from './temp-server-settings';
 import { scheduleDiscordPost } from './discord-schedule';
 import {
@@ -72,6 +72,13 @@ import {
   TournamentStanding,
 } from './tournament-alerts';
 import { readUniverseServerNames } from './servers-file';
+import {
+  OuterRealmsGame,
+  OuterRealmsUniverse,
+  outerRealmsGameOf,
+  outerRealmsLinkQuery,
+  outerRealmsUniverse,
+} from './outer-realms-universe';
 
 interface LootMove {
   player: number;
@@ -360,9 +367,6 @@ export class GenericFetchAndSaveBackend {
   private pgSqlPoolEnded: boolean = false;
   private readonly WEBHOOK_URL: string = process.env.WEBHOOK_URL || '';
   private readonly CURRENT_ENV: string = process.env.ENVIRONMENT || 'development';
-  // DISCORD_OR_CHANNEL_ID is the name this key had before the per-game channels; drop it once .env is renamed.
-  private readonly DISCORD_OR_CHANNEL_ID: string =
-    process.env.DISCORD_EP_OR_BTH_RESULTS_CHANNEL_ID || process.env.DISCORD_OR_CHANNEL_ID || '';
   private readonly DISCORD_OR_API_URL: string = process.env.DISCORD_OR_API_URL || '';
   private readonly SITE_URL: string = 'https://gge-tracker.com';
   private readonly EVENT_THUMBNAILS: Record<'Beyond the Horizon' | 'Outer Realms', string> = {
@@ -437,6 +441,7 @@ export class GenericFetchAndSaveBackend {
   private movementsHavePreviousOwner = true;
   private currentAlliances: AllianceDatabase[] = [];
   private readonly isE4KServer: boolean = false;
+  private e4kEventServers: Map<string, EventServer> | null = null;
   private readonly ENV_LT = {
     war_realms: 44,
     samurai: 51,
@@ -490,6 +495,14 @@ export class GenericFetchAndSaveBackend {
 
   private static isMissingAllianceError(error: any): boolean {
     return error?.code === 'ER_NO_REFERENCED_ROW_2' || error?.code == '23503';
+  }
+
+  private static e4kEventPlayerIdCodes(): Map<string, string> {
+    const codes = new Map<string, string>();
+    for (const [suffix, server] of readE4kEventServers()) {
+      if (server.code) codes.set(suffix, server.code);
+    }
+    return codes;
   }
 
   private static eventServerDatabaseName(server: string): string {
@@ -549,8 +562,11 @@ export class GenericFetchAndSaveBackend {
     process.stdout.write(bar);
   }
 
-  private static async abortOuterRealmsFetch(redisClient: ReturnType<typeof createClient>): Promise<void> {
-    await redisClient.set(`outerRealmsDataFetchError`, 'No active event found with known LT codes');
+  private static async abortOuterRealmsFetch(
+    redisClient: ReturnType<typeof createClient>,
+    universe: OuterRealmsUniverse,
+  ): Promise<void> {
+    await redisClient.set(universe.fetchErrorKey, 'No active event found with known LT codes');
     await redisClient.quit();
   }
 
@@ -1412,7 +1428,10 @@ export class GenericFetchAndSaveBackend {
     }
   }
 
-  public async startOuterRealmsDataFetch(): Promise<'collector' | 'might' | 'rankSwap' | null> {
+  public async startOuterRealmsDataFetch(
+    game: OuterRealmsGame = 'ep',
+  ): Promise<'collector' | 'might' | 'rankSwap' | null> {
+    const universe = outerRealmsUniverse(game);
     const start = new Date();
     let LT: number | null = null;
     let scoringSystemType: 'collector' | 'might' | 'rankSwap' | null = null;
@@ -1420,17 +1439,17 @@ export class GenericFetchAndSaveBackend {
     let stored = false;
     try {
       Utils.logMessage('=====================================');
-      Utils.logMessage(' Starting Outer Realms data fetch');
+      Utils.logMessage(' Starting Outer Realms data fetch for', game);
       Utils.logMessage(' Current environment:', this.CURRENT_ENV);
       Utils.logMessage('=====================================');
       const redisClient = createClient({
         url: 'redis://redis-server:6379',
       });
       await redisClient.connect();
-      const temporaryServerData = await redisClient.get(`temporaryServerData`);
+      const temporaryServerData = await redisClient.get(universe.temporaryServerIdKey);
       if (!temporaryServerData) {
         Utils.logMessage(' No temporary server setting found in Redis. Exiting temporary server LT check.');
-        await GenericFetchAndSaveBackend.abortOuterRealmsFetch(redisClient);
+        await GenericFetchAndSaveBackend.abortOuterRealmsFetch(redisClient, universe);
         throw new Error('No temporary server setting found in Redis');
       }
 
@@ -1445,21 +1464,21 @@ export class GenericFetchAndSaveBackend {
         Utils.logMessage(
           ` No active Outer Realms event found with last known LT=${LT}. Exiting temporary server LT check.`,
         );
-        await GenericFetchAndSaveBackend.abortOuterRealmsFetch(redisClient);
+        await GenericFetchAndSaveBackend.abortOuterRealmsFetch(redisClient, universe);
         throw new Error(`No active Outer Realms event found with last known LT=${LT}`);
       }
       if (!LT) {
         Utils.logMessage(' No active Outer Realms event found with any known LT code. Aborting data fetch.');
-        await GenericFetchAndSaveBackend.abortOuterRealmsFetch(redisClient);
+        await GenericFetchAndSaveBackend.abortOuterRealmsFetch(redisClient, universe);
         throw new Error('No active Outer Realms event found with known LT codes');
       }
-      await redisClient.del(`outerRealmsDataFetchError`);
+      await redisClient.del(universe.fetchErrorKey);
       await redisClient.quit();
 
       sweep = await this.collectOuterRealmsEntries(LT, initialResponse);
       Utils.logMessage(' Total unique player entries fetched:', sweep.entries.size);
       if (GenericFetchAndSaveBackend.isOuterRealmsSweepComplete(sweep)) {
-        await this.storeOuterRealmsEntries(sweep.entries);
+        await this.storeOuterRealmsEntries(sweep.entries, game);
         stored = true;
       } else {
         Utils.logWarning(
@@ -1482,6 +1501,7 @@ export class GenericFetchAndSaveBackend {
         level: this.DB_UPDATES.criticalErrors > 0 ? 'error' : 'info',
         data: {
           server: this.server,
+          game,
           criticalErrors: this.DB_UPDATES.criticalErrors,
           playersCreated: this.DB_UPDATES.playersCreated,
           playersCollected: sweep?.entries.size ?? 0,
@@ -1521,12 +1541,14 @@ export class GenericFetchAndSaveBackend {
     }[],
     playerIdCodes: Map<string, string> = new Map(),
   ): DiscordApiMessageBody {
-    if (!this.DISCORD_OR_CHANNEL_ID) {
+    const channelId = outerRealmsUniverse(this.eventGame).resultsChannelId();
+    if (!channelId) {
       console.error('Missing Discord Channel ID environment variable');
       throw new Error('Missing Discord Channel ID environment variable');
     }
     const eventSlug = eventType.toLowerCase().replace(/\s/g, '-');
-    const eventUrl = `${this.SITE_URL}/events/${eventSlug}/${eventNum}`;
+    const linkQuery = outerRealmsLinkQuery(this.eventGame);
+    const eventUrl = `${this.SITE_URL}/events/${eventSlug}/${eventNum}${linkQuery}`;
     const ranking = players
       .slice(0, 10)
       .map(
@@ -1535,7 +1557,7 @@ export class GenericFetchAndSaveBackend {
       )
       .join('\n');
     return {
-      channelId: this.DISCORD_OR_CHANNEL_ID,
+      channelId,
       embeds: [
         {
           title: `${eventType} Leaderboard Update`,
@@ -1553,7 +1575,7 @@ export class GenericFetchAndSaveBackend {
             url: this.EVENT_THUMBNAILS[eventType],
           },
           image: {
-            url: `${this.GGE_TRACKER_API_URL}/assets/og/event/${eventSlug}/${eventNum}.jpg`,
+            url: `${this.GGE_TRACKER_API_URL}/assets/og/event/${eventSlug}/${eventNum}.jpg${linkQuery}`,
           },
           footer: {
             text: 'gge-tracker.com - ' + playersAdded + ' players',
@@ -2764,7 +2786,10 @@ export class GenericFetchAndSaveBackend {
     return { response, exhausted: false };
   }
 
-  private async storeOuterRealmsEntries(playerEntries: Map<number, OuterRealmsEntry>): Promise<void> {
+  private async storeOuterRealmsEntries(
+    playerEntries: Map<number, OuterRealmsEntry>,
+    game: OuterRealmsGame,
+  ): Promise<void> {
     try {
       const playerArray = Array.from(playerEntries.values());
       this.DB_UPDATES.playersCreated = playerArray.length;
@@ -2784,10 +2809,10 @@ export class GenericFetchAndSaveBackend {
         fetch_date: fetchDateStr,
       }));
 
-      await this.insertRowsClickHouse('outer_realms_ranking', rows);
+      await this.insertRowsClickHouse(outerRealmsUniverse(game).liveRankingTable, rows);
       Utils.logMessage('Outer Realms data fetch and database update completed successfully');
 
-      await this.insertRowsClickHouse('latest_fetch_date', [{ fetch_date: fetchDateStr }]);
+      if (game === 'ep') await this.insertRowsClickHouse('latest_fetch_date', [{ fetch_date: fetchDateStr }]);
     } catch (error) {
       Utils.logCritical('', error, 'Error executing query:');
       this.DB_UPDATES.criticalErrors++;
@@ -6070,6 +6095,7 @@ export class GenericFetchAndSaveBackend {
           job: 'event-history-scraper-' + eventName.toLowerCase().replace(/\s/g, '-'),
           level: 'info',
           data: {
+            game: this.eventGame,
             playersAdded: entries.length,
             invalidPlayerIds: invalidPlayerIdCount,
             eventNum: eventNum,
@@ -6191,7 +6217,8 @@ export class GenericFetchAndSaveBackend {
     let tempPool: pg.Pool | null = null;
     try {
       if (!dbConn) {
-        const dbName = GenericFetchAndSaveBackend.eventServerDatabaseName(server);
+        const dbName = this.eventDatabaseName(server);
+        if (!dbName) return;
         const exists = await this.pgSqlQuery('SELECT 1 FROM pg_database WHERE datname=$1', [dbName]);
         if (!exists.rowCount) return;
         tempPool = new pg.Pool({
@@ -6305,8 +6332,19 @@ export class GenericFetchAndSaveBackend {
     return `[${name}](${this.SITE_URL}/player/${player.realPlayerId}${code})`;
   }
 
+  private get eventGame(): OuterRealmsGame {
+    return outerRealmsGameOf(this.server);
+  }
+
+  private eventDatabaseName(server: string): string | null {
+    if (this.eventGame === 'ep') return GenericFetchAndSaveBackend.eventServerDatabaseName(server);
+    this.e4kEventServers ??= readE4kEventServers();
+    return this.e4kEventServers.get(server.toUpperCase())?.database || null;
+  }
+
   private readPlayerIdCodes(): Map<string, string> {
     try {
+      if (this.eventGame === 'e4k') return GenericFetchAndSaveBackend.e4kEventPlayerIdCodes();
       return readPublicPlayerIdCodes();
     } catch (error) {
       Utils.logMessage(' [WARN] Servers file unreadable, the Discord ranking will carry no player links:', error);

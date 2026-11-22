@@ -8,11 +8,14 @@
 //  Copyrights (c) 2026 - gge-tracker.com & gge-tracker contributors
 //
 import { strict as assert } from 'node:assert';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, it } from 'node:test';
 
 import { ranking } from '../harness/fixtures';
 import { RankingFixture, RankingRow } from '../harness/fixture-types';
-import { Sandbox, withSandbox } from '../harness/sandbox';
+import { Sandbox, SandboxOptions, withSandbox } from '../harness/sandbox';
 import { flushDiscordPosts } from '../../src/discord-schedule';
 
 const OUTER_REALMS_LT = 76;
@@ -259,6 +262,120 @@ describe('executeCustomEventHistory', () => {
       const result = await run(sandbox);
       assert.equal(result, -1);
       assert.deepEqual(sandbox.api.requests, []);
+    });
+  });
+});
+
+type EventPlayer = Parameters<Sandbox['backend']['getDiscordApiMessageBody']>[3][number];
+
+const E4K_SERVERS_FILE = join(mkdtempSync(join(tmpdir(), 'e4k-events-')), 'servers.xml');
+const E4K_RESULTS_CHANNEL = '300000001';
+
+function e4kServersFile(): string {
+  const server = (name: string, kind: string, outerName: string, code: string, sql: string, open = true): string => `
+    <server><name>${name}</name><kind>${kind}</kind>
+      <api><beta><enabled>true</enabled></beta><public><enabled>${open}</enabled></public></api>
+      <outer-name>${outerName}</outer-name><code>${code}</code><databases><sql>${sql}</sql></databases>
+    </server>`;
+  writeFileSync(
+    E4K_SERVERS_FILE,
+    `<root><servers>
+      ${server('WORLD1', 'ep', 'WLD1', '060', 'empire-ranking-world1')}
+      ${server('HANT1', 'ep', 'HANT', '025', 'empire-ranking-hant1')}
+      ${server('DE1', 'ep', 'DE1', '010', 'empire-ranking-de1')}
+      ${server('E4K_WORLD1', 'e4k', 'E4K_WORLD1', '606', 'ggetracker-e4k-world1')}
+      ${server('E4K_HANT1', 'e4k', 'E4K_HANT1', '462', 'ggetracker-e4k-hant1')}
+      ${server('E4K_DE1', 'e4k', 'E4K_DE1', '121', 'ggetracker-e4k-de1', false)}
+      ${server('E4K_KR1', 'e4k', 'E4K_KR1', '612', 'ggetracker-e4k-kr1')}
+    </servers></root>`,
+  );
+  return E4K_SERVERS_FILE;
+}
+
+function e4kSandbox(env: Record<string, string | undefined> = {}): SandboxOptions {
+  return {
+    server: 'E4KFR1',
+    env: { SERVERS_FILE: e4kServersFile(), DISCORD_E4K_OR_BTH_RESULTS_CHANNEL_ID: E4K_RESULTS_CHANNEL, ...env },
+  };
+}
+
+describe('executeCustomEventHistory on E4K', () => {
+  it('reads each suffix through the EP server of that name, and the home suffix from its own database', async () => {
+    await withSandbox(e4kSandbox(), async (sandbox) => {
+      sandbox.api.serveRanking(crossServer(['WLD1', 'HANT', 'DE1', 'KR1', 'FR1']));
+      sandbox.db.when(/FROM pg_database WHERE datname/, { rows: [{ '?column?': 1 }], rowCount: 1 });
+      await run(sandbox);
+      const probed = sandbox.db
+        .matching(/FROM pg_database WHERE datname/)
+        .map((query) => query.params[0])
+        .sort();
+      assert.deepEqual(probed, [
+        'ggetracker-e4k-de1',
+        'ggetracker-e4k-hant1',
+        'ggetracker-e4k-kr1',
+        'ggetracker-e4k-world1',
+      ]);
+      assert.ok(
+        !probed.some((database: string) => database.startsWith('empire-ranking')),
+        'an E4K ranking never reads an EP database',
+      );
+    });
+  });
+
+  it('skips a suffix no E4K server carries instead of guessing a database', async () => {
+    await withSandbox(e4kSandbox(), async (sandbox) => {
+      sandbox.api.serveRanking(crossServer(['XX9']));
+      await run(sandbox);
+      assert.deepEqual(sandbox.db.matching(/FROM pg_database WHERE datname/), []);
+      const insert = sandbox.db.matching(/INSERT INTO outer_realms_event_history/)[0];
+      assert.equal(insert.params[1], undefined, 'the player is still stored, with no resolved id');
+    });
+  });
+
+  it('posts to the E4K results channel, with links that open the E4K event', async () => {
+    await withSandbox(e4kSandbox(), async (sandbox) => {
+      sandbox.api.serveRanking(crossServer(['FR1']));
+      await run(sandbox);
+      await flushDiscordPosts();
+      const body = sandbox.outbound.find((call) => call.url.includes('discord'))!.body as any;
+      assert.equal(body.channelId, E4K_RESULTS_CHANNEL);
+      assert.equal(body.embeds[0].url, 'https://gge-tracker.com/events/outer-realms/1?game=e4k');
+      assert.match(body.embeds[0].image.url, /\/assets\/og\/event\/outer-realms\/1\.jpg\?game=e4k$/);
+    });
+  });
+
+  it('never falls back to the EP channel when the E4K one is not set', async () => {
+    await withSandbox(e4kSandbox({ DISCORD_E4K_OR_BTH_RESULTS_CHANNEL_ID: undefined }), async (sandbox) => {
+      assert.throws(
+        () => sandbox.backend.getDiscordApiMessageBody('Outer Realms', 1, 1, []),
+        /Missing Discord Channel ID/,
+      );
+    });
+  });
+
+  it('links a player to the E4K server of their suffix, and only when that server is public', async () => {
+    await withSandbox(e4kSandbox(), async (sandbox) => {
+      const player = (server: string, realPlayerId: number): EventPlayer => ({
+        server,
+        level: 70,
+        legendaryLevel: 0,
+        point: 1,
+        rank: 1,
+        realPlayerId,
+        playerName: `P${realPlayerId}`,
+        allianceName: '',
+      });
+      const codes = (sandbox.backend as any).readPlayerIdCodes();
+      const body = sandbox.backend.getDiscordApiMessageBody(
+        'Outer Realms',
+        2,
+        1,
+        [player('WLD1', 11), player('DE1', 12)],
+        codes,
+      );
+      const description = body.embeds[0].description ?? '';
+      assert.ok(description.includes('/player/11606)'), 'WLD1 is E4K_WORLD1, code 606');
+      assert.ok(!description.includes('/player/12'), 'E4K_DE1 is not public, so it gets no link');
     });
   });
 });

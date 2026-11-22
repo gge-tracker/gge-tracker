@@ -75,6 +75,18 @@ export const options = {
         },
       },
       parameters: {
+        EventGame: {
+          name: 'game',
+          in: 'query',
+          description:
+            'Which game the event belongs to. Goodgame Empire and Empire: Four Kingdoms run separate events, numbered separately',
+          required: false,
+          schema: {
+            type: 'string',
+            enum: ['ep', 'e4k'],
+            default: 'ep',
+          },
+        },
         GgeServerHeader: {
           name: 'gge-server',
           in: 'header',

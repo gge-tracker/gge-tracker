@@ -3,7 +3,7 @@ import * as pg from 'pg';
 import { GgeTrackerServersEnum } from '../enums/gge-tracker-servers.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { LootReset, formatLootResetTime, lootResetOffsetHours } from '../helper/loot-reset';
-import { IApiToken, ILimitedApiToken, IServerDefinition, ServerFeature } from '../interfaces/interfaces';
+import { IApiToken, ILimitedApiToken, IServerDefinition, ServerFeature, ServerKind } from '../interfaces/interfaces';
 import { DatabaseManager } from './database.manager';
 import { ServersCatalog } from './servers-catalog';
 
@@ -399,6 +399,18 @@ export class ApiGgeTrackerManager extends DatabaseManager {
    */
   public getServerDefinition(serverName: string): IServerDefinition | null {
     return this.catalog.getDefinition(serverName);
+  }
+
+  public getServerNameByOuterName(outerName: string, kind: ServerKind = 'ep'): string | null {
+    const definition = this.catalog
+      .getDefinitions()
+      .find((candidate) => candidate.kind === kind && candidate.outerName === outerName);
+    return definition?.name ?? null;
+  }
+
+  public getServerCodeByName(serverName: string): string | null {
+    const server = this.servers[serverName];
+    return server && 'code' in server ? server.code : null;
   }
 
   /**
