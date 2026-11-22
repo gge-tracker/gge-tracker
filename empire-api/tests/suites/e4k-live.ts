@@ -43,10 +43,12 @@ function startFakeEventServer(loginStatus: number): Promise<FakeEventServer> {
         if (command === 'roundTrip') send(`<msg t='sys'><body action='roundTripRes' r='1'></body></msg>`);
         if (command === 'tlep') {
           tokens.push(JSON.parse(frame.split('%')[5]).TLT);
-          json('lre', loginStatus, {});
           if (loginStatus === 0) {
+            json('qst', 0, {});
             json('gbd', 0, { sei: { E: [{ EID: 7 }] } });
             json('gbd', 0, { sei: { E: [{ EID: 106, TSID: 21, RSID: 11 }] } });
+          } else {
+            json('gbd', loginStatus, {});
           }
         }
       }
@@ -84,7 +86,7 @@ async function logsInWithTheEventToken(section: Section): Promise<void> {
   try {
     void socket.connect();
     const connected = await waitFor(() => isConnected(asEmpire), config.connectTimeoutMs);
-    section.expect('the event socket reaches CONNECTED once lre answers 0', {
+    section.expect('the event socket reaches CONNECTED once gbd answers, with no lre at all', {
       ok: connected && stateOf(asEmpire) === SocketState.CONNECTED,
       detail: `state=${stateOf(asEmpire)}`,
     });

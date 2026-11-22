@@ -2,7 +2,7 @@ import { GgeEmpire4KingdomsTcp } from './empire4kingdoms-tcp.js';
 import { findTemporaryServerId, saveTemporaryServerId } from './temporary-server-id.js';
 
 class GgeE4kLiveTemporaryServerTcp extends GgeEmpire4KingdomsTcp {
-  private static readonly LOGIN_ANSWER = 'lre';
+  private static readonly LOGIN_ANSWER = 'gbd';
 
   protected storeTemporaryServerId = saveTemporaryServerId;
 
