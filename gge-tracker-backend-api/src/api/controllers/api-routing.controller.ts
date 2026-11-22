@@ -3,6 +3,7 @@ import { RedisClientType } from 'redis';
 import { ApiHelper } from '../helper/api-helper';
 import { ApiGgeTrackerManager } from '../managers/api.manager';
 import { ApiAdminKeys } from '../routes/api-admin-keys';
+import { ApiAdminLimits } from '../routes/api-admin-limits';
 import { ApiAllianceTournaments } from '../routes/api-alliance-tournaments';
 import { ApiAlliances } from '../routes/api-alliances';
 import { ApiAssets } from '../routes/api-assets';
@@ -122,6 +123,10 @@ export class ApiRoutingController {
 
   public listApiKeys(request: express.Request, response: express.Response): void {
     void ApiAdminKeys.listKeys(request, response);
+  }
+
+  public getApiKeyLimits(request: express.Request, response: express.Response): void {
+    ApiAdminLimits.getLimits(request, response);
   }
 
   public createApiKey(request: express.Request, response: express.Response): void {

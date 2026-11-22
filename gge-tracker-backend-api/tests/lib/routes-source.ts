@@ -32,6 +32,7 @@ export const UNDOCUMENTED_BY_DESIGN = new Set([
   'GET /docs',
   'PUT /assets/update/:token',
   'GET /admin/api-keys',
+  'GET /admin/api-keys/limits',
   'POST /admin/api-keys',
   'PATCH /admin/api-keys/:keyId',
   'POST /admin/api-keys/:keyId/revoke',

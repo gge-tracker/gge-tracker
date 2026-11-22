@@ -1334,6 +1334,7 @@ export const CATALOG: Endpoint[] = [
     ],
   },
   { id: 'admin-keys-list', snapshot: 'none', method: 'GET', scope: 'public', token: true, path: () => '/admin/api-keys', okStatuses: [401, 404] },
+  { id: 'admin-keys-limits', snapshot: 'none', method: 'GET', scope: 'public', token: true, path: () => '/admin/api-keys/limits', okStatuses: [401, 404] },
   { id: 'admin-keys-create', snapshot: 'none', method: 'POST', scope: 'public', token: true, path: () => '/admin/api-keys', body: () => ({ partner: 'harness' }), okStatuses: [401, 404] },
   { id: 'admin-keys-update', snapshot: 'none', method: 'PATCH', scope: 'public', token: true, path: () => '/admin/api-keys/1', body: () => ({ note: 'harness' }), okStatuses: [401, 404] },
   { id: 'admin-keys-revoke', snapshot: 'none', method: 'POST', scope: 'public', token: true, path: () => '/admin/api-keys/1/revoke', okStatuses: [401, 404] },

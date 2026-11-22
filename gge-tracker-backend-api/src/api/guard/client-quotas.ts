@@ -80,11 +80,9 @@ export class ClientQuotas {
       },
     };
 
-  private readonly anonymousDaily = this.quota(
-    'anonymous-daily',
-    positiveInteger(process.env.ANONYMOUS_DAILY_REQUESTS, 25_000),
-    DAY_SECONDS,
-  );
+  public static readonly ANONYMOUS_DAILY_REQUESTS = positiveInteger(process.env.ANONYMOUS_DAILY_REQUESTS, 25_000);
+
+  private readonly anonymousDaily = this.quota('anonymous-daily', ClientQuotas.ANONYMOUS_DAILY_REQUESTS, DAY_SECONDS);
   private readonly quotas = new Map<string, Quota>();
   private readonly lastRefusalLog = new Map<string, number>();
 

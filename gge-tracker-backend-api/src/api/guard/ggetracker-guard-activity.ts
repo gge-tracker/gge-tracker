@@ -535,6 +535,7 @@ export class GgeTrackerApiGuardActivity extends GgeTrackerApiGuardActivityDefaul
       return 'refused';
     }
     response.locals.partner = lookup.partner;
+    response.locals.apiKey = lookup;
     return lookup;
   }
 

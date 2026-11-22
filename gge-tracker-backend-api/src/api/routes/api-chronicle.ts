@@ -1,6 +1,7 @@
 import * as express from 'express';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { CHRONICLE_RENDER_BUDGET } from '../guard/render-budget';
 import { ApiHelper } from '../helper/api-helper';
 import { HttpCache } from '../helper/http-cache';
 import { SeoHead } from '../helper/seo-head';
@@ -79,7 +80,10 @@ function shortDate(seconds: number, locale: string): string {
 export abstract class ApiChronicle implements ApiHelper {
   private static readonly CACHE_SECONDS = 3600;
   private static readonly HEAD_MAX_AGE_SECONDS = 900;
+  private static readonly MISSING_CACHE_SECONDS = 300;
   private static readonly CARD_MAX_AGE_SECONDS = 3600;
+  // The key carries builtAt and the copy version, so a rebuild never serves an old card
+  private static readonly CARD_TTL_SECONDS = 7 * 24 * 3600;
 
   private static cardAssets: ChronicleCardAssets | null = null;
 
@@ -123,7 +127,10 @@ export abstract class ApiChronicle implements ApiHelper {
       }
       const size = isStory ? CHRONICLE_STORY_CARD : CHRONICLE_LINK_CARD;
       const html = ChronicleCard.html(this.cardData(answer, copy), size, this.assets(), copy);
-      await ApiSeo.sendCachedCard(request, response, key, () => ShareCardRenderer.renderHtml(key, html, size));
+      await ApiSeo.sendCachedCard(request, response, key, () => ShareCardRenderer.renderHtml(key, html, size), {
+        budget: CHRONICLE_RENDER_BUDGET,
+        ttlSeconds: this.CARD_TTL_SECONDS,
+      });
     } catch (error) {
       this.answerFailure(error, 'getChronicleCard', request, response);
     }
@@ -188,13 +195,13 @@ export abstract class ApiChronicle implements ApiHelper {
   private static async read(subject: ChronicleSubject): Promise<ChronicleAnswer | null> {
     const key = `chronicle:${subject.year}:${subject.context.server}:${subject.context.localId}`;
     const cached = await ApiHelper.redisClient.get(key).catch((): null => null);
-    if (cached) return JSON.parse(cached) as ChronicleAnswer;
+    if (cached) return JSON.parse(cached) as ChronicleAnswer | null;
 
     const answer = await this.readStored(subject).catch((error: unknown) => {
       if (UNKNOWN_TABLE.test(String(error))) return null;
       throw error;
     });
-    if (answer) void ApiHelper.updateCache(key, answer, this.CACHE_SECONDS);
+    void ApiHelper.updateCache(key, answer, answer ? this.CACHE_SECONDS : this.MISSING_CACHE_SECONDS);
     return answer;
   }
 

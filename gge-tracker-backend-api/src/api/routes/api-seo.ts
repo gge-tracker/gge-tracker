@@ -1,12 +1,11 @@
 import * as express from 'express';
 import * as crypto from 'node:crypto';
-import { RateLimiterRedis, RateLimiterRes } from 'rate-limiter-flexible';
 import { commandOptions } from 'redis';
 import { ApiHelper } from '../helper/api-helper';
-import { ClientIp } from '../helper/client-ip';
 import { HttpCache } from '../helper/http-cache';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { RenderBusyError } from '../managers/puperteer.manager';
+import { RenderBudget, SHARE_CARD_RENDER_BUDGET } from '../guard/render-budget';
 import { ApiProfiles, ProfileContext } from './api-profiles';
 import { SearchCrawler } from '../helper/search-crawler';
 import { SeoHead } from '../helper/seo-head';
@@ -30,6 +29,11 @@ interface SharePreview {
   dataVersion: string | null;
 }
 
+export interface CachedCardOptions {
+  budget?: RenderBudget;
+  ttlSeconds?: number;
+}
+
 interface MightTrend {
   delta: number;
   days: number;
@@ -41,12 +45,9 @@ export abstract class ApiSeo implements ApiHelper {
 
   private static readonly PREVIEW_TTL_SECONDS = 3600;
   private static readonly CARD_TTL_SECONDS = 24 * 3600;
-  private static readonly RENDERS_PER_MINUTE = Number(process.env.SEO_RENDERS_PER_MINUTE) || 60;
   private static readonly GENERIC_TITLE = 'GGE Tracker - Advanced Stats for Goodgame Empire';
   private static readonly GENERIC_DESCRIPTION =
     'Community analytics tool for Goodgame Empire. Visualize your castles, explore interactive maps, track alliances, dungeons, and analyze event statistics.';
-
-  private static renderLimiter: RateLimiterRedis | null = null;
 
   public static async getPlayerHead(request: express.Request, response: express.Response): Promise<void> {
     await this.sendHead(request, response, 'player', request.params.playerId);
@@ -69,8 +70,9 @@ export abstract class ApiSeo implements ApiHelper {
     response: express.Response,
     key: string,
     render: () => Promise<Buffer>,
+    options: CachedCardOptions = {},
   ): Promise<void> {
-    const image = await this.cachedCard(request, key, render).catch((error: unknown) => {
+    const image = await this.cachedCard(request, response, key, render, options).catch((error: unknown) => {
       if (error instanceof RenderBusyError) return 'busy' as const;
       throw error;
     });
@@ -159,35 +161,20 @@ export abstract class ApiSeo implements ApiHelper {
   /** Null when the image must be rendered and the caller spent its render budget; search crawlers never start one */
   private static async cachedCard(
     request: express.Request,
+    response: express.Response,
     key: string,
     render: () => Promise<Buffer>,
+    options: CachedCardOptions,
   ): Promise<Buffer | 'search-crawler' | null> {
     const cached = await ApiHelper.redisClient
       .get(commandOptions({ returnBuffers: true }), key)
       .catch((): null => null);
     if (cached) return cached;
     if (SearchCrawler.matches(request) && key !== this.genericCardKey()) return 'search-crawler';
-    if (!(await this.withinRenderBudget(request))) return null;
+    if (!(await (options.budget ?? SHARE_CARD_RENDER_BUDGET).allows(request, response))) return null;
     const image = await render();
-    void ApiHelper.redisClient.setEx(key, this.CARD_TTL_SECONDS, image).catch((): null => null);
+    void ApiHelper.redisClient.setEx(key, options.ttlSeconds ?? this.CARD_TTL_SECONDS, image).catch((): null => null);
     return image;
-  }
-
-  private static async withinRenderBudget(request: express.Request): Promise<boolean> {
-    this.renderLimiter ??= new RateLimiterRedis({
-      storeClient: ApiHelper.redisClient,
-      useRedisPackage: true,
-      keyPrefix: 'seo-render',
-      points: this.RENDERS_PER_MINUTE,
-      duration: 60,
-    });
-    try {
-      await this.renderLimiter.consume(ClientIp.resolve(request));
-      return true;
-    } catch (error) {
-      if (error instanceof RateLimiterRes) return false;
-      throw error;
-    }
   }
 
   private static genericCardKey(): string {

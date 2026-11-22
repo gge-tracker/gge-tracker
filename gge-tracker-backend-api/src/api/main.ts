@@ -35,8 +35,8 @@ import { createClient } from 'redis';
 import { ApiRoutingController } from './controllers/api-routing.controller';
 import { GgeTrackerApiGuardActivity } from './guard/ggetracker-guard-activity';
 import { AdminGuard } from './guard/admin-guard';
+import { BYPASSED_ROUTES } from './guard/bypassed-routes';
 import { ApiGgeTrackerManager } from './managers/api.manager';
-import { RoutesManager } from './managers/routes.manager';
 import { errorCodeMiddleware } from './helper/error-codes';
 import { HttpCache } from './helper/http-cache';
 import { ApiHelper } from './helper/api-helper';
@@ -123,12 +123,7 @@ const rateLimiter = new RateLimiterRedis({
     duration: 60,
   }),
 });
-const bypassRules = [
-  RoutesManager.fromExact('/api/v1', true),
-  RoutesManager.fromPrefix('/api/v1/assets', true),
-  RoutesManager.fromPrefix('/api/v1/languages', true),
-  RoutesManager.fromRegExp(String.raw`^/api/v2/view/\d+`, true),
-];
+const bypassRules = BYPASSED_ROUTES.map((route) => route.rule);
 
 const managerInstance = new ApiGgeTrackerManager();
 
@@ -167,6 +162,7 @@ publicRoutes.get('/docs', routingInstance.getDocumentation.bind(routingInstance)
 publicRoutes.put('/assets/update/:token', routingInstance.updateAssets.bind(routingInstance));
 
 publicRoutes.get('/admin/api-keys', AdminGuard.require, routingInstance.listApiKeys.bind(routingInstance));
+publicRoutes.get('/admin/api-keys/limits', AdminGuard.require, routingInstance.getApiKeyLimits.bind(routingInstance));
 publicRoutes.post('/admin/api-keys', AdminGuard.require, routingInstance.createApiKey.bind(routingInstance));
 publicRoutes.patch('/admin/api-keys/:keyId', AdminGuard.require, routingInstance.updateApiKey.bind(routingInstance));
 publicRoutes.post(

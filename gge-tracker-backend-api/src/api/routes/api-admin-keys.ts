@@ -4,6 +4,7 @@ import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { ApiHelper } from '../helper/api-helper';
 import { ClientQuotas } from '../guard/client-quotas';
 import { ApiKeyRegistry } from '../services/api-key-registry';
+import { CHRONICLE_RENDER_BUDGET } from '../guard/render-budget';
 
 interface KeyChanges {
   partner?: string;
@@ -12,15 +13,18 @@ interface KeyChanges {
   note?: string | null;
   game_commands_per_minute?: number | null;
   game_commands_per_day?: number | null;
+  chronicle_renders_per_minute?: number | null;
 }
 
 const UNDEFINED_TABLE = '42P01';
 const UNDEFINED_COLUMN = '42703';
-const DEFAULT_POINTS = 300;
-const DEFAULT_WINDOW_SECONDS = 5;
+export const DEFAULT_POINTS = 300;
+export const DEFAULT_WINDOW_SECONDS = 5;
 const KEY_COLUMNS = `id, partner, key_prefix, rate_limit_points, rate_limit_window_seconds,
-  game_commands_per_minute, game_commands_per_day, note, created_at, updated_at, revoked_at`;
-const GAME_COMMAND_MAXIMUMS = { game_commands_per_minute: 10_000, game_commands_per_day: 1_000_000 } as const;
+  game_commands_per_minute, game_commands_per_day, chronicle_renders_per_minute, note, created_at, updated_at, revoked_at`;
+export const RATE_LIMIT_MAXIMUMS = { rate_limit_points: 100_000, rate_limit_window_seconds: 3600 } as const;
+export const GAME_COMMAND_MAXIMUMS = { game_commands_per_minute: 10_000, game_commands_per_day: 1_000_000 } as const;
+export const CHRONICLE_RENDERS_MAXIMUM = 10_000;
 
 class InvalidChangeError extends Error {
   constructor(message: string) {
@@ -44,8 +48,8 @@ export abstract class ApiAdminKeys implements ApiHelper {
       const result = await pool.query(
         `INSERT INTO ${ApiKeyRegistry.TABLE}
             (partner, key_hash, key_prefix, rate_limit_points, rate_limit_window_seconds,
-             game_commands_per_minute, game_commands_per_day, note)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+             game_commands_per_minute, game_commands_per_day, chronicle_renders_per_minute, note)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
           RETURNING ${KEY_COLUMNS}`,
         [
           changes.partner,
@@ -55,6 +59,7 @@ export abstract class ApiAdminKeys implements ApiHelper {
           changes.rate_limit_window_seconds ?? DEFAULT_WINDOW_SECONDS,
           changes.game_commands_per_minute ?? null,
           changes.game_commands_per_day ?? null,
+          changes.chronicle_renders_per_minute ?? null,
           changes.note ?? null,
         ],
       );
@@ -114,9 +119,10 @@ export abstract class ApiAdminKeys implements ApiHelper {
         return;
       }
       if ((error as { code?: string }).code === UNDEFINED_COLUMN) {
-        response
-          .status(ApiHelper.HTTP_SERVICE_UNAVAILABLE)
-          .send({ error: RouteErrorMessagesEnum.ApiKeyGameCommandsMissing });
+        const missing = String((error as Error).message).includes('chronicle_renders_per_minute')
+          ? RouteErrorMessagesEnum.ApiKeyChronicleRendersMissing
+          : RouteErrorMessagesEnum.ApiKeyGameCommandsMissing;
+        response.status(ApiHelper.HTTP_SERVICE_UNAVAILABLE).send({ error: missing });
         return;
       }
       if ((error as { code?: string }).code === UNDEFINED_TABLE) {
@@ -156,10 +162,10 @@ export abstract class ApiAdminKeys implements ApiHelper {
       }
       changes.partner = partner;
     }
-    for (const [field, maximum] of [
-      ['rate_limit_points', 100_000],
-      ['rate_limit_window_seconds', 3600],
-    ] as const) {
+    for (const [field, maximum] of Object.entries(RATE_LIMIT_MAXIMUMS) as [
+      keyof typeof RATE_LIMIT_MAXIMUMS,
+      number,
+    ][]) {
       if (input[field] === undefined) continue;
       const value = input[field];
       if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 1 || value > maximum) {
@@ -173,6 +179,9 @@ export abstract class ApiAdminKeys implements ApiHelper {
     ][]) {
       if (input[field] === undefined) continue;
       changes[field] = this.readGameCommandLimit(input[field], maximum);
+    }
+    if (input.chronicle_renders_per_minute !== undefined) {
+      changes.chronicle_renders_per_minute = this.readChronicleRenderLimit(input.chronicle_renders_per_minute);
     }
     if (input.note !== undefined) {
       const note = input.note;
@@ -190,6 +199,22 @@ export abstract class ApiAdminKeys implements ApiHelper {
       throw new InvalidChangeError(RouteErrorMessagesEnum.InvalidApiKeyGameCommands);
     }
     return value;
+  }
+
+  private static readChronicleRenderLimit(value: unknown): number | null {
+    if (value === null) return null;
+    if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 1 || value > CHRONICLE_RENDERS_MAXIMUM) {
+      throw new InvalidChangeError(RouteErrorMessagesEnum.InvalidApiKeyChronicleRenders);
+    }
+    return value;
+  }
+
+  private static chronicleRenders(row: Record<string, any>): Record<string, any> {
+    const override = row.chronicle_renders_per_minute === null ? null : Number(row.chronicle_renders_per_minute);
+    return {
+      per_minute: CHRONICLE_RENDER_BUDGET.partnerPerMinute(override),
+      custom: override !== null,
+    };
   }
 
   private static gameCommands(row: Record<string, any>): Record<string, any> {
@@ -216,6 +241,7 @@ export abstract class ApiAdminKeys implements ApiHelper {
       key_prefix: row.key_prefix,
       rate_limit: { points: Number(row.rate_limit_points), window_seconds: Number(row.rate_limit_window_seconds) },
       game_commands: this.gameCommands(row),
+      chronicle_renders: this.chronicleRenders(row),
       note: row.note,
       created_at: new Date(row.created_at).toISOString(),
       updated_at: new Date(row.updated_at).toISOString(),

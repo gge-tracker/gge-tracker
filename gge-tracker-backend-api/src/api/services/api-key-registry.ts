@@ -8,19 +8,19 @@ export interface ApiKey {
   points: number;
   windowSeconds: number;
   gameCommands: GameCommandOverride;
+  chronicleRendersPerMinute: number | null;
 }
 
 export type ApiKeyLookup = ApiKey | 'invalid' | 'unverified';
 
 const KEY_FORMAT = /^ggt_[\w-]{43}$/;
 const UNDEFINED_TABLE = '42P01';
-const UNDEFINED_COLUMN = '42703';
 
 export abstract class ApiKeyRegistry {
   public static readonly HEADER = 'x-api-key';
   public static readonly TABLE = 'api_keys';
 
-  private static readonly CACHE_TTL_MS = Number(process.env.API_KEY_CACHE_TTL_MS) || 60_000;
+  public static readonly CACHE_TTL_MS = Number(process.env.API_KEY_CACHE_TTL_MS) || 60_000;
   private static readonly CACHE_MAX_ENTRIES = 10_000;
   private static readonly cache = new Map<string, { key: ApiKey | null; expiresAt: number }>();
   private static readonly misses = new Map<string, number>();
@@ -63,12 +63,8 @@ export abstract class ApiKeyRegistry {
 
   private static async lookup(pool: pg.Pool, hash: string): Promise<ApiKey | null> {
     try {
-      const row = await this.selectKey(pool, hash, 'game_commands_per_minute, game_commands_per_day').catch(
-        (error: { code?: string }) => {
-          if (error.code !== UNDEFINED_COLUMN) throw error;
-          return this.selectKey(pool, hash, 'NULL AS game_commands_per_minute, NULL AS game_commands_per_day');
-        },
-      );
+      const result = await pool.query(`SELECT * FROM ${this.TABLE} WHERE key_hash = $1 AND revoked_at IS NULL`, [hash]);
+      const row = result.rows[0];
       if (!row) return null;
       return {
         id: Number(row.id),
@@ -79,20 +75,12 @@ export abstract class ApiKeyRegistry {
           perMinute: this.optionalInteger(row.game_commands_per_minute),
           perDay: this.optionalInteger(row.game_commands_per_day),
         },
+        chronicleRendersPerMinute: this.optionalInteger(row.chronicle_renders_per_minute),
       };
     } catch (error) {
       if ((error as { code?: string }).code === UNDEFINED_TABLE) return null;
       throw error;
     }
-  }
-
-  private static async selectKey(pool: pg.Pool, hash: string, gameCommandColumns: string): Promise<any> {
-    const result = await pool.query(
-      `SELECT id, partner, rate_limit_points, rate_limit_window_seconds, ${gameCommandColumns}
-        FROM ${this.TABLE} WHERE key_hash = $1 AND revoked_at IS NULL`,
-      [hash],
-    );
-    return result.rows[0];
   }
 
   private static optionalInteger(value: unknown): number | null {
