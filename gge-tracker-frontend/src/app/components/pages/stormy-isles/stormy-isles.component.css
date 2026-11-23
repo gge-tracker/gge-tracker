@@ -1,3 +1,55 @@
+:host {
+  --storm-scene-height: max(360px, 37.5cqw);
+  container-type: inline-size;
+  display: block;
+  position: relative;
+}
+
+.storm-scene {
+  --scene-focus-x: 0.66;
+  --scene-focus-y: 0.4;
+  background: #0a1220;
+  height: var(--storm-scene-height);
+  left: 0;
+  -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent);
+  mask-image: linear-gradient(to bottom, #000 60%, transparent);
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 0;
+}
+
+.stormy-isles {
+  position: relative;
+}
+
+.storm-hero {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  margin-bottom: 1.25rem;
+  min-height: calc(var(--storm-scene-height) * 0.72);
+}
+
+.storm-hero h1 {
+  color: #fff;
+  font-size: clamp(2rem, 4cqw, 3.1rem);
+  font-weight: 800;
+  line-height: 1.05;
+  margin: 0;
+  text-shadow: 0 3px 18px rgba(0, 0, 0, 0.75);
+}
+
+@media (max-width: 767.98px) {
+  .storm-scene {
+    --scene-focus-x: 0.72;
+  }
+
+  .storm-hero {
+    min-height: 210px;
+  }
+}
+
 .si-header {
   align-items: center;
   display: flex;

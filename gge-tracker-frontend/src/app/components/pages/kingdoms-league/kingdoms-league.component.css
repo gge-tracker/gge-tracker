@@ -1,8 +1,29 @@
 :host {
+  --league-scene-height: max(360px, 37.5cqw);
   --tracker-muted: #9aa3ad;
   --tracker-text: #e9edf1;
   color: var(--tracker-text);
+  container-type: inline-size;
   display: block;
+  position: relative;
+}
+
+.league-scene {
+  --scene-focus-x: 0.62;
+  --scene-focus-y: 0.4;
+  background: #0b1018;
+  height: var(--league-scene-height);
+  left: 0;
+  -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent);
+  mask-image: linear-gradient(to bottom, #000 60%, transparent);
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 0;
+}
+
+.league {
+  position: relative;
 }
 
 .league {
@@ -14,7 +35,9 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  justify-content: flex-end;
   margin-bottom: 1.25rem;
+  min-height: calc(var(--league-scene-height) * 0.72);
 }
 
 .league-eyebrow {
@@ -30,10 +53,11 @@
 
 .league-hero h1 {
   color: #fff;
-  font-size: clamp(2rem, 4vw, 3rem);
+  font-size: clamp(2rem, 4cqw, 3.1rem);
   font-weight: 800;
   line-height: 1.05;
   margin: 0;
+  text-shadow: 0 3px 18px rgba(0, 0, 0, 0.75);
 }
 
 .league-hero p {
@@ -430,6 +454,16 @@ td a:focus-visible {
 @media (max-width: 992px) {
   .medal-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 767.98px) {
+  .league-scene {
+    --scene-focus-x: 0.7;
+  }
+
+  .league-hero {
+    min-height: 210px;
   }
 }
 

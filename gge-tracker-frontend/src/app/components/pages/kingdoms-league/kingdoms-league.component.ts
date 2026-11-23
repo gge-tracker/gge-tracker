@@ -3,6 +3,7 @@ import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { LayeredSceneComponent } from '@ggetracker-components/layered-scene/layered-scene.component';
 import { LeagueMedalsComponent } from '@ggetracker-components/league-medals/league-medals.component';
 import {
   HIGHEST_LEAGUE_TITLE,
@@ -151,6 +152,7 @@ function emptyFilterForm(): LeagueFilterForm {
     LeagueMedalsComponent,
     LeagueTitleComponent,
     KingdomsLeagueProgressComponent,
+    LayeredSceneComponent,
   ],
   templateUrl: './kingdoms-league.component.html',
   styleUrl: './kingdoms-league.component.css',

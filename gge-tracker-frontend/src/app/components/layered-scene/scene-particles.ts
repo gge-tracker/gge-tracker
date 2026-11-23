@@ -121,11 +121,12 @@ export class SceneParticles {
     beams: Beam[],
     flames: { x: number; y: number }[],
     volleys: Volley[] = [],
+    moteColor = 'rgba(255, 244, 214, 1)',
   ) {
     this.layer = new createjs.Container();
     this.layer.compositeOperation = 'lighter';
     this.mask = new BeamMask(scene.width, scene.height, beams);
-    const dust = glowDot('rgba(255, 244, 214, 1)');
+    const dust = glowDot(moteColor);
     const spark = glowDot('rgba(255, 170, 70, 1)');
     for (let index = 0; index < MOTE_COUNT; index++) {
       const mote = this.spawnMote(new createjs.Bitmap(dust), -Math.random() * 12);

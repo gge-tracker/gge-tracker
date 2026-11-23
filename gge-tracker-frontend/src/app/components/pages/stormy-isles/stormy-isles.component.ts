@@ -2,6 +2,7 @@ import { NgClass } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { LayeredSceneComponent } from '@ggetracker-components/layered-scene/layered-scene.component';
 import { ModalFormGroupComponent } from '@ggetracker-components/modal-form-group/modal-form-group.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
@@ -90,6 +91,7 @@ interface FormFilters {
     ModalFormGroupComponent,
     IconToggleComponent,
     StormyIslesTableContentComponent,
+    LayeredSceneComponent,
   ],
   templateUrl: './stormy-isles.component.html',
   styleUrls: ['./stormy-isles.component.css'],

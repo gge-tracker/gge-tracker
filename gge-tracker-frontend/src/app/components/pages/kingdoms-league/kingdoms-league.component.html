@@ -1,3 +1,6 @@
+@if (!progress) {
+  <app-layered-scene scene="league" class="league-scene" />
+}
 <div class="container league">
   @if (progress; as playerProgress) {
     <app-kingdoms-league-progress [progress]="playerProgress" (exit)="progress = null" />

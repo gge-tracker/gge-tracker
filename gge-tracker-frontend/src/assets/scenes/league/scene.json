@@ -1,0 +1,199 @@
+{
+  "width": 1920,
+  "height": 720,
+  "layers": [
+    {
+      "kind": "image",
+      "id": "league",
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 720,
+      "depth": 0.5
+    },
+    {
+      "kind": "effects",
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "aurora-league",
+      "x": 680,
+      "y": 140,
+      "width": 440,
+      "height": 440,
+      "scale": 4,
+      "depth": 0.45
+    },
+    {
+      "kind": "light",
+      "id": "windowglow-castle",
+      "x": 610,
+      "y": 380,
+      "width": 180,
+      "height": 180,
+      "scale": 4,
+      "depth": 0.45
+    },
+    {
+      "kind": "light",
+      "id": "fireglow-volcano",
+      "x": 1752,
+      "y": 195,
+      "width": 220,
+      "height": 220,
+      "scale": 4,
+      "depth": 0.45
+    },
+    {
+      "kind": "light",
+      "id": "fireglow-lava",
+      "x": 1710,
+      "y": 290,
+      "width": 280,
+      "height": 280,
+      "scale": 4,
+      "depth": 0.45
+    },
+    {
+      "kind": "light",
+      "id": "medalglow-gold",
+      "x": 1225,
+      "y": 185,
+      "width": 300,
+      "height": 300,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "medalglow-silver",
+      "x": 1095,
+      "y": 305,
+      "width": 190,
+      "height": 190,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "medalglow-bronze",
+      "x": 1550,
+      "y": 370,
+      "width": 160,
+      "height": 160,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "medalglow-coins",
+      "x": 1265,
+      "y": 522,
+      "width": 180,
+      "height": 180,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "fireglow-brazier-west",
+      "x": 885,
+      "y": 375,
+      "width": 260,
+      "height": 260,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "fireglow-brazier-east",
+      "x": 1692,
+      "y": 405,
+      "width": 240,
+      "height": 240,
+      "scale": 4,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1015,
+      "y": 528,
+      "scale": 0.2,
+      "alpha": 0.45,
+      "depth": 0.5
+    },
+    {
+      "kind": "flame",
+      "x": 1812,
+      "y": 545,
+      "scale": 0.2,
+      "alpha": 0.45,
+      "depth": 0.5
+    },
+    {
+      "kind": "light",
+      "id": "motes-league",
+      "x": 1030,
+      "y": -30,
+      "width": 720,
+      "height": 720,
+      "scale": 4,
+      "depth": 0.9
+    }
+  ],
+  "effects": {
+    "depth": 0.5,
+    "sky": [
+      [
+        0,
+        0
+      ],
+      [
+        950,
+        0
+      ],
+      [
+        950,
+        250
+      ],
+      [
+        0,
+        300
+      ]
+    ],
+    "stars": 18,
+    "glint": [
+      1322,
+      290
+    ],
+    "fireworks": [
+      [
+        1250,
+        140
+      ],
+      [
+        1520,
+        120
+      ],
+      [
+        1385,
+        85
+      ]
+    ]
+  },
+  "hotspots": [
+    {
+      "cue": "fireworks",
+      "x": 1375,
+      "y": 335,
+      "radius": 85,
+      "glow": [
+        255,
+        210,
+        120
+      ],
+      "hover": "glint"
+    }
+  ]
+}

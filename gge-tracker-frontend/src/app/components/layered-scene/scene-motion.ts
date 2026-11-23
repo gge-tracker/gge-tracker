@@ -43,6 +43,22 @@ export function moonlight(seconds: number): number {
   return 1 - 0.5 * shade;
 }
 
+const LIGHTNING = { first: 3, every: 8 };
+
+function strike(age: number): number {
+  return age < 0 ? 0 : Math.exp(-age / 0.11);
+}
+
+export function lightningFlash(seconds: number): number {
+  if (seconds < LIGHTNING.first) return 0;
+  const cycle = Math.floor((seconds - LIGHTNING.first) / LIGHTNING.every);
+  // pseudo-random third of the cycles stay dark
+  const dark = (Math.sin(cycle * 12.9898) * 43_758.5453) % 1;
+  if (Math.abs(dark) < 0.35) return 0;
+  const age = (seconds - LIGHTNING.first) % LIGHTNING.every;
+  return Math.min(1, strike(age) + 0.85 * strike(age - 0.22) + 0.4 * strike(age - 0.55));
+}
+
 export interface Drift {
   zoom: number;
   panX: number;
@@ -135,6 +151,7 @@ const OBJECT_MOTIONS: Record<string, Motion> = {
   'standard-cloth': wave,
   'raven-glide': ravenFlight(false),
   'raven-beat': ravenFlight(true),
+  'storm-bolt': (node, seconds) => (node.alpha = lightningFlash(seconds)),
 };
 
 const CUE_COOLDOWN = 2.5;
@@ -174,10 +191,19 @@ export function lightAlpha(id: string, seconds: number, tempo: number): number {
   if (id === 'moonglow-harvest') return season() === 'harvest' ? 1 - 0.2 * swell(seconds, 11) : 0;
   if (id === 'moonglow') return 1 - 0.15 * swell(seconds, 11);
   if (id.startsWith('motes')) return 1;
+  if (id.startsWith('lightning')) return lightningFlash(seconds);
+  if (id.startsWith('crystalglow')) return 1 - 0.35 * swell(seconds, 3.7 * tempo);
+  if (id.startsWith('medalglow')) return 1 - 0.3 * swell(seconds, 4.8 * tempo);
   if (id.startsWith('candleglow')) {
     return 1 - 0.12 * swell(seconds, 0.86 * tempo) - 0.08 * swell(seconds, 0.48 * tempo) - 0.04 * swell(seconds, 0.27);
   }
   return (1 - 0.25 * swell(seconds, 9 * tempo)) * moonlight(seconds);
+}
+
+const MOTE_TINTS: Record<string, string> = { 'motes-aquamarine': 'rgba(150, 255, 228, 1)' };
+
+export function moteTint(ids: string[]): string {
+  return ids.map((id) => MOTE_TINTS[id]).find(Boolean) ?? 'rgba(255, 244, 214, 1)';
 }
 
 export function hostsMotes(id: string): boolean {

@@ -6,6 +6,7 @@ import {
   flicker,
   hostsMotes,
   lightAlpha,
+  moteTint,
   animateObject as moveProperty,
   pivotOf,
 } from './scene-motion';
@@ -232,7 +233,8 @@ export class SceneStage {
         arc: layer.arc ?? 120,
         spread: layer.spread ?? 60,
       }));
-    this.particles = new SceneParticles(globalThis.createjs!, this.scene, beams, flames, volleys);
+    const tint = moteTint(this.scene.layers.map((layer) => layer.id ?? ''));
+    this.particles = new SceneParticles(globalThis.createjs!, this.scene, beams, flames, volleys, tint);
     this.root.addChild(this.particles.layer);
     if (this.effects) this.root.addChild(this.effects.near);
   }

@@ -1,6 +1,10 @@
+<app-layered-scene scene="storm" class="storm-scene" />
 <div class="container stormy-isles my-3" [ngClass]="{ loading: isInLoading }">
   <div class="row">
     <div class="col-12">
+      <header class="storm-hero">
+        <h1>{{ 'Classement des aigues-marines' | translate }}</h1>
+      </header>
 
       <app-search-form
         #searchForm
