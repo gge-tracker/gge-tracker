@@ -152,11 +152,11 @@ describe('tournament start', () => {
       assert.equal(embed.title, ':trophy: The Rift Tournament has begun');
       assert.match(embed.description, /open on Goodgame Empire\./);
       assert.doesNotMatch(JSON.stringify(sent[0]), /Four Kingdoms|e4k/);
-      assert.equal(
-        embed.url,
-        'https://gge-tracker.com/rift-raid?utm_source=discord&utm_medium=event-alert&utm_campaign=rift-raid-ep-8',
+      assert.equal(embed.url, 'https://gge-tracker.com/rift-raid?utm_source=discord');
+      assert.ok(
+        embed.description.includes(`[Follow the Rift Tournament](${embed.url})`),
+        'the text carries the link behind a label',
       );
-      assert.ok(embed.description.includes(embed.url), 'the link is in the text as well as on the title');
     });
   });
 
@@ -169,7 +169,7 @@ describe('tournament start', () => {
       assert.equal(sent.length, 1);
       assert.equal(sent[0].channelId, E4K_EVENTS);
       assert.match(sent[0].embeds[0].description, /open on Empire: Four Kingdoms\./);
-      assert.match(sent[0].embeds[0].url, /utm_campaign=rift-raid-e4k-4$/);
+      assert.equal(sent[0].embeds[0].url, 'https://gge-tracker.com/rift-raid?utm_source=discord');
     });
   });
 
@@ -207,10 +207,7 @@ describe('tournament start', () => {
       await runGrandTournament(sandbox, 'e4k');
       const [message] = posts(sandbox, E4K_EVENTS);
       assert.equal(message.embeds[0].title, ':trophy: The Grand Tournament has begun');
-      assert.match(
-        message.embeds[0].url,
-        /^https:\/\/gge-tracker\.com\/grand-tournament\?.*utm_campaign=grand-tournament-e4k-3$/,
-      );
+      assert.equal(message.embeds[0].url, 'https://gge-tracker.com/grand-tournament?utm_source=discord');
       assert.deepEqual(posts(sandbox, EP_EVENTS), []);
     });
   });
@@ -250,7 +247,8 @@ describe('tournament results', () => {
         ':first_place: **Winners** (DE1) - 500\n:second_place: **Second\\_one** (FR1) - 300',
       );
       assert.equal(embed.fields[1].value, 'Division 5: **Fifth** - 50');
-      assert.match(embed.url, /utm_medium=event-results&utm_campaign=rift-raid-ep-3$/);
+      assert.equal(embed.url, 'https://gge-tracker.com/rift-raid?utm_source=discord');
+      assert.equal(embed.fields[2].value, `:arrow_right: [See the full ranking](${embed.url})`);
       assert.match(sandbox.clickhouse.selects(RIFT_STANDINGS)[0].query, /game = 'ep' AND event_id = 3/);
     });
   });

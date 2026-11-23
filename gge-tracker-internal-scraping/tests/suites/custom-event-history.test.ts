@@ -339,7 +339,7 @@ describe('executeCustomEventHistory on E4K', () => {
       await flushDiscordPosts();
       const body = sandbox.outbound.find((call) => call.url.includes('discord'))!.body as any;
       assert.equal(body.channelId, E4K_RESULTS_CHANNEL);
-      assert.equal(body.embeds[0].url, 'https://gge-tracker.com/events/outer-realms/medeupk');
+      assert.equal(body.embeds[0].url, 'https://gge-tracker.com/events/outer-realms/medeupk?utm_source=discord');
       assert.match(body.embeds[0].image.url, /\/assets\/og\/event\/outer-realms\/medeupk\.jpg$/);
     });
   });
@@ -374,7 +374,7 @@ describe('executeCustomEventHistory on E4K', () => {
         codes,
       );
       const description = body.embeds[0].description ?? '';
-      assert.ok(description.includes('/player/11606)'), 'WLD1 is E4K_WORLD1, code 606');
+      assert.ok(description.includes('/player/11606?utm_source=discord)'), 'WLD1 is E4K_WORLD1, code 606');
       assert.ok(!description.includes('/player/12'), 'E4K_DE1 is not public, so it gets no link');
     });
   });

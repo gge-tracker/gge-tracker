@@ -60,6 +60,7 @@ import {
 import { EventServer, findScrapingServer, readE4kEventServers, readPublicPlayerIdCodes } from './servers-file';
 import { findTempServerSetting } from './temp-server-settings';
 import { scheduleDiscordPost } from './discord-schedule';
+import { fromDiscord, maskedLink } from './discord-link';
 import { encodeEventLinkCode } from './event-link-code';
 import {
   announceTournamentResults,
@@ -1543,7 +1544,7 @@ export class GenericFetchAndSaveBackend {
     }
     const eventSlug = eventType.toLowerCase().replace(/\s/g, '-');
     const eventCode = encodeEventLinkCode(this.eventGame, eventNum);
-    const eventUrl = `${this.SITE_URL}/events/${eventSlug}/${eventCode}`;
+    const eventUrl = fromDiscord(`${this.SITE_URL}/events/${eventSlug}/${eventCode}`);
     const ranking = players
       .slice(0, 10)
       .map(
@@ -1562,7 +1563,7 @@ export class GenericFetchAndSaveBackend {
           fields: [
             {
               name: 'Full ranking',
-              value: `:arrow_right: ${eventUrl}`,
+              value: `:arrow_right: ${maskedLink('See the full ranking', eventUrl)}`,
               inline: false,
             },
           ],
@@ -1984,7 +1985,7 @@ export class GenericFetchAndSaveBackend {
     game: GameUniverse,
     run: { eventId: number; opened: boolean },
   ): Promise<void> {
-    if (run.opened) await announceTournamentStart(kind, game, run.eventId);
+    if (run.opened) await announceTournamentStart(kind, game);
   }
 
   private async alertTournamentEnd(kind: TournamentKind, game: GameUniverse, runHour: Date): Promise<void> {
@@ -6324,7 +6325,7 @@ export class GenericFetchAndSaveBackend {
     const name = this.formatValueForDiscord(player.playerName);
     const code = playerIdCodes.get(String(player.server).toUpperCase());
     if (!player.realPlayerId || !code) return name;
-    return `[${name}](${this.SITE_URL}/player/${player.realPlayerId}${code})`;
+    return maskedLink(name, fromDiscord(`${this.SITE_URL}/player/${player.realPlayerId}${code}`));
   }
 
   private get eventGame(): OuterRealmsGame {

@@ -7,6 +7,7 @@
 //
 //  Copyrights (c) 2026 - gge-tracker.com & gge-tracker contributors
 //
+import { fromDiscord, maskedLink } from './discord-link';
 import { scheduleDiscordPost } from './discord-schedule';
 import Utils from './utils';
 
@@ -90,19 +91,17 @@ export function endedJustNow(last: TournamentEventSpan | null, runHour: Date): b
   return last !== null && last.lastHour.getTime() === runHour.getTime() - HOUR_MS;
 }
 
-export function tournamentLink(kind: TournamentKind, game: TournamentGame, eventId: number, medium: string): string {
-  const campaign = `${kind}-${game}-${eventId}`;
-  const query = new URLSearchParams({ utm_source: 'discord', utm_medium: medium, utm_campaign: campaign });
-  return `${SITE_URL}${TOURNAMENTS[kind].path}?${query.toString()}`;
+export function tournamentLink(kind: TournamentKind): string {
+  return fromDiscord(`${SITE_URL}${TOURNAMENTS[kind].path}`);
 }
 
-export function startEmbed(kind: TournamentKind, game: TournamentGame, eventId: number): Embed {
+export function startEmbed(kind: TournamentKind, game: TournamentGame): Embed {
   const tournament = TOURNAMENTS[kind];
-  const url = tournamentLink(kind, game, eventId, 'event-alert');
+  const url = tournamentLink(kind);
   return {
     title: `:trophy: The ${tournament.name} has begun`,
     url,
-    description: `A new ${tournament.name} is open on ${UNIVERSES[game]}. ${tournament.pitch}\n\n:arrow_right: ${url}`,
+    description: `A new ${tournament.name} is open on ${UNIVERSES[game]}. ${tournament.pitch}\n\n:arrow_right: ${maskedLink(`Follow the ${tournament.name}`, url)}`,
     color: START_COLOR,
     fields: [],
     footer: { text: 'gge-tracker.com' },
@@ -111,7 +110,7 @@ export function startEmbed(kind: TournamentKind, game: TournamentGame, eventId: 
 
 export function resultsEmbed(results: TournamentResults): Embed {
   const tournament = TOURNAMENTS[results.kind];
-  const url = tournamentLink(results.kind, results.game, results.eventId, 'event-results');
+  const url = tournamentLink(results.kind);
   const byDivision = new Map<number, TournamentStanding[]>();
   for (const standing of [...results.standings].sort((a, b) => b.score - a.score)) {
     const division = byDivision.get(standing.divisionId) ?? [];
@@ -131,7 +130,7 @@ export function resultsEmbed(results: TournamentResults): Embed {
       inline: false,
     },
     { name: 'Best score of each division', value: leaders.join('\n'), inline: false },
-    { name: 'Full ranking', value: `:arrow_right: ${url}`, inline: false },
+    { name: 'Full ranking', value: `:arrow_right: ${maskedLink('See the full ranking', url)}`, inline: false },
   ].filter((field) => field.value !== '');
   return {
     title: `:checkered_flag: ${tournament.name} results - ${UNIVERSES[results.game]}`,
@@ -143,8 +142,8 @@ export function resultsEmbed(results: TournamentResults): Embed {
   };
 }
 
-export function announceTournamentStart(kind: TournamentKind, game: TournamentGame, eventId: number): Promise<void> {
-  return post(startChannel(game), startEmbed(kind, game, eventId), `${TOURNAMENTS[kind].name} start (${game})`);
+export function announceTournamentStart(kind: TournamentKind, game: TournamentGame): Promise<void> {
+  return post(startChannel(game), startEmbed(kind, game), `${TOURNAMENTS[kind].name} start (${game})`);
 }
 
 export function announceTournamentResults(results: TournamentResults): Promise<void> {

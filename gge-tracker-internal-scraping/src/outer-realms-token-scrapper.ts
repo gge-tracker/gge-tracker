@@ -7,6 +7,7 @@
 //
 //  Copyrights (c) 2025 - gge-tracker.com & gge-tracker contributors
 //
+import { fromDiscord, maskedLink } from './discord-link';
 import { DiscordApiMessageBody } from './interfaces';
 import { GenericFetchAndSaveBackend } from './main';
 import { outerRealmsAnnouncement } from './outer-realms-announcement';
@@ -234,7 +235,7 @@ function getDiscordApiMessageBody(
   universe: OuterRealmsUniverse,
   scoring: 'collector' | 'might' | 'rankSwap',
 ): DiscordApiMessageBody {
-  const pageUrl = `https://gge-tracker.com/live/outer-realms${outerRealmsLinkQuery(universe.game)}`;
+  const pageUrl = fromDiscord(`https://gge-tracker.com/live/outer-realms${outerRealmsLinkQuery(universe.game)}`);
   return {
     channelId,
     embeds: [
@@ -244,7 +245,7 @@ function getDiscordApiMessageBody(
         fields: [
           {
             name: `:fire: A new Outer Realms event is available : ${OuterRealmsData[scoring].name}`,
-            value: `${OuterRealmsData[scoring].description}\n\n :arrow_right: ${pageUrl} `,
+            value: `${OuterRealmsData[scoring].description}\n\n:arrow_right: ${maskedLink('Follow the live ranking', pageUrl)}`,
             inline: false,
           },
         ],
