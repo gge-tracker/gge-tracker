@@ -56,7 +56,8 @@ export abstract class ApiRiftRaid implements ApiHelper {
 
   public static async getEventDates(request: express.Request, response: express.Response): Promise<void> {
     try {
-      const game = ApiRiftRaid.gameOf(request);
+      const game = ApiRiftRaid.gameOf(request, response);
+      if (!game) return;
       const cacheKey = await ApiRiftRaid.cacheKey('event-dates', { game });
       if (await CachedResponse.serveCached(response, cacheKey)) return;
 
@@ -80,7 +81,8 @@ export abstract class ApiRiftRaid implements ApiHelper {
 
   public static async getAlliances(request: express.Request, response: express.Response): Promise<void> {
     try {
-      const game = ApiRiftRaid.gameOf(request);
+      const game = ApiRiftRaid.gameOf(request, response);
+      if (!game) return;
       const hour = ApiRiftRaid.parseHour(request.query.date);
       const division = ApiRiftRaid.parseDivision(request.query.division_id);
       const subdivision = ApiRiftRaid.parseOptionalPositiveInteger(request.query.subdivision_id);
@@ -151,7 +153,8 @@ export abstract class ApiRiftRaid implements ApiHelper {
 
   public static async searchAlliances(request: express.Request, response: express.Response): Promise<void> {
     try {
-      const game = ApiRiftRaid.gameOf(request);
+      const game = ApiRiftRaid.gameOf(request, response);
+      if (!game) return;
       const hour = ApiRiftRaid.parseHour(request.query.date);
       const allianceName = ApiHelper.validateSearchAndSanitize(request.query.alliance_name);
       if (!hour) {
@@ -285,8 +288,12 @@ export abstract class ApiRiftRaid implements ApiHelper {
     };
   }
 
-  private static gameOf(request: express.Request): RankingGame {
-    return RankingUniverse.gameOfServerName(String(request['language']));
+  private static gameOf(request: express.Request, response: express.Response): RankingGame | null {
+    const game = RankingUniverse.gameOfRequest(request);
+    if (game === null) {
+      response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventGame });
+    }
+    return game;
   }
 
   private static parseHour(value: unknown): string | null {

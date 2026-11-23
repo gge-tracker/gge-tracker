@@ -1,3 +1,4 @@
+import * as express from 'express';
 import { ApiHelper } from './api-helper';
 import { IServerDefinition } from '../interfaces/interfaces';
 
@@ -27,6 +28,13 @@ export abstract class RankingUniverse {
 
   public static gameOfServerName(serverName: string): RankingGame {
     return RankingUniverse.gameOf(ApiHelper.ggeTrackerManager.getServerDefinition(serverName));
+  }
+
+  public static gameOfRequest(request: express.Request): RankingGame | null {
+    const requested = request.query.game;
+    if (requested === undefined || requested === '')
+      return RankingUniverse.gameOfServerName(String(request['language']));
+    return requested === 'ep' || requested === 'e4k' ? requested : null;
   }
 
   public static serversOf(game: RankingGame): Map<number, IServerDefinition> {

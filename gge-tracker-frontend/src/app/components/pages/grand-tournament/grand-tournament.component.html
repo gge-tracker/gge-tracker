@@ -7,10 +7,8 @@
       <h1>{{ 'Le Grand Tournoi' | translate }}</h1>
       <p>{{ 'grand-tournament-intro' | translate }}</p>
     </header>
-    @if (!isEventMissing) {
-      <app-event-timeline [events]="events" [currentDate]="currentDate" [isLoading]="isDataLoading"
-        (dateChange)="loadDate($event)" />
-    }
+    <app-event-timeline [events]="events" [currentDate]="currentDate" [isLoading]="isDataLoading || isInLoading"
+      [game]="game" (dateChange)="loadDate($event)" (gameChange)="selectGame($event)" />
     <div class="tournaments-panel p-3 rounded-4">
       <div class="mb-3">
         <app-search-form #searchForm [formFilters]="null" [isInLoading]="isInLoading"

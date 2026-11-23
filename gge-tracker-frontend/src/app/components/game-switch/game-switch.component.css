@@ -1,0 +1,82 @@
+:host {
+  display: inline-flex;
+}
+
+.game-switch {
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  background: rgba(14, 19, 26, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  display: inline-flex;
+  flex: 1;
+  gap: 4px;
+  min-height: 52px;
+  padding: 5px;
+}
+
+.game-switch-option {
+  align-items: center;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.58);
+  display: inline-flex;
+  flex: 1 1 0;
+  font-size: 0.88rem;
+  justify-content: center;
+  font-weight: 600;
+  gap: 0.5rem;
+  padding: 0 0.85rem;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+  white-space: nowrap;
+}
+
+.game-switch-option:hover:not(:disabled):not(.game-switch-option--on) {
+  background: rgba(255, 255, 255, 0.05);
+  color: #e7e7e7;
+}
+
+.game-switch-option:focus-visible {
+  outline: 2px solid #e2b45a;
+  outline-offset: 1px;
+}
+
+.game-switch-option:disabled {
+  cursor: default;
+}
+
+.game-switch-option:disabled:not(.game-switch-option--on) {
+  opacity: 0.6;
+}
+
+.game-switch-option--on {
+  background: rgba(226, 180, 90, 0.14);
+  border-color: rgba(226, 180, 90, 0.35);
+  color: #e2b45a;
+}
+
+:host(.compact) .game-switch {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  gap: 3px;
+  height: 42px;
+  min-height: 0;
+  padding: 3px;
+}
+
+:host(.compact) .game-switch-option {
+  border-radius: 7px;
+  font-size: 0.86rem;
+  padding: 0 0.75rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-switch-option {
+    transition: none;
+  }
+}

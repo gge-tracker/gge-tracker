@@ -1068,6 +1068,7 @@ publicRoutes.get('/events/list', routingInstance.getEvents.bind(routingInstance)
  *       - Grand Tournament
  *     parameters:
  *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - $ref: '#/components/parameters/RankingGame'
  *     responses:
  *       200:
  *         description: A list of recorded events
@@ -1109,6 +1110,7 @@ protectedRoutes.get('/grand-tournament/dates', routingInstance.getGrandTournamen
  *       - Grand Tournament
  *     parameters:
  *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - $ref: '#/components/parameters/RankingGame'
  *       - name: date
  *         in: query
  *         description: |
@@ -1277,6 +1279,7 @@ protectedRoutes.get(
  *       - Grand Tournament
  *     parameters:
  *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - $ref: '#/components/parameters/RankingGame'
  *       - name: date
  *         in: query
  *         description: |-
@@ -1351,6 +1354,7 @@ protectedRoutes.get(
  *       - Rift Raid
  *     parameters:
  *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - $ref: '#/components/parameters/RankingGame'
  *     responses:
  *       200:
  *         description: The recorded events, oldest first, each with its snapshot hours in order
@@ -1390,6 +1394,7 @@ protectedRoutes.get('/rift-raid/dates', routingInstance.getRiftRaidEventDates.bi
  *       - Rift Raid
  *     parameters:
  *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - $ref: '#/components/parameters/RankingGame'
  *       - $ref: '#/components/parameters/RiftRaidDate'
  *       - name: division_id
  *         in: query
@@ -1467,6 +1472,7 @@ protectedRoutes.get('/rift-raid/alliances', routingInstance.getRiftRaidAlliances
  *       - Rift Raid
  *     parameters:
  *       - $ref: '#/components/parameters/GgeServerHeader'
+ *       - $ref: '#/components/parameters/RankingGame'
  *       - $ref: '#/components/parameters/RiftRaidDate'
  *       - name: alliance_name
  *         in: query

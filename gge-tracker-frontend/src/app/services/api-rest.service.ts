@@ -897,9 +897,9 @@ export class ApiRestService {
    * Get the grand tournament dates from the API
    * @returns A promise that resolves to the grand tournament dates data
    */
-  public async getGrandTournamentDates(): Promise<ApiResponse<ApiGrandTournamentDatesResponse>> {
+  public async getGrandTournamentDates(game?: EventGame): Promise<ApiResponse<ApiGrandTournamentDatesResponse>> {
     const response = await this.apiFetch<ApiGrandTournamentDatesResponse>(
-      `${ApiRestService.apiUrl}grand-tournament/dates`,
+      `${ApiRestService.apiUrl}grand-tournament/dates${this.rankingGameQuery(game, '?')}`,
     );
     if (!response.success) return response;
     return { success: true, data: response.data };
@@ -918,10 +918,11 @@ export class ApiRestService {
     division: number,
     page: number,
     subdivision?: number,
+    game?: EventGame,
   ): Promise<ApiResponse<ApiGrandTournamentAlliancesResponse>> {
     const subDivisionParameter = subdivision ? `&subdivision_id=${subdivision}` : '';
     const response = await this.apiFetch<ApiGrandTournamentAlliancesResponse>(
-      `${ApiRestService.apiUrl}grand-tournament/alliances?date=${date}&division_id=${division}${subDivisionParameter}&page=${page}`,
+      `${ApiRestService.apiUrl}grand-tournament/alliances?date=${date}&division_id=${division}${subDivisionParameter}&page=${page}${this.rankingGameQuery(game, '&')}`,
     );
     if (!response.success) return response;
     return { success: true, data: response.data };
@@ -938,9 +939,10 @@ export class ApiRestService {
     date: string,
     search: string,
     page: number,
+    game?: EventGame,
   ): Promise<ApiResponse<ApiGrandTournamentAlliancesSearchResponse>> {
     const response = await this.apiFetch<ApiGrandTournamentAlliancesSearchResponse>(
-      `${ApiRestService.apiUrl}grand-tournament/search?date=${date}&alliance_name=${search}&page=${page}`,
+      `${ApiRestService.apiUrl}grand-tournament/search?date=${date}&alliance_name=${search}&page=${page}${this.rankingGameQuery(game, '&')}`,
     );
     if (!response.success) return response;
     return { success: true, data: response.data };
@@ -975,8 +977,10 @@ export class ApiRestService {
     );
   }
 
-  public async getRiftRaidDates(): Promise<ApiResponse<ApiRiftRaidDatesResponse>> {
-    return this.apiFetch<ApiRiftRaidDatesResponse>(`${ApiRestService.apiUrl}rift-raid/dates`);
+  public async getRiftRaidDates(game?: EventGame): Promise<ApiResponse<ApiRiftRaidDatesResponse>> {
+    return this.apiFetch<ApiRiftRaidDatesResponse>(
+      `${ApiRestService.apiUrl}rift-raid/dates${this.rankingGameQuery(game, '?')}`,
+    );
   }
 
   public async getRiftRaidAlliances(
@@ -984,9 +988,11 @@ export class ApiRestService {
     division: number,
     page: number,
     subdivision?: number,
+    game?: EventGame,
   ): Promise<ApiResponse<ApiRiftRaidAlliancesResponse>> {
     const parameters = new URLSearchParams({ date, division_id: String(division), page: String(page) });
     if (subdivision) parameters.set('subdivision_id', String(subdivision));
+    if (game) parameters.set('game', game);
     return this.apiFetch<ApiRiftRaidAlliancesResponse>(`${ApiRestService.apiUrl}rift-raid/alliances?${parameters}`);
   }
 
@@ -994,8 +1000,10 @@ export class ApiRestService {
     date: string,
     allianceName: string,
     page: number,
+    game?: EventGame,
   ): Promise<ApiResponse<ApiRiftRaidSearchResponse>> {
     const parameters = new URLSearchParams({ date, alliance_name: allianceName, page: String(page) });
+    if (game) parameters.set('game', game);
     return this.apiFetch<ApiRiftRaidSearchResponse>(`${ApiRestService.apiUrl}rift-raid/search?${parameters}`);
   }
 
@@ -1327,6 +1335,10 @@ export class ApiRestService {
 
   private updateResponseMs(requestStartMs: number, requestEndMs: number): void {
     this.responseMs = requestEndMs - requestStartMs;
+  }
+
+  private rankingGameQuery(game: EventGame | undefined, separator: '?' | '&'): string {
+    return game ? `${separator}game=${game}` : '';
   }
 
   private eventGameQuery(game: EventGame, separator: '?' | '&'): string {

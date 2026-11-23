@@ -235,7 +235,8 @@
   }
 
   .realms-scoring,
-  .realms-archive {
+  .realms-archive,
+  app-game-switch {
     grid-column: 1 / -1;
     max-width: none;
   }
@@ -585,4 +586,10 @@
     animation: none !important;
     transition: none !important;
   }
+}
+
+.realms-game-switch-closed {
+  display: flex;
+  justify-content: center;
+  margin: 1rem 0;
 }

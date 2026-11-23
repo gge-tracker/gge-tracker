@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { Params, RouterModule } from '@angular/router';
 import { EventTimelineComponent } from '@ggetracker-components/event-timeline/event-timeline.component';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { LayeredSceneComponent } from '@ggetracker-components/layered-scene/layered-scene.component';
@@ -16,6 +16,7 @@ import {
 import { TranslateModule } from '@ngx-translate/core';
 import { GrandTournamentAnalyzeComponent } from './grand-tournament-analyze/grand-tournament-analyze.component';
 import { ServerService } from '@ggetracker-services/server.service';
+import { EventGame, resolveEventGame } from '@ggetracker-services/event-game.utilities';
 
 interface IGrandTournamentAlliances extends ApiGrandTournamentAlliance {
   disabled?: boolean;
@@ -78,6 +79,7 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
     'ame_division_name_5',
   ];
   public serverService = inject(ServerService);
+  public game: EventGame = 'ep';
 
   constructor() {
     super();
@@ -112,10 +114,16 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
     subdivision?: number,
   ): Promise<void> {
     this.isDataLoading = true;
-    const response = await this.apiRestService.getGrandTournamentAlliances(date, division, page, subdivision);
+    const response = await this.apiRestService.getGrandTournamentAlliances(
+      date,
+      division,
+      page,
+      subdivision,
+      this.game,
+    );
     void this.updateGenericParamsInUrl(
-      { page: page, date: date, subdivision: subdivision, division: division },
-      { page: 1, date: this.defaultDate, subdivision: 0, division: 5 },
+      { page: page, date: date, subdivision: subdivision, division: division, game: this.game },
+      { page: 1, date: this.defaultDate, subdivision: 0, division: 5, game: this.serverGame() },
     );
     if (!response.success) {
       this.isDataLoading = false;
@@ -206,32 +214,27 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
   }
 
   public async ngOnInit(): Promise<void> {
-    const response = await this.apiRestService.getGrandTournamentDates();
-    if (!response.success) {
-      this.toastService.add(ErrorType.ERROR_OCCURRED, 5000, 'error');
-      return;
-    }
-    this.events = response.data.events;
-    const latestEvent = this.events.at(-1);
-    // A universe with no recorded tournament is an empty page, not a failure
-    this.isEventMissing = !latestEvent || latestEvent.dates.length === 0;
-    if (this.isEventMissing) {
-      this.isInLoading = false;
-      return;
-    }
-    this.defaultDate = latestEvent?.dates.at(-1) ?? '';
     const urlParameters = this.route.snapshot.queryParams;
-    const page = urlParameters['page'] ? Number(urlParameters['page']) : 1;
-    const subdivision = urlParameters['subdivision'] ? Number(urlParameters['subdivision']) : 0;
-    const division = this.parseDivision(urlParameters['division']);
-    const requestedEvent = this.eventOfDate(urlParameters['date']);
-    this.currentDate = requestedEvent ? urlParameters['date'] : this.defaultDate;
-    this.division.current_division = division;
-    this.subdivision.current_subdivision = subdivision;
-    if (subdivision > 0) {
-      this.isSubDivisionFilterActivated = true;
+    this.game = resolveEventGame(urlParameters['game'], this.serverService.isE4kServer());
+    await this.openTournament(urlParameters);
+    this.isInLoading = false;
+  }
+
+  public async selectGame(game: EventGame): Promise<void> {
+    if (game === this.game || this.isDataLoading) return;
+    this.game = game;
+    this.search = '';
+    this.isSubDivisionFilterActivated = false;
+    this.subdivision.current_subdivision = 0;
+    this.alliances = [];
+    this.isInLoading = true;
+    await this.openTournament({});
+    if (this.isEventMissing) {
+      void this.updateGenericParamsInUrl(
+        { game: this.game, page: null, date: null, subdivision: null, division: null },
+        { game: this.serverGame() },
+      );
     }
-    await this.loadAlliances(division, page, this.currentDate, subdivision > 0 ? subdivision : undefined);
     this.isInLoading = false;
   }
 
@@ -248,15 +251,21 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
       return;
     }
     this.division.current_division = 0;
-    const response = await this.apiRestService.getGrandTournamentSearchAlliance(this.currentDate, this.search, page);
+    const response = await this.apiRestService.getGrandTournamentSearchAlliance(
+      this.currentDate,
+      this.search,
+      page,
+      this.game,
+    );
     void this.updateGenericParamsInUrl(
       {
         page: page,
         date: this.currentDate,
         subdivision: this.subdivision.current_subdivision,
         division: this.division.current_division,
+        game: this.game,
       },
-      { page: 1, date: this.defaultDate, subdivision: 0, division: 5 },
+      { page: 1, date: this.defaultDate, subdivision: 0, division: 5, game: this.serverGame() },
     );
     if (!response.success) {
       this.toastService.add(ErrorType.NO_ALLIANCE_FOUND, 5000, 'error');
@@ -269,6 +278,33 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
       };
     });
     this.pagination = response.data.pagination;
+  }
+
+  private async openTournament(urlParameters: Params): Promise<void> {
+    const response = await this.apiRestService.getGrandTournamentDates(this.game);
+    if (!response.success) {
+      this.toastService.add(ErrorType.ERROR_OCCURRED, 5000, 'error');
+      return;
+    }
+    this.events = response.data.events;
+    const latestEvent = this.events.at(-1);
+    // A universe with no recorded tournament is an empty page, not a failure
+    this.isEventMissing = !latestEvent || latestEvent.dates.length === 0;
+    if (this.isEventMissing) return;
+    this.defaultDate = latestEvent?.dates.at(-1) ?? '';
+    const page = urlParameters['page'] ? Number(urlParameters['page']) : 1;
+    const subdivision = urlParameters['subdivision'] ? Number(urlParameters['subdivision']) : 0;
+    const division = this.parseDivision(urlParameters['division']);
+    const requestedEvent = this.eventOfDate(urlParameters['date']);
+    this.currentDate = requestedEvent ? urlParameters['date'] : this.defaultDate;
+    this.division.current_division = division;
+    this.subdivision.current_subdivision = subdivision;
+    this.isSubDivisionFilterActivated = subdivision > 0;
+    await this.loadAlliances(division, page, this.currentDate, subdivision > 0 ? subdivision : undefined);
+  }
+
+  private serverGame(): EventGame {
+    return resolveEventGame(undefined, this.serverService.isE4kServer());
   }
 
   private parseDivision(value: unknown): number {

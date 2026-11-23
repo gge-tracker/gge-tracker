@@ -3,6 +3,8 @@ import { DatePipe } from '@angular/common';
 import { Component, computed, effect, input, output, signal } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
 import { PunctuationPipe } from '@ggetracker-pipes/punctuation.pipe';
+import { GameSwitchComponent } from '@ggetracker-components/game-switch/game-switch.component';
+import { EventGame } from '@ggetracker-services/event-game.utilities';
 
 export interface TimelineEvent {
   event_id: number;
@@ -26,7 +28,7 @@ const hoursBetween = (from: string, to: string): number => Math.round((Date.pars
 @Component({
   selector: 'app-event-timeline',
   standalone: true,
-  imports: [PunctuationPipe, DatePipe, TranslateModule],
+  imports: [PunctuationPipe, DatePipe, TranslateModule, GameSwitchComponent],
   templateUrl: './event-timeline.component.html',
   styleUrl: './event-timeline.component.css',
 })
@@ -34,7 +36,9 @@ export class EventTimelineComponent {
   public readonly events = input.required<TimelineEvent[]>();
   public readonly currentDate = input.required<string>();
   public readonly isLoading = input(false);
+  public readonly game = input<EventGame | null>(null);
   public readonly dateChange = output<string>();
+  public readonly gameChange = output<EventGame>();
 
   public readonly editions = computed<Edition[]>(() =>
     this.events()

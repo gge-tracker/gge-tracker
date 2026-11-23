@@ -105,6 +105,10 @@
   padding-top: 0.85rem;
 }
 
+.timeline-controls.with-game {
+  grid-template-columns: auto minmax(220px, 330px) minmax(0, 1fr);
+}
+
 .timeline-edition {
   display: flex;
   flex-direction: column;
@@ -270,7 +274,8 @@
 }
 
 @media (max-width: 767.98px) {
-  .timeline-controls {
+  .timeline-controls,
+  .timeline-controls.with-game {
     grid-template-columns: minmax(0, 1fr);
   }
 

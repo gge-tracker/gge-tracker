@@ -2,6 +2,7 @@ import { DatePipe, DecimalPipe, NgClass } from '@angular/common';
 import { Component, inject, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { GameSwitchComponent } from '@ggetracker-components/game-switch/game-switch.component';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { LayeredSceneComponent } from '@ggetracker-components/layered-scene/layered-scene.component';
 import { ModalFormGroupComponent } from '@ggetracker-components/modal-form-group/modal-form-group.component';
@@ -46,6 +47,7 @@ interface GenericChartConfig {
   standalone: true,
   imports: [
     NgClass,
+    GameSwitchComponent,
     SearchFormComponent,
     TranslateModule,
     TableComponent,
@@ -134,8 +136,7 @@ export class LiveOuterRealmsComponent extends GenericComponent {
     super();
     this.isInLoading = true;
     this.route.paramMap.subscribe((parameters) => {
-      this.game = resolveEventGame(this.route.snapshot.queryParams['game'], this.serverService.isE4kServer());
-      this.gameQueryParameters = eventGameQueryParameters(this.game);
+      this.setGame(resolveEventGame(this.route.snapshot.queryParams['game'], this.serverService.isE4kServer()));
       const playerId = parameters.get('playerId');
       if (playerId) {
         void this.initSpecificView(playerId);
@@ -189,6 +190,20 @@ export class LiveOuterRealmsComponent extends GenericComponent {
     this.toastService.add(this.translateService.instant('Lien copié'), 3000);
   }
 
+  public async selectGame(game: EventGame): Promise<void> {
+    if (game === this.game || this.isDataLoading) return;
+    this.setGame(game);
+    this.clearFilters();
+    this.search = '';
+    this.participants = 0;
+    this.eventNotActive = false;
+    this.requestCounter = 0;
+    this.isInLoading = true;
+    await this.updateGenericParamsInUrl({ game: this.gameQueryParameters['game'] ?? null }, {});
+    await this.loadData(1);
+    this.isInLoading = false;
+  }
+
   public applyFilters(): void {
     const { minLevel, maxLevel, minMight, maxMight, minScore, maxScore, minRank, maxRank, movement, activity, radius } =
       this.formFilters;
@@ -216,25 +231,7 @@ export class LiveOuterRealmsComponent extends GenericComponent {
   }
 
   public resetFilters(): void {
-    this.selectedServers = [];
-    this.formFilters = {
-      server: '',
-      minLevel: '',
-      maxLevel: '',
-      minMight: '',
-      maxMight: '',
-      minScore: '',
-      maxScore: '',
-      minRank: '',
-      maxRank: '',
-      movement: '-1',
-      activity: '-1',
-      near: '',
-      radius: '',
-      isFiltered: false,
-    };
-    this.sort = 'rank';
-    this.reverse = false;
+    this.clearFilters();
     this.applyFilters();
   }
 
@@ -400,6 +397,36 @@ export class LiveOuterRealmsComponent extends GenericComponent {
     if (this.pagination.current_page < this.pagination.total_pages) {
       void this.loadData(this.pagination.current_page + 1);
     }
+  }
+
+  private clearFilters(): void {
+    this.selectedServers = [];
+    this.formFilters = {
+      server: '',
+      minLevel: '',
+      maxLevel: '',
+      minMight: '',
+      maxMight: '',
+      minScore: '',
+      maxScore: '',
+      minRank: '',
+      maxRank: '',
+      movement: '-1',
+      activity: '-1',
+      near: '',
+      radius: '',
+      isFiltered: false,
+    };
+    this.filters = {};
+    this.tableHeaders = LiveOuterRealmsComponent.headersFor(false);
+    this.sort = 'rank';
+    this.reverse = false;
+  }
+
+  private setGame(game: EventGame): void {
+    this.game = game;
+    const serverGame = resolveEventGame(undefined, this.serverService.isE4kServer());
+    this.gameQueryParameters = game === serverGame ? eventGameQueryParameters(game) : { game };
   }
 
   private requestFilters(): LiveRankingFilters {

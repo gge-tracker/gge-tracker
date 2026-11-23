@@ -58,7 +58,8 @@ export abstract class ApiGrandTournament implements ApiHelper {
 
   public static async getEventDates(request: express.Request, response: express.Response): Promise<void> {
     try {
-      const game = ApiGrandTournament.gameOf(request);
+      const game = ApiGrandTournament.gameOf(request, response);
+      if (!game) return;
       const cacheKey = await ApiGrandTournament.cacheKey('event-dates', { game });
       if (await CachedResponse.serveCached(response, cacheKey)) return;
 
@@ -78,7 +79,8 @@ export abstract class ApiGrandTournament implements ApiHelper {
 
   public static async getAlliances(request: express.Request, response: express.Response): Promise<void> {
     try {
-      const game = ApiGrandTournament.gameOf(request);
+      const game = ApiGrandTournament.gameOf(request, response);
+      if (!game) return;
       const hour = ApiGrandTournament.parseHour(request.query.date);
       const division = ApiGrandTournament.parseDivision(request.query.division_id);
       const subdivision = ApiGrandTournament.parseOptionalPositiveInteger(request.query.subdivision_id);
@@ -142,7 +144,8 @@ export abstract class ApiGrandTournament implements ApiHelper {
 
   public static async searchAlliances(request: express.Request, response: express.Response): Promise<void> {
     try {
-      const game = ApiGrandTournament.gameOf(request);
+      const game = ApiGrandTournament.gameOf(request, response);
+      if (!game) return;
       const hour = ApiGrandTournament.parseHour(request.query.date);
       const allianceName = ApiHelper.validateSearchAndSanitize(request.query.alliance_name);
       if (!hour) {
@@ -270,8 +273,12 @@ export abstract class ApiGrandTournament implements ApiHelper {
     };
   }
 
-  private static gameOf(request: express.Request): RankingGame {
-    return RankingUniverse.gameOfServerName(String(request['language']));
+  private static gameOf(request: express.Request, response: express.Response): RankingGame | null {
+    const game = RankingUniverse.gameOfRequest(request);
+    if (game === null) {
+      response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventGame });
+    }
+    return game;
   }
 
   private static parseHour(value: unknown): string | null {

@@ -17,6 +17,7 @@ import {
 } from '@ggetracker-interfaces/empire-ranking';
 import { FollowService } from '@ggetracker-services/follow.service';
 import { ServerService } from '@ggetracker-services/server.service';
+import { EventGame, resolveEventGame } from '@ggetracker-services/event-game.utilities';
 import { TranslateModule } from '@ngx-translate/core';
 import { GrandTournamentAnalyzeComponent } from '@ggetracker-pages/grand-tournament/grand-tournament-analyze/grand-tournament-analyze.component';
 
@@ -67,6 +68,7 @@ export class RiftRaidComponent extends GenericComponent implements OnInit {
   public readonly divisionNames = RIFT_RAID_DIVISION_NAMES;
   public readonly serverService = inject(ServerService);
 
+  public game: EventGame = 'ep';
   public events: RiftRaidEvent[] = [];
   public currentDate = '';
   public latestDate = '';
@@ -93,6 +95,7 @@ export class RiftRaidComponent extends GenericComponent implements OnInit {
 
   public async ngOnInit(): Promise<void> {
     const parameters = this.route.snapshot.queryParams;
+    this.game = resolveEventGame(parameters['game'], this.serverService.isE4kServer());
     this.division = this.parseDivision(parameters['division']);
     this.subdivision = Number(parameters['subdivision']) || 0;
     this.search = parameters['search'] ?? '';
@@ -100,6 +103,22 @@ export class RiftRaidComponent extends GenericComponent implements OnInit {
     await this.loadEvents(parameters['date']);
     await Promise.race([myAlliance, new Promise((resolve) => setTimeout(resolve, MY_ALLIANCE_GRACE_MS))]);
     await this.refresh(Number(parameters['page']) || 1);
+    this.isInLoading = false;
+  }
+
+  public async selectGame(game: EventGame): Promise<void> {
+    if (game === this.game || this.isDataLoading) return;
+    this.game = game;
+    this.division = RiftRaidComponent.TOP_DIVISION;
+    this.subdivision = 0;
+    this.search = '';
+    this.alliances = [];
+    this.myAlliance = null;
+    this.isInLoading = true;
+    const myAlliance = this.loadMyAlliance();
+    await this.loadEvents();
+    await Promise.race([myAlliance, new Promise((resolve) => setTimeout(resolve, MY_ALLIANCE_GRACE_MS))]);
+    await this.refresh(1);
     this.isInLoading = false;
   }
 
@@ -195,12 +214,13 @@ export class RiftRaidComponent extends GenericComponent implements OnInit {
 
   private async loadMyAlliance(): Promise<void> {
     const me = this.follow.me();
-    if (!me || this.serverService.isE4kServer(me.server) !== this.serverService.isE4kServer()) return;
+    const game = this.game;
+    if (!me || resolveEventGame(undefined, this.serverService.isE4kServer(me.server)) !== game) return;
     const profile = await this.apiRestService.getPlayerProfile(me.playerId, 'rank');
     const player = profile.success ? profile.data.player : null;
     if (!player?.alliance_id) return;
     const standings = await this.apiRestService.getAllianceTournamentStandings(Number(player.alliance_id));
-    if (!standings.success || !standings.data.rift_raid) return;
+    if (!standings.success || !standings.data.rift_raid || game !== this.game) return;
     this.myAlliance = {
       allianceId: Number(player.alliance_id),
       allianceName: player.alliance_name ?? '',
@@ -214,7 +234,7 @@ export class RiftRaidComponent extends GenericComponent implements OnInit {
   }
 
   private async loadEvents(requestedDate?: string): Promise<void> {
-    const response = await this.apiRestService.getRiftRaidDates();
+    const response = await this.apiRestService.getRiftRaidDates(this.game);
     this.events = response.success ? response.data.events : [];
     const latestEvent = this.events.at(-1);
     this.latestDate = latestEvent?.dates.at(-1) ?? '';
@@ -236,8 +256,16 @@ export class RiftRaidComponent extends GenericComponent implements OnInit {
         subdivision: this.subdivision,
         search: this.search,
         page,
+        game: this.game,
       },
-      { date: this.latestDate, division: RiftRaidComponent.TOP_DIVISION, subdivision: 0, search: '', page: 1 },
+      {
+        date: this.latestDate,
+        division: RiftRaidComponent.TOP_DIVISION,
+        subdivision: 0,
+        search: '',
+        page: 1,
+        game: resolveEventGame(undefined, this.serverService.isE4kServer()),
+      },
     );
     if (!this.currentDate) {
       this.alliances = [];
@@ -245,12 +273,13 @@ export class RiftRaidComponent extends GenericComponent implements OnInit {
     }
     this.isDataLoading = true;
     const response = this.search
-      ? await this.apiRestService.searchRiftRaidAlliances(this.currentDate, this.search, page)
+      ? await this.apiRestService.searchRiftRaidAlliances(this.currentDate, this.search, page, this.game)
       : await this.apiRestService.getRiftRaidAlliances(
           this.currentDate,
           this.division,
           page,
           this.subdivision || undefined,
+          this.game,
         );
     this.isDataLoading = false;
     if (!response.success) {

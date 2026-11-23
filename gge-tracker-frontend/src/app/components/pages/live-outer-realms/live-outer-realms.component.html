@@ -71,6 +71,7 @@
               </span>
               <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
             </a>
+            <app-game-switch [game]="game" [disabled]="isDataLoading" (gameChange)="selectGame($event)" />
           </section>
           @if (!isInLoading) {
             <div class="col-12 realms-panel">
@@ -168,6 +169,9 @@
     </div>
   } @else {
     <div class="col-12">
+      <div class="realms-game-switch-closed">
+        <app-game-switch [game]="game" [disabled]="isDataLoading" (gameChange)="selectGame($event)" />
+      </div>
       <section class="ei-root" aria-labelledby="ei-title" tabindex="-1">
         <div class="ei-backdrop" aria-hidden="true"></div>
         <article class="ei-card" aria-describedby="ei-desc">

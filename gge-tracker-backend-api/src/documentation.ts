@@ -87,6 +87,17 @@ export const options = {
             default: 'ep',
           },
         },
+        RankingGame: {
+          name: 'game',
+          in: 'query',
+          description:
+            'Which universe to read. Goodgame Empire (with its partner and WORLD servers) and Empire: Four Kingdoms run separate rankings. Defaults to the universe of the gge-server header',
+          required: false,
+          schema: {
+            type: 'string',
+            enum: ['ep', 'e4k'],
+          },
+        },
         GgeServerHeader: {
           name: 'gge-server',
           in: 'header',
