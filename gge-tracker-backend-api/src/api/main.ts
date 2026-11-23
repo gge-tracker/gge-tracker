@@ -9157,10 +9157,11 @@ publicRoutes.get('/assets/og/release-notes.jpg', routingInstance.getReleaseNotes
  *       - name: eventNumber
  *         in: path
  *         required: true
- *         description: The event number, as listed by /events/list
+ *         description: >
+ *           The event's 7-character link code, or its number as listed by /events/list, read with game
  *         schema:
- *           type: integer
- *           minimum: 1
+ *           type: string
+ *           pattern: '^([0-9]{1,6}|[0-9a-z]{7})$'
  *       - $ref: '#/components/parameters/IfNoneMatch'
  *     responses:
  *       '200':

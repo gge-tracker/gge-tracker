@@ -60,6 +60,7 @@ import {
 import { EventServer, findScrapingServer, readE4kEventServers, readPublicPlayerIdCodes } from './servers-file';
 import { findTempServerSetting } from './temp-server-settings';
 import { scheduleDiscordPost } from './discord-schedule';
+import { encodeEventLinkCode } from './event-link-code';
 import {
   announceTournamentResults,
   announceTournamentStart,
@@ -72,13 +73,7 @@ import {
   TournamentStanding,
 } from './tournament-alerts';
 import { readUniverseServerNames } from './servers-file';
-import {
-  OuterRealmsGame,
-  OuterRealmsUniverse,
-  outerRealmsGameOf,
-  outerRealmsLinkQuery,
-  outerRealmsUniverse,
-} from './outer-realms-universe';
+import { OuterRealmsGame, OuterRealmsUniverse, outerRealmsGameOf, outerRealmsUniverse } from './outer-realms-universe';
 
 interface LootMove {
   player: number;
@@ -1547,8 +1542,8 @@ export class GenericFetchAndSaveBackend {
       throw new Error('Missing Discord Channel ID environment variable');
     }
     const eventSlug = eventType.toLowerCase().replace(/\s/g, '-');
-    const linkQuery = outerRealmsLinkQuery(this.eventGame);
-    const eventUrl = `${this.SITE_URL}/events/${eventSlug}/${eventNum}${linkQuery}`;
+    const eventCode = encodeEventLinkCode(this.eventGame, eventNum);
+    const eventUrl = `${this.SITE_URL}/events/${eventSlug}/${eventCode}`;
     const ranking = players
       .slice(0, 10)
       .map(
@@ -1575,7 +1570,7 @@ export class GenericFetchAndSaveBackend {
             url: this.EVENT_THUMBNAILS[eventType],
           },
           image: {
-            url: `${this.GGE_TRACKER_API_URL}/assets/og/event/${eventSlug}/${eventNum}.jpg${linkQuery}`,
+            url: `${this.GGE_TRACKER_API_URL}/assets/og/event/${eventSlug}/${eventCode}.jpg`,
           },
           footer: {
             text: 'gge-tracker.com - ' + playersAdded + ' players',

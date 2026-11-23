@@ -277,19 +277,19 @@ describe('getDiscordApiMessageBody', () => {
       const embed = body.embeds[0];
       assert.equal(body.channelId, '1234567890');
       assert.equal(embed.title, 'Outer Realms Leaderboard Update');
-      assert.equal(embed.url, 'https://gge-tracker.com/events/outer-realms/42');
-      assert.equal(embed.image?.url, 'https://api.gge-tracker.com/api/v1/assets/og/event/outer-realms/42.jpg');
+      assert.equal(embed.url, 'https://gge-tracker.com/events/outer-realms/if9yt07');
+      assert.equal(embed.image?.url, 'https://api.gge-tracker.com/api/v1/assets/og/event/outer-realms/if9yt07.jpg');
       assert.equal(embed.thumbnail?.url, 'https://i.imgur.com/FcLmF5K.png');
       assert.equal(embed.footer?.text, 'gge-tracker.com - 1234 players');
       assert.equal(embed.timestamp, sandbox.now.toISOString());
-      assert.ok(embed.fields[0].value.includes('https://gge-tracker.com/events/outer-realms/42'));
+      assert.ok(embed.fields[0].value.includes('https://gge-tracker.com/events/outer-realms/if9yt07'));
     });
   });
 
   it('points the podium image at the API the environment names', async () => {
     await withSandbox({ env: { GGE_TRACKER_API_URL: 'http://localhost:3002/api/v1' } }, async (sandbox) => {
       const body = sandbox.backend.getDiscordApiMessageBody('Beyond the Horizon', 2, 7, players as any);
-      assert.equal(body.embeds[0].image?.url, 'http://localhost:3002/api/v1/assets/og/event/beyond-the-horizon/7.jpg');
+      assert.equal(body.embeds[0].image?.url, 'http://localhost:3002/api/v1/assets/og/event/beyond-the-horizon/ew7s3gi.jpg');
       assert.equal(body.embeds[0].thumbnail?.url, 'https://i.imgur.com/dlkPT1S.png');
     });
   });

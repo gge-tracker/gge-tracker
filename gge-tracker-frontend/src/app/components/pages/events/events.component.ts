@@ -21,6 +21,11 @@ import { formatThousands, stripTrailingDigits } from '@ggetracker-services/text-
 import { LanguageService } from '@ggetracker-services/language.service';
 import { ServerService } from '@ggetracker-services/server.service';
 import { EventGame, eventGameQueryParameters, resolveEventGame } from '@ggetracker-services/event-game.utilities';
+import {
+  decodeEventLinkCode,
+  encodeEventLinkCode,
+  isLegacyEventNumber,
+} from '@ggetracker-services/event-link-code.utilities';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Activity, CalendarCheck, LucideAngularModule, SquareUser, Target, TrendingUp, Trophy } from 'lucide-angular';
 import { NgSelectComponent } from '@ng-select/ng-select';
@@ -91,6 +96,10 @@ export class EventsComponent extends GenericComponent {
     { type: EventType.OUTER_REALM, label: 'Royaume extérieur' },
     { type: EventType.BEYOND_THE_HORIZON, label: 'Lacis' },
   ];
+  public readonly games: { value: EventGame; label: string; icon: string }[] = [
+    { value: 'ep', label: 'Empire', icon: 'fa-solid fa-desktop' },
+    { value: 'e4k', label: 'E4K', icon: 'fa-solid fa-mobile-screen-button' },
+  ];
   public activatedRoute = inject(ActivatedRoute);
   public serverService = inject(ServerService);
   public tableHeaders: [string, string, string?, boolean?][] = [
@@ -142,11 +151,25 @@ export class EventsComponent extends GenericComponent {
   }
 
   public onEventClick(event: EventList): void {
-    if (event.type === EventType.OUTER_REALM) {
-      void this.router.navigate(['/events', 'outer-realms', event.id], { queryParams: this.gameQueryParameters });
-    } else if (event.type === EventType.BEYOND_THE_HORIZON) {
-      void this.router.navigate(['/events', 'beyond-the-horizon', event.id], { queryParams: this.gameQueryParameters });
+    void this.router.navigate(this.eventLink(event.type, event.id));
+  }
+
+  public async selectGame(game: EventGame): Promise<void> {
+    if (game === this.game || this.cardLoading) return;
+    this.cardLoading = true;
+    this.setGame(game);
+    this.page = 1;
+    try {
+      await this.initEventList(this.page, this.listType ?? undefined);
+      await this.updateGenericParamsInUrl(
+        { page: this.page, game: this.gameQueryParameters['game'] ?? null },
+        { page: 1 },
+      );
+    } catch {
+      this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
     }
+    this.cardLoading = false;
+    this.cdr.detectChanges();
   }
 
   public async eventsNavigateTo(page: number): Promise<void> {
@@ -328,6 +351,24 @@ export class EventsComponent extends GenericComponent {
     );
   }
 
+  private eventLink(eventType: EventType, eventNumber: number): string[] {
+    return ['/events', eventType, encodeEventLinkCode(this.game, eventNumber)];
+  }
+
+  private resolveEventLink(
+    identifier: string,
+    requestedGame: EventGame,
+  ): { game: EventGame; eventNumber: number } | null {
+    if (isLegacyEventNumber(identifier)) return { game: requestedGame, eventNumber: Number(identifier) };
+    return decodeEventLinkCode(identifier);
+  }
+
+  private setGame(game: EventGame): void {
+    this.game = game;
+    const serverGame = resolveEventGame(undefined, this.serverService.isE4kServer());
+    this.gameQueryParameters = game === serverGame ? eventGameQueryParameters(game) : { game };
+  }
+
   private async initEventList(page: number, eventType?: EventType): Promise<void> {
     this.listType = eventType ?? null;
     const events = await this.getEventList(page, eventType);
@@ -346,23 +387,36 @@ export class EventsComponent extends GenericComponent {
   private async init(): Promise<void> {
     try {
       this.route.params.subscribe(async (parameters) => {
-        this.game = resolveEventGame(this.route.snapshot.queryParams['game'], this.serverService.isE4kServer());
-        this.gameQueryParameters = eventGameQueryParameters(this.game);
-        if (Object.keys(parameters).length === 0 || Number.isNaN(Number.parseInt(parameters['eventId']))) {
+        const requestedGame = resolveEventGame(
+          this.route.snapshot.queryParams['game'],
+          this.serverService.isE4kServer(),
+        );
+        const identifier: string | undefined = parameters['eventId'];
+        const eventLink = identifier === undefined ? null : this.resolveEventLink(identifier, requestedGame);
+        this.setGame(eventLink?.game ?? requestedGame);
+        if (identifier === undefined) {
           const targetedEvent = parameters['eventType'];
           const page = this.route.snapshot.queryParams['page'] ? Number(this.route.snapshot.queryParams['page']) : 1;
           this.page = page;
           await this.initEventList(this.page, targetedEvent);
-        } else if (parameters['eventId'] !== undefined && !Number.isNaN(Number.parseInt(parameters['eventId']))) {
+        } else {
           if (
-            parameters['eventType'] !== EventType.OUTER_REALM &&
-            parameters['eventType'] !== EventType.BEYOND_THE_HORIZON
+            !eventLink ||
+            (parameters['eventType'] !== EventType.OUTER_REALM &&
+              parameters['eventType'] !== EventType.BEYOND_THE_HORIZON)
           ) {
             this.toastService.add(ErrorType.ERROR_OCCURRED, 5000);
             void this.router.navigate(['/events']);
             return;
           }
-          this.eventId = Number.parseInt(parameters['eventId']);
+          if (isLegacyEventNumber(identifier)) {
+            void this.router.navigate(this.eventLink(parameters['eventType'], eventLink.eventNumber), {
+              queryParams: { page: this.route.snapshot.queryParams['page'] },
+              replaceUrl: true,
+            });
+            return;
+          }
+          this.eventId = eventLink.eventNumber;
           this.eventType = parameters['eventType'] as EventType;
           const urlParameters = this.route.snapshot.queryParams;
           const page = urlParameters['page'] ? Number(urlParameters['page']) : 1;

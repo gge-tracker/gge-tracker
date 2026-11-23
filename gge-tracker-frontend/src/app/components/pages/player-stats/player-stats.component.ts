@@ -1,4 +1,5 @@
-import { EventGame, eventGameQueryParameters } from '@ggetracker-services/event-game.utilities';
+import { EventGame } from '@ggetracker-services/event-game.utilities';
+import { encodeEventLinkCode } from '@ggetracker-services/event-link-code.utilities';
 import { ChronicleCtaComponent } from '@ggetracker-components/chronicle-discovery/chronicle-cta.component';
 import { ChronicleIntroComponent } from '@ggetracker-components/chronicle-discovery/chronicle-intro.component';
 import { DatePipe, NgClass, NgStyle, NgTemplateOutlet } from '@angular/common';
@@ -458,14 +459,8 @@ export class PlayerStatsComponent extends GenericComponent implements OnInit, Af
 
   public navigateToEvent(event: OuterEventData | WoaEventList): void {
     if ('event_num' in event) {
-      if (event.type === EventType.OUTER_REALM) {
-        void this.router.navigate(['/events', 'outer-realms', event.event_num], {
-          queryParams: eventGameQueryParameters(this.outerEventsGame),
-        });
-      } else if (event.type === EventType.BEYOND_THE_HORIZON) {
-        void this.router.navigate(['/events', 'beyond-the-horizon', event.event_num], {
-          queryParams: eventGameQueryParameters(this.outerEventsGame),
-        });
+      if (event.type === EventType.OUTER_REALM || event.type === EventType.BEYOND_THE_HORIZON) {
+        void this.router.navigate(['/events', event.type, encodeEventLinkCode(this.outerEventsGame, event.event_num)]);
       }
     } else {
       const resultByPage = 15;

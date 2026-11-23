@@ -6,6 +6,7 @@ import { HttpCache } from '../helper/http-cache';
 import { RouteErrorMessagesEnum } from '../enums/errors.enums';
 import { EventTypes } from '../enums/event-types.enums';
 import { EventGame, EventGames } from '../helper/event-game';
+import { decodeEventLinkCode, encodeEventLinkCode, isLegacyEventNumber } from '../helper/event-link-code';
 import { EventPodium, EventPodiumCard, PodiumEntry, PodiumTrackedStats } from '../services/event-podium-card';
 import { ShareCardRenderer } from '../services/share-card-renderer';
 import { ApiProfiles } from './api-profiles';
@@ -44,26 +45,28 @@ export abstract class ApiEventPodium implements ApiHelper {
 
   public static async getCard(request: express.Request, response: express.Response): Promise<void> {
     try {
-      const game = EventGames.fromRequest(request, response);
-      if (game === null) return;
+      const requestedGame = EventGames.fromRequest(request, response);
+      if (requestedGame === null) return;
       const eventType = String(request.params.eventType);
       const event = Object.hasOwn(this.EVENTS, eventType) ? this.EVENTS[eventType] : null;
       if (!event) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventType });
         return;
       }
-      const eventNumber = /^\d{1,6}$/.test(String(request.params.eventNumber)) ? Number(request.params.eventNumber) : 0;
-      if (eventNumber < 1) {
+      const link = this.resolveEventLink(String(request.params.eventNumber), requestedGame);
+      if (!link) {
         response.status(ApiHelper.HTTP_BAD_REQUEST).send({ error: RouteErrorMessagesEnum.InvalidEventId });
         return;
       }
+      const { game, eventNumber } = link;
       const eventPgDbpool = EventGames.pool(game);
       const snapshot = eventPgDbpool ? await this.snapshot(eventPgDbpool, game, eventType, event, eventNumber) : null;
       if (!snapshot) {
         response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.EventNotFound });
         return;
       }
-      const html = EventPodiumCard.toHtml(snapshot.podium, ApiSeo.displayUrl(snapshot.podium.path));
+      const podium = { ...snapshot.podium, path: this.eventPath(eventType, game, eventNumber) };
+      const html = EventPodiumCard.toHtml(podium, ApiSeo.displayUrl(podium.path));
       const key = `seo:podium:${crypto.createHash('sha1').update(html).digest('hex').slice(0, 20)}`;
       if (
         HttpCache.handleConditional(request, response, {
@@ -167,11 +170,25 @@ export abstract class ApiEventPodium implements ApiHelper {
       collectedAt: header.rows[0]?.collect_date?.toISOString() ?? null,
       playerCount: Number(totals.rows[0]?.players ?? 0),
       serverCount: Number(totals.rows[0]?.servers ?? 0),
-      path: `/events/${eventType}/${eventNumber}${game === 'ep' ? '' : `?game=${game}`}`,
+      path: this.eventPath(eventType, game, eventNumber),
       entries,
     };
     const settled = this.collectionSettled(header.rows[0]?.collect_date ?? null);
     return { podium, complete: settled && lookups.every((lookup) => lookup.complete) };
+  }
+
+  private static resolveEventLink(
+    identifier: string,
+    requestedGame: EventGame,
+  ): { game: EventGame; eventNumber: number } | null {
+    const link = isLegacyEventNumber(identifier)
+      ? { game: requestedGame, eventNumber: Number(identifier) }
+      : decodeEventLinkCode(identifier);
+    return link && link.eventNumber >= 1 ? link : null;
+  }
+
+  private static eventPath(eventType: string, game: EventGame, eventNumber: number): string {
+    return `/events/${eventType}/${encodeEventLinkCode(game, eventNumber)}`;
   }
 
   private static collectionSettled(collectDate: Date | null): boolean {

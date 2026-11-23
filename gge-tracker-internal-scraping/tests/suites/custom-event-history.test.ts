@@ -339,8 +339,8 @@ describe('executeCustomEventHistory on E4K', () => {
       await flushDiscordPosts();
       const body = sandbox.outbound.find((call) => call.url.includes('discord'))!.body as any;
       assert.equal(body.channelId, E4K_RESULTS_CHANNEL);
-      assert.equal(body.embeds[0].url, 'https://gge-tracker.com/events/outer-realms/1?game=e4k');
-      assert.match(body.embeds[0].image.url, /\/assets\/og\/event\/outer-realms\/1\.jpg\?game=e4k$/);
+      assert.equal(body.embeds[0].url, 'https://gge-tracker.com/events/outer-realms/medeupk');
+      assert.match(body.embeds[0].image.url, /\/assets\/og\/event\/outer-realms\/medeupk\.jpg$/);
     });
   });
 

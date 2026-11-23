@@ -1474,6 +1474,7 @@ export const CATALOG: Endpoint[] = [
       { label: 'an unknown event type is refused', path: () => '/assets/og/event/grand-tournament/1.jpg', expect: [400] },
       { label: 'a non-numeric event number is refused', path: () => '/assets/og/event/outer-realms/1e3.jpg', expect: [400] },
       { label: 'an event never collected answers 404', path: () => '/assets/og/event/beyond-the-horizon/999999.jpg', expect: [404] },
+      { label: 'a link code is read like the number it carries', path: () => '/assets/og/event/outer-realms/00cqply.jpg', expect: [200, 404] },
       { label: 'an E4K card is read from the E4K store', path: () => '/assets/og/event/outer-realms/1.jpg' + q({ game: 'e4k' }), expect: [200, 404] },
       { label: 'an unknown game is refused', path: () => '/assets/og/event/outer-realms/1.jpg' + q({ game: 'gge' }), expect: [400] },
       { label: 'If-None-Match * is answered 304', path: (s) => `/assets/og/event/outer-realms/${s.outerRealmsEventNumber ?? 1}.jpg`, expect: [304], headers: () => ({ 'If-None-Match': '*' }) },

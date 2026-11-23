@@ -442,6 +442,21 @@ h5,
   color: #e6efe9;
 }
 
+.events-list-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.events-game-chip {
+  background: none;
+  border: 0;
+}
+
+.events-game-chip i {
+  margin-right: 0.35rem;
+}
+
 .events-filter-chip--on {
   background: rgba(255, 215, 0, 0.16);
   color: #ffd76a;

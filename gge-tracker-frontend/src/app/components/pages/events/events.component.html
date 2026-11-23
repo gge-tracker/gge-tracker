@@ -4,13 +4,23 @@
       @if (!currentEvent) {
         <div class="events-list-header">
           <h1 class="events-list-title">{{ 'Scores finaux' | translate }}</h1>
-          <nav class="events-filter" [attr.aria-label]="'Événements' | translate">
-            @for (filter of listFilters; track filter.label) {
-              <a class="events-filter-chip" [class.events-filter-chip--on]="listType === filter.type"
-                [attr.aria-current]="listType === filter.type ? 'page' : null"
-                [routerLink]="filter.type ? ['/events', filter.type] : ['/events']" [queryParams]="gameQueryParameters">{{ filter.label | translate }}</a>
-            }
-          </nav>
+          <div class="events-list-controls">
+            <div class="events-filter" role="group">
+              @for (option of games; track option.value) {
+                <button type="button" class="events-filter-chip events-game-chip" [class.events-filter-chip--on]="game === option.value"
+                  [attr.aria-pressed]="game === option.value" [disabled]="cardLoading" (click)="selectGame(option.value)">
+                  <i [class]="option.icon" aria-hidden="true"></i>{{ option.label | translate }}
+                </button>
+              }
+            </div>
+            <nav class="events-filter" [attr.aria-label]="'Événements' | translate">
+              @for (filter of listFilters; track filter.label) {
+                <a class="events-filter-chip" [class.events-filter-chip--on]="listType === filter.type"
+                  [attr.aria-current]="listType === filter.type ? 'page' : null"
+                  [routerLink]="filter.type ? ['/events', filter.type] : ['/events']" [queryParams]="gameQueryParameters">{{ filter.label | translate }}</a>
+              }
+            </nav>
+          </div>
         </div>
         <div class="row mt-1 row-gap-3">
           @for (event of events; track event.type + event.id) {
