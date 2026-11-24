@@ -11,6 +11,7 @@ import {
   LeagueTitleFamily,
   leagueTitleFamilies,
 } from '@ggetracker-components/league-title/league-title.component';
+import { MyStandingComponent } from '@ggetracker-components/my-standing/my-standing.component';
 import { ModalFormGroupComponent } from '@ggetracker-components/modal-form-group/modal-form-group.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
@@ -20,6 +21,7 @@ import {
   ApiKingdomsLeagueGlobalAlliancesResponse,
   ApiKingdomsLeagueGlobalPlayersResponse,
   ApiKingdomsLeagueGlobalRow,
+  ApiKingdomsLeagueHistoryDay,
   ApiKingdomsLeaguePlayer,
   ApiKingdomsLeaguePlayerHistoryResponse,
   ApiKingdomsLeaguePlayersResponse,
@@ -32,6 +34,7 @@ import {
   KingdomsLeagueScope,
   KingdomsLeagueSubject,
 } from '@ggetracker-interfaces/empire-ranking';
+import { FollowService } from '@ggetracker-services/follow.service';
 import { LocalStorageService } from '@ggetracker-services/local-storage.service';
 import { ServerService } from '@ggetracker-services/server.service';
 import { TranslateModule } from '@ngx-translate/core';
@@ -41,6 +44,15 @@ type RankMovement = 'up' | 'down' | 'steady' | 'new' | 'none';
 type LeaguePlayerRow = ApiKingdomsLeaguePlayer & Partial<ApiKingdomsLeagueGlobalRow>;
 type LeagueAllianceRow = ApiKingdomsLeagueAlliance & Partial<ApiKingdomsLeagueGlobalRow>;
 type MedalKind = 'gold' | 'silver' | 'bronze';
+
+interface MyLeagueStanding {
+  playerId: number;
+  playerName: string;
+  server: string;
+  seasonId: number;
+  day: ApiKingdomsLeagueHistoryDay;
+  rankChange: number | null;
+}
 
 interface LeagueFilterForm {
   allianceName: string;
@@ -153,6 +165,7 @@ function emptyFilterForm(): LeagueFilterForm {
     LeagueTitleComponent,
     KingdomsLeagueProgressComponent,
     LayeredSceneComponent,
+    MyStandingComponent,
   ],
   templateUrl: './kingdoms-league.component.html',
   styleUrl: './kingdoms-league.component.css',
@@ -191,8 +204,11 @@ export class KingdomsLeagueComponent extends GenericComponent implements OnInit 
   public pageSizeInput = DEFAULT_PAGE_SIZE;
   public searchFormFilters: Record<string, string> = { tab: 'players' };
   public filtersOpened = false;
+  public myStanding: MyLeagueStanding | null = null;
   public readonly serverService = inject(ServerService);
   private readonly localStorage = inject(LocalStorageService);
+  private readonly follow = inject(FollowService);
+  private myHistory: { key: string; history: ApiKingdomsLeaguePlayerHistoryResponse } | null = null;
 
   constructor() {
     super();
@@ -354,6 +370,18 @@ export class KingdomsLeagueComponent extends GenericComponent implements OnInit 
       return;
     }
     this.progress = response.data;
+  }
+
+  public async showMyProgress(mine: MyLeagueStanding): Promise<void> {
+    await this.showProgress({
+      ...mine.day,
+      player_id: mine.playerId,
+      player_name: mine.playerName,
+      alliance_id: null,
+      alliance_name: null,
+      season_id: mine.seasonId,
+      server: mine.server,
+    });
   }
 
   public isFamilySelected(family: { firstTitle: number; lastTitle: number }): boolean {
@@ -563,5 +591,47 @@ export class KingdomsLeagueComponent extends GenericComponent implements OnInit 
     this.pagination = response.data.pagination;
     this.players = 'players' in response.data ? response.data.players : [];
     this.alliances = 'alliances' in response.data ? response.data.alliances : [];
+    void this.loadMyStanding();
+  }
+
+  private async loadMyStanding(): Promise<void> {
+    const me = this.follow.me();
+    const seasonId = this.isGlobal ? undefined : this.seasonId;
+    if (!me || !this.day || !this.isMyLeagueShown(me.server)) {
+      this.myStanding = null;
+      return;
+    }
+    const day = this.day;
+    const key = `${me.playerId}:${me.server}:${seasonId ?? 'latest'}`;
+    if (this.myHistory?.key !== key) {
+      const response = await this.apiRestService.getKingdomsLeaguePlayerHistory(
+        Number(me.playerId),
+        seasonId,
+        me.server,
+      );
+      this.myHistory = response.success ? { key, history: response.data } : null;
+      if (day !== this.day) return;
+    }
+    const history = this.myHistory?.history;
+    const index = history?.history.findIndex((entry) => entry.day === day) ?? -1;
+    if (!history || history.season_id === null || index === -1) {
+      this.myStanding = null;
+      return;
+    }
+    const previous = index > 0 ? history.history[index - 1] : null;
+    this.myStanding = {
+      playerId: Number(me.playerId),
+      playerName: history.player_name ?? me.playerName,
+      server: me.server,
+      seasonId: history.season_id,
+      day: history.history[index],
+      rankChange: previous ? previous.rank - history.history[index].rank : null,
+    };
+  }
+
+  private isMyLeagueShown(server: string): boolean {
+    if (!this.isGlobal) return server === this.serverName;
+    if (this.game === 'all') return true;
+    return (this.game === 'e4k') === this.serverService.isE4kServer(server);
   }
 }

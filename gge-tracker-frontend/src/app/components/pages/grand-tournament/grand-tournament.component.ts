@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Params, RouterModule } from '@angular/router';
 import { EventTimelineComponent } from '@ggetracker-components/event-timeline/event-timeline.component';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { MyStandingComponent } from '@ggetracker-components/my-standing/my-standing.component';
 import { LayeredSceneComponent } from '@ggetracker-components/layered-scene/layered-scene.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
@@ -17,6 +18,9 @@ import { TranslateModule } from '@ngx-translate/core';
 import { GrandTournamentAnalyzeComponent } from './grand-tournament-analyze/grand-tournament-analyze.component';
 import { ServerService } from '@ggetracker-services/server.service';
 import { EventGame, resolveEventGame } from '@ggetracker-services/event-game.utilities';
+import { MyAllianceStanding, MyStandingService } from '@ggetracker-services/my-standing.service';
+
+const MY_ALLIANCE_GRACE_MS = 800;
 
 interface IGrandTournamentAlliances extends ApiGrandTournamentAlliance {
   disabled?: boolean;
@@ -39,6 +43,7 @@ interface IGrandTournamentSearchAlliances extends ApiGrandTournamentSearchAllian
     GrandTournamentAnalyzeComponent,
     EventTimelineComponent,
     LayeredSceneComponent,
+    MyStandingComponent,
   ],
   templateUrl: './grand-tournament.component.html',
   styleUrl: './grand-tournament.component.css',
@@ -80,6 +85,8 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
   ];
   public serverService = inject(ServerService);
   public game: EventGame = 'ep';
+  public myAlliance: MyAllianceStanding | null = null;
+  private readonly myStanding = inject(MyStandingService);
 
   constructor() {
     super();
@@ -216,7 +223,7 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
   public async ngOnInit(): Promise<void> {
     const urlParameters = this.route.snapshot.queryParams;
     this.game = resolveEventGame(urlParameters['game'], this.serverService.isE4kServer());
-    await this.openTournament(urlParameters);
+    await this.openTournamentWithMyAlliance(urlParameters);
     this.isInLoading = false;
   }
 
@@ -227,8 +234,9 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
     this.isSubDivisionFilterActivated = false;
     this.subdivision.current_subdivision = 0;
     this.alliances = [];
+    this.myAlliance = null;
     this.isInLoading = true;
-    await this.openTournament({});
+    await this.openTournamentWithMyAlliance({});
     if (this.isEventMissing) {
       void this.updateGenericParamsInUrl(
         { game: this.game, page: null, date: null, subdivision: null, division: null },
@@ -236,6 +244,17 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
       );
     }
     this.isInLoading = false;
+  }
+
+  public async showMyAllianceSubdivision(mine: MyAllianceStanding): Promise<void> {
+    this.currentDate = mine.standing.date;
+    this.division.current_division = mine.standing.division;
+    await this.filterBySubDivision(mine.standing.division, mine.standing.subdivision);
+  }
+
+  public async analyzeMyAlliance(mine: MyAllianceStanding): Promise<void> {
+    this.currentDate = mine.standing.date;
+    await this.analyzeAlliance(mine.allianceId);
   }
 
   public isDisabledLink(allianceId: string): boolean {
@@ -278,6 +297,18 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
       };
     });
     this.pagination = response.data.pagination;
+  }
+
+  private async openTournamentWithMyAlliance(urlParameters: Params): Promise<void> {
+    const myAlliance = this.loadMyAlliance();
+    await Promise.race([myAlliance, new Promise((resolve) => setTimeout(resolve, MY_ALLIANCE_GRACE_MS))]);
+    await this.openTournament(urlParameters);
+  }
+
+  private async loadMyAlliance(): Promise<void> {
+    const game = this.game;
+    const mine = await this.myStanding.allianceStanding('grand_tournament', game);
+    if (mine && game === this.game) this.myAlliance = mine;
   }
 
   private async openTournament(urlParameters: Params): Promise<void> {

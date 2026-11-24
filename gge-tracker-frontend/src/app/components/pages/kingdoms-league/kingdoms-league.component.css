@@ -235,7 +235,8 @@ td a:focus-visible {
   cursor: progress;
 }
 
-.col-actions .action-button.is-busy img {
+.col-actions .action-button.is-busy img,
+.btn.is-busy img {
   animation: league-pulse 0.9s ease-in-out infinite alternate;
 }
 
@@ -442,7 +443,8 @@ td a:focus-visible {
     transition: none;
   }
 
-  .col-actions .action-button.is-busy img {
+  .col-actions .action-button.is-busy img,
+  .btn.is-busy img {
     animation: none;
   }
 

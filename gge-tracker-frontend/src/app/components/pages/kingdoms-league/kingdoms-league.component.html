@@ -103,6 +103,30 @@
           }
         </p>
 
+        @if (myStanding; as mine) {
+          <app-my-standing class="mb-3" nameId="league-my-name" [label]="'home.you' | translate" [name]="mine.playerName"
+            [figures]="[
+              { label: (isGlobal ? ('Rang' | translate) + ' · ' + mine.server : ('Rang' | translate)), value: '#' + (mine.day.rank | number), change: mine.rankChange },
+              { label: medalLabel('gold') | translate, value: (mine.day.gold | number) ?? '' },
+              { label: medalLabel('silver') | translate, value: (mine.day.silver | number) ?? '' },
+              { label: medalLabel('bronze') | translate, value: (mine.day.bronze | number) ?? '' }
+            ]">
+            <app-league-title standingBadge [title]="mine.day.title" />
+            <ng-container standingActions>
+              <a [routerLink]="['/player', mine.playerId]" class="btn btn-ghost btn-sm">
+                <img src="/assets/icon_analyze.png" alt="" height="18">
+                {{ 'Analyser le joueur' | translate }}
+              </a>
+              <button type="button" class="btn btn-ghost btn-sm" [class.is-busy]="loadingProgressFor === mine.playerId"
+                [disabled]="loadingProgressFor !== null" [attr.aria-busy]="loadingProgressFor === mine.playerId"
+                (click)="showMyProgress(mine)">
+                <img src="/assets/icon_points.png" alt="" height="18">
+                {{ 'Progression de la saison' | translate }}
+              </button>
+            </ng-container>
+          </app-my-standing>
+        }
+
         @if (tab === 'players') {
           <app-table [sort]="''" [reverse]="false" [isInLoading]="isDataLoading" [maxPage]="pagination.total_pages"
             [page]="pagination.current_page" [search]="search" [headers]="playerHeaders" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">

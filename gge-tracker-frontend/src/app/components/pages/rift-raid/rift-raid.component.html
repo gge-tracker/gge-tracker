@@ -21,27 +21,14 @@
         <p class="empty-state text-center my-5">{{ 'Aucun Tournoi de la Faille enregistré pour le moment' | translate }}</p>
       } @else {
         @if (myAlliance; as mine) {
-          <section class="my-alliance mb-3" aria-labelledby="rift-my-alliance-name">
-            <app-division-badge [division]="mine.standing.division" [nameKey]="divisionNames[mine.standing.division - 1]" [size]="42" />
-            <div class="my-alliance-identity">
-              <span class="my-alliance-label">{{ 'home.my-alliance' | translate }}</span>
-              <strong id="rift-my-alliance-name" class="my-alliance-name">{{ mine.allianceName }}</strong>
-            </div>
-            <dl class="my-alliance-figures">
-              <div>
-                <dt>{{ 'Sous-division' | translate }}</dt>
-                <dd>{{ mine.standing.subdivision }}</dd>
-              </div>
-              <div>
-                <dt>{{ 'Rang' | translate }}</dt>
-                <dd>#{{ mine.standing.rank }}</dd>
-              </div>
-              <div>
-                <dt>{{ 'Points' | translate }}</dt>
-                <dd>{{ mine.standing.score | number }}</dd>
-              </div>
-            </dl>
-            <div class="my-alliance-actions">
+          <app-my-standing class="mb-3" nameId="rift-my-alliance-name" [label]="'home.my-alliance' | translate"
+            [name]="mine.allianceName" [figures]="[
+              { label: 'Sous-division' | translate, value: '' + mine.standing.subdivision },
+              { label: 'Rang' | translate, value: '#' + mine.standing.rank },
+              { label: 'Points' | translate, value: (mine.standing.score | number) ?? '' }
+            ]">
+            <app-division-badge standingBadge [division]="mine.standing.division" [nameKey]="divisionNames[mine.standing.division - 1]" [size]="42" />
+            <ng-container standingActions>
               <button type="button" class="btn btn-ghost btn-sm" (click)="showMyAllianceSubdivision(mine)"
                 [title]="('Filtrer' | translate) + ' (' + ('Sous-division' | translate) + ' ' + mine.standing.subdivision + ')'">
                 <i class="fa-solid fa-filter" aria-hidden="true"></i>
@@ -55,8 +42,8 @@
                   <span class="analyze-spinner" aria-hidden="true"></span>
                 }
               </button>
-            </div>
-          </section>
+            </ng-container>
+          </app-my-standing>
         }
         <div class="division-row text-center mb-3">
           <div class="d-flex justify-content-center gap-3 flex-wrap">

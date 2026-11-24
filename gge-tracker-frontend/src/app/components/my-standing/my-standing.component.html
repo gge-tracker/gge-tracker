@@ -1,0 +1,29 @@
+<section class="my-standing" [attr.aria-labelledby]="nameId()">
+  <ng-content select="[standingBadge]" />
+  <div class="my-standing-identity">
+    <span class="my-standing-label">{{ label() }}</span>
+    <strong [id]="nameId()" class="my-standing-name">{{ name() }}</strong>
+  </div>
+  <dl class="my-standing-figures">
+    @for (figure of figures(); track figure.label) {
+      <div>
+        <dt>{{ figure.label }}</dt>
+        <dd>
+          {{ figure.value }}
+          @if (figure.change) {
+            <span
+              class="my-standing-change"
+              [class.positive]="figure.change > 0"
+              [class.negative]="figure.change < 0"
+            >
+              {{ figure.change > 0 ? "+" + figure.change : figure.change }}
+            </span>
+          }
+        </dd>
+      </div>
+    }
+  </dl>
+  <div class="my-standing-actions">
+    <ng-content select="[standingActions]" />
+  </div>
+</section>

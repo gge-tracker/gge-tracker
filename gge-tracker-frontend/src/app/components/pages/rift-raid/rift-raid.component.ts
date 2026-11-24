@@ -5,6 +5,7 @@ import { RouterModule } from '@angular/router';
 import { DivisionBadgeComponent } from '@ggetracker-components/division-badge/division-badge.component';
 import { EventTimelineComponent } from '@ggetracker-components/event-timeline/event-timeline.component';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
+import { MyStandingComponent } from '@ggetracker-components/my-standing/my-standing.component';
 import { LayeredSceneComponent } from '@ggetracker-components/layered-scene/layered-scene.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
@@ -12,10 +13,9 @@ import {
   ApiPagination,
   ApiRiftRaidAlliance,
   ApiRiftRaidAllianceAnalysisResponse,
-  ApiTournamentStanding,
   ErrorType,
 } from '@ggetracker-interfaces/empire-ranking';
-import { FollowService } from '@ggetracker-services/follow.service';
+import { MyAllianceStanding, MyStandingService } from '@ggetracker-services/my-standing.service';
 import { ServerService } from '@ggetracker-services/server.service';
 import { EventGame, resolveEventGame } from '@ggetracker-services/event-game.utilities';
 import { TranslateModule } from '@ngx-translate/core';
@@ -36,12 +36,6 @@ interface RiftRaidRow extends ApiRiftRaidAlliance {
   disabled: boolean;
 }
 
-interface MyAllianceStanding {
-  allianceId: number;
-  allianceName: string;
-  standing: ApiTournamentStanding;
-}
-
 @Component({
   selector: 'app-rift-raid',
   standalone: true,
@@ -56,6 +50,7 @@ interface MyAllianceStanding {
     GrandTournamentAnalyzeComponent,
     EventTimelineComponent,
     LayeredSceneComponent,
+    MyStandingComponent,
   ],
   templateUrl: './rift-raid.component.html',
   styleUrls: ['../grand-tournament/grand-tournament.component.css', './rift-raid.component.css'],
@@ -82,7 +77,7 @@ export class RiftRaidComponent extends GenericComponent implements OnInit {
   public selectedAllianceInAnalyzer: ApiRiftRaidAllianceAnalysisResponse | null = null;
   public analyzingAllianceId: number | null = null;
   public myAlliance: MyAllianceStanding | null = null;
-  private readonly follow = inject(FollowService);
+  private readonly myStanding = inject(MyStandingService);
 
   constructor() {
     super();
@@ -213,19 +208,9 @@ export class RiftRaidComponent extends GenericComponent implements OnInit {
   }
 
   private async loadMyAlliance(): Promise<void> {
-    const me = this.follow.me();
     const game = this.game;
-    if (!me || resolveEventGame(undefined, this.serverService.isE4kServer(me.server)) !== game) return;
-    const profile = await this.apiRestService.getPlayerProfile(me.playerId, 'rank');
-    const player = profile.success ? profile.data.player : null;
-    if (!player?.alliance_id) return;
-    const standings = await this.apiRestService.getAllianceTournamentStandings(Number(player.alliance_id));
-    if (!standings.success || !standings.data.rift_raid || game !== this.game) return;
-    this.myAlliance = {
-      allianceId: Number(player.alliance_id),
-      allianceName: player.alliance_name ?? '',
-      standing: standings.data.rift_raid,
-    };
+    const mine = await this.myStanding.allianceStanding('rift_raid', game);
+    if (mine && game === this.game) this.myAlliance = mine;
   }
 
   private parseDivision(value: unknown): number {

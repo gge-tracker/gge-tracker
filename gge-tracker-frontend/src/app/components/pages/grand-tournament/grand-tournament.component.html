@@ -19,6 +19,33 @@
       @if (isEventMissing && !isInLoading) {
         <p class="empty-state text-center my-5">{{ 'Aucun Grand Tournoi enregistré pour le moment' | translate }}</p>
       } @else {
+        @if (myAlliance; as mine) {
+          <app-my-standing class="mb-3" nameId="tournament-my-alliance-name" [label]="'home.my-alliance' | translate"
+            [name]="mine.allianceName" [figures]="[
+              { label: 'Sous-division' | translate, value: '' + mine.standing.subdivision },
+              { label: 'Rang' | translate, value: '#' + mine.standing.rank },
+              { label: 'Points' | translate, value: (mine.standing.score | number) ?? '' }
+            ]">
+            <img standingBadge [src]="'/assets/gt/division' + mine.standing.division + '.png'" width="42" height="42"
+              [alt]="('Division' | translate) + ' ' + (divisionNames[mine.standing.division - 1] | translate)"
+              [title]="('Division' | translate) + ' ' + (divisionNames[mine.standing.division - 1] | translate)">
+            <ng-container standingActions>
+              <button type="button" class="btn btn-ghost btn-sm" (click)="showMyAllianceSubdivision(mine)"
+                [title]="('Filtrer' | translate) + ' (' + ('Sous-division' | translate) + ' ' + mine.standing.subdivision + ')'">
+                <i class="fa-solid fa-filter" aria-hidden="true"></i>
+                {{ 'Sous-division' | translate }} {{ mine.standing.subdivision }}
+              </button>
+              <button type="button" class="action-icon button-reset" [class.analyzing]="analyzingAllianceId === mine.allianceId"
+                [disabled]="analyzingAllianceId !== null" [attr.aria-busy]="analyzingAllianceId === mine.allianceId"
+                (click)="analyzeMyAlliance(mine)" [title]="'Score' | translate" [attr.aria-label]="'Score' | translate">
+                <img src="/assets/icon_points.png" alt="" height="24" class="btn-icon">
+                @if (analyzingAllianceId === mine.allianceId) {
+                  <span class="analyze-spinner" aria-hidden="true"></span>
+                }
+              </button>
+            </ng-container>
+          </app-my-standing>
+        }
         <div class="division-row text-center mb-3">
           <div class="d-flex justify-content-center gap-3 flex-wrap">
             @for (i of [1,2,3,4,5]; track i) {

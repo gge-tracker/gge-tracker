@@ -1100,11 +1100,12 @@ export class ApiRestService {
 
   public async getKingdomsLeaguePlayerHistory(
     playerId: number,
-    seasonId: number,
+    seasonId: number | undefined,
     server?: string,
   ): Promise<ApiResponse<ApiKingdomsLeaguePlayerHistoryResponse>> {
+    const season = seasonId === undefined ? '' : `?season_id=${seasonId}`;
     return this.apiFetch<ApiKingdomsLeaguePlayerHistoryResponse>(
-      `${ApiRestService.apiUrl}kingdoms-league/player/${playerId}?season_id=${seasonId}`,
+      `${ApiRestService.apiUrl}kingdoms-league/player/${playerId}${season}`,
       true,
       server ? { headers: { 'gge-server': server } } : undefined,
     );

@@ -86,6 +86,28 @@
                   {{ 'outer-realms-diff-legend' | translate: { time: (previousCollectedAt | date: 'HH:mm'), minutes: readingGapMinutes } }}
                 </p>
               }
+              @if (myRow; as mine) {
+                <app-my-standing class="mt-2" nameId="realms-my-name" [label]="'home.you' | translate"
+                  [name]="mine.player_name" [figures]="[
+                    { label: 'Classement' | translate, value: '#' + (mine.rank | number), change: mine.rank_diff },
+                    { label: 'Score' | translate, value: mine.score | formatNumber: 'visual' },
+                    { label: 'Serveur' | translate, value: mine.server }
+                  ]">
+                  <img standingBadge [src]="serverService.getFlagUrl(mine.server)" [alt]="mine.server" height="28">
+                  <ng-container standingActions>
+                    <a class="action-icon" [routerLink]="['/live/outer-realms', mine.player_id]" [queryParams]="gameQueryParameters"
+                      [title]="'Score' | translate" [attr.aria-label]="'Score' | translate">
+                      <img src="/assets/icon_points.png" alt="" height="24" class="btn-icon">
+                    </a>
+                    @if (mine.castle_position[0] !== null) {
+                      <button type="button" class="action-icon action-nearby" (click)="showNearby(mine)"
+                        [title]="'outer-realms-nearby' | translate" [attr.aria-label]="'outer-realms-nearby' | translate">
+                        <i class="fa-solid fa-crosshairs" aria-hidden="true"></i>
+                      </button>
+                    }
+                  </ng-container>
+                </app-my-standing>
+              }
               <div class="mt-2">
                 <app-table [sort]="sort" [reverse]="reverse" [isInLoading]="isDataLoading" [maxPage]="pagination.total_pages"
                   [page]="pagination.current_page" [search]="search" [headers]="tableHeaders" (sortOutput)="sortTable($event)"

@@ -5,6 +5,7 @@ import { RouterModule } from '@angular/router';
 import { GameSwitchComponent } from '@ggetracker-components/game-switch/game-switch.component';
 import { GenericComponent } from '@ggetracker-components/generic/generic.component';
 import { LayeredSceneComponent } from '@ggetracker-components/layered-scene/layered-scene.component';
+import { MyStandingComponent } from '@ggetracker-components/my-standing/my-standing.component';
 import { ModalFormGroupComponent } from '@ggetracker-components/modal-form-group/modal-form-group.component';
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
@@ -21,6 +22,7 @@ import {
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { formatThousands } from '@ggetracker-services/text-format.utilities';
 import { ServerService } from '@ggetracker-services/server.service';
+import { MyStandingService } from '@ggetracker-services/my-standing.service';
 import { EventGame, eventGameQueryParameters, resolveEventGame } from '@ggetracker-services/event-game.utilities';
 import { NgLabelTemplateDirective, NgOptionTemplateDirective, NgSelectComponent } from '@ng-select/ng-select';
 import { TranslateModule } from '@ngx-translate/core';
@@ -62,6 +64,7 @@ interface GenericChartConfig {
     NgSelectComponent,
     NgLabelTemplateDirective,
     NgOptionTemplateDirective,
+    MyStandingComponent,
   ],
   templateUrl: './live-outer-realms.component.html',
   styleUrls: ['./live-outer-realms.component.css'],
@@ -129,6 +132,9 @@ export class LiveOuterRealmsComponent extends GenericComponent {
   public serverService = inject(ServerService);
   public game: EventGame = 'ep';
   public gameQueryParameters: Record<string, string> = {};
+  public myRow: ApiLiveRanking | null = null;
+  private myRowCollectedAt: string | null = null;
+  private readonly myStanding = inject(MyStandingService);
   private filters: LiveRankingFilters = {};
   private refreshTimer: any = null;
 
@@ -196,6 +202,8 @@ export class LiveOuterRealmsComponent extends GenericComponent {
     this.clearFilters();
     this.search = '';
     this.participants = 0;
+    this.myRow = null;
+    this.myRowCollectedAt = null;
     this.eventNotActive = false;
     this.requestCounter = 0;
     this.isInLoading = true;
@@ -375,6 +383,7 @@ export class LiveOuterRealmsComponent extends GenericComponent {
       this.participants = response.data.pagination.total_items_count;
     }
     this.isDataLoading = false;
+    if (this.collectedAt !== this.myRowCollectedAt) void this.loadMyRow();
     this.refreshTimer = setTimeout(() => {
       void this.loadData(page);
     }, 60_000);
@@ -397,6 +406,23 @@ export class LiveOuterRealmsComponent extends GenericComponent {
     if (this.pagination.current_page < this.pagination.total_pages) {
       void this.loadData(this.pagination.current_page + 1);
     }
+  }
+
+  private async loadMyRow(): Promise<void> {
+    const game = this.game;
+    const me = this.myStanding.meIn(game);
+    if (!me) return;
+    const server = this.myStanding.outerRealmsServerOf(me.server);
+    this.myRowCollectedAt = this.collectedAt;
+    const response = await this.apiRestService.getLiveRankingOuterRealms(
+      1,
+      { playerName: me.playerName, servers: [server] },
+      game,
+    );
+    if (!response.success || game !== this.game) return;
+    const name = me.playerName.toLowerCase();
+    this.myRow =
+      response.data.players.find((row) => row.server === server && row.player_name.toLowerCase() === name) ?? null;
   }
 
   private clearFilters(): void {
