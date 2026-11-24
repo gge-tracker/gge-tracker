@@ -10,12 +10,19 @@ import { LayeredSceneComponent } from '@ggetracker-components/layered-scene/laye
 import { SearchFormComponent } from '@ggetracker-components/search-form/search-form.component';
 import { TableComponent } from '@ggetracker-components/table/table.component';
 import {
+  ApiDivisionRound,
   ApiPagination,
   ApiRiftRaidAlliance,
   ApiRiftRaidAllianceAnalysisResponse,
   ErrorType,
 } from '@ggetracker-interfaces/empire-ranking';
 import { MyAllianceStanding, MyStandingService } from '@ggetracker-services/my-standing.service';
+import {
+  DivisionMovement,
+  divisionMovement,
+  DivisionRule,
+  divisionRule,
+} from '@ggetracker-services/division-movement.utilities';
 import { ServerService } from '@ggetracker-services/server.service';
 import { EventGame, resolveEventGame } from '@ggetracker-services/event-game.utilities';
 import { TranslateModule } from '@ngx-translate/core';
@@ -71,6 +78,7 @@ export class RiftRaidComponent extends GenericComponent implements OnInit {
   public subdivision = 0;
   public search = '';
   public alliances: RiftRaidRow[] = [];
+  public divisionRound: ApiDivisionRound | null = null;
   public pagination: ApiPagination = { current_page: 1, total_pages: 1, current_items_count: 0, total_items_count: 0 };
   public isDataLoading = false;
   public isEventMissing = false;
@@ -86,6 +94,14 @@ export class RiftRaidComponent extends GenericComponent implements OnInit {
 
   public get isSubdivisionFiltered(): boolean {
     return this.subdivision > 0;
+  }
+
+  public get divisionRule(): DivisionRule | null {
+    return divisionRule(this.divisionRound, this.division);
+  }
+
+  public movementOf(alliance: ApiRiftRaidAlliance): DivisionMovement | null {
+    return divisionMovement(alliance.projected_division, alliance.division);
   }
 
   public async ngOnInit(): Promise<void> {
@@ -154,6 +170,7 @@ export class RiftRaidComponent extends GenericComponent implements OnInit {
       division: mine.standing.division,
       subdivision: mine.standing.subdivision,
       rank: mine.standing.rank,
+      projected_division: null,
       disabled: false,
     });
   }
@@ -271,6 +288,7 @@ export class RiftRaidComponent extends GenericComponent implements OnInit {
       this.toastService.add(ErrorType.ERROR_OCCURRED, 5000, 'error');
       return;
     }
+    if ('event' in response.data) this.divisionRound = response.data.event.division_round ?? null;
     const alliances = 'event' in response.data ? response.data.event.alliances : response.data.alliances;
     this.alliances = alliances.map((alliance) => ({
       ...alliance,

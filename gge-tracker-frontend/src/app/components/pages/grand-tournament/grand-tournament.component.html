@@ -57,6 +57,29 @@
               </button>
             }
           </div>
+          @if (divisionRule; as rule) {
+            <p class="division-rule">
+              @if (rule.type === 'qualification') {
+                <span class="division-rule-mode">{{ 'Phase de qualification' | translate }}</span>
+              } @else {
+                @if (rule.type === 'adjustment') {
+                  <span class="division-rule-mode">{{ 'Phase ajustement' | translate }}</span>
+                }
+                @if (rule.promotes > 0) {
+                  <span class="division-rule-up">
+                    <i class="fas fa-caret-up" aria-hidden="true"></i>
+                    {{ 'Montent en - 0' | translate: { count: rule.promotes, division: (divisionNames[division.current_division] | translate) } }}
+                  </span>
+                }
+                @if (rule.demotes > 0) {
+                  <span class="division-rule-down">
+                    <i class="fas fa-caret-down" aria-hidden="true"></i>
+                    {{ 'Descendent en - 0' | translate: { count: rule.demotes, division: (divisionNames[division.current_division - 2] | translate) } }}
+                  </span>
+                }
+              }
+            </p>
+          }
         </div>
         <div class="mt-2">
           <app-table [sort]="''" [reverse]="false" [isInLoading]="isDataLoading" [maxPage]="pagination.total_pages"
@@ -75,7 +98,7 @@
               </tr>
             }
             @for (alliance of alliances; track alliance; let i = $index) {
-              <tr>
+              <tr [class.division-row-up]="movementOf(alliance) === 'up'" [class.division-row-down]="movementOf(alliance) === 'down'">
                 <td class="col-rank full-width">
                   <span class="mobile-only">#</span>
                   {{ (pagination.current_page-1) * 10 + i + 1 }}
@@ -110,7 +133,24 @@
                   }
                 </td>
                 <td>
-                  <span class="cell-label">{{ 'Classement dans la sous-division' | translate }}</span>{{ alliance.rank }}</td>
+                  <span class="cell-label">{{ 'Classement dans la sous-division' | translate }}</span>{{ alliance.rank }}
+                  @switch (movementOf(alliance)) {
+                    @case ('up') {
+                      <span class="division-move up"
+                        [title]="'Monte en - 0' | translate: { division: (divisionNames[alliance.projected_division! - 1] | translate) }">
+                        <i class="fas fa-caret-up" aria-hidden="true"></i>
+                        <img [src]="'/assets/gt/division' + alliance.projected_division + '.png'" width="22" height="22" alt="">
+                      </span>
+                    }
+                    @case ('down') {
+                      <span class="division-move down"
+                        [title]="'Descend en - 0' | translate: { division: (divisionNames[alliance.projected_division! - 1] | translate) }">
+                        <i class="fas fa-caret-down" aria-hidden="true"></i>
+                        <img [src]="'/assets/gt/division' + alliance.projected_division + '.png'" width="22" height="22" alt="">
+                      </span>
+                    }
+                  }
+                </td>
                   <td class="col-actions">
                     <button type="button" class="action-icon button-reset" [class.disabled]="alliance.disabled"
                       [class.analyzing]="analyzingAllianceId === alliance.alliance_id"

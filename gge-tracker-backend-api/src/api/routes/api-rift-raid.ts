@@ -4,6 +4,7 @@ import { ApiHelper } from '../helper/api-helper';
 import { CacheKeyBuilder } from '../helper/cache/cache-key-builder';
 import { CachedResponse } from '../helper/cache/cached-response';
 import { CachedValue } from '../helper/cache/cached-value';
+import { DivisionRound, DivisionRounds } from '../helper/division-rounds';
 import { RankingGame, RankingOrigin, RankingStanding, RankingUniverse } from '../helper/ranking-universe';
 
 interface RiftRaidAllianceRow {
@@ -37,11 +38,24 @@ interface RiftRaidAlliance {
   score: number;
   division: number;
   subdivision: number;
+  projected_division: number | null;
+}
+
+interface RiftRaidHourLayout {
+  eventId: number | null;
+  divisionRoundId: number | null;
+  subdivisionSizes: Record<string, number>;
+}
+
+interface RiftRaidHourStanding {
+  round: DivisionRound | null;
+  subdivisionSizes: Record<string, number>;
 }
 
 export abstract class ApiRiftRaid implements ApiHelper {
   private static readonly RANKING_TABLE = 'ggetracker_global.rift_raid_ranking';
   private static readonly HOURS_TABLE = 'ggetracker_global.rift_raid_hours';
+  private static readonly DIVISION_ROUNDS_TABLE = 'ggetracker_global.rift_raid_division_rounds';
   private static readonly CACHE_VERSION_KEY = 'rift-raid:event-dates:version';
   private static readonly CACHE_TTL_SECONDS = 6 * 60 * 60;
   private static readonly ALLIANCES_PER_PAGE = 10;
@@ -110,7 +124,7 @@ export abstract class ApiRiftRaid implements ApiHelper {
       };
       const subdivisionFilter = '({subdivision:UInt16} = 0 OR subdivision_id = {subdivision:UInt16})';
       const order = subdivision ? 'subdivision_id, rank' : 'score DESC, rank';
-      const [rows, stats] = await Promise.all([
+      const [rows, stats, standing] = await Promise.all([
         ApiRiftRaid.select<RiftRaidAllianceRow>(
           `SELECT server_id, division_id, subdivision_id, alliance_id, alliance_name, rank, score
             FROM ${ApiRiftRaid.RANKING_TABLE}
@@ -125,9 +139,10 @@ export abstract class ApiRiftRaid implements ApiHelper {
             WHERE ${ApiRiftRaid.HOUR_WINDOW} AND division_id = {division:UInt8}`,
           parameters,
         ),
+        ApiRiftRaid.standingOf(game, hour),
       ]);
 
-      const alliances = ApiRiftRaid.toAlliances(game, rows);
+      const alliances = ApiRiftRaid.toAlliances(game, rows, standing);
       const totalItems = Number(stats[0]?.total_items ?? 0);
       const body = {
         event: {
@@ -141,6 +156,7 @@ export abstract class ApiRiftRaid implements ApiHelper {
             min_subdivision: 1,
             max_subdivision: Math.max(Number(stats[0]?.max_subdivision_id ?? 0), 1),
           },
+          division_round: DivisionRounds.toPublic(standing.round),
           alliances,
         },
         pagination: ApiRiftRaid.pagination(page, alliances.length, totalItems),
@@ -176,7 +192,7 @@ export abstract class ApiRiftRaid implements ApiHelper {
         offset: (page - 1) * ApiRiftRaid.ALLIANCES_PER_PAGE,
       };
       const nameFilter = 'positionCaseInsensitiveUTF8(alliance_name, {name:String}) > 0';
-      const [rows, stats] = await Promise.all([
+      const [rows, stats, standing] = await Promise.all([
         ApiRiftRaid.select<RiftRaidAllianceRow>(
           `SELECT server_id, division_id, subdivision_id, alliance_id, alliance_name, rank, score
             FROM ${ApiRiftRaid.RANKING_TABLE}
@@ -191,9 +207,10 @@ export abstract class ApiRiftRaid implements ApiHelper {
             WHERE ${ApiRiftRaid.HOUR_WINDOW} AND ${nameFilter}`,
           parameters,
         ),
+        ApiRiftRaid.standingOf(game, hour),
       ]);
 
-      const alliances = ApiRiftRaid.toAlliances(game, rows);
+      const alliances = ApiRiftRaid.toAlliances(game, rows, standing);
       const body = {
         alliances,
         pagination: ApiRiftRaid.pagination(page, alliances.length, Number(stats[0]?.total_items ?? 0)),
@@ -317,7 +334,58 @@ export abstract class ApiRiftRaid implements ApiHelper {
     return parsed > 0 ? parsed : false;
   }
 
-  private static toAlliances(game: RankingGame, rows: RiftRaidAllianceRow[]): RiftRaidAlliance[] {
+  private static async standingOf(game: RankingGame, hour: string): Promise<RiftRaidHourStanding> {
+    const cacheKey = await ApiRiftRaid.cacheKey('hour-layout', { game, hour });
+    const layout = await CachedValue.remember(cacheKey, ApiRiftRaid.CACHE_TTL_SECONDS, () =>
+      ApiRiftRaid.readHourLayout(game, hour),
+    );
+    return {
+      round: await DivisionRounds.find(game, DivisionRounds.RIFT_RAID_EVENT_ID, layout.divisionRoundId),
+      subdivisionSizes: layout.subdivisionSizes,
+    };
+  }
+
+  private static async readHourLayout(game: RankingGame, hour: string): Promise<RiftRaidHourLayout> {
+    const rows = await ApiRiftRaid.select<{
+      division_id: number;
+      subdivision_id: number;
+      size: string;
+      event_id: number;
+    }>(
+      `SELECT division_id, subdivision_id, count() AS size, min(event_id) AS event_id
+        FROM ${ApiRiftRaid.RANKING_TABLE}
+        WHERE ${ApiRiftRaid.HOUR_WINDOW}
+        GROUP BY division_id, subdivision_id`,
+      { game, hour },
+    );
+    const eventId = rows.length > 0 ? Number(rows[0].event_id) : null;
+    return {
+      eventId,
+      divisionRoundId: eventId === null ? null : await ApiRiftRaid.readDivisionRoundId(game, eventId),
+      subdivisionSizes: Object.fromEntries(
+        rows.map((row) => [`${row.division_id}:${row.subdivision_id}`, Number(row.size)]),
+      ),
+    };
+  }
+
+  private static async readDivisionRoundId(game: RankingGame, eventId: number): Promise<number | null> {
+    try {
+      const rows = await ApiRiftRaid.select<{ division_round_id: number }>(
+        `SELECT division_round_id FROM ${ApiRiftRaid.DIVISION_ROUNDS_TABLE} FINAL
+          WHERE game = {game:String} AND event_id = {event:UInt16}`,
+        { game, event: eventId },
+      );
+      return rows.length > 0 ? Number(rows[0].division_round_id) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private static toAlliances(
+    game: RankingGame,
+    rows: RiftRaidAllianceRow[],
+    standing: RiftRaidHourStanding,
+  ): RiftRaidAlliance[] {
     const servers = RankingUniverse.serversOf(game);
     return rows.map((row) => {
       const server = servers.get(row.server_id);
@@ -330,6 +398,14 @@ export abstract class ApiRiftRaid implements ApiHelper {
         score: Number(row.score),
         division: row.division_id,
         subdivision: row.subdivision_id,
+        projected_division: standing.round
+          ? DivisionRounds.projectedDivision(
+              standing.round,
+              row.division_id,
+              row.rank,
+              standing.subdivisionSizes[`${row.division_id}:${row.subdivision_id}`] ?? row.rank,
+            )
+          : null,
       };
     });
   }

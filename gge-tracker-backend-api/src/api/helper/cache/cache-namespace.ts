@@ -10,6 +10,7 @@ const SHARED_KEY_PREFIXES = [
   'temporaryServerData',
   'outerRealms',
   'temp-server-settings',
+  'division-rounds:',
   'offers:',
   'gge_build_version',
   'ItemsVersion',

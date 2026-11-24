@@ -10,6 +10,7 @@ import { SearchFormComponent } from '@ggetracker-components/search-form/search-f
 import { TableComponent } from '@ggetracker-components/table/table.component';
 import {
   ApiGrandTournamenAllianceAnalysisResponse,
+  ApiDivisionRound,
   ApiGrandTournamentAlliance,
   ApiGrandTournamentSearchAlliances,
   ErrorType,
@@ -19,6 +20,12 @@ import { GrandTournamentAnalyzeComponent } from './grand-tournament-analyze/gran
 import { ServerService } from '@ggetracker-services/server.service';
 import { EventGame, resolveEventGame } from '@ggetracker-services/event-game.utilities';
 import { MyAllianceStanding, MyStandingService } from '@ggetracker-services/my-standing.service';
+import {
+  DivisionMovement,
+  divisionMovement,
+  DivisionRule,
+  divisionRule,
+} from '@ggetracker-services/division-movement.utilities';
 
 const MY_ALLIANCE_GRACE_MS = 800;
 
@@ -76,6 +83,7 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
     total_items_count: 0,
   };
 
+  public divisionRound: ApiDivisionRound | null = null;
   public divisionNames = [
     'ame_division_name_1',
     'ame_division_name_2',
@@ -95,6 +103,15 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
 
   public isWithDivision(object: unknown): object is { division: number } {
     return typeof object === 'object' && object !== null && 'division' in object;
+  }
+
+  public movementOf(alliance: ApiGrandTournamentAlliance): DivisionMovement | null {
+    const current = this.isWithDivision(alliance) ? alliance.division : this.division.current_division;
+    return divisionMovement(alliance.projected_division, current);
+  }
+
+  public get divisionRule(): DivisionRule | null {
+    return divisionRule(this.divisionRound, this.division.current_division);
   }
 
   public async analyzeAlliance(allianceId: number): Promise<void> {
@@ -145,6 +162,7 @@ export class GrandTournamentComponent extends GenericComponent implements OnInit
       };
     });
     this.division = responseContent.event.division;
+    this.divisionRound = responseContent.event.division_round ?? null;
     this.subdivision = responseContent.event.subdivision;
     this.pagination = responseContent.pagination;
     this.isDataLoading = false;

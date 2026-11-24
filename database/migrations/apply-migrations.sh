@@ -29,6 +29,7 @@ apply_clickhouse_migrations() {  # <database>
   case "$db" in
     ggetracker_global)
       ch_migration rift-raid.clickhouse.sql --database ggetracker_global
+      ch_migration rift-raid-division-rounds.clickhouse.sql
       ch_migration kingdoms-league.clickhouse.sql
       ch_migration store-offer-history.clickhouse.sql
       # Not rerunnable by itself: it rebuilds the table around a game column, so it runs only while that column is missing

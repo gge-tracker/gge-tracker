@@ -6,6 +6,7 @@ import { ApiHelper } from '../helper/api-helper';
 import { CacheKeyBuilder } from '../helper/cache/cache-key-builder';
 import { CachedResponse } from '../helper/cache/cached-response';
 import { CachedValue } from '../helper/cache/cached-value';
+import { DivisionRound, DivisionRounds } from '../helper/division-rounds';
 import { RankingGame, RankingOrigin, RankingStanding, RankingUniverse } from '../helper/ranking-universe';
 
 interface GrandTournamentAllianceRow {
@@ -39,11 +40,24 @@ interface GrandTournamentAlliance {
   score: number;
   division: number;
   subdivision: number;
+  projected_division: number | null;
+}
+
+interface GrandTournamentHourLayout {
+  eventId: number | null;
+  divisionRoundId: number | null;
+  subdivisionSizes: Record<string, number>;
+}
+
+interface GrandTournamentHourStanding {
+  round: DivisionRound | null;
+  subdivisionSizes: Record<string, number>;
 }
 
 export abstract class ApiGrandTournament implements ApiHelper {
   private static readonly RANKING_TABLE = 'grand_tournament';
   private static readonly HOURS_VIEW = 'grand_tournament_hours_mv';
+  private static readonly DIVISION_ROUNDS_TABLE = 'grand_tournament_division_rounds';
   private static readonly CACHE_VERSION_KEY = 'grand-tournament:event-dates:version';
   private static readonly CACHE_TTL_SECONDS = 6 * 60 * 60;
   private static readonly ALLIANCES_PER_PAGE = 10;
@@ -98,28 +112,35 @@ export abstract class ApiGrandTournament implements ApiHelper {
       const cacheKey = await ApiGrandTournament.cacheKey('division', { game, hour, division, subdivision, page });
       if (await CachedResponse.serveCached(response, cacheKey)) return;
 
-      const parameters = [game, hour, division, subdivision ?? 0];
       const subdivisionFilter = '($4 = 0 OR subdivision_id = $4)';
       const order = subdivision ? 'subdivision_id, rank' : 'score DESC, rank';
-      const [rows, stats] = await Promise.all([
+      const [rows, standing] = await Promise.all([
         ApiGrandTournament.select<GrandTournamentAllianceRow>(
           `SELECT server_id, division_id, subdivision_id, alliance_id, alliance_name, rank, score
             FROM ${ApiGrandTournament.RANKING_TABLE}
             WHERE ${ApiGrandTournament.HOUR_WINDOW} AND division_id = $3 AND ${subdivisionFilter}
             ORDER BY ${order}, server_id, alliance_id
             LIMIT $5 OFFSET $6`,
-          [...parameters, ApiGrandTournament.ALLIANCES_PER_PAGE, (page - 1) * ApiGrandTournament.ALLIANCES_PER_PAGE],
+          [
+            game,
+            hour,
+            division,
+            subdivision ?? 0,
+            ApiGrandTournament.ALLIANCES_PER_PAGE,
+            (page - 1) * ApiGrandTournament.ALLIANCES_PER_PAGE,
+          ],
         ),
-        ApiGrandTournament.select<{ total_items: string; max_subdivision_id: number }>(
-          `SELECT COUNT(*) FILTER (WHERE ${subdivisionFilter}) AS total_items, MAX(subdivision_id) AS max_subdivision_id
-            FROM ${ApiGrandTournament.RANKING_TABLE}
-            WHERE ${ApiGrandTournament.HOUR_WINDOW} AND division_id = $3`,
-          parameters,
-        ),
+        ApiGrandTournament.standingOf(game, hour),
       ]);
 
-      const alliances = ApiGrandTournament.toAlliances(game, rows);
-      const totalItems = Number(stats[0]?.total_items ?? 0);
+      const alliances = ApiGrandTournament.toAlliances(game, rows, standing);
+      const divisionSizes = Object.entries(standing.subdivisionSizes)
+        .map(([key, size]) => ({ key: key.split(':').map(Number), size }))
+        .filter(({ key }) => key[0] === division);
+      const totalItems = divisionSizes
+        .filter(({ key }) => !subdivision || key[1] === subdivision)
+        .reduce((total, { size }) => total + size, 0);
+      const maxSubdivision = Math.max(1, ...divisionSizes.map(({ key }) => key[1]));
       const body = {
         event: {
           division: {
@@ -130,8 +151,9 @@ export abstract class ApiGrandTournament implements ApiHelper {
           subdivision: {
             current_subdivision: subdivision ?? null,
             min_subdivision: 1,
-            max_subdivision: Math.max(Number(stats[0]?.max_subdivision_id ?? 0), 1),
+            max_subdivision: maxSubdivision,
           },
+          division_round: DivisionRounds.toPublic(standing.round),
           alliances,
         },
         pagination: ApiGrandTournament.pagination(page, alliances.length, totalItems),
@@ -162,7 +184,7 @@ export abstract class ApiGrandTournament implements ApiHelper {
       // A % or _ the caller sends must match itself rather than act as a wildcard
       const parameters = [game, hour, `%${ApiHelper.escapeLike(String(allianceName))}%`];
       const nameFilter = `alliance_name ILIKE $3 ESCAPE '\\'`;
-      const [rows, stats] = await Promise.all([
+      const [rows, stats, standing] = await Promise.all([
         ApiGrandTournament.select<GrandTournamentAllianceRow>(
           `SELECT server_id, division_id, subdivision_id, alliance_id, alliance_name, rank, score
             FROM ${ApiGrandTournament.RANKING_TABLE}
@@ -177,9 +199,10 @@ export abstract class ApiGrandTournament implements ApiHelper {
             WHERE ${ApiGrandTournament.HOUR_WINDOW} AND ${nameFilter}`,
           parameters,
         ),
+        ApiGrandTournament.standingOf(game, hour),
       ]);
 
-      const alliances = ApiGrandTournament.toAlliances(game, rows);
+      const alliances = ApiGrandTournament.toAlliances(game, rows, standing);
       const body = {
         alliances,
         pagination: ApiGrandTournament.pagination(page, alliances.length, Number(stats[0]?.total_items ?? 0)),
@@ -304,7 +327,55 @@ export abstract class ApiGrandTournament implements ApiHelper {
     return parsed > 0 ? parsed : false;
   }
 
-  private static toAlliances(game: RankingGame, rows: GrandTournamentAllianceRow[]): GrandTournamentAlliance[] {
+  private static async standingOf(game: RankingGame, hour: string): Promise<GrandTournamentHourStanding> {
+    const cacheKey = await ApiGrandTournament.cacheKey('hour-layout', { game, hour });
+    const layout = await CachedValue.remember(cacheKey, ApiGrandTournament.CACHE_TTL_SECONDS, () =>
+      ApiGrandTournament.readHourLayout(game, hour),
+    );
+    return {
+      round: await DivisionRounds.find(game, DivisionRounds.GRAND_TOURNAMENT_EVENT_ID, layout.divisionRoundId),
+      subdivisionSizes: layout.subdivisionSizes,
+    };
+  }
+
+  private static async readHourLayout(game: RankingGame, hour: string): Promise<GrandTournamentHourLayout> {
+    const rows = await ApiGrandTournament.select<{
+      division_id: number;
+      subdivision_id: number;
+      size: number;
+      event_id: number;
+    }>(
+      `SELECT division_id, subdivision_id, COUNT(*)::int AS size, MIN(event_id) AS event_id
+        FROM ${ApiGrandTournament.RANKING_TABLE}
+        WHERE ${ApiGrandTournament.HOUR_WINDOW}
+        GROUP BY division_id, subdivision_id`,
+      [game, hour],
+    );
+    const eventId = rows[0]?.event_id ?? null;
+    return {
+      eventId,
+      divisionRoundId: eventId === null ? null : await ApiGrandTournament.readDivisionRoundId(game, eventId),
+      subdivisionSizes: Object.fromEntries(rows.map((row) => [`${row.division_id}:${row.subdivision_id}`, row.size])),
+    };
+  }
+
+  private static async readDivisionRoundId(game: RankingGame, eventId: number): Promise<number | null> {
+    try {
+      const rows = await ApiGrandTournament.select<{ division_round_id: number }>(
+        `SELECT division_round_id FROM ${ApiGrandTournament.DIVISION_ROUNDS_TABLE} WHERE game = $1 AND event_id = $2`,
+        [game, eventId],
+      );
+      return rows[0]?.division_round_id ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  private static toAlliances(
+    game: RankingGame,
+    rows: GrandTournamentAllianceRow[],
+    standing: GrandTournamentHourStanding,
+  ): GrandTournamentAlliance[] {
     const servers = RankingUniverse.serversOf(game);
     return rows.map((row) => {
       const server = servers.get(row.server_id);
@@ -317,6 +388,14 @@ export abstract class ApiGrandTournament implements ApiHelper {
         score: Number(row.score),
         division: row.division_id,
         subdivision: row.subdivision_id,
+        projected_division: standing.round
+          ? DivisionRounds.projectedDivision(
+              standing.round,
+              row.division_id,
+              row.rank,
+              standing.subdivisionSizes[`${row.division_id}:${row.subdivision_id}`] ?? row.rank,
+            )
+          : null,
       };
     });
   }

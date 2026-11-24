@@ -45,6 +45,7 @@ import { OfferPriceTables } from './services/offer-price-tables';
 import { OfferSnapshot } from './services/offer-snapshot';
 import { DailyDatasets } from './services/daily-datasets';
 import { TemporaryServerSettings } from './helper/temporary-server-settings';
+import { DivisionRounds } from './helper/division-rounds';
 
 /* ------------------------------------------------
  *           Redis Client Configuration
@@ -1176,6 +1177,8 @@ protectedRoutes.get('/grand-tournament/dates', routingInstance.getGrandTournamen
  *                           type: integer
  *                         max_subdivision:
  *                           type: integer
+ *                     division_round:
+ *                       $ref: '#/components/schemas/DivisionRound'
  *                     alliances:
  *                       type: array
  *                       items:
@@ -1191,8 +1194,14 @@ protectedRoutes.get('/grand-tournament/dates', routingInstance.getGrandTournamen
  *                             type: integer
  *                           score:
  *                             type: integer
+ *                           division:
+ *                             type: integer
  *                           subdivision:
  *                             type: integer
+ *                           projected_division:
+ *                             type: integer
+ *                             nullable: true
+ *                             description: The division this rank leads to at the end of the event, null when the round is not known
  *                 pagination:
  *                   $ref: '#/components/schemas/Pagination'
  */
@@ -1331,6 +1340,10 @@ protectedRoutes.get(
  *                         type: integer
  *                       subdivision:
  *                         type: integer
+ *                       projected_division:
+ *                         type: integer
+ *                         nullable: true
+ *                         description: The division this rank leads to at the end of the event, null when the round is not known
  *
  */
 protectedRoutes.get(
@@ -1450,6 +1463,8 @@ protectedRoutes.get('/rift-raid/dates', routingInstance.getRiftRaidEventDates.bi
  *                           type: integer
  *                         max_subdivision:
  *                           type: integer
+ *                     division_round:
+ *                       $ref: '#/components/schemas/DivisionRound'
  *                     alliances:
  *                       type: array
  *                       items:
@@ -9398,6 +9413,7 @@ async function main(): Promise<void> {
       DailyDatasets.start();
       OfferPriceTables.start();
       TemporaryServerSettings.start();
+      DivisionRounds.start();
     })
     .on('error', (error) => {
       throw new Error(error.message);

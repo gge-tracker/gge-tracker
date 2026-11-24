@@ -57,7 +57,21 @@ import {
   parseAllianceEntry,
   parsePlayerEntry,
 } from './kingdoms-league';
-import { EventServer, findScrapingServer, readE4kEventServers, readPublicPlayerIdCodes } from './servers-file';
+import {
+  EventServer,
+  findScrapingServer,
+  readE4kEventServers,
+  readPublicPlayerIdCodes,
+  readScrapingServers,
+} from './servers-file';
+import {
+  DIVISION_ROUND_EVENT_IDS,
+  DivisionRoundSighting,
+  DivisionRoundTournament,
+  findDivisionRound,
+  isKnownDivisionRound,
+  KNOWN_DIVISION_ROUNDS_KEY,
+} from './division-round';
 import { findTempServerSetting } from './temp-server-settings';
 import { scheduleDiscordPost } from './discord-schedule';
 import { fromDiscord, maskedLink } from './discord-link';
@@ -727,6 +741,7 @@ export class GenericFetchAndSaveBackend {
     let eventId = 0;
     let recordsInserted = 0;
     let subdivisions = 0;
+    let divisionRoundId: number | null = null;
     try {
       Utils.logMessage('=====================================');
       Utils.logMessage(' Starting global rankings refresh');
@@ -758,6 +773,7 @@ export class GenericFetchAndSaveBackend {
         await this.insertGrandTournamentRows(insertValues);
       }
       const stored = insertValues.length > 0 && this.DB_UPDATES.criticalErrors === errorsBeforeInsert;
+      if (stored) divisionRoundId = await this.recordGrandTournamentDivisionRound(game, eventId);
       Utils.logMessage('Grand Tournament results updated successfully');
       // If there is more that 1 record inserted, we increment the redis-fill version
       if (insertValues.length > 1) {
@@ -799,6 +815,7 @@ export class GenericFetchAndSaveBackend {
         game,
         eventId,
         subdivisions,
+        divisionRoundId,
         grandTournamentRecordsInserted: recordsInserted,
         criticalErrors: this.DB_UPDATES.criticalErrors,
         durationMs: Date.now() - start.getTime(),
@@ -811,6 +828,7 @@ export class GenericFetchAndSaveBackend {
     const start = new Date();
     let eventId = 0;
     let recordsInserted = 0;
+    let divisionRoundId: number | null = null;
     const report: RiftRaidReport = {
       subdivisions: 0,
       partialSubdivisions: 0,
@@ -843,6 +861,7 @@ export class GenericFetchAndSaveBackend {
         await this.insertRowsClickHouse('rift_raid_hours', [
           { game, event_id: eventId, hour: format(runAt, 'yyyy-MM-dd HH:00:00') },
         ]);
+        divisionRoundId = await this.recordRiftRaidDivisionRound(game, eventId);
         await this.bumpScanVersion('rift-raid:event-dates:version');
         Utils.logMessage('Rift Raid results updated successfully');
         if (tournamentAlertsEnabled(game)) {
@@ -877,6 +896,7 @@ export class GenericFetchAndSaveBackend {
         game,
         eventId,
         ...report,
+        divisionRoundId,
         riftRaidRecordsInserted: recordsInserted,
         criticalErrors: this.DB_UPDATES.criticalErrors,
         durationMs: Date.now() - start.getTime(),
@@ -1644,6 +1664,97 @@ export class GenericFetchAndSaveBackend {
           ...this.jobFailure,
         },
       });
+    }
+  }
+
+  private async recordGrandTournamentDivisionRound(game: GameUniverse, eventId: number): Promise<number | null> {
+    try {
+      const sighting = await this.readDivisionRound('grand-tournament', game, eventId);
+      if (!sighting) return null;
+      await this.pgSqlQuery(
+        `INSERT INTO grand_tournament_division_rounds (game, event_id, division_round_id, server, seen_at)
+         VALUES ($1, $2, $3, $4, NOW())
+         ON CONFLICT (game, event_id)
+         DO UPDATE SET division_round_id = EXCLUDED.division_round_id, server = EXCLUDED.server, seen_at = NOW()`,
+        [game, eventId, sighting.divisionRoundId, sighting.server],
+      );
+      return sighting.divisionRoundId;
+    } catch (error) {
+      Utils.logMessage(' [WARN] Grand Tournament division round not recorded:', (error as Error)?.message ?? error);
+      return null;
+    }
+  }
+
+  private async recordRiftRaidDivisionRound(game: GameUniverse, eventId: number): Promise<number | null> {
+    try {
+      const sighting = await this.readDivisionRound('rift-raid', game, eventId);
+      if (!sighting) return null;
+      await this.insertRowsClickHouse(
+        'rift_raid_division_rounds',
+        [
+          {
+            game,
+            event_id: eventId,
+            division_round_id: sighting.divisionRoundId,
+            server: sighting.server,
+            seen_at: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
+          },
+        ],
+        { maxAttempts: 1 },
+      );
+      return sighting.divisionRoundId;
+    } catch (error) {
+      Utils.logMessage(' [WARN] Rift Raid division round not recorded:', (error as Error)?.message ?? error);
+      return null;
+    }
+  }
+
+  private async readDivisionRound(
+    tournament: DivisionRoundTournament,
+    game: GameUniverse,
+    eventId: number,
+  ): Promise<DivisionRoundSighting | null> {
+    const sighting = await findDivisionRound(game, DIVISION_ROUND_EVENT_IDS[tournament], readScrapingServers(), (url) =>
+      axios.get(url),
+    );
+    if (!sighting) {
+      Utils.logMessage(' [WARN] No account was sent the', tournament, 'division round');
+      return null;
+    }
+    Utils.logMessage(tournament, 'division round:', sighting.divisionRoundId, 'seen by', sighting.server);
+    await this.reportUnknownDivisionRound(tournament, game, eventId, sighting);
+    return sighting;
+  }
+
+  private async reportUnknownDivisionRound(
+    tournament: DivisionRoundTournament,
+    game: GameUniverse,
+    eventId: number,
+    sighting: DivisionRoundSighting,
+  ): Promise<void> {
+    const redisClient = createClient({ url: 'redis://redis-server:6379' });
+    await redisClient.connect();
+    try {
+      const known = isKnownDivisionRound(
+        await redisClient.get(KNOWN_DIVISION_ROUNDS_KEY),
+        game,
+        sighting.divisionRoundId,
+      );
+      if (known !== false) return;
+      Utils.logRecord(
+        'warn',
+        {
+          event: 'division_round_unknown',
+          tournament,
+          game,
+          eventId,
+          divisionRoundId: sighting.divisionRoundId,
+          server: sighting.server,
+        },
+        `${tournament} division round ${sighting.divisionRoundId} is not in the ${game} divisionRounds`,
+      );
+    } finally {
+      await redisClient.quit();
     }
   }
 

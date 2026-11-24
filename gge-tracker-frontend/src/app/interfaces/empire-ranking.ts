@@ -1475,6 +1475,14 @@ export interface ApiGrandTournamentAlliance {
   rank: number;
   score: number;
   subdivision: number;
+  projected_division: number | null;
+}
+
+export interface ApiDivisionRound {
+  id: number;
+  type: 'qualification' | 'normal' | 'adjustment';
+  promotes: number[];
+  demotes: number[];
 }
 
 export interface ApiGrandTournamentSearchAlliances extends ApiGrandTournamentAlliance {
@@ -1485,6 +1493,7 @@ export interface ApiGrandTournamentSearchAlliances extends ApiGrandTournamentAll
 export interface ApiGrandTournamentAlliancesResponse {
   event: {
     alliances: ApiGrandTournamentAlliance[];
+    division_round: ApiDivisionRound | null;
     division: {
       current_division: number;
       max_division: number;
@@ -1538,11 +1547,13 @@ export interface ApiRiftRaidAlliance {
   score: number;
   division: number;
   subdivision: number;
+  projected_division: number | null;
 }
 
 export interface ApiRiftRaidAlliancesResponse {
   event: {
     alliances: ApiRiftRaidAlliance[];
+    division_round: ApiDivisionRound | null;
     division: {
       current_division: number;
       max_division: number;

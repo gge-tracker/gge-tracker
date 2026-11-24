@@ -9,6 +9,7 @@ import { RenderBusyError } from '../managers/puperteer.manager';
 import { PrecompressedJson } from '../helper/cache/precompressed-json';
 import { HttpCache } from '../helper/http-cache';
 import { TemporaryServerSettings } from '../helper/temporary-server-settings';
+import { DivisionRounds } from '../helper/division-rounds';
 import { AssetFileCache } from '../services/asset-file-cache';
 import { AssetImageVariant, AssetImageRenderer } from '../services/asset-image-renderer';
 import { AssetSymbolResolver } from '../services/asset-symbol-resolver';
@@ -698,8 +699,12 @@ export abstract class ApiAssets implements ApiHelper {
     if (!itemsJsonResource.ok) throw new Error('Failed to fetch items JSON: ' + itemsJsonResource.status);
     const itemsJsonText = await itemsJsonResource.text();
     await fs.promises.writeFile(path.join(__dirname, './../assets/items.json'), itemsJsonText);
-    await TemporaryServerSettings.publishFromItems(JSON.parse(itemsJsonText)).catch((error) =>
+    const items = JSON.parse(itemsJsonText);
+    await TemporaryServerSettings.publishFromItems(items).catch((error) =>
       ApiHelper.logError(error, 'updateItems.tempServerSettings', null),
+    );
+    await DivisionRounds.publishFromItems(items).catch((error) =>
+      ApiHelper.logError(error, 'updateItems.divisionRounds', null),
     );
   }
 

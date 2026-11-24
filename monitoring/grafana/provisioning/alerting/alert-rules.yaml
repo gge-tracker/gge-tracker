@@ -411,6 +411,42 @@ groups:
           action: 'Read it by hand before 09:00 Paris'
           dashboard: /d/scraping-jobs
           dashboard_title: Scraping jobs
+      - uid: division-round-unknown
+        title: Tournament division round unknown
+        condition: B
+        for: 0m
+        noDataState: OK
+        execErrState: OK
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3900, to: 0 }
+            datasourceUid: loki
+            model:
+              refId: A
+              editorMode: code
+              queryType: instant
+              expr: 'sum by (tournament, game, divisionRoundId) (count_over_time({service="internal-scraping", event="division_round_unknown"} | json tournament="tournament", game="game", divisionRoundId="divisionRoundId" [65m]))'
+          - refId: B
+            relativeTimeRange: { from: 3900, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+                  operator: { type: and }
+                  query: { params: [B] }
+                  reducer: { type: last, params: [] }
+                  type: threshold
+        labels:
+          severity: critical
+          notify: discord
+        annotations:
+          summary: 'The game runs the {{ $labels.game }} {{ $labels.tournament }} on division round {{ $labels.divisionRoundId }}, which the divisionRounds table does not hold: the page shows plain ranks'
+          action: 'EP: update items.json (asset update). E4K: copy data/divisionRounds.json (imported from github.com/476f6f6467616d6553747564696f73/E4K-data)'
+          dashboard: /d/scraping-jobs
+          dashboard_title: Scraping jobs
   - orgId: 1
     name: loot-history
     folder: Scraping

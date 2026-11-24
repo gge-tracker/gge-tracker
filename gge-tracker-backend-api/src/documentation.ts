@@ -342,6 +342,23 @@ export const options = {
             score: { type: 'integer' },
             division: { type: 'integer', description: '1 (Copper) to 6 (Diamond)' },
             subdivision: { type: 'integer' },
+            projected_division: {
+              type: 'integer',
+              nullable: true,
+              description: 'The division this rank leads to at the end of the event, null when the round is not known',
+            },
+          },
+        },
+        DivisionRound: {
+          type: 'object',
+          nullable: true,
+          description:
+            "The game's division rules for this event, null when the round is not known. promotes and demotes are indexed by division, the first entry being division 1. In a qualification round, promotes counts the places of the single ranking each division receives",
+          properties: {
+            id: { type: 'integer', example: 2 },
+            type: { type: 'string', enum: ['qualification', 'normal', 'adjustment'] },
+            promotes: { type: 'array', items: { type: 'integer' }, example: [6, 4, 3, 3, 0] },
+            demotes: { type: 'array', items: { type: 'integer' }, example: [0, 12, 8, 9, 3] },
           },
         },
         TournamentStanding: {

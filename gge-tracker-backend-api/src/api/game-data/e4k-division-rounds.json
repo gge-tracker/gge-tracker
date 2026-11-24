@@ -1,0 +1,140 @@
+[
+  {
+    "divisionRoundID": 1,
+    "comment1": "Initial event run setup to seed/qualify alliances into all divisions after a single event run",
+    "eventID": 129,
+    "type": "qualification",
+    "divisions": 1,
+    "subdivisions": 36,
+    "promotes": "0,900,360,60,36",
+    "targetDivisionRoundID": 2
+  },
+  {
+    "divisionRoundID": 2,
+    "comment1": "The desired normal division based event run to run continuously every month as the goal state to be achieved",
+    "eventID": 129,
+    "type": "normal",
+    "divisions": 5,
+    "subdivisions": "36,18,9,3,3",
+    "subdivisionSizes": "0,50,40,20,12",
+    "promotes": "6,4,3,3,0",
+    "demotes": "0,12,8,9,3"
+  },
+  {
+    "divisionRoundID": 3,
+    "comment1": "Dummy entry for structure, in case required for future adjustment, use case: we want to increase top division subdivisions by 2 with the following event run (divisionRoundID 4)",
+    "eventID": 129,
+    "type": "adjustment",
+    "divisions": 5,
+    "subdivisions": "36,18,9,3,3",
+    "subdivisionSizes": "0,50,40,20,12",
+    "promotes": "668,224,59,21,0",
+    "demotes": "0,216,72,27,9",
+    "sourceDivisionRoundID": 2,
+    "targetDivisionRoundID": 4
+  },
+  {
+    "divisionRoundID": 4,
+    "comment1": "Dummy entry for structure, in case required for future adjustment, use case: we have overpromoted alliances in the previous event run (divisionRoundID 3) to have 2 more fully filled subdivisions (6 total) on the highest division level",
+    "eventID": 129,
+    "type": "normal",
+    "divisions": 5,
+    "subdivisions": "48,24,12,4,4",
+    "subdivisionSizes": "0,50,40,20,12",
+    "promotes": "6,4,3,3,0",
+    "demotes": "0,12,8,9,3"
+  },
+  {
+    "divisionRoundID": -1,
+    "comment1": "QA Testing Values",
+    "eventID": 129,
+    "type": "qualification",
+    "divisions": 1,
+    "subdivisions": 20,
+    "promotes": "0,48,20,9,6",
+    "targetDivisionRoundID": -2,
+    "testonly": 1
+  },
+  {
+    "divisionRoundID": -2,
+    "comment1": "QA Testing Values",
+    "eventID": 129,
+    "type": "normal",
+    "divisions": 5,
+    "subdivisions": "6,4,2,1,1",
+    "subdivisionSizes": "0,12,10,9,6",
+    "promotes": "2,3,2,3,0",
+    "demotes": "0,3,6,4,3",
+    "testonly": 1
+  },
+  {
+    "divisionRoundID": -3,
+    "comment1": "QA Testing Values",
+    "eventID": 129,
+    "type": "adjustment",
+    "divisions": 5,
+    "subdivisions": "6,4,2,1,1",
+    "subdivisionSizes": "0,12,10,9,6",
+    "promotes": "90,37,17,7,0",
+    "demotes": "0,7,2,2,1",
+    "sourceDivisionRoundID": -2,
+    "targetDivisionRoundID": -4,
+    "testonly": 1
+  },
+  {
+    "divisionRoundID": -4,
+    "comment1": "QA Testing Values",
+    "eventID": 129,
+    "type": "normal",
+    "divisions": 5,
+    "subdivisions": "12,8,4,2,2",
+    "subdivisionSizes": "0,12,10,9,6",
+    "promotes": "2,3,2,3,0",
+    "demotes": "0,3,6,4,3",
+    "testonly": 1
+  },
+  {
+    "divisionRoundID": 10,
+    "comment1": "Initial event run setup to seed/qualify alliances into all divisions after a single event run",
+    "eventID": 133,
+    "type": "qualification",
+    "divisions": 1,
+    "subdivisions": 16,
+    "promotes": "0,400,150,48,16,5",
+    "targetDivisionRoundID": 11
+  },
+  {
+    "divisionRoundID": 11,
+    "comment1": "The desired normal division based event run to run continuously every month as the goal state to be achieved",
+    "eventID": 133,
+    "type": "normal",
+    "divisions": 6,
+    "subdivisions": "16,8,5,3,2,1",
+    "subdivisionSizes": "0,50,30,16,8,5",
+    "promotes": "8,5,3,2,1,0",
+    "demotes": "0,16,8,5,3,2"
+  },
+  {
+    "divisionRoundID": -10,
+    "comment1": "QA Testing Values",
+    "eventID": 133,
+    "type": "qualification",
+    "divisions": 1,
+    "subdivisions": 4,
+    "promotes": "0,200,120,32,16,5",
+    "targetDivisionRoundID": -11,
+    "testonly": 1
+  },
+  {
+    "divisionRoundID": -11,
+    "comment1": "QA Testing Values",
+    "eventID": 133,
+    "type": "normal",
+    "divisions": 6,
+    "subdivisions": "4,4,4,2,2,1",
+    "subdivisionSizes": "0,50,30,16,8,5",
+    "promotes": "8,4,2,2,1,0",
+    "demotes": "0,8,4,4,2,2",
+    "testonly": 1
+  }
+]
