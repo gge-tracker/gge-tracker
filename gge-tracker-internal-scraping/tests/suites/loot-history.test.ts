@@ -15,6 +15,7 @@ import { rankingResponse } from '../harness/fake-api';
 import { withLogSpy } from '../harness/log-spy';
 import { withSandbox } from '../harness/sandbox';
 import { parseLootReset } from '../../src/loot-reset';
+import { svEndingAt } from '../../src/ranking-cursor';
 
 const LOOT_LT = 2;
 const TABLE = 'player_loot_history';
@@ -63,7 +64,7 @@ describe('fillLootHistory', () => {
       sandbox.api.serveRanking(tail);
       await sandbox.call('fillLootHistory');
       const forwardSweep = sandbox.api.svSequence().slice(0, 2);
-      assert.deepEqual(forwardSweep, [5, 5], 'one probe and one page, then the sweep turns around');
+      assert.deepEqual(forwardSweep, [1, 1], 'one probe and one page, then the sweep turns around');
     });
   });
 
@@ -93,7 +94,8 @@ describe('fillLootHistory', () => {
       sandbox.api.serveRanking(tail);
       await sandbox.call('fillLootHistory');
       const backward = sandbox.api.svSequence().slice(2);
-      assert.deepEqual(backward, [1, tail.totalRanked, tail.totalRanked - tail.pageSize]);
+      const previousPage = svEndingAt(tail.totalRanked - tail.pageSize, tail.pageSize);
+      assert.deepEqual(backward, [1, tail.totalRanked, previousPage], 'the second page ends right before the first');
     });
   });
 
@@ -119,7 +121,7 @@ describe('fillLootHistory', () => {
         return rankingResponse(head, Number(request.parameters.SV));
       });
       await sandbox.call('fillLootHistory');
-      assert.deepEqual(sandbox.api.svSequence().slice(0, 4), [5, 5, 5, 5], 'three failed asks, then the answer');
+      assert.deepEqual(sandbox.api.svSequence().slice(0, 4), [1, 1, 1, 1], 'three failed asks, then the answer');
       assert.equal(sandbox.clickhouse.rows(TABLE).length, head.totalRanked);
       assert.equal(sandbox.state('DB_UPDATES').criticalErrors, 0);
     });
@@ -157,11 +159,30 @@ describe('fillLootHistory', () => {
     });
   });
 
-  it('pages an Empire 4 Kingdoms server six ranks at a time', async () => {
+  for (const server of ['FR1', 'E4K-INT1']) {
+    for (const pageSize of [6, 8, 10, 17, 21]) {
+      it(`stores every rank on ${server} when the game pages ${pageSize} at a time`, async () => {
+        await withSandbox({ server }, async (sandbox) => {
+          const head = { ...fixtures.lootHead(), pageSize };
+          sandbox.api.serveRanking(head);
+          await sandbox.call('fillLootHistory');
+          assert.equal(sandbox.clickhouse.rows(TABLE).length, head.totalRanked, 'nobody is missing');
+          const pages = Math.ceil(head.totalRanked / pageSize);
+          assert.equal(sandbox.api.callsFor('hgh').length, 1 + pages + 2, 'the probe, each page once, then the tail');
+        });
+      });
+    }
+  }
+
+  it('walks the negative tail backwards without a gap when the game pages 6 at a time', async () => {
     await withSandbox({ server: 'E4K-INT1' }, async (sandbox) => {
-      sandbox.api.serveRanking(fixtures.lootHead());
+      const tail = { ...fixtures.lootTail(), pageSize: 6 };
+      sandbox.api.serveRanking(tail);
       await sandbox.call('fillLootHistory');
-      assert.deepEqual(sandbox.api.svSequence().slice(0, 4), [3, 3, 9, 15]);
+      const inserted = new Set(sandbox.clickhouse.rows(TABLE).map((row) => Number(row.player_id)));
+      for (const [, point, player] of tail.rows) {
+        if (point < 0) assert.ok(inserted.has(Number(player.OID)), 'every negative score is collected');
+      }
     });
   });
 

@@ -122,14 +122,22 @@ describe('fillMightPointsHistory', () => {
     });
   });
 
-  it('pages an Empire 4 Kingdoms server six ranks at a time', async () => {
-    await withSandbox({ server: 'e4k-fr1' }, async (sandbox) => {
-      sandbox.api.serveRanking(fixtures.might());
-      await sandbox.call('fillMightPointsHistory');
-      const first = sandbox.api.svSequence().slice(0, 4);
-      assert.deepEqual(first, [3, 3, 9, 15], 'the sweep starts at 3 and steps by 6 rather than 10');
-    });
-  });
+  for (const server of ['FR1', 'e4k-fr1']) {
+    for (const pageSize of [6, 8, 10, 17, 21]) {
+      it(`reads every rank on ${server} when the game pages ${pageSize} at a time`, async () => {
+        await withSandbox({ server }, async (sandbox) => {
+          const category1 = { ...fixtures.might(), pageSize };
+          sandbox.api.serveRanking(category1);
+          await sandbox.call('fillMightPointsHistory');
+          const state = sandbox.state<Record<string, any[]>>('playerLootAndMightPointHistoryList');
+          const read = category1.rows.filter(([, , player]) => state[String(player.OID)]?.[1] === player.MP);
+          assert.equal(read.length, category1.totalRanked, 'nobody is missing');
+          const category1Requests = sandbox.api.callsFor('hgh').filter((call) => Number(call.parameters.LID) === 1);
+          assert.equal(category1Requests.length, 1 + Math.ceil(category1.totalRanked / pageSize), 'each page once');
+        });
+      });
+    }
+  }
 
   it('refuses to insert anything once the run has recorded a critical error', async () => {
     await withSandbox({}, async (sandbox) => {

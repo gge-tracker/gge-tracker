@@ -75,6 +75,7 @@ import {
 } from './tournament-alerts';
 import { readUniverseServerNames } from './servers-file';
 import { OuterRealmsGame, OuterRealmsUniverse, outerRealmsGameOf, outerRealmsUniverse } from './outer-realms-universe';
+import { RankingCursor, ReverseRankingCursor } from './ranking-cursor';
 
 interface LootMove {
   player: number;
@@ -417,7 +418,6 @@ export class GenericFetchAndSaveBackend {
   private readonly RIFT_RAID_FETCH_ATTEMPTS = 3;
   private readonly RIFT_RAID_RETRY_DELAY_MS = 2000;
   private readonly RIFT_RAID_NEW_EVENT_AFTER_HOURS = 24;
-  private readonly KINGDOMS_LEAGUE_PAGE_SIZE = 8;
   private readonly KINGDOMS_LEAGUE_FETCH_ATTEMPTS = 3;
   private readonly KINGDOMS_LEAGUE_RETRY_DELAY_MS = 2000;
   private readonly KINGDOMS_LEAGUE_PAUSE_EVERY_PAGES = 50;
@@ -1826,14 +1826,10 @@ export class GenericFetchAndSaveBackend {
     report.seasonId = decision.seasonId;
     report.newSeason = decision.newSeason;
 
-    const players = await this.readLeagueRanking(KINGDOMS_LEAGUE_PLAYER_LT, firstPage.total, parsePlayerEntry);
+    const players = await this.readLeagueRanking(KINGDOMS_LEAGUE_PLAYER_LT, firstPage, parsePlayerEntry);
     const firstAlliancePage = await this.fetchLeaguePage(KINGDOMS_LEAGUE_ALLIANCE_LT, 1);
     report.rankedAlliances = firstAlliancePage.total;
-    const alliances = await this.readLeagueRanking(
-      KINGDOMS_LEAGUE_ALLIANCE_LT,
-      firstAlliancePage.total,
-      parseAllianceEntry,
-    );
+    const alliances = await this.readLeagueRanking(KINGDOMS_LEAGUE_ALLIANCE_LT, firstAlliancePage, parseAllianceEntry);
     report.missingRanks = firstPage.total - players.length + (firstAlliancePage.total - alliances.length);
     report.scoreMismatches = players.filter((player) => !hasPackedScore(player)).length;
 
@@ -1900,11 +1896,11 @@ export class GenericFetchAndSaveBackend {
 
   private async readLeagueRanking<T extends { rank: number }>(
     lt: number,
-    total: number,
+    firstPage: LeaguePage,
     parse: (entry: unknown) => T | null,
   ): Promise<T[]> {
     const byRank = new Map<number, T>();
-    const values = pageValues(total, this.KINGDOMS_LEAGUE_PAGE_SIZE);
+    const values = pageValues(firstPage.total, firstPage.entries.length);
     for (const [index, value] of values.entries()) {
       const page = await this.fetchLeaguePage(lt, value);
       for (const row of this.parseLeagueEntries(page.entries, parse)) byRank.set(row.rank, row);
@@ -3873,7 +3869,7 @@ export class GenericFetchAndSaveBackend {
       return 'next';
     }
 
-    const completed = await this.scanEventPages(lt, levelCategory, increment, startSV, max, eventName, entities);
+    const completed = await this.scanEventPages(lt, levelCategory, startSV, max, eventName, entities);
     if (!completed) return 'abort';
     Utils.logMessage('Finished searching for category', levelCategory, 'for', eventName);
     return 'next';
@@ -3882,25 +3878,25 @@ export class GenericFetchAndSaveBackend {
   private async scanEventPages(
     lt: number,
     levelCategory: number,
-    increment: number,
     startSV: number,
     max: number,
     eventName: string,
     entities: { [key: string]: EventHistoryEntity },
   ): Promise<boolean> {
-    let i = startSV;
+    const cursor = new RankingCursor(startSV);
     let j = 0;
-    let c = true;
-    while (c) {
-      const { response, players } = await this.fetchRankingPage(lt, levelCategory, i, 7, 2000);
+    while (true) {
+      const sv = cursor.sv;
+      const { response, players } = await this.fetchRankingPage(lt, levelCategory, sv, 7, 2000);
       if (!players || players.length === 0) {
-        Utils.logMessage('Url :', this.rankingPageUrl(lt, levelCategory, i));
+        Utils.logMessage('Url :', this.rankingPageUrl(lt, levelCategory, sv));
         Utils.logMessage('Nb:', j + ' players found on', max);
         Utils.logMessage('p:', JSON.stringify(response));
         Utils.logCritical('002-' + eventName, undefined, String.raw`/!\ No players found, but status is OK`);
         this.DB_UPDATES.criticalErrors++;
         return false;
       }
+      if (!cursor.advance(players)) continue;
       const ids: number[] = [];
       for (const singleData of players) {
         if (this.CURRENT_ENV === 'development') Utils.stdoudInfo(j, max);
@@ -3922,21 +3918,25 @@ export class GenericFetchAndSaveBackend {
         }
         j++;
       }
-      i += increment;
-      if (j >= max || ids.includes(max)) {
+      if (j >= max || ids.includes(max) || cursor.stalled) {
         Utils.logMessage(
           'Finished searching for category',
           levelCategory + ', ' + j + ' players found on',
           max + ' for',
           eventName,
         );
-        c = false;
+        this.warnSkippedRanks(cursor, eventName + ' category ' + levelCategory);
+        return true;
       }
       if (j % 50 === 0) {
         await new Promise((resolve) => setTimeout(resolve, 150));
       }
     }
-    return true;
+  }
+
+  private warnSkippedRanks(cursor: RankingCursor, ranking: string): void {
+    if (cursor.skippedRanks === 0) return;
+    Utils.logWarning(` ${ranking}: ${cursor.skippedRanks} ranks were never answered and are missing`);
   }
 
   private buildEventHistoryRows(
@@ -4016,12 +4016,11 @@ export class GenericFetchAndSaveBackend {
     levelCategorySize: number,
     playerList: { [key: string]: MightRankingPlayer },
   ): Promise<boolean> {
-    const increment: number = this.isE4KServer ? 6 : 10;
     Utils.logMessage(
       'Starting to retrieve statistics for category',
       levelCategory + '(out of ' + levelCategorySize + ')',
     );
-    const startSV = increment / 2;
+    const startSV = 1;
     const data = await this.fetchFirstRankingPage(6, levelCategory, startSV);
     if (data?.['return_code'] != '0') {
       Utils.logMessage(' [KO] Request failed for category', levelCategory);
@@ -4037,30 +4036,29 @@ export class GenericFetchAndSaveBackend {
       Utils.logCritical('011', undefined, ' [KO] No players found for category', levelCategory);
       return true;
     }
-    await this.scanMightPages(levelCategory, increment, startSV, max, playerList);
+    await this.scanMightPages(levelCategory, startSV, max, playerList);
     return true;
   }
 
   private async scanMightPages(
     levelCategory: number,
-    increment: number,
     startSV: number,
     max: number,
     playerList: { [key: string]: MightRankingPlayer },
   ): Promise<void> {
-    let i = startSV;
+    const cursor = new RankingCursor(startSV);
     let j = 0;
     let c = true;
     while (c) {
-      const { response, players } = await this.fetchRankingPage(6, levelCategory, i, 10, 10000);
+      const sv = cursor.sv;
+      const { response, players } = await this.fetchRankingPage(6, levelCategory, sv, 10, 10000);
       if (!players || players.length === 0) {
-        this.reportEmptyMightPage(levelCategory, i, j, max, players, response);
+        this.reportEmptyMightPage(levelCategory, sv, j, max, players, response);
         c = false;
-      } else {
+      } else if (cursor.advance(players)) {
         const ids = this.storeMightPage(players, playerList, j, max);
         j += players.length;
-        i += increment;
-        if (j >= max || ids.includes(max)) {
+        if (j >= max || ids.includes(max) || cursor.stalled) {
           Utils.logMessage('Finished searching for category', levelCategory + ', ' + j + ' players found out of', max);
           c = false;
         }
@@ -4073,6 +4071,7 @@ export class GenericFetchAndSaveBackend {
         c = false;
       }
     }
+    this.warnSkippedRanks(cursor, 'might category ' + levelCategory);
   }
 
   // Specific issue on IN1 : server is not cleaned at all, so low players aren't taken into account
@@ -4280,12 +4279,11 @@ export class GenericFetchAndSaveBackend {
     levelCategorySize: number,
     playerList: { [key: string]: LootRankingPlayer },
   ): Promise<boolean> {
-    const increment: number = this.isE4KServer ? 6 : 10;
     Utils.logMessage(
       ' Beginning retrieval of statistics for category ',
       levelCategory + '(out of ' + levelCategorySize + ')',
     );
-    const startSV = increment / 2;
+    const startSV = 1;
     const data = await this.fetchFirstRankingPage(2, levelCategory, startSV);
     const max = data?.content?.LR ?? 50000;
     Utils.logMessage(' Request successful: ', max, 'players found');
@@ -4296,11 +4294,11 @@ export class GenericFetchAndSaveBackend {
       return true;
     }
 
-    const scanned = await this.scanPositiveLootPages(levelCategory, increment, startSV, max, playerList);
+    const scanned = await this.scanPositiveLootPages(levelCategory, startSV, max, playerList);
     if (scanned === null) return false;
 
     try {
-      await this.scanNegativeLootPages(levelCategory, increment, scanned, playerList);
+      await this.scanNegativeLootPages(levelCategory, scanned, playerList);
     } catch (error) {
       Utils.logCritical('027', error, 'Error while retrieving negative loot points');
     }
@@ -4309,33 +4307,34 @@ export class GenericFetchAndSaveBackend {
 
   private async scanPositiveLootPages(
     levelCategory: number,
-    increment: number,
     startSV: number,
     max: number,
     playerList: { [key: string]: LootRankingPlayer },
   ): Promise<number | null> {
-    let i = startSV;
+    const cursor = new RankingCursor(startSV);
     let j = 0;
     let c = true;
     while (c) {
-      const { response, players } = await this.fetchRankingPage(2, levelCategory, i, 10, 3000, (previous, attempt) =>
-        this.logLootRetry(previous, levelCategory, i, attempt),
+      const sv = cursor.sv;
+      const { response, players } = await this.fetchRankingPage(2, levelCategory, sv, 10, 3000, (previous, attempt) =>
+        this.logLootRetry(previous, levelCategory, sv, attempt),
       );
       if (!players || players.length === 0) {
-        Utils.logMessage('Url : ', this.rankingPageUrl(2, levelCategory, i));
+        Utils.logMessage('Url : ', this.rankingPageUrl(2, levelCategory, sv));
         Utils.logMessage(JSON.stringify(response));
         Utils.logCritical('014', undefined, String.raw` /!\ There are no players found, but the status is OK`);
         this.DB_UPDATES.criticalErrors++;
         return null;
       }
+      if (!cursor.advance(players)) continue;
       const ids = this.storeLootPage(players, playerList, j, max);
       j += players.length;
-      c = !this.lootScanReachedEnd(players, ids, j, max, levelCategory);
-      i += increment;
+      c = !this.lootScanReachedEnd(players, ids, j, max, levelCategory) && !cursor.stalled;
       if (j % 50 === 0) {
         await new Promise((resolve) => setTimeout(resolve, 150));
       }
     }
+    this.warnSkippedRanks(cursor, 'loot category ' + levelCategory);
     return j;
   }
 
@@ -4387,24 +4386,26 @@ export class GenericFetchAndSaveBackend {
 
   private async scanNegativeLootPages(
     levelCategory: number,
-    increment: number,
     scannedCount: number,
     playerList: { [key: string]: LootRankingPlayer },
   ): Promise<void> {
     Utils.logMessage(' [Info] Processing loot for players with negative points');
-    let maxNegative = await this.resolveNegativeLootStart(levelCategory);
-    let c = maxNegative !== null;
+    const lastRank = await this.resolveNegativeLootStart(levelCategory);
+    if (lastRank === null) return;
+    const cursor = new ReverseRankingCursor(lastRank);
+    let c = true;
     while (c) {
-      if (maxNegative === null) break;
-      const { response, players } = await this.fetchRankingPage(2, levelCategory, maxNegative, 3, 3000);
+      const sv = cursor.sv;
+      const { response, players } = await this.fetchRankingPage(2, levelCategory, sv, 3, 3000);
       if (!players || players.length === 0) {
         c = false;
-        Utils.logMessage('Url : ', this.rankingPageUrl(2, levelCategory, maxNegative));
+        Utils.logMessage('Url : ', this.rankingPageUrl(2, levelCategory, sv));
         Utils.logMessage(JSON.stringify(response));
         Utils.logCritical('023', undefined, ' [KO] No players found');
       } else {
-        c = this.storeNegativeLootPage(players, playerList, scannedCount, maxNegative);
-        maxNegative -= increment;
+        c = this.storeNegativeLootPage(players, playerList, scannedCount, sv);
+        cursor.advance(players);
+        if (cursor.stalled) c = false;
       }
     }
   }
@@ -6062,15 +6063,7 @@ export class GenericFetchAndSaveBackend {
       }
 
       const entities: Record<string, any> = {};
-      const playersFound = await this.scanCustomEventPages(
-        lt,
-        levelCategory,
-        increment,
-        startSV,
-        max,
-        eventName,
-        entities,
-      );
+      const playersFound = await this.scanCustomEventPages(lt, levelCategory, startSV, max, eventName, entities);
       if (playersFound === null) return -1;
       Utils.logMessage(' [info] Total players found for the event of ' + eventName + ': ' + playersFound);
 
@@ -6133,64 +6126,66 @@ export class GenericFetchAndSaveBackend {
   private async scanCustomEventPages(
     lt: number,
     levelCategory: number,
-    increment: number,
     startSV: number,
     max: number,
     eventName: string,
     entities: Record<string, any>,
   ): Promise<number | null> {
-    let i = startSV;
-    let j = 0;
-    let c = true;
-    while (c) {
-      const { response, players } = await this.fetchRankingPage(lt, levelCategory, i, 7, 2000);
+    const cursor = new RankingCursor(startSV);
+    let pages = 0;
+    while (true) {
+      const sv = cursor.sv;
+      const { response, players } = await this.fetchRankingPage(lt, levelCategory, sv, 7, 2000);
       if (!players || players.length === 0) {
-        Utils.logMessage('Url :', this.rankingPageUrl(lt, levelCategory, i));
-        Utils.logMessage('Nb:', j + 'players found on', max);
+        Utils.logMessage('Url :', this.rankingPageUrl(lt, levelCategory, sv));
+        Utils.logMessage('Nb:', Object.keys(entities).length + 'players found on', max);
         Utils.logMessage('p:', JSON.stringify(response));
         Utils.logCritical('002-' + eventName, undefined, String.raw`/!\ No players found, but status OK`);
         this.DB_UPDATES.criticalErrors++;
         return null;
       }
-      const ids: number[] = [];
+      if (!cursor.advance(players)) continue;
       for (const singleData of players) {
-        if (this.CURRENT_ENV === 'development') Utils.stdoudInfo(j, max);
-        try {
-          ids.push(singleData[0]);
-          const playerId = singleData[2]['OID'];
-          const parts = String(singleData[2]['N']).split('_');
-          entities[playerId.toString()] = {
-            rank: singleData[0],
-            playerId: playerId,
-            playerName: parts.slice(0, -1).join('_'),
-            point: singleData[1],
-            server: parts.at(-1),
-            level: singleData[2]['L'],
-            legendaryLevel: singleData[2]['LL'],
-            allianceName: singleData[2]['AN'] || null,
-          };
-        } catch (error) {
-          Utils.logMessage(' [error] Migration error:', JSON.stringify(singleData));
-          console.error(error);
-          this.DB_UPDATES.criticalErrors++;
-        }
-        j++;
+        this.collectCustomEventEntry(singleData, entities);
       }
-      i += increment;
-      if (j >= max || ids.includes(max)) {
+      const collected = Object.keys(entities).length;
+      if (this.CURRENT_ENV === 'development') Utils.stdoudInfo(collected, max);
+      const reachedLast = players.some((row: any[]) => Number(row[0]) >= max);
+      if (collected >= max || reachedLast || cursor.stalled) {
         Utils.logMessage(
           ' [info] End of search for category',
-          levelCategory + ', ' + j + 'players found on',
+          levelCategory + ', ' + collected + 'players found on',
           max + 'for',
           eventName,
         );
-        c = false;
+        this.warnSkippedRanks(cursor, eventName);
+        return collected;
       }
-      if (j % 50 === 0) {
+      if (++pages % 5 === 0) {
         await new Promise((resolve) => setTimeout(resolve, 150));
       }
     }
-    return j;
+  }
+
+  private collectCustomEventEntry(singleData: any, entities: Record<string, any>): void {
+    try {
+      const playerId = singleData[2]['OID'];
+      const parts = String(singleData[2]['N']).split('_');
+      entities[playerId.toString()] = {
+        rank: singleData[0],
+        playerId: playerId,
+        playerName: parts.slice(0, -1).join('_'),
+        point: singleData[1],
+        server: parts.at(-1),
+        level: singleData[2]['L'],
+        legendaryLevel: singleData[2]['LL'],
+        allianceName: singleData[2]['AN'] || null,
+      };
+    } catch (error) {
+      Utils.logMessage(' [error] Migration error:', JSON.stringify(singleData));
+      console.error(error);
+      this.DB_UPDATES.criticalErrors++;
+    }
   }
 
   private async resolveRealPlayerIds(entries: [string, any][]): Promise<void> {
@@ -6358,7 +6353,9 @@ export class GenericFetchAndSaveBackend {
     );
     if (logLevel === 'trace')
       Utils.logMessage(' [trace] Existing entries:', JSON.stringify(Array.from(existingSet).slice(0, 10)));
-    for (const entry of fetchedData) {
+    const comparable = fetchedData.filter((entry) => Number(entry[0]) <= existingEntries.length);
+    if (comparable.length === 0) return false;
+    for (const entry of comparable) {
       const playerName = entry[2]['N'].split('_').slice(0, -1).join('_');
       const level = entry[2]['L'];
       const point = entry[1];

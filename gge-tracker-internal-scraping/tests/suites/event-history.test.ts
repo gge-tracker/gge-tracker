@@ -57,6 +57,17 @@ describe('genericFillHistory', () => {
     });
   });
 
+  for (const pageSize of [6, 8, 10, 17, 21]) {
+    it(`writes every rank when the game pages ${pageSize} at a time`, async () => {
+      await withSandbox({}, async (sandbox) => {
+        const category1 = { ...fixtures.nomadsCategory1(), pageSize };
+        sandbox.api.serveRanking(category1);
+        await runFill(sandbox, 1);
+        assert.equal(sandbox.clickhouse.rows(TABLE).length, category1.totalRanked, 'nobody is missing');
+      });
+    });
+  }
+
   it('writes one row per player of the ranking', async () => {
     await withSandbox({}, async (sandbox) => {
       const category1 = fixtures.nomadsCategory1();

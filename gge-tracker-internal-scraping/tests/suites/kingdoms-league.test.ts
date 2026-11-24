@@ -80,17 +80,24 @@ function allianceRow(contender: Contender): unknown[] {
   ];
 }
 
-function ranking(lt: number, rows: unknown[][], sv: number): Record<string, unknown> {
-  const window = rankingWindow(rows as any, PAGE_SIZE, rows.length, sv);
+function ranking(lt: number, rows: unknown[][], sv: number, pageSize = PAGE_SIZE): Record<string, unknown> {
+  const window = rankingWindow(rows as any, pageSize, rows.length, sv);
   return { return_code: 0, content: { LT: lt, L: window, LR: rows.length, SV: String(sv), FR: sv, IGH: 0 } };
 }
 
-function serveLeague(sandbox: Sandbox, players: Contender[], alliances: Contender[] = contenders(10)): void {
+function serveLeague(
+  sandbox: Sandbox,
+  players: Contender[],
+  alliances: Contender[] = contenders(10),
+  pageSize = PAGE_SIZE,
+): void {
   const playerRows = players.map(playerRow);
   const allianceRows = alliances.map(allianceRow);
   sandbox.api.on('hgh', (request: ApiRequest) => {
     const sv = Number(request.parameters.SV);
-    return Number(request.parameters.LT) === 63 ? ranking(63, playerRows, sv) : ranking(67, allianceRows, sv);
+    return Number(request.parameters.LT) === 63
+      ? ranking(63, playerRows, sv, pageSize)
+      : ranking(67, allianceRows, sv, pageSize);
   });
 }
 
@@ -212,6 +219,23 @@ describe('fillKingdomsLeague', () => {
       assert.deepEqual(asked, ['63@1', '63@4', '63@12', '63@20', '67@1', '67@4', '67@12']);
     });
   });
+
+  for (const pageSize of [6, 17]) {
+    it(`stores every rank once when the game pages ${pageSize} at a time`, async () => {
+      await withSandbox({ now: IN_WINDOW }, async (sandbox) => {
+        serveLeague(sandbox, contenders(40), contenders(20), pageSize);
+        await sandbox.call('fillKingdomsLeague', 'FR1');
+        const ranks = sandbox.clickhouse.rows('kingdoms_league_players').map((row) => row.rank);
+        assert.deepEqual(
+          ranks,
+          Array.from({ length: 40 }, (_, index) => index + 1),
+        );
+        assert.equal(sandbox.clickhouse.rows('kingdoms_league_alliances').length, 20);
+        const playerPages = sandbox.api.callsFor('hgh').filter((call) => Number(call.parameters.LT) === 63);
+        assert.equal(playerPages.length, 1 + Math.ceil(40 / pageSize), 'the first page, then each page once');
+      });
+    });
+  }
 
   it('stores every rank once with the shape the tables declare', async () => {
     await withSandbox({ now: IN_WINDOW }, async (sandbox) => {

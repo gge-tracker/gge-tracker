@@ -243,19 +243,18 @@ describe('executeCustomEventHistory', () => {
     });
   });
 
-  it('silently skips players when the declared page size is larger than the live one', async () => {
-    await withSandbox({}, async (sandbox) => {
-      const fixture = crossServer(['FR1'], 'hgh-nomads-lt46-lid1');
-      assert.equal(fixture.pageSize, 8);
-      sandbox.api.serveRanking(fixture);
-      await run(sandbox);
-      const insert = sandbox.db.matching(/INSERT INTO outer_realms_event_history/)[0];
-      assert.ok(
-        insert.params.length / 9 < fixture.totalRanked,
-        'the mismatch is silent: the run reports success while dropping players',
-      );
+  for (const pageSize of [6, 8, 10, 17, 21]) {
+    it(`collects the whole ranking when the live page holds ${pageSize} ranks against a declared 10`, async () => {
+      await withSandbox({}, async (sandbox) => {
+        const fixture = { ...crossServer(['FR1'], 'hgh-nomads-lt46-lid1'), pageSize };
+        sandbox.api.serveRanking(fixture);
+        await run(sandbox);
+        const insert = sandbox.db.matching(/INSERT INTO outer_realms_event_history/)[0];
+        const stored = Array.from({ length: insert.params.length / 9 }, (_, i) => insertedPlayer(insert.params, i));
+        assert.equal(new Set(stored.map((player) => player.rank)).size, fixture.totalRanked, 'every rank is stored');
+      });
     });
-  });
+  }
 
   it('refuses to run without a PostgreSQL configuration', async () => {
     await withSandbox({ postgres: false }, async (sandbox) => {
