@@ -40,7 +40,7 @@ export abstract class ApiOfferHistory implements ApiHelper {
   private static readonly CACHE_TTL_SECONDS = 3600;
   private static readonly MISSING_SCHEMA_ERRORS = new Set(['UNKNOWN_TABLE', 'UNKNOWN_IDENTIFIER']);
   private static readonly EMPTY_HISTORY = { first_snapshot_at: null, last_snapshot_at: null, offers: [] };
-  private static readonly PAST_OFFERS_LIMIT = 300;
+  private static readonly PAST_OFFERS_LIMIT = 999;
 
   public static async getOfferHistory(request: express.Request, response: express.Response): Promise<void> {
     try {

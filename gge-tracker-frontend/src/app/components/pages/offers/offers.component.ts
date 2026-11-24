@@ -299,14 +299,7 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
       this.displayedOffers = [];
       return;
     }
-    const search = this.search?.trim().toLowerCase();
-    const offers = search
-      ? source.filter(
-          (offer) =>
-            offer.name.toLowerCase().includes(search) ||
-            offer.rewards.some((reward) => reward.title.toLowerCase().includes(search)),
-        )
-      : [...source];
+    const offers = this.matchingSearch(source);
     switch (this.orderBy) {
       case 'price-asc': {
         offers.sort((a, b) => a.price - b.price);
@@ -370,6 +363,7 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
 
   public onSearchChange(value: string): void {
     this.search = value;
+    this.tabs = this.buildTabs(this.categories);
     this.applyFilters();
   }
 
@@ -385,6 +379,7 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
 
   public resetSearch(): void {
     this.search = null;
+    this.tabs = this.buildTabs(this.categories);
     this.applyFilters();
   }
 
@@ -500,6 +495,16 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
     return categories;
   }
 
+  private matchingSearch(offers: OfferCard[]): OfferCard[] {
+    const search = this.search?.trim().toLowerCase();
+    if (!search) return [...offers];
+    return offers.filter(
+      (offer) =>
+        offer.name.toLowerCase().includes(search) ||
+        offer.rewards.some((reward) => reward.title.toLowerCase().includes(search)),
+    );
+  }
+
   private buildAllOffers(categories: OfferCategory[]): OfferCard[] {
     const offers = new Map<string, OfferCard>();
     for (const category of categories) {
@@ -513,13 +518,13 @@ export class OffersComponent extends GenericComponent implements OnInit, AfterVi
   private buildTabs(categories: OfferCategory[]): OfferTab[] {
     if (categories.length === 0) return [];
     return [
-      { key: this.allCategoryKey, label: 'Tous', special: false, count: this.allOffers.length },
+      { key: this.allCategoryKey, label: 'Tous', special: false, count: this.matchingSearch(this.allOffers).length },
       ...categories
         .map((category) => ({
           key: category.key,
           label: category.label,
           special: category.key === 'promos',
-          count: category.offers.length,
+          count: this.matchingSearch(category.offers).length,
         }))
         .sort((n) => (n.key === 'promos' ? -1 : 1)),
     ];
