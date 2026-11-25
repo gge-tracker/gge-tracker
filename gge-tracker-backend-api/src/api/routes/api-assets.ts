@@ -9,6 +9,7 @@ import { RenderBusyError } from '../managers/puperteer.manager';
 import { PrecompressedJson } from '../helper/cache/precompressed-json';
 import { HttpCache } from '../helper/http-cache';
 import { TemporaryServerSettings } from '../helper/temporary-server-settings';
+import { EventVariants } from '../helper/event-variants';
 import { DivisionRounds } from '../helper/division-rounds';
 import { AssetFileCache } from '../services/asset-file-cache';
 import { AssetImageVariant, AssetImageRenderer } from '../services/asset-image-renderer';
@@ -706,6 +707,7 @@ export abstract class ApiAssets implements ApiHelper {
     await DivisionRounds.publishFromItems(items).catch((error) =>
       ApiHelper.logError(error, 'updateItems.divisionRounds', null),
     );
+    EventVariants.publishFromItems(items);
   }
 
   private static async readThroughCache(cacheKey: string, build: () => Promise<unknown>): Promise<string> {

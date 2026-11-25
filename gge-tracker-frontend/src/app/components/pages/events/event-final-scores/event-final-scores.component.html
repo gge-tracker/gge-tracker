@@ -1,0 +1,280 @@
+<div class="fs-backdrop" aria-hidden="true"></div>
+<div class="container fs">
+  <nav class="fs-nav" [attr.aria-label]="'Éditions précédentes' | translate">
+    <a class="fs-nav-link" [routerLink]="['/events', eventType()]" [queryParams]="gameQueryParameters()">
+      <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>{{ 'Scores finaux' | translate }}
+    </a>
+    <span class="fs-nav-editions">
+      @if (previousLink; as link) {
+        <a class="fs-nav-link" [routerLink]="link" [queryParams]="gameQueryParameters()" [title]="'Édition précédente' | translate">
+          <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+          <span>{{ 'final-scores-edition' | translate: { number: eventNumber() - 1 } }}</span>
+        </a>
+      }
+      @if (nextLink; as link) {
+        <a class="fs-nav-link" [routerLink]="link" [queryParams]="gameQueryParameters()" [title]="'Édition suivante' | translate">
+          <span>{{ 'final-scores-edition' | translate: { number: eventNumber() + 1 } }}</span>
+          <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+        </a>
+      }
+    </span>
+  </nav>
+
+  <header class="fs-hero">
+    <span class="fs-eyebrow">
+      <img [src]="'/assets/' + eventType() + '-icon.png'" alt="" width="26" height="26">
+      {{ 'Classement final' | translate }} · {{ 'final-scores-edition' | translate: { number: eventNumber() } }}
+      @if (game() === 'e4k') {
+        <span class="fs-game">E4K</span>
+      }
+    </span>
+    <h1>{{ title | translate }}</h1>
+    @if (variantKey; as key) {
+      <p class="fs-variant">{{ key | translate }}</p>
+    }
+    @if (startDate && endDate) {
+      <p class="fs-dates">
+        {{ 'Événement du 0 au 0' | translate: { start: (startDate | date: 'd MMMM'), end: (endDate | date: 'd MMMM y') } }}
+      </p>
+    }
+  </header>
+
+  <section class="fs-facts" [class.is-loading]="isDataLoading">
+    <div class="fs-fact">
+      <img src="/assets/players.png" alt="" width="30" height="30">
+      <span><small>{{ 'participants' | translate }}</small><strong>{{ participants | number }}</strong></span>
+    </div>
+    <div class="fs-fact">
+      <img src="/assets/icon_world.png" alt="" width="30" height="30">
+      <span><small>{{ 'Serveurs' | translate }}</small><strong>{{ servers.length | number }}</strong></span>
+    </div>
+    @if (event; as data) {
+      <div class="fs-fact">
+        <img src="/assets/icon_points.png" alt="" width="30" height="30">
+        <span><small>{{ 'Score médian' | translate }}</small><strong>{{ +data.score_stats.median_score | number: '1.0-0' }}</strong></span>
+      </div>
+      <div class="fs-fact">
+        <img src="/assets/ranking.png" alt="" width="30" height="28">
+        <span><small>{{ 'Score moyen' | translate }}</small><strong>{{ +data.score_stats.avg_score | number: '1.0-0' }}</strong></span>
+      </div>
+    }
+  </section>
+
+  @if (podium.length > 0) {
+    <section class="fs-podium" [attr.aria-label]="'Podium' | translate">
+      @for (place of podium; track place.player.rank) {
+        <article class="fs-place" [attr.data-rank]="place.player.rank" [class.is-mine]="isMine(place.player)">
+          <span class="fs-medal" aria-hidden="true">{{ place.player.rank }}</span>
+          <div class="fs-place-body">
+            <span class="fs-place-rank">{{ (place.player.rank === 1 ? '1er' : place.player.rank === 2 ? '2ème' : '3ème') | translate }}</span>
+            @if (place.player.player_id) {
+              <a class="fs-place-name" [routerLink]="['/player', place.player.player_id]">{{ place.player.player_name }}</a>
+            } @else {
+              <span class="fs-place-name">{{ place.player.player_name }}</span>
+            }
+            <span class="fs-place-meta">
+              <img [src]="serverService.getFlagUrl(place.player.server)" alt="" height="14">
+              {{ place.player.server }}
+              @if (place.player.alliance_name) {
+                <span class="fs-dot" aria-hidden="true">·</span>{{ place.player.alliance_name }}
+              }
+            </span>
+          </div>
+          <div class="fs-place-score">
+            <strong>{{ place.points | number }}</strong>
+            @if (place.gapToWinner > 0) {
+              <small>{{ 'final-scores-gap-winner' | translate: { points: (place.gapToWinner | number) } }}</small>
+            } @else {
+              <small>{{ 'Points' | translate }}</small>
+            }
+          </div>
+        </article>
+      }
+    </section>
+  }
+
+  @if (mine; as me) {
+    <app-my-standing class="fs-mine" nameId="final-scores-my-name" [label]="'home.you' | translate" [name]="me.playerName"
+      [figures]="myFigures">
+      <img standingBadge [src]="serverService.getFlagUrl(me.server)" [alt]="me.server" height="28">
+      <ng-container standingActions>
+        <button type="button" class="fs-button" (click)="showMyRow()">
+          <img src="/assets/icon_search.png" alt="" height="18">{{ 'Voir dans le classement' | translate }}
+        </button>
+      </ng-container>
+    </app-my-standing>
+  }
+
+  <section class="fs-panel fs-ladder" [attr.aria-labelledby]="'fs-ladder-title'">
+    <h2 id="fs-ladder-title">{{ 'Points en fin d\'édition' | translate }}</h2>
+    <p class="fs-note">
+      {{ 'final-scores-ladder-note' | translate }}
+      @if (comparedEdition && variantKey) {
+        {{ 'final-scores-compared-variant' | translate: { number: comparedEdition, variant: (variantKey | translate) } }}
+      }
+    </p>
+    <ol class="fs-rungs">
+      @for (rung of ladder; track rung.rank + rung.label) {
+        <li class="fs-rung" [class.is-mine]="rung.isMine">
+          <span class="fs-rung-label">{{ rung.label | translate }}</span>
+          <strong class="fs-rung-value">{{ rung.points | number }}</strong>
+          <span class="fs-rung-meter" aria-hidden="true"><span [style.width.%]="rung.share"></span></span>
+          @if (rung.isMine) {
+            <span class="fs-rung-sub">#{{ rung.rank | number }}</span>
+          } @else if (rung.changePercent !== null) {
+            <span class="fs-rung-sub" [class.is-up]="rung.changePercent > 0" [class.is-down]="rung.changePercent < 0">
+              {{ 'final-scores-vs-previous' | translate: { percent: percent(rung.changePercent), number: comparedEdition } }}
+            </span>
+          }
+        </li>
+      }
+    </ol>
+  </section>
+
+  <div class="fs-layout">
+    <section class="fs-panel fs-ranking" #ranking [attr.aria-labelledby]="'fs-ranking-title'">
+      <header class="fs-panel-head">
+        <h2 id="fs-ranking-title">
+          <img src="/assets/podium.png" alt="" width="26" height="24">{{ 'Classement' | translate }}
+        </h2>
+        <label class="fs-server-select">
+          <span class="visually-hidden">{{ 'Serveur' | translate }}</span>
+          @if (serverFilter) {
+            <img [src]="serverService.getFlagUrl(serverFilter)" alt="" height="16">
+          }
+          <select class="form-select form-select-sm" [ngModel]="serverFilter" (ngModelChange)="filterServer($event)"
+            [disabled]="isDataLoading">
+            <option value="">{{ 'Tous les serveurs' | translate }}</option>
+            @for (row of serverOptions; track row.server) {
+              <option [value]="row.server">{{ row.server }} · {{ row.players | number }}</option>
+            }
+          </select>
+        </label>
+      </header>
+      <app-search-form [isInLoading]="isDataLoading" [formFilters]="null" [inputTip]="'Rechercher le joueur' | translate"
+        [searchTypes]="{ player: true, alliance: false }" (searchPlayer)="searchPlayer($event)">
+      </app-search-form>
+      <div class="fs-table" [class.is-loading]="isTableLoading">
+        <app-table [sort]="''" [reverse]="false" [isInLoading]="isDataLoading" [maxPage]="maxPage" [page]="page"
+          [search]="search" [headers]="tableHeaders" (navigateToPage)="changePage($event)"
+          (previousPage)="changePage(page - 1)" (nextPage)="changePage(page + 1)">
+          @if (players.length === 0 && !isDataLoading) {
+            <tr>
+              <td colspan="5" class="fs-empty">{{ 'Aucun joueur trouvé' | translate }}</td>
+            </tr>
+          }
+          @for (player of players; track player.rank + player.player_name) {
+            <tr [class.fs-row-mine]="isMine(player)">
+              <td class="col-rank">
+                <span class="fs-rank" [attr.data-rank]="player.rank">{{ player.rank | number }}</span>
+              </td>
+              <td class="col-name fs-player">
+                @if (player.player_id) {
+                  <a [routerLink]="['/player', player.player_id]">{{ player.player_name }}</a>
+                } @else {
+                  <span>{{ player.player_name }}</span>
+                }
+                @if (player.alliance_name) {
+                  <small>{{ player.alliance_name }}</small>
+                }
+              </td>
+              <td class="fs-server">
+                <img [src]="serverService.getFlagUrl(player.server)" alt="" height="16">{{ player.server }}
+              </td>
+              <td class="fs-points">{{ +player.point | number }}</td>
+              <td class="col-actions">
+                @if (player.player_id) {
+                  <a [routerLink]="['/player', player.player_id]" class="action-button"
+                    [attr.aria-label]="'Analyser le joueur' | translate" [attr.data-tooltip]="'Analyser le joueur' | translate">
+                    <img src="/assets/icon_analyze.png" class="btn-icon" alt="">
+                  </a>
+                }
+              </td>
+            </tr>
+          }
+        </app-table>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="fs-layout fs-layout--analysis" [class.fs-layout--single]="levelBands.length === 0">
+    <section class="fs-panel" [attr.aria-labelledby]="'fs-servers-title'">
+      <header class="fs-panel-head">
+        <h2 id="fs-servers-title"><img src="/assets/icon_world.png" alt="" width="24" height="24">{{ 'Performance des serveurs' | translate }}</h2>
+      </header>
+      <p class="fs-note">{{ 'final-scores-servers-note' | translate }}</p>
+      <div class="fs-servers-scroll">
+        <table class="fs-servers">
+          <thead>
+            <tr>
+              <th scope="col">{{ 'Serveur' | translate }}</th>
+              <th scope="col" class="num">{{ 'Joueurs' | translate }}</th>
+              <th scope="col" class="fs-servers-bar-head">{{ 'Top 100' | translate }}</th>
+              <th scope="col" class="num">{{ 'Top 1k' | translate }}</th>
+              <th scope="col" class="num">{{ 'Score médian' | translate }}</th>
+              <th scope="col" class="num">{{ 'Score moyen' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of visibleServers; track row.server) {
+              <tr [class.is-active]="row.server === serverFilter" [class.is-mine]="row.server === mine?.server">
+                <th scope="row">
+                  <button type="button" class="fs-server-button" [attr.aria-pressed]="row.server === serverFilter"
+                    (click)="filterServer(row.server)">
+                    <img [src]="serverService.getFlagUrl(row.server)" alt="" height="16">{{ row.server }}
+                  </button>
+                </th>
+                <td class="num">{{ row.players | number }}</td>
+                <td>
+                  <span class="fs-servers-bar">
+                    <span class="fs-bar" aria-hidden="true"><span [style.width.%]="row.top100Share"></span></span>
+                    <strong>{{ row.top100 }}</strong>
+                  </span>
+                </td>
+                <td class="num">{{ row.top1000 | number }}</td>
+                <td class="num">{{ row.median | number: '1.0-0' }}</td>
+                <td class="num">{{ row.average | number: '1.0-0' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (hasMoreServers) {
+        <button type="button" class="fs-more" [attr.aria-expanded]="showAllServers" (click)="showAllServers = !showAllServers">
+          {{ (showAllServers ? 'Voir moins' : 'Voir plus') | translate }}
+          <i class="fa-solid" [class.fa-chevron-down]="!showAllServers" [class.fa-chevron-up]="showAllServers" aria-hidden="true"></i>
+        </button>
+      }
+    </section>
+
+    @if (levelBands.length > 0) {
+      <section class="fs-panel" [attr.aria-labelledby]="'fs-levels-title'">
+        <header class="fs-panel-head">
+          <h2 id="fs-levels-title"><img src="/assets/lvl.png" alt="" width="24" height="23">{{ 'Score par niveau' | translate }}</h2>
+        </header>
+        <p class="fs-note">{{ 'final-scores-levels-note' | translate }}</p>
+        <div class="fs-levels" role="table">
+          <div class="fs-level fs-level--head" role="row">
+            <span role="columnheader">{{ 'Niveau' | translate }}</span>
+            <span role="columnheader">{{ 'Joueurs' | translate }}</span>
+            <span role="columnheader">{{ 'Score moyen' | translate }}</span>
+          </div>
+          @for (band of levelBands; track band.label) {
+            <div class="fs-level" role="row">
+              <span class="fs-level-label" role="rowheader">{{ band.label }}</span>
+              <span class="fs-level-cell" role="cell">
+                <span class="fs-bar fs-bar--muted" aria-hidden="true"><span [style.width.%]="band.playerShare"></span></span>
+                {{ band.players | number }}
+              </span>
+              <span class="fs-level-cell" role="cell">
+                <span class="fs-bar" aria-hidden="true"><span [style.width.%]="band.averageShare"></span></span>
+                {{ band.average | formatNumber }}
+              </span>
+            </div>
+          }
+        </div>
+      </section>
+    }
+  </div>
+</div>

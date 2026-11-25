@@ -5,8 +5,6 @@
   <div class="event-overlay">
     <div class="event-header row gx-0">
       <div class="event-badge col">
-        <lucide-icon class="icons calendar-check" [img]="CalendarCheck"></lucide-icon>
-        &nbsp;
         {{ 'Événement du 0 au 0' | translate: {
           start: (event().from | date: (options().dateFormat | translate) : ('Date_7' | translate)),
           end: (event().to | date: (options().dateFormat | translate) : ('Date_7' | translate))
@@ -15,27 +13,22 @@
       </div>
       <div class="event-badge-header col-auto">
         @if (options().displayMode === 'player-count') {
-          <lucide-icon class="icons square-user" [img]="SquareUser"></lucide-icon>
-          &nbsp;
+          <img src="/assets/players.png" alt="" width="16" height="16">
           {{ (playerCount() || 0) | formatNumber }} {{ 'Joueurs' | translate | lowercase }}
         } @else if (options().displayMode === 'points') {
-            <lucide-icon class="icons trophy" [img]="Trophy"></lucide-icon>
-            &nbsp;
+            <img src="/assets/ranking.png" alt="" width="17" height="16">
             #{{( rank() || 0) | formatNumber }}
             ({{ (point() || 0) | formatNumber }} {{ 'points' | translate }})
         } @else {
-          <lucide-icon class="icons trophy" [img]="Trophy"></lucide-icon>
-          &nbsp;
+          <img src="/assets/ranking.png" alt="" width="17" height="16">
           #{{( rank() || 0) | formatNumber }}
         }
       </div>
       <ng-content select="[event-header-extra]"></ng-content>
     </div>
     <h5 class="event-title">
-      {{ selectedEvent().title | translate | titlecase }}
-      <span class="event-icon">
-        <i class="fa-solid" [ngClass]="selectedEvent().icon"></i>
-      </span>
+      <img class="event-icon" [src]="selectedEvent().icon" alt="" width="34" height="34">
+      {{ selectedEvent().title | translate }}
       <ng-content select="[event-title-extra]"></ng-content>
     </h5>
     <ng-content select="[event-body]"></ng-content>

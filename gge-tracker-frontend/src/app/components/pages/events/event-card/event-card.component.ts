@@ -1,8 +1,7 @@
 /* eslint-disable unicorn/consistent-function-scoping */
-import { DatePipe, LowerCasePipe, NgClass, NgStyle, TitleCasePipe } from '@angular/common';
+import { DatePipe, LowerCasePipe, NgStyle } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
-import { CalendarCheck, LucideAngularModule, SquareUser, Trophy } from 'lucide-angular';
 import { EventList } from '../events.component';
 import { FormatNumberPipe } from '@ggetracker-pipes/format-number.pipe';
 import { OuterEventData, WoaEvent, WoaEventList } from '@ggetracker-interfaces/empire-ranking';
@@ -16,23 +15,11 @@ interface Events {
   standalone: true,
   selector: 'app-event-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    TranslatePipe,
-    NgStyle,
-    LucideAngularModule,
-    DatePipe,
-    LowerCasePipe,
-    FormatNumberPipe,
-    TitleCasePipe,
-    NgClass,
-  ],
+  imports: [TranslatePipe, NgStyle, DatePipe, LowerCasePipe, FormatNumberPipe],
   templateUrl: './event-card.component.html',
   styleUrls: ['./event-card.component.css'],
 })
 export class EventCardComponent<T extends EventList | OuterEventData | WoaEvent | WoaEventList> {
-  public readonly CalendarCheck = CalendarCheck;
-  public readonly SquareUser = SquareUser;
-  public readonly Trophy = Trophy;
   public event = input.required<T>();
   public loading = input<boolean>();
   public options = input.required<{
@@ -44,17 +31,17 @@ export class EventCardComponent<T extends EventList | OuterEventData | WoaEvent 
   public readonly events: Events[] = [
     {
       type: 'outer-realms',
-      icon: 'fa-trophy',
+      icon: '/assets/outer-realms-icon.png',
       title: 'Royaume extérieur',
     },
     {
       type: 'beyond-the-horizon',
-      icon: 'fa-shield-alt',
+      icon: '/assets/beyond-the-horizon-icon.png',
       title: 'Lacis',
     },
     {
       type: 'woa',
-      icon: 'fa-ticket',
+      icon: '/assets/woa-icon.png',
       title: 'Roue des richesses inimaginables',
     },
   ];
@@ -79,7 +66,7 @@ export class EventCardComponent<T extends EventList | OuterEventData | WoaEvent 
     return (
       this.events.find((event) => event.type === eventType) ?? {
         type: 'unknown',
-        icon: 'fa-question',
+        icon: '/assets/ranking.png',
         title: 'Unknown Event',
       }
     );

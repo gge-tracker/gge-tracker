@@ -8,6 +8,7 @@ import { CacheKeyBuilder } from '../helper/cache/cache-key-builder';
 import { CachedResponse } from '../helper/cache/cached-response';
 import { EventsCatalogCache } from '../helper/cache/events-catalog';
 import { EventGame, EventGames } from '../helper/event-game';
+import { EventVariants, VariantEventType } from '../helper/event-variants';
 import { OuterRealmsBoard, OuterRealmsBoardCache } from '../helper/cache/outer-realms-board';
 import { WoaEventsCatalogCache } from '../helper/cache/woa-events-catalog';
 import { HttpCache } from '../helper/http-cache';
@@ -63,6 +64,12 @@ interface WoaTrackingCoverage {
   first_tracked_event: string | null;
   tracked_events_count: number;
   tracked_events_since_player: number;
+}
+
+interface VariantRow {
+  event_num: number;
+  setting_id: string | null;
+  scoring: string | null;
 }
 
 interface EventWinnerRow {
@@ -614,9 +621,17 @@ export abstract class ApiEvents implements ApiHelper {
       // # [9] => Event info (collect date, player count)
       const sqlTableWithoutRanked = sqlTable.replace(/_ranking$/, '') + '_event';
       const query_event_info = `
-        SELECT collect_date
-        FROM ${sqlTableWithoutRanked}
+        SELECT collect_date, to_jsonb(e) ->> 'setting_id' AS setting_id, to_jsonb(e) ->> 'scoring' AS scoring
+        FROM ${sqlTableWithoutRanked} e
         WHERE event_num = $1
+      `;
+
+      // # [10] => Variant of every earlier edition, to compare with the last one played the same way
+      const query_earlier_variants = `
+        SELECT event_num, to_jsonb(e) ->> 'setting_id' AS setting_id, to_jsonb(e) ->> 'scoring' AS scoring
+        FROM ${sqlTableWithoutRanked} e
+        WHERE event_num < $1
+        ORDER BY event_num DESC
       `;
 
       /* ---------------------------------
@@ -632,6 +647,7 @@ export abstract class ApiEvents implements ApiHelper {
         { query: query_server_avg_score, params: [id] },
         { query: query_top_100_ratio, params: [id] },
         { query: query_event_info, params: [id] },
+        { query: query_earlier_variants, params: [id] },
       ];
       const results = await Promise.all(
         requests.map((request_) => {
@@ -661,16 +677,26 @@ export abstract class ApiEvents implements ApiHelper {
         serverAvgScore,
         top100Ratio,
         eventInfo,
+        earlierVariants,
       ] = results;
       if (!Array.isArray(eventInfo) || eventInfo.length === 0 || !eventInfo[0]?.collect_date) {
         response.status(ApiHelper.HTTP_NOT_FOUND).send({ error: RouteErrorMessagesEnum.GenericNotFound });
         return;
       }
+      const variantType = EVENT_TABLE_PREFIXES[eventType] as VariantEventType;
+      const variant = await EventVariants.resolve(variantType, eventInfo[0].setting_id, eventInfo[0].scoring);
+      const previousSameVariant = await ApiEvents.previousEditionOf(
+        variantType,
+        variant,
+        earlierVariants as VariantRow[],
+      );
       const responseData = {
         event_id: id,
         event_type: eventType,
         collect_date: new Date(eventInfo[0]?.collect_date).toISOString(),
         player_count: eventInfo[0]?.player_count || 0,
+        variant,
+        previous_same_variant: previousSameVariant,
         nb_in_top_100: nbInTop100,
         top_scores: {
           top_1: topScores[0]?.point || 0,
@@ -2293,6 +2319,19 @@ export abstract class ApiEvents implements ApiHelper {
       players: [],
       pagination: { current_page: 1, total_pages: 1, current_items_count: 0, total_items_count: 0 },
     };
+  }
+
+  private static async previousEditionOf(
+    eventType: VariantEventType,
+    variant: string | null,
+    earlier: VariantRow[],
+  ): Promise<number | null> {
+    if (!variant) return null;
+    for (const row of earlier) {
+      if ((await EventVariants.resolve(eventType, row.setting_id, row.scoring)) === variant)
+        return Number(row.event_num);
+    }
+    return null;
   }
 
   private static async readEventWinners(

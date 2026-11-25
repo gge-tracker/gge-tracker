@@ -1,18 +1,22 @@
 import * as pg from 'pg';
 import { ApiHelper } from '../api-helper';
 import { EventGame, EventGames } from '../event-game';
+import { EventVariants, VariantEventType } from '../event-variants';
 
 export interface EventCatalogEntry {
   event_num: number;
   player_count: string;
   type: string;
   collect_date: string;
+  variant: string | null;
 }
 
 interface EventRow {
   event_num: number;
   collect_date: Date;
   type: string;
+  setting_id: string | null;
+  scoring: string | null;
 }
 
 interface EventCountRow {
@@ -61,9 +65,13 @@ export class EventsCatalogCache {
 
   private static async readEvents(eventPgDbpool: pg.Pool): Promise<EventRow[]> {
     const results = await eventPgDbpool.query<EventRow>(`
-      SELECT event_num, collect_date, 'outer_realms' AS type FROM outer_realms_event
+      SELECT event_num, collect_date, 'outer_realms' AS type,
+        to_jsonb(e) ->> 'setting_id' AS setting_id, to_jsonb(e) ->> 'scoring' AS scoring
+      FROM outer_realms_event e
       UNION ALL
-      SELECT event_num, collect_date, 'beyond_the_horizon' AS type FROM beyond_the_horizon_event
+      SELECT event_num, collect_date, 'beyond_the_horizon' AS type,
+        to_jsonb(e) ->> 'setting_id' AS setting_id, to_jsonb(e) ->> 'scoring' AS scoring
+      FROM beyond_the_horizon_event e
     `);
     return results.rows;
   }
@@ -126,12 +134,16 @@ export class EventsCatalogCache {
     const events = await EventsCatalogCache.readEvents(eventPgDbpool);
     const playerCounts = await this.resolvePlayerCounts(eventPgDbpool, events);
 
+    const variants = await Promise.all(
+      events.map((event) => EventVariants.resolve(event.type as VariantEventType, event.setting_id, event.scoring)),
+    );
     const entries = events
-      .map((event) => ({
+      .map((event, index) => ({
         event_num: event.event_num,
         player_count: playerCounts.get(EventsCatalogCache.countKey(event)) ?? '0',
         type: event.type,
         collect_date: new Date(event.collect_date).toISOString(),
+        variant: variants[index],
       }))
       .sort(EventsCatalogCache.byCollectDateDesc);
 

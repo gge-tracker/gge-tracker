@@ -1378,6 +1378,7 @@ export interface ApiEventlist {
     collect_date: string;
     player_count: number;
     type: 'outer_realms' | 'beyond_the_horizon';
+    variant?: string | null;
     winner?: ApiEventWinner | null;
   }[];
   pagination: ApiPagination;
@@ -1834,6 +1835,8 @@ export interface ApiOuterRealmEvent {
   event_id: string;
   event_type: string;
   collect_date: string;
+  variant?: string | null;
+  previous_same_variant?: number | null;
   nb_in_top_100: {
     server: string;
     nb_in_top_100: string;

@@ -68,19 +68,10 @@
   color: #ffd700;
 }
 
-.event-card:hover .event-icon {
-  opacity: 1;
-}
-
 .event-icon {
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
-  height: 48px;
-  margin-right: 0.5rem;
-  width: 48px;
-  font-size: 1rem;
-  margin-left: 0.3rem;
-  opacity: 0.6;
-  transition: opacity 0.2s ease;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+  flex-shrink: 0;
+  object-fit: contain;
 }
 
 .event-cta {
@@ -105,6 +96,7 @@
 
 :host ::ng-deep .event-badge-header {
   align-items: center;
+  font-variant-numeric: tabular-nums;
   backdrop-filter: blur(2px);
   background: rgba(255, 255, 255, 0.12);
   border-radius: 999px;
@@ -121,7 +113,10 @@
 }
 
 .event-title {
+  align-items: center;
   color: #f9f9f9;
+  display: flex;
+  gap: 0.55rem;
   font-size: 1.4rem;
   font-weight: 600;
   margin: 0;

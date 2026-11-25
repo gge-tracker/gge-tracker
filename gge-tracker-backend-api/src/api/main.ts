@@ -1031,6 +1031,11 @@ publicRoutes.get('/datasets/:server/:date/:file', routingInstance.getDatasetFile
  *                         type: string
  *                         description: The timestamp when the data was collected
  *                         example: "2025-06-01 16:00:00"
+ *                       variant:
+ *                         type: string
+ *                         nullable: true
+ *                         description: The scoring the edition ran with (collector, might, rankSwap for Outer Realms; AllianceCollector, AllianceTower, AllianceJade for Beyond the Horizon), or null when it was not recorded
+ *                         example: "collector"
  *                       winner:
  *                         type: object
  *                         nullable: true
@@ -2730,6 +2735,14 @@ publicRoutes.get('/events/:eventType/:id/players', routingInstance.getEventPlaye
  *                 player_count:
  *                   type: integer
  *                   example: 0
+ *                 variant:
+ *                   type: string
+ *                   nullable: true
+ *                   description: The scoring the edition ran with, or null when it was not recorded
+ *                 previous_same_variant:
+ *                   type: integer
+ *                   nullable: true
+ *                   description: The latest earlier edition that ran with the same scoring, or null when there is none or the variant is unknown
  *                 nb_in_top_100:
  *                   type: array
  *                   items:

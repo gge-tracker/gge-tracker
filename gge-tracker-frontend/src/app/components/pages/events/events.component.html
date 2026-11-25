@@ -1,282 +1,66 @@
-<div class="container my-3 movements">
-  <div class="row g-4">
-    <div class="col-12" [ngClass]="{'loading': isInLoading}">
-      @if (!currentEvent) {
-        <div class="events-list-header">
-          <h1 class="events-list-title">{{ 'Scores finaux' | translate }}</h1>
-          <div class="events-list-controls">
-            <div class="events-filter" role="group">
-              @for (option of games; track option.value) {
-                <button type="button" class="events-filter-chip events-game-chip" [class.events-filter-chip--on]="game === option.value"
-                  [attr.aria-pressed]="game === option.value" [disabled]="cardLoading" (click)="selectGame(option.value)">
-                  <i [class]="option.icon" aria-hidden="true"></i>{{ option.label | translate }}
-                </button>
+@if (detail; as current) {
+  <app-event-final-scores [eventType]="current.type" [eventNumber]="current.eventNumber" [game]="game"
+    [gameQueryParameters]="gameQueryParameters" />
+} @else {
+  <div class="container events-list">
+    <header class="events-list-header">
+      <div class="events-list-heading">
+        <h1 class="events-list-title">{{ 'Scores finaux' | translate }}</h1>
+        <p class="events-list-intro">{{ 'final-scores-intro' | translate }}</p>
+      </div>
+      <div class="events-list-controls">
+        <app-game-switch [game]="game" [disabled]="cardLoading" (gameChange)="selectGame($event)" />
+        <nav class="events-filter" [attr.aria-label]="'Événements' | translate">
+          @for (filter of listFilters; track filter.label) {
+            <a class="events-filter-chip" [class.events-filter-chip--on]="listType === filter.type"
+              [attr.aria-current]="listType === filter.type ? 'page' : null"
+              [routerLink]="filter.type ? ['/events', filter.type] : ['/events']" [queryParams]="gameQueryParameters">
+              @if (filter.type) {
+                <img [src]="'/assets/' + filter.type + '-icon.png'" alt="" width="18" height="18">
               }
-            </div>
-            <nav class="events-filter" [attr.aria-label]="'Événements' | translate">
-              @for (filter of listFilters; track filter.label) {
-                <a class="events-filter-chip" [class.events-filter-chip--on]="listType === filter.type"
-                  [attr.aria-current]="listType === filter.type ? 'page' : null"
-                  [routerLink]="filter.type ? ['/events', filter.type] : ['/events']" [queryParams]="gameQueryParameters">{{ filter.label | translate }}</a>
-              }
-            </nav>
-          </div>
-        </div>
-        <div class="row mt-1 row-gap-3">
-          @for (event of events; track event.type + event.id) {
-            <div class="col-12 col-lg-6">
-              <app-event-card
-                [event]="event"
-                [options]="{ displayMode: 'player-count' }"
-                [loading]="cardLoading"
-                (eventClick)="onEventClick($event)"
-                tabindex="0"
-                role="link"
-                (keydown.enter)="onEventClick(event)"
-              >
-                @if (event.winner; as winner) {
-                  <div event-body class="event-winner">
-                    <i class="fa-solid fa-crown event-winner-crown" aria-hidden="true"></i>
-                    <span class="event-winner-rank">{{ '1er' | translate }}</span>
-                    <img [src]="serverService.getFlagUrl(winner.server)" alt="" class="event-winner-flag">
-                    <span class="event-winner-name">{{ winner.player_name }}</span>
-                    <span class="event-winner-points">{{ winner.point | formatNumber }} {{ 'points' | translate }}</span>
-                  </div>
-                }
-              </app-event-card>
+              {{ filter.label | translate }}
+            </a>
+          }
+        </nav>
+      </div>
+    </header>
+
+    <div class="events-grid">
+      @for (event of events; track event.type + event.id) {
+        <app-event-card [event]="event" [options]="{ displayMode: 'player-count' }" [loading]="cardLoading"
+          (eventClick)="onEventClick($event)" tabindex="0" role="link" (keydown.enter)="onEventClick(event)">
+          @if (variantKeyOf(event); as key) {
+            <span event-title-extra class="event-variant">{{ key | translate }}</span>
+          }
+          @if (event.winner; as winner) {
+            <div event-body class="event-winner">
+              <span class="event-winner-medal" aria-hidden="true">1</span>
+              <img [src]="serverService.getFlagUrl(winner.server)" alt="" class="event-winner-flag">
+              <span class="event-winner-name">{{ winner.player_name }}</span>
+              <span class="event-winner-points">{{ winner.point | formatNumber }} {{ 'points' | translate }}</span>
             </div>
           }
-        </div>
-        @if (!isInLoading && !currentEvent && events.length > 0) {
-          <div class="pagination-modern">
-            <button class="btn btn-sm rounded-circle shadow-sm" (click)="eventsNavigateTo(pagination.current_page - 1)"
-              [disabled]="pagination.current_page <= 1">
-              <i class="fa-solid fa-chevron-left"></i>
-            </button>
-            <span class="page-indicator">{{ pagination.current_page }} / {{ pagination.total_pages }}</span>
-            <button class="btn btn-sm rounded-circle shadow-sm" (click)="eventsNavigateTo(pagination.current_page + 1)"
-              [disabled]="pagination.current_page >= pagination.total_pages">
-              <i class="fa-solid fa-chevron-right"></i>
-            </button>
-          </div>
-        }
-      }
-      @if (currentEvent) {
-        <div class="events">
-          <app-events-header [eventName]="getEventName(eventType!)" [from]="utilitiesService.generateOuterRealmsEventFromDate(currentEvent.collect_date)"
-            [to]="createDate(currentEvent.collect_date)" [nbPlayers]="nbPlayers"
-          [eventType]="eventType!"></app-events-header>
-          <div class="row g-2 mb-3" [ngClass]="{'table-loading': tableLoading}">
-            <div class="col-auto">
-              <a class="back-btn" [routerLink]="['/events']" [queryParams]="gameQueryParameters">
-                <i class="fa-solid fa-arrow-left"></i>
-                <span class="d-none d-sm-inline-block">{{ 'Retour' | translate }}</span>
-              </a>
-            </div>
-            <div class="col">
-              <app-search-form [isInLoading]="isInLoading" [formFilters]="formFilters"
-              [inputTip]="'Rechercher le joueur' | translate" [searchTypes]="{
-                player: true,
-                alliance: false
-              }" (searchPlayer)="searchPlayer($event)">
-              </app-search-form>
-            </div>
-            <app-table [sort]="''" [reverse]="false" [isInLoading]="isInLoading" [maxPage]="maxPage!" [page]="page"
-            [search]="playerNameFilter" [headers]="tableHeaders" (navigateToPage)="navigateTo($event)" (previousPage)="previousPage()" (nextPage)="nextPage()">
-              @if (players.length === 0 && !isInLoading) {
-                <tr>
-                  <td colspan="10" class="no-data">{{ 'Aucun joueur trouvé' | translate }}</td>
-                </tr>
-              }
-              @for (player of players; track player) {
-                <tr>
-                  <td class="col-rank">
-                    <span class="mobile-only">#</span>
-                    {{ player.rank }}
-                  </td>
-                  <td class="col-name">{{ player.player_name }}</td>
-                  <td><img [src]="serverService.getFlagUrl(player.server)" alt="Flag icon {{ player.server }}"> {{ player.server }}</td>
-                  <td>{{ (player.point) | formatNumber }}</td>
-                  @if (hasAllianceColumn) {
-                    <td>{{ player.alliance_name || '-' }}</td>
-                  }
-                  <td class="col-actions">
-                    @if (player.player_id) {
-                      <div class="d-flex justify-content-end">
-                        <a [routerLink]="['/', 'player', player.player_id]" class="gge-btn search py-1">
-                          <i class="fa-solid fa-eye"></i>
-                          <span class="d-none d-sm-inline-block">&nbsp;{{ 'Analyser le joueur' | translate }}</span>
-                        </a>
-                      </div>
-                    } @else {
-                      <a class="gge-btn btn-sm disabled">
-                        <span class="d-none d-sm-inline-block py-1">
-                          <i class="fa-solid fa-ban"></i>
-                          <span class="d-none d-sm-inline-block">&nbsp;{{ 'Aucune action' | translate }}</span>
-                        </span>
-                      </a>
-                    }
-                  </td>
-                </tr>
-              }
-            </app-table>
-          </div>
-          <div class="event-analytics-divider my-4">
-            <div class="divider-line"></div>
-            <div class="divider-label">
-              <i class="fa-solid fa-chart-line"></i>
-              <span>{{ 'Analyse de l\'événement' | translate }}</span>
-            </div>
-            <div class="divider-line"></div>
-          </div>
-
-          <div class="row g-3 mb-5">
-            <div class="col-6 col-md-3">
-              <div class="kpi-card kpi-gold">
-                <lucide-icon [img]="TrophyIcon" class="lucide-icon kpi-icon-el"></lucide-icon>
-                <div class="kpi-value">{{ currentEvent.score_stats.max_score | formatNumber }}</div>
-                <div class="kpi-label">{{ 'Score maximal' | translate }}</div>
-              </div>
-            </div>
-            <div class="col-6 col-md-3">
-              <div class="kpi-card kpi-teal">
-                <lucide-icon [img]="TrendingUpIcon" class="lucide-icon kpi-icon-el"></lucide-icon>
-                <div class="kpi-value">{{ currentEvent.score_stats.avg_score | formatNumber }}</div>
-                <div class="kpi-label">{{ 'Score moyen' | translate }}</div>
-              </div>
-            </div>
-            <div class="col-6 col-md-3">
-              <div class="kpi-card kpi-blue">
-                <lucide-icon [img]="TargetIcon" class="lucide-icon kpi-icon-el"></lucide-icon>
-                <div class="kpi-value">{{ currentEvent.score_stats.median_score | formatNumber }}</div>
-                <div class="kpi-label">{{ 'Score médian' | translate }}</div>
-              </div>
-            </div>
-            <div class="col-6 col-md-3">
-              <div class="kpi-card kpi-slate">
-                <lucide-icon [img]="ActivityIcon" class="lucide-icon kpi-icon-el"></lucide-icon>
-                <div class="kpi-value">{{ currentEvent.score_stddev | formatNumber }}</div>
-                <div class="kpi-label">{{ 'Variabilité' | translate }}</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="analytics-section mb-5">
-            <div class="analytics-section-header">
-              <div class="analytics-section-badge badge-amber">
-                <i class="fa-solid fa-ranking-star"></i>
-              </div>
-              <div class="analytics-section-meta">
-                <h3 class="analytics-section-title">{{ 'Scores de référence' | translate }}</h3>
-                <p class="analytics-section-desc">{{ 'Score minimum requis pour atteindre chaque palier de classement' | translate }}</p>
-              </div>
-            </div>
-            @if (charts['topScores']) {
-              <ng-container *ngTemplateOutlet="chartTemplate; context: { chart: charts['topScores'] }"></ng-container>
-            }
-          </div>
-
-          <div class="analytics-section mb-5">
-            <div class="analytics-section-header">
-              <div class="analytics-section-badge badge-teal">
-                <i class="fa-solid fa-globe"></i>
-              </div>
-              <div class="analytics-section-meta">
-                <h3 class="analytics-section-title">{{ 'Performance des serveurs' | translate }}</h3>
-                <p class="analytics-section-desc">{{ 'Top 15 des serveurs les plus performants sur cet événement' | translate }}</p>
-              </div>
-            </div>
-            <div class="row g-4">
-              <div class="col-12 col-xl-6">
-                @if (charts['serverAvgScore']) {
-                  <ng-container *ngTemplateOutlet="chartTemplate; context: { chart: charts['serverAvgScore'], subtitle: 'Score moyen par serveur' }"></ng-container>
-                }
-              </div>
-              <div class="col-12 col-xl-6">
-                @if (charts['top100Ratio']) {
-                  <ng-container *ngTemplateOutlet="chartTemplate; context: { chart: charts['top100Ratio'], subtitle: 'Pourcentage dans le top 100' }"></ng-container>
-                }
-              </div>
-            </div>
-          </div>
-
-          <div class="analytics-section mb-4">
-            <div class="analytics-section-header">
-              <div class="analytics-section-badge badge-purple">
-                <i class="fa-solid fa-layer-group"></i>
-              </div>
-              <div class="analytics-section-meta">
-                <h3 class="analytics-section-title">{{ 'Répartition par niveau' | translate }}</h3>
-                <p class="analytics-section-desc">{{ 'Distribution des joueurs selon leur niveau de château' | translate }}</p>
-              </div>
-            </div>
-            @if (charts['levelDistribution']) {
-              <ng-container *ngTemplateOutlet="chartTemplate; context: { chart: charts['levelDistribution'] }"></ng-container>
-            }
-          </div>
-        </div>
+          @if (myResultOf(event); as mine) {
+            <span event-footer class="event-mine">
+              <span class="event-mine-label">{{ 'home.you' | translate }}</span> · <strong>#{{ mine.rank | number }}</strong> · {{ mine.points | formatNumber }}
+            </span>
+          }
+        </app-event-card>
       }
     </div>
-  </div>
-</div>
 
-<ng-template #chartTemplate let-chart="chart" let-subtitle="subtitle">
-  <div class="apx-chart">
-    @if (subtitle) {
-      <div class="chart-subtitle">{{ subtitle | translate }}</div>
-    }
-    @if (chart && isBrowser) {
-      <app-charts-wrapper [series]="chart.series" [annotations]="chart.annotations || {}"
-        [chart]="chart.chart" [xaxis]="chart.xaxis" [yaxis]="chart.yaxis" [dataLabels]="chart.dataLabels"
-        [plotOptions]="chart.plotOptions" [labels]="chart.labels || []" [grid]="chart.grid" [colors]="chart.colors"
-        [markers]="chart.markers || {}" [fill]="chart.fill" [stroke]="chart.stroke" [title]="chart.title"
-      [tooltip]="chart.tooltip" [legend]="chart.legend"></app-charts-wrapper>
+    @if (events.length > 0) {
+      <div class="pagination-modern">
+        <button class="btn btn-sm rounded-circle shadow-sm" (click)="eventsNavigateTo(pagination.current_page - 1)"
+          [disabled]="pagination.current_page <= 1" [attr.aria-label]="'Précédent' | translate">
+          <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+        </button>
+        <span class="page-indicator">{{ pagination.current_page }} / {{ pagination.total_pages }}</span>
+        <button class="btn btn-sm rounded-circle shadow-sm" (click)="eventsNavigateTo(pagination.current_page + 1)"
+          [disabled]="pagination.current_page >= pagination.total_pages" [attr.aria-label]="'Suivant' | translate">
+          <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+        </button>
+      </div>
     }
   </div>
-</ng-template>
-
-<div class="modal fade" id="filtersModal" tabindex="-1" aria-labelledby="filtersModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="filtersModalLabel">
-          <i class="fa-solid fa-filter"></i>&nbsp;{{ 'Filtrer les résultats' | translate }}
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"
-        [attr.aria-label]="'Fermer' | translate"></button>
-      </div>
-      <div class="modal-body">
-        <div class="row g-4">
-          <div class="col-12">
-            <app-modal-form-group [label]="'Serveur' | translate">
-              <ng-select
-                field
-                [items]="serverService.ggeEmpireActiveServerPrefixes"
-                [(ngModel)]="formFilters.server"
-                [placeholder]="'Tous' | translate"
-                [clearable]="true"
-                [searchable]="true"
-                [groupBy]="serverGroupFn"
-              >
-                <ng-template ng-label-tmp let-item="item">
-                  <img [src]="serverService.getFlagUrl(item)" [alt]="item" height="14" class="me-1">
-                  {{ item }}
-                </ng-template>
-                <ng-template ng-option-tmp let-item="item">
-                  <img [src]="serverService.getFlagUrl(item)" [alt]="item" height="14" class="me-1">
-                  {{ item }}
-                </ng-template>
-              </ng-select>
-            </app-modal-form-group>
-          </div>
-          <div class="modal-actions">
-            <button type="button" class="modal-action primary" (click)="applyFilters()" data-bs-dismiss="modal">
-              <i class="fa-solid fa-check"></i>
-              <span>{{ 'Appliquer les filtres' | translate }}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+}

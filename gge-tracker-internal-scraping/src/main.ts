@@ -72,6 +72,7 @@ import {
   isKnownDivisionRound,
   KNOWN_DIVISION_ROUNDS_KEY,
 } from './division-round';
+import { CustomEventName, PREVIOUS_RUN_COMMAND, readPreviousRunSettingId } from './event-variant';
 import { findTempServerSetting } from './temp-server-settings';
 import { scheduleDiscordPost } from './discord-schedule';
 import { fromDiscord, maskedLink } from './discord-link';
@@ -6171,6 +6172,7 @@ export class GenericFetchAndSaveBackend {
             `,
           [eventNum, new Date(), data?.content?.FR, data?.content?.IGH, content[0][2]['OID'], content[0][1]],
         );
+        await this.recordEventVariant(tableEventName, eventNum, eventName);
       }
 
       const entities: Record<string, any> = {};
@@ -6209,6 +6211,25 @@ export class GenericFetchAndSaveBackend {
       Utils.logCritical('099', error, 'Error while filling event history for ' + eventName);
       this.DB_UPDATES.criticalErrors++;
       return -1;
+    }
+  }
+
+  private async recordEventVariant(
+    tableEventName: string,
+    eventNum: number,
+    eventName: CustomEventName,
+  ): Promise<void> {
+    try {
+      const response = await this.genericFetchData(PREVIOUS_RUN_COMMAND, null);
+      const settingId =
+        Number(response.data?.return_code) === 0 ? readPreviousRunSettingId(response.data?.content, eventName) : null;
+      if (settingId === null) {
+        Utils.logWarning(` [warn] No previous run setting for ${eventName}, event ${eventNum} keeps no variant`);
+        return;
+      }
+      await this.pgSqlQuery(`UPDATE ${tableEventName} SET setting_id = $1 WHERE event_num = $2`, [settingId, eventNum]);
+    } catch (error) {
+      Utils.logWarning(` [warn] Could not record the variant of ${eventName} event ${eventNum}:`, error);
     }
   }
 

@@ -223,6 +223,44 @@ describe('executeCustomEventHistory', () => {
     });
   });
 
+  it('stores the variant the game names for its last run', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.api.serveRanking(crossServer(['FR1']));
+      sandbox.api.on('gpr', () => ({
+        command: 'gpr',
+        return_code: 0,
+        content: { ABG: { TSID: 18, ET: 39_488 }, TS: { TSID: 21, ET: 249_428 } },
+      }));
+      await run(sandbox);
+      const update = sandbox.db.one(/UPDATE outer_realms_event SET setting_id/);
+      assert.equal(update.sql, 'UPDATE outer_realms_event SET setting_id = $1 WHERE event_num = $2');
+      assert.deepEqual(update.params, [21, 1], 'TS is the Outer Realms run, ABG belongs to Beyond the Horizon');
+    });
+  });
+
+  it('keeps the event when the game does not name its variant', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.api.serveRanking(crossServer(['FR1']));
+      const result = await run(sandbox);
+      assert.equal(result, 0);
+      assert.deepEqual(sandbox.db.matching(/SET setting_id/), [], 'no variant is guessed');
+      sandbox.db.one(/INSERT INTO outer_realms_event \(/);
+    });
+  });
+
+  it('keeps the event when the variant column does not exist yet', async () => {
+    await withSandbox({}, async (sandbox) => {
+      sandbox.api.serveRanking(crossServer(['FR1']));
+      sandbox.api.on('gpr', () => ({ command: 'gpr', return_code: 0, content: { TS: { TSID: 21, ET: 10 } } }));
+      const missingColumn = Object.assign(new Error('column "setting_id" does not exist'), { code: '42703' });
+      sandbox.db.when(/SET setting_id/, { error: missingColumn });
+      const result = await run(sandbox);
+      assert.equal(result, 0);
+      const stored = sandbox.db.matching(/INSERT INTO outer_realms_event_history/);
+      assert.ok(stored.length > 0, 'the ranking is still stored');
+    });
+  });
+
   it('gives up on an event that is not running', async () => {
     await withSandbox({}, async (sandbox) => {
       sandbox.api.serveRanking(ranking('hgh-warrealms-lt44-lid1', { lt: OUTER_REALMS_LT, lid: 6 }));
